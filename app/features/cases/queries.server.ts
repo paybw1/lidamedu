@@ -29,7 +29,7 @@ export { COURT_LABELS } from "./labels";
 
 // list 쿼리에서 select 하는 컬럼 묶음 — DRY.
 const LIST_COLUMNS =
-  "case_id, court, decided_at, case_number, case_title, nickname, case_type, is_en_banc, importance, summary_title, summary_items, subject_laws, exam_1st_years, exam_2nd_years";
+  "case_id, court, decided_at, case_number, case_title, nickname, case_type, is_en_banc, importance, summary_title, summary_items, subject_laws, exam_1st_years, exam_2nd_years, primary_node_id";
 
 interface CaseListRow {
   case_id: string;
@@ -46,6 +46,8 @@ interface CaseListRow {
   subject_laws: string[];
   exam_1st_years: number[] | null;
   exam_2nd_years: number[] | null;
+  // LIST_COLUMNS 외 컬럼 세트를 쓰는 호출부(최근 판례 등)가 있어 선택 필드.
+  primary_node_id?: string | null;
 }
 
 function extractFirstSummaryTitle(raw: unknown): string | null {
@@ -86,6 +88,7 @@ function rowToListItem(
     // 운영자가 cases.exam_1st_years 컬럼에 수동 입력한 연도 중 link 파생에 없는 것.
     exam1stExtraYears: extraYears.sort((a, b) => a - b),
     exam2ndYears: row.exam_2nd_years ?? [],
+    primaryNodeId: row.primary_node_id ?? null,
   };
 }
 

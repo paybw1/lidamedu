@@ -40,6 +40,8 @@ export interface CaseListItem {
   // 체계도 전체 순번(노드 트리 순 → 노드 내 원본순). 학습과목 허브 로더에서만 채움(그 외 미설정).
   // 배치(case→node)가 바뀌면 매 로드 재계산되는 파생값.
   overallNo?: number | null;
+  // 체계도 배치 노드 — 상표 "주제N" 컬럼·필터에 사용. 목록 쿼리에서만 채움(선택).
+  primaryNodeId?: string | null;
   court: CaseCourt;
   decidedAt: string;
   caseNumber: string;

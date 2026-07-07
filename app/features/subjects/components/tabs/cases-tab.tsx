@@ -20,6 +20,7 @@ import {
   Form,
   Link,
   useLocation,
+  useNavigate,
   useNavigation,
   useSearchParams,
 } from "react-router";
@@ -113,6 +114,29 @@ export function CasesTab({
   const filters = caseFilters ?? { ...DEFAULT_FILTERS, q: initialQuery };
   const [searchParams] = useSearchParams();
   const navigation = useNavigation();
+  const navigate = useNavigate();
+  // 주제 노드(교재 배치, 라벨 "주제N 제목…") — 상표 등 주제 배치 과목에서만 존재.
+  //   필터 드롭다운(전체 제목 표시) + 목록 "주제" 컬럼(주제N 축약)에 사용.
+  const topicNodes = useMemo(
+    () =>
+      systematicNodes
+        .filter((n) => /^주제\s*\d+/.test(n.displayLabel))
+        .sort((a, b) => {
+          const na = Number(/^주제\s*(\d+)/.exec(a.displayLabel)?.[1] ?? 0);
+          const nb = Number(/^주제\s*(\d+)/.exec(b.displayLabel)?.[1] ?? 0);
+          return na - nb || a.displayLabel.localeCompare(b.displayLabel);
+        }),
+    [systematicNodes],
+  );
+  // nodeId → "주제N" 축약 라벨 (목록 컬럼 표기)
+  const topicShortByNodeId = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const n of topicNodes) {
+      const short = /^주제\s*\d+/.exec(n.displayLabel)?.[0]?.replace(/\s+/g, "");
+      if (short) m.set(n.nodeId, short);
+    }
+    return m;
+  }, [topicNodes]);
   const { axis } = useSortAxis();
   const axisLabel = axis === "systematic" ? "체계도" : "조문";
   const treeFilter = filters.tree ?? null;
@@ -370,6 +394,39 @@ export function CasesTab({
             ) : null}
           </Form>
 
+          {/* 주제 필터 — 주제 배치 과목(상표 등)에서만. 선택=기존 트리 필터(case_node) 재사용. */}
+          {topicNodes.length > 0 ? (
+            <div className="relative inline-flex items-center">
+              <select
+                value={
+                  treeFilter?.kind === "node" &&
+                  topicShortByNodeId.has(treeFilter.nodeId)
+                    ? treeFilter.nodeId
+                    : "all"
+                }
+                onChange={(e) => {
+                  const sp = new URLSearchParams(searchParams);
+                  sp.delete("case_article");
+                  sp.delete("case_chapter");
+                  if (e.target.value === "all") sp.delete("case_node");
+                  else sp.set("case_node", e.target.value);
+                  navigate(`?${sp.toString()}`, { preventScrollReset: true });
+                }}
+                disabled={isLoading}
+                className="border-border bg-background text-foreground h-8 max-w-[280px] appearance-none truncate rounded-full border py-0 pr-7 pl-3 text-xs font-medium focus:outline-none"
+                aria-label="주제"
+              >
+                <option value="all">전체 주제</option>
+                {topicNodes.map((n) => (
+                  <option key={n.nodeId} value={n.nodeId}>
+                    {n.displayLabel}
+                  </option>
+                ))}
+              </select>
+              <ChevronDownIcon className="text-muted-foreground pointer-events-none absolute top-1/2 right-2 size-3 -translate-y-1/2" />
+            </div>
+          ) : null}
+
           {/* Filter chips */}
           <FilterGroup
             label="법원"
@@ -455,6 +512,11 @@ export function CasesTab({
                     searchParams={searchParams}
                     className="w-12"
                   />
+                  {topicNodes.length > 0 ? (
+                    <TableHead className="text-muted-foreground/70 hidden w-16 font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:table-cell">
+                      주제
+                    </TableHead>
+                  ) : null}
                   <SortableCaseHead
                     label="법원"
                     column="court"
@@ -498,7 +560,17 @@ export function CasesTab({
               </TableHeader>
               <TableBody>
                 {cases.map((c) => (
-                  <CaseRow key={c.caseId} subject={subject} item={c} />
+                  <CaseRow
+                    key={c.caseId}
+                    subject={subject}
+                    item={c}
+                    topicColumn={topicNodes.length > 0}
+                    topicShort={
+                      c.primaryNodeId
+                        ? (topicShortByNodeId.get(c.primaryNodeId) ?? null)
+                        : null
+                    }
+                  />
                 ))}
               </TableBody>
             </Table>
@@ -657,9 +729,15 @@ function SortableCaseHead({
 function CaseRow({
   subject,
   item,
+  topicColumn = false,
+  topicShort = null,
 }: {
   subject: LawSubjectMeta;
   item: CaseListItem;
+  /** 주제 배치 과목(상표 등) — 주제 컬럼 렌더 여부(과목 단위로 통일). */
+  topicColumn?: boolean;
+  /** 이 판례의 주제 축약 라벨("주제N"). 클릭 시 해당 주제 필터. */
+  topicShort?: string | null;
 }) {
   // 사건 본문 link 에 `back=` query 로 현재 목록 URL search 를 넘긴다.
   // case-viewer 의 "판례 목록으로" 가 이 값으로 원래 page·필터 페이지로 복귀.
@@ -694,6 +772,26 @@ function CaseRow({
       <TableCell className="text-link text-xs font-semibold tabular-nums">
         {item.overallNo ?? "—"}
       </TableCell>
+      {topicColumn ? (
+        <TableCell className="hidden md:table-cell">
+          {topicShort && item.primaryNodeId ? (
+            <Link
+              to={(() => {
+                const sp = new URLSearchParams(location.search);
+                sp.delete("case_article");
+                sp.delete("case_chapter");
+                sp.set("case_node", item.primaryNodeId);
+                return `?${sp.toString()}`;
+              })()}
+              preventScrollReset
+              title="이 주제로 필터"
+              className="bg-primary/10 text-link hover:bg-primary/20 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap"
+            >
+              {topicShort}
+            </Link>
+          ) : null}
+        </TableCell>
+      ) : null}
       <TableCell className="hidden md:table-cell">
         <span className="text-link text-xs font-semibold">
           {COURT_LABELS[item.court]}
