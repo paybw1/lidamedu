@@ -621,17 +621,34 @@ function BookTable({ rows }: { rows: BookSectionCell[][] }) {
   // 열 병합: 원본 HWPX 의 cellSpan(colSpan) 이 있으면 그대로, 없으면(구 데이터 폴백)
   // 셀 수가 적은 행의 마지막 셀이 남은 열을 병합해 표 폭을 채운다.
   const rowWidth = (r: BookSectionCell[]) => r.reduce((a, c) => a + (c.colSpan ?? 1), 0);
-  const cols = Math.max(...rows.map(rowWidth));
-  const spanFor = (row: BookSectionCell[], ci: number) => {
+  // rowSpan 이월 — 위 행의 rowSpan 셀이 이 행에서 차지하는 열 수. 이를 빼지 않으면
+  // 병합 아래 행의 마지막 셀이 잔여 폭을 과확장해 표가 깨진다.
+  const carry = rows.map(() => 0);
+  rows.forEach((row, ri) =>
+    row.forEach((c) => {
+      for (let k = 1; k < (c.rowSpan ?? 1) && ri + k < rows.length; k++)
+        carry[ri + k] += c.colSpan ?? 1;
+    }),
+  );
+  const cols = Math.max(...rows.map((r, ri) => rowWidth(r) + carry[ri]));
+  const spanFor = (row: BookSectionCell[], ci: number, ri: number) => {
     const c = row[ci];
     if (c.colSpan && c.colSpan > 1) return c.colSpan;
-    // 폴백 — 명시 span 없는 행에서 마지막 셀이 잔여 폭을 채움
-    if (ci === row.length - 1 && rowWidth(row) < cols) return cols - rowWidth(row) + 1;
+    // 폴백 — 명시 span 없는 행에서 마지막 셀이 잔여 폭(rowSpan 이월분 제외)을 채움
+    if (ci === row.length - 1 && rowWidth(row) + carry[ri] < cols)
+      return cols - rowWidth(row) - carry[ri] + 1;
     return 1;
   };
   // 쟁점상표 도표(헤더 첫 셀 = "구분") — 구분 열은 고정폭, 나머지 열(등록상표·지정상품 등)은
   // 균등 분할 (fixed layout 에서 폭 미지정 col 은 남은 폭을 동일하게 나눔).
   const isGubun = head[0]?.text.trim() === "구분";
+  // 첫 열이 라벨 열(상표/상품/출원일 등 짧은 텍스트)인 표에만 내용 폭(w-px)·라벨 톤 적용.
+  // 첫 열 본문에 이미지가 오는 표("…사용된 상품 및 그 태양" 비교표 등)는 라벨 표가
+  // 아니므로 열 폭을 자연 배분 — 좁힌 첫 칸 탓에 두 칸 간격이 어긋나는 문제 방지.
+  const hasCellImg = (c: BookSectionCell) =>
+    c.images.length > 0 || splitCellImages(c.text).imgUrls.length > 0;
+  const hasLabelCol =
+    !isGubun && body.length > 0 && body.every((r) => r[0] !== undefined && !hasCellImg(r[0]));
   return (
     <div className="overflow-x-auto">
       <table
@@ -653,13 +670,13 @@ function BookTable({ rows }: { rows: BookSectionCell[][] }) {
             {head.map((c, i) => (
               <th
                 key={i}
-                colSpan={spanFor(head, i)}
+                colSpan={spanFor(head, i, 0)}
                 rowSpan={head[i].rowSpan ?? 1}
                 className={cn(
                   "border-border bg-muted/60 text-foreground border px-3 py-2 text-center text-[13px] font-bold",
                   // 라벨(첫) 열은 내용 폭으로 축소 — 긴 본문 열에 밀려 줄바꿈되지 않게.
                   // (구분 표는 colgroup 이 폭을 관리하므로 제외)
-                  i === 0 && !isGubun && "w-px",
+                  i === 0 && hasLabelCol && "w-px",
                 )}
               >
                 <BookCell cell={c} nowrap />
@@ -671,11 +688,11 @@ function BookTable({ rows }: { rows: BookSectionCell[][] }) {
           {body.map((row, ri) => (
             <tr key={ri}>
               {row.map((c, ci) => {
-                const isLabel = ci === 0 && row.length > 1;
+                const isLabel = (isGubun || hasLabelCol) && ci === 0 && row.length > 1;
                 return (
                   <td
                     key={ci}
-                    colSpan={spanFor(row, ci)}
+                    colSpan={spanFor(row, ci, ri + 1)}
                     rowSpan={c.rowSpan ?? 1}
                     className={cn(
                       "border-border border px-3 py-2 align-middle leading-[1.7]",
