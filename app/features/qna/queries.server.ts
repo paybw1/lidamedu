@@ -110,6 +110,25 @@ export async function listThreadsForTarget(
   return (data as unknown as RawSummaryRow[] | null ?? []).map(toSummary);
 }
 
+// 단원(node_id) 앵커 스레드 — 대상은 조문/문제 등이어도 이 단원에 속한 질문.
+//   아카이브 백필(backfill-qna-node-anchor)로 조문 질문이 세부 주제 노드에 분류돼 있어
+//   노드 뷰어 Q&A 패널이 target_type='node' 와 합쳐 보여준다.
+export async function listThreadsAnchoredToNode(
+  client: SupabaseClient<Database>,
+  nodeId: string,
+  limit = 50,
+): Promise<QnaThreadSummary[]> {
+  const { data, error } = await client
+    .from("qna_threads")
+    .select(SUMMARY_COLUMNS)
+    .eq("node_id", nodeId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return ((data as unknown as RawSummaryRow[] | null) ?? []).map(toSummary);
+}
+
 export interface ListFilter {
   // review = 강사 검토 큐(미답 open + AI 미검토 ai_answered 모아보기).
   scope: "all" | "asked-by-me" | "answered-by-me" | "open" | "review";

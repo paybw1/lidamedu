@@ -66,7 +66,10 @@ import {
   listProblemsByArticleIds,
 } from "~/features/problems/queries.server";
 import { QnaPanel } from "~/features/qna/components/qna-panel";
-import { listThreadsForTarget } from "~/features/qna/queries.server";
+import {
+  listThreadsAnchoredToNode,
+  listThreadsForTarget,
+} from "~/features/qna/queries.server";
 import { getCaseIdsByPlacement } from "~/features/cases/queries.server";
 import { getRelatedCasesByArticle } from "~/features/relations/queries.server";
 import { ArticleTree } from "~/features/subjects/components/article-tree";
@@ -307,9 +310,20 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     );
   }
 
-  // feat-9-010 — 이 쟁점(노드)에 대한 Q&A(node 대상). 조문 단위 Q&A 와 별개로,
-  // 여러 쟁점에 걸친 조문에서 쟁점 특정 질문을 이 노드에 모아 보여준다.
-  const nodeQnaThreads = await listThreadsForTarget(client, "node", nodeId, 20);
+  // feat-9-010 — 이 쟁점(노드)에 대한 Q&A. node 대상 스레드 + 단원 앵커(node_id)
+  // 스레드 합집합 — 아카이브 조문 질문이 주제별(신규성/진보성 등)로 구분 열람된다.
+  const [nodeTargetThreads, nodeAnchoredThreads] = await Promise.all([
+    listThreadsForTarget(client, "node", nodeId, 20),
+    listThreadsAnchoredToNode(client, nodeId, 50),
+  ]);
+  const seenThreadIds = new Set<string>();
+  const nodeQnaThreads = [...nodeTargetThreads, ...nodeAnchoredThreads]
+    .filter((t) => {
+      if (seenThreadIds.has(t.threadId)) return false;
+      seenThreadIds.add(t.threadId);
+      return true;
+    })
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
 
   return {
     subject: LAW_SUBJECTS[lawCode],
