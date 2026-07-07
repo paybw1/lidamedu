@@ -528,6 +528,7 @@ export default function ScienceProblemViewer({
               threads={qnaThreads}
               targetType="problem"
               targetId={problem.problemId}
+              showQuality={isStaff}
             />
           </div>
         </section>

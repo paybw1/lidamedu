@@ -465,6 +465,7 @@ export function ArticleRightPanel({
                   threads={qnaThreads}
                   targetType={qnaTargetType}
                   targetId={target.id}
+                  showQuality={viewerIsStaff}
                 />
               </TabsContent>
             ) : null}

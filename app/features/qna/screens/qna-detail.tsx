@@ -6,11 +6,18 @@ import {
   SparklesIcon,
   ThumbsDownIcon,
   ThumbsUpIcon,
+  Trash2Icon,
   UserIcon,
   XIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Link, data, useFetcher, useRevalidator } from "react-router";
+import {
+  Link,
+  data,
+  useFetcher,
+  useNavigate,
+  useRevalidator,
+} from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Textarea } from "~/core/components/ui/textarea";
@@ -147,11 +154,13 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
           <Chip tone={isWaiting ? "coral" : "emerald"}>
             {QNA_STATUS_LABEL[thread.status]}
           </Chip>
-          {thread.qualityGrade ? (
+          {/* 질문 수준 — 강사·관리자에게만 노출 (원장 지시 2026-07-07) */}
+          {isStaff && thread.qualityGrade ? (
             <Chip tone="amber">
               ★ 질문 수준 {QNA_QUALITY_LABEL[thread.qualityGrade]}
             </Chip>
           ) : null}
+          {isStaff ? <DeleteThreadButton threadId={thread.threadId} /> : null}
           {target?.href ? (
             <Link
               to={target.href}
@@ -187,8 +196,15 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
         />
       </article>
 
-      {/* 타임라인 — AI 즉답 + 질문자 후속 질문(멀티턴) + 강사 메시지. */}
-      {messages.map((m) =>
+      {/* 타임라인 — 시간 순서: 질문 → (답변 전 메시지) → 정식 답변 → 추가질문·재답변.
+          아카이브 스레드는 정식 답변 뒤에 후속 문답이 이어지므로 answeredAt 기준으로
+          메시지를 답변 앞/뒤에 배치한다. */}
+      {(thread.answerMd && thread.answeredAt
+        ? messages.filter(
+            (m) => Date.parse(m.createdAt) < Date.parse(thread.answeredAt!),
+          )
+        : messages
+      ).map((m) =>
         m.role === "ai" ? (
           <AiAnswerCard
             key={m.messageId}
@@ -232,6 +248,27 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
         </article>
       ) : null}
 
+      {/* 정식 답변 이후의 후속 문답(추가 질문·재답변) — 시간 순 */}
+      {thread.answerMd && thread.answeredAt
+        ? messages
+            .filter(
+              (m) => Date.parse(m.createdAt) >= Date.parse(thread.answeredAt!),
+            )
+            .map((m) =>
+              m.role === "ai" ? (
+                <AiAnswerCard
+                  key={m.messageId}
+                  message={m}
+                  isStaff={isStaff}
+                  isAsker={isAsker}
+                  citationHrefs={citationHrefs}
+                />
+              ) : (
+                <FollowUpCard key={m.messageId} message={m} />
+              ),
+            )
+        : null}
+
       {canAnswer ? (
         <AnswerForm threadId={thread.threadId} />
       ) : isStaff && thread.status === "open" ? (
@@ -256,6 +293,37 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
         </div>
       ) : null}
     </CommunityShell>
+  );
+}
+
+// 스레드 삭제(soft delete) — 강사·관리자 전용. 성공 시 목록으로 복귀.
+function DeleteThreadButton({ threadId }: { threadId: string }) {
+  const fetcher = useFetcher<{ ok?: boolean }>();
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (fetcher.data?.ok) navigate("/qna");
+  }, [fetcher.data, navigate]);
+  return (
+    <fetcher.Form
+      method="post"
+      action="/api/qna/thread"
+      onSubmit={(e) => {
+        if (!confirm("이 질문과 답변을 삭제할까요?")) e.preventDefault();
+      }}
+    >
+      <input type="hidden" name="intent" value="delete" />
+      <input type="hidden" name="threadId" value={threadId} />
+      <Button
+        type="submit"
+        variant="ghost"
+        size="sm"
+        disabled={fetcher.state !== "idle"}
+        className="h-6 gap-1 px-2 text-[11px] text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/20"
+        title="질문·답변 삭제 (강사·관리자)"
+      >
+        <Trash2Icon className="size-3" /> 삭제
+      </Button>
+    </fetcher.Form>
   );
 }
 

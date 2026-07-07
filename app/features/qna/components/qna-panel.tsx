@@ -14,10 +14,13 @@ export function QnaPanel({
   threads,
   targetType,
   targetId,
+  showQuality = false,
 }: {
   threads: QnaThreadSummary[];
   targetType: QnaTargetType;
   targetId: string;
+  /** 질문 수준 배지 — 강사·관리자에게만 (원장 지시 2026-07-07). */
+  showQuality?: boolean;
 }) {
   const newHref = `/qna/new?targetType=${targetType}&targetId=${targetId}`;
 
@@ -58,7 +61,7 @@ export function QnaPanel({
                   >
                     {QNA_STATUS_LABEL[t.status]}
                   </span>
-                  {t.qualityGrade ? (
+                  {showQuality && t.qualityGrade ? (
                     <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
                       수준 {QNA_QUALITY_LABEL[t.qualityGrade]}
                     </span>

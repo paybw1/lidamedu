@@ -663,6 +663,7 @@ function Inner({
                     threads={nodeQnaThreads}
                     targetType="node"
                     targetId={node.nodeId}
+                    showQuality={loaderData.isStaff}
                   />
                 </div>
               </details>
