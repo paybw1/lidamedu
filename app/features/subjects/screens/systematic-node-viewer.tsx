@@ -68,6 +68,7 @@ import {
 import { QnaPanel } from "~/features/qna/components/qna-panel";
 import {
   listThreadsAnchoredToNode,
+  listThreadsForArticleInNode,
   listThreadsForTarget,
 } from "~/features/qna/queries.server";
 import { getCaseIdsByPlacement } from "~/features/cases/queries.server";
@@ -183,9 +184,11 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     getBookmarksByArticleIds(client, user.id, articleIds),
     listMemosByArticleIds(client, user.id, articleIds),
     listHighlightsByArticleIds(client, user.id, articleIds),
+    // 노드 맥락의 조문 질문 탭 — 이 쟁점(노드)에 배정된 질문만, 잘림 없이(300).
+    // 여러 쟁점에 걸친 조문(29조 등)에서 다른 쟁점 질문이 섞이지 않게 한다.
     Promise.all(
       articleIds.map((id) =>
-        listThreadsForTarget(client, "article", id, 20).then(
+        listThreadsForArticleInNode(client, id, nodeId, 300).then(
           (threads) => [id, threads] as const,
         ),
       ),

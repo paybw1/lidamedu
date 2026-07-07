@@ -110,6 +110,27 @@ export async function listThreadsForTarget(
   return (data as unknown as RawSummaryRow[] | null ?? []).map(toSummary);
 }
 
+// 특정 조문 대상 + 특정 단원(node_id) 앵커 — 노드 뷰어 안의 조문 질문 탭용.
+//   여러 쟁점에 걸친 조문(특허 29조 등)에서 현재 쟁점에 배정된 질문만 보여준다.
+export async function listThreadsForArticleInNode(
+  client: SupabaseClient<Database>,
+  articleId: string,
+  nodeId: string,
+  limit = 300,
+): Promise<QnaThreadSummary[]> {
+  const { data, error } = await client
+    .from("qna_threads")
+    .select(SUMMARY_COLUMNS)
+    .eq("target_type", "article")
+    .eq("target_id", articleId)
+    .eq("node_id", nodeId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return ((data as unknown as RawSummaryRow[] | null) ?? []).map(toSummary);
+}
+
 // 단원(node_id) 앵커 스레드 — 대상은 조문/문제 등이어도 이 단원에 속한 질문.
 //   아카이브 백필(backfill-qna-node-anchor)로 조문 질문이 세부 주제 노드에 분류돼 있어
 //   노드 뷰어 Q&A 패널이 target_type='node' 와 합쳐 보여준다.
