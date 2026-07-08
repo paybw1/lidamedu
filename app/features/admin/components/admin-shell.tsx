@@ -163,6 +163,7 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "기기 관리", to: "/admin/lms/devices" },
       // feat-11-004 4c — 도서몰.
       { label: "도서 관리", to: "/admin/books" },
+      { label: "세트·번들", to: "/admin/book-bundles" },
       { label: "배송 관리", to: "/admin/shipments" },
     ],
   },

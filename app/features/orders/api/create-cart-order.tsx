@@ -26,6 +26,7 @@ const itemSchema = z.union([
     bookId: z.string().uuid(),
     quantity: z.number().int().min(1).max(99),
   }),
+  z.object({ kind: z.literal("bundle"), bundleId: z.string().uuid() }),
 ]);
 const schema = z.object({
   items: z.array(itemSchema).min(1).max(50),
@@ -77,7 +78,7 @@ export async function action({ request }: Route.ActionArgs) {
         unitPriceKrw: plan.priceKrw,
       });
       names.push(plan.name);
-    } else {
+    } else if (it.kind === "book") {
       const { data: book } = await client
         .from("books")
         .select("book_id, title, price_krw, sale_status")
@@ -95,6 +96,54 @@ export async function action({ request }: Route.ActionArgs) {
         quantity: it.quantity,
       });
       names.push(`${book.title}${it.quantity > 1 ? ` x${it.quantity}` : ""}`);
+    } else {
+      // 번들 — 회원 도서로 확장 + 번들가를 회원 정가 비율로 배분(부분환불·재고 정합).
+      const { data: bundle } = await client
+        .from("book_bundles")
+        .select("bundle_id, title, price_krw, sale_status")
+        .eq("bundle_id", it.bundleId)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (!bundle || bundle.sale_status !== "on_sale")
+        return data({ error: "판매 중인 세트가 아닙니다" }, { status: 404 });
+      if (bundle.price_krw <= 0)
+        return data({ error: "유료 세트만 결제할 수 있습니다" }, { status: 400 });
+      const { data: members } = await client
+        .from("book_bundle_items")
+        .select("book_id, books(price_krw, sale_status, deleted_at)")
+        .eq("bundle_id", it.bundleId);
+      const valid = (members ?? []).filter((m) => {
+        const b = m.books as {
+          price_krw: number;
+          sale_status: string;
+          deleted_at: string | null;
+        } | null;
+        return b && b.sale_status === "on_sale" && b.deleted_at === null;
+      });
+      if (valid.length === 0)
+        return data({ error: "세트 구성 도서가 없습니다" }, { status: 400 });
+      const listPrices = valid.map(
+        (m) => (m.books as { price_krw: number }).price_krw,
+      );
+      const sumList = listPrices.reduce((s, p) => s + p, 0);
+      // 번들가를 정가 비율로 배분. 반올림 드리프트는 마지막 항목에서 보정(합=번들가).
+      let allocated = 0;
+      valid.forEach((m, i) => {
+        const isLast = i === valid.length - 1;
+        const unit = isLast
+          ? bundle.price_krw - allocated
+          : sumList > 0
+            ? Math.round((bundle.price_krw * listPrices[i]) / sumList)
+            : Math.round(bundle.price_krw / valid.length);
+        allocated += unit;
+        resolved.push({
+          itemType: "book",
+          bookId: m.book_id,
+          unitPriceKrw: unit,
+          quantity: 1,
+        });
+      });
+      names.push(`[세트] ${bundle.title}`);
     }
   }
 

@@ -5,13 +5,16 @@ import { useCallback, useEffect, useState } from "react";
 
 export type CartItem =
   | { kind: "plan"; code: string }
-  | { kind: "book"; bookId: string; quantity: number };
+  | { kind: "book"; bookId: string; quantity: number }
+  | { kind: "bundle"; bundleId: string };
 
 const KEY = "lidam_cart_v1";
 const EVENT = "lidam-cart-change";
 
 export function cartItemKey(it: CartItem): string {
-  return it.kind === "plan" ? `plan:${it.code}` : `book:${it.bookId}`;
+  if (it.kind === "plan") return `plan:${it.code}`;
+  if (it.kind === "bundle") return `bundle:${it.bundleId}`;
+  return `book:${it.bookId}`;
 }
 
 function read(): CartItem[] {
@@ -73,6 +76,13 @@ export function useCart() {
     }
   }, []);
 
+  const addBundle = useCallback((bundleId: string) => {
+    const cur = read();
+    if (cur.some((it) => it.kind === "bundle" && it.bundleId === bundleId))
+      return;
+    write([...cur, { kind: "bundle", bundleId }]);
+  }, []);
+
   const setBookQty = useCallback((bookId: string, quantity: number) => {
     const cur = read();
     write(
@@ -100,5 +110,15 @@ export function useCart() {
     0,
   );
 
-  return { items, count, addPlan, addBook, setBookQty, remove, clear, has };
+  return {
+    items,
+    count,
+    addPlan,
+    addBook,
+    addBundle,
+    setBookQty,
+    remove,
+    clear,
+    has,
+  };
 }

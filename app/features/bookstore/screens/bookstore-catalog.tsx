@@ -1,5 +1,11 @@
 // 도서몰 카탈로그(강의 플랫폼) — 썸네일 그리드 + 검색·정렬 + 장바구니 담기. feat-11 B1.
-import { BookOpenIcon, CheckIcon, HeartIcon, SearchIcon } from "lucide-react";
+import {
+  BookOpenIcon,
+  CheckIcon,
+  HeartIcon,
+  LayersIcon,
+  SearchIcon,
+} from "lucide-react";
 import { Form, Link } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
@@ -11,8 +17,10 @@ import { WishlistHeart } from "~/features/bookstore/components/wishlist-heart";
 import {
   type BookCard as BookCardT,
   type BookSort,
+  type BundleCard,
   getWishlistBookIds,
   listBookstoreBooks,
+  listBundles,
 } from "~/features/bookstore/queries.server";
 
 import type { Route } from "./+types/bookstore-catalog";
@@ -38,12 +46,15 @@ export async function loader({ request }: Route.LoaderArgs) {
   const sortParam = url.searchParams.get("sort") as BookSort | null;
   const sort: BookSort =
     sortParam && SORTS.some((s) => s.value === sortParam) ? sortParam : "new";
-  const [books, wishlist] = await Promise.all([
+  const [books, wishlist, bundles] = await Promise.all([
     listBookstoreBooks(client, { q, sort }),
     getWishlistBookIds(client, user?.id ?? null),
+    // 세트는 검색어 없을 때만 상단 노출(검색 결과 화면은 도서만).
+    q ? Promise.resolve([]) : listBundles(client),
   ]);
   return {
     books,
+    bundles,
     q,
     sort,
     isAuthed: Boolean(user),
@@ -52,7 +63,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export default function BookstoreCatalog({ loaderData }: Route.ComponentProps) {
-  const { books, q, sort, wishlistedIds } = loaderData;
+  const { books, bundles, q, sort, wishlistedIds } = loaderData;
   const wished = new Set(wishlistedIds);
   return (
     <div className="mx-auto w-full max-w-[1200px] px-4 py-10 md:px-6">
@@ -97,6 +108,19 @@ export default function BookstoreCatalog({ loaderData }: Route.ComponentProps) {
           검색
         </Button>
       </Form>
+
+      {bundles.length > 0 ? (
+        <section className="mt-8">
+          <h2 className="flex items-center gap-1.5 text-sm font-bold tracking-tight">
+            <LayersIcon className="size-4" /> 세트·번들
+          </h2>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {bundles.map((bn) => (
+              <BundleGridCard key={bn.bundleId} bundle={bn} />
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {books.length === 0 ? (
         <div className="mt-8 flex flex-col items-center justify-center rounded-xl border border-dashed px-6 py-16 text-center">
@@ -213,6 +237,55 @@ export function BookGridCard({
               onClick={() => addBook(book.bookId, 1)}
             >
               담기
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BundleGridCard({ bundle }: { bundle: BundleCard }) {
+  const { addBundle, has } = useCart();
+  const inCart = has(`bundle:${bundle.bundleId}`);
+  return (
+    <div className="border-primary/30 from-primary/5 flex gap-3 rounded-xl border bg-gradient-to-br to-transparent p-3">
+      <div className="bg-muted h-24 w-18 shrink-0 overflow-hidden rounded-md border">
+        <BookCover
+          coverPath={bundle.coverPath}
+          title={bundle.title}
+          className="size-full"
+        />
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <span className="text-primary text-[11px] font-semibold">
+          세트 · {bundle.bookCount}권
+        </span>
+        <p className="line-clamp-2 text-sm leading-snug font-semibold">
+          {bundle.title}
+        </p>
+        {bundle.memberTitles.length > 0 ? (
+          <p className="text-muted-foreground mt-0.5 line-clamp-2 text-[11px]">
+            {bundle.memberTitles.join(" · ")}
+          </p>
+        ) : null}
+        <div className="mt-auto flex items-center justify-between gap-1 pt-1.5">
+          <span className="text-sm font-bold tabular-nums">
+            {bundle.priceKrw.toLocaleString("ko-KR")}원
+          </span>
+          {inCart ? (
+            <Button asChild size="sm" variant="outline" className="h-7 px-2">
+              <Link to="/lecture/cart">
+                <CheckIcon className="size-3.5" /> 담김
+              </Link>
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={() => addBundle(bundle.bundleId)}
+            >
+              세트 담기
             </Button>
           )}
         </div>

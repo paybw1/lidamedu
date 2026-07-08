@@ -130,6 +130,51 @@ export async function listWishlistBooks(
   return out;
 }
 
+// ── B2-3 세트·번들 ──────────────────────────────────────────────────────────
+export interface BundleCard {
+  bundleId: string;
+  title: string;
+  description: string | null;
+  priceKrw: number;
+  coverPath: string | null;
+  bookCount: number;
+  memberTitles: string[];
+}
+
+export async function listBundles(client: Client): Promise<BundleCard[]> {
+  const { data, error } = await client
+    .from("book_bundles")
+    .select("bundle_id, title, description, price_krw, cover_path")
+    .eq("sale_status", "on_sale")
+    .is("deleted_at", null)
+    .order("display_order", { ascending: true });
+  if (error) throw error;
+  const rows = data ?? [];
+  if (rows.length === 0) return [];
+  const ids = rows.map((r) => r.bundle_id);
+  const { data: items } = await client
+    .from("book_bundle_items")
+    .select("bundle_id, book_id, books(title)")
+    .in("bundle_id", ids);
+  const membersBy = new Map<string, string[]>();
+  for (const it of items ?? []) {
+    const title = (it.books as { title: string } | null)?.title;
+    if (!title) continue;
+    const arr = membersBy.get(it.bundle_id) ?? [];
+    arr.push(title);
+    membersBy.set(it.bundle_id, arr);
+  }
+  return rows.map((r) => ({
+    bundleId: r.bundle_id,
+    title: r.title,
+    description: r.description,
+    priceKrw: r.price_krw,
+    coverPath: r.cover_path,
+    bookCount: (membersBy.get(r.bundle_id) ?? []).length,
+    memberTitles: membersBy.get(r.bundle_id) ?? [],
+  }));
+}
+
 export interface BookDetail extends BookCard {
   description: string | null;
   isbn: string | null;

@@ -7,6 +7,7 @@ import { Button } from "~/core/components/ui/button";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { startCartCheckout } from "~/features/lms/lib/cart-checkout";
 import { cartItemKey, useCart } from "~/features/lms/lib/cart";
+import { listBundles } from "~/features/bookstore/queries.server";
 import { listSellableLectureProducts } from "~/features/lms/queries.server";
 
 import type { Route } from "./+types/lecture-cart";
@@ -20,7 +21,10 @@ export async function loader({ request }: Route.LoaderArgs) {
   const {
     data: { user },
   } = await client.auth.getUser();
-  const products = await listSellableLectureProducts(client, user?.id ?? null);
+  const [products, bundles] = await Promise.all([
+    listSellableLectureProducts(client, user?.id ?? null),
+    listBundles(client),
+  ]);
   const { data: books } = await client
     .from("books")
     .select("book_id, title, price_krw, cover_path")
@@ -29,6 +33,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   return {
     products,
     books: books ?? [],
+    bundles,
     isAuthed: Boolean(user),
     tossClientKey: process.env.TOSS_CLIENT_KEY ?? null,
   };
@@ -45,11 +50,12 @@ interface Line {
 }
 
 export default function LectureCart({ loaderData }: Route.ComponentProps) {
-  const { products, books, isAuthed, tossClientKey } = loaderData;
+  const { products, books, bundles, isAuthed, tossClientKey } = loaderData;
   const { items, remove, setBookQty, clear } = useCart();
 
   const planByCode = new Map(products.map((p) => [p.code, p]));
   const bookById = new Map(books.map((b) => [b.book_id, b]));
+  const bundleById = new Map(bundles.map((b) => [b.bundleId, b]));
 
   const lines: Line[] = [];
   for (const it of items) {
@@ -62,6 +68,17 @@ export default function LectureCart({ loaderData }: Route.ComponentProps) {
         unitPrice: p.priceKrw,
         quantity: 1,
         lineTotal: p.priceKrw,
+        isBook: false,
+      });
+    } else if (it.kind === "bundle") {
+      const bn = bundleById.get(it.bundleId);
+      if (!bn) continue;
+      lines.push({
+        key: cartItemKey(it),
+        name: `[세트] ${bn.title}`,
+        unitPrice: bn.priceKrw,
+        quantity: 1,
+        lineTotal: bn.priceKrw,
         isBook: false,
       });
     } else {
@@ -88,9 +105,13 @@ export default function LectureCart({ loaderData }: Route.ComponentProps) {
           ? planByCode.has(it.code)
             ? { kind: "plan" as const, code: it.code }
             : null
-          : bookById.has(it.bookId)
-            ? { kind: "book" as const, bookId: it.bookId, quantity: it.quantity }
-            : null,
+          : it.kind === "bundle"
+            ? bundleById.has(it.bundleId)
+              ? { kind: "bundle" as const, bundleId: it.bundleId }
+              : null
+            : bookById.has(it.bookId)
+              ? { kind: "book" as const, bookId: it.bookId, quantity: it.quantity }
+              : null,
       )
       .filter((x): x is NonNullable<typeof x> => x !== null);
     if (payload.length === 0) return;
