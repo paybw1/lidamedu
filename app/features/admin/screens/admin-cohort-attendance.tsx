@@ -5,7 +5,7 @@ import {
   ClipboardCheckIcon,
   Trash2Icon,
 } from "lucide-react";
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Link, data, useFetcher, useLocation, useNavigate } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
@@ -190,14 +190,18 @@ export default function AdminCohortAttendance({
   );
 }
 
+// ★안정 identity 필수 — 성공 useEffect deps([fetcher.data, reload])에 사용. 매 렌더 새
+// 함수면 fetcher.data.ok 가 계속 참인 동안 effect 가 무한 재실행돼 화면이 멈춘다.
 function useReload() {
   const navigate = useNavigate();
   const location = useLocation();
-  return () =>
+  const ref = useRef<() => void>(() => {});
+  ref.current = () =>
     navigate(location.pathname + location.search, {
       replace: true,
       preventScrollReset: true,
     });
+  return useCallback(() => ref.current(), []);
 }
 
 function NewSessionForm({

@@ -12,7 +12,7 @@ import {
   WandSparklesIcon,
   XIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Form,
   Link,
@@ -159,14 +159,19 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   };
 }
 
+// ★안정 identity 필수 — 이 함수를 성공 useEffect deps([fetcher.data, reload])에 쓰는데,
+// 매 렌더 새 함수를 반환하면 성공 후에도 fetcher.data.ok 가 계속 참이라 effect 가 무한
+// 재실행(navigate+setState 루프)돼 화면이 멈춘다. useCallback([]) + ref 로 identity 고정.
 function useReload() {
   const navigate = useNavigate();
   const location = useLocation();
-  return () =>
+  const ref = useRef<() => void>(() => {});
+  ref.current = () =>
     navigate(location.pathname + location.search, {
       replace: true,
       preventScrollReset: true,
     });
+  return useCallback(() => ref.current(), []);
 }
 
 const API = "/api/admin/offline-test";
