@@ -1198,6 +1198,75 @@ export type Database = {
         }
         Relationships: []
       }
+      book_stock_moves: {
+        Row: {
+          actor_id: string | null
+          book_id: string
+          created_at: string
+          delta: number
+          move_id: number
+          note: string | null
+          order_item_id: string | null
+          reason: string
+        }
+        Insert: {
+          actor_id?: string | null
+          book_id: string
+          created_at?: string
+          delta: number
+          move_id?: never
+          note?: string | null
+          order_item_id?: string | null
+          reason: string
+        }
+        Update: {
+          actor_id?: string | null
+          book_id?: string
+          created_at?: string
+          delta?: number
+          move_id?: never
+          note?: string | null
+          order_item_id?: string | null
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_stock_moves_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "book_stock_moves_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "book_stock_moves_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["book_id"]
+          },
+          {
+            foreignKeyName: "book_stock_moves_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "v_book_stock"
+            referencedColumns: ["book_id"]
+          },
+          {
+            foreignKeyName: "book_stock_moves_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
+            referencedColumns: ["order_item_id"]
+          },
+        ]
+      }
       book_updates: {
         Row: {
           book_title: string
@@ -1272,6 +1341,51 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
         ]
+      }
+      books: {
+        Row: {
+          author: string | null
+          book_id: string
+          cover_path: string | null
+          created_at: string
+          deleted_at: string | null
+          description: string | null
+          isbn: string | null
+          price_krw: number
+          publisher: string | null
+          sale_status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author?: string | null
+          book_id?: string
+          cover_path?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          isbn?: string | null
+          price_krw: number
+          publisher?: string | null
+          sale_status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author?: string | null
+          book_id?: string
+          cover_path?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          isbn?: string | null
+          price_krw?: number
+          publisher?: string | null
+          sale_status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       bug_reports: {
         Row: {
@@ -5926,6 +6040,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "order_items_book_fk"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["book_id"]
+          },
+          {
+            foreignKeyName: "order_items_book_fk"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "v_book_stock"
+            referencedColumns: ["book_id"]
+          },
+          {
             foreignKeyName: "order_items_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
@@ -6429,6 +6557,46 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "public_profiles"
             referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      plan_book_links: {
+        Row: {
+          book_id: string
+          plan_id: string
+          requirement: string
+        }
+        Insert: {
+          book_id: string
+          plan_id: string
+          requirement?: string
+        }
+        Update: {
+          book_id?: string
+          plan_id?: string
+          requirement?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_book_links_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["book_id"]
+          },
+          {
+            foreignKeyName: "plan_book_links_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "v_book_stock"
+            referencedColumns: ["book_id"]
+          },
+          {
+            foreignKeyName: "plan_book_links_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["plan_id"]
           },
         ]
       }
@@ -7989,6 +8157,53 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "science_sections"
             referencedColumns: ["section_id"]
+          },
+        ]
+      }
+      shipments: {
+        Row: {
+          address: Json | null
+          courier: string | null
+          created_at: string
+          delivered_at: string | null
+          order_item_id: string
+          shipment_id: string
+          shipped_at: string | null
+          status: string
+          tracking_no: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: Json | null
+          courier?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          order_item_id: string
+          shipment_id?: string
+          shipped_at?: string | null
+          status?: string
+          tracking_no?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: Json | null
+          courier?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          order_item_id?: string
+          shipment_id?: string
+          shipped_at?: string | null
+          status?: string
+          tracking_no?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipments_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: true
+            referencedRelation: "order_items"
+            referencedColumns: ["order_item_id"]
           },
         ]
       }
@@ -10056,6 +10271,21 @@ export type Database = {
           name?: string | null
           profile_id?: string | null
           role?: Database["public"]["Enums"]["user_role"] | null
+        }
+        Relationships: []
+      }
+      v_book_stock: {
+        Row: {
+          book_id: string | null
+          stock: number | null
+        }
+        Insert: {
+          book_id?: string | null
+          stock?: never
+        }
+        Update: {
+          book_id?: string | null
+          stock?: never
         }
         Relationships: []
       }

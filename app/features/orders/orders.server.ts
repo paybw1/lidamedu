@@ -69,7 +69,7 @@ export async function markOrderPaidAndFulfill(orderId: string): Promise<void> {
   }
   const { data: items } = await adminClient
     .from("order_items")
-    .select("order_item_id, item_type, plan_id, quantity")
+    .select("order_item_id, item_type, plan_id, book_id, quantity")
     .eq("order_id", orderId)
     .is("refunded_at", null);
   for (const item of items ?? []) {
@@ -80,8 +80,38 @@ export async function markOrderPaidAndFulfill(orderId: string): Promise<void> {
         planId: item.plan_id,
       });
     }
-    // item_type='book' → 4c 에서 shipments 생성 + 재고 차감 합류.
+    if (item.item_type === "book" && item.book_id) {
+      await fulfillBookShipment({
+        orderItemId: item.order_item_id,
+        bookId: item.book_id,
+        quantity: item.quantity,
+      });
+    }
   }
+}
+
+/** 도서 항목 지급(4c) — shipment 생성(주문당 1건 unique=멱등) + 재고 sale 차감. */
+async function fulfillBookShipment(input: {
+  orderItemId: string;
+  bookId: string;
+  quantity: number;
+}): Promise<void> {
+  const { error } = await adminClient.from("shipments").insert({
+    order_item_id: input.orderItemId,
+    status: "preparing",
+  });
+  if (error) {
+    if (error.code === "23505") return; // 이미 지급(멱등)
+    console.error("[orders] shipment create failed:", error.message);
+    return;
+  }
+  const { error: stockErr } = await adminClient.from("book_stock_moves").insert({
+    book_id: input.bookId,
+    delta: -input.quantity,
+    reason: "sale",
+    order_item_id: input.orderItemId,
+  });
+  if (stockErr) console.error("[orders] stock sale move failed:", stockErr.message);
 }
 
 /** course/tpass 상품 → plan_courses 의 각 강의에 enrollment 지급 (멱등: order_item 기준). */
@@ -164,7 +194,43 @@ async function revokeItemFulfillment(orderItemId: string, reason: string): Promi
     .eq("order_item_id", orderItemId)
     .in("status", ["active", "paused"]);
   if (error) console.error("[orders] revoke failed:", error.message);
-  // book 항목 → 4c 에서 배송 취소·재고 복원 합류.
+
+  // 도서 항목(4c) — 배송 returned 처리 + 재고 refund 복원(판매 차감이 있었던 경우만, 멱등).
+  const { data: item } = await adminClient
+    .from("order_items")
+    .select("book_id, quantity, item_type")
+    .eq("order_item_id", orderItemId)
+    .maybeSingle();
+  if (item?.item_type === "book" && item.book_id) {
+    await adminClient
+      .from("shipments")
+      .update({ status: "returned" })
+      .eq("order_item_id", orderItemId)
+      .neq("status", "returned");
+    const { data: saleMove } = await adminClient
+      .from("book_stock_moves")
+      .select("move_id")
+      .eq("order_item_id", orderItemId)
+      .eq("reason", "sale")
+      .limit(1)
+      .maybeSingle();
+    const { data: refundMove } = await adminClient
+      .from("book_stock_moves")
+      .select("move_id")
+      .eq("order_item_id", orderItemId)
+      .eq("reason", "refund")
+      .limit(1)
+      .maybeSingle();
+    if (saleMove && !refundMove) {
+      await adminClient.from("book_stock_moves").insert({
+        book_id: item.book_id,
+        delta: item.quantity,
+        reason: "refund",
+        order_item_id: orderItemId,
+        note: reason,
+      });
+    }
+  }
 }
 
 // ── 부분 환불 (항목 단위, ★★★★) ────────────────────────────────────────────

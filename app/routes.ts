@@ -585,6 +585,11 @@ export default [
       // feat-11-004 4a — 주문 관리(항목 부분 환불) + 4b 무통장.
       route("/admin/orders", "features/orders/screens/admin-orders.tsx"),
       route("/api/orders/bank-transfer", "features/orders/api/bank-transfer.tsx"),
+      // feat-11-004 4c — 도서몰·배송 + 학생 마이페이지.
+      route("/admin/books", "features/bookstore/screens/admin-books.tsx"),
+      route("/admin/shipments", "features/bookstore/screens/admin-shipments.tsx"),
+      route("/me/courses", "features/lms/screens/my-courses.tsx"),
+      route("/me/orders", "features/orders/screens/my-orders.tsx"),
       route(
         "/api/cron/bank-transfer-expire",
         "features/cron/api/bank-transfer-expire.tsx",
