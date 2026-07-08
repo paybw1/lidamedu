@@ -671,7 +671,11 @@ function Inner({
               </p>
               {/* feat-9-010 — 이 쟁점(노드) 대상 Q&A. 조문 단위 Q&A(각 조문 패널)와 별개로,
                   이 쟁점으로 특정해 물은 질문을 여기 모아 보여준다. */}
-              <details className="border-border bg-muted/20 mt-3 rounded-xl border px-3 py-2">
+              <details
+                // 조문 없는 노드(실용신안법 등)는 Q&A 가 본문 콘텐츠 — 기본 펼침.
+                open={node.articles.length === 0 && nodeQnaThreads.length > 0}
+                className="border-border bg-muted/20 mt-3 rounded-xl border px-3 py-2"
+              >
                 <summary className="text-muted-foreground flex cursor-pointer items-center gap-1.5 text-xs font-semibold">
                   <MessageCircleQuestionIcon className="size-3.5" />이 쟁점에 대한 질문
                   {nodeQnaThreads.length > 0 ? ` ${nodeQnaThreads.length}` : ""}

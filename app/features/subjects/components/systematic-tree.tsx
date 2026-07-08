@@ -451,11 +451,20 @@ function SystematicItem({
           </Link>
         </div>
       ) : (
+        // 조문·자식 없는 노드(예: 09 실용신안법)도 노드 viewer 로 이동 가능해야
+        // 노드 대상 Q&A 를 열람할 수 있다 — 라벨을 링크로.
         <div className={rowClass}>
           <span className="inline-block size-4" />
-          {labelEl}
-          {gaugeEl}
-          {countEl}
+          <Link
+            to={`/subjects/${lawCode}/systematic/${node.nodeId}`}
+            viewTransition
+            prefetch="intent"
+            className="flex min-w-0 flex-1 items-center gap-1.5 hover:underline"
+          >
+            {labelEl}
+            {gaugeEl}
+            {countEl}
+          </Link>
         </div>
       )}
       {open ? (
