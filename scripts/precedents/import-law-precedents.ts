@@ -64,6 +64,8 @@ function arg(name: string, fallback: string): string {
 }
 const flag = (n: string): boolean => args.includes(n);
 const INPUT_PATH = resolve(process.cwd(), arg("--input", "tmp/casenum-import-sample.txt"));
+// 사건번호 유일성=법률 단위(특허·상표 겹침 존재) — 대상 법률을 지정해 그 법률의 행에 적재.
+const LAW_FILTER = arg("--law", "");
 const APPLY = flag("--apply");
 const INSERT_NEW = flag("--insert-new");
 const FORCE = flag("--force");
@@ -171,10 +173,12 @@ function isErrorEnvelope(xml: string): boolean {
 const supa = createClient(SUPA_URL, SUPA_KEY, { auth: { persistSession: false } });
 
 async function loadCasesIndex() {
-  const { data, error } = await supa
+  let q = supa
     .from("cases")
     .select("case_id, case_number, case_title, subject_laws, decided_at, court, official_text_md, law_api_serial_id")
     .is("deleted_at", null);
+  if (LAW_FILTER) q = q.contains("subject_laws", [LAW_FILTER]);
+  const { data, error } = await q;
   if (error) throw error;
   type CaseRow = NonNullable<typeof data>[number];
   const byToken = new Map<string, CaseRow>();
