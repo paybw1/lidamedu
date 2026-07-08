@@ -243,6 +243,7 @@ export default [
     // 내 강의실(수강현황) — 구 /me/courses 를 여기로 이관(아래 redirect 유지).
     route("/lecture", "features/lms/screens/my-courses.tsx"),
     route("/lecture/catalog", "features/lms/screens/lecture-catalog.tsx"),
+    route("/lecture/cart", "features/lms/screens/lecture-cart.tsx"),
     // 주문·배송 — 구 /me/orders 이관(아래 redirect 유지).
     route("/lecture/orders", "features/orders/screens/my-orders.tsx"),
   ]),
@@ -905,6 +906,11 @@ export default [
       route(
         "/api/payments/create-order",
         "features/subscriptions/api/create-order.tsx",
+      ),
+      // feat-11 장바구니 — 다건(강의·도서) 주문 결제 준비.
+      route(
+        "/api/payments/create-cart-order",
+        "features/orders/api/create-cart-order.tsx",
       ),
       route(
         "/api/payments/toss/confirm",

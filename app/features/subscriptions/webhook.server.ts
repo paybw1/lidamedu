@@ -213,6 +213,14 @@ export async function syncPaymentFromToss(
       if (payRow.discount_id) await incrementDiscountUse(payRow.discount_id);
       // feat-11-004 4a — 연결 주문 paid 전이 + course/tpass 지급(멱등).
       if (payRow.order_id) await markOrderPaidAndFulfill(payRow.order_id);
+      // feat-11 장바구니 — plan_id null = 주문(order_items)으로만 지급되는 카트 주문. 구독 스킵.
+      if (!payRow.plan_id) {
+        result = {
+          outcome: "processed",
+          detail: "입금/결제 완료 → 주문 지급(장바구니)",
+        };
+        break;
+      }
       const kind = payRow.subscription_plans?.product_kind;
       if (kind === "course" || kind === "tpass") {
         result = { outcome: "processed", detail: "입금/결제 완료 → 수강권(enrollments) 지급" };

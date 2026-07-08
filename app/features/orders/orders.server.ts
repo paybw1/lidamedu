@@ -43,6 +43,62 @@ export async function createSinglePlanOrder(input: {
   return { orderId: order.order_id, orderItemId: item.order_item_id };
 }
 
+/** 장바구니 다건 체크아웃 주문 — 강의(plan)·도서(book) 혼합. create-cart-order 액션이 호출.
+ *  가격은 서버가 이미 검증한 값(unitPriceKrw)만 받는다. 지급은 confirmPayment→
+ *  markOrderPaidAndFulfill 이 order_items 순회로 처리(강의=enrollment·도서=배송). */
+export type CartOrderItem =
+  | {
+      itemType: "plan";
+      planId: string;
+      subjectCode?: string | null;
+      unitPriceKrw: number;
+    }
+  | { itemType: "book"; bookId: string; unitPriceKrw: number; quantity: number };
+
+export async function createCartOrder(input: {
+  userId: string;
+  items: CartOrderItem[];
+  paymentMethod?: "toss" | "bank_transfer" | "free" | "manual";
+}): Promise<{ orderId: string; totalKrw: number }> {
+  const qtyOf = (it: CartOrderItem) => (it.itemType === "book" ? it.quantity : 1);
+  const totalKrw = input.items.reduce(
+    (s, it) => s + it.unitPriceKrw * qtyOf(it),
+    0,
+  );
+  const { data: order, error } = await adminClient
+    .from("orders")
+    .insert({
+      user_id: input.userId,
+      status: "pending_payment",
+      total_krw: totalKrw,
+      payment_method: input.paymentMethod ?? "toss",
+    })
+    .select("order_id")
+    .single();
+  if (error) throw error;
+  const rows = input.items.map((it) =>
+    it.itemType === "plan"
+      ? {
+          order_id: order.order_id,
+          item_type: "plan" as const,
+          plan_id: it.planId,
+          subject_code: it.subjectCode ?? null,
+          unit_price_krw: it.unitPriceKrw,
+          quantity: 1,
+        }
+      : {
+          order_id: order.order_id,
+          item_type: "book" as const,
+          book_id: it.bookId,
+          unit_price_krw: it.unitPriceKrw,
+          quantity: it.quantity,
+        },
+  );
+  const { error: itemErr } = await adminClient.from("order_items").insert(rows);
+  if (itemErr) throw itemErr;
+  return { orderId: order.order_id, totalKrw };
+}
+
 // ── 지급 (fulfill) ──────────────────────────────────────────────────────────
 // plan(subject/bundle/membership) 항목의 user_subscriptions 지급은 기존
 // confirmPayment→upsertPaidSubscription 경로가 그대로 담당(중복 지급 방지).

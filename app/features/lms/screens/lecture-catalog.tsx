@@ -1,13 +1,14 @@
 // 강의 카탈로그(강의 플랫폼) — course/T-PASS 판매 상품 목록 + 수강신청/구매 (feat-11 S2).
 // 구매는 단건 결제: /api/payments/create-order(1-item 주문 경유) → 토스 requestPayment.
 // 결제 성공 시 confirm 이 주문 fulfill → enrollments 지급(M4).
-import { GraduationCapIcon, TicketIcon } from "lucide-react";
+import { CheckIcon, GraduationCapIcon, TicketIcon } from "lucide-react";
 import { Link } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent } from "~/core/components/ui/card";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { useCart } from "~/features/lms/lib/cart";
 import { PRODUCT_KIND_LABEL } from "~/features/subscriptions/labels";
 import {
   type LectureProduct,
@@ -118,6 +119,8 @@ function ProductCard({
   tossClientKey: string | null;
 }) {
   const isTpass = product.productKind === "tpass";
+  const { addPlan, has } = useCart();
+  const inCart = has(`plan:${product.code}`);
   return (
     <Card className="flex flex-col">
       <CardContent className="flex flex-1 flex-col gap-3 p-5">
@@ -177,17 +180,34 @@ function ProductCard({
               <Link to="/login">로그인 후 구매</Link>
             </Button>
           ) : (
-            <Button
-              size="sm"
-              disabled={!tossClientKey}
-              onClick={() =>
-                tossClientKey
-                  ? startLectureCheckout(product, tossClientKey)
-                  : undefined
-              }
-            >
-              수강신청
-            </Button>
+            <div className="flex items-center gap-1.5">
+              {inCart ? (
+                <Button asChild size="sm" variant="outline">
+                  <Link to="/lecture/cart">
+                    <CheckIcon className="size-3.5" /> 담김
+                  </Link>
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => addPlan(product.code)}
+                >
+                  담기
+                </Button>
+              )}
+              <Button
+                size="sm"
+                disabled={!tossClientKey}
+                onClick={() =>
+                  tossClientKey
+                    ? startLectureCheckout(product, tossClientKey)
+                    : undefined
+                }
+              >
+                바로 구매
+              </Button>
+            </div>
           )}
         </div>
       </CardContent>

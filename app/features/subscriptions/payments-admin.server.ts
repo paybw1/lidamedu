@@ -9,7 +9,8 @@ export interface AdminPaymentRow {
   paymentId: string;
   userId: string;
   userName: string | null;
-  planId: string;
+  // feat-11 장바구니 주문 결제는 단일 plan 없음 → null.
+  planId: string | null;
   planCode: string;
   planName: string;
   amountKrw: number;
@@ -60,7 +61,7 @@ export function kstBucketKey(iso: string, g: StatsGranularity): string {
 function rowToAdmin(r: {
   payment_id: string;
   user_id: string;
-  plan_id: string;
+  plan_id: string | null;
   amount_krw: number;
   status: string;
   toss_order_id: string | null;

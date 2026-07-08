@@ -6551,7 +6551,7 @@ export type Database = {
           failure_reason: string | null
           order_id: string | null
           payment_id: string
-          plan_id: string
+          plan_id: string | null
           refund_amount_krw: number | null
           refund_reason: string | null
           refunded_at: string | null
@@ -6570,7 +6570,7 @@ export type Database = {
           failure_reason?: string | null
           order_id?: string | null
           payment_id?: string
-          plan_id: string
+          plan_id?: string | null
           refund_amount_krw?: number | null
           refund_reason?: string | null
           refunded_at?: string | null
@@ -6589,7 +6589,7 @@ export type Database = {
           failure_reason?: string | null
           order_id?: string | null
           payment_id?: string
-          plan_id?: string
+          plan_id?: string | null
           refund_amount_krw?: number | null
           refund_reason?: string | null
           refunded_at?: string | null

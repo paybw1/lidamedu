@@ -41,5 +41,10 @@ export async function loader({ request }: Route.LoaderArgs) {
   if ("pendingDeposit" in res) {
     throw redirect("/me/subscription?deposit=1");
   }
+  // feat-11 — 강의/도서(주문 fulfill=enrollment·배송) 결제는 강의 플랫폼으로 복귀
+  //   (?purchased=1 시 강의 플랫폼이 장바구니를 비운다). 학습 구독은 기존대로.
+  if ("fulfilledOrder" in res) {
+    throw redirect("/lecture?purchased=1");
+  }
   throw redirect("/me/subscription?paid=1");
 }

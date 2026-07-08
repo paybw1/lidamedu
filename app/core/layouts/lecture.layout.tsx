@@ -10,6 +10,8 @@ import { Link, NavLink, Outlet, data } from "react-router";
 
 import Footer from "../components/footer";
 import { PlatformSwitch } from "../components/platform-switch";
+import { CartClearOnPurchase } from "~/features/lms/components/cart-clear-on-purchase";
+import { CartLink } from "~/features/lms/components/cart-link";
 import { UserMenu } from "../components/navigation-bar";
 import { Button } from "../components/ui/button";
 import { LECTURE_NAV_LINKS } from "../lib/platforms";
@@ -87,6 +89,7 @@ export default function LectureLayout({ loaderData }: Route.ComponentProps) {
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
+            <CartLink />
             {user ? (
               <>
                 <Button
@@ -140,6 +143,7 @@ export default function LectureLayout({ loaderData }: Route.ComponentProps) {
         </nav>
       </header>
 
+      <CartClearOnPurchase />
       <main className="mx-auto w-full flex-1">
         <Outlet />
       </main>

@@ -78,7 +78,8 @@ export interface UserSubscription {
 export interface PaymentRow {
   paymentId: string;
   userId: string;
-  planId: string;
+  // feat-11 장바구니 주문 결제는 단일 plan 이 없어 null(지급은 주문 기준).
+  planId: string | null;
   planCode: string;
   planName: string;
   amountKrw: number;

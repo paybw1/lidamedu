@@ -307,6 +307,31 @@ export async function createPendingPayment(input: {
   return { ok: true, paymentId: data.payment_id };
 }
 
+/** feat-11 장바구니 — 주문 단위 pending 결제(단일 plan 없음 → plan_id null).
+ *  지급은 confirmPayment 가 order_id 로 fulfill(구독 upsert 스킵). */
+export async function createPendingCartPayment(input: {
+  userId: string;
+  tossOrderId: string;
+  amountKrw: number;
+  orderId: string;
+}): Promise<{ ok: true; paymentId: string } | { ok: false; error: string }> {
+  const admin = adminClient as SupabaseClient<Database>;
+  const { data, error } = await admin
+    .from("payments")
+    .insert({
+      user_id: input.userId,
+      plan_id: null,
+      amount_krw: input.amountKrw,
+      status: "pending",
+      toss_order_id: input.tossOrderId,
+      order_id: input.orderId,
+    })
+    .select("payment_id")
+    .single();
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, paymentId: data.payment_id };
+}
+
 export interface ConfirmPaymentInput {
   tossOrderId: string;
   tossPaymentKey: string;
@@ -542,6 +567,12 @@ export async function confirmPayment(
   //   subject/bundle/membership 의 user_subscriptions 지급은 아래 기존 경로가 담당.
   if (payRow.order_id) {
     await markOrderPaidAndFulfill(payRow.order_id);
+  }
+
+  // feat-11 장바구니 — plan_id 가 null 이면 이 결제는 주문(order_items)으로만 지급되는
+  //   카트 주문(강의 enrollment·도서 배송은 위 fulfill 이 처리). 구독 upsert 대상 아님.
+  if (!payRow.plan_id) {
+    return { ok: true, fulfilledOrder: true };
   }
 
   // 4~5) 결제 기간 반영(체험 오프셋·연장 포함) — 빌링과 공용 헬퍼.
