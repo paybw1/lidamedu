@@ -361,6 +361,19 @@ export async function getWatchBalances(
   return out;
 }
 
+// enrollment 조치 → cs_actions 공통 원장 매핑 (4d — CS 처리 이력 한 화면 조회)
+const CS_KIND_BY_ACTION: Record<string, string> = {
+  grant: "enrollment_grant",
+  extend: "period_extend",
+  revoke: "enrollment_revoke",
+  block: "enrollment_block",
+  watch_credit: "multiplier_credit",
+  watch_reset: "multiplier_reset",
+  pause: "pause_admin",
+  resume: "pause_admin",
+  adjust_snapshot: "memo",
+};
+
 export async function logEnrollmentAdminAction(input: {
   enrollmentId: string;
   actorId: string;
@@ -378,4 +391,24 @@ export async function logEnrollmentAdminAction(input: {
     reason: input.reason,
   });
   if (error) console.error("[lms] admin log failed:", error.message);
+  // cs_actions 미러 — 대상 회원 기준 CS 이력 통합 조회용.
+  try {
+    const { data: enr } = await adminClient
+      .from("enrollments")
+      .select("user_id")
+      .eq("enrollment_id", input.enrollmentId)
+      .maybeSingle();
+    if (enr) {
+      await adminClient.from("cs_actions").insert({
+        user_id: enr.user_id,
+        actor_id: input.actorId,
+        kind: CS_KIND_BY_ACTION[input.action] ?? "memo",
+        ref_table: "enrollment_admin_logs",
+        ref_id: input.enrollmentId,
+        note: input.reason,
+      });
+    }
+  } catch (e) {
+    console.error("[lms] cs mirror failed:", e);
+  }
 }

@@ -85,7 +85,28 @@ export async function loader({ request }: Route.LoaderArgs) {
     }
   }
 
+  // 4d — 내 쿠폰 (발급/사용 내역)
+  const { data: coupons } = await client
+    .from("user_coupons")
+    .select(
+      "user_coupon_id, issued_reason, issued_at, expires_at, used_at, discount:discounts!user_coupons_discount_id_fkey(name, code, kind, value)",
+    )
+    .eq("user_id", user.id)
+    .order("issued_at", { ascending: false });
+
   return {
+    coupons: (coupons ?? []).map((c) => {
+      const d = c.discount as { name: string; code: string | null; kind: string; value: number } | null;
+      return {
+        userCouponId: c.user_coupon_id,
+        name: d?.name ?? "쿠폰",
+        code: d?.code ?? null,
+        valueLabel: d ? (d.kind === "percent" ? `${d.value}%` : `₩${d.value.toLocaleString("ko-KR")}`) : "",
+        issuedAt: c.issued_at,
+        expiresAt: c.expires_at,
+        usedAt: c.used_at,
+      };
+    }),
     orders: (orders ?? []).map((o) => ({
       orderId: o.order_id,
       orderNo: o.order_id.slice(0, 8).toUpperCase(),
@@ -99,12 +120,42 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export default function MyOrders({ loaderData }: Route.ComponentProps) {
-  const { orders } = loaderData;
+  const { orders, coupons } = loaderData;
   return (
     <div className="mx-auto w-full max-w-3xl space-y-5 px-4 py-8">
       <h1 className="flex items-center gap-2 text-xl font-extrabold tracking-tight">
         <PackageIcon className="size-5" /> 내 주문·배송
       </h1>
+
+      {coupons.length > 0 ? (
+        <Card>
+          <CardHeader className="pb-2">
+            <h2 className="text-[15px] font-bold">내 쿠폰</h2>
+            <p className="text-muted-foreground text-[12px]">
+              결제 화면에서 쿠폰 코드를 입력하면 적용됩니다.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-1.5">
+            {coupons.map((c) => (
+              <div
+                key={c.userCouponId}
+                className="border-border/60 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-[13px]"
+              >
+                <span className={c.usedAt ? "text-muted-foreground line-through" : "font-medium"}>
+                  {c.name} ({c.valueLabel})
+                </span>
+                {c.code && !c.usedAt ? (
+                  <span className="bg-muted rounded px-1.5 py-0.5 font-mono text-[12px]">{c.code}</span>
+                ) : null}
+                {c.usedAt ? <Badge variant="outline">사용됨</Badge> : null}
+                <span className="text-muted-foreground ml-auto text-[11px] tabular-nums">
+                  {c.expiresAt ? `~${c.expiresAt.slice(0, 10)}` : "기한 없음"}
+                </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
       {orders.length === 0 ? (
         <Card>
           <CardContent className="text-muted-foreground py-12 text-center text-sm">

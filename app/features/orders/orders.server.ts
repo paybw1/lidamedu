@@ -52,10 +52,11 @@ export async function createSinglePlanOrder(input: {
 export async function markOrderPaidAndFulfill(orderId: string): Promise<void> {
   const { data: order } = await adminClient
     .from("orders")
-    .select("order_id, user_id, status")
+    .select("order_id, user_id, status, discount_id")
     .eq("order_id", orderId)
     .maybeSingle();
   if (!order) return;
+  const firstTransition = order.status !== "paid";
   if (order.status !== "paid") {
     const { error } = await adminClient
       .from("orders")
@@ -87,6 +88,17 @@ export async function markOrderPaidAndFulfill(orderId: string): Promise<void> {
         quantity: item.quantity,
       });
     }
+  }
+  // 4d — 쿠폰 훅(사용 마킹 + 첫 구매 자동 발급). 최초 전이에서만.
+  if (firstTransition) {
+    const { onOrderPaidCouponHooks } = await import(
+      "~/features/orders/coupons.server"
+    );
+    await onOrderPaidCouponHooks({
+      orderId: order.order_id,
+      userId: order.user_id,
+      discountId: order.discount_id,
+    });
   }
 }
 
@@ -331,5 +343,26 @@ export async function refundOrderItem(input: {
       status: (remaining ?? []).length === 0 ? "refunded" : "partially_refunded",
     })
     .eq("order_id", item.order_id);
+  // 4d — CS 이력 미러
+  try {
+    const { recordCsAction } = await import("~/features/orders/cs.server");
+    const { data: o } = await adminClient
+      .from("orders")
+      .select("user_id")
+      .eq("order_id", item.order_id)
+      .maybeSingle();
+    if (o) {
+      await recordCsAction({
+        userId: o.user_id,
+        actorId: input.actorId,
+        kind: "refund_assist",
+        refTable: "order_items",
+        refId: input.orderItemId,
+        note: `항목 환불 ₩${refundKrw.toLocaleString("ko-KR")} — ${input.reason}`,
+      });
+    }
+  } catch (e) {
+    console.error("[orders] cs mirror failed:", e);
+  }
   return { ok: true, refundedKrw: refundKrw };
 }

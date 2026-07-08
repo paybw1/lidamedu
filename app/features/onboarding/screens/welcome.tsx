@@ -49,6 +49,13 @@ export async function loader({ request }: Route.LoaderArgs) {
     data: { user },
   } = await client.auth.getUser();
   if (!user) throw redirect("/login");
+  // feat-11-004 4d — 가입 자동 발급 쿠폰(정의: discounts.auto_issue='signup'). 멱등(unique).
+  {
+    const { issueAutoCoupons } = await import(
+      "~/features/orders/coupons.server"
+    );
+    await issueAutoCoupons(user.id, "signup");
+  }
   const { data: profile } = await client
     .from("profiles")
     .select(

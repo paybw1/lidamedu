@@ -12,6 +12,7 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Chip, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
+import { hasDutyAccess } from "~/features/admin/lib/duties.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { resetDevice } from "~/features/lms/devices.server";
 
@@ -29,6 +30,9 @@ async function requireManager(request: Request) {
   if (!user) throw data("Unauthorized", { status: 401 });
   const role = await getStaffRole(client, user.id);
   if (!roleAtLeast(role, "manager")) throw data("Forbidden", { status: 403 });
+  if (!(await hasDutyAccess("lms_cs", user.id, role))) {
+    throw data("Forbidden — 관리자 관리에서 접근 권한을 배정받아야 합니다.", { status: 403 });
+  }
   return { user, role };
 }
 
@@ -88,6 +92,11 @@ export async function action({ request }: Route.ActionArgs) {
   const deviceId = String(fd.get("deviceId") ?? "");
   const reason = String(fd.get("reason") ?? "").trim();
   if (!deviceId || !reason) return data({ error: "사유를 입력해 주세요." }, { status: 400 });
+  const { data: device } = await adminClient
+    .from("user_devices")
+    .select("user_id")
+    .eq("device_id", deviceId)
+    .maybeSingle();
   const result = await resetDevice({
     deviceId,
     actorId: user.id,
@@ -95,6 +104,17 @@ export async function action({ request }: Route.ActionArgs) {
     reason,
   });
   if (!result.ok) return data({ error: result.error }, { status: 400 });
+  if (device) {
+    const { recordCsAction } = await import("~/features/orders/cs.server");
+    await recordCsAction({
+      userId: device.user_id,
+      actorId: user.id,
+      kind: "device_reset",
+      refTable: "device_reset_logs",
+      refId: deviceId,
+      note: reason,
+    });
+  }
   return data({ ok: true as const });
 }
 

@@ -9,6 +9,11 @@ export const STAFF_DUTIES = [
   "ai_usage_alert",
   "lecture_abuse_alert",
   "student_admin_access",
+  // feat-11-004 4d — LMS 접근 권한 4종 (설계 §3.12)
+  "lms_video_admin",
+  "lms_cs",
+  "lms_orders_admin",
+  "lms_stats_view",
 ] as const;
 
 export type StaffDuty = (typeof STAFF_DUTIES)[number];
@@ -67,6 +72,30 @@ export const DUTY_META: Record<StaffDuty, DutyMeta> = {
   student_admin_access: {
     label: "수강생 관리 접근",
     desc: "수강생 관리(/admin/users) 화면 열람과 이용 승인/해제 권한. 원장은 항상 가능하고, 역할 변경은 원장 전용으로 유지됩니다.",
+    kind: "access",
+    fallbackRoles: ["admin"],
+  },
+  lms_video_admin: {
+    label: "강의 영상·도서 등록",
+    desc: "강의 시리즈·에디션·회차·영상 등록과 도서 관리 화면 접근.",
+    kind: "access",
+    fallbackRoles: ["admin"],
+  },
+  lms_cs: {
+    label: "LMS CS (수강권·기기·배수)",
+    desc: "영상 수강권 지급·연장·회수·배수 복구와 기기 관리 화면 접근.",
+    kind: "access",
+    fallbackRoles: ["admin"],
+  },
+  lms_orders_admin: {
+    label: "주문·환불·배송",
+    desc: "주문 관리(부분 환불·무통장 승인)와 배송 관리 화면 접근.",
+    kind: "access",
+    fallbackRoles: ["admin"],
+  },
+  lms_stats_view: {
+    label: "매출 통계 열람",
+    desc: "주문 기준 매출 요약(주문 관리 상단 카드 등) 열람.",
     kind: "access",
     fallbackRoles: ["admin"],
   },

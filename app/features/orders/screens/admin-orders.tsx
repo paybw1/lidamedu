@@ -11,6 +11,7 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Chip, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
+import { hasDutyAccess } from "~/features/admin/lib/duties.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   confirmBankTransfer,
@@ -53,6 +54,9 @@ async function requireManager(request: Request) {
   if (!user) throw data("Unauthorized", { status: 401 });
   const role = await getStaffRole(client, user.id);
   if (!roleAtLeast(role, "manager")) throw data("Forbidden", { status: 403 });
+  if (!(await hasDutyAccess("lms_orders_admin", user.id, role))) {
+    throw data("Forbidden — 관리자 관리에서 접근 권한을 배정받아야 합니다.", { status: 403 });
+  }
   return { user, role };
 }
 
@@ -64,6 +68,22 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   // 4b — 기한 초과 무통장 lazy 만료(cron 이중 안전망).
   await expireOverdueBankTransfers();
+
+  // 4d — 매출 요약(파생 뷰 v_sales_daily, 저장 아님). KST 오늘·이번 달.
+  const todayKst = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
+  const monthStartKst = todayKst.slice(0, 8) + "01";
+  const { data: sales } = await adminClient
+    .from("v_sales_daily")
+    .select("sale_date, orders_count, gross_krw, refund_krw")
+    .gte("sale_date", monthStartKst);
+  let todayGross = 0;
+  let monthGross = 0;
+  let monthRefund = 0;
+  for (const s of sales ?? []) {
+    monthGross += Number(s.gross_krw ?? 0);
+    monthRefund += Number(s.refund_krw ?? 0);
+    if (s.sale_date === todayKst) todayGross = Number(s.gross_krw ?? 0);
+  }
 
   // 입금 대기 무통장 목록
   const { data: pendingTransfers } = await adminClient
@@ -157,7 +177,14 @@ export async function loader({ request }: Route.LoaderArgs) {
         r.items.some((i) => i.label.includes(q)),
     );
   }
-  return { rows, transfers, q, status, role };
+  return {
+    rows,
+    transfers,
+    q,
+    status,
+    role,
+    sales: { todayGross, monthGross, monthRefund },
+  };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -183,7 +210,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function AdminOrders({ loaderData }: Route.ComponentProps) {
-  const { rows, transfers, q, status, role } = loaderData;
+  const { rows, transfers, q, status, role, sales } = loaderData;
   return (
     <AdminShell
       cluster="sales"
@@ -196,6 +223,22 @@ export default function AdminOrders({ loaderData }: Route.ComponentProps) {
         </Chip>
       }
     >
+      {/* 4d — 매출 요약(파생) */}
+      <div className="mb-4 grid grid-cols-3 gap-2.5">
+        {[
+          { label: "오늘 매출", value: sales.todayGross },
+          { label: "이번 달 매출", value: sales.monthGross },
+          { label: "이번 달 환불", value: sales.monthRefund },
+        ].map((c) => (
+          <div key={c.label} className="border-border bg-card rounded-xl border p-3 shadow-sm">
+            <p className="text-muted-foreground text-[11px] font-semibold">{c.label}</p>
+            <p className="text-[18px] font-extrabold tabular-nums">
+              ₩{c.value.toLocaleString("ko-KR")}
+            </p>
+          </div>
+        ))}
+      </div>
+
       {/* 4b — 무통장 입금 대기 (수동 승인) */}
       {transfers.length > 0 ? (
         <section className="border-amber-500/40 bg-amber-500/5 mb-4 rounded-xl border p-3">

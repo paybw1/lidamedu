@@ -11,6 +11,7 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Chip, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
+import { hasDutyAccess } from "~/features/admin/lib/duties.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 
 import type { Route } from "./+types/admin-shipments";
@@ -40,6 +41,9 @@ async function requireManager(request: Request) {
   if (!user) throw data("Unauthorized", { status: 401 });
   const role = await getStaffRole(client, user.id);
   if (!roleAtLeast(role, "manager")) throw data("Forbidden", { status: 403 });
+  if (!(await hasDutyAccess("lms_orders_admin", user.id, role))) {
+    throw data("Forbidden — 관리자 관리에서 접근 권한을 배정받아야 합니다.", { status: 403 });
+  }
   return { user, role };
 }
 

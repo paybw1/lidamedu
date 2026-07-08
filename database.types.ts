@@ -1259,6 +1259,13 @@ export type Database = {
             referencedColumns: ["book_id"]
           },
           {
+            foreignKeyName: "book_stock_moves_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "v_sales_books"
+            referencedColumns: ["book_id"]
+          },
+          {
             foreignKeyName: "book_stock_moves_order_item_id_fkey"
             columns: ["order_item_id"]
             isOneToOne: false
@@ -3084,6 +3091,68 @@ export type Database = {
           },
         ]
       }
+      cs_actions: {
+        Row: {
+          action_id: string
+          actor_id: string | null
+          created_at: string
+          kind: string
+          note: string
+          ref_id: string | null
+          ref_table: string | null
+          user_id: string
+        }
+        Insert: {
+          action_id?: string
+          actor_id?: string | null
+          created_at?: string
+          kind: string
+          note: string
+          ref_id?: string | null
+          ref_table?: string | null
+          user_id: string
+        }
+        Update: {
+          action_id?: string
+          actor_id?: string | null
+          created_at?: string
+          kind?: string
+          note?: string
+          ref_id?: string | null
+          ref_table?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cs_actions_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "cs_actions_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "cs_actions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "cs_actions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       curricula: {
         Row: {
           created_at: string
@@ -3328,6 +3397,7 @@ export type Database = {
       }
       discounts: {
         Row: {
+          auto_issue: string | null
           code: string | null
           created_at: string
           discount_id: string
@@ -3347,6 +3417,7 @@ export type Database = {
           value: number
         }
         Insert: {
+          auto_issue?: string | null
           code?: string | null
           created_at?: string
           discount_id?: string
@@ -3366,6 +3437,7 @@ export type Database = {
           value: number
         }
         Update: {
+          auto_issue?: string | null
           code?: string | null
           created_at?: string
           discount_id?: string
@@ -6054,6 +6126,13 @@ export type Database = {
             referencedColumns: ["book_id"]
           },
           {
+            foreignKeyName: "order_items_book_fk"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "v_sales_books"
+            referencedColumns: ["book_id"]
+          },
+          {
             foreignKeyName: "order_items_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
@@ -6592,6 +6671,13 @@ export type Database = {
             referencedColumns: ["book_id"]
           },
           {
+            foreignKeyName: "plan_book_links_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "v_sales_books"
+            referencedColumns: ["book_id"]
+          },
+          {
             foreignKeyName: "plan_book_links_plan_id_fkey"
             columns: ["plan_id"]
             isOneToOne: false
@@ -6776,6 +6862,78 @@ export type Database = {
           },
           {
             foreignKeyName: "playback_grants_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "lesson_videos"
+            referencedColumns: ["video_id"]
+          },
+        ]
+      }
+      playback_issues: {
+        Row: {
+          client_env: Json | null
+          created_at: string
+          error_code: string | null
+          grant_id: string | null
+          issue_id: string
+          lesson_id: string | null
+          message: string | null
+          user_id: string | null
+          video_id: string | null
+        }
+        Insert: {
+          client_env?: Json | null
+          created_at?: string
+          error_code?: string | null
+          grant_id?: string | null
+          issue_id?: string
+          lesson_id?: string | null
+          message?: string | null
+          user_id?: string | null
+          video_id?: string | null
+        }
+        Update: {
+          client_env?: Json | null
+          created_at?: string
+          error_code?: string | null
+          grant_id?: string | null
+          issue_id?: string
+          lesson_id?: string | null
+          message?: string | null
+          user_id?: string | null
+          video_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playback_issues_grant_id_fkey"
+            columns: ["grant_id"]
+            isOneToOne: false
+            referencedRelation: "playback_grants"
+            referencedColumns: ["grant_id"]
+          },
+          {
+            foreignKeyName: "playback_issues_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "course_lessons"
+            referencedColumns: ["lesson_id"]
+          },
+          {
+            foreignKeyName: "playback_issues_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "playback_issues_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "playback_issues_video_id_fkey"
             columns: ["video_id"]
             isOneToOne: false
             referencedRelation: "lesson_videos"
@@ -9056,6 +9214,68 @@ export type Database = {
           },
         ]
       }
+      user_coupons: {
+        Row: {
+          discount_id: string
+          expires_at: string | null
+          issued_at: string
+          issued_reason: string
+          order_id: string | null
+          used_at: string | null
+          user_coupon_id: string
+          user_id: string
+        }
+        Insert: {
+          discount_id: string
+          expires_at?: string | null
+          issued_at?: string
+          issued_reason: string
+          order_id?: string | null
+          used_at?: string | null
+          user_coupon_id?: string
+          user_id: string
+        }
+        Update: {
+          discount_id?: string
+          expires_at?: string | null
+          issued_at?: string
+          issued_reason?: string
+          order_id?: string | null
+          used_at?: string | null
+          user_coupon_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_coupons_discount_id_fkey"
+            columns: ["discount_id"]
+            isOneToOne: false
+            referencedRelation: "discounts"
+            referencedColumns: ["discount_id"]
+          },
+          {
+            foreignKeyName: "user_coupons_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "user_coupons_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "user_coupons_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       user_daily_recommendations: {
         Row: {
           generated_at: string
@@ -10343,6 +10563,24 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
         ]
+      }
+      v_sales_books: {
+        Row: {
+          book_id: string | null
+          gross_krw: number | null
+          sold_count: number | null
+          title: string | null
+        }
+        Relationships: []
+      }
+      v_sales_daily: {
+        Row: {
+          gross_krw: number | null
+          orders_count: number | null
+          refund_krw: number | null
+          sale_date: string | null
+        }
+        Relationships: []
       }
     }
     Functions: {
