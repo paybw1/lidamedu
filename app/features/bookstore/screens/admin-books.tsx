@@ -85,6 +85,8 @@ const createSchema = z.object({
   publisher: z.string().trim().max(80).optional(),
   priceKrw: z.coerce.number().int().min(0),
   isbn: z.string().trim().max(20).optional(),
+  // 표지 이미지 URL(도서몰 썸네일). 스토리지 업로드 대신 URL 문자열로 보관.
+  coverPath: z.string().trim().url().max(500).optional().or(z.literal("")),
 });
 
 export async function action({ request }: Route.ActionArgs) {
@@ -99,14 +101,20 @@ export async function action({ request }: Route.ActionArgs) {
       publisher: fd.get("publisher") || undefined,
       priceKrw: fd.get("priceKrw"),
       isbn: fd.get("isbn") || undefined,
+      coverPath: fd.get("coverPath") || undefined,
     });
-    if (!parsed.success) return data({ error: "도서명·판매가를 확인해 주세요." }, { status: 400 });
+    if (!parsed.success)
+      return data(
+        { error: "도서명·판매가·표지 URL을 확인해 주세요." },
+        { status: 400 },
+      );
     const { error } = await client.from("books").insert({
       title: parsed.data.title,
       author: parsed.data.author ?? null,
       publisher: parsed.data.publisher ?? null,
       price_krw: parsed.data.priceKrw,
       isbn: parsed.data.isbn ?? null,
+      cover_path: parsed.data.coverPath || null,
     });
     if (error) return data({ error: error.message }, { status: 400 });
     return data({ ok: true as const });
@@ -226,6 +234,10 @@ function CreateBookForm() {
       <label className="flex flex-col gap-1.5">
         <span className="text-muted-foreground text-[11px] font-semibold">ISBN</span>
         <input name="isbn" maxLength={20} className="border-input bg-background h-9 w-36 rounded-lg border px-2 font-mono text-sm" />
+      </label>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-muted-foreground text-[11px] font-semibold">표지 URL</span>
+        <input name="coverPath" type="url" maxLength={500} placeholder="https://…" className="border-input bg-background h-9 w-48 rounded-lg border px-2 text-sm" />
       </label>
       <Button type="submit" size="sm" className="h-9" disabled={fetcher.state !== "idle"}>
         <PlusIcon className="size-3.5" /> 도서 등록

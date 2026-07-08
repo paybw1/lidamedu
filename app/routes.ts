@@ -244,6 +244,12 @@ export default [
     route("/lecture", "features/lms/screens/my-courses.tsx"),
     route("/lecture/catalog", "features/lms/screens/lecture-catalog.tsx"),
     route("/lecture/cart", "features/lms/screens/lecture-cart.tsx"),
+    // 도서몰(B1) — 썸네일 카탈로그 + 상세.
+    route("/lecture/books", "features/bookstore/screens/bookstore-catalog.tsx"),
+    route(
+      "/lecture/books/:bookId",
+      "features/bookstore/screens/book-detail.tsx",
+    ),
     // 주문·배송 — 구 /me/orders 이관(아래 redirect 유지).
     route("/lecture/orders", "features/orders/screens/my-orders.tsx"),
   ]),

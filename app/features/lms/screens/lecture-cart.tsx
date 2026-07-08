@@ -5,6 +5,7 @@ import { Link } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { startCartCheckout } from "~/features/lms/lib/cart-checkout";
 import { cartItemKey, useCart } from "~/features/lms/lib/cart";
 import { listSellableLectureProducts } from "~/features/lms/queries.server";
 
@@ -41,48 +42,6 @@ interface Line {
   lineTotal: number;
   isBook: boolean;
   bookId?: string;
-}
-
-async function checkout(
-  payload: Array<
-    { kind: "plan"; code: string } | { kind: "book"; bookId: string; quantity: number }
-  >,
-  tossClientKey: string,
-): Promise<void> {
-  const fd = new FormData();
-  fd.append("items", JSON.stringify(payload));
-  const res = await fetch("/api/payments/create-cart-order", {
-    method: "POST",
-    body: fd,
-  });
-  const json = (await res.json()) as {
-    ok?: boolean;
-    orderId?: string;
-    amount?: number;
-    orderName?: string;
-    error?: string;
-  };
-  if (!json.ok || !json.orderId) {
-    alert(`결제 준비에 실패했습니다: ${json.error ?? "알 수 없는 오류"}`);
-    return;
-  }
-  try {
-    const { loadTossPayments } = await import("@tosspayments/tosspayments-sdk");
-    const tossPayments = await loadTossPayments(tossClientKey);
-    const payment = tossPayments.payment({ customerKey: json.orderId });
-    await payment.requestPayment({
-      method: "CARD",
-      amount: { currency: "KRW", value: json.amount ?? 0 },
-      orderId: json.orderId,
-      orderName: json.orderName ?? "리담 강의",
-      successUrl: `${window.location.origin}/api/payments/toss/confirm`,
-      failUrl: `${window.location.origin}/lecture/cart?failed=1`,
-    });
-  } catch (e) {
-    alert(
-      `결제 중 오류가 발생했습니다: ${e instanceof Error ? e.message : String(e)}`,
-    );
-  }
 }
 
 export default function LectureCart({ loaderData }: Route.ComponentProps) {
@@ -135,7 +94,7 @@ export default function LectureCart({ loaderData }: Route.ComponentProps) {
       )
       .filter((x): x is NonNullable<typeof x> => x !== null);
     if (payload.length === 0) return;
-    void checkout(payload, tossClientKey);
+    void startCartCheckout(payload, tossClientKey, "/lecture/cart?failed=1");
   };
 
   return (

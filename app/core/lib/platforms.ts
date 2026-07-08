@@ -35,5 +35,6 @@ export function getActivePlatform(pathname: string): PlatformId {
 export const LECTURE_NAV_LINKS: ReadonlyArray<{ label: string; to: string }> = [
   { label: "내 강의실", to: "/lecture" },
   { label: "강의 카탈로그", to: "/lecture/catalog" },
+  { label: "도서", to: "/lecture/books" },
   { label: "주문·배송", to: "/lecture/orders" },
 ];
