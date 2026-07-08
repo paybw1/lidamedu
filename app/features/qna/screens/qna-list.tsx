@@ -143,12 +143,13 @@ export async function loader({ request }: Route.LoaderArgs) {
     : undefined;
 
   const query = url.searchParams.get("q") ?? "";
+  const page = Math.max(1, Number(url.searchParams.get("page") ?? "1") || 1);
 
   const role = await getStaffRole(client, user.id);
   const isStaff = role !== null;
 
-  const [threads, reviewCount] = await Promise.all([
-    listThreads(client, user.id, { scope, targetType, subject, query }),
+  const [{ items: threads, total }, reviewCount] = await Promise.all([
+    listThreads(client, user.id, { scope, targetType, subject, query, page }),
     isStaff ? countReviewQueue(client) : Promise.resolve(0),
   ]);
 
@@ -170,6 +171,8 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   return {
     threads,
+    total,
+    page,
     targetCrumbs,
     scope,
     targetType,
@@ -184,6 +187,8 @@ export async function loader({ request }: Route.LoaderArgs) {
 export default function QnaList({ loaderData }: Route.ComponentProps) {
   const {
     threads,
+    total,
+    page,
     targetCrumbs,
     scope,
     targetType,
@@ -193,10 +198,14 @@ export default function QnaList({ loaderData }: Route.ComponentProps) {
     isStaff,
     reviewCount,
   } = loaderData;
+  const PAGE_SIZE = 50;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const [searchParams] = useSearchParams();
 
   const buildHref = (overrides: Record<string, string | null>) => {
     const next = new URLSearchParams(searchParams);
+    // 필터가 바뀌면 페이지는 1로 — 페이지 이동만 overrides.page 로 명시.
+    next.delete("page");
     for (const [k, v] of Object.entries(overrides)) {
       if (v === null) next.delete(k);
       else next.set(k, v);
@@ -208,7 +217,8 @@ export default function QnaList({ loaderData }: Route.ComponentProps) {
   const filterActive =
     scope !== "all" || !!targetType || !!subject || query !== "";
 
-  const descParts = [`총 ${threads.length}건`];
+  const descParts = [`총 ${total.toLocaleString("ko-KR")}건`];
+  if (totalPages > 1) descParts.push(`${page}/${totalPages} 페이지`);
   if (isStaff && reviewCount > 0) descParts.push(`검토 필요 ${reviewCount}건`);
   else if (waitingCount > 0) descParts.push(`답변 대기 ${waitingCount}건`);
 
@@ -439,6 +449,41 @@ export default function QnaList({ loaderData }: Route.ComponentProps) {
           })}
         </ul>
       )}
+
+      {/* 페이지네이션 — 50건 단위 */}
+      {totalPages > 1 ? (
+        <nav className="mt-5 flex items-center justify-center gap-3 text-sm">
+          {page > 1 ? (
+            <Link
+              to={buildHref({ page: String(page - 1) })}
+              preventScrollReset={false}
+              className="border-border hover:bg-accent/60 rounded-full border px-3.5 py-1.5 font-medium"
+            >
+              ← 이전
+            </Link>
+          ) : (
+            <span className="text-muted-foreground/40 border-border/50 rounded-full border px-3.5 py-1.5">
+              ← 이전
+            </span>
+          )}
+          <span className="text-muted-foreground tabular-nums">
+            {page} / {totalPages}
+          </span>
+          {page < totalPages ? (
+            <Link
+              to={buildHref({ page: String(page + 1) })}
+              preventScrollReset={false}
+              className="border-border hover:bg-accent/60 rounded-full border px-3.5 py-1.5 font-medium"
+            >
+              다음 →
+            </Link>
+          ) : (
+            <span className="text-muted-foreground/40 border-border/50 rounded-full border px-3.5 py-1.5">
+              다음 →
+            </span>
+          )}
+        </nav>
+      ) : null}
     </CommunityShell>
   );
 }

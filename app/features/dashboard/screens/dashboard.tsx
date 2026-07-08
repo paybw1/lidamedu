@@ -504,7 +504,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       totalSessions: oxRecentSessions.length,
       wrongCount: oxWrongCount,
     },
-    recentQna: recentQnaThreads.map((t) => ({
+    recentQna: recentQnaThreads.items.map((t) => ({
       threadId: t.threadId,
       title: t.title,
       status: t.status,

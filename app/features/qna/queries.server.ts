@@ -238,6 +238,8 @@ export interface ListFilter {
   /** 과목 분류 필터(law_code 류). */
   subject?: string;
   limit?: number;
+  /** 1-base 페이지 — limit 단위 페이지네이션(기본 1). */
+  page?: number;
 }
 
 // 통합 목록(검색/필터). RLS 가 가시성 처리하므로 추가 권한 체크 불요.
@@ -245,10 +247,10 @@ export async function listThreads(
   client: SupabaseClient<Database>,
   userId: string,
   filter: ListFilter,
-): Promise<QnaThreadSummary[]> {
+): Promise<{ items: QnaThreadSummary[]; total: number }> {
   let q = client
     .from("qna_threads")
-    .select(SUMMARY_COLUMNS)
+    .select(SUMMARY_COLUMNS, { count: "exact" })
     .is("deleted_at", null);
 
   if (filter.targetType) q = q.eq("target_type", filter.targetType);
@@ -275,11 +277,19 @@ export async function listThreads(
 
   // 검토 큐는 오래된 것부터(FIFO — 묵은 질문이 밀리지 않게), 그 외는 최신순.
   const ascending = filter.scope === "review";
-  q = q.order("created_at", { ascending }).limit(filter.limit ?? 50);
+  const pageSize = filter.limit ?? 50;
+  const page = Math.max(1, filter.page ?? 1);
+  q = q
+    .order("created_at", { ascending })
+    .order("thread_id", { ascending })
+    .range((page - 1) * pageSize, page * pageSize - 1);
 
-  const { data, error } = await q;
+  const { data, error, count } = await q;
   if (error) throw error;
-  return (data as unknown as RawSummaryRow[] | null ?? []).map(toSummary);
+  return {
+    items: ((data as unknown as RawSummaryRow[] | null) ?? []).map(toSummary),
+    total: count ?? 0,
+  };
 }
 
 /** 강사 검토 큐 전역 건수 — 미답(open) + AI 미검토(ai_answered). 카운트 배지용. */
