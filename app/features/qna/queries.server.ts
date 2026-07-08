@@ -68,6 +68,38 @@ type RawDetailRow = RawSummaryRow & {
   answer_md: string | null;
 };
 
+// ★profiles RLS 는 타인 프로필을 차단 — 뷰어 RLS 클라이언트의 profiles join 은
+// 본인 외 전부 null(질문자가 '미상'으로 보이던 원인). Q&A 는 질문자·답변자 표시가
+// 공개 규칙(원장 지시 2026-07-08)이므로 서버에서 adminClient 로 이름을 채운다.
+async function fillProfileNames<T extends QnaThreadSummary>(
+  rows: T[],
+): Promise<T[]> {
+  const missing = new Set<string>();
+  for (const r of rows) {
+    if (r.askerName === null && r.askerId) missing.add(r.askerId);
+    if (r.answererName === null && r.answererId) missing.add(r.answererId);
+  }
+  if (missing.size === 0) return rows;
+  const { default: adminClient } = await import(
+    "~/core/lib/supa-admin-client.server"
+  );
+  const ids = [...missing];
+  const nameById = new Map<string, string | null>();
+  for (let i = 0; i < ids.length; i += 150) {
+    const { data } = await adminClient
+      .from("profiles")
+      .select("profile_id, name")
+      .in("profile_id", ids.slice(i, i + 150));
+    for (const p of data ?? []) nameById.set(p.profile_id, p.name);
+  }
+  return rows.map((r) => ({
+    ...r,
+    askerName: r.askerName ?? (r.askerId ? (nameById.get(r.askerId) ?? null) : null),
+    answererName:
+      r.answererName ?? (r.answererId ? (nameById.get(r.answererId) ?? null) : null),
+  }));
+}
+
 function toSummary(row: RawSummaryRow): QnaThreadSummary {
   return {
     threadId: row.thread_id,
@@ -114,7 +146,7 @@ export async function listThreadsForTarget(
     .order("thread_id", { ascending: false })
     .limit(limit);
   if (error) throw error;
-  return (data as unknown as RawSummaryRow[] | null ?? []).map(toSummary);
+  return fillProfileNames((data as unknown as RawSummaryRow[] | null ?? []).map(toSummary));
 }
 
 // 특정 조문 대상 + 특정 단원(node_id) 앵커 — 노드 뷰어 안의 조문 질문 탭용.
@@ -136,7 +168,7 @@ export async function listThreadsForArticleInNode(
     .order("thread_id", { ascending: false })
     .limit(limit);
   if (error) throw error;
-  return ((data as unknown as RawSummaryRow[] | null) ?? []).map(toSummary);
+  return fillProfileNames(((data as unknown as RawSummaryRow[] | null) ?? []).map(toSummary));
 }
 
 // 단원(node_id) 앵커 스레드 — 대상은 조문/문제 등이어도 이 단원에 속한 질문.
@@ -156,7 +188,7 @@ export async function listThreadsAnchoredToNode(
     .order("thread_id", { ascending: false })
     .limit(limit);
   if (error) throw error;
-  return ((data as unknown as RawSummaryRow[] | null) ?? []).map(toSummary);
+  return fillProfileNames(((data as unknown as RawSummaryRow[] | null) ?? []).map(toSummary));
 }
 
 // ── prev/next 컨텍스트(from=...) — 진입한 목록과 동일한 필터·정렬로 이웃 계산 ──
@@ -290,7 +322,7 @@ export async function listThreads(
   const { data, error, count } = await q;
   if (error) throw error;
   return {
-    items: ((data as unknown as RawSummaryRow[] | null) ?? []).map(toSummary),
+    items: await fillProfileNames(((data as unknown as RawSummaryRow[] | null) ?? []).map(toSummary)),
     total: count ?? 0,
   };
 }
@@ -451,7 +483,7 @@ export async function getThreadDetail(
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
-  return toDetail(data as unknown as RawDetailRow);
+  return (await fillProfileNames([toDetail(data as unknown as RawDetailRow)]))[0];
 }
 
 // 콘텐츠 대상(조문/판례/문제)의 과목(law_code) 도출 — 과목 분류 필터용.
@@ -606,7 +638,7 @@ export async function createThread(
     .select(DETAIL_COLUMNS)
     .single();
   if (error) throw error;
-  return toDetail(data as unknown as RawDetailRow);
+  return (await fillProfileNames([toDetail(data as unknown as RawDetailRow)]))[0];
 }
 
 export async function answerThread(
@@ -635,7 +667,7 @@ export async function answerThread(
   } catch {
     // 적립 실패는 무시 — 지급 화면 대사에서 발견 가능.
   }
-  return toDetail(data as unknown as RawDetailRow);
+  return (await fillProfileNames([toDetail(data as unknown as RawDetailRow)]))[0];
 }
 
 export async function closeThread(
