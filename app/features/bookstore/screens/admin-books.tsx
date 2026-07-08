@@ -12,6 +12,7 @@ import adminClient from "~/core/lib/supa-admin-client.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Chip, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
 import { hasDutyAccess } from "~/features/admin/lib/duties.server";
+import { createUserNotifications } from "~/features/notifications/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 
 import type { Route } from "./+types/admin-books";
@@ -153,6 +154,8 @@ export async function action({ request }: Route.ActionArgs) {
       note: String(fd.get("note") ?? "").trim() || null,
     });
     if (error) return data({ error: error.message }, { status: 400 });
+    // feat-11 B2-4 — 재입고 시 알림 신청자에게 발송(재고>0 + 미발송, 멱등).
+    if (qty > 0) await notifyRestock(bookId);
     return data({ ok: true as const });
   }
 
@@ -196,6 +199,46 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   return data({ error: "Unknown intent" }, { status: 400 });
+}
+
+// 재입고 알림 발송 — 재고>0 이고 미발송(notified_at null) 신청자에게. best-effort·멱등.
+async function notifyRestock(bookId: string): Promise<void> {
+  try {
+    const { data: stockRow } = await adminClient
+      .from("v_book_stock")
+      .select("stock")
+      .eq("book_id", bookId)
+      .maybeSingle();
+    if (Number(stockRow?.stock ?? 0) <= 0) return;
+    const { data: alerts } = await adminClient
+      .from("book_restock_alerts")
+      .select("user_id")
+      .eq("book_id", bookId)
+      .is("notified_at", null);
+    const recipientIds = (alerts ?? []).map((a) => a.user_id);
+    if (recipientIds.length === 0) return;
+    const { data: bk } = await adminClient
+      .from("books")
+      .select("title")
+      .eq("book_id", bookId)
+      .maybeSingle();
+    await createUserNotifications({
+      recipientIds,
+      kind: "book_restock",
+      entityType: "book",
+      entityId: bookId,
+      title: "재입고 알림",
+      body: `《${bk?.title ?? "도서"}》 재입고 — 지금 구매할 수 있습니다.`,
+      href: `/lecture/books/${bookId}`,
+    });
+    await adminClient
+      .from("book_restock_alerts")
+      .update({ notified_at: new Date().toISOString() })
+      .eq("book_id", bookId)
+      .is("notified_at", null);
+  } catch (e) {
+    console.error("[bookstore] restock notify failed:", e);
+  }
 }
 
 export default function AdminBooks({ loaderData }: Route.ComponentProps) {

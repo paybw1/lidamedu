@@ -20,6 +20,7 @@ import {
 import makeServerClient from "~/core/lib/supa-client.server";
 import { startCartCheckout } from "~/features/lms/lib/cart-checkout";
 import { useCart } from "~/features/lms/lib/cart";
+import { RestockAlertButton } from "~/features/bookstore/components/restock-alert-button";
 import { WishlistHeart } from "~/features/bookstore/components/wishlist-heart";
 import {
   getBookDetail,
@@ -44,16 +45,29 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const book = await getBookDetail(client, bookId);
   if (!book) throw data({ error: "도서를 찾을 수 없습니다" }, { status: 404 });
   const wishlist = await getWishlistBookIds(client, user?.id ?? null);
+  // 품절 시 재입고 알림 신청 여부.
+  let restockRequested = false;
+  if (user && book.soldOut) {
+    const { data: alert } = await client
+      .from("book_restock_alerts")
+      .select("alert_id")
+      .eq("user_id", user.id)
+      .eq("book_id", bookId)
+      .maybeSingle();
+    restockRequested = Boolean(alert);
+  }
   return {
     book,
     isAuthed: Boolean(user),
     wishlisted: wishlist.has(bookId),
+    restockRequested,
     tossClientKey: process.env.TOSS_CLIENT_KEY ?? null,
   };
 }
 
 export default function BookDetail({ loaderData }: Route.ComponentProps) {
-  const { book, isAuthed, wishlisted, tossClientKey } = loaderData;
+  const { book, isAuthed, wishlisted, restockRequested, tossClientKey } =
+    loaderData;
   const { addBook, has } = useCart();
   const [qty, setQty] = useState(1);
   const inCart = has(`book:${book.bookId}`);
@@ -148,7 +162,16 @@ export default function BookDetail({ loaderData }: Route.ComponentProps) {
 
           <div className="mt-4 flex flex-wrap gap-2">
             {book.soldOut ? (
-              <Button disabled>품절</Button>
+              isAuthed ? (
+                <RestockAlertButton
+                  bookId={book.bookId}
+                  requested={restockRequested}
+                />
+              ) : (
+                <Button asChild variant="outline">
+                  <Link to="/login">재입고 알림 신청 (로그인)</Link>
+                </Button>
+              )
             ) : !isAuthed ? (
               <Button asChild>
                 <Link to="/login">로그인 후 구매</Link>

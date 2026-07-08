@@ -929,6 +929,11 @@ export default [
         "/api/lecture/wishlist",
         "features/bookstore/api/wishlist-toggle.tsx",
       ),
+      // feat-11 B2-4 — 도서 재입고 알림 신청.
+      route(
+        "/api/lecture/restock-alert",
+        "features/bookstore/api/restock-alert.tsx",
+      ),
       route(
         "/api/payments/toss/confirm",
         "features/subscriptions/api/toss-confirm.tsx",

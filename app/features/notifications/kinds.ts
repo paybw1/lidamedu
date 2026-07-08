@@ -32,6 +32,8 @@ export const STUDENT_KINDS: NotificationKind[] = [
   "bug_report_resolved",
   // 강사 → 학생 쪽지 (질문자 프로필 화면에서 발송)
   "staff_message",
+  // feat-11 B2-4 — 도서 재입고 알림.
+  "book_restock",
 ];
 
 export function isStaffKind(k: NotificationKind): boolean {
