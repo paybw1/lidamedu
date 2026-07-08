@@ -9,7 +9,7 @@ import {
   StarIcon,
   Trash2Icon,
 } from "lucide-react";
-import { Fragment, type ReactNode } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import { Link, useFetcher, useLocation } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
@@ -448,12 +448,16 @@ export function CaseBody({
           </BodySection>
         ) : null}
 
-        {references.length > 0 || canEditReferences ? (
+        {/* 관련논문/기사 — 등록된 경우에만 노출(원장 지시 2026-07-08). 비어 있으면
+            운영자에게만 접힌 추가 버튼으로 최초 등록 경로 유지. */}
+        {references.length > 0 ? (
           <CaseReferencesPanel
             caseId={kase.caseId}
             references={references}
             canEdit={canEditReferences}
           />
+        ) : canEditReferences ? (
+          <CollapsedReferencesEditor caseId={kase.caseId} />
         ) : null}
 
         {!bookMode && kase.commentBodyMd ? (
@@ -1104,6 +1108,22 @@ export function Prose({ text }: { text: string }) {
         );
       })}
     </div>
+  );
+}
+
+// 관련논문/기사 0건일 때 운영자 전용 접힌 추가 버튼 — 클릭 시 편집 패널 전개.
+function CollapsedReferencesEditor({ caseId }: { caseId: string }) {
+  const [open, setOpen] = useState(false);
+  if (open)
+    return <CaseReferencesPanel caseId={caseId} references={[]} canEdit />;
+  return (
+    <button
+      type="button"
+      onClick={() => setOpen(true)}
+      className="text-muted-foreground hover:text-foreground border-border/60 w-fit rounded-full border border-dashed px-3 py-1 text-[11px]"
+    >
+      + 관련논문/기사 추가 (운영자)
+    </button>
   );
 }
 
