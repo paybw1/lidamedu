@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
+import { getDutyRecipientIds } from "~/features/admin/lib/duties.server";
 import { createUserNotifications } from "~/features/notifications/queries.server";
 
 // ── 학생: 신청 ──────────────────────────────────────────────────────────────
@@ -36,18 +37,16 @@ export async function createUpgradeRequest(
     }
     return { ok: false, error: error.message };
   }
-  // 운영자(원장·스태프) 알림 — 실패해도 신청은 유효(응답 전 await, 헬퍼가 자체 삼킴).
-  const { data: staff } = await adminClient
-    .from("profiles")
-    .select("profile_id, name")
-    .in("role", ["admin", "manager"]);
+  // 담당자(관리자 관리에서 지정, 없으면 admin+manager 전체) 알림 —
+  // 실패해도 신청은 유효(응답 전 await, 헬퍼가 자체 삼킴).
+  const recipientIds = await getDutyRecipientIds("upgrade_request");
   const { data: prof } = await adminClient
     .from("profiles")
     .select("name, member_no")
     .eq("profile_id", userId)
     .maybeSingle();
   await createUserNotifications({
-    recipientIds: (staff ?? []).map((s) => s.profile_id),
+    recipientIds,
     kind: "cohort_upgrade_requested",
     entityType: "cohort_upgrade_request",
     entityId: userId,

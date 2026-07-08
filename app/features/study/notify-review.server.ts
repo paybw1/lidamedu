@@ -7,6 +7,7 @@ import { render } from "@react-email/render";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
 import resendClient from "~/core/lib/resend-client.server";
+import { getDutyRecipientIds } from "~/features/admin/lib/duties.server";
 import { createStaffNotifications } from "~/features/notifications/queries.server";
 import {
   KakaoNotConfigured,
@@ -67,13 +68,9 @@ async function fetchRecipients(profileIds: string[]): Promise<Recipient[]> {
   return out;
 }
 
+// 담당자(관리자 관리 지정, 없으면 staff 전체) — 인박스·이메일·알림톡 공통 명단.
 async function fetchStaffProfileIds(): Promise<string[]> {
-  const { data, error } = await adminClient
-    .from("profiles")
-    .select("profile_id")
-    .in("role", ["instructor", "manager", "admin"]);
-  if (error || !data) return [];
-  return data.map((r) => r.profile_id);
+  return getDutyRecipientIds("review_request");
 }
 
 interface EmailPayload {

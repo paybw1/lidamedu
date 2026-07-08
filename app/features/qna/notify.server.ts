@@ -6,6 +6,7 @@ import { render } from "@react-email/render";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
 import resendClient from "~/core/lib/resend-client.server";
+import { getDutyRecipientIds } from "~/features/admin/lib/duties.server";
 import { createStaffNotifications } from "~/features/notifications/queries.server";
 import QnaNewAnswerEmail from "../../../transactional-emails/emails/qna-new-answer";
 import QnaNewQuestionEmail from "../../../transactional-emails/emails/qna-new-question";
@@ -74,14 +75,6 @@ async function fetchRecipients(profileIds: string[]): Promise<Recipient[]> {
   return out;
 }
 
-async function fetchStaffProfileIds(): Promise<string[]> {
-  const { data, error } = await adminClient
-    .from("profiles")
-    .select("profile_id")
-    .in("role", ["instructor", "manager", "admin"]);
-  if (error || !data) return [];
-  return data.map((r) => r.profile_id);
-}
 
 interface EmailPayload {
   subject: string;
@@ -173,9 +166,12 @@ export async function notifyNewQuestion(
     const assignedIds = category
       ? await getAnswererIdsForCategory(adminClient, category)
       : [];
-    // 담당자 지정 → 그 담당자에게만. 미지정 → 전체 staff 풀.
+    // 카테고리 답변자 지정 → 그 담당자에게만.
+    // 미지정 → 관리자 관리의 Q&A 담당자(그것도 미지정이면 전체 staff 풀).
     const targetIds =
-      assignedIds.length > 0 ? assignedIds : await fetchStaffProfileIds();
+      assignedIds.length > 0
+        ? assignedIds
+        : await getDutyRecipientIds("qna_question");
     const staffIds = targetIds.filter((id) => id !== excludeProfileId);
     const recipients = await fetchRecipients(staffIds);
     if (recipients.length === 0) return;

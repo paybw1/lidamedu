@@ -7,6 +7,7 @@
 // 호출 측이 admin client 를 갖고 있지 않을 때를 대비, 본 모듈에서 직접 import.
 
 import adminClient from "~/core/lib/supa-admin-client.server";
+import { getDutyRecipientIds } from "~/features/admin/lib/duties.server";
 import {
   OCR_MODEL_ID,
   estimateAiCostUsd,
@@ -235,12 +236,9 @@ export async function notifyCapReachedOnce(check: CapCheck): Promise<void> {
     }
     return;
   }
-  // staff fanout — admin + manager + instructor.
-  const { data: staff } = await adminClient
-    .from("profiles")
-    .select("profile_id")
-    .in("role", ["instructor", "manager", "admin"]);
-  if (!staff || staff.length === 0) return;
+  // 담당자 fanout — 관리자 관리 지정, 없으면 staff 전체.
+  const recipientIds = await getDutyRecipientIds("ai_usage_alert");
+  if (recipientIds.length === 0) return;
   const title =
     check.reason === "ai_daily_cost"
       ? "GS AI 채점 일일 한도 도달"
@@ -251,8 +249,8 @@ export async function notifyCapReachedOnce(check: CapCheck): Promise<void> {
       : check.reason === "ocr_daily_cost"
         ? `오늘 OCR 비용이 cap($${check.capUsd?.toFixed(2)}) 에 도달했습니다. 답안지 페이지 저장은 정상이며 OCR 만 보류됩니다.`
         : `오늘 OCR 호출 수가 cap(${check.capCalls}) 에 도달했습니다. 답안지 페이지 저장은 정상이며 OCR 만 보류됩니다.`;
-  const rows = staff.map((s) => ({
-    recipient_id: s.profile_id,
+  const rows = recipientIds.map((rid) => ({
+    recipient_id: rid,
     kind: "gs_cap_reached" as const,
     entity_type: "gs_cap",
     entity_id: `${today}:${check.reason}`,

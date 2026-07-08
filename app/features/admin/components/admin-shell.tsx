@@ -159,6 +159,8 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "수강생 관리", to: "/admin/users" },
       // feat-7-041 — 강사 담당 과목(콘텐츠 쓰기 권한) + 배분 규칙 연결.
       { label: "강사 관리", to: "/admin/instructors" },
+      // 운영 업무별 알림 담당자 지정 (admin 전용).
+      { label: "관리자 관리", to: "/admin/staff-duties" },
       { label: "접속이력 관리", to: "/admin/access-logs" },
       { label: "탈퇴 관리", to: "/admin/withdrawals" },
       { label: "위험 수강생 (7일 무접속)", to: "/admin/cohorts/at-risk" },

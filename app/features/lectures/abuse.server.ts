@@ -3,6 +3,7 @@
 // 페이지 서빙에는 영향 없다. staff 열람은 호출측에서 제외.
 
 import adminClient from "~/core/lib/supa-admin-client.server";
+import { getDutyRecipientIds } from "~/features/admin/lib/duties.server";
 import { createUserNotifications } from "~/features/notifications/queries.server";
 
 // 최근 10분간 서명된 페이지 수가 이 값을 넘으면 자동화 캡처 의심.
@@ -55,18 +56,14 @@ export async function logLectureNoteView(input: {
     .gte("created_at", dedupSince);
   if ((count ?? 0) > 0) return;
 
-  const [{ data: staff }, { data: viewer }] = await Promise.all([
-    adminClient
-      .from("profiles")
-      .select("profile_id")
-      .in("role", ["manager", "admin"]),
+  const [recipientIds, { data: viewer }] = await Promise.all([
+    getDutyRecipientIds("lecture_abuse_alert"),
     adminClient
       .from("profiles")
       .select("name, member_no")
       .eq("profile_id", input.profileId)
       .maybeSingle(),
   ]);
-  const recipientIds = (staff ?? []).map((s) => s.profile_id);
   if (recipientIds.length === 0) return;
 
   const who = [

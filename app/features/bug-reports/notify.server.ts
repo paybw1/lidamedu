@@ -3,6 +3,7 @@
 // supa-admin 사용 — 다른 사용자(staff)·신고자 프로필을 RLS 우회로 조회.
 
 import adminClient from "~/core/lib/supa-admin-client.server";
+import { getDutyRecipientIds } from "~/features/admin/lib/duties.server";
 import { createUserNotifications } from "~/features/notifications/queries.server";
 
 const MAX_BODY = 200;
@@ -14,19 +15,13 @@ interface NewBugReportPayload {
   reporterId: string;
 }
 
-/** 모든 instructor + manager + admin 에게 (신고자 본인 제외) 인앱 알림. */
+/** 오류신고 담당자(관리자 관리 지정, 없으면 staff 전체)에게 — 신고자 본인 제외 — 인앱 알림. */
 export async function notifyStaffNewBugReport(
   payload: NewBugReportPayload,
 ): Promise<void> {
-  // staff 수신자 — 신고자 본인 제외.
-  const { data: staff, error } = await adminClient
-    .from("profiles")
-    .select("profile_id")
-    .in("role", ["instructor", "manager", "admin"]);
-  if (error || !staff) return;
-  const recipientIds = staff
-    .map((s) => s.profile_id)
-    .filter((id) => id !== payload.reporterId);
+  const recipientIds = (await getDutyRecipientIds("bug_report")).filter(
+    (id) => id !== payload.reporterId,
+  );
   if (recipientIds.length === 0) return;
 
   // 신고자 이름 (제목용, best-effort).

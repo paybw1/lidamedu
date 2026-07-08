@@ -571,6 +571,11 @@ export default [
         "features/admin/screens/admin-orphan-highlights.tsx",
       ),
       route("/admin/users", "features/admin/screens/admin-users.tsx"),
+      // 관리자 관리 — 운영 업무별 알림 담당자 지정 (admin 전용).
+      route(
+        "/admin/staff-duties",
+        "features/admin/screens/admin-staff-duties.tsx",
+      ),
       // 접속이력·탈퇴 관리 (admin 전용).
       route(
         "/admin/access-logs",

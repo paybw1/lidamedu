@@ -5,8 +5,11 @@ import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
 import {
+  isStaffKind,
+  isStudentKind,
   markAllNotificationsRead,
   markNotificationRead,
+  type NotificationKind,
 } from "~/features/notifications/queries.server";
 
 import type { Route } from "./+types/mark-read";
@@ -15,6 +18,8 @@ const schema = z.object({
   notificationId: z.string().uuid().optional(),
   all: z.literal("1").optional(),
   audience: z.enum(["staff", "student"]).optional(),
+  // all=1 과 함께 쓰면 해당 종류만 일괄 읽음 처리 (인박스 종류 탭).
+  kind: z.string().optional(),
 });
 
 export async function action({ request }: Route.ActionArgs) {
@@ -32,12 +37,21 @@ export async function action({ request }: Route.ActionArgs) {
     notificationId: fd.get("notificationId") || undefined,
     all: fd.get("all") || undefined,
     audience: fd.get("audience") || undefined,
+    kind: fd.get("kind") || undefined,
   });
   if (!parsed.success) {
     return data({ error: "Invalid input" }, { status: 400 });
   }
+  let kind: NotificationKind | undefined;
+  if (parsed.data.kind) {
+    const k = parsed.data.kind as NotificationKind;
+    if (!isStaffKind(k) && !isStudentKind(k)) {
+      return data({ error: "Invalid kind" }, { status: 400 });
+    }
+    kind = k;
+  }
   if (parsed.data.all === "1") {
-    await markAllNotificationsRead(client, user.id, parsed.data.audience);
+    await markAllNotificationsRead(client, user.id, parsed.data.audience, kind);
   } else if (parsed.data.notificationId) {
     await markNotificationRead(client, user.id, parsed.data.notificationId);
   } else {

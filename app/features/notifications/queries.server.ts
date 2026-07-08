@@ -5,42 +5,20 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
+import {
+  STAFF_KINDS,
+  STUDENT_KINDS,
+  type NotificationKind,
+} from "~/features/notifications/kinds";
 
-export type NotificationKind =
-  Database["public"]["Enums"]["staff_notification_kind"];
-
-// 강사용 kinds (인박스에서 staff 필터링).
-const STAFF_KINDS: NotificationKind[] = [
-  "subjective_review_request",
-  "qna_new_question",
-  "cohort_inactive_alert",
-  "exam_certificate_submitted",
-  "bug_report_created",
-  "cohort_upgrade_requested",
-  "lecture_note_abuse",
-];
-
-// 학생용 kinds.
-const STUDENT_KINDS: NotificationKind[] = [
-  "subjective_review_completed",
-  "qna_new_answer",
-  "announcement",
-  "student_note_shared",
-  "exam_result_reminder",
-  "trial_expiry_warning",
-  "trial_ended",
-  "cohort_upgrade_processed",
-  "bug_report_resolved",
-  // 강사 → 학생 쪽지 (질문자 프로필 화면에서 발송)
-  "staff_message",
-];
-
-export function isStaffKind(k: NotificationKind): boolean {
-  return STAFF_KINDS.includes(k);
-}
-export function isStudentKind(k: NotificationKind): boolean {
-  return STUDENT_KINDS.includes(k);
-}
+// kind 분류 SSOT 는 kinds.ts (컴포넌트 공유) — 기존 import 호환 re-export.
+export {
+  STAFF_KINDS,
+  STUDENT_KINDS,
+  isStaffKind,
+  isStudentKind,
+  type NotificationKind,
+} from "~/features/notifications/kinds";
 
 export interface NotificationInput {
   recipientIds: string[];
@@ -98,6 +76,8 @@ interface ListOptions {
   limit?: number;
   // 학생/강사 인박스 분리 — 어느 카테고리 kinds 만 가져올지.
   audience?: "staff" | "student";
+  // 종류 단일 필터 (인박스 종류 탭). audience 와 병행 시 교집합.
+  kind?: NotificationKind;
 }
 
 export async function listUserNotifications(
@@ -121,7 +101,8 @@ export async function listUserNotifications(
     .order("created_at", { ascending: false })
     .limit(limit);
   if (options.onlyUnread) q = q.is("read_at", null);
-  if (kinds) q = q.in("kind", kinds);
+  if (options.kind) q = q.eq("kind", options.kind);
+  else if (kinds) q = q.in("kind", kinds);
   const { data, error } = await q;
   if (error) throw error;
   const items: NotificationItem[] = (data ?? []).map((r) => ({
@@ -136,7 +117,7 @@ export async function listUserNotifications(
     readAt: r.read_at,
     createdAt: r.created_at,
   }));
-  // 미읽음 카운트 — 같은 audience 안에서.
+  // 미읽음 카운트 — 같은 audience 안에서 (kind 필터와 무관하게 전체 배지용).
   let countQ = client
     .from("user_notifications")
     .select("notification_id", { count: "exact", head: true })
@@ -145,6 +126,26 @@ export async function listUserNotifications(
   if (kinds) countQ = countQ.in("kind", kinds);
   const { count } = await countQ;
   return { items, unreadCount: count ?? 0 };
+}
+
+/** 종류별 미읽음 카운트 — 인박스 종류 탭 배지용. */
+export async function getUnreadCountsByKind(
+  client: SupabaseClient<Database>,
+  userId: string,
+  audience: "staff" | "student",
+): Promise<Partial<Record<NotificationKind, number>>> {
+  const kinds = audience === "staff" ? STAFF_KINDS : STUDENT_KINDS;
+  const { data, error } = await client
+    .from("user_notifications")
+    .select("kind")
+    .eq("recipient_id", userId)
+    .is("read_at", null)
+    .in("kind", kinds)
+    .limit(2000);
+  if (error || !data) return {};
+  const out: Partial<Record<NotificationKind, number>> = {};
+  for (const r of data) out[r.kind] = (out[r.kind] ?? 0) + 1;
+  return out;
 }
 
 export async function getUnreadCount(
@@ -188,13 +189,15 @@ export async function markAllNotificationsRead(
   client: SupabaseClient<Database>,
   userId: string,
   audience?: "staff" | "student",
+  kind?: NotificationKind,
 ): Promise<void> {
   let q = client
     .from("user_notifications")
     .update({ read_at: new Date().toISOString() })
     .eq("recipient_id", userId)
     .is("read_at", null);
-  if (audience === "staff") q = q.in("kind", STAFF_KINDS);
+  if (kind) q = q.eq("kind", kind);
+  else if (audience === "staff") q = q.in("kind", STAFF_KINDS);
   else if (audience === "student") q = q.in("kind", STUDENT_KINDS);
   await q;
 }
@@ -205,7 +208,11 @@ export type StaffNotificationItem = NotificationItem;
 export async function listStaffNotifications(
   client: SupabaseClient<Database>,
   userId: string,
-  options: { onlyUnread?: boolean; limit?: number } = {},
+  options: {
+    onlyUnread?: boolean;
+    limit?: number;
+    kind?: NotificationKind;
+  } = {},
 ): Promise<{ items: NotificationItem[]; unreadCount: number }> {
   return listUserNotifications(client, userId, {
     ...options,
