@@ -10,6 +10,8 @@ import {
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 
+import { PlatformSwitch } from "./platform-switch";
+
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -477,11 +479,10 @@ export function NavigationBar({
           />
           {/* 학습 플랫폼 태그라인(lidamipedu ↔ lidamedu 구분) — 메뉴가 붐비는
               md~lg 폭에서는 숨겨 로고만 유지. */}
-          <span aria-hidden className="bg-foreground/15 hidden h-4 w-px lg:block" />
-          <span className="text-muted-foreground hidden text-[11.5px] font-medium tracking-wide whitespace-nowrap lg:block">
-            Study Platform
-          </span>
         </Link>
+
+        {/* 플랫폼 스위처 — 학습 ↔ 강의. 브랜드 옆 상시 노출(두 제품 동등). */}
+        <PlatformSwitch className="shrink-0" />
 
         {/* 데스크톱 네비게이션 — 로고 바로 오른쪽, '운영자'까지 왼쪽 정렬 */}
         <div

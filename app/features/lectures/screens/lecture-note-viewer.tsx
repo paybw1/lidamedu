@@ -205,7 +205,7 @@ export default function LectureNoteViewer({
       fetchingRef.current.add(center);
       try {
         const res = await fetch(
-          `/api/lecture-note-pages?kind=${kind}&id=${id}&from=${from}&to=${to}`,
+          `/api/note-pages?kind=${kind}&id=${id}&from=${from}&to=${to}`,
         );
         if (!res.ok) throw new Error(String(res.status));
         const body = (await res.json()) as { urls?: UrlMap };

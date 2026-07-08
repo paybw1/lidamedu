@@ -129,12 +129,12 @@ export function LectureResourcesPanel({
   );
 }
 
-// 통합본 강의노트의 특정 페이지를 인앱 pdfjs 뷰어(/lecture-note)에서 연다.
+// 통합본 강의노트의 특정 페이지를 인앱 pdfjs 뷰어(/note)에서 연다.
 // pdfjs 가 직접 해당 페이지를 그리므로 데스크톱·모바일 모두 페이지 점프가 동작한다.
 function LocationCard({ loc }: { loc: PdfLocationItem }) {
   function handleOpen() {
     window.open(
-      `/lecture-note/${loc.sourcePdfId}?page=${loc.page}`,
+      `/note/${loc.sourcePdfId}?page=${loc.page}`,
       "_blank",
       "noopener,noreferrer",
     );
@@ -210,8 +210,8 @@ function ResourceCard({
     if (!resource.pdfUrl) return;
     const href =
       resource.sourcePdfId && resource.sourcePageStart
-        ? `/lecture-note/${resource.sourcePdfId}?page=${resource.sourcePageStart}`
-        : `/lecture-note/${resource.resourceId}`;
+        ? `/note/${resource.sourcePdfId}?page=${resource.sourcePageStart}`
+        : `/note/${resource.resourceId}`;
     window.open(href, "_blank", "noopener,noreferrer");
   }
 

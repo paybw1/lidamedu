@@ -237,6 +237,14 @@ export default [
     ]),
   ]),
 
+  // 강의 플랫폼(feat-11) — 학습 플랫폼(navigation.layout)과 별개 화면.
+  //   자체 상단 바(브랜드 + 플랫폼 스위처 + 강의 네비). 학습 nav 미재사용.
+  layout("core/layouts/lecture.layout.tsx", [
+    // 내 강의실(수강현황) — 구 /me/courses 를 여기로 이관(아래 redirect 유지).
+    route("/lecture", "features/lms/screens/my-courses.tsx"),
+    route("/lecture/catalog", "features/lms/screens/lecture-catalog.tsx"),
+  ]),
+
   // Pages with top navigation + footer
   layout("core/layouts/navigation.layout.tsx", [
     index("features/home/screens/home.tsx"),
@@ -588,7 +596,7 @@ export default [
       // feat-11-004 4c — 도서몰·배송 + 학생 마이페이지.
       route("/admin/books", "features/bookstore/screens/admin-books.tsx"),
       route("/admin/shipments", "features/bookstore/screens/admin-shipments.tsx"),
-      route("/me/courses", "features/lms/screens/my-courses.tsx"),
+      route("/me/courses", "features/lms/screens/my-courses-redirect.tsx"),
       route("/me/orders", "features/orders/screens/my-orders.tsx"),
       route(
         "/api/cron/bank-transfer-expire",
@@ -778,17 +786,17 @@ export default [
         "/lectures/:itemId",
         "features/lectures/screens/lecture-viewer.tsx",
       ),
-      // 인앱 강의노트 뷰어 — 위치 링크(?page=N)가 통합본의 해당 페이지를 연다.
+      // 인앱 강의노트(교재 PDF) 뷰어 — 위치 링크(?page=N)가 통합본의 해당 페이지를 연다.
       // :sourcePdfId 는 통합본 source_pdf_id 또는 (통합본 미매핑 조각의) resource_id.
+      // 경로는 /note/* (구 /lecture-note/* — "lecture" 는 신규 강의 플랫폼이 사용).
+      route("/note/:sourcePdfId", "features/lectures/screens/lecture-note-viewer.tsx"),
+      // 구 경로 북마크 보존 redirect.
       route(
         "/lecture-note/:sourcePdfId",
-        "features/lectures/screens/lecture-note-viewer.tsx",
+        "features/lectures/screens/lecture-note-redirect.tsx",
       ),
       // 페이지 이미지 signed URL 창 발급(유출방지 ① — 원본 PDF 비전달).
-      route(
-        "/api/lecture-note-pages",
-        "features/lectures/api/lecture-note-pages.tsx",
-      ),
+      route("/api/note-pages", "features/lectures/api/lecture-note-pages.tsx"),
       route("/api/admin/student-note", "features/admin/api/student-note.tsx"),
       route(
         "/api/admin/problem-review",

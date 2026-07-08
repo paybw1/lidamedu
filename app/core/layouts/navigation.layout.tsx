@@ -12,6 +12,7 @@ import { getMembershipAccess } from "~/features/subscriptions/membership.server"
 
 import Footer from "../components/footer";
 import { NavigationBar } from "../components/navigation-bar";
+import { PlatformSwitch } from "../components/platform-switch";
 import { PopupNoticeModal } from "../components/popup-notice-modal";
 import { StudentBottomBar } from "../components/student-bottombar";
 import { StudentSidebar } from "../components/student-sidebar";
@@ -164,22 +165,19 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
         <Await resolve={userPromise}>
           {({ data: { user } }) =>
             user ? (
-              <div className="border-border bg-background flex h-11 items-center border-b px-4 md:hidden">
+              <div className="border-border bg-background flex h-11 items-center gap-3 border-b px-4 md:hidden">
                 <Link
                   to="/"
-                  aria-label="리담변리사학원 홈 — Study Platform"
-                  className="flex shrink-0 items-center gap-2.5"
+                  aria-label="리담변리사학원 홈 — 학습 플랫폼"
+                  className="flex shrink-0 items-center"
                 >
                   <img
                     src="/lidam-logo.png"
                     alt="리담변리사학원"
                     className="h-6 w-auto max-w-none dark:[filter:invert(1)_hue-rotate(180deg)]"
                   />
-                  <span aria-hidden className="bg-foreground/15 h-3.5 w-px" />
-                  <span className="text-muted-foreground text-[10.5px] font-medium tracking-wide whitespace-nowrap">
-                    Study Platform
-                  </span>
                 </Link>
+                <PlatformSwitch />
               </div>
             ) : null
           }

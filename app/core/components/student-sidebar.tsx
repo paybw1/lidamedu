@@ -36,6 +36,7 @@ import {
 } from "~/core/lib/nav-groups";
 
 import { RightTools, UserMenu } from "./navigation-bar";
+import { PlatformSwitch } from "./platform-switch";
 
 const STORAGE_KEY = "studentSidebarCollapsed";
 
@@ -177,6 +178,13 @@ export function StudentSidebar({
           )}
         </button>
       </div>
+
+      {/* 플랫폼 스위처 — 펼침 상태에서만(접힘=폭 부족). 학습 ↔ 강의. */}
+      {!collapsed ? (
+        <div className="border-border border-b px-3 py-2">
+          <PlatformSwitch />
+        </div>
+      ) : null}
 
       {/* ── 계정 메뉴 — 접힘=아바타만, 펼침=아바타+이름 (메뉴 아이콘 줄에 맞춤) ── */}
       <div
