@@ -1177,6 +1177,7 @@ function ArticleViewerInner({
                         </div>
                       ) : null}
                       <BlankFillView
+                        key={`content:${blankSet.setId}`}
                         setId={blankSet.setId}
                         body={body}
                         blanks={blankSet.blanks}
@@ -1186,6 +1187,7 @@ function ArticleViewerInner({
                     </div>
                   ) : subjectBlankMode && body ? (
                     <BlankFillView
+                      key={`subject:${article.articleId}`}
                       setId={null}
                       autoMeta={{
                         articleId: article.articleId,
@@ -1199,6 +1201,7 @@ function ArticleViewerInner({
                   ) : periodBlankMode && body ? (
                     <div className="space-y-3">
                       <BlankFillView
+                        key={`period:${article.articleId}`}
                         setId={null}
                         autoMeta={{
                           articleId: article.articleId,
