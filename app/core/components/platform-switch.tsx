@@ -1,13 +1,21 @@
 // 브랜드 옆 플랫폼 세그먼트 스위처 — 학습 플랫폼 ↔ 강의 플랫폼.
 // 활성 판별은 pathname(URL 권위). 두 칸 모두 항상 노출(드롭다운 아님) — 두 제품이 동등.
+// 배색: 활성 = 블루 필(그라데이션), 비활성 = 뮤티드 + 블루 호버.
+import { BookOpenIcon, MonitorPlayIcon } from "lucide-react";
 import { Link, useLocation } from "react-router";
 
 import { cn } from "~/core/lib/utils";
 import {
   PLATFORMS,
   PLATFORM_ORDER,
+  type PlatformId,
   getActivePlatform,
 } from "~/core/lib/platforms";
+
+const ICONS: Record<PlatformId, typeof BookOpenIcon> = {
+  study: BookOpenIcon,
+  lecture: MonitorPlayIcon,
+};
 
 export function PlatformSwitch({ className }: { className?: string }) {
   const { pathname } = useLocation();
@@ -17,12 +25,14 @@ export function PlatformSwitch({ className }: { className?: string }) {
       role="tablist"
       aria-label="플랫폼 선택"
       className={cn(
-        "bg-muted/60 inline-flex items-center gap-0.5 rounded-full p-0.5 text-xs font-medium",
+        "ring-border/60 inline-flex items-center gap-1 rounded-full p-1 text-[13px] font-semibold ring-1",
+        "bg-slate-100/80 dark:bg-slate-800/60",
         className,
       )}
     >
       {PLATFORM_ORDER.map((id) => {
         const p = PLATFORMS[id];
+        const Icon = ICONS[id];
         const isActive = active === id;
         return (
           <Link
@@ -31,12 +41,13 @@ export function PlatformSwitch({ className }: { className?: string }) {
             role="tab"
             aria-selected={isActive}
             className={cn(
-              "rounded-full px-2.5 py-1 whitespace-nowrap transition-colors",
+              "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 whitespace-nowrap transition-all duration-200",
               isActive
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
+                ? "bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-sm shadow-blue-600/25"
+                : "text-slate-500 hover:bg-blue-500/10 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-300",
             )}
           >
+            <Icon className="size-3.5" />
             {p.label}
           </Link>
         );
