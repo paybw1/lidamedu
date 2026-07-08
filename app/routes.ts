@@ -243,6 +243,8 @@ export default [
     // 내 강의실(수강현황) — 구 /me/courses 를 여기로 이관(아래 redirect 유지).
     route("/lecture", "features/lms/screens/my-courses.tsx"),
     route("/lecture/catalog", "features/lms/screens/lecture-catalog.tsx"),
+    // 주문·배송 — 구 /me/orders 이관(아래 redirect 유지).
+    route("/lecture/orders", "features/orders/screens/my-orders.tsx"),
   ]),
 
   // Pages with top navigation + footer
@@ -597,7 +599,7 @@ export default [
       route("/admin/books", "features/bookstore/screens/admin-books.tsx"),
       route("/admin/shipments", "features/bookstore/screens/admin-shipments.tsx"),
       route("/me/courses", "features/lms/screens/my-courses-redirect.tsx"),
-      route("/me/orders", "features/orders/screens/my-orders.tsx"),
+      route("/me/orders", "features/orders/screens/my-orders-redirect.tsx"),
       route(
         "/api/cron/bank-transfer-expire",
         "features/cron/api/bank-transfer-expire.tsx",

@@ -1,4 +1,4 @@
-// /me/courses — 내 강의 수강현황 (feat-11-004 4c).
+// /lecture — 내 강의실(수강현황) (feat-11-004 4c, 구 /me/courses).
 // 수강권 목록(기간·배수 사용/잔여·진도율·완강) + 일시정지 신청(정책 범위 서버 검증) + 등록 기기 셀프 초기화.
 
 import { useEffect } from "react";

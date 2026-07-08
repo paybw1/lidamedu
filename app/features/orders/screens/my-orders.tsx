@@ -1,4 +1,4 @@
-// /me/orders — 내 주문·배송 조회 (feat-11-004 4c). RLS self-read — 관리자 갱신 즉시 반영.
+// /lecture/orders — 내 주문·배송 조회 (feat-11-004 4c, 구 /me/orders). RLS self-read.
 
 import { PackageIcon } from "lucide-react";
 import { redirect } from "react-router";

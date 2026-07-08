@@ -29,9 +29,11 @@ export function getActivePlatform(pathname: string): PlatformId {
   return "study";
 }
 
-// 강의 플랫폼 상단 네비 링크(단일 소스). S1 = 내 강의실 + 강의 카탈로그.
-//   (주문·배송·도서몰은 후속 단계에서 lecture 네임스페이스로 이관하며 추가.)
+// 강의 플랫폼 상단 네비 링크(단일 소스).
+//   도서는 강의 상품에 부속돼 판매·배송되므로(standalone 도서몰 없음), 배송 현황은
+//   주문·배송에서 확인. 별도 도서몰 메뉴는 두지 않는다.
 export const LECTURE_NAV_LINKS: ReadonlyArray<{ label: string; to: string }> = [
   { label: "내 강의실", to: "/lecture" },
   { label: "강의 카탈로그", to: "/lecture/catalog" },
+  { label: "주문·배송", to: "/lecture/orders" },
 ];
