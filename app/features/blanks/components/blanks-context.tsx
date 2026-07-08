@@ -342,8 +342,8 @@ export function BlanksRenderProvider({
       if (!blank?.answer) return;
 
       // ★한글 IME 조합 중에는 어떤 DOM 조작·값 변형도 하지 않는다 — 조합 중
-      // el.value 재작성(아래 leak 차단 포함)이 조합을 파괴해 "첫 글자가 지워지는"
-      // 버그의 원인. 조합 중엔 상태만 반영하고, 최종 판정은 compositionend 의
+      // el.value 재작성이 조합을 파괴해 "첫 글자가 지워지는" 버그의 원인.
+      // 조합 중엔 상태만 반영하고, 최종 판정은 compositionend 의
       // onChange(composing=false) 에서 수행한다.
       if (composing) {
         updateState(idx, {
@@ -353,73 +353,13 @@ export function BlanksRenderProvider({
         return;
       }
 
-      // 외부 메커니즘(IME 단어학습/Ginger 같은 확장/autofill) 이 input 에
-      // 직전 답 (또는 그 일부) 를 prefill 하는 leak 차단.
-      //
-      // 처리 (모든 onChange):
-      //  (1) raw === 정답 또는 정답 startsWith → 손대지 않음 (정상 입력 보호)
-      //  (2) prev 가 raw prefix 면 head 분리, 아니면 head=''
-      //  (3) body 안에서 다른 빈칸 정답을 substring 매칭으로 모두 제거
-      //  (4) 그래도 변화 없고 (= 정답 통째 매칭 실패) 첫 입력 + body.length ≥ 2
-      //      → 마지막 1글자만 채택 (한국어 IME 첫 글자 fallback)
-      let input = rawInput;
-      const prev = states[idx]?.input ?? "";
-      const cur = blank.answer;
-      const isExactAnswer =
-        normalizeAnswer(rawInput) === normalizeAnswer(cur);
-      const isAnswerPrefix =
-        rawInput.length > 0 &&
-        normalizeAnswer(cur).startsWith(normalizeAnswer(rawInput));
-
-      if (!isExactAnswer && !isAnswerPrefix) {
-        let body = input;
-        let head = "";
-        if (body.startsWith(prev) && prev.length > 0) {
-          head = prev;
-          body = body.slice(prev.length);
-        }
-        // 다른 빈칸 정답 substring 제거 — 가장 긴 정답부터 매칭 (짧은 게 longer 의
-        // 일부일 때 잘못 제거 방지).
-        const otherAnswers = blanks
-          .filter((b) => b.idx !== idx && b.answer)
-          .map((b) => b.answer)
-          .filter((a): a is string => !!a)
-          .sort((a, b) => b.length - a.length);
-        let changed = true;
-        let guard = 0;
-        while (changed && guard < 12 && body.length > 0) {
-          changed = false;
-          guard += 1;
-          for (const ans of otherAnswers) {
-            const pos = body.indexOf(ans);
-            if (pos !== -1) {
-              body = body.slice(0, pos) + body.slice(pos + ans.length);
-              changed = true;
-              break;
-            }
-          }
-        }
-        let cleaned = head + body;
-
-        // 폴백: 매칭 실패한 leak 가능성. prev=='' 일 때 길이≥2 면 마지막 1글자
-        // 만 채택. 한국어 IME 첫 입력은 자모/완성형 1글자가 정상.
-        if (cleaned === rawInput && prev.length === 0 && rawInput.length >= 2) {
-          cleaned = rawInput.slice(-1);
-        }
-
-        if (cleaned !== rawInput) {
-          input = cleaned;
-          const el = inputsRef.current.get(idx);
-          if (el && el.value !== cleaned) {
-            try {
-              el.value = cleaned;
-              el.setSelectionRange(cleaned.length, cleaned.length);
-            } catch {
-              /* noop */
-            }
-          }
-        }
-      }
+      // 입력값은 사용자가 친 그대로 사용한다.
+      // (과거엔 자동완성/IME 잔여 leak 을 막으려고 여기서 다른 빈칸 정답을 substring
+      // 으로 잘라내고, 매칭 실패 시 "마지막 1글자만" 남기는 폴백을 돌렸다. 그러나 이
+      // 휴리스틱이 정상 입력까지 훼손해 "친 단어가 사라짐/특정 단어가 입력 안 됨"
+      // 버그의 원인이었다. 누수 차단은 input 의 autocomplete=off·name 제거·각종
+      // data-*ignore 속성으로 구조적으로 처리하므로 입력값을 사후 변형하지 않는다.)
+      const input = rawInput;
 
       // 입력값이 정답이 아니어도 typed value 는 state 에 반영해 사용자가 결과를 볼 수 있게 한다.
       const isCorrect =
@@ -458,7 +398,7 @@ export function BlanksRenderProvider({
         updateState(idx, { input, status: input.length > 0 ? "wrong" : "empty" });
       }
     },
-    [blanks, fetcher, setId, autoMeta, updateState, scheduleFocusNext, states],
+    [blanks, fetcher, setId, autoMeta, updateState, scheduleFocusNext],
   );
   // 음성 인식 final → checkAnswer 직접 호출. checkAnswerRef 로 latest function 보관.
   checkAnswerRef.current = checkAnswer;
