@@ -7,6 +7,7 @@ import { data } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { createSinglePlanOrder } from "~/features/orders/orders.server";
 import { resolveCheckoutDiscount } from "~/features/subscriptions/discounts.server";
 import {
   createPendingPayment,
@@ -87,6 +88,16 @@ export async function action({ request }: Route.ActionArgs) {
       { status: 400 },
     );
 
+  // feat-11-004 4a — ★이중 경로 금지: 단건 결제도 1-item 주문 경유.
+  const order = await createSinglePlanOrder({
+    userId: user.id,
+    planId: plan.planId,
+    subjectCode: parsed.data.subjectCode ?? null,
+    amountKrw: disc.amountKrw,
+    discountId: disc.discount?.discountId ?? null,
+    paymentMethod: "toss",
+  });
+
   // 토스 orderId 는 6~64자 영숫자/하이픈/언더스코어. UUID 사용.
   const tossOrderId = `lidam-${randomUUID()}`;
   const res = await createPendingPayment({
@@ -96,6 +107,7 @@ export async function action({ request }: Route.ActionArgs) {
     subjectCode: parsed.data.subjectCode ?? null,
     amountKrw: disc.amountKrw,
     discountId: disc.discount?.discountId ?? null,
+    orderId: order.orderId,
   });
   if (!res.ok) return data({ error: res.error }, { status: 500 });
 

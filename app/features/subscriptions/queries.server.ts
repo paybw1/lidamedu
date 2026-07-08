@@ -9,6 +9,10 @@ import { redirect } from "react-router";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
 import {
+  markOrderPaidAndFulfill,
+  markOrderRefundedAndRevoke,
+} from "~/features/orders/orders.server";
+import {
   incrementDiscountUse,
   listActiveDiscounts,
 } from "~/features/subscriptions/discounts.server";
@@ -281,6 +285,8 @@ export async function createPendingPayment(input: {
   amountKrw?: number;
   /** 적용된 할인 id(있으면). */
   discountId?: string | null;
+  /** feat-11-004 4a — 연결 주문(1-item). 이 시점부터 단건 결제도 주문 경유. */
+  orderId?: string | null;
 }): Promise<{ ok: true; paymentId: string } | { ok: false; error: string }> {
   const admin = adminClient as SupabaseClient<Database>;
   const { data, error } = await admin
@@ -293,6 +299,7 @@ export async function createPendingPayment(input: {
       toss_order_id: input.tossOrderId,
       subject_code: input.subjectCode ?? null,
       discount_id: input.discountId ?? null,
+      order_id: input.orderId ?? null,
     })
     .select("payment_id")
     .single();
@@ -419,6 +426,8 @@ export async function confirmPayment(
 ): Promise<
   | { ok: true; subscription: UserSubscription }
   | { ok: true; pendingDeposit: true }
+  // feat-11-004 4a — course/tpass 상품: 구독 대신 주문 fulfill(enrollments)로 지급 완료.
+  | { ok: true; fulfilledOrder: true }
   | { ok: false; error: string }
 > {
   const admin = adminClient as SupabaseClient<Database>;
@@ -427,7 +436,7 @@ export async function confirmPayment(
   const { data: payRow, error: payErr } = await admin
     .from("payments")
     .select(
-      "payment_id, user_id, plan_id, amount_krw, status, toss_order_id, subject_code, discount_id, subscription_plans(duration_days, code, name)",
+      "payment_id, user_id, plan_id, amount_krw, status, toss_order_id, subject_code, discount_id, order_id, subscription_plans(duration_days, code, name)",
     )
     .eq("toss_order_id", input.tossOrderId)
     .maybeSingle();
@@ -490,6 +499,13 @@ export async function confirmPayment(
         toss_response: tossPayload as never,
       })
       .eq("payment_id", payRow.payment_id);
+    if (payRow.order_id) {
+      await admin
+        .from("orders")
+        .update({ status: "pending_deposit" })
+        .eq("order_id", payRow.order_id)
+        .eq("status", "pending_payment");
+    }
     return { ok: true, pendingDeposit: true };
   }
   if (tossStatus !== "DONE") {
@@ -521,7 +537,22 @@ export async function confirmPayment(
     await incrementDiscountUse(payRow.discount_id);
   }
 
+  // feat-11-004 4a — 연결 주문 paid 전이 + course/tpass 항목 지급(멱등).
+  //   subject/bundle/membership 의 user_subscriptions 지급은 아래 기존 경로가 담당.
+  if (payRow.order_id) {
+    await markOrderPaidAndFulfill(payRow.order_id);
+  }
+
   // 4~5) 결제 기간 반영(체험 오프셋·연장 포함) — 빌링과 공용 헬퍼.
+  //   course/tpass 상품은 구독이 아니라 enrollments 지급으로 끝(구독 upsert 스킵).
+  const { data: planKindRow } = await admin
+    .from("subscription_plans")
+    .select("product_kind")
+    .eq("plan_id", payRow.plan_id)
+    .maybeSingle();
+  if (planKindRow?.product_kind === "course" || planKindRow?.product_kind === "tpass") {
+    return { ok: true, fulfilledOrder: true };
+  }
   const durationDays = payRow.subscription_plans?.duration_days ?? 30;
   const res = await upsertPaidSubscription(admin, {
     userId: payRow.user_id,
@@ -639,6 +670,17 @@ export async function cancelSubscription(input: {
         updated_at: nowIso,
       })
       .eq("subscription_id", sub.subscription_id);
+    // feat-11-004 4a — 연결 주문 환불 전이(+지급물 회수).
+    {
+      const { data: payOrder } = await admin
+        .from("payments")
+        .select("order_id")
+        .eq("payment_id", pay.payment_id)
+        .maybeSingle();
+      if (payOrder?.order_id) {
+        await markOrderRefundedAndRevoke(payOrder.order_id, reason);
+      }
+    }
     return { ok: true, refunded: true, accessUntil: null };
   }
 

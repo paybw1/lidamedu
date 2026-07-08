@@ -217,6 +217,8 @@ export const ADMIN_NAV: NavCluster[] = [
     Icon: BanknoteIcon,
     screens: [
       { label: "주문·결제 관리", to: "/admin/payments" },
+      // feat-11-004 4a — 항목 단위 주문·부분 환불.
+      { label: "주문 관리 (항목·환불)", to: "/admin/orders" },
       { label: "강사 배분 기준", to: "/admin/settlements/rules" },
       { label: "강사 정산", to: "/admin/settlements" },
       { label: "Q&A 답변 적립", to: "/admin/settlements/qna-rewards" },

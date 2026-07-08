@@ -12,6 +12,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
+import {
+  markOrderPaidAndFulfill,
+  markOrderRefundedAndRevoke,
+} from "~/features/orders/orders.server";
 import { incrementDiscountUse } from "~/features/subscriptions/discounts.server";
 import { upsertPaidSubscription } from "~/features/subscriptions/queries.server";
 
@@ -136,7 +140,7 @@ export async function syncPaymentFromToss(
   const { data: payRow, error: payErr } = await admin
     .from("payments")
     .select(
-      "payment_id, user_id, plan_id, amount_krw, status, subject_code, discount_id, subscription_plans(duration_days)",
+      "payment_id, user_id, plan_id, amount_krw, status, subject_code, discount_id, order_id, subscription_plans(duration_days, product_kind)",
     )
     .eq("toss_order_id", orderId)
     .maybeSingle();
@@ -207,6 +211,13 @@ export async function syncPaymentFromToss(
         })
         .eq("payment_id", payRow.payment_id);
       if (payRow.discount_id) await incrementDiscountUse(payRow.discount_id);
+      // feat-11-004 4a — 연결 주문 paid 전이 + course/tpass 지급(멱등).
+      if (payRow.order_id) await markOrderPaidAndFulfill(payRow.order_id);
+      const kind = payRow.subscription_plans?.product_kind;
+      if (kind === "course" || kind === "tpass") {
+        result = { outcome: "processed", detail: "입금/결제 완료 → 수강권(enrollments) 지급" };
+        break;
+      }
       const up = await upsertPaidSubscription(admin, {
         userId: payRow.user_id,
         planId: payRow.plan_id,
@@ -252,6 +263,10 @@ export async function syncPaymentFromToss(
         })
         .eq("payment_id", payRow.payment_id);
       const revoked = await cancelLinkedSubscription(admin, payRow.payment_id);
+      // feat-11-004 4a — 연결 주문 환불 전이 + enrollments 회수.
+      if (payRow.order_id) {
+        await markOrderRefundedAndRevoke(payRow.order_id, reason ?? "토스 취소 웹훅");
+      }
       result = {
         outcome: "processed",
         detail: `전액 취소 → refunded${revoked ? " + 구독 종료" : ""}`,

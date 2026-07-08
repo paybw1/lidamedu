@@ -3428,6 +3428,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "enrollments_order_item_fk"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
+            referencedColumns: ["order_item_id"]
+          },
+          {
             foreignKeyName: "enrollments_plan_id_fkey"
             columns: ["plan_id"]
             isOneToOne: false
@@ -5816,6 +5823,121 @@ export type Database = {
           },
         ]
       }
+      order_items: {
+        Row: {
+          book_id: string | null
+          created_at: string
+          item_type: string
+          order_id: string
+          order_item_id: string
+          plan_id: string | null
+          quantity: number
+          refund_amount_krw: number | null
+          refund_reason: string | null
+          refunded_at: string | null
+          subject_code: string | null
+          unit_price_krw: number
+        }
+        Insert: {
+          book_id?: string | null
+          created_at?: string
+          item_type: string
+          order_id: string
+          order_item_id?: string
+          plan_id?: string | null
+          quantity?: number
+          refund_amount_krw?: number | null
+          refund_reason?: string | null
+          refunded_at?: string | null
+          subject_code?: string | null
+          unit_price_krw: number
+        }
+        Update: {
+          book_id?: string | null
+          created_at?: string
+          item_type?: string
+          order_id?: string
+          order_item_id?: string
+          plan_id?: string | null
+          quantity?: number
+          refund_amount_krw?: number | null
+          refund_reason?: string | null
+          refunded_at?: string | null
+          subject_code?: string | null
+          unit_price_krw?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "order_items_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["plan_id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          created_at: string
+          discount_id: string | null
+          order_id: string
+          payment_method: string
+          status: string
+          total_krw: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          discount_id?: string | null
+          order_id?: string
+          payment_method?: string
+          status?: string
+          total_krw: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          discount_id?: string | null
+          order_id?: string
+          payment_method?: string
+          status?: string
+          total_krw?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_discount_id_fkey"
+            columns: ["discount_id"]
+            isOneToOne: false
+            referencedRelation: "discounts"
+            referencedColumns: ["discount_id"]
+          },
+          {
+            foreignKeyName: "orders_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "orders_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       ox_article_suggestions: {
         Row: {
           created_at: string
@@ -6162,6 +6284,7 @@ export type Database = {
           created_at: string
           discount_id: string | null
           failure_reason: string | null
+          order_id: string | null
           payment_id: string
           plan_id: string
           refund_amount_krw: number | null
@@ -6180,6 +6303,7 @@ export type Database = {
           created_at?: string
           discount_id?: string | null
           failure_reason?: string | null
+          order_id?: string | null
           payment_id?: string
           plan_id: string
           refund_amount_krw?: number | null
@@ -6198,6 +6322,7 @@ export type Database = {
           created_at?: string
           discount_id?: string | null
           failure_reason?: string | null
+          order_id?: string | null
           payment_id?: string
           plan_id?: string
           refund_amount_krw?: number | null
@@ -6218,6 +6343,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "discounts"
             referencedColumns: ["discount_id"]
+          },
+          {
+            foreignKeyName: "payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["order_id"]
           },
           {
             foreignKeyName: "payments_plan_id_fkey"

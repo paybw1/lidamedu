@@ -582,6 +582,8 @@ export default [
         "features/lms/screens/admin-lms-enrollments.tsx",
       ),
       route("/admin/lms/devices", "features/lms/screens/admin-lms-devices.tsx"),
+      // feat-11-004 4a — 주문 관리(항목 부분 환불).
+      route("/admin/orders", "features/orders/screens/admin-orders.tsx"),
       route("/api/lms/playback-grant", "features/lms/api/playback-grant.tsx"),
       route("/api/lms/watch-heartbeat", "features/lms/api/watch-heartbeat.tsx"),
       // 관리자 관리 — 운영 업무별 알림 담당자 지정 (admin 전용).
