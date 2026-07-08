@@ -7,6 +7,9 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const APPLY = process.argv.includes("--apply");
+// 기본: node_id 가 이미 있는 스레드는 건드리지 않음 — 29조 AI+수동 주제 배정(2026-07-08) 보호.
+// 전량 재계산이 필요할 때만 --overwrite.
+const OVERWRITE = process.argv.includes("--overwrite");
 const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 const A29 = "79650d86"; // prefix 확인용 — 실제로는 전체 id 조회
@@ -64,6 +67,7 @@ let single = 0, multiClassified = 0, multiUnmatched = 0, noLink = 0;
 const updates = [];
 const dist = {};
 for (const t of threads) {
+  if (!OVERWRITE && t.node_id) continue; // 기존 배정 보호
   const nodes = linkByArticle.get(t.target_id) ?? [];
   if (nodes.length === 0) { noLink++; continue; }
   let target = null;
