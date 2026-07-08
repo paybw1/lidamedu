@@ -160,6 +160,7 @@ export const ADMIN_NAV: NavCluster[] = [
     screens: [
       { label: "강의 시리즈·에디션", to: "/admin/lms/courses" },
       { label: "영상 수강권", to: "/admin/lms/enrollments" },
+      { label: "기기 관리", to: "/admin/lms/devices" },
     ],
   },
   {

@@ -1,15 +1,22 @@
 // feat-11-002 — 재생 판정 (서버 권위). 설계 §3.5.
 // 판정 순서: 로그인(맛보기 예외) → 수강권 → 기간 → [M3] 배수 → [M3] 기기.
 //
-// ★M1 승인 단서 1: 아래 스킵 플래그는 M3 구현과 함께 제거(또는 true 전환)하며,
-//   어떤 경우에도 **M4 결제 오픈 전 반드시 ON** — M4 오픈 체크리스트 1번 항목.
-const ENFORCE_MULTIPLIER = false; // M3: watch_ledger 잔여 판정
-const ENFORCE_DEVICE = false; // M3: user_devices 등록 기기 판정
+// ★M1 승인 단서 1 — M4 결제 오픈 전 반드시 전부 ON (M4 오픈 체크리스트 1번 항목):
+//   ENFORCE_MULTIPLIER: M3 에서 구현·활성화 완료(watch_ledger 잔여 판정).
+//   ENFORCE_DEVICE: 판정 로직 구현됨 — [벤더] 플레이어 기기 fingerprint 확정 후 ON
+//   (fingerprint 없이 켜면 기기 특정이 불가해 전원 차단됨).
+const ENFORCE_MULTIPLIER = true;
+const ENFORCE_DEVICE = false; // [벤더] fingerprint 확정 시 ON — M4 오픈 체크리스트
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
+import {
+  detectDeviceKind,
+  ensureDeviceForPlayback,
+} from "~/features/lms/devices.server";
+import { getRemainingSeconds } from "~/features/lms/watch.server";
 
 const GRANT_TTL_MINUTES = 10;
 
@@ -41,6 +48,7 @@ export async function requestPlaybackGrant(
     userId: string | null; // null = 비로그인
     clientIp?: string | null;
     userAgent?: string | null;
+    deviceFingerprint?: string | null; // [벤더] 플레이어 기기 ID — 확정 전 null
   },
 ): Promise<PlaybackJudgement> {
   // 1) 회차·영상 확인 (adminClient — drm 필드는 학생 RLS 로 안 보임)
@@ -61,6 +69,7 @@ export async function requestPlaybackGrant(
   if (!video) return { ok: false, reason: "no_video" };
 
   let enrollmentId: string | null = null;
+  let deviceId: string | null = null;
 
   if (lesson.is_preview) {
     // 맛보기 — 비로그인 허용, 수강권·배수 검사 없음(차감 예외의 근거).
@@ -101,12 +110,40 @@ export async function requestPlaybackGrant(
     }
     enrollmentId = usable.enrollment_id;
 
-    // 4) 배수 (M3 — watch_ledger 잔여) / 5) 기기 (M3 — user_devices)
+    // 4) 배수 — watch_ledger 잔여(파생 뷰). 잔여 null=배수 미적용(무제한).
     if (ENFORCE_MULTIPLIER) {
-      // M3: v_enrollment_watch_balance 조회 후 잔여 ≤ 0 → multiplier_exhausted
+      const remaining = await getRemainingSeconds(enrollmentId);
+      if (remaining != null && remaining <= 0) {
+        return { ok: false, reason: "multiplier_exhausted" };
+      }
     }
+    // 5) 기기 — fingerprint 대조·빈 슬롯 자동 등록(정책은 plan_policies).
     if (ENFORCE_DEVICE) {
-      // M3: 요청 기기 fingerprint ↔ user_devices 대조 → device_not_registered
+      let maxPc: number | null = null;
+      let maxMobile: number | null = null;
+      const { data: enr } = await adminClient
+        .from("enrollments")
+        .select("plan_id")
+        .eq("enrollment_id", enrollmentId)
+        .maybeSingle();
+      if (enr?.plan_id) {
+        const { data: policy } = await adminClient
+          .from("plan_policies")
+          .select("max_devices_pc, max_devices_mobile")
+          .eq("plan_id", enr.plan_id)
+          .maybeSingle();
+        maxPc = policy?.max_devices_pc ?? null;
+        maxMobile = policy?.max_devices_mobile ?? null;
+      }
+      const device = await ensureDeviceForPlayback({
+        userId: input.userId,
+        kind: detectDeviceKind(input.userAgent ?? null),
+        fingerprint: input.deviceFingerprint ?? null,
+        maxPc,
+        maxMobile,
+      });
+      if (!device.ok) return { ok: false, reason: "device_not_registered" };
+      deviceId = device.deviceId;
     }
     void client; // 중복 로그인 제한은 기존 단일 세션 미들웨어가 요청 레벨에서 이미 차단
   }
@@ -120,6 +157,7 @@ export async function requestPlaybackGrant(
       enrollment_id: enrollmentId,
       lesson_id: input.lessonId,
       video_id: video.video_id,
+      device_id: deviceId,
       expires_at: expiresAt,
       client_ip: input.clientIp ?? null,
       user_agent: input.userAgent?.slice(0, 500) ?? null,

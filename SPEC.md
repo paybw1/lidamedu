@@ -634,7 +634,7 @@
 |----|------|:-------:|:---:|
 | feat-11-001 | **M2 시청 골격 — 테이블 배치.** course_series/courses(에디션)/course_lessons/lesson_videos(교체 이력)/lesson_materials/lesson_node_links + subscription_plans 확장(product_kind course·tpass, sale_status)+plan_courses+plan_policies + enrollments(+pauses·admin_logs). 승인 단서: lesson_staff_memos 분리(anon 컬럼 노출 방어)·is_active=false→hidden 백필. 적용 완료 2026-07-08. | P1 | ✅ |
 | feat-11-002 | **M2 시청 골격 — staff 등록 화면 + 수동 지급 + 재생 판정.** 시리즈→에디션→회차→영상 등록(순서·미리보기·공개·메모), 에디션 발행 시 T-PASS 연결 제안(★단서), 수강권 수동 지급, 재생 판정 action+playback_grants(판정 스킵 플래그 — ★M4 결제 오픈 전 ON 체크리스트). [벤더] DRM 임베드는 벤더 확정 후. 구현 완료(라이브 검증 대기) — /admin/lms/courses·/admin/lms/enrollments·/api/lms/playback-grant. | P1 | 🟡 |
-| feat-11-003 | **M3 기록·배수·기기.** watch_events/watch_positions/watch_ledger(append-only)+하트비트, 진도·완강·이어보기, 배수 회계(차감·예외·credit/reset·조정), user_devices/reset_logs, enrollment_pauses, 학습현황 연계 1차. ★watch_events 영구 보존 법적 근거=처리방침 반영(정식 판매 전 법무 항목). | P1 | 🔲 |
+| feat-11-003 | **M3 기록·배수·기기.** watch_events/watch_positions/watch_ledger(append-only)+하트비트(/api/lms/watch-heartbeat), 진도·완강 파생(getLessonProgressForUser), 배수 회계(차감·맛보기 예외·credit/reset·영상 교체 모수 조정 제안), user_devices/reset_logs(+/admin/lms/devices), 일시정지 적용·재개(관리자 — 학생 셀프 신청은 M4 마이페이지). ★watch_events 영구 보존 법적 근거=처리방침 반영(정식 판매 전 법무 항목). ENFORCE_MULTIPLIER=ON, ENFORCE_DEVICE=[벤더] 대기. 회계 스모크 통과(2026-07-08). 학습현황 카드 연계는 [벤더] 플레이어 연동 후(시청 데이터 발생 시). | P1 | 🟡 |
 | feat-11-004 | **M4 결제·커머스.** orders/order_items+토스 연결·자동 지급/회수·부분환불, bank_transfers(무통장), 도서몰(books/재고 원장/plan_book_links/shipments), user_coupons, CS(cs_actions·playback_issues), 통계 파생 뷰, 정산 order_item 확장, access duty 4종. | P1 | 🔲 |
 | feat-11-005 | **M5 이관.** lidamedu 구매자 수강권 이관(enrollments source=migration 벌크, dry-run→승인)·병행 운영. | P2 | 🔲 |
 

@@ -333,6 +333,34 @@ export async function listEnrollments(options: {
   );
 }
 
+export interface WatchBalance {
+  allowedSeconds: number | null; // null=배수 미적용
+  usedSeconds: number;
+  remainingSeconds: number | null;
+}
+
+/** 수강권별 배수 사용/잔여 — v_enrollment_watch_balance 일괄 조회. */
+export async function getWatchBalances(
+  enrollmentIds: string[],
+): Promise<Map<string, WatchBalance>> {
+  const out = new Map<string, WatchBalance>();
+  for (let i = 0; i < enrollmentIds.length; i += 150) {
+    const { data } = await adminClient
+      .from("v_enrollment_watch_balance")
+      .select("enrollment_id, allowed_seconds, used_seconds, remaining_seconds")
+      .in("enrollment_id", enrollmentIds.slice(i, i + 150));
+    for (const r of data ?? []) {
+      if (!r.enrollment_id) continue;
+      out.set(r.enrollment_id, {
+        allowedSeconds: r.allowed_seconds,
+        usedSeconds: r.used_seconds ?? 0,
+        remainingSeconds: r.remaining_seconds,
+      });
+    }
+  }
+  return out;
+}
+
 export async function logEnrollmentAdminAction(input: {
   enrollmentId: string;
   actorId: string;

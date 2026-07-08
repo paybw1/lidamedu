@@ -372,7 +372,7 @@ discounts(쿠폰 정의) ─< user_coupons(발급/사용)
 ### 4.5 모수 변경 (영상 교체·회차 추가·에디션)
 
 - 영상 교체로 duration 변경 / 회차 추가·삭제 → course 총 시간이 변한다. enrollments 의 `base_duration_snapshot_seconds` 는 **자동 재계산하지 않는다**(소급 회계 붕괴).
-- 대신 교체 action 이 **adjust 이벤트를 발행할지 관리자에게 제안**(diff 초 × 배수): 승인 시 각 active enrollment 에 adjust 행 + snapshot 갱신을 한 트랜잭션으로. 이 절차 자체가 enrollment_admin_logs 에 남는다.
+- 대신 교체 action 이 **모수 조정을 관리자에게 제안**: 승인 시 각 active enrollment 의 `base_duration_snapshot_seconds` 를 diff 만큼 갱신 + `enrollment_admin_logs`(action=adjust_snapshot, before/after) 기록. *(M3 구현 확정: 허용량=snapshot×배수, 사용량=ledger SUM 으로 축을 분리 — ledger `adjust` 행을 모수 변경에 쓰면 사용량 SUM 과 이중 계상되므로, ledger adjust 는 회차별 사용량 보정 전용으로 한정.)*
 - 에디션(전면 개편)은 새 course = 새 수강권이므로 모수 문제가 아예 없다 — 에디션 설계가 배수 회계를 단순하게 만드는 이유.
 
 ### 4.6 왜 이 모델인가 (검토한 대안)

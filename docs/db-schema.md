@@ -1131,3 +1131,14 @@ create table public.popup_notices (
 - **playback_grants**: 재생 판정 스냅+단기 토큰(수 분). user_id null=비로그인 맛보기, enrollment_id null=맛보기·무료(배수 미차감), device_id(M3 FK 승격 예정). 클라엔 grant_id 만 — drm_video_id 비노출.
 - **RLS**: 카탈로그(series/courses/lessons/materials/links/plan_*)=published 공개+staff 전량, lesson_videos·staff_memos=staff 전용, enrollments/pauses=본인+staff SELECT(쓰기 정책 없음 — 서버 adminClient 전용), grants=본인+staff SELECT(발급 서버만).
 - M3 예정: watch_events/watch_positions/watch_ledger, user_devices. M4 예정: orders/order_items, bank_transfers, books/shipments, user_coupons.
+
+## LMS 시청 기록·배수 회계·기기 (feat-11-003, M3)  ✅ 적용됨 (2026-07-08)
+
+- **watch_events**: 구간 보고 원본(append-only, 서버만 INSERT). grant_id FK(restrict — 회계 근거 보존), **unique(grant_id, client_seq)=멱등 키**, from/to CHECK. ★환불 기준·회계 근거라 영구 보존(법적 근거=처리방침, M1 단서 2). user_id/enrollment_id null=맛보기·무료.
+- **watch_positions**: 이어보기 upsert. PK(user_id, lesson_id).
+- **watch_ledger**: 배수 원장(append-only). kind debit(+)/credit(−)/adjust/reset(−), seconds<>0, credit·adjust·reset=reason 필수 CHECK. **사용량=SUM(seconds)**. ★UPDATE/DELETE 경로 금지(코드 규약 — service_role 은 RLS 미적용).
+- **v_enrollment_watch_balance**: 잔여 파생 뷰(security_invoker). allowed=snapshot×multiplier(null=무제한), used=원장 SUM, remaining=차. ★모수 변경(영상 교체)은 snapshot 갱신+enrollment_admin_logs(adjust_snapshot) — ledger adjust 를 모수에 쓰면 이중 계상(설계 §4.5 확정).
+- **user_devices**: 등록 기기(pc/mobile/tablet). fingerprint=[벤더] 확정 전 null, partial unique(user, fingerprint, 미해제). 슬롯=plan_policies max_devices_*(기본 PC1+모바일1).
+- **device_reset_logs**: 초기화 이력 — 본인 셀프=월 1회 파생 판정, 관리자=무제한.
+- **RLS**: 전부 본인+staff SELECT, 쓰기 정책 없음(서버 adminClient 전용).
+- 하트비트 파이프: /api/lms/watch-heartbeat — grant 소유 검증·구간 정합(길이≤120s·영상 길이 초과 금지)·granted_at 6h 보고 창·멱등. 차감은 enrollment 있는 grant 만(맛보기 예외). 판정 플래그: ENFORCE_MULTIPLIER=**ON**, ENFORCE_DEVICE=OFF([벤더] fingerprint 확정 시 ON — ★M4 결제 오픈 체크리스트).

@@ -16,10 +16,13 @@ import { Chip, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   getCourseTotalDuration,
+  getWatchBalances,
   listEnrollments,
   logEnrollmentAdminAction,
   type EnrollmentRow,
+  type WatchBalance,
 } from "~/features/lms/queries.server";
+import { insertLedgerAdjustment, resetWatchUsage } from "~/features/lms/watch.server";
 
 import type { Route } from "./+types/admin-lms-enrollments";
 
@@ -42,7 +45,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const { role } = await requireManager(request);
   const url = new URL(request.url);
   const query = (url.searchParams.get("q") ?? "").trim().slice(0, 60);
-  const [rows, coursesRes, plansRes] = await Promise.all([
+  const [rowsRaw, coursesRes, plansRes] = await Promise.all([
     listEnrollments({ query: query || undefined }),
     adminClient
       .from("courses")
@@ -55,6 +58,11 @@ export async function loader({ request }: Route.LoaderArgs) {
       .in("product_kind", ["course", "tpass"])
       .order("display_order"),
   ]);
+  const balances = await getWatchBalances(rowsRaw.map((r) => r.enrollmentId));
+  const rows = rowsRaw.map((r) => ({
+    ...r,
+    balance: balances.get(r.enrollmentId) ?? null,
+  }));
   return {
     rows,
     query,
@@ -184,6 +192,122 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ ok: true as const });
   }
 
+  if (intent === "credit") {
+    // 배수 복구(오차감 보상) — 사용량을 줄이는 음수 credit 행 (§4.4)
+    const enrollmentId = String(fd.get("enrollmentId") ?? "");
+    const seconds = Math.floor(Number(fd.get("seconds") ?? 0));
+    const reason = String(fd.get("reason") ?? "").trim();
+    if (!enrollmentId || seconds <= 0 || !reason) {
+      return data({ error: "복구 초·사유를 확인해 주세요." }, { status: 400 });
+    }
+    await insertLedgerAdjustment({
+      enrollmentId,
+      kind: "credit",
+      seconds: -seconds,
+      reason,
+      actorId: user.id,
+    });
+    await logEnrollmentAdminAction({
+      enrollmentId,
+      actorId: user.id,
+      action: "watch_credit",
+      after: { credited_seconds: seconds },
+      reason,
+    });
+    return data({ ok: true as const });
+  }
+
+  if (intent === "reset_usage") {
+    // 사용량 초기화 — 현재 SUM 상쇄 reset 행 1개 (§4.4)
+    const enrollmentId = String(fd.get("enrollmentId") ?? "");
+    const reason = String(fd.get("reason") ?? "").trim();
+    if (!enrollmentId || !reason) return data({ error: "사유를 입력해 주세요." }, { status: 400 });
+    const { offsetSeconds } = await resetWatchUsage({ enrollmentId, reason, actorId: user.id });
+    await logEnrollmentAdminAction({
+      enrollmentId,
+      actorId: user.id,
+      action: "watch_reset",
+      after: { offset_seconds: offsetSeconds },
+      reason,
+    });
+    return data({ ok: true as const });
+  }
+
+  if (intent === "pause") {
+    // 일시정지 적용(관리자) — expires_at += days, status=paused (§3.4)
+    const enrollmentId = String(fd.get("enrollmentId") ?? "");
+    const days = Math.floor(Number(fd.get("days") ?? 0));
+    if (!enrollmentId || days <= 0 || days > 365) {
+      return data({ error: "정지 일수를 확인해 주세요." }, { status: 400 });
+    }
+    const { data: cur } = await adminClient
+      .from("enrollments")
+      .select("expires_at, status")
+      .eq("enrollment_id", enrollmentId)
+      .maybeSingle();
+    if (!cur) return data({ error: "수강권을 찾을 수 없습니다." }, { status: 404 });
+    if (cur.status !== "active") return data({ error: "이용중 상태에서만 정지할 수 있습니다." }, { status: 400 });
+    const startsOn = new Date();
+    const endsOn = new Date(Date.now() + days * 86400_000);
+    const nextExpires = new Date(Date.parse(cur.expires_at) + days * 86400_000).toISOString();
+    const { error: pErr } = await adminClient.from("enrollment_pauses").insert({
+      enrollment_id: enrollmentId,
+      requested_by: user.id,
+      starts_on: startsOn.toISOString().slice(0, 10),
+      ends_on: endsOn.toISOString().slice(0, 10),
+      days,
+      is_admin_exception: true, // 관리자 적용 — 정책 범위 검증은 학생 셀프 신청(M4 마이페이지)에서
+    });
+    if (pErr) return data({ error: pErr.message }, { status: 400 });
+    const { error } = await adminClient
+      .from("enrollments")
+      .update({ status: "paused", expires_at: nextExpires })
+      .eq("enrollment_id", enrollmentId);
+    if (error) return data({ error: error.message }, { status: 400 });
+    await logEnrollmentAdminAction({
+      enrollmentId,
+      actorId: user.id,
+      action: "pause",
+      before: { expires_at: cur.expires_at },
+      after: { expires_at: nextExpires, days },
+      reason: `일시정지 ${days}일 (관리자 적용)`,
+    });
+    return data({ ok: true as const });
+  }
+
+  if (intent === "resume") {
+    const enrollmentId = String(fd.get("enrollmentId") ?? "");
+    if (!enrollmentId) return data({ error: "잘못된 요청" }, { status: 400 });
+    const { error } = await adminClient
+      .from("enrollments")
+      .update({ status: "active" })
+      .eq("enrollment_id", enrollmentId)
+      .eq("status", "paused");
+    if (error) return data({ error: error.message }, { status: 400 });
+    // 최근 미재개 pause 에 재개 시각 기록
+    const { data: lastPause } = await adminClient
+      .from("enrollment_pauses")
+      .select("pause_id")
+      .eq("enrollment_id", enrollmentId)
+      .is("resumed_at", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (lastPause) {
+      await adminClient
+        .from("enrollment_pauses")
+        .update({ resumed_at: new Date().toISOString() })
+        .eq("pause_id", lastPause.pause_id);
+    }
+    await logEnrollmentAdminAction({
+      enrollmentId,
+      actorId: user.id,
+      action: "resume",
+      reason: "일시정지 재개 (관리자)",
+    });
+    return data({ ok: true as const });
+  }
+
   if (intent === "revoke") {
     const parsed = revokeSchema.safeParse({
       enrollmentId: fd.get("enrollmentId"),
@@ -263,15 +387,15 @@ export default function AdminLmsEnrollments({ loaderData }: Route.ComponentProps
         </p>
       ) : (
         <IndexTable
-          minWidth={860}
+          minWidth={1000}
           headers={[
             { label: "회원" },
             { label: "강의" },
-            { label: "구분", width: "5rem" },
-            { label: "기간", width: "12rem" },
-            { label: "배수", align: "right", width: "5rem" },
-            { label: "상태", width: "6rem" },
-            { label: "", width: "14rem" },
+            { label: "구분", width: "4.5rem" },
+            { label: "기간", width: "11rem" },
+            { label: "배수 사용/허용", align: "right", width: "9rem" },
+            { label: "상태", width: "5.5rem" },
+            { label: "", width: "17rem" },
           ]}
         >
           {rows.map((r) => (
@@ -352,27 +476,51 @@ function GrantForm({
   );
 }
 
-function EnrollmentRowView({ row }: { row: EnrollmentRow }) {
+function fmtHours(sec: number | null): string {
+  if (sec == null) return "∞";
+  const h = sec / 3600;
+  return h >= 10 ? `${Math.round(h)}h` : `${Math.round(h * 10) / 10}h`;
+}
+
+function EnrollmentRowView({
+  row,
+}: {
+  row: EnrollmentRow & { balance: WatchBalance | null };
+}) {
   const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
   useEffect(() => {
     if (fetcher.state === "idle" && fetcher.data?.error) toast.error(fetcher.data.error);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetcher.state, fetcher.data]);
-  const extend = (days: number) => {
+  const submit = (fields: Record<string, string>) => {
     const fd = new FormData();
-    fd.set("intent", "extend");
     fd.set("enrollmentId", row.enrollmentId);
-    fd.set("days", String(days));
+    for (const [k, v] of Object.entries(fields)) fd.set(k, v);
     fetcher.submit(fd, { method: "post" });
   };
+  const extend = (days: number) => submit({ intent: "extend", days: String(days) });
   const revoke = () => {
     const reason = prompt("회수 사유를 입력하세요 (환불·취소 등):");
     if (!reason?.trim()) return;
-    const fd = new FormData();
-    fd.set("intent", "revoke");
-    fd.set("enrollmentId", row.enrollmentId);
-    fd.set("reason", reason.trim());
-    fetcher.submit(fd, { method: "post" });
+    submit({ intent: "revoke", reason: reason.trim() });
+  };
+  const credit = () => {
+    const minutes = prompt("복구할 분(min)을 입력하세요 (버퍼링·오류 오차감 보상):");
+    const m = Math.floor(Number(minutes ?? 0));
+    if (!m || m <= 0) return;
+    const reason = prompt("복구 사유:");
+    if (!reason?.trim()) return;
+    submit({ intent: "credit", seconds: String(m * 60), reason: reason.trim() });
+  };
+  const resetUsage = () => {
+    const reason = prompt("사용량 초기화 사유 (이력은 보존되고 잔여만 원복됩니다):");
+    if (!reason?.trim()) return;
+    submit({ intent: "reset_usage", reason: reason.trim() });
+  };
+  const pause = () => {
+    const days = Math.floor(Number(prompt("일시정지 일수 (만료일이 그만큼 연장됩니다):") ?? 0));
+    if (!days || days <= 0) return;
+    submit({ intent: "pause", days: String(days) });
   };
   return (
     <TR>
@@ -388,20 +536,47 @@ function EnrollmentRowView({ row }: { row: EnrollmentRow }) {
         {row.startsAt.slice(0, 10)} ~ {row.expiresAt.slice(0, 10)}
       </TD>
       <TD align="right" mono>
-        {row.multiplierSnapshot != null ? `×${row.multiplierSnapshot}` : "∞"}
+        <span title={row.multiplierSnapshot != null ? `배수 ×${row.multiplierSnapshot}` : "배수 미적용"}>
+          {fmtHours(row.balance?.usedSeconds ?? 0)} /{" "}
+          {fmtHours(row.balance?.allowedSeconds ?? null)}
+        </span>
+        {row.balance?.remainingSeconds != null && row.balance.remainingSeconds <= 0 ? (
+          <Chip tone="coral" className="ml-1">소진</Chip>
+        ) : null}
       </TD>
       <TD>
         <Chip tone={STATUS_TONE[row.status] ?? "neutral"}>{STATUS_LABEL[row.status] ?? row.status}</Chip>
       </TD>
       <TD align="right">
         {row.status !== "revoked" ? (
-          <div className="flex items-center justify-end gap-1">
+          <div className="flex flex-wrap items-center justify-end gap-1">
             {[7, 15, 30].map((d) => (
               <button key={d} type="button" onClick={() => extend(d)}
                 className="border-border hover:bg-muted/50 h-6 rounded-md border px-1.5 text-[11px] font-medium tabular-nums">
                 +{d}일
               </button>
             ))}
+            <button type="button" onClick={credit}
+              className="border-border hover:bg-muted/50 h-6 rounded-md border px-1.5 text-[11px] font-medium"
+              title="배수 오차감 복구 (credit)">
+              복구
+            </button>
+            <button type="button" onClick={resetUsage}
+              className="border-border hover:bg-muted/50 h-6 rounded-md border px-1.5 text-[11px] font-medium"
+              title="사용량 초기화 (reset — 이력 보존)">
+              초기화
+            </button>
+            {row.status === "paused" ? (
+              <button type="button" onClick={() => submit({ intent: "resume" })}
+                className="border-border hover:bg-muted/50 h-6 rounded-md border px-1.5 text-[11px] font-medium">
+                재개
+              </button>
+            ) : (
+              <button type="button" onClick={pause}
+                className="border-border hover:bg-muted/50 h-6 rounded-md border px-1.5 text-[11px] font-medium">
+                정지
+              </button>
+            )}
             <button type="button" onClick={revoke}
               className="border-border h-6 rounded-md border px-1.5 text-[11px] font-medium text-rose-600 hover:bg-rose-500/10 dark:text-rose-400">
               회수

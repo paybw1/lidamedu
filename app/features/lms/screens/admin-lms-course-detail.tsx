@@ -1,7 +1,7 @@
 // feat-11-002 — 에디션 상세: 회차 등록·순서·미리보기·공개, 영상 등록/교체(이력), 운영 메모.
 // 영상 교체 시 duration 이 달라지면 배수 모수 조정은 M3(adjust 이벤트)에서 — 여기선 경고만.
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -14,11 +14,13 @@ import { z } from "zod";
 
 import { Button } from "~/core/components/ui/button";
 import makeServerClient from "~/core/lib/supa-client.server";
+import adminClient from "~/core/lib/supa-admin-client.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Chip, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   getCourseDetail,
+  logEnrollmentAdminAction,
   type CourseDetail,
 } from "~/features/lms/queries.server";
 
@@ -167,12 +169,60 @@ export async function action({ request, params }: Route.ActionArgs) {
       created_by: user.id,
     });
     if (error) return data({ error: error.message }, { status: 400 });
-    const durationChanged = prev && prev.duration_seconds !== parsed.data.durationSeconds;
+    // ★설계 §4.5 — duration 변경 시 배수 모수(스냅샷)는 자동 재계산하지 않고,
+    //   영향 수강권 수·diff 를 응답해 관리자에게 조정 적용을 제안한다.
+    const diffSeconds = prev
+      ? parsed.data.durationSeconds - prev.duration_seconds
+      : 0;
+    let affectedCount = 0;
+    if (diffSeconds !== 0) {
+      const { count } = await adminClient
+        .from("enrollments")
+        .select("enrollment_id", { count: "exact", head: true })
+        .eq("course_id", courseId)
+        .in("status", ["active", "paused"])
+        .not("multiplier_snapshot", "is", null);
+      affectedCount = count ?? 0;
+    }
     return data({
       ok: true as const,
-      // ★설계 §4.5 — 모수 변경 경고(조정 이벤트는 M3 배수 회계에서)
-      durationChanged: !!durationChanged,
+      durationChanged: diffSeconds !== 0,
+      diffSeconds,
+      affectedCount,
     });
+  }
+
+  if (intent === "apply_duration_adjust") {
+    // 교체로 변한 diff 초를 이 course 의 active/paused 수강권 모수 스냅샷에 반영 + 감사 로그.
+    const diffSeconds = Math.trunc(Number(fd.get("diffSeconds") ?? 0));
+    const reason = String(fd.get("reason") ?? "").trim() || "영상 교체에 따른 모수 조정";
+    if (!diffSeconds) return data({ error: "조정할 차이가 없습니다." }, { status: 400 });
+    const { data: enrollments, error: eErr } = await adminClient
+      .from("enrollments")
+      .select("enrollment_id, base_duration_snapshot_seconds")
+      .eq("course_id", courseId)
+      .in("status", ["active", "paused"])
+      .not("multiplier_snapshot", "is", null);
+    if (eErr) return data({ error: eErr.message }, { status: 400 });
+    let adjusted = 0;
+    for (const e of enrollments ?? []) {
+      const next = Math.max(0, e.base_duration_snapshot_seconds + diffSeconds);
+      const { error } = await adminClient
+        .from("enrollments")
+        .update({ base_duration_snapshot_seconds: next })
+        .eq("enrollment_id", e.enrollment_id);
+      if (error) return data({ error: error.message }, { status: 400 });
+      await logEnrollmentAdminAction({
+        enrollmentId: e.enrollment_id,
+        actorId: user.id,
+        action: "adjust_snapshot",
+        before: { base_duration_snapshot_seconds: e.base_duration_snapshot_seconds },
+        after: { base_duration_snapshot_seconds: next },
+        reason,
+      });
+      adjusted++;
+    }
+    return data({ ok: true as const, adjusted });
   }
 
   if (intent === "save_memo") {
@@ -274,15 +324,34 @@ function LessonCard({
   isFirst: boolean;
   isLast: boolean;
 }) {
-  const fetcher = useFetcher<{ ok?: boolean; error?: string; durationChanged?: boolean }>();
+  const fetcher = useFetcher<{
+    ok?: boolean;
+    error?: string;
+    durationChanged?: boolean;
+    diffSeconds?: number;
+    affectedCount?: number;
+    adjusted?: number;
+  }>();
+  const [adjustProposal, setAdjustProposal] = useState<{
+    diffSeconds: number;
+    affectedCount: number;
+  } | null>(null);
   useEffect(() => {
     if (fetcher.state !== "idle" || !fetcher.data) return;
     if (fetcher.data.error) toast.error(fetcher.data.error);
-    else if (fetcher.data.durationChanged) {
-      toast.warning(
-        "재생시간이 달라졌습니다. 기존 수강권의 배수 모수 조정은 배수 회계(M3)에서 처리됩니다 — 자동 재계산되지 않습니다.",
-        { duration: 8000 },
-      );
+    else if (typeof fetcher.data.adjusted === "number") {
+      toast.success(`수강권 ${fetcher.data.adjusted}건의 배수 모수를 조정했습니다.`);
+      setAdjustProposal(null);
+    } else if (fetcher.data.durationChanged) {
+      // ★§4.5 — 자동 재계산 금지: 관리자에게 조정 적용을 강제 제안
+      if ((fetcher.data.affectedCount ?? 0) > 0) {
+        setAdjustProposal({
+          diffSeconds: fetcher.data.diffSeconds ?? 0,
+          affectedCount: fetcher.data.affectedCount ?? 0,
+        });
+      } else {
+        toast.info("재생시간이 달라졌지만 배수 적용 수강권이 없어 조정할 것이 없습니다.");
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetcher.state, fetcher.data]);
@@ -379,6 +448,41 @@ function LessonCard({
           <RefreshCwIcon className="size-3" /> {lesson.activeVideo ? "영상 교체" : "영상 등록"}
         </Button>
       </fetcher.Form>
+
+      {/* ★§4.5 — 영상 교체로 재생시간 변경 → 배수 모수 조정 제안 (자동 재계산 금지) */}
+      {adjustProposal ? (
+        <fetcher.Form
+          method="post"
+          className="border-amber-500/40 bg-amber-500/10 mt-2 rounded-lg border p-3"
+        >
+          <input type="hidden" name="intent" value="apply_duration_adjust" />
+          <input type="hidden" name="diffSeconds" value={adjustProposal.diffSeconds} />
+          <p className="mb-2 text-[12px] font-semibold">
+            재생시간이 {adjustProposal.diffSeconds > 0 ? "+" : ""}
+            {Math.round(adjustProposal.diffSeconds / 60)}분 변했습니다. 배수 적용 수강권{" "}
+            {adjustProposal.affectedCount}건의 허용 시청량 모수에 이 차이를 반영할까요?
+            (반영하지 않으면 기존 수강권은 이전 모수 그대로 유지됩니다 — 자동 재계산되지 않습니다.)
+          </p>
+          <input
+            name="reason"
+            maxLength={200}
+            placeholder="조정 사유 (기본: 영상 교체에 따른 모수 조정)"
+            className="border-input bg-background mb-2 h-8 w-full rounded-md border px-2 text-[12px]"
+          />
+          <div className="flex items-center gap-2">
+            <Button type="submit" size="sm" className="h-7 text-[12px]" disabled={fetcher.state !== "idle"}>
+              수강권 {adjustProposal.affectedCount}건 모수 조정 적용
+            </Button>
+            <button
+              type="button"
+              onClick={() => setAdjustProposal(null)}
+              className="text-muted-foreground text-[12px] hover:underline"
+            >
+              반영 안 함
+            </button>
+          </div>
+        </fetcher.Form>
+      ) : null}
 
       {/* 운영 메모 (staff 전용 테이블) */}
       <fetcher.Form method="post" className="mt-2 flex items-end gap-2">

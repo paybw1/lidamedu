@@ -3091,6 +3091,69 @@ export type Database = {
           },
         ]
       }
+      device_reset_logs: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          device_id: string | null
+          log_id: string
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          device_id?: string | null
+          log_id?: string
+          reason: string
+          user_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          device_id?: string | null
+          log_id?: string
+          reason?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_reset_logs_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "device_reset_logs_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "device_reset_logs_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "user_devices"
+            referencedColumns: ["device_id"]
+          },
+          {
+            foreignKeyName: "device_reset_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "device_reset_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       discounts: {
         Row: {
           code: string | null
@@ -3204,6 +3267,13 @@ export type Database = {
             referencedRelation: "enrollments"
             referencedColumns: ["enrollment_id"]
           },
+          {
+            foreignKeyName: "enrollment_admin_logs_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "v_enrollment_watch_balance"
+            referencedColumns: ["enrollment_id"]
+          },
         ]
       }
       enrollment_pauses: {
@@ -3249,6 +3319,13 @@ export type Database = {
             columns: ["enrollment_id"]
             isOneToOne: false
             referencedRelation: "enrollments"
+            referencedColumns: ["enrollment_id"]
+          },
+          {
+            foreignKeyName: "enrollment_pauses_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "v_enrollment_watch_balance"
             referencedColumns: ["enrollment_id"]
           },
           {
@@ -6312,6 +6389,13 @@ export type Database = {
             referencedColumns: ["enrollment_id"]
           },
           {
+            foreignKeyName: "playback_grants_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "v_enrollment_watch_balance"
+            referencedColumns: ["enrollment_id"]
+          },
+          {
             foreignKeyName: "playback_grants_lesson_id_fkey"
             columns: ["lesson_id"]
             isOneToOne: false
@@ -8591,6 +8675,57 @@ export type Database = {
         }
         Relationships: []
       }
+      user_devices: {
+        Row: {
+          device_fingerprint: string | null
+          device_id: string
+          device_name: string | null
+          kind: string
+          last_seen_at: string
+          registered_at: string
+          revoked_at: string | null
+          revoked_by: string | null
+          user_id: string
+        }
+        Insert: {
+          device_fingerprint?: string | null
+          device_id?: string
+          device_name?: string | null
+          kind: string
+          last_seen_at?: string
+          registered_at?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          user_id: string
+        }
+        Update: {
+          device_fingerprint?: string | null
+          device_id?: string
+          device_name?: string | null
+          kind?: string
+          last_seen_at?: string
+          registered_at?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_devices_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "user_devices_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       user_gamification: {
         Row: {
           created_at: string
@@ -9472,6 +9607,237 @@ export type Database = {
           },
         ]
       }
+      watch_events: {
+        Row: {
+          client_seq: number
+          enrollment_id: string | null
+          event_id: number
+          from_seconds: number
+          grant_id: string
+          lesson_id: string
+          reported_at: string
+          to_seconds: number
+          user_id: string | null
+          video_id: string
+        }
+        Insert: {
+          client_seq: number
+          enrollment_id?: string | null
+          event_id?: never
+          from_seconds: number
+          grant_id: string
+          lesson_id: string
+          reported_at?: string
+          to_seconds: number
+          user_id?: string | null
+          video_id: string
+        }
+        Update: {
+          client_seq?: number
+          enrollment_id?: string | null
+          event_id?: never
+          from_seconds?: number
+          grant_id?: string
+          lesson_id?: string
+          reported_at?: string
+          to_seconds?: number
+          user_id?: string | null
+          video_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "watch_events_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["enrollment_id"]
+          },
+          {
+            foreignKeyName: "watch_events_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "v_enrollment_watch_balance"
+            referencedColumns: ["enrollment_id"]
+          },
+          {
+            foreignKeyName: "watch_events_grant_id_fkey"
+            columns: ["grant_id"]
+            isOneToOne: false
+            referencedRelation: "playback_grants"
+            referencedColumns: ["grant_id"]
+          },
+          {
+            foreignKeyName: "watch_events_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "course_lessons"
+            referencedColumns: ["lesson_id"]
+          },
+          {
+            foreignKeyName: "watch_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "watch_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "watch_events_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "lesson_videos"
+            referencedColumns: ["video_id"]
+          },
+        ]
+      }
+      watch_ledger: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          enrollment_id: string
+          kind: string
+          ledger_id: number
+          lesson_id: string | null
+          reason: string | null
+          seconds: number
+          source_event_id: number | null
+          video_id: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          enrollment_id: string
+          kind: string
+          ledger_id?: never
+          lesson_id?: string | null
+          reason?: string | null
+          seconds: number
+          source_event_id?: number | null
+          video_id?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          enrollment_id?: string
+          kind?: string
+          ledger_id?: never
+          lesson_id?: string | null
+          reason?: string | null
+          seconds?: number
+          source_event_id?: number | null
+          video_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "watch_ledger_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "watch_ledger_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "watch_ledger_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["enrollment_id"]
+          },
+          {
+            foreignKeyName: "watch_ledger_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "v_enrollment_watch_balance"
+            referencedColumns: ["enrollment_id"]
+          },
+          {
+            foreignKeyName: "watch_ledger_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "course_lessons"
+            referencedColumns: ["lesson_id"]
+          },
+          {
+            foreignKeyName: "watch_ledger_source_event_id_fkey"
+            columns: ["source_event_id"]
+            isOneToOne: false
+            referencedRelation: "watch_events"
+            referencedColumns: ["event_id"]
+          },
+          {
+            foreignKeyName: "watch_ledger_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "lesson_videos"
+            referencedColumns: ["video_id"]
+          },
+        ]
+      }
+      watch_positions: {
+        Row: {
+          lesson_id: string
+          position_seconds: number
+          updated_at: string
+          user_id: string
+          video_id: string
+        }
+        Insert: {
+          lesson_id: string
+          position_seconds?: number
+          updated_at?: string
+          user_id: string
+          video_id: string
+        }
+        Update: {
+          lesson_id?: string
+          position_seconds?: number
+          updated_at?: string
+          user_id?: string
+          video_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "watch_positions_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "course_lessons"
+            referencedColumns: ["lesson_id"]
+          },
+          {
+            foreignKeyName: "watch_positions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "watch_positions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "watch_positions_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "lesson_videos"
+            referencedColumns: ["video_id"]
+          },
+        ]
+      }
     }
     Views: {
       gs_points_balance_v: {
@@ -9502,6 +9868,61 @@ export type Database = {
           role?: Database["public"]["Enums"]["user_role"] | null
         }
         Relationships: []
+      }
+      v_enrollment_watch_balance: {
+        Row: {
+          allowed_seconds: number | null
+          base_duration_snapshot_seconds: number | null
+          course_id: string | null
+          enrollment_id: string | null
+          multiplier_snapshot: number | null
+          remaining_seconds: number | null
+          used_seconds: number | null
+          user_id: string | null
+        }
+        Insert: {
+          allowed_seconds?: never
+          base_duration_snapshot_seconds?: number | null
+          course_id?: string | null
+          enrollment_id?: string | null
+          multiplier_snapshot?: number | null
+          remaining_seconds?: never
+          used_seconds?: never
+          user_id?: string | null
+        }
+        Update: {
+          allowed_seconds?: never
+          base_duration_snapshot_seconds?: number | null
+          course_id?: string | null
+          enrollment_id?: string | null
+          multiplier_snapshot?: number | null
+          remaining_seconds?: never
+          used_seconds?: never
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrollments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["course_id"]
+          },
+          {
+            foreignKeyName: "enrollments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "enrollments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
       }
     }
     Functions: {
