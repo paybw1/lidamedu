@@ -73,7 +73,7 @@ export function QnaPanel({
                 </div>
                 <p className="line-clamp-2 text-xs font-medium">{t.title}</p>
                 <p className="text-muted-foreground mt-1 text-[10px]">
-                  {t.askerName ?? "알 수 없음"} ·{" "}
+                  {t.askerName ?? "미상"} ·{" "}
                   {new Date(t.createdAt).toLocaleDateString("ko-KR")}
                 </p>
               </Link>

@@ -224,6 +224,24 @@ export default function Join({ loaderData, actionData }: Route.ComponentProps) {
                   </span>
                   <span style={{ flex: 1, height: 1, background: PALETTE.line }} />
                 </div>
+                {/* 이메일 가입은 심사용 임시 개방 — 신규 가입은 카카오로 유도 */}
+                <div
+                  style={{
+                    marginBottom: 14,
+                    padding: "12px 14px",
+                    borderRadius: 12,
+                    background: "rgba(245, 158, 11, 0.08)",
+                    border: "1px solid rgba(245, 158, 11, 0.35)",
+                    color: PALETTE.ink,
+                    font: `500 12.5px/1.6 ${FONT}`,
+                    textAlign: "left",
+                  }}
+                >
+                  이메일·비밀번호 가입은 <strong>내부 심사를 위해 임시로 열어 둔
+                  것</strong>으로, 정상적인 가입이 어려울 수 있습니다. 신규
+                  가입은 위의 <strong>카카오로 시작하기</strong>를 이용해
+                  주세요.
+                </div>
                 <Form method="post" style={{ textAlign: "left" }}>
                   <input
                     type="text"

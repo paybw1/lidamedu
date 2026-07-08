@@ -4,7 +4,7 @@ import {
   SearchIcon,
   SearchXIcon,
 } from "lucide-react";
-import { Form, Link, useSearchParams } from "react-router";
+import { Form, Link, redirect, useSearchParams } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { cn } from "~/core/lib/utils";
@@ -148,6 +148,18 @@ export async function loader({ request }: Route.LoaderArgs) {
   const role = await getStaffRole(client, user.id);
   const isStaff = role !== null;
 
+  // 질문 고유번호 직행 — "Q-123" / "q123" 검색 시 해당 질문으로 이동.
+  const noMatch = /^[Qq]-?(\d{1,10})$/.exec(query.trim());
+  if (noMatch) {
+    const { data: hit } = await client
+      .from("qna_threads")
+      .select("thread_id")
+      .eq("display_no", Number(noMatch[1]))
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (hit) throw redirect(`/qna/${hit.thread_id}`);
+  }
+
   const [{ items: threads, total }, reviewCount] = await Promise.all([
     listThreads(client, user.id, { scope, targetType, subject, query, page }),
     isStaff ? countReviewQueue(client) : Promise.resolve(0),
@@ -249,7 +261,7 @@ export default function QnaList({ loaderData }: Route.ComponentProps) {
             type="search"
             name="q"
             defaultValue={query}
-            placeholder="제목 / 질문 / 답변 검색"
+            placeholder="제목 / 질문 / 답변 / 질문번호(Q-123) 검색"
             aria-label="질문 검색"
             className="bg-muted/60 focus:bg-background focus:border-primary h-9 w-full rounded-full border border-transparent pr-3 pl-9 text-[13px] outline-none"
           />
@@ -407,6 +419,10 @@ export default function QnaList({ loaderData }: Route.ComponentProps) {
                     return (
                       <>
                         <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+                          {/* 질문 고유번호 — Q-{n}, 인용·특정용 전역 불변 */}
+                          <span className="text-muted-foreground text-[11px] font-semibold tabular-nums">
+                            Q-{t.displayNo}
+                          </span>
                           {/* 유형·과목은 breadcrumb 이 있으면 그쪽에서 표기 → 중복 제거. */}
                           {!crumb ? (
                             <>
@@ -440,7 +456,7 @@ export default function QnaList({ loaderData }: Route.ComponentProps) {
                     {t.title}
                   </p>
                   <p className="text-muted-foreground mt-1 text-[13px]">
-                    {t.askerName ?? "알 수 없음"}
+                    {t.askerName ?? "미상"}
                     {t.answererName ? ` → ${t.answererName}` : ""}
                   </p>
                 </Link>

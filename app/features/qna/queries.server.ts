@@ -37,6 +37,7 @@ const SUMMARY_COLUMNS = `
   answered_at,
   updated_at,
   node_id,
+  display_no,
   asker:profiles!qna_threads_asker_id_fkey ( profile_id, name ),
   answerer:profiles!qna_threads_answerer_id_fkey ( profile_id, name )
 `;
@@ -57,6 +58,7 @@ type RawSummaryRow = {
   answered_at: string | null;
   updated_at: string;
   node_id: string | null;
+  display_no: number;
   asker: { profile_id: string; name: string } | null;
   answerer: { profile_id: string; name: string } | null;
 };
@@ -83,6 +85,7 @@ function toSummary(row: RawSummaryRow): QnaThreadSummary {
     answeredAt: row.answered_at,
     updatedAt: row.updated_at,
     nodeId: row.node_id ?? null,
+    displayNo: row.display_no,
   };
 }
 

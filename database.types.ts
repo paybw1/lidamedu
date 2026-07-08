@@ -6738,6 +6738,7 @@ export type Database = {
           asker_id: string
           created_at: string
           deleted_at: string | null
+          display_no: number
           node_id: string | null
           quality_grade: Database["public"]["Enums"]["qna_quality_grade"] | null
           question_md: string
@@ -6759,6 +6760,7 @@ export type Database = {
           asker_id: string
           created_at?: string
           deleted_at?: string | null
+          display_no?: number
           node_id?: string | null
           quality_grade?:
             | Database["public"]["Enums"]["qna_quality_grade"]
@@ -6782,6 +6784,7 @@ export type Database = {
           asker_id?: string
           created_at?: string
           deleted_at?: string | null
+          display_no?: number
           node_id?: string | null
           quality_grade?:
             | Database["public"]["Enums"]["qna_quality_grade"]

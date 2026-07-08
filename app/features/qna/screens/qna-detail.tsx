@@ -238,6 +238,9 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
           ) : null}
         </div>
         <h2 className="text-[22px] leading-snug font-extrabold tracking-tight">
+          <span className="text-muted-foreground mr-2 align-middle text-[13px] font-bold tabular-nums">
+            Q-{thread.displayNo}
+          </span>
           {thread.title}
         </h2>
         <div className="mt-2.5 flex items-center gap-2">
@@ -252,11 +255,11 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
               className="text-link text-[13px] font-bold hover:underline"
               title="질문자 정보 보기 (강사·관리자)"
             >
-              {thread.askerName ?? "알 수 없음"}
+              {thread.askerName ?? "미상"}
             </Link>
           ) : (
             <span className="text-[13px] font-bold">
-              {thread.askerName ?? "알 수 없음"}
+              {thread.askerName ?? "미상"}
             </span>
           )}
           <span className="text-muted-foreground text-[11px] tabular-nums">

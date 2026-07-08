@@ -110,6 +110,8 @@ export interface QnaThreadSummary {
   updatedAt: string;
   /** 단원(체계도 노드) 앵커 — 대상 crumb 의 쟁점 표기에 사용. */
   nodeId: string | null;
+  /** 질문 고유번호 — Q-{n} 표기. 전역 시퀀스 불변. */
+  displayNo: number;
 }
 
 export interface QnaThreadDetail extends QnaThreadSummary {
