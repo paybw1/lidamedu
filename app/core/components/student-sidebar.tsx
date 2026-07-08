@@ -179,8 +179,8 @@ export function StudentSidebar({
         </button>
       </div>
 
-      {/* 플랫폼 스위처 — 펼침 상태에서만(접힘=폭 부족). 학습 ↔ 강의. */}
-      {!collapsed ? (
+      {/* 플랫폼 스위처 — 펼침 상태 + staff 에게만(강의 플랫폼 오픈 전 IA 검증). */}
+      {!collapsed && isStaff ? (
         <div className="border-border border-b px-3 py-2">
           <PlatformSwitch />
         </div>

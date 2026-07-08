@@ -23,13 +23,28 @@ export const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
 };
 
 // feat-8-028 — 상품 종류. subject=개별 과목, bundle=번들, membership=회원제(free/cohort).
-export type ProductKind = "subject" | "bundle" | "membership";
+// feat-11 — course=영상 강의, tpass=기간권(T-PASS). 학습 플랫폼 상품(위 3종)과 별개로
+//   강의 플랫폼(/lecture)에서 판매·수강권(enrollments)으로 지급된다.
+export type ProductKind =
+  | "subject"
+  | "bundle"
+  | "membership"
+  | "course"
+  | "tpass";
 
 export const PRODUCT_KIND_LABEL: Record<ProductKind, string> = {
   subject: "개별 과목",
   bundle: "번들",
   membership: "회원제",
+  course: "강의",
+  tpass: "T-PASS",
 };
+
+// 강의 플랫폼(/lecture) 카탈로그에 노출되는 상품 종류.
+export const LECTURE_PRODUCT_KINDS: ReadonlyArray<ProductKind> = [
+  "course",
+  "tpass",
+];
 
 export interface SubscriptionPlan {
   planId: string;

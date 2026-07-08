@@ -412,3 +412,106 @@ export async function logEnrollmentAdminAction(input: {
     console.error("[lms] cs mirror failed:", e);
   }
 }
+
+// ── 강의 플랫폼 카탈로그 (feat-11 S2) ─────────────────────────────────────────
+// course/tpass 판매 상품(is_active) + 연결 강의(공개 에디션) + 보유 여부.
+// 콘텐츠는 public RLS(published)라 요청 클라이언트 사용. 상품 0건이면 빈 배열.
+export interface LectureProductCourse {
+  courseId: string;
+  title: string; // 시리즈 제목 + 에디션 라벨
+}
+export interface LectureProduct {
+  planId: string;
+  code: string;
+  name: string;
+  description: string | null;
+  priceKrw: number;
+  productKind: "course" | "tpass";
+  durationDays: number;
+  courses: LectureProductCourse[];
+  owned: boolean;
+}
+
+export async function listSellableLectureProducts(
+  client: Client,
+  userId: string | null,
+): Promise<LectureProduct[]> {
+  const { data: plans, error } = await client
+    .from("subscription_plans")
+    .select(
+      "plan_id, code, name, description, price_krw, duration_days, product_kind",
+    )
+    .in("product_kind", ["course", "tpass"])
+    .eq("is_active", true)
+    .order("display_order", { ascending: true });
+  if (error) throw error;
+  const planRows = plans ?? [];
+  if (planRows.length === 0) return [];
+
+  const planIds = planRows.map((p) => p.plan_id);
+  const { data: links } = await client
+    .from("plan_courses")
+    .select("plan_id, course_id")
+    .in("plan_id", planIds);
+  const linkRows = links ?? [];
+
+  // 공개(published) 강의만 제목 해석 — 미공개 에디션은 카탈로그 노출 제외(RLS 가 이미 필터).
+  const courseIds = [...new Set(linkRows.map((l) => l.course_id))];
+  const courseTitle = new Map<string, string>();
+  if (courseIds.length > 0) {
+    const { data: courses } = await client
+      .from("courses")
+      .select("course_id, edition_label, series_id")
+      .in("course_id", courseIds);
+    const courseRows = courses ?? [];
+    const seriesIds = [...new Set(courseRows.map((c) => c.series_id))];
+    const seriesTitle = new Map<string, string>();
+    if (seriesIds.length > 0) {
+      const { data: series } = await client
+        .from("course_series")
+        .select("series_id, title")
+        .in("series_id", seriesIds);
+      for (const s of series ?? []) seriesTitle.set(s.series_id, s.title);
+    }
+    for (const c of courseRows) {
+      const base = seriesTitle.get(c.series_id) ?? "";
+      const label = c.edition_label ? ` ${c.edition_label}` : "";
+      courseTitle.set(c.course_id, `${base}${label}`.trim());
+    }
+  }
+  const coursesByPlan = new Map<string, LectureProductCourse[]>();
+  for (const l of linkRows) {
+    const title = courseTitle.get(l.course_id);
+    if (!title) continue; // 미공개 강의는 표시 제외
+    const arr = coursesByPlan.get(l.plan_id) ?? [];
+    arr.push({ courseId: l.course_id, title });
+    coursesByPlan.set(l.plan_id, arr);
+  }
+
+  // 보유 여부 — 활성·미만료 enrollment 의 plan_id.
+  const ownedPlanIds = new Set<string>();
+  if (userId) {
+    const { data: enrolls } = await client
+      .from("enrollments")
+      .select("plan_id, status, expires_at")
+      .eq("user_id", userId)
+      .eq("status", "active");
+    const now = Date.now();
+    for (const e of enrolls ?? []) {
+      if (e.expires_at && new Date(e.expires_at).getTime() <= now) continue;
+      if (e.plan_id) ownedPlanIds.add(e.plan_id);
+    }
+  }
+
+  return planRows.map((p) => ({
+    planId: p.plan_id,
+    code: p.code,
+    name: p.name,
+    description: p.description,
+    priceKrw: p.price_krw,
+    productKind: p.product_kind as "course" | "tpass",
+    durationDays: p.duration_days,
+    courses: coursesByPlan.get(p.plan_id) ?? [],
+    owned: ownedPlanIds.has(p.plan_id),
+  }));
+}

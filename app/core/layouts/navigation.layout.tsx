@@ -177,7 +177,12 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
                     className="h-6 w-auto max-w-none dark:[filter:invert(1)_hue-rotate(180deg)]"
                   />
                 </Link>
-                <PlatformSwitch />
+                {/* 강의 플랫폼 오픈 전까지 staff 에게만 노출(IA 검증). */}
+                <Suspense fallback={null}>
+                  <Await resolve={inboxPromise}>
+                    {(inbox) => (inbox.isStaff ? <PlatformSwitch /> : null)}
+                  </Await>
+                </Suspense>
               </div>
             ) : null
           }

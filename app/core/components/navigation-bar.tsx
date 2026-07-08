@@ -481,8 +481,8 @@ export function NavigationBar({
               md~lg 폭에서는 숨겨 로고만 유지. */}
         </Link>
 
-        {/* 플랫폼 스위처 — 학습 ↔ 강의. 브랜드 옆 상시 노출(두 제품 동등). */}
-        <PlatformSwitch className="shrink-0" />
+        {/* 플랫폼 스위처 — 학습 ↔ 강의. 강의 플랫폼 오픈 전까지 staff 에게만 노출(IA 검증). */}
+        {isStaff ? <PlatformSwitch className="shrink-0" /> : null}
 
         {/* 데스크톱 네비게이션 — 로고 바로 오른쪽, '운영자'까지 왼쪽 정렬 */}
         <div

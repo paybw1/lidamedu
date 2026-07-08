@@ -34,7 +34,7 @@ const schema = z.object({
   description: z.string().trim().max(500).nullable().optional(),
   priceKrw: z.coerce.number().int().min(0).max(100_000_000),
   durationDays: z.coerce.number().int().min(0).max(3650),
-  productKind: z.enum(["subject", "bundle", "membership"]),
+  productKind: z.enum(["subject", "bundle", "membership", "course", "tpass"]),
   availableFrom: z.string().datetime().nullable(),
   displayOrder: z.coerce.number().int().min(0).max(9999),
   isActive: z.boolean(),

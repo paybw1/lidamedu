@@ -258,6 +258,8 @@ function PlanForm({
             <option value="subject">개별 과목</option>
             <option value="bundle">번들</option>
             <option value="membership">회원제</option>
+            <option value="course">강의 (강의 플랫폼)</option>
+            <option value="tpass">T-PASS (강의 플랫폼)</option>
           </select>
         </FormField>
         <FormField label="가격 (원)">
