@@ -13,7 +13,6 @@ import {
   type ReactNode,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useRef,
   useState,
@@ -249,15 +248,6 @@ export function BlanksRenderProvider({
     [],
   );
 
-  // 각 idx 별 remount 시퀀스 — 자동 focus 이동 직전 next idx 의 seq 를 증가시키면
-  // React 가 DOM element 를 새로 mount 하므로, 한글 IME composer 의 잔여 buffer 가
-  // 새 input 으로 누수되는 케이스 완전 차단. 사용자가 직접 클릭/탭으로 이동할 땐
-  // remount 안 일어남.
-  const [remountSeq, setRemountSeq] = useState<Record<number, number>>({});
-  const bumpRemount = useCallback((idx: number) => {
-    setRemountSeq((prev) => ({ ...prev, [idx]: (prev[idx] ?? 0) + 1 }));
-  }, []);
-
   // 음성 인식 — 한 번에 하나의 input 만 활성화. activeVoiceIdx 가 null 이 아니면 그 input 의
   // 마이크 버튼이 active 상태로 표시된다. final transcript 가 들어오면 그 idx 의 checkAnswer 호출.
   const [activeVoiceIdx, setActiveVoiceIdx] = useState<number | null>(null);
@@ -315,37 +305,6 @@ export function BlanksRenderProvider({
     [renderOrder, states],
   );
 
-  // pending focus — remount 직후 effect 에서 처리.
-  const pendingFocusRef = useRef<number | null>(null);
-  const focusNextBlankRef = useRef<(afterIdx: number) => void>(() => {});
-  focusNextBlankRef.current = (afterIdx: number) => {
-    const nextIdx = findNextBlankIdx(afterIdx);
-    if (nextIdx == null) return;
-    // next input 의 React key 를 변경해 DOM 재마운트 (IME 잔여 차단). focus 는
-    // 다음 effect 에서 새 DOM element 에 대해 수행.
-    pendingFocusRef.current = nextIdx;
-    bumpRemount(nextIdx);
-  };
-
-  // remountSeq 변화에 반응해 pending focus 처리.
-  useEffect(() => {
-    const idx = pendingFocusRef.current;
-    if (idx == null) return;
-    const el = inputsRef.current.get(idx);
-    if (!el) return;
-    pendingFocusRef.current = null;
-    // DOM value 를 React state 와 동기화 + cursor 위치.
-    const expected = states[idx]?.input ?? "";
-    if (el.value !== expected) el.value = expected;
-    el.focus();
-    try {
-      el.setSelectionRange(expected.length, expected.length);
-    } catch {
-      /* noop */
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [remountSeq]);
-
   const updateState = useCallback(
     (idx: number, patch: Partial<BlankState>) => {
       setStates((prev) => ({
@@ -356,20 +315,9 @@ export function BlanksRenderProvider({
     [],
   );
 
-  // 정답 schedule — checkAnswer 안에서 직접 focus 이동을 schedule. useEffect 로 state 변화를
-  // 감시하던 기존 방식은 다음 두 race 에 취약했다:
-  //   (1) /api/blanks/attempt fetcher 응답 후 loader revalidate 가 일어나 effect deps 가 바뀌면
-  //       cleanup 의 clearTimeout 으로 focus 이동이 cancel 됨.
-  //   (2) 한글 IME composing 중에 정답이 commit 되면 composingRef.has(idx) 가 true 인 상태로
-  //       useEffect 가 fire 되는데, 그때 input 은 이미 disabled (state commit 후) 라 cur.blur() 가
-  //       compositionend 를 못 trigger 하는 경우가 있어 pendingFocusRef 가 stuck.
-  //
-  // 새 방식: onChange 안에서 (1) state 가 commit 되기 전에 cur.blur() 로 IME 강제 commit + focus 풀기,
-  // (2) setTimeout(0) 으로 React commit 후 다음 input focus. cur.blur() 가 호출되는 시점엔 input 이
-  // 아직 enabled 라 IME 가 정상 commit 됨.
-  // 정답 후 자동 focus 이동은 한국어 IME composer 와 충돌 (자모 분리/leak prefill).
-  // 사용자는 Tab 키 또는 클릭으로 다음 빈칸으로 직접 이동. 다음 빈칸은 highlight
-  // 만 표시 — focus 는 사용자가 결정.
+  // 정답 후 처리 — 자동 focus 이동은 한국어 IME composer 와 충돌(자모 분리·leak prefill)하므로
+  // 하지 않는다. 현재 input 의 focus 만 풀고(정답 확정 시 IME commit), 다음 빈칸은 highlight 로만
+  // 안내한다. 실제 이동은 사용자가 Tab/클릭으로 결정.
   const [hintNextIdx, setHintNextIdx] = useState<number | null>(null);
   const scheduleFocusNext = useCallback(
     (idx: number) => {
@@ -543,13 +491,11 @@ export function BlanksRenderProvider({
             Math.min(40, (h.blank.answer.length || h.blank.length) * 2 + 2),
           );
           const showRevealed = reveal && state.status !== "correct";
-          // key 에 remountSeq 포함 — seq 변경 시 React 가 새 DOM element 로 remount
-          // (한글 IME composer 잔여 차단). key++ 도 포함해서 같은 idx 가 한 텍스트
-          // 안에 여러 번 등장하는 희귀 케이스에서도 key 충돌 방지.
-          const seq = remountSeq[h.blank.idx] ?? 0;
+          // key++ 로 같은 idx 가 한 텍스트 안에 여러 번 등장하는 희귀 케이스에서도
+          // key 충돌 방지.
           out.push(
             <BlankInputInline
-              key={`b${h.blank.idx}s${seq}-${key++}`}
+              key={`b${h.blank.idx}-${key++}`}
               idx={h.blank.idx}
               answer={h.blank.answer}
               value={showRevealed ? h.blank.answer : state.input}
@@ -582,7 +528,6 @@ export function BlanksRenderProvider({
       voice.isSupported,
       activeVoiceIdx,
       toggleVoice,
-      remountSeq,
       hintNextIdx,
     ],
   );
@@ -665,21 +610,6 @@ function BlankInputInline({
           : "border-muted-foreground/40 bg-muted/30 focus:border-primary",
   );
   const filled = status === "correct" || status === "revealed";
-  // 진단용 — 첫 글자 타이핑 시 onChange 가 받는 raw value 를 console 에 기록.
-  // 사용자가 prefill 을 보고 있다면 onChange 의 v 가 어떤 모양으로 들어오는지 확인.
-  const debugOnChange = (raw: string) => {
-    if (typeof window !== "undefined" && raw.length > value.length + 2) {
-      // eslint-disable-next-line no-console
-      console.log("[blank-input] suspicious value jump", {
-        idx,
-        prev: value,
-        raw,
-        prevLen: value.length,
-        rawLen: raw.length,
-      });
-    }
-    onChange(raw, composingRef.current);
-  };
   return (
     // span 으로 inline. <form> wrap 은 <p> 안에 nested 불가(HTML 위반)라
     // 브라우저가 form 을 p 밖으로 자동 이동 → context 안 잡힘. autofill 차단은
@@ -704,7 +634,7 @@ function BlankInputInline({
         style={{ width: `${widthCh}ch` }}
         value={value}
         disabled={filled}
-        onChange={(e) => debugOnChange(e.target.value)}
+        onChange={(e) => onChange(e.target.value, composingRef.current)}
         onFocus={(e) => {
           if (e.currentTarget.value !== value) {
             e.currentTarget.value = value;
