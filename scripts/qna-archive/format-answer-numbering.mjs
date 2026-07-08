@@ -43,23 +43,26 @@ const t2 = "대법원 2015. 10. 15. 선고 2014다216522 판결 참조. 2. 다�
 console.log("[test1]", JSON.stringify(breakNumbering(t1)));
 console.log("[test2]", JSON.stringify(breakNumbering(t2)));
 
-// 아카이브 답변 전량
+// 아카이브 질문·답변 전량 (질문도 요지 넘버링 줄바꿈 — 원장 지시 2026-07-07)
 const rows = [];
 for (let from = 0; ; from += 1000) {
   const { data, error } = await sb
     .from("qna_threads")
-    .select("thread_id, answer_md")
+    .select("thread_id, question_md, answer_md")
     .eq("archive_source", "cafe-archive")
-    .not("answer_md", "is", null)
     .range(from, from + 999);
   if (error) throw error;
   rows.push(...data);
   if (data.length < 1000) break;
 }
 const changed = rows
-  .map((r) => ({ ...r, next: breakNumbering(r.answer_md) }))
-  .filter((r) => r.next !== r.answer_md);
-console.log(`스레드 답변: ${rows.length}건 중 변경 ${changed.length}건`);
+  .map((r) => ({
+    ...r,
+    nextQ: breakNumbering(r.question_md),
+    next: r.answer_md ? breakNumbering(r.answer_md) : r.answer_md,
+  }))
+  .filter((r) => r.next !== r.answer_md || r.nextQ !== r.question_md);
+console.log(`스레드: ${rows.length}건 중 변경 ${changed.length}건`);
 
 // 재답변(instructor 메시지)
 const { data: msgs, error: me } = await sb
@@ -83,7 +86,10 @@ if (!APPLY) {
 }
 let n = 0;
 for (const r of changed) {
-  const { error } = await sb.from("qna_threads").update({ answer_md: r.next }).eq("thread_id", r.thread_id);
+  const { error } = await sb
+    .from("qna_threads")
+    .update({ answer_md: r.next, question_md: r.nextQ })
+    .eq("thread_id", r.thread_id);
   if (error) throw error;
   if (++n % 500 === 0) console.log(`  ${n}/${changed.length}`);
 }
