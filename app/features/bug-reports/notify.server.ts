@@ -7,6 +7,7 @@ import { getDutyRecipientIds } from "~/features/admin/lib/duties.server";
 import { createUserNotifications } from "~/features/notifications/queries.server";
 
 const MAX_BODY = 200;
+const MAX_NOTE = 500;
 
 interface NewBugReportPayload {
   reportId: string;
@@ -49,17 +50,23 @@ export async function notifyStaffNewBugReport(
   });
 }
 
-/** 오류신고 완료 처리 → 신고자 인박스 알림. best-effort(runAfterResponse 로 감쌈). */
+/** 오류신고 완료 처리 → 신고자 인박스 알림. best-effort(runAfterResponse 로 감쌈).
+ *  note: 관리자가 필요 시 함께 전하는 쪽지(선택). 있으면 본문 앞머리에 배치
+ *  (인박스 목록은 2줄로 잘리므로 쪽지를 먼저 노출). */
 export async function notifyReporterBugResolved(payload: {
   reportId: string;
   reporterId: string;
   url: string;
   message: string;
+  note?: string;
 }): Promise<void> {
-  const body =
+  const excerpt =
     payload.message.length > MAX_BODY
       ? payload.message.slice(0, MAX_BODY) + "…"
       : payload.message;
+  const note = payload.note?.trim().slice(0, MAX_NOTE);
+  // 쪽지가 있으면 관리자 메시지가 본문의 핵심 — 앞에 두고, 원 신고 내용은 뒤에 참고로.
+  const body = note ? `${note}\n\n(신고 내용: ${excerpt})` : `신고 내용: ${excerpt}`;
   // 신고 url 은 보통 절대 URL(window.location.href) — 앱 내 경로로 변환해
   // 신고했던 화면으로 돌아가 확인할 수 있게 한다.
   let href = "/me/inbox";
@@ -75,8 +82,8 @@ export async function notifyReporterBugResolved(payload: {
     entityType: "bug_report",
     entityId: payload.reportId,
     title: "신고하신 오류가 처리되었습니다",
-    body: `신고 내용: ${body}`,
+    body,
     href,
-    payload: { url: payload.url },
+    payload: { url: payload.url, note: note ?? null },
   });
 }

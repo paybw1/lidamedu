@@ -1,7 +1,17 @@
+import { useState } from "react";
 import { data, redirect, useFetcher } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "~/core/components/ui/dialog";
+import { Textarea } from "~/core/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -57,6 +67,7 @@ export async function action({ request }: Route.ActionArgs) {
   const fd = await request.formData();
   const reportId = String(fd.get("reportId") ?? "");
   const status = String(fd.get("status") ?? "");
+  const note = String(fd.get("note") ?? "").trim();
   if (
     !reportId ||
     !BUG_REPORT_STATUSES.includes(status as BugReportStatus)
@@ -78,6 +89,7 @@ export async function action({ request }: Route.ActionArgs) {
         reporterId: prev.reporterId,
         url: prev.url,
         message: prev.message,
+        note: note || undefined,
       }),
     );
   }
@@ -121,12 +133,33 @@ export default function AdminBugReports({ loaderData }: Route.ComponentProps) {
 
 function BugRow({ report }: { report: BugReportRow }) {
   const fetcher = useFetcher();
-  function setStatus(status: BugReportStatus) {
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [note, setNote] = useState("");
+  const submitting = fetcher.state !== "idle";
+
+  function setStatus(status: BugReportStatus, noteText?: string) {
     const fd = new FormData();
     fd.set("reportId", report.reportId);
     fd.set("status", status);
+    if (noteText) fd.set("note", noteText);
     fetcher.submit(fd, { method: "post" });
   }
+
+  function onStatusClick(s: BugReportStatus) {
+    // 완료로 "전환"될 때만 신고자에게 알림이 나가므로, 이때만 쪽지 입력을 연다.
+    if (s === "done" && report.status !== "done") {
+      setNote("");
+      setNoteOpen(true);
+      return;
+    }
+    setStatus(s);
+  }
+
+  function confirmDone() {
+    setNoteOpen(false);
+    setStatus("done", note.trim() || undefined);
+  }
+
   return (
     <TableRow>
       <TableCell>
@@ -159,13 +192,48 @@ function BugRow({ report }: { report: BugReportRow }) {
               type="button"
               size="sm"
               variant={report.status === s ? "default" : "outline"}
-              onClick={() => setStatus(s)}
+              onClick={() => onStatusClick(s)}
+              disabled={submitting}
               className="h-7 px-2 text-xs"
             >
               {STATUS_LABEL[s]}
             </Button>
           ))}
         </div>
+        <Dialog open={noteOpen} onOpenChange={setNoteOpen}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>완료 처리 및 신고자 알림</DialogTitle>
+              <DialogDescription>
+                신고자에게 처리 완료 알림이 전송됩니다. 필요하면 함께 전할 쪽지를
+                남겨 주세요(선택).
+              </DialogDescription>
+            </DialogHeader>
+            <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground whitespace-pre-wrap">
+              {report.message}
+            </div>
+            <Textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              maxLength={500}
+              rows={4}
+              placeholder="예) 말씀하신 화면 오류를 수정해 반영했습니다. 확인 부탁드립니다."
+              className="resize-none"
+            />
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setNoteOpen(false)}
+              >
+                취소
+              </Button>
+              <Button type="button" onClick={confirmDone} disabled={submitting}>
+                {note.trim() ? "쪽지와 함께 완료 알림" : "완료 알림 보내기"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </TableCell>
     </TableRow>
   );
