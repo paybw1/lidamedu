@@ -626,6 +626,20 @@
 
 ---
 
+## 5.11 강의 LMS·커머스 (lidamedu 이전) — feat-11
+
+영상 강의(DRM)·도서몰·주문·배수 회계. 설계 SSOT: `docs/features/lidamedu-이전-M1-설계.md` (M1 승인 2026-07-08, 단서 3 포함). 요구사항 원문: `docs/features/lidamedu-이전-요구사항-원문.md`.
+
+| ID | 기능 | 우선순위 | 상태 |
+|----|------|:-------:|:---:|
+| feat-11-001 | **M2 시청 골격 — 테이블 배치.** course_series/courses(에디션)/course_lessons/lesson_videos(교체 이력)/lesson_materials/lesson_node_links + subscription_plans 확장(product_kind course·tpass, sale_status)+plan_courses+plan_policies + enrollments(+pauses·admin_logs). DDL dry-run → 승인 → 적용. | P1 | 🟡 |
+| feat-11-002 | **M2 시청 골격 — staff 등록 화면 + 수동 지급 + 재생 판정.** 시리즈→에디션→회차→영상 등록(순서·미리보기·공개·메모), 에디션 발행 시 T-PASS 연결 제안(★단서), 수강권 수동 지급, 재생 판정 action+playback_grants(판정 스킵 플래그 — ★M4 결제 오픈 전 ON 체크리스트). [벤더] DRM 임베드는 벤더 확정 후. | P1 | 🔲 |
+| feat-11-003 | **M3 기록·배수·기기.** watch_events/watch_positions/watch_ledger(append-only)+하트비트, 진도·완강·이어보기, 배수 회계(차감·예외·credit/reset·조정), user_devices/reset_logs, enrollment_pauses, 학습현황 연계 1차. ★watch_events 영구 보존 법적 근거=처리방침 반영(정식 판매 전 법무 항목). | P1 | 🔲 |
+| feat-11-004 | **M4 결제·커머스.** orders/order_items+토스 연결·자동 지급/회수·부분환불, bank_transfers(무통장), 도서몰(books/재고 원장/plan_book_links/shipments), user_coupons, CS(cs_actions·playback_issues), 통계 파생 뷰, 정산 order_item 확장, access duty 4종. | P1 | 🔲 |
+| feat-11-005 | **M5 이관.** lidamedu 구매자 수강권 이관(enrollments source=migration 벌크, dry-run→승인)·병행 운영. | P2 | 🔲 |
+
+---
+
 ## 6. 마일스톤
 
 ### M1 — Foundation ✅
