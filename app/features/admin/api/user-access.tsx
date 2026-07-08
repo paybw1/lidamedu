@@ -1,4 +1,4 @@
-// 서비스 접근 승인/해제 API — admin 전용 (instructor 도 막음).
+// 서비스 접근 승인/해제 API — admin + '수강생 관리 접근' duty 배정 스태프.
 // access_approved_at 은 profiles 가드 트리거로 service_role 만 변경 가능하므로
 // 반드시 adminClient(setUserAccessApproval) 경유.
 
@@ -6,6 +6,7 @@ import { data } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { hasDutyAccess } from "~/features/admin/lib/duties.server";
 import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { setUserAccessApproval } from "~/features/admin/queries/users.server";
@@ -27,7 +28,8 @@ export async function action({ request }: Route.ActionArgs) {
   } = await client.auth.getUser();
   if (!user) return data({ error: "Unauthorized" }, { status: 401 });
   const role = await getStaffRole(client, user.id);
-  if (role !== "admin") return data({ error: "Forbidden — admin only" }, { status: 403 });
+  const canAccess = await hasDutyAccess("student_admin_access", user.id, role);
+  if (!canAccess) return data({ error: "Forbidden" }, { status: 403 });
 
   const fd = await request.formData();
   const parsed = schema.safeParse({

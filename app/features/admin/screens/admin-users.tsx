@@ -32,6 +32,7 @@ import {
   TD,
   TR,
 } from "~/features/admin/components/admin-ui";
+import { hasDutyAccess } from "~/features/admin/lib/duties.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { ROLE_LABEL, isStaffRole } from "~/core/lib/roles";
 import {
@@ -68,7 +69,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   } = await client.auth.getUser();
   if (!user) throw data("Unauthorized", { status: 401 });
   const role = await getStaffRole(client, user.id);
-  if (role !== "admin") throw data("Forbidden — admin only", { status: 403 });
+  // admin 항상 + 관리자 관리에서 '수강생 관리 접근'이 배정된 스태프.
+  const canAccess = await hasDutyAccess("student_admin_access", user.id, role);
+  if (!canAccess) throw data("Forbidden", { status: 403 });
 
   const url = new URL(request.url);
   const roleRaw = url.searchParams.get("role");
@@ -89,11 +92,17 @@ export async function loader({ request }: Route.LoaderArgs) {
     pageSize: filters.pageSize,
   });
 
-  return { ...usersPage, filters, currentUserId: user.id, role };
+  return {
+    ...usersPage,
+    filters,
+    currentUserId: user.id,
+    role,
+    isAdmin: role === "admin",
+  };
 }
 
 export default function AdminUsers({ loaderData }: Route.ComponentProps) {
-  const { items, total, filters, currentUserId, role } = loaderData;
+  const { items, total, filters, currentUserId, role, isAdmin } = loaderData;
   const totalPages = Math.max(1, Math.ceil(total / filters.pageSize));
   const filterActive = !!filters.role || filters.q !== "";
 
@@ -115,7 +124,7 @@ export default function AdminUsers({ loaderData }: Route.ComponentProps) {
       cluster="students"
       role={role}
       title="사용자 관리"
-      desc={`가입한 사용자 ${total}명을 검색·필터하고 역할을 변경합니다. (원장 전용)`}
+      desc={`가입한 사용자 ${total}명을 검색·필터하고 이용 승인을 관리합니다.${isAdmin ? " 역할 변경은 원장 전용." : ""}`}
       headerRight={
         <div className="flex items-center gap-2">
           <Chip tone="solid">
@@ -215,6 +224,7 @@ export default function AdminUsers({ loaderData }: Route.ComponentProps) {
               key={u.profileId}
               user={u}
               isCurrentUser={u.profileId === currentUserId}
+              isAdmin={isAdmin}
             />
           ))}
         </IndexTable>
@@ -226,9 +236,11 @@ export default function AdminUsers({ loaderData }: Route.ComponentProps) {
 function UserRow({
   user,
   isCurrentUser,
+  isAdmin,
 }: {
   user: AdminUserRow;
   isCurrentUser: boolean;
+  isAdmin: boolean;
 }) {
   const fetcher = useFetcher<{ ok?: true; error?: string }>();
   const navigate = useNavigate();
@@ -337,6 +349,8 @@ function UserRow({
       <TD>
         <div className="flex flex-col gap-1">
           <AccessApprovalCell user={user} />
+          {/* 역할 변경은 원장 전용 — 접근 duty 로 들어온 스태프에겐 숨김 */}
+          {isAdmin ? (
           <fetcher.Form method="post" action="/api/admin/user-role">
             <input type="hidden" name="profileId" value={user.profileId} />
             {/* 역할 변경은 위험 동작 — 코랄 계열 select + confirm */}
@@ -370,6 +384,7 @@ function UserRow({
               <p className="text-rose-600 mt-0.5 text-[10px]">{err}</p>
             ) : null}
           </fetcher.Form>
+          ) : null}
         </div>
       </TD>
     </TR>

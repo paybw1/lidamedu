@@ -8,6 +8,7 @@ export const STAFF_DUTIES = [
   "review_request",
   "ai_usage_alert",
   "lecture_abuse_alert",
+  "student_admin_access",
 ] as const;
 
 export type StaffDuty = (typeof STAFF_DUTIES)[number];
@@ -17,7 +18,12 @@ export type StaffRole = "instructor" | "manager" | "admin";
 export interface DutyMeta {
   label: string;
   desc: string;
-  /** 배정 0명일 때 폴백 수신 역할 — 기존 broadcast 동작과 동일하게 유지. */
+  /**
+   * notify = 알림 라우팅(배정 0명 → fallbackRoles 전체 발송).
+   * access = 화면 접근 권한(배정 스태프 + admin 만, 배정 0명 → admin 전용).
+   */
+  kind: "notify" | "access";
+  /** notify: 배정 0명일 때 폴백 수신 역할 — 기존 broadcast 동작과 동일하게 유지. */
   fallbackRoles: StaffRole[];
 }
 
@@ -25,31 +31,43 @@ export const DUTY_META: Record<StaffDuty, DutyMeta> = {
   upgrade_request: {
     label: "종합반 등업신청",
     desc: "학생이 pricing 에서 종합반 등업을 신청하면 접수 알림.",
+    kind: "notify",
     fallbackRoles: ["admin", "manager"],
   },
   bug_report: {
     label: "오류신고",
     desc: "학생·스태프가 화면에서 오류를 신고하면 접수 알림.",
+    kind: "notify",
     fallbackRoles: ["instructor", "manager", "admin"],
   },
   qna_question: {
     label: "Q&A 신규 질문",
     desc: "학생이 질문을 올리면 인박스·이메일·알림톡 발송. 과목별 답변자 지정이 있으면 그쪽이 우선.",
+    kind: "notify",
     fallbackRoles: ["instructor", "manager", "admin"],
   },
   review_request: {
     label: "주관식 첨삭 요청",
     desc: "학생이 주관식 첨삭을 요청하면 인박스·이메일·알림톡 발송.",
+    kind: "notify",
     fallbackRoles: ["instructor", "manager", "admin"],
   },
   ai_usage_alert: {
     label: "AI/OCR 한도 경보",
     desc: "GS AI 채점·OCR 일일 비용 한도 도달 시 경보.",
+    kind: "notify",
     fallbackRoles: ["instructor", "manager", "admin"],
   },
   lecture_abuse_alert: {
     label: "강의노트 이상 열람 경보",
     desc: "단시간 대량 열람(유출 시도 의심) 감지 경보.",
+    kind: "notify",
     fallbackRoles: ["manager", "admin"],
+  },
+  student_admin_access: {
+    label: "수강생 관리 접근",
+    desc: "수강생 관리(/admin/users) 화면 열람과 이용 승인/해제 권한. 원장은 항상 가능하고, 역할 변경은 원장 전용으로 유지됩니다.",
+    kind: "access",
+    fallbackRoles: ["admin"],
   },
 };

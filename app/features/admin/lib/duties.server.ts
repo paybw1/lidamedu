@@ -36,10 +36,35 @@ export async function getDutyRecipientIds(duty: StaffDuty): Promise<string[]> {
   return staff.map((s) => s.profile_id);
 }
 
+/**
+ * 접근형(access) duty 판정 — admin 은 항상 true, 그 외 스태프는 배정된 경우만.
+ * (notify 와 달리 배정 0명 폴백 없음 = admin 전용.)
+ */
+export async function hasDutyAccess(
+  duty: StaffDuty,
+  profileId: string,
+  role: string | null,
+): Promise<boolean> {
+  if (role === "admin") return true;
+  if (!role) return false;
+  const { data, error } = await adminClient
+    .from("staff_duty_assignments")
+    .select("profile_id")
+    .eq("duty", duty)
+    .eq("profile_id", profileId)
+    .maybeSingle();
+  if (error) {
+    console.error("[duties] access lookup failed:", error.message);
+    return false;
+  }
+  return !!data;
+}
+
 export interface DutyAssignmentView {
   duty: StaffDuty;
   label: string;
   desc: string;
+  kind: "notify" | "access";
   assignedIds: string[];
 }
 
@@ -59,6 +84,7 @@ export async function listDutyAssignments(): Promise<DutyAssignmentView[]> {
     duty,
     label: DUTY_META[duty].label,
     desc: DUTY_META[duty].desc,
+    kind: DUTY_META[duty].kind,
     assignedIds: byDuty.get(duty) ?? [],
   }));
 }

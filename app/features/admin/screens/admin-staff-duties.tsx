@@ -81,7 +81,7 @@ export default function AdminStaffDuties({ loaderData }: Route.ComponentProps) {
       cluster="students"
       role="admin"
       title="관리자 관리"
-      desc="운영 업무별 알림 담당자를 지정합니다. 담당자가 지정된 업무는 그 담당자에게만 인박스·이메일·알림톡이 발송되고, 지정이 없으면 해당 역할 전체에게 발송됩니다."
+      desc="운영 업무별 알림 담당자와 화면 접근 권한을 지정합니다. 알림 업무는 담당자에게만 발송(미지정 시 역할 전체 발송)되고, 접근 권한은 지정된 스태프와 원장만 해당 화면을 열 수 있습니다."
     >
       <div className="grid gap-4 lg:grid-cols-2">
         {duties.map((d) => (
@@ -106,6 +106,7 @@ function DutyCard({
     duty: StaffDuty;
     label: string;
     desc: string;
+    kind: "notify" | "access";
     assignedIds: string[];
   };
   staff: StaffOption[];
@@ -134,9 +135,14 @@ function DutyCard({
           <h3 className="text-sm font-bold">{duty.label}</h3>
         </div>
         {duty.assignedIds.length === 0 ? (
-          <Chip tone="amber">전체 발송 중</Chip>
+          <Chip tone="amber">
+            {duty.kind === "access" ? "원장 전용" : "전체 발송 중"}
+          </Chip>
         ) : (
-          <Chip tone="blue">담당 {duty.assignedIds.length}명</Chip>
+          <Chip tone="blue">
+            {duty.kind === "access" ? "접근" : "담당"} {duty.assignedIds.length}
+            명
+          </Chip>
         )}
       </div>
       <p className="text-muted-foreground mb-3 text-[12px]">{duty.desc}</p>
@@ -162,7 +168,9 @@ function DutyCard({
       </div>
       <div className="flex items-center justify-between">
         <p className="text-muted-foreground text-[11px]">
-          체크 0명으로 저장하면 전체 발송으로 돌아갑니다.
+          {duty.kind === "access"
+            ? "체크 0명으로 저장하면 원장만 접근할 수 있습니다."
+            : "체크 0명으로 저장하면 전체 발송으로 돌아갑니다."}
         </p>
         <Button type="submit" size="sm" className="h-8" disabled={saving}>
           <CheckIcon className="size-3.5" /> 저장
