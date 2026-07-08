@@ -1107,6 +1107,64 @@ export type Database = {
           },
         ]
       }
+      bank_transfers: {
+        Row: {
+          confirmed_by: string | null
+          created_at: string
+          deposited_at: string | null
+          depositor_name: string
+          expected_amount_krw: number
+          expires_at: string
+          memo: string | null
+          order_id: string
+          transfer_id: string
+        }
+        Insert: {
+          confirmed_by?: string | null
+          created_at?: string
+          deposited_at?: string | null
+          depositor_name: string
+          expected_amount_krw: number
+          expires_at: string
+          memo?: string | null
+          order_id: string
+          transfer_id?: string
+        }
+        Update: {
+          confirmed_by?: string | null
+          created_at?: string
+          deposited_at?: string | null
+          depositor_name?: string
+          expected_amount_krw?: number
+          expires_at?: string
+          memo?: string | null
+          order_id?: string
+          transfer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_transfers_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "bank_transfers_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "bank_transfers_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["order_id"]
+          },
+        ]
+      }
       billing_keys: {
         Row: {
           billing_key: string

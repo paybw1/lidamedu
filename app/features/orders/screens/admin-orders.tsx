@@ -12,6 +12,10 @@ import adminClient from "~/core/lib/supa-admin-client.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Chip, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
 import { getStaffRole } from "~/features/laws/queries.server";
+import {
+  confirmBankTransfer,
+  expireOverdueBankTransfers,
+} from "~/features/orders/bank-transfer.server";
 import { refundOrderItem } from "~/features/orders/orders.server";
 
 import type { Route } from "./+types/admin-orders";
@@ -57,6 +61,35 @@ export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const q = (url.searchParams.get("q") ?? "").trim().slice(0, 60);
   const status = url.searchParams.get("status") ?? "";
+
+  // 4b — 기한 초과 무통장 lazy 만료(cron 이중 안전망).
+  await expireOverdueBankTransfers();
+
+  // 입금 대기 무통장 목록
+  const { data: pendingTransfers } = await adminClient
+    .from("bank_transfers")
+    .select(
+      "transfer_id, order_id, depositor_name, expected_amount_krw, expires_at, order:orders!bank_transfers_order_id_fkey(status, user_id, user:profiles!orders_user_id_fkey(name, member_no))",
+    )
+    .is("deposited_at", null)
+    .order("created_at", { ascending: true });
+  const transfers = (pendingTransfers ?? [])
+    .filter((t) => (t.order as { status: string } | null)?.status === "pending_deposit")
+    .map((t) => {
+      const order = t.order as {
+        status: string;
+        user: { name: string | null; member_no: number | null } | null;
+      } | null;
+      return {
+        transferId: t.transfer_id,
+        orderNo: t.order_id.slice(0, 8),
+        depositorName: t.depositor_name,
+        expectedKrw: t.expected_amount_krw,
+        expiresAt: t.expires_at,
+        userName: order?.user?.name ?? "(이름 없음)",
+        memberNo: order?.user?.member_no ?? null,
+      };
+    });
 
   let oq = adminClient
     .from("orders")
@@ -124,12 +157,23 @@ export async function loader({ request }: Route.LoaderArgs) {
         r.items.some((i) => i.label.includes(q)),
     );
   }
-  return { rows, q, status, role };
+  return { rows, transfers, q, status, role };
 }
 
 export async function action({ request }: Route.ActionArgs) {
   const { user } = await requireManager(request);
   const fd = await request.formData();
+  const intent = fd.get("intent");
+
+  if (intent === "confirm_transfer") {
+    const transferId = String(fd.get("transferId") ?? "");
+    const memo = String(fd.get("memo") ?? "").trim() || null;
+    if (!transferId) return data({ error: "잘못된 요청" }, { status: 400 });
+    const result = await confirmBankTransfer({ transferId, actorId: user.id, memo });
+    if (!result.ok) return data({ error: result.error }, { status: 400 });
+    return data({ ok: true as const, confirmed: true });
+  }
+
   const orderItemId = String(fd.get("orderItemId") ?? "");
   const reason = String(fd.get("reason") ?? "").trim();
   if (!orderItemId || !reason) return data({ error: "환불 사유를 입력해 주세요." }, { status: 400 });
@@ -139,7 +183,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function AdminOrders({ loaderData }: Route.ComponentProps) {
-  const { rows, q, status, role } = loaderData;
+  const { rows, transfers, q, status, role } = loaderData;
   return (
     <AdminShell
       cluster="sales"
@@ -152,6 +196,20 @@ export default function AdminOrders({ loaderData }: Route.ComponentProps) {
         </Chip>
       }
     >
+      {/* 4b — 무통장 입금 대기 (수동 승인) */}
+      {transfers.length > 0 ? (
+        <section className="border-amber-500/40 bg-amber-500/5 mb-4 rounded-xl border p-3">
+          <h3 className="mb-2 text-[13px] font-bold">
+            무통장 입금 대기 {transfers.length}건 — 입금 확인 시 즉시 지급됩니다
+          </h3>
+          <ul className="space-y-1.5">
+            {transfers.map((t) => (
+              <BankTransferRow key={t.transferId} transfer={t} />
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       <Form method="get" className="mb-3 flex flex-wrap items-center gap-2">
         <input
           type="search"
@@ -196,6 +254,65 @@ export default function AdminOrders({ loaderData }: Route.ComponentProps) {
         </IndexTable>
       )}
     </AdminShell>
+  );
+}
+
+function BankTransferRow({
+  transfer,
+}: {
+  transfer: {
+    transferId: string;
+    orderNo: string;
+    depositorName: string;
+    expectedKrw: number;
+    expiresAt: string;
+    userName: string;
+    memberNo: number | null;
+  };
+}) {
+  const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  useEffect(() => {
+    if (fetcher.state !== "idle" || !fetcher.data) return;
+    if (fetcher.data.error) toast.error(fetcher.data.error);
+    else if (fetcher.data.ok) toast.success("입금 확인 — 주문을 지급 처리했습니다.");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetcher.state, fetcher.data]);
+  const confirmDeposit = () => {
+    if (
+      !confirm(
+        `입금자 '${transfer.depositorName}' — ₩${transfer.expectedKrw.toLocaleString("ko-KR")} 입금을 확인했습니까? 확인 즉시 수강권이 지급됩니다.`,
+      )
+    )
+      return;
+    const fd = new FormData();
+    fd.set("intent", "confirm_transfer");
+    fd.set("transferId", transfer.transferId);
+    fetcher.submit(fd, { method: "post" });
+  };
+  return (
+    <li className="bg-card border-border/60 flex flex-wrap items-center gap-2.5 rounded-lg border px-3 py-2 text-[12px]">
+      <span className="font-mono text-muted-foreground">{transfer.orderNo}</span>
+      <span className="font-semibold">{transfer.userName}</span>
+      {transfer.memberNo != null ? (
+        <span className="text-muted-foreground tabular-nums">No.{transfer.memberNo}</span>
+      ) : null}
+      <span>
+        입금자명 <strong>{transfer.depositorName}</strong>
+      </span>
+      <span className="tabular-nums">₩{transfer.expectedKrw.toLocaleString("ko-KR")}</span>
+      <span className="text-muted-foreground tabular-nums">
+        기한 {new Date(transfer.expiresAt).toLocaleString("ko-KR")}
+      </span>
+      <Button
+        type="button"
+        size="sm"
+        className="ml-auto h-7 text-[12px]"
+        onClick={confirmDeposit}
+        disabled={fetcher.state !== "idle"}
+      >
+        입금 확인 → 지급
+      </Button>
+    </li>
   );
 }
 

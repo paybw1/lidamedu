@@ -324,7 +324,8 @@ export async function upsertPaidSubscription(
     planId: string;
     subjectCode: string | null;
     durationDays: number;
-    paymentId: string;
+    /** 무통장(4b) 지급은 payments 트랜잭션이 없어 null. */
+    paymentId: string | null;
     autoRenew?: boolean;
   },
 ): Promise<{ subscription: UserSubscription } | { error: string }> {
