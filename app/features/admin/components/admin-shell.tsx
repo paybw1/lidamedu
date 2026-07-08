@@ -7,6 +7,7 @@ import {
   BellIcon,
   BotIcon,
   ChevronDownIcon,
+  ClapperboardIcon,
   GavelIcon,
   GraduationCapIcon,
   KeyRoundIcon,
@@ -34,6 +35,7 @@ export type AdminClusterId =
   | "problems"
   | "blanks"
   | "relations"
+  | "lms"
   | "students"
   | "sales"
   | "cohorts"
@@ -147,6 +149,17 @@ export const ADMIN_NAV: NavCluster[] = [
     screens: [
       { label: "연결 누락 점검", to: "/admin/relations/gaps" },
       { label: "연결 일괄 등록", to: "/admin/relations/bulk" },
+    ],
+  },
+  {
+    // feat-11 — 영상 강의 LMS (시리즈·에디션·회차·영상·수강권).
+    id: "lms",
+    section: "content",
+    label: "강의 영상",
+    Icon: ClapperboardIcon,
+    screens: [
+      { label: "강의 시리즈·에디션", to: "/admin/lms/courses" },
+      { label: "영상 수강권", to: "/admin/lms/enrollments" },
     ],
   },
   {

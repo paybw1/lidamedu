@@ -1110,3 +1110,24 @@ create table public.popup_notices (
 - **offline_test_results**: (test_id,user_id) unique, status('taken'|'absent'), score/max_score, wrong_ords int[](입력 당시 오답 ord 스냅샷 — 표시용), session_id(신호 합류로 만든 학생 명의 quiz_session, set null), taken_at date, entered_by.
 - **RLS**: 3테이블 staff(`private.is_staff`) 전체 CRUD. results 는 학생 본인 select 추가(과제 상세 결과 카드).
 - **문항별 정오의 원본은 이 테이블이 아니라** 학생별 quiz_session(scope_payload.source='offline_test') + user_problem_attempts/user_blank_attempts — 온라인 학습 신호와 통합 분석을 위해 backbone 에 합류시킨다. 상세: docs/features/feat-7-042-offline-test.md.
+
+## LMS 시청 골격 (feat-11-001, M2)  ✅ 적용됨 (2026-07-08)
+
+영상 강의 LMS 1단계 — 설계 SSOT: `docs/features/lidamedu-이전-M1-설계.md`. 기존 `lecture_*`(강의노트 PDF 도메인)와 별개 — 신규는 `course_/lesson_/enrollment_` 접두어.
+
+- **course_series**: 시리즈(에디션 무관 정체성). title, subject_code, instructor_id(대표 강사).
+- **courses**: 에디션(연도판). series_id FK, edition_label/year, **is_current(시리즈당 1개 partial unique — 신판 기본 노출)**, status('draft'|'published'|'archived'), soft-delete. 전면 재촬영=새 에디션(구판 수강권·이력 보존), 소규모 수정=lesson_videos 교체.
+- **course_lessons**: 회차. unique(course_id, lesson_no), sort_order(노출 순서 분리), instructor_id(회차별, null=대표), **is_preview**(맛보기 — 배수 차감 예외 근거), is_published(기본 false).
+- **lesson_staff_memos**: 운영 메모 — **별도 테이블+staff 전용 RLS**(published 행이 공개 SELECT 라 같은 행 컬럼은 anon 이 읽을 수 있음 → 구조로 방어. 원장 단서 2026-07-08).
+- **lesson_videos**: 영상 슬롯+교체 이력(append-only). drm_provider/drm_video_id(불투명, **staff 만 SELECT** — 학생은 playback_grants 경유), duration_seconds(배수 모수), **is_active(회차당 1개 partial unique)** — 교체=기존 false+새 행.
+- **lesson_materials**: 회차 자료 PDF(storage_path, 열람은 서버 판정 후 signed URL).
+- **lesson_node_links**: 회차↔체계도 노드 다대다(약점 단원→재수강 루프. M2엔 테이블만).
+- **subscription_plans 확장**: product_kind CHECK += 'course'|'tpass'('book'은 예약), **sale_status**('scheduled'|'on_sale'|'paused'|'closed'|'hidden') — 백필: is_active=true→on_sale(6), false→hidden(3).
+- **plan_courses**: 상품↔강의(단과 1행/패키지 N행/T-PASS 명시 연결 — 에디션 발행 시 연결 제안 필수).
+- **plan_policies**: 상품 정책 1:1 명시 컬럼 — duration_days XOR fixed_end_date(CHECK 둘 중 하나), multiplier(null=무제한), pause_*(허용·총일수·횟수·1회 min/max), allow_pc/mobile/download, max_devices_pc/mobile, extension_allowed/extension_plan_ids.
+- **enrollments**: 영상 수강권(user_subscriptions 와 별개 축 — course 단위). course_id(에디션 고정), plan_id(정책 참조), source('order'|'manual'|'migration'|'event'), order_item_id(M4 FK 승격 예정), granted_by/admin_note, starts_at/expires_at(저장 — 연장·정지로 변동), **multiplier_snapshot + base_duration_snapshot_seconds(지급 시점 고정 — ★자동 재계산 금지, 조정은 adjust 이벤트로)**, status('active'|'paused'|'expired'|'revoked'), blocked_lesson_ids uuid[](회차 재생 차단).
+- **enrollment_pauses**: 일시정지 이력(신청자·기간·is_admin_exception). 잔여 일수/횟수=정책−이력 합(파생).
+- **enrollment_admin_logs**: 지급·연장·회수·차단·모수조정 감사(before/after jsonb, reason 필수).
+- **playback_grants**: 재생 판정 스냅+단기 토큰(수 분). user_id null=비로그인 맛보기, enrollment_id null=맛보기·무료(배수 미차감), device_id(M3 FK 승격 예정). 클라엔 grant_id 만 — drm_video_id 비노출.
+- **RLS**: 카탈로그(series/courses/lessons/materials/links/plan_*)=published 공개+staff 전량, lesson_videos·staff_memos=staff 전용, enrollments/pauses=본인+staff SELECT(쓰기 정책 없음 — 서버 adminClient 전용), grants=본인+staff SELECT(발급 서버만).
+- M3 예정: watch_events/watch_positions/watch_ledger, user_devices. M4 예정: orders/order_items, bank_transfers, books/shipments, user_coupons.

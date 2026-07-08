@@ -262,15 +262,18 @@ export function TD({
   mono,
   soft,
   className,
+  colSpan,
 }: {
   children: ReactNode;
   align?: "left" | "right" | "center";
   mono?: boolean;
   soft?: boolean;
   className?: string;
+  colSpan?: number;
 }) {
   return (
     <td
+      colSpan={colSpan}
       className={cn(
         "px-3 py-2.5 align-middle text-[13px] tabular-nums",
         align === "right"

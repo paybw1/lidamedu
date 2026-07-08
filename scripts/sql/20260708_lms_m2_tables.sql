@@ -1,6 +1,6 @@
 -- feat-11-001 — M2 시청 골격 테이블 배치 (설계: docs/features/lidamedu-이전-M1-설계.md §3.1~3.5)
--- ★★★ DRY-RUN 초안 — 원장 승인 전 적용 금지 ★★★
--- 적용 명령(승인 후): node scripts/run-prod-sql.mjs scripts/sql/20260708_lms_m2_tables.sql → npm run db:typegen
+-- 원장 승인 2026-07-08 (단서: staff_memo 별도 테이블 분리, is_active=false→hidden 백필 명시)
+-- 적용: node scripts/run-prod-sql.mjs scripts/sql/20260708_lms_m2_tables.sql → npm run db:typegen
 -- 범위: 영상·회차·에디션 / plans 확장 / 수강권(enrollments). watch_*(M3)·orders(M4)는 이 파일에 없음.
 -- 네이밍: 기존 lecture_* = 강의노트(PDF) 도메인 — 신규는 course_/lesson_ 접두어로 격리.
 
@@ -42,11 +42,19 @@ create table public.course_lessons (
   instructor_id uuid references public.profiles (profile_id) on delete set null, -- null=시리즈 대표 강사
   is_preview boolean not null default false,   -- 미리보기(맛보기) — 배수 차감 예외 근거
   is_published boolean not null default false, -- 안전 기본값: 비공개
-  staff_memo text,                          -- 운영 메모 — 학생 비노출(아래 RLS: 공개 노출은 뷰로)
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz,
   unique (course_id, lesson_no)
+);
+
+-- 운영 메모(★★) — 별도 테이블 + staff 전용 RLS (승인 단서 1: published 행이 공개 SELECT 라
+-- 같은 행의 컬럼은 anon 직접 쿼리로 읽힘 — 방어를 규약이 아닌 구조로).
+create table public.lesson_staff_memos (
+  lesson_id uuid primary key references public.course_lessons (lesson_id) on delete cascade,
+  memo text not null,
+  updated_by uuid references public.profiles (profile_id) on delete set null,
+  updated_at timestamptz not null default now()
 );
 
 create table public.lesson_videos (
@@ -95,8 +103,12 @@ alter table public.subscription_plans
 alter table public.subscription_plans
   add column sale_status text not null default 'scheduled'
   check (sale_status in ('scheduled','on_sale','paused','closed','hidden'));
--- 기존 상품 호환: 현재 is_active=true 행은 on_sale 로 백필
+-- 기존 상품 호환 백필(승인 단서 2 — 양방향 명시):
+--   is_active=true  → on_sale (판매중)
+--   is_active=false → hidden  (은퇴 상품: pro_monthly 등 — 재판매 계획 없고 노출 금지 = hidden.
+--                              '종료(closed)'는 판매 이력 노출용 상태라 은퇴 상품엔 hidden 이 맞음)
 update public.subscription_plans set sale_status = 'on_sale' where is_active = true;
+update public.subscription_plans set sale_status = 'hidden' where is_active = false;
 
 create table public.plan_courses (
   plan_id uuid not null references public.subscription_plans (plan_id) on delete cascade,
@@ -204,6 +216,7 @@ create index playback_grants_user_idx on public.playback_grants (user_id, grante
 alter table public.course_series enable row level security;
 alter table public.courses enable row level security;
 alter table public.course_lessons enable row level security;
+alter table public.lesson_staff_memos enable row level security;
 alter table public.lesson_videos enable row level security;
 alter table public.lesson_materials enable row level security;
 alter table public.lesson_node_links enable row level security;
@@ -221,8 +234,9 @@ create policy courses_select_published on public.courses
   for select using ((status = 'published' and deleted_at is null) or private.is_staff((select auth.uid())));
 create policy course_lessons_select_published on public.course_lessons
   for select using ((is_published and deleted_at is null) or private.is_staff((select auth.uid())));
--- ⚠ staff_memo 는 이 정책상 학생에게도 행이 보임 — 학생 노출 쿼리는 staff_memo 를 select 하지 않는 것을
---    코드 규약으로 강제(컬럼 단위 RLS 불가). 민감도가 낮은 운영 메모(★★)라 뷰 분리 대신 규약 선택.
+-- 운영 메모: staff 전용 (읽기·쓰기 모두)
+create policy lesson_staff_memos_staff on public.lesson_staff_memos
+  for all using (private.is_staff((select auth.uid()))) with check (private.is_staff((select auth.uid())));
 create policy lesson_materials_select_published on public.lesson_materials
   for select using (is_published or private.is_staff((select auth.uid())));
 create policy lesson_node_links_select_all on public.lesson_node_links

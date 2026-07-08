@@ -571,6 +571,17 @@ export default [
         "features/admin/screens/admin-orphan-highlights.tsx",
       ),
       route("/admin/users", "features/admin/screens/admin-users.tsx"),
+      // feat-11-002 — 강의 영상 LMS (시리즈·에디션·회차·영상·수강권 + 재생 판정).
+      route("/admin/lms/courses", "features/lms/screens/admin-lms-courses.tsx"),
+      route(
+        "/admin/lms/courses/:courseId",
+        "features/lms/screens/admin-lms-course-detail.tsx",
+      ),
+      route(
+        "/admin/lms/enrollments",
+        "features/lms/screens/admin-lms-enrollments.tsx",
+      ),
+      route("/api/lms/playback-grant", "features/lms/api/playback-grant.tsx"),
       // 관리자 관리 — 운영 업무별 알림 담당자 지정 (admin 전용).
       route(
         "/admin/staff-duties",
