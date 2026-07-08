@@ -26,7 +26,10 @@ export async function loader({ request }: Route.LoaderArgs) {
     data: { user },
   } = await client.auth.getUser();
   if (!user) {
-    return data({ user: null, inboxUnread: 0, inboxHref: "/inbox" }, { headers });
+    return data(
+      { user: null, inboxUnread: 0, inboxHref: "/inbox", isStaff: false },
+      { headers },
+    );
   }
   const role = await getStaffRole(client, user.id);
   const unread = await getUnreadCount(
@@ -43,13 +46,14 @@ export async function loader({ request }: Route.LoaderArgs) {
       },
       inboxUnread: unread,
       inboxHref: role ? "/admin/inbox" : "/inbox",
+      isStaff: role !== null,
     },
     { headers },
   );
 }
 
 export default function LectureLayout({ loaderData }: Route.ComponentProps) {
-  const { user, inboxUnread, inboxHref } = loaderData;
+  const { user, inboxUnread, inboxHref, isStaff } = loaderData;
   return (
     <div className="flex min-h-screen flex-col justify-between">
       <header className="dark:bg-background/85 dark:border-border sticky top-0 z-50 border-b border-black/[0.06] bg-white/80 backdrop-blur-lg backdrop-saturate-150">
@@ -86,6 +90,22 @@ export default function LectureLayout({ loaderData }: Route.ComponentProps) {
                 {l.label}
               </NavLink>
             ))}
+            {/* 강의 플랫폼에서도 운영관리 접근(staff 전용). */}
+            {isStaff ? (
+              <NavLink
+                to="/admin"
+                className={({ isActive }) =>
+                  cn(
+                    "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-accent text-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent/60",
+                  )
+                }
+              >
+                운영관리
+              </NavLink>
+            ) : null}
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
@@ -140,6 +160,19 @@ export default function LectureLayout({ loaderData }: Route.ComponentProps) {
               {l.label}
             </NavLink>
           ))}
+          {isStaff ? (
+            <NavLink
+              to="/admin"
+              className={({ isActive }) =>
+                cn(
+                  "rounded-md px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors",
+                  isActive ? "bg-accent text-foreground" : "text-muted-foreground",
+                )
+              }
+            >
+              운영관리
+            </NavLink>
+          ) : null}
         </nav>
       </header>
 

@@ -44,21 +44,30 @@ async function requireStaff(request: Request) {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { client, role } = await requireStaff(request);
-  const [{ data: books }, { data: stocks }, { data: links }, { data: plans }] =
-    await Promise.all([
-      client
-        .from("books")
-        .select("book_id, title, author, publisher, price_krw, sale_status, isbn")
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false }),
-      adminClient.from("v_book_stock").select("book_id, stock"),
-      adminClient.from("plan_book_links").select("plan_id, book_id, requirement"),
-      adminClient
-        .from("subscription_plans")
-        .select("plan_id, name")
-        .in("product_kind", ["course", "tpass", "subject", "bundle"])
-        .order("display_order"),
-    ]);
+  const [
+    { data: books },
+    { data: stocks },
+    { data: links },
+    { data: plans },
+    { data: previews },
+  ] = await Promise.all([
+    client
+      .from("books")
+      .select("book_id, title, author, publisher, price_krw, sale_status, isbn")
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false }),
+    adminClient.from("v_book_stock").select("book_id, stock"),
+    adminClient.from("plan_book_links").select("plan_id, book_id, requirement"),
+    adminClient
+      .from("subscription_plans")
+      .select("plan_id, name")
+      .in("product_kind", ["course", "tpass", "subject", "bundle"])
+      .order("display_order"),
+    adminClient
+      .from("book_preview_pages")
+      .select("preview_id, book_id, image_url, sort_order")
+      .order("sort_order", { ascending: true }),
+  ]);
   const stockByBook = new Map((stocks ?? []).map((s) => [s.book_id, s.stock ?? 0]));
   return {
     role,
@@ -75,6 +84,9 @@ export async function loader({ request }: Route.LoaderArgs) {
       linkedPlans: (links ?? [])
         .filter((l) => l.book_id === b.book_id)
         .map((l) => ({ planId: l.plan_id, requirement: l.requirement })),
+      previews: (previews ?? [])
+        .filter((p) => p.book_id === b.book_id)
+        .map((p) => ({ previewId: p.preview_id, imageUrl: p.image_url })),
     })),
   };
 }
@@ -157,6 +169,32 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ ok: true as const });
   }
 
+  if (intent === "add_preview") {
+    const bookId = String(fd.get("bookId") ?? "");
+    const imageUrl = String(fd.get("imageUrl") ?? "").trim();
+    const sortOrder = Number(fd.get("sortOrder") ?? 0);
+    if (!bookId || !/^https?:\/\//.test(imageUrl))
+      return data({ error: "미리보기 이미지 URL을 확인해 주세요." }, { status: 400 });
+    const { error } = await client.from("book_preview_pages").insert({
+      book_id: bookId,
+      image_url: imageUrl,
+      sort_order: Number.isFinite(sortOrder) ? sortOrder : 0,
+    });
+    if (error) return data({ error: error.message }, { status: 400 });
+    return data({ ok: true as const });
+  }
+
+  if (intent === "remove_preview") {
+    const previewId = String(fd.get("previewId") ?? "");
+    if (!previewId) return data({ error: "잘못된 요청" }, { status: 400 });
+    const { error } = await client
+      .from("book_preview_pages")
+      .delete()
+      .eq("preview_id", previewId);
+    if (error) return data({ error: error.message }, { status: 400 });
+    return data({ ok: true as const });
+  }
+
   return data({ error: "Unknown intent" }, { status: 400 });
 }
 
@@ -190,6 +228,7 @@ export default function AdminBooks({ loaderData }: Route.ComponentProps) {
               { label: "판매상태", width: "7rem" },
               { label: "연결 상품", width: "16rem" },
               { label: "입고", width: "11rem" },
+              { label: "미리보기", width: "13rem" },
             ]}
           >
             {books.map((b) => (
@@ -260,6 +299,7 @@ function BookRow({
     isbn: string | null;
     stock: number;
     linkedPlans: Array<{ planId: string; requirement: string }>;
+    previews: Array<{ previewId: string; imageUrl: string }>;
   };
   plans: Array<{ planId: string; name: string }>;
 }) {
@@ -336,6 +376,50 @@ function BookRow({
             입고
           </button>
         </fetcher.Form>
+      </TD>
+      <TD>
+        <div className="flex flex-col gap-1">
+          {book.previews.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {book.previews.map((p, i) => (
+                <span key={p.previewId} className="inline-flex items-center gap-0.5">
+                  <a
+                    href={p.imageUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-link text-[11px] underline"
+                  >
+                    {i + 1}p
+                  </a>
+                  <fetcher.Form method="post" className="inline">
+                    <input type="hidden" name="intent" value="remove_preview" />
+                    <input type="hidden" name="previewId" value={p.previewId} />
+                    <button
+                      type="submit"
+                      aria-label="미리보기 삭제"
+                      className="text-muted-foreground hover:text-rose-600 text-[11px]"
+                    >
+                      ✕
+                    </button>
+                  </fetcher.Form>
+                </span>
+              ))}
+            </div>
+          ) : null}
+          <fetcher.Form method="post" className="flex items-center gap-1">
+            <input type="hidden" name="intent" value="add_preview" />
+            <input type="hidden" name="bookId" value={book.bookId} />
+            <input
+              name="imageUrl"
+              type="url"
+              placeholder="이미지 URL"
+              className="border-input bg-background h-6 w-28 rounded-md border px-1 text-[11px]"
+            />
+            <button type="submit" className="border-border hover:bg-muted/50 h-6 rounded-md border px-1.5 text-[11px]">
+              추가
+            </button>
+          </fetcher.Form>
+        </div>
       </TD>
     </TR>
   );

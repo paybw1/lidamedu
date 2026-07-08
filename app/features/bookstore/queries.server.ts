@@ -133,6 +133,8 @@ export async function listWishlistBooks(
 export interface BookDetail extends BookCard {
   description: string | null;
   isbn: string | null;
+  // B2-2 미리보기(look-inside) 샘플 페이지 이미지.
+  previewPages: Array<{ previewId: string; imageUrl: string }>;
   // 강의↔교재 크로스셀 — 이 교재가 연결된 판매중 강의 상품.
   relatedCourses: Array<{
     planId: string;
@@ -159,6 +161,17 @@ export async function getBookDetail(
 
   const stocks = await stockMap([bookId]);
   const stock = stocks.has(bookId) ? stocks.get(bookId)! : null;
+
+  // B2-2 미리보기 페이지(공개 RLS).
+  const { data: previews } = await client
+    .from("book_preview_pages")
+    .select("preview_id, image_url")
+    .eq("book_id", bookId)
+    .order("sort_order", { ascending: true });
+  const previewPages = (previews ?? []).map((p) => ({
+    previewId: p.preview_id,
+    imageUrl: p.image_url,
+  }));
 
   // 크로스셀 — plan_book_links → 판매중 course/tpass 상품.
   const { data: links } = await client
@@ -196,6 +209,7 @@ export async function getBookDetail(
     soldOut: stock !== null && stock <= 0,
     description: b.description,
     isbn: b.isbn,
+    previewPages,
     relatedCourses,
   };
 }

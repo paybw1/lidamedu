@@ -1,10 +1,22 @@
 // 도서 상세(강의 플랫폼) — 표지·정보·수량·담기/바로구매 + 강의↔교재 크로스셀. feat-11 B1.
-import { GraduationCapIcon, MinusIcon, PlusIcon } from "lucide-react";
+import {
+  BookOpenIcon,
+  GraduationCapIcon,
+  MinusIcon,
+  PlusIcon,
+} from "lucide-react";
 import { useState } from "react";
 import { Link, data } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "~/core/components/ui/dialog";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { startCartCheckout } from "~/features/lms/lib/cart-checkout";
 import { useCart } from "~/features/lms/lib/cart";
@@ -161,6 +173,33 @@ export default function BookDetail({ loaderData }: Route.ComponentProps) {
               </>
             )}
           </div>
+
+          {book.previewPages.length > 0 ? (
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="sm" className="mt-3 w-fit gap-1.5">
+                  <BookOpenIcon className="size-4" /> 미리보기 (
+                  {book.previewPages.length}p)
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>{book.title} 미리보기</DialogTitle>
+                </DialogHeader>
+                <div className="flex flex-col gap-3">
+                  {book.previewPages.map((p, i) => (
+                    <img
+                      key={p.previewId}
+                      src={p.imageUrl}
+                      alt={`미리보기 ${i + 1}페이지`}
+                      loading="lazy"
+                      className="w-full rounded-md border"
+                    />
+                  ))}
+                </div>
+              </DialogContent>
+            </Dialog>
+          ) : null}
 
           <p className="text-muted-foreground mt-3 text-xs">
             배송비·예상 배송일은 결제 단계에서 안내됩니다.
