@@ -10,6 +10,19 @@ type Client = SupabaseClient<Database>;
 
 export type BookSort = "new" | "price_asc" | "price_desc" | "title";
 
+/** 사용자가 찜한 도서 id 집합(카드 하트 초기 상태용). 비로그인 시 빈 Set. */
+export async function getWishlistBookIds(
+  client: Client,
+  userId: string | null,
+): Promise<Set<string>> {
+  if (!userId) return new Set();
+  const { data } = await client
+    .from("book_wishlists")
+    .select("book_id")
+    .eq("user_id", userId);
+  return new Set((data ?? []).map((r) => r.book_id));
+}
+
 export interface BookCard {
   bookId: string;
   title: string;
@@ -75,6 +88,46 @@ export async function listBookstoreBooks(
       soldOut: stock !== null && stock <= 0,
     };
   });
+}
+
+/** 찜한 도서 목록(찜한 순서 최신). 판매중 도서만. */
+export async function listWishlistBooks(
+  client: Client,
+  userId: string | null,
+): Promise<BookCard[]> {
+  if (!userId) return [];
+  const { data: w } = await client
+    .from("book_wishlists")
+    .select("book_id, created_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  const ids = (w ?? []).map((r) => r.book_id);
+  if (ids.length === 0) return [];
+  const { data: books } = await client
+    .from("books")
+    .select("book_id, title, author, publisher, price_krw, cover_path")
+    .in("book_id", ids)
+    .eq("sale_status", "on_sale")
+    .is("deleted_at", null);
+  const stocks = await stockMap(ids);
+  const byId = new Map((books ?? []).map((b) => [b.book_id, b]));
+  const out: BookCard[] = [];
+  for (const id of ids) {
+    const b = byId.get(id);
+    if (!b) continue; // 판매종료/삭제 도서는 목록에서 제외
+    const stock = stocks.has(id) ? stocks.get(id)! : null;
+    out.push({
+      bookId: b.book_id,
+      title: b.title,
+      author: b.author,
+      publisher: b.publisher,
+      priceKrw: b.price_krw,
+      coverPath: b.cover_path,
+      stock,
+      soldOut: stock !== null && stock <= 0,
+    });
+  }
+  return out;
 }
 
 export interface BookDetail extends BookCard {

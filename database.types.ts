@@ -1198,6 +1198,181 @@ export type Database = {
         }
         Relationships: []
       }
+      book_bundle_items: {
+        Row: {
+          book_id: string
+          bundle_id: string
+        }
+        Insert: {
+          book_id: string
+          bundle_id: string
+        }
+        Update: {
+          book_id?: string
+          bundle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_bundle_items_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["book_id"]
+          },
+          {
+            foreignKeyName: "book_bundle_items_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "v_book_stock"
+            referencedColumns: ["book_id"]
+          },
+          {
+            foreignKeyName: "book_bundle_items_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "v_sales_books"
+            referencedColumns: ["book_id"]
+          },
+          {
+            foreignKeyName: "book_bundle_items_bundle_id_fkey"
+            columns: ["bundle_id"]
+            isOneToOne: false
+            referencedRelation: "book_bundles"
+            referencedColumns: ["bundle_id"]
+          },
+        ]
+      }
+      book_bundles: {
+        Row: {
+          bundle_id: string
+          cover_path: string | null
+          created_at: string
+          deleted_at: string | null
+          description: string | null
+          display_order: number
+          price_krw: number
+          sale_status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          bundle_id?: string
+          cover_path?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          display_order?: number
+          price_krw: number
+          sale_status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          bundle_id?: string
+          cover_path?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          display_order?: number
+          price_krw?: number
+          sale_status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      book_preview_pages: {
+        Row: {
+          book_id: string
+          created_at: string
+          image_url: string
+          preview_id: string
+          sort_order: number
+        }
+        Insert: {
+          book_id: string
+          created_at?: string
+          image_url: string
+          preview_id?: string
+          sort_order?: number
+        }
+        Update: {
+          book_id?: string
+          created_at?: string
+          image_url?: string
+          preview_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_preview_pages_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["book_id"]
+          },
+          {
+            foreignKeyName: "book_preview_pages_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "v_book_stock"
+            referencedColumns: ["book_id"]
+          },
+          {
+            foreignKeyName: "book_preview_pages_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "v_sales_books"
+            referencedColumns: ["book_id"]
+          },
+        ]
+      }
+      book_restock_alerts: {
+        Row: {
+          alert_id: string
+          book_id: string
+          created_at: string
+          notified_at: string | null
+          user_id: string
+        }
+        Insert: {
+          alert_id?: string
+          book_id: string
+          created_at?: string
+          notified_at?: string | null
+          user_id: string
+        }
+        Update: {
+          alert_id?: string
+          book_id?: string
+          created_at?: string
+          notified_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_restock_alerts_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["book_id"]
+          },
+          {
+            foreignKeyName: "book_restock_alerts_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "v_book_stock"
+            referencedColumns: ["book_id"]
+          },
+          {
+            foreignKeyName: "book_restock_alerts_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "v_sales_books"
+            referencedColumns: ["book_id"]
+          },
+        ]
+      }
       book_stock_moves: {
         Row: {
           actor_id: string | null
@@ -1346,6 +1521,46 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "public_profiles"
             referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      book_wishlists: {
+        Row: {
+          book_id: string
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          book_id: string
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          book_id?: string
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_wishlists_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["book_id"]
+          },
+          {
+            foreignKeyName: "book_wishlists_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "v_book_stock"
+            referencedColumns: ["book_id"]
+          },
+          {
+            foreignKeyName: "book_wishlists_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "v_sales_books"
+            referencedColumns: ["book_id"]
           },
         ]
       }

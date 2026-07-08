@@ -1,5 +1,5 @@
 // 도서몰 카탈로그(강의 플랫폼) — 썸네일 그리드 + 검색·정렬 + 장바구니 담기. feat-11 B1.
-import { BookOpenIcon, CheckIcon, SearchIcon } from "lucide-react";
+import { BookOpenIcon, CheckIcon, HeartIcon, SearchIcon } from "lucide-react";
 import { Form, Link } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
@@ -7,9 +7,11 @@ import { Button } from "~/core/components/ui/button";
 import { Input } from "~/core/components/ui/input";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { useCart } from "~/features/lms/lib/cart";
+import { WishlistHeart } from "~/features/bookstore/components/wishlist-heart";
 import {
   type BookCard as BookCardT,
   type BookSort,
+  getWishlistBookIds,
   listBookstoreBooks,
 } from "~/features/bookstore/queries.server";
 
@@ -36,15 +38,32 @@ export async function loader({ request }: Route.LoaderArgs) {
   const sortParam = url.searchParams.get("sort") as BookSort | null;
   const sort: BookSort =
     sortParam && SORTS.some((s) => s.value === sortParam) ? sortParam : "new";
-  const books = await listBookstoreBooks(client, { q, sort });
-  return { books, q, sort, isAuthed: Boolean(user) };
+  const [books, wishlist] = await Promise.all([
+    listBookstoreBooks(client, { q, sort }),
+    getWishlistBookIds(client, user?.id ?? null),
+  ]);
+  return {
+    books,
+    q,
+    sort,
+    isAuthed: Boolean(user),
+    wishlistedIds: [...wishlist],
+  };
 }
 
 export default function BookstoreCatalog({ loaderData }: Route.ComponentProps) {
-  const { books, q, sort } = loaderData;
+  const { books, q, sort, wishlistedIds } = loaderData;
+  const wished = new Set(wishlistedIds);
   return (
     <div className="mx-auto w-full max-w-[1200px] px-4 py-10 md:px-6">
-      <h1 className="text-2xl font-bold tracking-tight">도서</h1>
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-2xl font-bold tracking-tight">도서</h1>
+        <Button asChild variant="ghost" size="sm">
+          <Link to="/lecture/wishlist">
+            <HeartIcon className="size-4" /> 찜한 도서
+          </Link>
+        </Button>
+      </div>
       <p className="text-muted-foreground mt-1 text-sm">
         변리사 수험 교재를 만나보세요.
       </p>
@@ -89,7 +108,11 @@ export default function BookstoreCatalog({ loaderData }: Route.ComponentProps) {
       ) : (
         <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {books.map((b) => (
-            <BookGridCard key={b.bookId} book={b} />
+            <BookGridCard
+              key={b.bookId}
+              book={b}
+              wishlisted={wished.has(b.bookId)}
+            />
           ))}
         </div>
       )}
@@ -128,21 +151,34 @@ export function BookCover({
   );
 }
 
-function BookGridCard({ book }: { book: BookCardT }) {
+export function BookGridCard({
+  book,
+  wishlisted,
+}: {
+  book: BookCardT;
+  wishlisted: boolean;
+}) {
   const { addBook, has } = useCart();
   const inCart = has(`book:${book.bookId}`);
   return (
     <div className="group flex flex-col">
-      <Link
-        to={`/lecture/books/${book.bookId}`}
-        className="bg-muted block aspect-[3/4] w-full overflow-hidden rounded-lg border"
-      >
-        <BookCover
-          coverPath={book.coverPath}
-          title={book.title}
-          className="size-full transition-transform group-hover:scale-[1.03]"
+      <div className="relative">
+        <Link
+          to={`/lecture/books/${book.bookId}`}
+          className="bg-muted block aspect-[3/4] w-full overflow-hidden rounded-lg border"
+        >
+          <BookCover
+            coverPath={book.coverPath}
+            title={book.title}
+            className="size-full transition-transform group-hover:scale-[1.03]"
+          />
+        </Link>
+        <WishlistHeart
+          bookId={book.bookId}
+          wishlisted={wishlisted}
+          className="bg-background/80 absolute top-1.5 right-1.5 backdrop-blur-sm"
         />
-      </Link>
+      </div>
       <div className="mt-2 flex flex-1 flex-col">
         <Link
           to={`/lecture/books/${book.bookId}`}

@@ -250,6 +250,8 @@ export default [
       "/lecture/books/:bookId",
       "features/bookstore/screens/book-detail.tsx",
     ),
+    // B2-1 찜 목록.
+    route("/lecture/wishlist", "features/bookstore/screens/wishlist.tsx"),
     // 주문·배송 — 구 /me/orders 이관(아래 redirect 유지).
     route("/lecture/orders", "features/orders/screens/my-orders.tsx"),
   ]),
@@ -917,6 +919,11 @@ export default [
       route(
         "/api/payments/create-cart-order",
         "features/orders/api/create-cart-order.tsx",
+      ),
+      // feat-11 B2-1 — 도서 찜 토글.
+      route(
+        "/api/lecture/wishlist",
+        "features/bookstore/api/wishlist-toggle.tsx",
       ),
       route(
         "/api/payments/toss/confirm",

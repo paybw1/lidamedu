@@ -8,7 +8,11 @@ import { Button } from "~/core/components/ui/button";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { startCartCheckout } from "~/features/lms/lib/cart-checkout";
 import { useCart } from "~/features/lms/lib/cart";
-import { getBookDetail } from "~/features/bookstore/queries.server";
+import { WishlistHeart } from "~/features/bookstore/components/wishlist-heart";
+import {
+  getBookDetail,
+  getWishlistBookIds,
+} from "~/features/bookstore/queries.server";
 
 import { BookCover } from "./bookstore-catalog";
 
@@ -27,15 +31,17 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   if (!bookId) throw data({ error: "도서를 찾을 수 없습니다" }, { status: 404 });
   const book = await getBookDetail(client, bookId);
   if (!book) throw data({ error: "도서를 찾을 수 없습니다" }, { status: 404 });
+  const wishlist = await getWishlistBookIds(client, user?.id ?? null);
   return {
     book,
     isAuthed: Boolean(user),
+    wishlisted: wishlist.has(bookId),
     tossClientKey: process.env.TOSS_CLIENT_KEY ?? null,
   };
 }
 
 export default function BookDetail({ loaderData }: Route.ComponentProps) {
-  const { book, isAuthed, tossClientKey } = loaderData;
+  const { book, isAuthed, wishlisted, tossClientKey } = loaderData;
   const { addBook, has } = useCart();
   const [qty, setQty] = useState(1);
   const inCart = has(`book:${book.bookId}`);
@@ -68,9 +74,16 @@ export default function BookDetail({ loaderData }: Route.ComponentProps) {
         </div>
 
         <div className="flex flex-col">
-          <h1 className="text-2xl font-bold tracking-tight text-balance">
-            {book.title}
-          </h1>
+          <div className="flex items-start justify-between gap-2">
+            <h1 className="text-2xl font-bold tracking-tight text-balance">
+              {book.title}
+            </h1>
+            <WishlistHeart
+              bookId={book.bookId}
+              wishlisted={wishlisted}
+              className="border"
+            />
+          </div>
           <dl className="text-muted-foreground mt-2 space-y-0.5 text-sm">
             {book.author ? <div>저자 {book.author}</div> : null}
             {book.publisher ? <div>출판사 {book.publisher}</div> : null}
