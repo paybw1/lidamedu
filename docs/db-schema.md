@@ -1142,3 +1142,13 @@ create table public.popup_notices (
 - **device_reset_logs**: 초기화 이력 — 본인 셀프=월 1회 파생 판정, 관리자=무제한.
 - **RLS**: 전부 본인+staff SELECT, 쓰기 정책 없음(서버 adminClient 전용).
 - 하트비트 파이프: /api/lms/watch-heartbeat — grant 소유 검증·구간 정합(길이≤120s·영상 길이 초과 금지)·granted_at 6h 보고 창·멱등. 차감은 enrollment 있는 grant 만(맛보기 예외). 판정 플래그: ENFORCE_MULTIPLIER=**ON**, ENFORCE_DEVICE=OFF([벤더] fingerprint 확정 시 ON — ★M4 결제 오픈 체크리스트).
+
+## LMS 주문·무통장·도서몰·쿠폰·CS (feat-11-004 M4)  ✅ 적용됨 (2026-07-08)
+
+- **orders / order_items**: 주문 일반화 — 항목 XOR(plan|book), 부분 환불=항목 단위(refund_*). ★단건 결제도 1-item 주문 경유(payments.order_id) — 이중 경로 금지. 상태: pending_payment/pending_deposit/paid/partially_refunded/refunded/cancelled/failed. 지급: paid 전이 시 course/tpass→enrollments(plan_courses 전 강의, order_item 멱등)·book→shipments+재고 sale 차감. 회수: 환불 전이 시 enrollments revoke·shipments returned·재고 refund 복원(멱등). 구독형(subject/bundle/membership)의 user_subscriptions 지급은 기존 confirmPayment/웹훅 경로 유지.
+- **bank_transfers**: 무통장(주문당 1건). 신청→pending_deposit→관리자 입금 확인(confirmed_by)→paid·지급(무통장 구독형은 upsertPaidSubscription 직접 호출, paymentId null 허용). 기한 초과=lazy(주문 화면)+cron(/api/cron/bank-transfer-expire).
+- **books / book_stock_moves / v_book_stock**: 재고=append-only 원장 SUM 파생. plan_book_links(필수/선택). **shipments**(order_item 1:1, 본인 RLS self-read — 관리자 갱신 즉시 마이페이지 반영).
+- **user_coupons**: 개인 발급(unique user+discount), discounts.auto_issue('signup'|'first_purchase') — welcome 로더·첫 paid 주문 훅에서 멱등 발급. 사용=기존 체크아웃 code 흐름, paid 시 discount_id 매칭 used_at 마킹.
+- **cs_actions**: CS 공통 원장 — enrollment 조치(enrollment_admin_logs 미러)·기기 강제 초기화·항목 환불 자동 기록. **playback_issues**: 재생 오류 로그([벤더] 콜백 대기).
+- **v_sales_daily / v_sales_books**: 주문 기준 매출 파생 뷰(저장 아님, security_invoker).
+- **duty 확장**: staff_duty_assignments CHECK += lms_video_admin(시리즈·도서)/lms_cs(수강권·기기)/lms_orders_admin(주문·배송)/lms_stats_view — 6개 LMS 화면 access 게이트(원장 항상, 관리자 관리에서 배정).
