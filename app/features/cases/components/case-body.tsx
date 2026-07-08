@@ -558,7 +558,7 @@ function CaseImagesGrid({ images }: { images: CaseImage[] }) {
             href={img.url}
             target="_blank"
             rel="noreferrer"
-            className="block aspect-[4/3] bg-white"
+            className="block aspect-[4/3] bg-white dark:brightness-[.85]"
           >
             <img
               src={img.url}
@@ -644,7 +644,7 @@ function BookTable({ rows }: { rows: BookSectionCell[][] }) {
                 href={im.url}
                 target="_blank"
                 rel="noreferrer"
-                className="border-border block rounded-lg border bg-white p-1.5"
+                className="border-border block rounded-lg border bg-white p-1.5 dark:brightness-[.85]"
               >
                 <img src={im.url} alt="" loading="lazy" className={cellImgClass(im.alt, "row")} />
               </a>
@@ -772,7 +772,7 @@ function BookCell({ cell, nowrap = false }: { cell: BookSectionCell; nowrap?: bo
       ) : null}
       {imageOnly
         ? imgs.map((im, i) => (
-            <a key={`io-${i}`} href={im.url} target="_blank" rel="noreferrer" className="mx-auto block w-fit rounded bg-white p-1">
+            <a key={`io-${i}`} href={im.url} target="_blank" rel="noreferrer" className="mx-auto block w-fit rounded bg-white p-1 dark:brightness-[.85]">
               <img src={im.url} alt="" loading="lazy" className={cellImgClass(im.alt, "cell")} />
             </a>
           ))
@@ -783,7 +783,7 @@ function BookCell({ cell, nowrap = false }: { cell: BookSectionCell; nowrap?: bo
           href={img.url}
           target="_blank"
           rel="noreferrer"
-          className="mx-auto block w-fit rounded bg-white p-1"
+          className="mx-auto block w-fit rounded bg-white p-1 dark:brightness-[.85]"
         >
           <img
             src={img.url}
@@ -1124,7 +1124,7 @@ function EmbeddedInlineImage({ alt, url }: { alt: string; url: string }) {
         src={url}
         alt={alt}
         loading="lazy"
-        className="inline-block max-h-[1.8em] w-auto object-contain align-middle"
+        className="inline-block max-h-[1.8em] w-auto object-contain align-middle dark:brightness-[.85]"
       />
     </a>
   );
@@ -1139,7 +1139,7 @@ function InlineImage({ alt, url }: { alt: string; url: string }) {
         href={url}
         target="_blank"
         rel="noreferrer"
-        className="border-border bg-white block overflow-hidden rounded-lg border"
+        className="border-border bg-white block overflow-hidden rounded-lg border dark:brightness-[.85]"
       >
         <img
           src={url}

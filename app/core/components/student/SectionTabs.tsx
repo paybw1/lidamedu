@@ -86,7 +86,8 @@ export function SectionTabs({
       )}
     >
       <div className="mx-auto flex max-w-screen-xl items-center gap-1 py-2">
-        <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
+        {/* 모바일: 가로 스크롤 대신 줄바꿈(과목 6개가 잘리지 않게). sm 이상은 한 줄. */}
+        <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto max-sm:flex-wrap max-sm:overflow-x-visible">
         {items.map((t) => {
           const active = t.id === activeId;
           const Icon = t.icon;
