@@ -55,3 +55,25 @@ export function formatValidPeriod(row: CouponRow): string {
   const f = (d: string) => d.replace(/-/g, ".");
   return `${f(row.valid_from)} ~ ${f(row.valid_to)}`;
 }
+
+// 장바구니 항목 종류 — 쿠폰 범위(scope) 매칭용. plan(course/tpass)→"course", 세트→"bundle".
+export type CartLineKind = "course" | "book" | "bundle";
+export type CartLineForCoupon = { kind: CartLineKind; amountKrw: number };
+
+// 쿠폰 범위(scope) → 적용 가능한 장바구니 항목 종류. (product=도서·상품류)
+export function couponScopeTokens(scope: string): CartLineKind[] {
+  switch (scope) {
+    case "course":
+    case "course_package":
+      return ["course"];
+    case "package":
+      return ["bundle"];
+    case "book":
+      return ["book"];
+    case "product":
+      return ["book", "bundle"];
+    case "all":
+    default:
+      return ["course", "book", "bundle"];
+  }
+}

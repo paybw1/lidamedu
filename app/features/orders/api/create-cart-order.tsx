@@ -1,22 +1,20 @@
 // feat-11 장바구니(C1) — 다건 체크아웃. 강의(plan: course/tpass)·도서(book) 혼합 주문 생성 +
 // 주문 단위 pending 결제 → 토스 orderId 반환. 클라가 받은 orderId 로 토스 SDK 결제.
-// ★서버 권위 금액(클라 가격 불신). plan 은 course/tpass 만 허용(그 외는 주문 fulfill 로 지급이
-//   안 돼 결제만 되고 접근 미지급되는 사고 방지 — 학습 구독 상품은 카트 대상 아님).
+// ★서버 권위 금액(클라 가격 불신). 항목 재해석은 resolveCartItems 공용 헬퍼.
+// feat-13 — 쿠폰 코드(선택)를 서버에서 재검증(resolveCartCoupon)해 총액에서 차감.
 import { randomUUID } from "node:crypto";
 
 import { data } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
-import adminClient from "~/core/lib/supa-admin-client.server";
+import { resolveCartCoupon } from "~/features/coupons/redeem.server";
 import {
-  type CartOrderItem,
-  createCartOrder,
-} from "~/features/orders/orders.server";
-import {
-  createPendingCartPayment,
-  getPlanByCode,
-} from "~/features/subscriptions/queries.server";
+  type RawCartItem,
+  resolveCartItems,
+} from "~/features/orders/cart-resolve.server";
+import { createCartOrder } from "~/features/orders/orders.server";
+import { createPendingCartPayment } from "~/features/subscriptions/queries.server";
 
 import type { Route } from "./+types/create-cart-order";
 
@@ -58,123 +56,34 @@ export async function action({ request }: Route.ActionArgs) {
     );
   }
 
-  // 서버에서 각 항목 재해석(가격·판매상태 검증). plan=course/tpass 만, book=on_sale 만.
-  const resolved: CartOrderItem[] = [];
-  const names: string[] = [];
-  let shippingFeeKrw = 0; // 선불 배송료 합계
-  for (const it of parsed.data.items) {
-    if (it.kind === "plan") {
-      const plan = await getPlanByCode(client, it.code);
-      if (!plan) return data({ error: "상품을 찾을 수 없습니다" }, { status: 404 });
-      if (plan.productKind !== "course" && plan.productKind !== "tpass") {
-        return data(
-          { error: "강의 상품만 장바구니로 결제할 수 있습니다" },
-          { status: 400 },
-        );
-      }
-      if (plan.priceKrw <= 0)
-        return data({ error: "유료 상품만 결제할 수 있습니다" }, { status: 400 });
-      resolved.push({
-        itemType: "plan",
-        planId: plan.planId,
-        unitPriceKrw: plan.priceKrw,
-      });
-      names.push(plan.name);
-    } else if (it.kind === "book") {
-      const { data: book } = await client
-        .from("books")
-        .select(
-          "book_id, title, price_krw, sale_status, shipping_fee_type, shipping_fee_krw, per_person_limit",
-        )
-        .eq("book_id", it.bookId)
-        .is("deleted_at", null)
-        .maybeSingle();
-      if (!book || book.sale_status !== "on_sale")
-        return data({ error: "판매 중인 도서가 아닙니다" }, { status: 404 });
-      if (book.price_krw <= 0)
-        return data({ error: "유료 도서만 결제할 수 있습니다" }, { status: 400 });
-      // 1인당 판매 제한 — 기존 결제 완료 수량 + 이번 수량 ≤ 제한.
-      if (book.per_person_limit != null) {
-        const { data: prior } = await adminClient
-          .from("order_items")
-          .select("quantity, orders!inner(user_id, status)")
-          .eq("book_id", book.book_id)
-          .eq("orders.user_id", user.id)
-          .eq("orders.status", "paid");
-        const bought = (prior ?? []).reduce((s, r) => s + (r.quantity ?? 0), 0);
-        if (bought + it.quantity > book.per_person_limit)
-          return data(
-            {
-              error: `《${book.title}》 은 1인당 ${book.per_person_limit}개까지 구매할 수 있습니다.`,
-            },
-            { status: 400 },
-          );
-      }
-      // 배송료 — 선불만 주문 총액에 가산(착불/무료는 0).
-      if (book.shipping_fee_type === "prepaid")
-        shippingFeeKrw += book.shipping_fee_krw ?? 0;
-      resolved.push({
-        itemType: "book",
-        bookId: book.book_id,
-        unitPriceKrw: book.price_krw,
-        quantity: it.quantity,
-      });
-      names.push(`${book.title}${it.quantity > 1 ? ` x${it.quantity}` : ""}`);
-    } else {
-      // 번들 — 회원 도서로 확장 + 번들가를 회원 정가 비율로 배분(부분환불·재고 정합).
-      const { data: bundle } = await client
-        .from("book_bundles")
-        .select("bundle_id, title, price_krw, sale_status")
-        .eq("bundle_id", it.bundleId)
-        .is("deleted_at", null)
-        .maybeSingle();
-      if (!bundle || bundle.sale_status !== "on_sale")
-        return data({ error: "판매 중인 세트가 아닙니다" }, { status: 404 });
-      if (bundle.price_krw <= 0)
-        return data({ error: "유료 세트만 결제할 수 있습니다" }, { status: 400 });
-      const { data: members } = await client
-        .from("book_bundle_items")
-        .select("book_id, books(price_krw, sale_status, deleted_at)")
-        .eq("bundle_id", it.bundleId);
-      const valid = (members ?? []).filter((m) => {
-        const b = m.books as {
-          price_krw: number;
-          sale_status: string;
-          deleted_at: string | null;
-        } | null;
-        return b && b.sale_status === "on_sale" && b.deleted_at === null;
-      });
-      if (valid.length === 0)
-        return data({ error: "세트 구성 도서가 없습니다" }, { status: 400 });
-      const listPrices = valid.map(
-        (m) => (m.books as { price_krw: number }).price_krw,
-      );
-      const sumList = listPrices.reduce((s, p) => s + p, 0);
-      // 번들가를 정가 비율로 배분. 반올림 드리프트는 마지막 항목에서 보정(합=번들가).
-      let allocated = 0;
-      valid.forEach((m, i) => {
-        const isLast = i === valid.length - 1;
-        const unit = isLast
-          ? bundle.price_krw - allocated
-          : sumList > 0
-            ? Math.round((bundle.price_krw * listPrices[i]) / sumList)
-            : Math.round(bundle.price_krw / valid.length);
-        allocated += unit;
-        resolved.push({
-          itemType: "book",
-          bookId: m.book_id,
-          unitPriceKrw: unit,
-          quantity: 1,
-        });
-      });
-      names.push(`[세트] ${bundle.title}`);
-    }
+  const resolved = await resolveCartItems(
+    client,
+    user.id,
+    parsed.data.items as RawCartItem[],
+  );
+  if (!resolved.ok) return data({ error: resolved.error }, { status: resolved.status });
+
+  // 쿠폰(선택) — 서버 권위 재검증 후 할인 확정. 유효하지 않으면 결제 자체를 막는다.
+  const couponCode = String(fd.get("couponCode") ?? "").trim();
+  let couponId: string | null = null;
+  let couponDiscountKrw = 0;
+  if (couponCode) {
+    const c = await resolveCartCoupon({
+      userId: user.id,
+      code: couponCode,
+      lines: resolved.couponLines,
+    });
+    if (!c.ok) return data({ error: c.error }, { status: 400 });
+    couponId = c.couponId;
+    couponDiscountKrw = c.discountKrw;
   }
 
   const order = await createCartOrder({
     userId: user.id,
-    items: resolved,
-    shippingFeeKrw,
+    items: resolved.items,
+    shippingFeeKrw: resolved.shippingFeeKrw,
+    couponId,
+    couponDiscountKrw,
   });
   if (order.totalKrw <= 0)
     return data({ error: "결제 금액이 0원입니다" }, { status: 400 });
@@ -189,7 +98,9 @@ export async function action({ request }: Route.ActionArgs) {
   if (!res.ok) return data({ error: res.error }, { status: 500 });
 
   const orderName =
-    names.length === 1 ? names[0] : `${names[0]} 외 ${names.length - 1}건`;
+    resolved.names.length === 1
+      ? resolved.names[0]
+      : `${resolved.names[0]} 외 ${resolved.names.length - 1}건`;
   return data({
     ok: true,
     orderId: tossOrderId,

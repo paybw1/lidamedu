@@ -59,12 +59,15 @@ export async function createCartOrder(input: {
   userId: string;
   items: CartOrderItem[];
   shippingFeeKrw?: number; // 선불 배송료 합계(주문 총액 가산)
+  couponId?: string | null; // feat-13 쿠폰 적용(결제 완료 시 사용 기록)
+  couponDiscountKrw?: number; // 쿠폰 할인액(총액에서 차감)
   paymentMethod?: "toss" | "bank_transfer" | "free" | "manual";
 }): Promise<{ orderId: string; totalKrw: number }> {
   const qtyOf = (it: CartOrderItem) => (it.itemType === "book" ? it.quantity : 1);
   const shipping = input.shippingFeeKrw ?? 0;
-  const totalKrw =
-    input.items.reduce((s, it) => s + it.unitPriceKrw * qtyOf(it), 0) + shipping;
+  const discount = Math.max(0, input.couponDiscountKrw ?? 0);
+  const subtotal = input.items.reduce((s, it) => s + it.unitPriceKrw * qtyOf(it), 0);
+  const totalKrw = Math.max(0, subtotal + shipping - discount);
   const { data: order, error } = await adminClient
     .from("orders")
     .insert({
@@ -72,6 +75,8 @@ export async function createCartOrder(input: {
       status: "pending_payment",
       total_krw: totalKrw,
       shipping_fee_krw: shipping,
+      coupon_id: input.couponId ?? null,
+      coupon_discount_krw: discount,
       payment_method: input.paymentMethod ?? "toss",
     })
     .select("order_id")
@@ -109,7 +114,7 @@ export async function createCartOrder(input: {
 export async function markOrderPaidAndFulfill(orderId: string): Promise<void> {
   const { data: order } = await adminClient
     .from("orders")
-    .select("order_id, user_id, status, discount_id")
+    .select("order_id, user_id, status, discount_id, coupon_id, coupon_discount_krw")
     .eq("order_id", orderId)
     .maybeSingle();
   if (!order) return;
@@ -155,6 +160,16 @@ export async function markOrderPaidAndFulfill(orderId: string): Promise<void> {
       orderId: order.order_id,
       userId: order.user_id,
       discountId: order.discount_id,
+    });
+    // feat-13 — 장바구니 쿠폰(coupons) 사용 이력 기록.
+    const { onOrderPaidCouponRedeem } = await import(
+      "~/features/coupons/redeem.server"
+    );
+    await onOrderPaidCouponRedeem({
+      orderId: order.order_id,
+      userId: order.user_id,
+      couponId: order.coupon_id,
+      couponDiscountKrw: order.coupon_discount_krw,
     });
   }
 }

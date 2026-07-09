@@ -3313,6 +3313,128 @@ export type Database = {
           },
         ]
       }
+      coupon_grants: {
+        Row: {
+          coupon_id: string
+          expires_at: string | null
+          grant_id: string
+          granted_at: string
+          granted_by: string | null
+          revoked_at: string | null
+          user_id: string
+        }
+        Insert: {
+          coupon_id: string
+          expires_at?: string | null
+          grant_id?: string
+          granted_at?: string
+          granted_by?: string | null
+          revoked_at?: string | null
+          user_id: string
+        }
+        Update: {
+          coupon_id?: string
+          expires_at?: string | null
+          grant_id?: string
+          granted_at?: string
+          granted_by?: string | null
+          revoked_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupon_grants_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["coupon_id"]
+          },
+          {
+            foreignKeyName: "coupon_grants_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "coupon_grants_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "coupon_grants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "coupon_grants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      coupon_redemptions: {
+        Row: {
+          coupon_id: string
+          discount_krw: number
+          order_id: string | null
+          redeemed_at: string
+          redemption_id: string
+          user_id: string
+        }
+        Insert: {
+          coupon_id: string
+          discount_krw?: number
+          order_id?: string | null
+          redeemed_at?: string
+          redemption_id?: string
+          user_id: string
+        }
+        Update: {
+          coupon_id?: string
+          discount_krw?: number
+          order_id?: string | null
+          redeemed_at?: string
+          redemption_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupon_redemptions_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["coupon_id"]
+          },
+          {
+            foreignKeyName: "coupon_redemptions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "coupon_redemptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "coupon_redemptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       coupons: {
         Row: {
           code: string
@@ -6984,6 +7106,8 @@ export type Database = {
       }
       orders: {
         Row: {
+          coupon_discount_krw: number
+          coupon_id: string | null
           created_at: string
           discount_id: string | null
           order_id: string
@@ -6995,6 +7119,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          coupon_discount_krw?: number
+          coupon_id?: string | null
           created_at?: string
           discount_id?: string | null
           order_id?: string
@@ -7006,6 +7132,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          coupon_discount_krw?: number
+          coupon_id?: string | null
           created_at?: string
           discount_id?: string | null
           order_id?: string
@@ -7017,6 +7145,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["coupon_id"]
+          },
           {
             foreignKeyName: "orders_discount_id_fkey"
             columns: ["discount_id"]

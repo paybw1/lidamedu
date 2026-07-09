@@ -1042,6 +1042,11 @@ export default [
         "/api/payments/create-cart-order",
         "features/orders/api/create-cart-order.tsx",
       ),
+      // feat-13 장바구니 쿠폰 미리보기.
+      route(
+        "/api/coupons/preview-cart",
+        "features/coupons/api/preview-cart-coupon.tsx",
+      ),
       // feat-11 B2-1 — 도서 찜 토글.
       route(
         "/api/lecture/wishlist",

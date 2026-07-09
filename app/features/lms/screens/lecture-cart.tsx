@@ -1,9 +1,19 @@
 // 강의 플랫폼 장바구니 — localStorage 카트(강의·도서) 표시 + 다건 결제.
 // 결제: /api/payments/create-cart-order(서버 가격 재검증) → 토스 → confirm 이 전 항목 지급.
-import { MinusIcon, PlusIcon, ShoppingCartIcon, Trash2Icon } from "lucide-react";
+// feat-13 — 쿠폰 코드 입력·서버 미리보기(preview-cart-coupon) → 할인 표시 후 결제에 반영.
+import { useState } from "react";
+
+import {
+  MinusIcon,
+  PlusIcon,
+  ShoppingCartIcon,
+  TicketPercentIcon,
+  Trash2Icon,
+} from "lucide-react";
 import { Link } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
+import { Input } from "~/core/components/ui/input";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { startCartCheckout } from "~/features/lms/lib/cart-checkout";
 import { cartItemKey, useCart } from "~/features/lms/lib/cart";
@@ -49,9 +59,17 @@ interface Line {
   bookId?: string;
 }
 
+type CouponState =
+  | { status: "none" }
+  | { status: "applied"; code: string; name: string; discount: number }
+  | { status: "error"; message: string };
+
 export default function LectureCart({ loaderData }: Route.ComponentProps) {
   const { products, books, bundles, isAuthed, tossClientKey } = loaderData;
   const { items, remove, setBookQty, clear } = useCart();
+  const [couponInput, setCouponInput] = useState("");
+  const [coupon, setCoupon] = useState<CouponState>({ status: "none" });
+  const [checking, setChecking] = useState(false);
 
   const planByCode = new Map(products.map((p) => [p.code, p]));
   const bookById = new Map(books.map((b) => [b.book_id, b]));
@@ -96,10 +114,12 @@ export default function LectureCart({ loaderData }: Route.ComponentProps) {
     }
   }
   const total = lines.reduce((s, l) => s + l.lineTotal, 0);
+  const discount =
+    coupon.status === "applied" ? Math.min(coupon.discount, total) : 0;
+  const payable = Math.max(0, total - discount);
 
-  const onCheckout = () => {
-    if (!tossClientKey) return;
-    const payload = items
+  const buildPayload = () =>
+    items
       .map((it) =>
         it.kind === "plan"
           ? planByCode.has(it.code)
@@ -114,8 +134,53 @@ export default function LectureCart({ loaderData }: Route.ComponentProps) {
               : null,
       )
       .filter((x): x is NonNullable<typeof x> => x !== null);
+
+  const applyCoupon = async () => {
+    const code = couponInput.trim();
+    if (!code || checking) return;
+    setChecking(true);
+    try {
+      const fd = new FormData();
+      fd.append("items", JSON.stringify(buildPayload()));
+      fd.append("code", code);
+      const res = await fetch("/api/coupons/preview-cart", {
+        method: "POST",
+        body: fd,
+      });
+      const json = (await res.json()) as {
+        ok?: boolean;
+        name?: string;
+        discountKrw?: number;
+        error?: string;
+      };
+      if (json.ok) {
+        setCoupon({
+          status: "applied",
+          code,
+          name: json.name ?? "쿠폰",
+          discount: json.discountKrw ?? 0,
+        });
+      } else {
+        setCoupon({ status: "error", message: json.error ?? "쿠폰을 적용할 수 없습니다." });
+      }
+    } catch {
+      setCoupon({ status: "error", message: "쿠폰 확인 중 오류가 발생했습니다." });
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const clearCoupon = () => {
+    setCoupon({ status: "none" });
+    setCouponInput("");
+  };
+
+  const onCheckout = () => {
+    if (!tossClientKey) return;
+    const payload = buildPayload();
     if (payload.length === 0) return;
-    void startCartCheckout(payload, tossClientKey, "/lecture/cart?failed=1");
+    const code = coupon.status === "applied" ? coupon.code : undefined;
+    void startCartCheckout(payload, tossClientKey, "/lecture/cart?failed=1", code);
   };
 
   return (
@@ -187,7 +252,7 @@ export default function LectureCart({ loaderData }: Route.ComponentProps) {
             ))}
           </ul>
 
-          <div className="mt-4 flex items-center justify-between">
+          <div className="mt-4 flex justify-between">
             <button
               type="button"
               onClick={clear}
@@ -195,10 +260,85 @@ export default function LectureCart({ loaderData }: Route.ComponentProps) {
             >
               전체 비우기
             </button>
-            <div className="text-right">
-              <span className="text-muted-foreground text-xs">합계 </span>
-              <span className="text-xl font-bold tabular-nums">
+          </div>
+
+          {/* 쿠폰 */}
+          {isAuthed ? (
+            <div className="mt-5 rounded-xl border p-4">
+              <p className="flex items-center gap-1.5 text-sm font-semibold">
+                <TicketPercentIcon className="size-4" /> 쿠폰
+              </p>
+              {coupon.status === "applied" ? (
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{coupon.name}</p>
+                    <p className="text-primary text-xs font-semibold tabular-nums">
+                      -{coupon.discount.toLocaleString("ko-KR")}원 적용됨
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={clearCoupon}
+                    className="text-muted-foreground hover:text-foreground shrink-0 text-xs underline"
+                  >
+                    해제
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="mt-2 flex gap-2">
+                    <Input
+                      value={couponInput}
+                      onChange={(e) => setCouponInput(e.target.value)}
+                      placeholder="쿠폰 코드 입력"
+                      className="h-9"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          void applyCoupon();
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-9 shrink-0"
+                      disabled={!couponInput.trim() || checking}
+                      onClick={() => void applyCoupon()}
+                    >
+                      {checking ? "확인 중…" : "적용"}
+                    </Button>
+                  </div>
+                  {coupon.status === "error" ? (
+                    <p className="text-destructive mt-1.5 text-xs">
+                      {coupon.message}
+                    </p>
+                  ) : null}
+                </>
+              )}
+            </div>
+          ) : null}
+
+          {/* 합계 */}
+          <div className="mt-5 space-y-1.5 text-right">
+            <div className="flex items-center justify-end gap-3 text-sm">
+              <span className="text-muted-foreground">상품 금액</span>
+              <span className="w-28 tabular-nums">
                 {total.toLocaleString("ko-KR")}원
+              </span>
+            </div>
+            {discount > 0 ? (
+              <div className="text-primary flex items-center justify-end gap-3 text-sm">
+                <span>쿠폰 할인</span>
+                <span className="w-28 tabular-nums">
+                  -{discount.toLocaleString("ko-KR")}원
+                </span>
+              </div>
+            ) : null}
+            <div className="flex items-center justify-end gap-3 pt-1">
+              <span className="text-muted-foreground text-xs">결제 금액</span>
+              <span className="w-28 text-xl font-bold tabular-nums">
+                {payable.toLocaleString("ko-KR")}원
               </span>
             </div>
           </div>
@@ -208,10 +348,10 @@ export default function LectureCart({ loaderData }: Route.ComponentProps) {
               <Button
                 className="w-full"
                 size="lg"
-                disabled={!tossClientKey}
+                disabled={!tossClientKey || payable <= 0}
                 onClick={onCheckout}
               >
-                {total.toLocaleString("ko-KR")}원 결제하기
+                {payable.toLocaleString("ko-KR")}원 결제하기
               </Button>
             ) : (
               <Button asChild className="w-full" size="lg">

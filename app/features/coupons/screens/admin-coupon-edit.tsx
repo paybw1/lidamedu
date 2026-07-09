@@ -1,6 +1,6 @@
 // feat-13 쿠폰 등록/수정 — /admin/coupons/new · /:couponId/edit.
 import { useState } from "react";
-import { Form, Link, redirect } from "react-router";
+import { Form, Link, data, redirect, useActionData } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Input } from "~/core/components/ui/input";
@@ -27,7 +27,48 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const role = await getStaffRole(client, user.id);
   if (!role) throw redirect("/dashboard");
   const c = params.couponId ? await getCoupon(client, params.couponId) : null;
-  return { role, c };
+  // 개별(비공용) 쿠폰의 발급 내역.
+  let grants: Awaited<
+    ReturnType<typeof import("../grants.server").listCouponGrants>
+  > = [];
+  if (c && !c.is_shared) {
+    const { listCouponGrants } = await import("../grants.server");
+    grants = await listCouponGrants(c.coupon_id);
+  }
+  return { role, c, grants };
+}
+
+// 개별 발급/회수 — 인라인 에러 노출 위해 페이지 자체 action 사용(저장/삭제는 /api/admin/coupon).
+export async function action({ request, params }: Route.ActionArgs) {
+  const [client] = makeServerClient(request);
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  if (!user) return data({ error: "Unauthorized" }, { status: 401 });
+  if (!(await getStaffRole(client, user.id)))
+    return data({ error: "Forbidden" }, { status: 403 });
+  const couponId = params.couponId;
+  if (!couponId) return data({ error: "쿠폰을 찾을 수 없습니다." }, { status: 400 });
+
+  const fd = await request.formData();
+  const intent = String(fd.get("intent") ?? "");
+  if (intent === "grant") {
+    const email = String(fd.get("email") ?? "").trim();
+    if (!email) return data({ error: "이메일을 입력해 주세요." }, { status: 400 });
+    const { grantCouponToEmail } = await import("../grants.server");
+    const r = await grantCouponToEmail({ couponId, email, grantedBy: user.id });
+    if (!r.ok) return data({ error: r.error }, { status: 400 });
+    return redirect(`/admin/coupons/${couponId}/edit`);
+  }
+  if (intent === "revoke") {
+    const grantId = String(fd.get("grantId") ?? "");
+    if (grantId) {
+      const { revokeCouponGrant } = await import("../grants.server");
+      await revokeCouponGrant(grantId);
+    }
+    return redirect(`/admin/coupons/${couponId}/edit`);
+  }
+  return data({ error: "bad intent" }, { status: 400 });
 }
 
 const IN = "h-9 text-sm";
@@ -63,7 +104,8 @@ function Field({
 }
 
 export default function AdminCouponEdit({ loaderData }: Route.ComponentProps) {
-  const { role, c } = loaderData;
+  const { role, c, grants } = loaderData;
+  const actionData = useActionData<typeof action>();
   const [discountType, setDiscountType] = useState(c?.discount_type ?? "fixed");
 
   return (
@@ -295,6 +337,76 @@ export default function AdminCouponEdit({ loaderData }: Route.ComponentProps) {
             <Button type="submit">{c ? "저장" : "등록"}</Button>
           </div>
         </Form>
+
+        {/* 개별 발급 관리 — 비공용 쿠폰만 */}
+        {c && !c.is_shared ? (
+          <div className="border-border mt-8 rounded-xl border p-5">
+            <h2 className="text-sm font-bold">회원 개별 발급</h2>
+            <p className="text-muted-foreground mt-1 text-[13px]">
+              발급받은 회원만 결제 시 이 쿠폰을 사용할 수 있습니다. (번호당 1회 사용)
+            </p>
+
+            <Form method="post" className="mt-3 flex gap-2">
+              <input type="hidden" name="intent" value="grant" />
+              <Input
+                name="email"
+                type="email"
+                required
+                placeholder="회원 이메일"
+                className={`${IN} max-w-xs`}
+              />
+              <Button type="submit" variant="outline" className="h-9 shrink-0">
+                발급
+              </Button>
+            </Form>
+            {actionData?.error ? (
+              <p className="text-destructive mt-1.5 text-xs">{actionData.error}</p>
+            ) : null}
+
+            {grants.length > 0 ? (
+              <ul className="mt-4 divide-y rounded-lg border text-sm">
+                {grants.map((g) => (
+                  <li
+                    key={g.grantId}
+                    className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <span className="font-medium">{g.name || "(이름 없음)"}</span>
+                      <span className="text-muted-foreground ml-2 text-xs">
+                        {g.email ?? g.userId.slice(0, 8)}
+                      </span>
+                    </div>
+                    <span className="text-muted-foreground text-xs tabular-nums">
+                      {g.grantedAt.slice(0, 10)}
+                    </span>
+                    {g.revokedAt ? (
+                      <span className="text-muted-foreground text-xs">회수됨</span>
+                    ) : g.usedAt ? (
+                      <span className="text-xs font-semibold text-emerald-600">
+                        사용 완료
+                      </span>
+                    ) : (
+                      <Form method="post">
+                        <input type="hidden" name="intent" value="revoke" />
+                        <input type="hidden" name="grantId" value={g.grantId} />
+                        <button
+                          type="submit"
+                          className="text-muted-foreground hover:text-destructive text-xs underline"
+                        >
+                          회수
+                        </button>
+                      </Form>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-muted-foreground mt-4 text-xs">
+                아직 발급 내역이 없습니다.
+              </p>
+            )}
+          </div>
+        ) : null}
       </div>
     </AdminShell>
   );

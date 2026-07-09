@@ -53,7 +53,16 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
 
   const today = new Date().toISOString().slice(0, 10);
-  const coupons = rows.map((r) => {
+  const nowIso = new Date().toISOString();
+  type Coupon = {
+    id: string;
+    name: string;
+    benefit: string;
+    code: string | null;
+    expiresAt: string | null;
+    status: "available" | "used" | "expired";
+  };
+  const coupons: Coupon[] = rows.map((r) => {
     const d = discMap.get(r.discount_id);
     const status: "available" | "used" | "expired" = r.used_at
       ? "used"
@@ -69,6 +78,63 @@ export async function loader({ request }: Route.LoaderArgs) {
       status,
     };
   });
+
+  // feat-13 — 강의 장바구니 쿠폰(coupons) 개별 발급분도 쿠폰함에 표시.
+  const { data: grants } = await adminClient
+    .from("coupon_grants")
+    .select("grant_id, coupon_id, expires_at, revoked_at")
+    .eq("user_id", user.id)
+    .is("revoked_at", null);
+  const grantRows = grants ?? [];
+  if (grantRows.length) {
+    const couponIds = [...new Set(grantRows.map((g) => g.coupon_id))];
+    const [{ data: defs }, { data: reds }] = await Promise.all([
+      adminClient
+        .from("coupons")
+        .select(
+          "coupon_id, code, name, discount_type, discount_value, max_discount, valid_to, status, deleted_at",
+        )
+        .in("coupon_id", couponIds),
+      adminClient
+        .from("coupon_redemptions")
+        .select("coupon_id")
+        .eq("user_id", user.id)
+        .in("coupon_id", couponIds),
+    ]);
+    const defMap = new Map((defs ?? []).map((d) => [d.coupon_id, d]));
+    const usedSet = new Set((reds ?? []).map((r) => r.coupon_id));
+    for (const g of grantRows) {
+      const d = defMap.get(g.coupon_id);
+      if (!d || d.deleted_at) continue;
+      const grantExpired = g.expires_at != null && g.expires_at < nowIso;
+      const periodExpired = d.valid_to < today;
+      const status: Coupon["status"] = usedSet.has(g.coupon_id)
+        ? "used"
+        : d.status !== "active" || grantExpired || periodExpired
+          ? "expired"
+          : "available";
+      const benefit =
+        d.discount_type === "percent"
+          ? `${d.discount_value}% 할인${
+              d.max_discount
+                ? ` (최대 ${d.max_discount.toLocaleString("ko-KR")}원)`
+                : ""
+            }`
+          : `${d.discount_value.toLocaleString("ko-KR")}원 할인`;
+      coupons.push({
+        id: g.grant_id,
+        name: d.name,
+        benefit,
+        code: d.code,
+        expiresAt: d.valid_to,
+        status,
+      });
+    }
+  }
+
+  // 사용 가능 → 만료/사용완료 순.
+  const rank = { available: 0, used: 1, expired: 2 } as const;
+  coupons.sort((a, b) => rank[a.status] - rank[b.status]);
   return { coupons };
 }
 

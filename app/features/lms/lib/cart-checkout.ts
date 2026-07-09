@@ -6,10 +6,12 @@ export async function startCartCheckout(
   items: CartItem[],
   tossClientKey: string,
   failPath: string,
+  couponCode?: string,
 ): Promise<void> {
   if (items.length === 0) return;
   const fd = new FormData();
   fd.append("items", JSON.stringify(items));
+  if (couponCode) fd.append("couponCode", couponCode);
   const res = await fetch("/api/payments/create-cart-order", {
     method: "POST",
     body: fd,

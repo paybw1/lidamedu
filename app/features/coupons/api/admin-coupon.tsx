@@ -52,6 +52,7 @@ export async function action({ request }: Route.ActionArgs) {
     }
     return redirect("/admin/coupons");
   }
+  // 개별 발급/회수(intent=grant|revoke)는 편집 페이지 자체 action 소관.
   if (intent !== "save") return data({ error: "bad intent" }, { status: 400 });
 
   const validFrom = str(fd, "valid_from");
