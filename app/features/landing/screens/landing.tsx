@@ -157,7 +157,7 @@ export default function Landing({ loaderData }: Route.ComponentProps) {
             <div>
               <p className="eyebrow">전임 강사진</p>
               <h2>가르치는 사람이 곧 교재입니다</h2>
-              <p>조문·판례·문제를 한 체계로 엮어 온 리담의 전임 강사진.</p>
+              <p>과목마다 전임 강사가 강의와 학습 자료를 함께 설계합니다.</p>
             </div>
             <Link className="more" to="/about/instructors">
               강사진 전체 →

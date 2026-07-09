@@ -12,7 +12,8 @@ import {
 
 const itemCls = (active: boolean) =>
   cn(
-    "inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+    // 한 줄 유지 — 항목 폭을 학습 플랫폼처럼 촘촘히(px-2.5, whitespace-nowrap).
+    "inline-flex items-center gap-0.5 whitespace-nowrap rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors",
     active
       ? "bg-accent text-foreground"
       : "text-muted-foreground hover:text-foreground hover:bg-accent/60",
@@ -62,7 +63,7 @@ function Dropdown({ item }: { item: LectureNavItem }) {
 // 데스크톱 — 평면 링크 + 마이페이지 드롭다운.
 export function LectureNav({ isStaff }: { isStaff: boolean }) {
   return (
-    <nav className="hidden h-full items-center gap-1 md:flex">
+    <nav className="hidden h-full items-center gap-0.5 md:flex">
         {LECTURE_NAV_LINKS.map((l) =>
           l.children ? (
             <Dropdown key={l.label} item={l} />
