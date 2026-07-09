@@ -237,7 +237,8 @@ function PostActions({
 
   return (
     <div className="border-border bg-card mb-3.5 flex flex-wrap items-center gap-2 rounded-2xl border p-3 shadow-sm">
-      {isAuthor ? (
+      {/* 수정 — 작성자 본인 또는 운영자(manager+). 운영자는 합격 수기 등 타 작성자 글도 편집. */}
+      {isAuthor || isManager ? (
         <Button asChild variant="outline" size="sm" className="rounded-full">
           <Link
             to={`/community/${post.board}/${post.postId}/edit`}
