@@ -1,0 +1,283 @@
+// feat-12 강의 플랫폼 랜딩 히어로 — 편집형 배너 자동 순환 캐러셀(클라이언트).
+// 배너 목록은 운영자가 편집(landing_banners). 마우스 오버 정지·감속 설정 존중.
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "react-router";
+
+import {
+  ddayFrom,
+  remainingSeats,
+  type BannerRow,
+  type ScheduleRow,
+} from "../labels";
+
+// headline 안에서 highlight 부분만 금박 강조.
+function Headline({ text, hl }: { text: string; hl: string | null }) {
+  if (!hl || !text.includes(hl)) return <>{text}</>;
+  const i = text.indexOf(hl);
+  return (
+    <>
+      {text.slice(0, i)}
+      <span className="hl">{hl}</span>
+      {text.slice(i + hl.length)}
+    </>
+  );
+}
+
+function Cta({ banner }: { banner: BannerRow }) {
+  return (
+    <div className="cta">
+      {banner.cta_label ? (
+        <Link className="btn gilt" to={banner.cta_href || "#"}>
+          {banner.cta_label} →
+        </Link>
+      ) : null}
+      {banner.secondary_label ? (
+        <Link className="btn ghost on-navy" to={banner.secondary_href || "#"}>
+          {banner.secondary_label}
+        </Link>
+      ) : null}
+    </div>
+  );
+}
+
+function RightCard({
+  banner,
+  schedules,
+  todayISO,
+}: {
+  banner: BannerRow;
+  schedules: ScheduleRow[];
+  todayISO: string;
+}) {
+  if (banner.kind === "schedule") {
+    const top = schedules.slice(0, 3);
+    return (
+      <div className="hcard" aria-label="개강 임박 강의">
+        <div className="hh">
+          <span className="lab">개강 임박</span>
+          <span className="live">
+            <span className="dot" />
+            실시간 접수중
+          </span>
+        </div>
+        {top.length === 0 ? (
+          <p style={{ color: "var(--hero-soft)", fontSize: 13, padding: "8px 4px" }}>
+            예정된 개강 일정이 곧 공개됩니다.
+          </p>
+        ) : (
+          top.map((s) => {
+            const d = ddayFrom(s.start_date, todayISO);
+            return (
+              <div className="hrow" key={s.schedule_id}>
+                <div className="dday">
+                  <b>{d === null ? "예정" : `D-${d}`}</b>
+                  <span>{s.start_date ? s.start_date.slice(5).replace("-", "/") : ""} 개강</span>
+                </div>
+                <div className="mid">
+                  <div className="s">
+                    {s.subject_label} {s.title}
+                  </div>
+                  <div className="m">
+                    {s.instructor_name}
+                    {s.day_label ? ` · ${s.day_label}` : ""}
+                  </div>
+                </div>
+                <div className="seat">잔여 {remainingSeats(s)}석</div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    );
+  }
+  if (banner.kind === "passer") {
+    return (
+      <div className="promo">
+        <span className="pk">2026 · PASS</span>
+        <div className="pbadges">
+          {banner.badges.map((b, i) => (
+            <span key={i}>{b}</span>
+          ))}
+        </div>
+        {banner.sub ? <p>{banner.sub}</p> : null}
+        {banner.cta_label ? (
+          <Link className="btn gilt" to={banner.cta_href || "#"}>
+            {banner.cta_label}
+          </Link>
+        ) : null}
+      </div>
+    );
+  }
+  if (banner.kind === "promo" && banner.big_value) {
+    return (
+      <div className="promo">
+        {banner.eyebrow ? <span className="pk">{banner.eyebrow}</span> : null}
+        <div className="pbig tnum">
+          {banner.big_value}
+          {banner.big_unit ? <span>{banner.big_unit}</span> : null}
+        </div>
+        {banner.sub ? <p>{banner.sub}</p> : null}
+        {banner.cta_label ? (
+          <Link className="btn gilt" to={banner.cta_href || "#"}>
+            {banner.cta_label}
+          </Link>
+        ) : null}
+      </div>
+    );
+  }
+  return null; // custom → 텍스트만(좌측 1열)
+}
+
+export function HeroCarousel({
+  banners,
+  schedules,
+  todayISO,
+}: {
+  banners: BannerRow[];
+  schedules: ScheduleRow[];
+  todayISO: string;
+}) {
+  const n = banners.length;
+  const [idx, setIdx] = useState(0);
+  const [anim, setAnim] = useState(false);
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const reduce = useRef(false);
+
+  const go = useCallback((k: number) => setIdx(((k % n) + n) % n), [n]);
+
+  const stop = useCallback(() => {
+    if (timer.current) {
+      clearInterval(timer.current);
+      timer.current = null;
+    }
+  }, []);
+  const start = useCallback(() => {
+    if (reduce.current || n <= 1) return;
+    stop();
+    timer.current = setInterval(() => setIdx((i) => (i + 1) % n), 6000);
+  }, [n, stop]);
+
+  useEffect(() => {
+    reduce.current =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion:reduce)").matches;
+    // 초기 점프 방지 후 애니메이션 활성.
+    const r = requestAnimationFrame(() => setAnim(true));
+    start();
+    return () => {
+      cancelAnimationFrame(r);
+      stop();
+    };
+  }, [start, stop]);
+
+  if (n === 0) return null;
+
+  return (
+    <section
+      className="hero-carousel"
+      aria-roledescription="carousel"
+      aria-label="메인 배너"
+      onMouseEnter={stop}
+      onMouseLeave={start}
+      onFocusCapture={stop}
+      onBlurCapture={start}
+      onKeyDown={(e) => {
+        if (e.key === "ArrowLeft") {
+          go(idx - 1);
+          start();
+        } else if (e.key === "ArrowRight") {
+          go(idx + 1);
+          start();
+        }
+      }}
+    >
+      <div
+        className={anim ? "track anim" : "track"}
+        style={{ transform: `translateX(${-idx * 100}%)` }}
+      >
+        {banners.map((b) => (
+          <div
+            className={`slide ${b.accent}`}
+            key={b.banner_id}
+            role="group"
+            aria-roledescription="슬라이드"
+          >
+            <div className="wrap hero-in">
+              <div>
+                {b.eyebrow ? <p className="eyebrow">{b.eyebrow}</p> : null}
+                <h1>
+                  <Headline text={b.headline} hl={b.highlight} />
+                </h1>
+                {b.sub ? <p className="sub">{b.sub}</p> : null}
+                <Cta banner={b} />
+                {b.kind === "schedule" ? (
+                  <div className="trust">
+                    <div className="t">
+                      <span className="n">
+                        8<span className="u">인</span>
+                      </span>
+                      <span className="l">전 과목 전임 강사</span>
+                    </div>
+                    <div className="t">
+                      <span className="n">
+                        5<span className="u">과목</span>
+                      </span>
+                      <span className="l">1·2차 통합 커리큘럼</span>
+                    </div>
+                    <div className="t">
+                      <span className="n">
+                        3<span className="u">종</span>
+                      </span>
+                      <span className="l">현장·실시간·영상</span>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+              <RightCard banner={b} schedules={schedules} todayISO={todayISO} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {n > 1 ? (
+        <>
+          <button
+            className="cnav prev"
+            aria-label="이전 배너"
+            onClick={() => {
+              go(idx - 1);
+              start();
+            }}
+          >
+            ‹
+          </button>
+          <button
+            className="cnav next"
+            aria-label="다음 배너"
+            onClick={() => {
+              go(idx + 1);
+              start();
+            }}
+          >
+            ›
+          </button>
+          <div className="dots" role="tablist" aria-label="배너 선택">
+            {banners.map((b, k) => (
+              <button
+                key={b.banner_id}
+                className={k === idx ? "on" : ""}
+                role="tab"
+                aria-selected={k === idx}
+                aria-label={`${k + 1}번 배너`}
+                onClick={() => {
+                  go(k);
+                  start();
+                }}
+              />
+            ))}
+          </div>
+        </>
+      ) : null}
+    </section>
+  );
+}

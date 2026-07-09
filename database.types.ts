@@ -5553,6 +5553,72 @@ export type Database = {
           },
         ]
       }
+      landing_banners: {
+        Row: {
+          accent: string
+          badges: string[]
+          banner_id: string
+          big_unit: string | null
+          big_value: string | null
+          created_at: string
+          cta_href: string | null
+          cta_label: string | null
+          deleted_at: string | null
+          display_order: number
+          eyebrow: string | null
+          headline: string
+          highlight: string | null
+          kind: string
+          published: boolean
+          secondary_href: string | null
+          secondary_label: string | null
+          sub: string | null
+          updated_at: string
+        }
+        Insert: {
+          accent?: string
+          badges?: string[]
+          banner_id?: string
+          big_unit?: string | null
+          big_value?: string | null
+          created_at?: string
+          cta_href?: string | null
+          cta_label?: string | null
+          deleted_at?: string | null
+          display_order?: number
+          eyebrow?: string | null
+          headline: string
+          highlight?: string | null
+          kind?: string
+          published?: boolean
+          secondary_href?: string | null
+          secondary_label?: string | null
+          sub?: string | null
+          updated_at?: string
+        }
+        Update: {
+          accent?: string
+          badges?: string[]
+          banner_id?: string
+          big_unit?: string | null
+          big_value?: string | null
+          created_at?: string
+          cta_href?: string | null
+          cta_label?: string | null
+          deleted_at?: string | null
+          display_order?: number
+          eyebrow?: string | null
+          headline?: string
+          highlight?: string | null
+          kind?: string
+          published?: boolean
+          secondary_href?: string | null
+          secondary_label?: string | null
+          sub?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       law_revisions: {
         Row: {
           comparison_pdf: string | null
@@ -5629,6 +5695,45 @@ export type Database = {
           law_id?: string
           ord?: number
           short_label?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      lecture_news: {
+        Row: {
+          body_md: string | null
+          created_at: string
+          deleted_at: string | null
+          kind: string
+          news_id: string
+          pinned: boolean
+          published: boolean
+          published_at: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body_md?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          kind?: string
+          news_id?: string
+          pinned?: boolean
+          published?: boolean
+          published_at?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body_md?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          kind?: string
+          news_id?: string
+          pinned?: boolean
+          published?: boolean
+          published_at?: string
+          title?: string
           updated_at?: string
         }
         Relationships: []
@@ -5799,6 +5904,69 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
         ]
+      }
+      lecture_schedules: {
+        Row: {
+          capacity: number
+          created_at: string
+          day_label: string | null
+          deleted_at: string | null
+          display_order: number
+          enrolled: number
+          format: string
+          instructor_name: string
+          note: string | null
+          published: boolean
+          schedule_id: string
+          start_date: string | null
+          status: string
+          subject_code: string | null
+          subject_label: string
+          time_label: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          capacity?: number
+          created_at?: string
+          day_label?: string | null
+          deleted_at?: string | null
+          display_order?: number
+          enrolled?: number
+          format?: string
+          instructor_name: string
+          note?: string | null
+          published?: boolean
+          schedule_id?: string
+          start_date?: string | null
+          status?: string
+          subject_code?: string | null
+          subject_label: string
+          time_label?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          capacity?: number
+          created_at?: string
+          day_label?: string | null
+          deleted_at?: string | null
+          display_order?: number
+          enrolled?: number
+          format?: string
+          instructor_name?: string
+          note?: string | null
+          published?: boolean
+          schedule_id?: string
+          start_date?: string | null
+          status?: string
+          subject_code?: string | null
+          subject_label?: string
+          time_label?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       lecture_slide_candidates: {
         Row: {

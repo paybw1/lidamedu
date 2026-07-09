@@ -265,6 +265,11 @@ export default [
       "features/cs-inquiries/screens/support-detail.tsx",
     ),
     route("/api/cs/inquiry", "features/cs-inquiries/api/cs-inquiry.tsx"),
+    // feat-12 강의 플랫폼 랜딩 + 현장강의 일정 + 리담소식(공개).
+    route("/lecture/home", "features/landing/screens/landing.tsx"),
+    route("/lecture/schedule", "features/landing/screens/schedule.tsx"),
+    route("/lecture/news", "features/landing/screens/news.tsx"),
+    route("/lecture/news/:newsId", "features/landing/screens/news-detail.tsx"),
     // 리담안내(인사말·강사진·찾아오시는 길) — 강의 플랫폼 소속. 강의 nav 의 "리담안내"
     // 클릭 시 학습 플랫폼으로 튕기지 않도록 lecture.layout 아래에 둔다(공개 접근 가능).
     route("/about", "features/home/screens/about.tsx"),
