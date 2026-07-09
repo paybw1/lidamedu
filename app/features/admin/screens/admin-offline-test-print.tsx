@@ -2,7 +2,7 @@
 // 브라우저 인쇄 대화상자에서 "PDF로 저장" — study-print-shell 과 같은 @media print 패턴.
 
 import { PrinterIcon, XIcon } from "lucide-react";
-import { useEffect } from "react";
+import { type CSSProperties, useEffect } from "react";
 import { data } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
@@ -256,7 +256,22 @@ export default function AdminOfflineTestPrint({
   }, []);
 
   return (
-    <div className="min-h-screen bg-white text-neutral-800">
+    <div
+      className="min-h-screen bg-white text-neutral-800"
+      // 인쇄는 테마와 무관하게 항상 라이트(어두운 글씨). 다크 모드 사용자도 흰 종이에
+      // MarkdownView(text-foreground 토큰) 본문이 진하게 나오도록 토큰을 라이트 값으로 고정.
+      style={
+        {
+          "--background": "#ffffff",
+          "--foreground": "#1f1f1f",
+          "--muted": "#eef2f7",
+          "--muted-foreground": "#475569",
+          "--border": "#d4d4d8",
+          "--link": "#1e3a8a",
+          colorScheme: "light",
+        } as CSSProperties
+      }
+    >
       <style>{`
         @media print {
           .no-print { display: none !important; }
@@ -345,11 +360,6 @@ export default function AdminOfflineTestPrint({
             <QuestionBlock key={q.ord} q={q} answers={answers} />
           ))
         )}
-
-        <footer className="mt-8 border-t border-neutral-300 pt-3 text-center text-[11px] text-neutral-400">
-          리담변리사학원 · {cohortName} · {test.title}
-          {answers ? " (정답 및 해설)" : ""} — 끝 —
-        </footer>
       </div>
     </div>
   );
