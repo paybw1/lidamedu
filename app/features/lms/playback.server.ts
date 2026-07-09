@@ -3,10 +3,13 @@
 //
 // ★M1 승인 단서 1 — M4 결제 오픈 전 반드시 전부 ON (M4 오픈 체크리스트 1번 항목):
 //   ENFORCE_MULTIPLIER: M3 에서 구현·활성화 완료(watch_ledger 잔여 판정).
-//   ENFORCE_DEVICE: 판정 로직 구현됨 — [벤더] 플레이어 기기 fingerprint 확정 후 ON
-//   (fingerprint 없이 켜면 기기 특정이 불가해 전원 차단됨).
+//   ENFORCE_DEVICE: 판정 로직 구현됨 — [벤더] 플레이어 기기 fingerprint 확정 후 ON.
+//     ★env 구동 — 벤더 확정+플레이어가 deviceFingerprint 를 전달하도록 배선한 뒤,
+//     코드 배포 없이 Vercel 환경변수 `ENFORCE_DEVICE=true` 로 즉시 켠다.
+//     (fingerprint 없이 켜도 ensureDeviceForPlayback 이 통과 처리하므로 안전하나 실효 없음
+//     — 반드시 플레이어 fingerprint 배선 후 켤 것.)
 const ENFORCE_MULTIPLIER = true;
-const ENFORCE_DEVICE = false; // [벤더] fingerprint 확정 시 ON — M4 오픈 체크리스트
+const ENFORCE_DEVICE = process.env.ENFORCE_DEVICE === "true";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
