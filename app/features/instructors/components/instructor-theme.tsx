@@ -1,7 +1,9 @@
-// feat-6-012 강사소개 공개 화면 공유 스타일 — 시안(딥네이비·금박·명조) 디자인 토큰.
+// feat-6-012 강사소개 공개 화면 공유 스타일 — 딥네이비·금박 디자인 토큰.
 // 앱 다크모드는 .dark 클래스 기반이므로 .dark .instr 로 오버라이드. 모든 클래스는 .instr 하위 스코프.
+// 폰트: 공식 폰트 Pretendard 로 통일(과거 명조 시안 → 사용자 요청으로 전면 교체).
+// var(--i-serif)/class i-serif 이름은 유지하되 값은 Pretendard.
 export const SERIF =
-  '"Batang","AppleMyungjo","Nanum Myeongjo",ui-serif,Georgia,serif';
+  '"Pretendard Variable","Pretendard","Apple SD Gothic Neo",system-ui,sans-serif';
 
 export function InstructorStyle() {
   return (

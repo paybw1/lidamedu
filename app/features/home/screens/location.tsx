@@ -2,7 +2,6 @@
 // 카카오 약도 하나로 표시(주소·전화·오시는 길·길찾기는 약도 위젯에 포함).
 import { KakaoRoughMap } from "~/features/home/components/kakao-rough-map";
 import { AboutSectionNav } from "../components/about-section-nav";
-import { SERIF } from "~/features/instructors/components/instructor-theme";
 
 import type { Route } from "./+types/location";
 
@@ -25,10 +24,7 @@ export default function Location() {
           <p className="text-link mb-3 font-mono text-xs font-semibold tracking-[0.2em] uppercase">
             Location
           </p>
-          <h1
-            className="text-3xl font-bold tracking-tight md:text-4xl"
-            style={{ fontFamily: SERIF }}
-          >
+          <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
             찾아오시는 길
           </h1>
         </header>

@@ -72,13 +72,10 @@ export default function InstructorsIndex({ loaderData }: Route.ComponentProps) {
           <p className="i-eyebrow">리담안내 · 강사진</p>
           <h1
             className="i-serif"
-            style={{ fontSize: "clamp(32px,5vw,48px)", fontWeight: 700, margin: "0 0 12px", lineHeight: 1.1 }}
+            style={{ fontSize: "clamp(32px,5vw,48px)", fontWeight: 700, margin: 0, lineHeight: 1.1 }}
           >
             가르치는 사람이 곧 교재입니다
           </h1>
-          <p style={{ color: "var(--i-herosoft)", maxWidth: "46ch", margin: "0 auto", fontSize: 15.5 }}>
-            조문·판례·문제를 한 체계로 엮어 온 리담의 전임 강사진을 소개합니다.
-          </p>
         </div>
       </header>
 

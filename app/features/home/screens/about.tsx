@@ -1,7 +1,6 @@
 // 학원 소개(인사말) — 공개 페이지. 푸터 "소개" 링크 대상.
 // 본문은 리담지식재산교육원 공식 인사말(원문 그대로).
 import { AboutSectionNav } from "../components/about-section-nav";
-import { SERIF } from "~/features/instructors/components/instructor-theme";
 
 import type { Route } from "./+types/about";
 
@@ -48,10 +47,7 @@ export default function About() {
           <p className="text-link mb-3 font-mono text-xs font-semibold tracking-[0.2em] uppercase">
             Dreams start here
           </p>
-          <h1
-            className="text-3xl font-bold tracking-tight md:text-4xl"
-            style={{ fontFamily: SERIF }}
-          >
+          <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
             변리사의 꿈을 함께 합니다.
           </h1>
         </header>
