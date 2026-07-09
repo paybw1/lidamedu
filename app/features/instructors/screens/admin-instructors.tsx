@@ -1,9 +1,10 @@
-// feat-6-012 강사소개 — 운영자 강사 관리 목록(/admin/instructors). staff. 상세 편집은 :id/edit.
-import { PlusIcon } from "lucide-react";
-import { Link, redirect } from "react-router";
+// feat-6-012 강사소개 — 운영자 강사 관리 목록(/admin/instructor-profiles). staff. 상세 편집은 :id/edit.
+import { ChevronDownIcon, ChevronUpIcon, PlusIcon } from "lucide-react";
+import { Link, redirect, useFetcher } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
+import { cn } from "~/core/lib/utils";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { getStaffRole } from "~/features/laws/queries.server";
@@ -52,13 +53,18 @@ export default function AdminInstructors({ loaderData }: Route.ComponentProps) {
           </div>
         ) : (
           <ul className="divide-border bg-card divide-y rounded-xl border">
-            {instructors.map((it) => (
-              <li key={it.instructorId}>
+            {instructors.map((it, i) => (
+              <li key={it.instructorId} className="flex items-center gap-1 pr-2">
+                <ReorderButtons
+                  instructorId={it.instructorId}
+                  isFirst={i === 0}
+                  isLast={i === instructors.length - 1}
+                />
                 <Link
                   to={`/admin/instructor-profiles/${it.instructorId}/edit`}
-                  className="hover:bg-muted/40 flex items-center gap-3 px-4 py-3"
+                  className="hover:bg-muted/40 flex flex-1 items-center gap-3 rounded-lg px-3 py-3"
                 >
-                  <span className="text-muted-foreground w-8 shrink-0 text-xs tabular-nums">
+                  <span className="text-muted-foreground w-6 shrink-0 text-xs tabular-nums">
                     {it.displayOrder}
                   </span>
                   <span className="min-w-0 flex-1">
@@ -81,5 +87,50 @@ export default function AdminInstructors({ loaderData }: Route.ComponentProps) {
         )}
       </div>
     </AdminShell>
+  );
+}
+
+// 배치 순서 ↑/↓ — 인접 강사와 display_order 교환(서버 처리). fetcher 라 목록 자동 갱신.
+function ReorderButtons({
+  instructorId,
+  isFirst,
+  isLast,
+}: {
+  instructorId: string;
+  isFirst: boolean;
+  isLast: boolean;
+}) {
+  const fetcher = useFetcher();
+  const busy = fetcher.state !== "idle";
+  const btn =
+    "inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent";
+  const submit = (direction: "up" | "down") => {
+    const fd = new FormData();
+    fd.set("intent", "reorder");
+    fd.set("instructorId", instructorId);
+    fd.set("direction", direction);
+    fetcher.submit(fd, { method: "post", action: "/api/admin/instructor" });
+  };
+  return (
+    <div className="flex shrink-0 flex-col">
+      <button
+        type="button"
+        aria-label="위로"
+        disabled={isFirst || busy}
+        onClick={() => submit("up")}
+        className={cn(btn, "h-5")}
+      >
+        <ChevronUpIcon className="size-3.5" />
+      </button>
+      <button
+        type="button"
+        aria-label="아래로"
+        disabled={isLast || busy}
+        onClick={() => submit("down")}
+        className={cn(btn, "h-5")}
+      >
+        <ChevronDownIcon className="size-3.5" />
+      </button>
+    </div>
   );
 }

@@ -31,6 +31,48 @@ export async function action({ request }: Route.ActionArgs) {
     return redirect("/admin/instructor-profiles");
   }
 
+  // 목록에서 ↑/↓ 배치 순서 변경 — 인접 강사와 display_order 교환.
+  if (intent === "reorder") {
+    const direction = String(fd.get("direction") ?? "");
+    if (!instructorId || (direction !== "up" && direction !== "down"))
+      return data({ error: "잘못된 요청" }, { status: 400 });
+    const { data: rows, error: e1 } = await client
+      .from("instructors")
+      .select("instructor_id, display_order")
+      .is("deleted_at", null)
+      .order("display_order", { ascending: true })
+      .order("instructor_id", { ascending: true });
+    if (e1) return data({ error: e1.message }, { status: 400 });
+    const list = rows ?? [];
+    const idx = list.findIndex((r) => r.instructor_id === instructorId);
+    if (idx === -1) return data({ error: "not found" }, { status: 404 });
+    const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= list.length)
+      return data({ ok: true }); // 경계 — 무변화
+    const a = list[idx];
+    const b = list[swapIdx];
+    // display_order 교환. 동률이면 인덱스 기반으로 강제 분리.
+    let aOrder = b.display_order;
+    let bOrder = a.display_order;
+    if (aOrder === bOrder) {
+      aOrder = swapIdx;
+      bOrder = idx;
+    }
+    const [{ error: e2 }, { error: e3 }] = await Promise.all([
+      client
+        .from("instructors")
+        .update({ display_order: aOrder })
+        .eq("instructor_id", a.instructor_id),
+      client
+        .from("instructors")
+        .update({ display_order: bOrder })
+        .eq("instructor_id", b.instructor_id),
+    ]);
+    if (e2 || e3)
+      return data({ error: (e2 ?? e3)?.message }, { status: 400 });
+    return data({ ok: true });
+  }
+
   if (intent === "save") {
     const photoUrl = await uploadInstructorPhoto(fd);
     const parsed = parseInstructorForm(fd, photoUrl);
