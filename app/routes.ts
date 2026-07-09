@@ -265,13 +265,9 @@ export default [
       "features/cs-inquiries/screens/support-detail.tsx",
     ),
     route("/api/cs/inquiry", "features/cs-inquiries/api/cs-inquiry.tsx"),
-  ]),
-
-  // Pages with top navigation + footer
-  layout("core/layouts/navigation.layout.tsx", [
-    index("features/home/screens/home.tsx"),
+    // 리담안내(인사말·강사진·찾아오시는 길) — 강의 플랫폼 소속. 강의 nav 의 "리담안내"
+    // 클릭 시 학습 플랫폼으로 튕기지 않도록 lecture.layout 아래에 둔다(공개 접근 가능).
     route("/about", "features/home/screens/about.tsx"),
-    // feat-6-012 — 리담안내 · 강사진(공개).
     route(
       "/about/instructors",
       "features/instructors/screens/instructors-index.tsx",
@@ -281,6 +277,12 @@ export default [
       "features/instructors/screens/instructor-detail.tsx",
     ),
     route("/location", "features/home/screens/location.tsx"),
+  ]),
+
+  // Pages with top navigation + footer
+  layout("core/layouts/navigation.layout.tsx", [
+    index("features/home/screens/home.tsx"),
+    // 리담안내(/about·/about/instructors·/location)는 강의 플랫폼(lecture.layout)으로 이관.
     route("/auth/confirm", "features/auth/screens/confirm.tsx"),
     route("/new-password", "features/auth/screens/new-password.tsx"),
     route("/error", "core/screens/error.tsx"),

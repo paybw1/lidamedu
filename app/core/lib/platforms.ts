@@ -26,6 +26,15 @@ export function getActivePlatform(pathname: string): PlatformId {
   if (pathname === "/lecture" || pathname.startsWith("/lecture/")) {
     return "lecture";
   }
+  // 리담안내(인사말·강사진·찾아오시는 길)는 강의 플랫폼 소속 — 강의 nav "리담안내"에서
+  // 진입 시 학습 플랫폼으로 튕기지 않도록 강의로 판별(lecture.layout 아래 렌더).
+  if (
+    pathname === "/about" ||
+    pathname.startsWith("/about/") ||
+    pathname === "/location"
+  ) {
+    return "lecture";
+  }
   return "study";
 }
 
