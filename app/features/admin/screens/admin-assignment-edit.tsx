@@ -313,6 +313,31 @@ function ProgressRow({
 }
 
 // feat-7-042 — 오프라인 테스트 목록 + 새로 만들기. 만들면 빌더로 이동.
+// 시험 삭제(soft) — 목록 항목별. fetcher 제출 후 라우트 loader 자동 재검증으로 목록 갱신.
+function DeleteTestButton({ testId, title }: { testId: string; title: string }) {
+  const fetcher = useFetcher<{ ok?: true; error?: string }>();
+  return (
+    <fetcher.Form
+      method="post"
+      action="/api/admin/offline-test"
+      onSubmit={(e) => {
+        if (!confirm(`"${title}" 시험을 삭제할까요?`)) e.preventDefault();
+      }}
+    >
+      <input type="hidden" name="intent" value="delete_test" />
+      <input type="hidden" name="testId" value={testId} />
+      <button
+        type="submit"
+        title="시험 삭제"
+        disabled={fetcher.state !== "idle"}
+        className="text-muted-foreground inline-flex items-center hover:text-rose-600 disabled:opacity-50"
+      >
+        <Trash2Icon className="size-3.5" />
+      </button>
+    </fetcher.Form>
+  );
+}
+
 function OfflineTestsSection({
   cohortId,
   assignmentId,
@@ -382,6 +407,7 @@ function OfflineTestsSection({
               >
                 <PrinterIcon className="size-3.5" /> 정답
               </Link>
+              <DeleteTestButton testId={t.testId} title={t.title} />
             </li>
           ))}
         </ul>
