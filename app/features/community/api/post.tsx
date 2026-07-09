@@ -26,7 +26,9 @@ import type { Route } from "./+types/post";
 // 폼 boolean — z.coerce.boolean() 은 "false" 도 true 가 되므로 명시 enum 으로 받는다.
 const boolField = z.enum(["true", "false"]).transform((v) => v === "true");
 const titleField = z.string().trim().min(1).max(200);
-const bodyField = z.string().trim().min(1).max(20000);
+// DB 제약(community_posts_body_md_check)이 60000 이라 액션도 동일 상한.
+// 합격 수기 등 표·서식이 많은 장문 글 편집 허용.
+const bodyField = z.string().trim().min(1).max(60000);
 
 const schema = z.discriminatedUnion("intent", [
   z.object({

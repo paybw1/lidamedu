@@ -1,15 +1,27 @@
 // 커뮤니티 글 작성/수정 — `/community/:board/new` · `/community/:board/:postId/edit`. feat-6-002.
 // 이미지 붙여넣기(Ctrl+V)·파일 추가 지원 — 글 저장 후 첨부(community-attachments)로 업로드.
 //   합격증/점수 캡처 등 개인정보라 인라인 public 이 아닌 private 첨부(서명 URL)로 보존.
-import { ImagePlusIcon, Loader2Icon, SendIcon, XIcon } from "lucide-react";
+import {
+  BoldIcon,
+  EyeIcon,
+  ImagePlusIcon,
+  Loader2Icon,
+  SendIcon,
+  TableIcon,
+  TypeIcon,
+  UnderlineIcon,
+  XIcon,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, data, redirect, useNavigate } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Input } from "~/core/components/ui/input";
 import { Textarea } from "~/core/components/ui/textarea";
+import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { CommunityShell } from "~/features/community/components/community-shell";
+import { MarkdownView } from "~/features/problems/components/markdown-view";
 
 import { BOARD_LABEL, communityBoardSchema } from "../labels";
 import { getPost } from "../queries.server";
@@ -78,7 +90,9 @@ export default function CommunityPostNew({ loaderData }: Route.ComponentProps) {
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const [warn, setWarn] = useState<string | null>(null);
+  const [preview, setPreview] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
 
   // unmount 시 미리보기 objectURL 정리(메모리 누수 방지).
   const imagesRef = useRef(images);
@@ -226,22 +240,55 @@ export default function CommunityPostNew({ loaderData }: Route.ComponentProps) {
             />
           </label>
 
-          <label className="mt-4 block">
-            <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
-              내용
-            </span>
-            <Textarea
-              name="bodyMd"
+          <div className="mt-4">
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <span className="text-muted-foreground block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+                내용
+              </span>
+              <button
+                type="button"
+                onClick={() => setPreview((v) => !v)}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
+                  preview
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <EyeIcon className="size-3" /> 미리보기
+              </button>
+            </div>
+            <FormatToolbar
+              textareaRef={bodyRef}
               value={body}
-              onChange={(e) => setBody(e.target.value)}
-              onPaste={onPaste}
-              placeholder="내용을 입력해 주세요. 이미지는 붙여넣기(Ctrl+V)하거나 아래 ‘이미지 추가’로 첨부할 수 있습니다."
-              rows={12}
-              maxLength={20000}
-              className="text-sm leading-relaxed"
-              required
+              onChange={setBody}
+              isStaff={isStaff}
             />
-          </label>
+            {preview ? (
+              <div className="border-border bg-muted/20 min-h-[220px] rounded-md rounded-t-none border border-t-0 px-3 py-2.5">
+                {body.trim() ? (
+                  <MarkdownView text={body} trusted={isStaff} />
+                ) : (
+                  <p className="text-muted-foreground text-sm">
+                    내용을 입력하면 여기에 미리보기가 표시됩니다.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <Textarea
+                ref={bodyRef}
+                name="bodyMd"
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                onPaste={onPaste}
+                placeholder="내용을 입력해 주세요. 위 도구모음으로 굵게·밑줄·색·크기·표를 넣을 수 있고, 이미지는 붙여넣기(Ctrl+V)하거나 아래 ‘이미지 추가’로 첨부할 수 있습니다."
+                rows={14}
+                maxLength={60000}
+                className="rounded-t-none text-sm leading-relaxed"
+                required
+              />
+            )}
+          </div>
 
           {/* 이미지 첨부 — 붙여넣기 또는 파일 선택. 저장 시 첨부로 업로드. */}
           <div className="mt-3">
@@ -349,5 +396,124 @@ export default function CommunityPostNew({ loaderData }: Route.ComponentProps) {
         </form>
       </div>
     </CommunityShell>
+  );
+}
+
+// 서식 도구모음 — 선택 영역을 감싸거나 커서 위치에 스니펫 삽입. 굵게·표는 마크다운(GFM)이라
+// 누구나 렌더되고, 밑줄·색·크기는 원시 HTML 이라 강사·운영자 글(trusted)에서만 실제 색/크기로
+// 표시된다(학생 글은 텍스트로 남아 XSS 안전). 그래서 색·크기 버튼은 isStaff 일 때만 노출.
+const TEXT_COLORS: { label: string; hex: string }[] = [
+  { label: "빨강", hex: "#c0392b" },
+  { label: "파랑", hex: "#2d5ba8" },
+  { label: "초록", hex: "#1e824c" },
+  { label: "주황", hex: "#c97a1a" },
+];
+const TABLE_SNIPPET = `\n\n| 구분 | 내용 | 비고 |\n| --- | --- | --- |\n| 항목1 | 내용1 |  |\n| 항목2 | 내용2 |  |\n\n`;
+
+function FormatToolbar({
+  textareaRef,
+  value,
+  onChange,
+  isStaff,
+}: {
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
+  value: string;
+  onChange: (v: string) => void;
+  isStaff: boolean;
+}) {
+  // 선택 영역을 before/after 로 감싼다. 선택이 없으면 placeholder 를 넣고 그 부분을 선택.
+  function wrap(before: string, after: string, placeholder = "텍스트") {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const sel = value.slice(start, end) || placeholder;
+    const next = value.slice(0, start) + before + sel + after + value.slice(end);
+    onChange(next);
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.setSelectionRange(start + before.length, start + before.length + sel.length);
+    });
+  }
+  // 커서 위치에 스니펫 삽입.
+  function insert(snippet: string) {
+    const ta = textareaRef.current;
+    if (!ta) {
+      onChange(value + snippet);
+      return;
+    }
+    const start = ta.selectionStart;
+    const next = value.slice(0, start) + snippet + value.slice(start);
+    onChange(next);
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.setSelectionRange(start + snippet.length, start + snippet.length);
+    });
+  }
+
+  const btn =
+    "inline-flex h-7 items-center gap-1 rounded-md border border-transparent px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-background hover:text-foreground";
+
+  return (
+    <div className="border-border bg-muted/40 flex flex-wrap items-center gap-0.5 rounded-md rounded-b-none border border-b-0 px-1.5 py-1">
+      <button type="button" className={btn} onClick={() => wrap("**", "**")} title="굵게">
+        <BoldIcon className="size-3.5" /> 굵게
+      </button>
+      {isStaff ? (
+        <button
+          type="button"
+          className={btn}
+          onClick={() => wrap("<u>", "</u>")}
+          title="밑줄"
+        >
+          <UnderlineIcon className="size-3.5" /> 밑줄
+        </button>
+      ) : null}
+      {isStaff ? (
+        <div className="mx-0.5 flex items-center gap-0.5">
+          {TEXT_COLORS.map((c) => (
+            <button
+              key={c.hex}
+              type="button"
+              title={`색: ${c.label}`}
+              aria-label={`색 ${c.label}`}
+              onClick={() =>
+                wrap(`<span style="color:${c.hex}">`, "</span>")
+              }
+              className="size-5 rounded-full border border-black/10"
+              style={{ backgroundColor: c.hex }}
+            />
+          ))}
+        </div>
+      ) : null}
+      {isStaff ? (
+        <>
+          <button
+            type="button"
+            className={btn}
+            onClick={() => wrap('<span style="font-size:1.3em">', "</span>")}
+            title="크게"
+          >
+            <TypeIcon className="size-3.5" /> 크게
+          </button>
+          <button
+            type="button"
+            className={btn}
+            onClick={() => wrap('<span style="font-size:0.85em">', "</span>")}
+            title="작게"
+          >
+            <TypeIcon className="size-3" /> 작게
+          </button>
+        </>
+      ) : null}
+      <button
+        type="button"
+        className={btn}
+        onClick={() => insert(TABLE_SNIPPET)}
+        title="표 삽입"
+      >
+        <TableIcon className="size-3.5" /> 표
+      </button>
+    </div>
   );
 }
