@@ -494,7 +494,7 @@ function LabeledBlock({
     ? { main: baseInline, tail: [] as Inline[] }
     : splitTrailingRefs(baseInline, lawCode);
   return (
-    <div style={{ paddingLeft: `${depth * 16}px` }} id={id}>
+    <div style={{ paddingLeft: `${depth * 8}px` }} id={id}>
       <p>
         <span className={labelClass}>{label}</span>
         {subtitle ? (
@@ -510,7 +510,7 @@ function LabeledBlock({
         </div>
       ) : null}
       {children.length > 0 ? (
-        <div className="mt-2 space-y-2 pl-4">
+        <div className="mt-2 space-y-2 pl-2">
           {children.map((c, i) => (
             <BlockView key={i} block={c} depth={depth + 1} />
           ))}
