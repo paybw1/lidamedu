@@ -66,6 +66,38 @@ function parseXlsx(path) {
 }
 const colLetters = (n) => Array.from({ length: n }, (_, i) => String.fromCharCode(65 + i));
 
+// 다중 시트 xlsx — 시트별로 스키마가 다른 통합 파일용. [{ name, rows }] 반환.
+function parseXlsxSheets(path) {
+  const zip = new AdmZip(path);
+  const ssXml = zip.readAsText("xl/sharedStrings.xml") || "";
+  const shared = [...ssXml.matchAll(/<si>([\s\S]*?)<\/si>/g)].map((m) => XENT(m[1]));
+  const wb = zip.readAsText("xl/workbook.xml") || "";
+  const names = [...wb.matchAll(/<sheet [^>]*name="([^"]*)"/g)].map((m) => XENT(m[1]));
+  const out = [];
+  for (let i = 1; ; i++) {
+    const sheet = zip.readAsText(`xl/worksheets/sheet${i}.xml`);
+    if (!sheet) break;
+    const rows = [];
+    for (const rm of sheet.matchAll(/<row [^>]*>([\s\S]*?)<\/row>/g)) {
+      const cells = {};
+      for (const cm of rm[1].matchAll(/<c r="([A-Z]+)(\d+)"([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
+        const col = cm[1];
+        const attrs = cm[3] ?? "";
+        const inner = cm[4] ?? "";
+        let v = "";
+        const vm = /<v>([\s\S]*?)<\/v>/.exec(inner);
+        const ism = /<is>([\s\S]*?)<\/is>/.exec(inner);
+        if (vm) v = /t="s"/.test(attrs) ? (shared[+vm[1]] ?? "") : XENT(vm[1]);
+        else if (ism) v = XENT(ism[1]);
+        cells[col] = v;
+      }
+      rows.push(cells);
+    }
+    out.push({ name: names[i - 1] ?? `sheet${i}`, rows });
+  }
+  return out;
+}
+
 // ── 날짜 정규화: "18.02.04" / "2018.02.04" / 엑셀 시리얼 → YYYY-MM-DD ────────
 function normDate(s) {
   const t = (s ?? "").trim();
@@ -153,6 +185,27 @@ for (const { path, cols } of XLSX_FILES) {
       push({ subject: v[0], category: v[1], targetHint: v[2], title: v[3], question: v[4], answer: v[5], followupQ: v[6], followupA: v[7], date: v[8] }, basename(path));
     else
       push({ subject: v[0], category: v[1], title: v[2], question: v[3], answer: v[4], followupQ: v[5], followupA: v[6], date: v[7] }, basename(path));
+  }
+  report.files.push(`${basename(path)}: ${entries.length - before}`);
+}
+
+// 판례연구·공부방법 통합 파일(다중 시트, 시트별 스키마 상이) — 2026-07-09 추가분
+// · 판례연구(대법원/특허법원/일반법원): 8열 [과목,분류(법원),제목,질문,답변,추가질문,재답변,날짜]
+//   → subject=특허법(patent), category="판례"(사건번호 매칭 유도), 제목 유지.
+// · 공부방법: 7열 [과목,제목,질문,답변,추가질문,재답변,날짜] (분류 열 없음)
+//   → subject=특허법(patent), category="공부방법"(제목 재생성 대상 마커), 제목은 이후 gen-study-titles 로 재작성.
+{
+  const path = resolve(SRC, "판례및공부방법Q&A/판례 공부법.xlsx");
+  const before = entries.length;
+  for (const { name, rows } of parseXlsxSheets(path)) {
+    const isStudy = /공부방법/.test(name);
+    for (const cells of rows.slice(1)) {
+      const v = colLetters(8).map((c) => cells[c] ?? "");
+      if (isStudy)
+        push({ subject: "특허법", category: "공부방법", title: v[1], question: v[2], answer: v[3], followupQ: v[4], followupA: v[5], date: v[6] }, basename(path));
+      else
+        push({ subject: "특허법", category: "판례", targetHint: null, title: v[2], question: v[3], answer: v[4], followupQ: v[5], followupA: v[6], date: v[7] }, basename(path));
+    }
   }
   report.files.push(`${basename(path)}: ${entries.length - before}`);
 }
