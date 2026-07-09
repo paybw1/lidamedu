@@ -1281,6 +1281,80 @@ export type Database = {
         }
         Relationships: []
       }
+      book_categories: {
+        Row: {
+          category_id: string
+          created_at: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          category_id?: string
+          created_at?: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      book_downloads: {
+        Row: {
+          book_id: string
+          created_at: string
+          download_id: string
+          order_item_id: string | null
+          user_id: string
+        }
+        Insert: {
+          book_id: string
+          created_at?: string
+          download_id?: string
+          order_item_id?: string | null
+          user_id: string
+        }
+        Update: {
+          book_id?: string
+          created_at?: string
+          download_id?: string
+          order_item_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_downloads_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["book_id"]
+          },
+          {
+            foreignKeyName: "book_downloads_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "v_book_stock"
+            referencedColumns: ["book_id"]
+          },
+          {
+            foreignKeyName: "book_downloads_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "v_sales_books"
+            referencedColumns: ["book_id"]
+          },
+          {
+            foreignKeyName: "book_downloads_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
+            referencedColumns: ["order_item_id"]
+          },
+        ]
+      }
       book_preview_pages: {
         Row: {
           book_id: string
@@ -1567,47 +1641,130 @@ export type Database = {
       books: {
         Row: {
           author: string | null
+          author_bio: string | null
           book_id: string
+          book_type: string
+          category_id: string | null
+          course_only: boolean
+          cover_file_path: string | null
           cover_path: string | null
           created_at: string
           deleted_at: string | null
           description: string | null
+          download_limit: number
+          event_phrase: string | null
+          extra1: string | null
+          extra2: string | null
+          group_discount_ok: boolean
+          is_recommended: boolean
           isbn: string | null
+          label_color: string | null
+          label_text: string | null
+          list_price_krw: number | null
+          listed: boolean
+          pdf_path: string | null
+          per_person_limit: number | null
+          preview_url: string | null
           price_krw: number
+          published_on: string | null
           publisher: string | null
           sale_status: string
+          shipping_fee_krw: number
+          shipping_fee_type: string
+          short_info: string | null
+          short_intro: string | null
+          tax_free: boolean
           title: string
+          toc: string | null
           updated_at: string
         }
         Insert: {
           author?: string | null
+          author_bio?: string | null
           book_id?: string
+          book_type?: string
+          category_id?: string | null
+          course_only?: boolean
+          cover_file_path?: string | null
           cover_path?: string | null
           created_at?: string
           deleted_at?: string | null
           description?: string | null
+          download_limit?: number
+          event_phrase?: string | null
+          extra1?: string | null
+          extra2?: string | null
+          group_discount_ok?: boolean
+          is_recommended?: boolean
           isbn?: string | null
+          label_color?: string | null
+          label_text?: string | null
+          list_price_krw?: number | null
+          listed?: boolean
+          pdf_path?: string | null
+          per_person_limit?: number | null
+          preview_url?: string | null
           price_krw: number
+          published_on?: string | null
           publisher?: string | null
           sale_status?: string
+          shipping_fee_krw?: number
+          shipping_fee_type?: string
+          short_info?: string | null
+          short_intro?: string | null
+          tax_free?: boolean
           title: string
+          toc?: string | null
           updated_at?: string
         }
         Update: {
           author?: string | null
+          author_bio?: string | null
           book_id?: string
+          book_type?: string
+          category_id?: string | null
+          course_only?: boolean
+          cover_file_path?: string | null
           cover_path?: string | null
           created_at?: string
           deleted_at?: string | null
           description?: string | null
+          download_limit?: number
+          event_phrase?: string | null
+          extra1?: string | null
+          extra2?: string | null
+          group_discount_ok?: boolean
+          is_recommended?: boolean
           isbn?: string | null
+          label_color?: string | null
+          label_text?: string | null
+          list_price_krw?: number | null
+          listed?: boolean
+          pdf_path?: string | null
+          per_person_limit?: number | null
+          preview_url?: string | null
           price_krw?: number
+          published_on?: string | null
           publisher?: string | null
           sale_status?: string
+          shipping_fee_krw?: number
+          shipping_fee_type?: string
+          short_info?: string | null
+          short_intro?: string | null
+          tax_free?: boolean
           title?: string
+          toc?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "books_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "book_categories"
+            referencedColumns: ["category_id"]
+          },
+        ]
       }
       bug_reports: {
         Row: {
@@ -6369,6 +6526,7 @@ export type Database = {
           discount_id: string | null
           order_id: string
           payment_method: string
+          shipping_fee_krw: number
           status: string
           total_krw: number
           updated_at: string
@@ -6379,6 +6537,7 @@ export type Database = {
           discount_id?: string | null
           order_id?: string
           payment_method?: string
+          shipping_fee_krw?: number
           status?: string
           total_krw: number
           updated_at?: string
@@ -6389,6 +6548,7 @@ export type Database = {
           discount_id?: string | null
           order_id?: string
           payment_method?: string
+          shipping_fee_krw?: number
           status?: string
           total_krw?: number
           updated_at?: string

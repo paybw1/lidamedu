@@ -202,6 +202,14 @@ export function BookGridCard({
           wishlisted={wishlisted}
           className="bg-background/80 absolute top-1.5 right-1.5 backdrop-blur-sm"
         />
+        {book.labelText ? (
+          <span
+            className="absolute top-1.5 left-1.5 rounded px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm"
+            style={{ backgroundColor: book.labelColor || "#2d5ba8" }}
+          >
+            {book.labelText}
+          </span>
+        ) : null}
       </div>
       <div className="mt-2 flex flex-1 flex-col">
         <Link
@@ -216,8 +224,15 @@ export function BookGridCard({
           </p>
         ) : null}
         <div className="mt-2 flex items-center justify-between gap-1">
-          <span className="text-sm font-bold tabular-nums">
-            {book.priceKrw.toLocaleString("ko-KR")}원
+          <span className="flex items-baseline gap-1">
+            {book.listPriceKrw && book.listPriceKrw > book.priceKrw ? (
+              <span className="text-muted-foreground text-[11px] line-through">
+                {book.listPriceKrw.toLocaleString("ko-KR")}
+              </span>
+            ) : null}
+            <span className="text-sm font-bold tabular-nums">
+              {book.priceKrw.toLocaleString("ko-KR")}원
+            </span>
           </span>
           {book.soldOut ? (
             <Badge variant="secondary" className="text-[10px]">

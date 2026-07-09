@@ -58,19 +58,20 @@ export type CartOrderItem =
 export async function createCartOrder(input: {
   userId: string;
   items: CartOrderItem[];
+  shippingFeeKrw?: number; // 선불 배송료 합계(주문 총액 가산)
   paymentMethod?: "toss" | "bank_transfer" | "free" | "manual";
 }): Promise<{ orderId: string; totalKrw: number }> {
   const qtyOf = (it: CartOrderItem) => (it.itemType === "book" ? it.quantity : 1);
-  const totalKrw = input.items.reduce(
-    (s, it) => s + it.unitPriceKrw * qtyOf(it),
-    0,
-  );
+  const shipping = input.shippingFeeKrw ?? 0;
+  const totalKrw =
+    input.items.reduce((s, it) => s + it.unitPriceKrw * qtyOf(it), 0) + shipping;
   const { data: order, error } = await adminClient
     .from("orders")
     .insert({
       user_id: input.userId,
       status: "pending_payment",
       total_krw: totalKrw,
+      shipping_fee_krw: shipping,
       payment_method: input.paymentMethod ?? "toss",
     })
     .select("order_id")

@@ -25,8 +25,7 @@ export function PlatformSwitch({ className }: { className?: string }) {
       role="tablist"
       aria-label="플랫폼 선택"
       className={cn(
-        "ring-border/60 inline-flex items-center gap-1 rounded-full p-1 text-[13px] font-semibold ring-1",
-        "bg-slate-100/80 dark:bg-slate-800/60",
+        "bg-muted/70 ring-border/50 inline-flex items-center gap-1 rounded-full p-1 text-[13px] font-semibold ring-1",
         className,
       )}
     >
@@ -43,8 +42,8 @@ export function PlatformSwitch({ className }: { className?: string }) {
             className={cn(
               "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 whitespace-nowrap transition-all duration-200",
               isActive
-                ? "bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-sm shadow-blue-600/25"
-                : "text-slate-500 hover:bg-blue-500/10 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-300",
+                ? "bg-primary text-primary-foreground shadow-primary/25 shadow-sm"
+                : "text-muted-foreground hover:text-primary hover:bg-primary/10",
             )}
           >
             <Icon className="size-3.5" />

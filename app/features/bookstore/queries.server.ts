@@ -29,9 +29,17 @@ export interface BookCard {
   author: string | null;
   publisher: string | null;
   priceKrw: number;
+  listPriceKrw: number | null; // 정가(있으면 취소선)
   coverPath: string | null;
+  labelText: string | null;
+  labelColor: string | null;
   stock: number | null; // null = 재고 미집계
   soldOut: boolean;
+}
+
+// 표지 우선순위: 외부 URL(cover_path) → 업로드 파일(cover_file_path).
+function pickCover(coverPath: string | null, coverFilePath: string | null) {
+  return coverPath || coverFilePath || null;
 }
 
 async function stockMap(bookIds: string[]): Promise<Map<string, number>> {
@@ -53,8 +61,12 @@ export async function listBookstoreBooks(
 ): Promise<BookCard[]> {
   let query = client
     .from("books")
-    .select("book_id, title, author, publisher, price_krw, cover_path")
+    .select(
+      "book_id, title, author, publisher, price_krw, list_price_krw, cover_path, cover_file_path, label_text, label_color",
+    )
     .eq("sale_status", "on_sale")
+    .eq("course_only", false) // 과정전용은 목록 미노출
+    .eq("listed", true) // 노출여부 off 는 목록 미노출(상세는 접근 가능)
     .is("deleted_at", null);
   const q = opts.q?.trim();
   if (q) query = query.or(`title.ilike.%${q}%,author.ilike.%${q}%`);
@@ -83,7 +95,10 @@ export async function listBookstoreBooks(
       author: r.author,
       publisher: r.publisher,
       priceKrw: r.price_krw,
-      coverPath: r.cover_path,
+      listPriceKrw: r.list_price_krw,
+      coverPath: pickCover(r.cover_path, r.cover_file_path),
+      labelText: r.label_text,
+      labelColor: r.label_color,
       stock,
       soldOut: stock !== null && stock <= 0,
     };
@@ -105,7 +120,9 @@ export async function listWishlistBooks(
   if (ids.length === 0) return [];
   const { data: books } = await client
     .from("books")
-    .select("book_id, title, author, publisher, price_krw, cover_path")
+    .select(
+      "book_id, title, author, publisher, price_krw, list_price_krw, cover_path, cover_file_path, label_text, label_color",
+    )
     .in("book_id", ids)
     .eq("sale_status", "on_sale")
     .is("deleted_at", null);
@@ -122,7 +139,10 @@ export async function listWishlistBooks(
       author: b.author,
       publisher: b.publisher,
       priceKrw: b.price_krw,
-      coverPath: b.cover_path,
+      listPriceKrw: b.list_price_krw,
+      coverPath: pickCover(b.cover_path, b.cover_file_path),
+      labelText: b.label_text,
+      labelColor: b.label_color,
       stock,
       soldOut: stock !== null && stock <= 0,
     });
@@ -178,6 +198,13 @@ export async function listBundles(client: Client): Promise<BundleCard[]> {
 export interface BookDetail extends BookCard {
   description: string | null;
   isbn: string | null;
+  shortIntro: string | null;
+  authorBio: string | null;
+  toc: string | null;
+  publishedOn: string | null;
+  previewUrl: string | null;
+  eventPhrase: string | null;
+  courseOnly: boolean;
   // B2-2 미리보기(look-inside) 샘플 페이지 이미지.
   previewPages: Array<{ previewId: string; imageUrl: string }>;
   // 강의↔교재 크로스셀 — 이 교재가 연결된 판매중 강의 상품.
@@ -196,12 +223,13 @@ export async function getBookDetail(
   const { data: b, error } = await client
     .from("books")
     .select(
-      "book_id, title, author, publisher, price_krw, cover_path, description, isbn, sale_status",
+      "book_id, title, author, publisher, price_krw, list_price_krw, cover_path, cover_file_path, label_text, label_color, description, isbn, short_intro, author_bio, toc, published_on, preview_url, event_phrase, course_only, sale_status",
     )
     .eq("book_id", bookId)
     .is("deleted_at", null)
     .maybeSingle();
   if (error) throw error;
+  // 상세는 판매중이면 접근 가능(과정전용·목록 미노출도 직접 링크로 접근 가능).
   if (!b || b.sale_status !== "on_sale") return null;
 
   const stocks = await stockMap([bookId]);
@@ -249,11 +277,21 @@ export async function getBookDetail(
     author: b.author,
     publisher: b.publisher,
     priceKrw: b.price_krw,
-    coverPath: b.cover_path,
+    listPriceKrw: b.list_price_krw,
+    coverPath: pickCover(b.cover_path, b.cover_file_path),
+    labelText: b.label_text,
+    labelColor: b.label_color,
     stock,
     soldOut: stock !== null && stock <= 0,
     description: b.description,
     isbn: b.isbn,
+    shortIntro: b.short_intro,
+    authorBio: b.author_bio,
+    toc: b.toc,
+    publishedOn: b.published_on,
+    previewUrl: b.preview_url,
+    eventPhrase: b.event_phrase,
+    courseOnly: b.course_only,
     previewPages,
     relatedCourses,
   };

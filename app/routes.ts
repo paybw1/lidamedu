@@ -606,6 +606,11 @@ export default [
       route("/api/orders/bank-transfer", "features/orders/api/bank-transfer.tsx"),
       // feat-11-004 4c — 도서몰·배송 + 학생 마이페이지.
       route("/admin/books", "features/bookstore/screens/admin-books.tsx"),
+      route("/admin/books/new", "features/bookstore/screens/admin-book-new.tsx"),
+      route(
+        "/admin/books/:bookId/edit",
+        "features/bookstore/screens/admin-book-edit.tsx",
+      ),
       route(
         "/admin/book-bundles",
         "features/bookstore/screens/admin-book-bundles.tsx",

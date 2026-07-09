@@ -8,6 +8,7 @@ import { data } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import adminClient from "~/core/lib/supa-admin-client.server";
 import {
   type CartOrderItem,
   createCartOrder,
@@ -60,6 +61,7 @@ export async function action({ request }: Route.ActionArgs) {
   // 서버에서 각 항목 재해석(가격·판매상태 검증). plan=course/tpass 만, book=on_sale 만.
   const resolved: CartOrderItem[] = [];
   const names: string[] = [];
+  let shippingFeeKrw = 0; // 선불 배송료 합계
   for (const it of parsed.data.items) {
     if (it.kind === "plan") {
       const plan = await getPlanByCode(client, it.code);
@@ -81,7 +83,9 @@ export async function action({ request }: Route.ActionArgs) {
     } else if (it.kind === "book") {
       const { data: book } = await client
         .from("books")
-        .select("book_id, title, price_krw, sale_status")
+        .select(
+          "book_id, title, price_krw, sale_status, shipping_fee_type, shipping_fee_krw, per_person_limit",
+        )
         .eq("book_id", it.bookId)
         .is("deleted_at", null)
         .maybeSingle();
@@ -89,6 +93,26 @@ export async function action({ request }: Route.ActionArgs) {
         return data({ error: "판매 중인 도서가 아닙니다" }, { status: 404 });
       if (book.price_krw <= 0)
         return data({ error: "유료 도서만 결제할 수 있습니다" }, { status: 400 });
+      // 1인당 판매 제한 — 기존 결제 완료 수량 + 이번 수량 ≤ 제한.
+      if (book.per_person_limit != null) {
+        const { data: prior } = await adminClient
+          .from("order_items")
+          .select("quantity, orders!inner(user_id, status)")
+          .eq("book_id", book.book_id)
+          .eq("orders.user_id", user.id)
+          .eq("orders.status", "paid");
+        const bought = (prior ?? []).reduce((s, r) => s + (r.quantity ?? 0), 0);
+        if (bought + it.quantity > book.per_person_limit)
+          return data(
+            {
+              error: `《${book.title}》 은 1인당 ${book.per_person_limit}개까지 구매할 수 있습니다.`,
+            },
+            { status: 400 },
+          );
+      }
+      // 배송료 — 선불만 주문 총액에 가산(착불/무료는 0).
+      if (book.shipping_fee_type === "prepaid")
+        shippingFeeKrw += book.shipping_fee_krw ?? 0;
       resolved.push({
         itemType: "book",
         bookId: book.book_id,
@@ -147,7 +171,11 @@ export async function action({ request }: Route.ActionArgs) {
     }
   }
 
-  const order = await createCartOrder({ userId: user.id, items: resolved });
+  const order = await createCartOrder({
+    userId: user.id,
+    items: resolved,
+    shippingFeeKrw,
+  });
   if (order.totalKrw <= 0)
     return data({ error: "결제 금액이 0원입니다" }, { status: 400 });
 
