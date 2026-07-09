@@ -943,6 +943,8 @@ export async function listBlankCandidates(
       blanksCount: Array.isArray(r.blanks) ? r.blanks.length : 0,
       articleImportance: r.articles.importance ?? 0,
     }))
+    // 빈칸이 하나도 없는 세트(blanks: [])는 시험 문항이 될 수 없으므로 후보에서 제외.
+    .filter((c) => c.blanksCount > 0)
     .sort((a, b) => b.articleImportance - a.articleImportance)
     .slice(0, filter.limit ?? 100);
 }
