@@ -140,6 +140,8 @@ export const NAV_GROUP_POOL = {
       { label: "합격 수기", to: "/community/review" },
       // 이용 가이드 허브 — 기능 사용법(글+영상). 운영자 작성(/admin/guides).
       { label: "이용 가이드", to: "/guide" },
+      // feat-6-011 — 고객센터 문의.
+      { label: "고객센터", to: "/support" },
     ],
   },
 } satisfies Record<string, NavGroup>;

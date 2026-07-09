@@ -17,6 +17,8 @@ export const STAFF_KINDS: NotificationKind[] = [
   "lecture_note_abuse",
   // GS AI/OCR 일일 한도 경보 — usage-tracker 가 직접 insert (누락돼 인박스에 안 보이던 것 수정).
   "gs_cap_reached",
+  // feat-6-011 — 고객센터 신규 문의 접수.
+  "cs_inquiry_created",
 ];
 
 // 학생용 kinds.
@@ -34,6 +36,8 @@ export const STUDENT_KINDS: NotificationKind[] = [
   "staff_message",
   // feat-11 B2-4 — 도서 재입고 알림.
   "book_restock",
+  // feat-6-011 — 고객센터 문의 답변 등록 알림(작성자에게).
+  "cs_inquiry_answered",
 ];
 
 export function isStaffKind(k: NotificationKind): boolean {

@@ -9,6 +9,8 @@ export const STAFF_DUTIES = [
   "ai_usage_alert",
   "lecture_abuse_alert",
   "student_admin_access",
+  // feat-6-011 — 고객센터 문의 접수 알림 라우팅.
+  "cs_inquiry",
   // feat-11-004 4d — LMS 접근 권한 4종 (설계 §3.12)
   "lms_video_admin",
   "lms_cs",
@@ -44,6 +46,12 @@ export const DUTY_META: Record<StaffDuty, DutyMeta> = {
     desc: "학생·스태프가 화면에서 오류를 신고하면 접수 알림.",
     kind: "notify",
     fallbackRoles: ["instructor", "manager", "admin"],
+  },
+  cs_inquiry: {
+    label: "고객센터 문의",
+    desc: "학생·회원이 고객센터에 문의를 남기면 접수 알림.",
+    kind: "notify",
+    fallbackRoles: ["manager", "admin"],
   },
   qna_question: {
     label: "Q&A 신규 질문",

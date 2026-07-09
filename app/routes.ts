@@ -548,6 +548,14 @@ export default [
           // 이용 가이드 허브 — 기능 사용법(글+영상). 운영자 작성(/admin/guides).
           route("/guide", "features/guide/screens/guide-index.tsx"),
           route("/guide/:guideId", "features/guide/screens/guide-detail.tsx"),
+          // feat-6-011 — 고객센터 문의(학생·회원). 접근통제는 RLS 가 DB 에서 강제.
+          route("/support", "features/cs-inquiries/screens/support-list.tsx"),
+          route("/support/new", "features/cs-inquiries/screens/support-new.tsx"),
+          route(
+            "/support/:inquiryId",
+            "features/cs-inquiries/screens/support-detail.tsx",
+          ),
+          route("/api/cs/inquiry", "features/cs-inquiries/api/cs-inquiry.tsx"),
         ],
       ),
       route("/admin", "features/admin/screens/admin.tsx"),
@@ -560,6 +568,10 @@ export default [
       route(
         "/admin/bug-reports",
         "features/bug-reports/screens/admin-bug-reports.tsx",
+      ),
+      route(
+        "/admin/cs-inquiries",
+        "features/cs-inquiries/screens/admin-cs-inquiries.tsx",
       ),
       route(
         "/admin/announcements",
