@@ -6,7 +6,10 @@ import type { Database } from "database.types";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
 import { getDutyRecipientIds } from "~/features/admin/lib/duties.server";
-import { createUserNotifications } from "~/features/notifications/queries.server";
+import {
+  createUserNotifications,
+  markNotificationsReadByEntity,
+} from "~/features/notifications/queries.server";
 
 // ── 학생: 신청 ──────────────────────────────────────────────────────────────
 
@@ -163,6 +166,12 @@ export async function approveUpgradeRequest(
     body: `${cohort.name} 배정이 완료됐습니다. 상담·과제·반별 게시판이 열렸습니다.`,
     href: "/dashboard",
   });
+  // 처리 완료 → 담당자 인박스의 이 신청 접수 알림을 자동 읽음 처리.
+  await markNotificationsReadByEntity({
+    kind: "cohort_upgrade_requested",
+    entityType: "cohort_upgrade_request",
+    entityId: req.user_id,
+  });
   return { ok: true };
 }
 
@@ -199,6 +208,12 @@ export async function rejectUpgradeRequest(
       ? `신청이 반려됐습니다 — ${note}`
       : "신청이 반려됐습니다. 자세한 내용은 학원으로 문의해 주세요.",
     href: "/pricing",
+  });
+  // 처리 완료 → 담당자 인박스의 이 신청 접수 알림을 자동 읽음 처리.
+  await markNotificationsReadByEntity({
+    kind: "cohort_upgrade_requested",
+    entityType: "cohort_upgrade_request",
+    entityId: req.user_id,
   });
   return { ok: true };
 }
