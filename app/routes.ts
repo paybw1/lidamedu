@@ -9,6 +9,11 @@ import {
 export default [
   route("/robots.txt", "core/screens/robots.ts"),
   route("/sitemap.xml", "core/screens/sitemap.ts"),
+  // feat-13 수강증명서 인쇄 — 독립 페이지(레이아웃 크롬 없음, 깨끗한 인쇄).
+  route(
+    "/lecture/certificates/:enrollmentId/print",
+    "features/lms/screens/lecture-certificate-print.tsx",
+  ),
 
   ...prefix("/debug", [
     route("/sentry", "debug/sentry.tsx"),

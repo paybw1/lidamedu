@@ -4,7 +4,6 @@ import {
   MenuIcon,
   PanelLeftOpenIcon,
   PanelTopOpenIcon,
-  SearchIcon,
   UserIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -36,7 +35,6 @@ import {
 } from "~/core/lib/subject-groups";
 import { cn } from "~/core/lib/utils";
 
-import { openCommandPalette } from "./command-palette";
 import ThemeSwitcher from "./theme-switcher";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
@@ -178,17 +176,6 @@ function Actions({
         isVertical ? "flex-col gap-1" : "gap-1",
       )}
     >
-      <Button
-        variant="ghost"
-        size={isVertical ? "icon" : "sm"}
-        className={cn("text-muted-foreground", isVertical ? "size-9" : "size-8")}
-        onClick={() => openCommandPalette()}
-        aria-label="전역 검색 (⌘K)"
-        data-testid="open-command-palette"
-        title="전역 검색 (⌘K)"
-      >
-        <SearchIcon className="size-4" />
-      </Button>
       {inboxUnread !== null && inboxHref ? (
         <Button
           asChild

@@ -7778,6 +7778,48 @@ export type Database = {
           },
         ]
       }
+      point_transactions: {
+        Row: {
+          balance_after: number | null
+          created_at: string
+          delta: number
+          reason: string | null
+          txn_id: string
+          user_id: string
+        }
+        Insert: {
+          balance_after?: number | null
+          created_at?: string
+          delta: number
+          reason?: string | null
+          txn_id?: string
+          user_id: string
+        }
+        Update: {
+          balance_after?: number | null
+          created_at?: string
+          delta?: number
+          reason?: string | null
+          txn_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "point_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "point_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       popup_notices: {
         Row: {
           body_md: string
