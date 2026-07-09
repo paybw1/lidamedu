@@ -33,7 +33,7 @@ function parseBooks(v: FormDataEntryValue | null) {
 const schema = z.object({
   slug: z.string().trim().regex(/^[a-z0-9][a-z0-9-]*$/, "slug 은 영소문자·숫자·하이픈"),
   name: z.string().trim().min(1).max(40),
-  category: z.enum(["ip_law", "civil_law", "science"]),
+  category: z.enum(["ip_law", "civil", "civil_procedure", "science"]),
   subjectLabel: z.string().trim().min(1).max(60),
   displayOrder: z.coerce.number().int().min(0).max(9999).default(0),
 });

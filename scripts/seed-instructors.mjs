@@ -53,9 +53,9 @@ const rows = [
   bare("kim-soohwan", "김수환", "金", "ip_law", "특허법", ["patent"], "특허법 전임", 2),
   bare("kim-inbae", "김인배", "金", "ip_law", "상표법 · 디자인보호법", ["trademark", "design"], "상표·디자인 전임", 3),
   bare("kim-harim", "김하림", "金", "ip_law", "상표법", ["trademark"], "상표법 전임", 4),
-  bare("kim-dongjin", "김동진", "金", "civil_law", "민법", ["civil"], "민법 전임", 5),
-  bare("na-jiye", "나지예", "羅", "civil_law", "민사소송법", ["civil-procedure"], "민사소송법 전임", 6),
-  bare("choi-beomseon", "최범선", "崔", "civil_law", "민사소송법", ["civil-procedure"], "민사소송법 전임", 7),
+  bare("kim-dongjin", "김동진", "金", "civil", "민법", ["civil"], "민법 전임", 5),
+  bare("na-jiye", "나지예", "羅", "civil_procedure", "민사소송법", ["civil-procedure"], "민사소송법 전임", 6),
+  bare("choi-beomseon", "최범선", "崔", "civil_procedure", "민사소송법", ["civil-procedure"], "민사소송법 전임", 7),
   bare("lee-junseok", "이준석", "李", "science", "물리", ["physics"], "자연과학(물리) 전임", 8),
 ];
 

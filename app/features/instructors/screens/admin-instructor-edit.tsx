@@ -74,7 +74,8 @@ export default function AdminInstructorEdit({ loaderData }: Route.ComponentProps
             <Row label="계열">
               <select name="category" defaultValue={it?.category ?? "ip_law"} className="border-input bg-background h-9 rounded-md border px-2 text-sm">
                 <option value="ip_law">산업재산권법</option>
-                <option value="civil_law">민사법</option>
+                <option value="civil">민법</option>
+                <option value="civil_procedure">민사소송법</option>
                 <option value="science">자연과학</option>
               </select>
             </Row>
