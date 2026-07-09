@@ -39,7 +39,7 @@ export default function AdminInstructors({ loaderData }: Route.ComponentProps) {
       desc="리담안내 · 강사진에 노출되는 강사 프로필을 등록·편집합니다. 게시(published)된 강사만 공개됩니다."
       headerRight={
         <Button asChild size="sm">
-          <Link to="/admin/instructors/new">
+          <Link to="/admin/instructor-profiles/new">
             <PlusIcon className="size-4" /> 강사 등록
           </Link>
         </Button>
@@ -55,7 +55,7 @@ export default function AdminInstructors({ loaderData }: Route.ComponentProps) {
             {instructors.map((it) => (
               <li key={it.instructorId}>
                 <Link
-                  to={`/admin/instructors/${it.instructorId}/edit`}
+                  to={`/admin/instructor-profiles/${it.instructorId}/edit`}
                   className="hover:bg-muted/40 flex items-center gap-3 px-4 py-3"
                 >
                   <span className="text-muted-foreground w-8 shrink-0 text-xs tabular-nums">

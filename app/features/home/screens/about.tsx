@@ -1,5 +1,8 @@
 // 학원 소개(인사말) — 공개 페이지. 푸터 "소개" 링크 대상.
 // 본문은 리담지식재산교육원 공식 인사말(원문 그대로).
+import { AboutSectionNav } from "../components/about-section-nav";
+import { SERIF } from "~/features/instructors/components/instructor-theme";
+
 import type { Route } from "./+types/about";
 
 export const meta: Route.MetaFunction = () => [
@@ -38,15 +41,20 @@ const GREETING: string[][] = [
 
 export default function About() {
   return (
-    <main className="mx-auto w-full max-w-3xl px-5 py-16 md:px-8 md:py-24">
-      <header className="mb-12 text-center md:mb-16">
-        <p className="text-link mb-3 font-mono text-xs font-semibold tracking-[0.2em] uppercase">
-          Dreams start here
-        </p>
-        <h1 className="text-3xl font-extrabold tracking-tight md:text-4xl">
-          변리사의 꿈을 함께 합니다.
-        </h1>
-      </header>
+    <>
+      <AboutSectionNav />
+      <main className="mx-auto w-full max-w-3xl px-5 py-16 md:px-8 md:py-24">
+        <header className="mb-12 text-center md:mb-16">
+          <p className="text-link mb-3 font-mono text-xs font-semibold tracking-[0.2em] uppercase">
+            Dreams start here
+          </p>
+          <h1
+            className="text-3xl font-bold tracking-tight md:text-4xl"
+            style={{ fontFamily: SERIF }}
+          >
+            변리사의 꿈을 함께 합니다.
+          </h1>
+        </header>
 
       <div className="space-y-8 text-center text-[15px] leading-[1.9] md:text-base md:leading-[2.1]">
         {GREETING.map((para, i) => (
@@ -60,9 +68,10 @@ export default function About() {
         ))}
       </div>
 
-      <p className="text-muted-foreground mt-14 text-center text-sm font-semibold md:mt-20">
-        — 리담지식재산교육원 임직원 일동
-      </p>
-    </main>
+        <p className="text-muted-foreground mt-14 text-center text-sm font-semibold md:mt-20">
+          — 리담지식재산교육원 임직원 일동
+        </p>
+      </main>
+    </>
   );
 }

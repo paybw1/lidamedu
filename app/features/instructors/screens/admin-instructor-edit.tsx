@@ -61,7 +61,7 @@ export default function AdminInstructorEdit({ loaderData }: Route.ComponentProps
       desc="게시(published)를 켜야 공개 강사진에 노출됩니다."
     >
       <div className="mx-auto max-w-3xl p-5 md:p-8">
-        <Link to="/admin/instructors" className="text-muted-foreground hover:text-foreground mb-4 inline-block text-sm">
+        <Link to="/admin/instructor-profiles" className="text-muted-foreground hover:text-foreground mb-4 inline-block text-sm">
           ← 강사 목록
         </Link>
         <Form method="post" action="/api/admin/instructor" encType="multipart/form-data" className="flex flex-col gap-5">
@@ -124,7 +124,7 @@ export default function AdminInstructorEdit({ loaderData }: Route.ComponentProps
           </label>
 
           <div className="flex justify-end gap-2 border-t pt-4">
-            <Button asChild variant="ghost"><Link to="/admin/instructors">취소</Link></Button>
+            <Button asChild variant="ghost"><Link to="/admin/instructor-profiles">취소</Link></Button>
             <Button type="submit">{it ? "저장" : "등록"}</Button>
           </div>
         </Form>

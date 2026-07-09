@@ -176,7 +176,7 @@ export const ADMIN_NAV: NavCluster[] = [
     screens: [
       { label: "수강생 관리", to: "/admin/users" },
       // feat-7-041 — 강사 담당 과목(콘텐츠 쓰기 권한) + 배분 규칙 연결.
-      { label: "강사 관리", to: "/admin/instructors" },
+      { label: "강사 담당·권한", to: "/admin/instructors" },
       // 운영 업무별 알림 담당자 지정 (admin 전용).
       { label: "관리자 관리", to: "/admin/staff-duties" },
       { label: "접속이력 관리", to: "/admin/access-logs" },
@@ -268,7 +268,7 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "공지 발송", to: "/admin/announcements" },
       { label: "팝업 공지", to: "/admin/popup-notices" },
       { label: "고객센터 문의", to: "/admin/cs-inquiries" },
-      { label: "강사 관리", to: "/admin/instructors" },
+      { label: "강사소개 관리", to: "/admin/instructor-profiles" },
       { label: "이용 가이드 관리", to: "/admin/guides" },
       { label: "받은 알림함", to: "/admin/inbox" },
       { label: "Q&A 답변 현황", to: "/admin/qna/sla" },

@@ -8,6 +8,7 @@ import {
   type InstructorCategory,
 } from "../labels";
 import { InstructorStyle } from "../components/instructor-theme";
+import { AboutSectionNav } from "~/features/home/components/about-section-nav";
 import { listInstructors, type InstructorCard } from "../queries.server";
 
 import type { Route } from "./+types/instructors-index";
@@ -61,6 +62,8 @@ export default function InstructorsIndex({ loaderData }: Route.ComponentProps) {
   return (
     <div className="instr">
       <InstructorStyle />
+      {/* 리담안내 섹션 공용 서브내비 — 먼저 나오고 고정(sticky). 그다음 강사진 히어로·목록. */}
+      <AboutSectionNav />
       <header className="i-hero">
         <div
           className="i-wrap"
@@ -78,41 +81,6 @@ export default function InstructorsIndex({ loaderData }: Route.ComponentProps) {
           </p>
         </div>
       </header>
-
-      {/* 리담안내 섹션 서브내비 */}
-      <nav
-        style={{
-          display: "flex",
-          gap: 6,
-          justifyContent: "center",
-          padding: "16px 24px",
-          borderBottom: "1px solid var(--i-line)",
-          background: "var(--i-surface)",
-        }}
-      >
-        {[
-          { to: "/about", label: "인사말" },
-          { to: "/about/instructors", label: "강사진", active: true },
-          { to: "/location", label: "찾아오시는 길" },
-        ].map((t) => (
-          <Link
-            key={t.to}
-            to={t.to}
-            style={{
-              padding: "7px 16px",
-              borderRadius: 999,
-              fontSize: 13.5,
-              fontWeight: t.active ? 700 : 500,
-              textDecoration: "none",
-              color: t.active ? "#fff" : "var(--i-soft)",
-              background: t.active ? "var(--i-blue)" : "transparent",
-              border: t.active ? "none" : "1px solid var(--i-line)",
-            }}
-          >
-            {t.label}
-          </Link>
-        ))}
-      </nav>
 
       <main className="i-wrap" style={{ padding: "44px 24px 72px", maxWidth: 1040 }}>
         {groups.map((g) => (

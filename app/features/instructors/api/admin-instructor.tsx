@@ -28,7 +28,7 @@ export async function action({ request }: Route.ActionArgs) {
   if (intent === "delete") {
     if (!instructorId) return data({ error: "id 누락" }, { status: 400 });
     await softDeleteInstructor(client, instructorId);
-    return redirect("/admin/instructors");
+    return redirect("/admin/instructor-profiles");
   }
 
   if (intent === "save") {
@@ -48,7 +48,7 @@ export async function action({ request }: Route.ActionArgs) {
         .insert(parsed.row as Database["public"]["Tables"]["instructors"]["Insert"]);
       if (error) return data({ error: error.message }, { status: 400 });
     }
-    return redirect("/admin/instructors");
+    return redirect("/admin/instructor-profiles");
   }
 
   return data({ error: "잘못된 요청" }, { status: 400 });

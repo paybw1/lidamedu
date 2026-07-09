@@ -585,18 +585,19 @@ export default [
         "/admin/cs-inquiries",
         "features/cs-inquiries/screens/admin-cs-inquiries.tsx",
       ),
-      // feat-6-012 — 강사소개 관리.
+      // feat-6-012 — 강사소개 관리(프로필: 경력·저서·철학·사진, /about/instructors 노출).
+      // 경로는 feat-7-041 강사 담당·배분(/admin/instructors)과 충돌 방지 위해 분리.
       route(
-        "/admin/instructors",
+        "/admin/instructor-profiles",
         "features/instructors/screens/admin-instructors.tsx",
       ),
       route(
-        "/admin/instructors/new",
+        "/admin/instructor-profiles/new",
         "features/instructors/screens/admin-instructor-edit.tsx",
         { id: "admin-instructor-new" },
       ),
       route(
-        "/admin/instructors/:instructorId/edit",
+        "/admin/instructor-profiles/:instructorId/edit",
         "features/instructors/screens/admin-instructor-edit.tsx",
       ),
       route(

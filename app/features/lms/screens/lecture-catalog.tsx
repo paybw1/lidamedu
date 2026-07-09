@@ -18,7 +18,7 @@ import {
 import type { Route } from "./+types/lecture-catalog";
 
 export function meta() {
-  return [{ title: "강의 카탈로그 | 리담변리사학원" }];
+  return [{ title: "수강신청 | 리담변리사학원" }];
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -80,7 +80,7 @@ export default function LectureCatalog({ loaderData }: Route.ComponentProps) {
   const { products, isAuthed, tossClientKey } = loaderData;
   return (
     <div className="mx-auto w-full max-w-[1200px] px-4 py-10 md:px-6">
-      <h1 className="text-2xl font-bold tracking-tight">강의 카탈로그</h1>
+      <h1 className="text-2xl font-bold tracking-tight">수강신청</h1>
       <p className="text-muted-foreground mt-1 text-sm">
         영상 강의와 기간권(T-PASS)을 수강신청·구매합니다.
       </p>
