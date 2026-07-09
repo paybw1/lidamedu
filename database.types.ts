@@ -3313,6 +3313,69 @@ export type Database = {
           },
         ]
       }
+      coupons: {
+        Row: {
+          code: string
+          coupon_id: string
+          created_at: string
+          deleted_at: string | null
+          discount_type: string
+          discount_value: number
+          is_shared: boolean
+          issue_count: number
+          max_discount: number | null
+          min_amount: number
+          name: string
+          note: string | null
+          scope: string
+          status: string
+          updated_at: string
+          usable_days: number | null
+          valid_from: string
+          valid_to: string
+        }
+        Insert: {
+          code: string
+          coupon_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          discount_type: string
+          discount_value: number
+          is_shared?: boolean
+          issue_count?: number
+          max_discount?: number | null
+          min_amount?: number
+          name: string
+          note?: string | null
+          scope?: string
+          status?: string
+          updated_at?: string
+          usable_days?: number | null
+          valid_from: string
+          valid_to: string
+        }
+        Update: {
+          code?: string
+          coupon_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          discount_type?: string
+          discount_value?: number
+          is_shared?: boolean
+          issue_count?: number
+          max_discount?: number | null
+          min_amount?: number
+          name?: string
+          note?: string | null
+          scope?: string
+          status?: string
+          updated_at?: string
+          usable_days?: number | null
+          valid_from?: string
+          valid_to?: string
+        }
+        Relationships: []
+      }
       course_lessons: {
         Row: {
           course_id: string

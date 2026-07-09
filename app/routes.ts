@@ -657,6 +657,18 @@ export default [
         "features/landing/screens/admin-banner-edit.tsx",
       ),
       route("/api/admin/landing", "features/landing/api/admin-landing.tsx"),
+      // feat-13 쿠폰 관리(매출·정산).
+      route("/admin/coupons", "features/coupons/screens/admin-coupons.tsx"),
+      route(
+        "/admin/coupons/new",
+        "features/coupons/screens/admin-coupon-edit.tsx",
+        { id: "admin-coupon-new" },
+      ),
+      route(
+        "/admin/coupons/:couponId/edit",
+        "features/coupons/screens/admin-coupon-edit.tsx",
+      ),
+      route("/api/admin/coupon", "features/coupons/api/admin-coupon.tsx"),
       route(
         "/admin/announcements",
         "features/admin/screens/admin-announcements.tsx",
