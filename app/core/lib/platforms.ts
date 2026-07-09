@@ -37,6 +37,8 @@ export const LECTURE_NAV_LINKS: ReadonlyArray<{ label: string; to: string }> = [
   { label: "강의 카탈로그", to: "/lecture/catalog" },
   { label: "도서", to: "/lecture/books" },
   { label: "주문·배송", to: "/lecture/orders" },
+  // feat-6-012 — 리담안내(인사말·강사진·찾아오시는 길). 진입=강사진.
+  { label: "리담안내", to: "/about/instructors" },
   // feat-6-011 — 고객센터 문의(강의 플랫폼 소속).
   { label: "고객센터", to: "/lecture/support" },
 ];

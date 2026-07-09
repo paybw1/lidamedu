@@ -2,8 +2,13 @@
 import { Link, data } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { listPasserSummaries } from "~/features/exam-results/analytics.server";
 import { InstructorStyle } from "../components/instructor-theme";
-import { getInstructorBySlug, type InstructorDetail } from "../queries.server";
+import {
+  getInstructorBySlug,
+  getInstructorCourses,
+  type InstructorDetail,
+} from "../queries.server";
 
 import type { Route } from "./+types/instructor-detail";
 
@@ -17,7 +22,21 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   if (!params.slug) throw data("Not found", { status: 404 });
   const instructor = await getInstructorBySlug(client, params.slug);
   if (!instructor) throw data("강사를 찾을 수 없습니다", { status: 404 });
-  return { instructor };
+  // 이 강사의 강의(정밀 연결) + 학원 합격 후기(전체·동의 게이트 내장, 강사 귀속 아님).
+  const [courses, passerRaw] = await Promise.all([
+    getInstructorCourses(instructor.profileId),
+    listPasserSummaries({ limit: 3, excludeSynthetic: true }),
+  ]);
+  const passers = passerRaw
+    .filter((p) => p.summaryMd.trim().length > 0)
+    .map((p) => ({
+      examYear: p.examYear,
+      displayName: p.displayName,
+      excerpt:
+        p.summaryMd.trim().slice(0, 140) +
+        (p.summaryMd.trim().length > 140 ? "…" : ""),
+    }));
+  return { instructor, courses, passers };
 }
 
 function Portrait({ it }: { it: InstructorDetail }) {
@@ -41,6 +60,7 @@ function Portrait({ it }: { it: InstructorDetail }) {
 
 export default function InstructorDetailScreen({ loaderData }: Route.ComponentProps) {
   const it = loaderData.instructor;
+  const { courses, passers } = loaderData;
   const philoParas = (it.philosophyMd ?? "")
     .split(/\n{2,}/)
     .map((p) => p.trim())
@@ -186,6 +206,92 @@ export default function InstructorDetailScreen({ loaderData }: Route.ComponentPr
                 </p>
               ))}
             </div>
+          </section>
+        ) : null}
+
+        {/* 이 강사의 강의 */}
+        {courses.length > 0 ? (
+          <section className="i-sec">
+            <div className="i-sechead">
+              <h2 className="kr i-serif">이 강사의 강의</h2>
+              <span className="en">Courses</span>
+            </div>
+            <div style={{ display: "grid", gap: 10 }}>
+              {courses.map((c) => (
+                <Link
+                  key={c.code}
+                  to="/lecture/catalog"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 14,
+                    padding: "16px 18px",
+                    background: "var(--i-surface)",
+                    border: "1px solid var(--i-line)",
+                    borderRadius: 8,
+                    textDecoration: "none",
+                    color: "inherit",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: "var(--i-blueink)",
+                      background: "color-mix(in srgb, var(--i-blue) 12%, transparent)",
+                      padding: "4px 9px",
+                      borderRadius: 5,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {c.productKind === "tpass" ? "T-PASS" : "강의"}
+                  </span>
+                  <span style={{ flex: 1, minWidth: 0, fontWeight: 600, fontSize: 15 }}>{c.name}</span>
+                  <span style={{ fontVariantNumeric: "tabular-nums", fontSize: 14, color: "var(--i-soft)" }}>
+                    {c.priceKrw.toLocaleString("ko-KR")}원
+                  </span>
+                  <span style={{ color: "var(--i-faint)" }}>→</span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {/* 합격 후기 — 학원 전체 실데이터(동의 게이트), 강사 귀속 아님 */}
+        {passers.length > 0 ? (
+          <section className="i-sec">
+            <div className="i-sechead">
+              <h2 className="kr i-serif">합격 후기</h2>
+              <span className="en">In Their Words</span>
+            </div>
+            <div style={{ display: "grid", gap: 12 }}>
+              {passers.map((p, i) => (
+                <div
+                  key={i}
+                  style={{
+                    background: "var(--i-surface)",
+                    border: "1px solid var(--i-line)",
+                    borderLeft: "3px solid var(--i-gilt)",
+                    borderRadius: 8,
+                    padding: "18px 22px",
+                  }}
+                >
+                  <p className="i-serif" style={{ fontSize: 16, lineHeight: 1.6, margin: "0 0 10px", color: "var(--i-ink)" }}>
+                    “{p.excerpt}”
+                  </p>
+                  <span style={{ fontSize: 12.5, color: "var(--i-faint)" }}>
+                    — {p.displayName ?? "합격생"} · {p.examYear}년 합격
+                  </span>
+                </div>
+              ))}
+            </div>
+            <p style={{ marginTop: 14, fontSize: 12.5, color: "var(--i-faint)" }}>
+              리담변리사학원{" "}
+              <Link to="/community/review" style={{ color: "var(--i-blueink)" }}>
+                합격 수기
+              </Link>
+              의 검증된(공개 동의) 후기입니다.
+            </p>
           </section>
         ) : null}
 
