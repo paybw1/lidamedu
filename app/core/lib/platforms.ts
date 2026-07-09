@@ -33,12 +33,11 @@ export function getActivePlatform(pathname: string): PlatformId {
 //   도서는 강의 상품에 부속돼 판매·배송되므로(standalone 도서몰 없음), 배송 현황은
 //   주문·배송에서 확인. 별도 도서몰 메뉴는 두지 않는다.
 export const LECTURE_NAV_LINKS: ReadonlyArray<{ label: string; to: string }> = [
-  { label: "내 강의실", to: "/lecture" },
-  { label: "강의 카탈로그", to: "/lecture/catalog" },
-  { label: "도서", to: "/lecture/books" },
-  { label: "주문·배송", to: "/lecture/orders" },
-  // feat-6-012 — 리담안내(인사말·강사진·찾아오시는 길). 진입=강사진.
+  // 순서: 리담안내 · 수강신청 · 도서 · 내 강의실 · 주문·배송 · 고객센터
   { label: "리담안내", to: "/about/instructors" },
-  // feat-6-011 — 고객센터 문의(강의 플랫폼 소속).
+  { label: "수강신청", to: "/lecture/catalog" },
+  { label: "도서", to: "/lecture/books" },
+  { label: "내 강의실", to: "/lecture" },
+  { label: "주문·배송", to: "/lecture/orders" },
   { label: "고객센터", to: "/lecture/support" },
 ];

@@ -9,6 +9,7 @@ import {
   type ResolvedRefMap,
   splitBodyByRefs,
 } from "~/features/community/content-refs";
+import { MarkdownView } from "~/features/problems/components/markdown-view";
 
 export function RichBody({
   body,
@@ -20,6 +21,17 @@ export function RichBody({
   className?: string;
 }) {
   const segs = splitBodyByRefs(body);
+  // 콘텐츠 인용 마커가 없는 글은 마크다운으로 렌더(표·목록·굵게 등). 합격 수기 등 표 포함 글의
+  // 표가 깨지지 않도록. 사용자 작성 콘텐츠라 trusted=false(XSS 차단, GFM 표는 그대로 렌더).
+  if (!segs.some((s) => s.type === "marker")) {
+    return (
+      <MarkdownView
+        text={body}
+        trusted={false}
+        className={cn("text-sm leading-relaxed", className)}
+      />
+    );
+  }
   return (
     <div className={cn("space-y-2 whitespace-pre-line", className)}>
       {segs.map((seg, i) => {
