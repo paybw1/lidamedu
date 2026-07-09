@@ -611,6 +611,47 @@ export default [
         "/api/admin/instructor",
         "features/instructors/api/admin-instructor.tsx",
       ),
+      // feat-12 강의 플랫폼 랜딩 관리 — 현장강의 일정 · 리담소식 · 히어로 배너.
+      route(
+        "/admin/lecture-schedules",
+        "features/landing/screens/admin-schedules.tsx",
+      ),
+      route(
+        "/admin/lecture-schedules/new",
+        "features/landing/screens/admin-schedule-edit.tsx",
+        { id: "admin-schedule-new" },
+      ),
+      route(
+        "/admin/lecture-schedules/:scheduleId/edit",
+        "features/landing/screens/admin-schedule-edit.tsx",
+      ),
+      route(
+        "/admin/lecture-news",
+        "features/landing/screens/admin-news.tsx",
+      ),
+      route(
+        "/admin/lecture-news/new",
+        "features/landing/screens/admin-news-edit.tsx",
+        { id: "admin-news-new" },
+      ),
+      route(
+        "/admin/lecture-news/:newsId/edit",
+        "features/landing/screens/admin-news-edit.tsx",
+      ),
+      route(
+        "/admin/landing-banners",
+        "features/landing/screens/admin-banners.tsx",
+      ),
+      route(
+        "/admin/landing-banners/new",
+        "features/landing/screens/admin-banner-edit.tsx",
+        { id: "admin-banner-new" },
+      ),
+      route(
+        "/admin/landing-banners/:bannerId/edit",
+        "features/landing/screens/admin-banner-edit.tsx",
+      ),
+      route("/api/admin/landing", "features/landing/api/admin-landing.tsx"),
       route(
         "/admin/announcements",
         "features/admin/screens/admin-announcements.tsx",

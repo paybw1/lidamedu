@@ -269,6 +269,10 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "팝업 공지", to: "/admin/popup-notices" },
       { label: "고객센터 문의", to: "/admin/cs-inquiries" },
       { label: "강사소개 관리", to: "/admin/instructor-profiles" },
+      // feat-12 강의 플랫폼 랜딩 관리.
+      { label: "히어로 배너", to: "/admin/landing-banners" },
+      { label: "현장강의 일정", to: "/admin/lecture-schedules" },
+      { label: "리담소식", to: "/admin/lecture-news" },
       { label: "이용 가이드 관리", to: "/admin/guides" },
       { label: "받은 알림함", to: "/admin/inbox" },
       { label: "Q&A 답변 현황", to: "/admin/qna/sla" },
