@@ -367,7 +367,13 @@ export function CaseBody({
                         인라인 이미지 임베드("" 사이 표장)가 문단 경계를 넘어 작동. */}
                     {groupBookBlocks(sec.blocks).map((run, i) =>
                       run.type === "table" ? (
-                        <BookTable key={i} rows={run.rows} />
+                        isProseOnlyPseudoTable(run.rows) ? (
+                          // 열 의미 없는 "표"(참고 박스 등 — 빈 셀 + 본문 셀 하나)는
+                          // 격자 대신 박스 안 본문으로 렌더.
+                          <Prose key={i} text={pseudoTableText(run.rows)} />
+                        ) : (
+                          <BookTable key={i} rows={run.rows} />
+                        )
                       ) : (
                         <Prose key={i} text={run.text} />
                       ),
@@ -580,6 +586,31 @@ function CaseImagesGrid({ images }: { images: CaseImage[] }) {
       ))}
     </ul>
   );
+}
+
+// "표"이지만 실제 열 구조가 없는 경우(모든 행이 비어있거나 본문 셀 하나뿐, 이미지 없음)
+// = 표가 아니라 박스 안 본문. 격자 대신 문단으로 렌더한다.
+function isProseOnlyPseudoTable(rows: BookSectionCell[][]): boolean {
+  if (rows.length === 0) return false;
+  for (const row of rows) {
+    let nonEmpty = 0;
+    for (const c of row) {
+      if (c.images && c.images.length > 0) return false; // 이미지 있으면 표 유지
+      if ((c.text ?? "").trim()) nonEmpty += 1;
+    }
+    if (nonEmpty >= 2) return false; // 한 행에 두 개 이상 = 실제 열
+  }
+  return true;
+}
+// 유사표의 본문 셀들을 문단("\n\n" 결합)으로 평탄화.
+function pseudoTableText(rows: BookSectionCell[][]): string {
+  const paras: string[] = [];
+  for (const row of rows)
+    for (const c of row) {
+      const t = (c.text ?? "").trim();
+      if (t) paras.push(t);
+    }
+  return paras.join("\n\n");
 }
 
 // 연속 p 블록 → 단일 Prose 텍스트("\n\n" 결합) run 으로 그룹화.
