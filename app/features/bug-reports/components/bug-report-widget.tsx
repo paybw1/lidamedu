@@ -54,7 +54,7 @@ export function BugReportWidget() {
         onClick={() => setOpen(true)}
         size="sm"
         // 모바일에선 하단 탭바와 겹쳐 숨김 — 데스크톱(md+)에서만 노출.
-        className="fixed right-4 bottom-4 z-50 hidden gap-1.5 rounded-full shadow-lg md:inline-flex"
+        className="fixed right-4 bottom-4 z-50 hidden gap-1.5 rounded-full shadow-lg md:inline-flex print:hidden"
       >
         <BugIcon className="size-4" /> 오류 신고
       </Button>

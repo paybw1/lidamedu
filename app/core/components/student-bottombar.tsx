@@ -157,7 +157,7 @@ export function StudentBottomBar({
       <nav
         data-testid="student-bottombar"
         className={cn(
-          "border-border bg-card fixed inset-x-0 bottom-0 z-40 border-t transition-transform duration-300 ease-out md:hidden",
+          "border-border bg-card fixed inset-x-0 bottom-0 z-40 border-t transition-transform duration-300 ease-out md:hidden print:hidden",
           autoHidden && "translate-y-full",
         )}
       >

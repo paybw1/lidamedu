@@ -44,7 +44,7 @@ function BusinessInfo() {
 
 export default function Footer() {
   return (
-    <footer className="text-muted-foreground mt-auto border-t py-6 text-xs leading-relaxed md:py-8 md:text-[13px]">
+    <footer className="text-muted-foreground mt-auto border-t py-6 text-xs leading-relaxed md:py-8 md:text-[13px] print:hidden">
       <div className="mx-auto w-full max-w-screen-2xl space-y-3 px-5 md:px-10">
         {/* 약관·정책 링크 */}
         <nav className="flex flex-wrap items-center gap-x-4 gap-y-1.5 font-medium *:hover:underline">

@@ -104,6 +104,44 @@ function BlankBody({
   );
 }
 
+// 빈칸 본문 — 본문 세그먼트 + "함께 공부할 조문"(시행령 등) 박스 세그먼트를 순서대로.
+function BlankSegments({
+  blank,
+  showAnswers,
+}: {
+  blank: NonNullable<OfflineTestPrintQuestion["blank"]>;
+  showAnswers: boolean;
+}) {
+  return (
+    <div className="space-y-2 rounded border border-neutral-300 px-3 py-2.5">
+      {blank.segments.map((seg, i) =>
+        seg.kind === "sub" ? (
+          <div
+            key={i}
+            className="rounded border border-neutral-400 bg-neutral-50 px-3 py-2"
+          >
+            <p className="mb-1 text-[11px] font-bold text-neutral-600">
+              {seg.title}
+            </p>
+            <BlankBody
+              bodyText={seg.text}
+              blanks={blank.blanks}
+              showAnswers={showAnswers}
+            />
+          </div>
+        ) : (
+          <BlankBody
+            key={i}
+            bodyText={seg.text}
+            blanks={blank.blanks}
+            showAnswers={showAnswers}
+          />
+        ),
+      )}
+    </div>
+  );
+}
+
 function QuestionBlock({
   q,
   answers,
@@ -202,13 +240,7 @@ function QuestionBlock({
       ) : null}
 
       {q.questionType === "blank" && q.blank ? (
-        <div className="rounded border border-neutral-300 px-3 py-2.5">
-          <BlankBody
-            bodyText={q.blank.bodyText}
-            blanks={q.blank.blanks}
-            showAnswers={answers}
-          />
-        </div>
+        <BlankSegments blank={q.blank} showAnswers={answers} />
       ) : null}
     </div>
   );

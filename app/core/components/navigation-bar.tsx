@@ -456,7 +456,7 @@ export function NavigationBar({
   return (
     <nav
       className={cn(
-        "dark:bg-background/85 dark:border-border sticky top-0 z-50 mx-auto flex h-14 w-full items-center justify-between border-b border-black/[0.06] bg-white/80 px-4 backdrop-blur-lg backdrop-saturate-150 transition-opacity md:px-6",
+        "dark:bg-background/85 dark:border-border sticky top-0 z-50 mx-auto flex h-14 w-full items-center justify-between border-b border-black/[0.06] bg-white/80 px-4 backdrop-blur-lg backdrop-saturate-150 transition-opacity md:px-6 print:hidden",
         // 인증 사용자는 모바일에서 하단 탭바가 모든 nav·도구를 담당하므로 상단 바를
         // 숨겨 학습 콘텐츠 영역을 넓힌다. 비인증은 하단바가 없어 상단 햄버거 유지.
         name && "hidden md:flex",

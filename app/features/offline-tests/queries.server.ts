@@ -6,7 +6,10 @@ import type { Database } from "database.types";
 
 import { fetchAllIn } from "~/core/lib/supa-batch.server";
 import { parseBlanks } from "~/features/blanks/queries.server";
-import { buildPrintBlankBody } from "~/features/offline-tests/lib/blank-print.server";
+import {
+  buildPrintBlankBody,
+  type PrintSegment,
+} from "~/features/offline-tests/lib/blank-print.server";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
 import type { ScienceSubjectSlug } from "~/features/subjects/lib/science";
@@ -469,7 +472,7 @@ export interface OfflineTestPrintQuestion {
   } | null;
   blank: {
     articleLabel: string;
-    bodyText: string; // [[BLANK:N]] 토큰 포함
+    segments: PrintSegment[]; // 본문/함께 공부할 조문(sub) 세그먼트
     blanks: PrintBlankItem[];
   } | null;
 }
@@ -619,7 +622,7 @@ export async function getOfflineTestPrintData(
       const built = buildPrintBlankBody(bodyJson, parseBlanks(b?.blanks));
       blank = {
         articleLabel: b?.articles?.display_label ?? "조문",
-        bodyText: built.bodyText,
+        segments: built.segments,
         blanks: built.blanks,
       };
     }

@@ -3528,6 +3528,138 @@ export type Database = {
           },
         ]
       }
+      cs_inquiries: {
+        Row: {
+          answered_at: string | null
+          answered_by: string | null
+          author_id: string | null
+          body_md: string
+          category: Database["public"]["Enums"]["cs_inquiry_category"]
+          created_at: string
+          deleted_at: string | null
+          display_no: number
+          inquiry_id: string
+          is_private: boolean
+          status: Database["public"]["Enums"]["cs_inquiry_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          answered_at?: string | null
+          answered_by?: string | null
+          author_id?: string | null
+          body_md: string
+          category?: Database["public"]["Enums"]["cs_inquiry_category"]
+          created_at?: string
+          deleted_at?: string | null
+          display_no?: number
+          inquiry_id?: string
+          is_private?: boolean
+          status?: Database["public"]["Enums"]["cs_inquiry_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          answered_at?: string | null
+          answered_by?: string | null
+          author_id?: string | null
+          body_md?: string
+          category?: Database["public"]["Enums"]["cs_inquiry_category"]
+          created_at?: string
+          deleted_at?: string | null
+          display_no?: number
+          inquiry_id?: string
+          is_private?: boolean
+          status?: Database["public"]["Enums"]["cs_inquiry_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cs_inquiries_answered_by_fkey"
+            columns: ["answered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "cs_inquiries_answered_by_fkey"
+            columns: ["answered_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "cs_inquiries_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "cs_inquiries_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      cs_inquiry_replies: {
+        Row: {
+          author_id: string | null
+          body_md: string
+          created_at: string
+          deleted_at: string | null
+          inquiry_id: string
+          reply_id: string
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          author_id?: string | null
+          body_md: string
+          created_at?: string
+          deleted_at?: string | null
+          inquiry_id: string
+          reply_id?: string
+          role: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string | null
+          body_md?: string
+          created_at?: string
+          deleted_at?: string | null
+          inquiry_id?: string
+          reply_id?: string
+          role?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cs_inquiry_replies_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "cs_inquiry_replies_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "cs_inquiry_replies_inquiry_id_fkey"
+            columns: ["inquiry_id"]
+            isOneToOne: false
+            referencedRelation: "cs_inquiries"
+            referencedColumns: ["inquiry_id"]
+          },
+        ]
+      }
       curricula: {
         Row: {
           created_at: string
@@ -11522,6 +11654,14 @@ export type Database = {
         Returns: undefined
       }
       soft_delete_community_post: { Args: { p_id: string }; Returns: undefined }
+      soft_delete_cs_inquiry: {
+        Args: { p_inquiry_id: string }
+        Returns: undefined
+      }
+      soft_delete_cs_inquiry_reply: {
+        Args: { p_reply_id: string }
+        Returns: undefined
+      }
       soft_delete_lecture_resource: {
         Args: { p_resource_id: string }
         Returns: undefined
@@ -11559,6 +11699,14 @@ export type Database = {
       }
       user_can_read_cohort_post: {
         Args: { p_post_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      user_can_read_cs_inquiry: {
+        Args: { p_inquiry_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      user_can_reply_cs_inquiry: {
+        Args: { p_inquiry_id: string; p_user_id: string }
         Returns: boolean
       }
       user_can_write_cohort_board: {
@@ -11639,6 +11787,14 @@ export type Database = {
         | "problem"
         | "problem_choice"
         | "problem_box_item"
+      cs_inquiry_category:
+        | "payment"
+        | "course"
+        | "book"
+        | "account"
+        | "site"
+        | "etc"
+      cs_inquiry_status: "open" | "answered" | "closed"
       curriculum_item_kind:
         | "article"
         | "case"
@@ -11725,6 +11881,8 @@ export type Database = {
         | "bug_report_resolved"
         | "staff_message"
         | "book_restock"
+        | "cs_inquiry_created"
+        | "cs_inquiry_answered"
       student_note_visibility: "staff_only" | "share_with_student"
       subjective_kind: "case_based" | "theory" | "mixed"
       subscription_status: "pending" | "active" | "expired" | "cancelled"
@@ -11914,6 +12072,15 @@ export const Constants = {
         "problem_choice",
         "problem_box_item",
       ],
+      cs_inquiry_category: [
+        "payment",
+        "course",
+        "book",
+        "account",
+        "site",
+        "etc",
+      ],
+      cs_inquiry_status: ["open", "answered", "closed"],
       curriculum_item_kind: [
         "article",
         "case",
@@ -12006,6 +12173,8 @@ export const Constants = {
         "bug_report_resolved",
         "staff_message",
         "book_restock",
+        "cs_inquiry_created",
+        "cs_inquiry_answered",
       ],
       student_note_visibility: ["staff_only", "share_with_student"],
       subjective_kind: ["case_based", "theory", "mixed"],
