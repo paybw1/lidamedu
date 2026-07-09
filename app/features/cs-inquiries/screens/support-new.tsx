@@ -32,7 +32,7 @@ export default function SupportNew() {
     <CohortBoardShell
       title="문의하기"
       width="narrow"
-      backLink={{ to: "/support", label: "고객센터" }}
+      backLink={{ to: "/lecture/support", label: "고객센터" }}
     >
       <Form method="post" action="/api/cs/inquiry" className="flex flex-col gap-4">
         <input type="hidden" name="intent" value="create" />

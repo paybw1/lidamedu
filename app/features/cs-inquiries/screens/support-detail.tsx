@@ -72,7 +72,7 @@ export default function SupportDetail({ loaderData }: Route.ComponentProps) {
       }
       width="narrow"
       backLink={{
-        to: isStaff ? "/admin/cs-inquiries" : "/support",
+        to: isStaff ? "/admin/cs-inquiries" : "/lecture/support",
         label: isStaff ? "문의 관리" : "고객센터",
       }}
     >

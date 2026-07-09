@@ -97,7 +97,7 @@ export async function action({ request }: Route.ActionArgs) {
         authorId: user.id,
       }),
     );
-    return redirect(`/support/${created.inquiryId}`);
+    return redirect(`/lecture/support/${created.inquiryId}`);
   }
 
   // 이하 공통 — 대상 문의 로드(RLS 가시성). 없으면 권한 없음/삭제됨.
@@ -152,7 +152,7 @@ export async function action({ request }: Route.ActionArgs) {
       return data({ error: "삭제 권한이 없습니다." }, { status: 403 });
     }
     await softDeleteInquiry(client, input.inquiryId);
-    return redirect(isStaff ? "/admin/cs-inquiries" : "/support");
+    return redirect(isStaff ? "/admin/cs-inquiries" : "/lecture/support");
   }
 
   // close / reopen

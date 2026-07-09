@@ -42,7 +42,7 @@ function InquiryRow({ it, mine }: { it: CsInquiryRow; mine: boolean }) {
   return (
     <li>
       <Link
-        to={`/support/${it.inquiryId}`}
+        to={`/lecture/support/${it.inquiryId}`}
         className="hover:bg-muted/40 flex items-center gap-3 px-4 py-3"
       >
         <span className="text-muted-foreground w-12 shrink-0 text-xs tabular-nums">
@@ -85,7 +85,7 @@ export default function SupportList({ loaderData }: Route.ComponentProps) {
       width="narrow"
       headerRight={
         <Button asChild size="sm">
-          <Link to="/support/new">
+          <Link to="/lecture/support/new">
             <PlusIcon className="size-4" /> 문의하기
           </Link>
         </Button>

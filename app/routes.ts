@@ -254,6 +254,17 @@ export default [
     route("/lecture/wishlist", "features/bookstore/screens/wishlist.tsx"),
     // 주문·배송 — 구 /me/orders 이관(아래 redirect 유지).
     route("/lecture/orders", "features/orders/screens/my-orders.tsx"),
+    // feat-6-011 — 고객센터 문의(강의 플랫폼 소속). 접근통제는 RLS 가 DB 에서 강제.
+    route("/lecture/support", "features/cs-inquiries/screens/support-list.tsx"),
+    route(
+      "/lecture/support/new",
+      "features/cs-inquiries/screens/support-new.tsx",
+    ),
+    route(
+      "/lecture/support/:inquiryId",
+      "features/cs-inquiries/screens/support-detail.tsx",
+    ),
+    route("/api/cs/inquiry", "features/cs-inquiries/api/cs-inquiry.tsx"),
   ]),
 
   // Pages with top navigation + footer
@@ -548,14 +559,6 @@ export default [
           // 이용 가이드 허브 — 기능 사용법(글+영상). 운영자 작성(/admin/guides).
           route("/guide", "features/guide/screens/guide-index.tsx"),
           route("/guide/:guideId", "features/guide/screens/guide-detail.tsx"),
-          // feat-6-011 — 고객센터 문의(학생·회원). 접근통제는 RLS 가 DB 에서 강제.
-          route("/support", "features/cs-inquiries/screens/support-list.tsx"),
-          route("/support/new", "features/cs-inquiries/screens/support-new.tsx"),
-          route(
-            "/support/:inquiryId",
-            "features/cs-inquiries/screens/support-detail.tsx",
-          ),
-          route("/api/cs/inquiry", "features/cs-inquiries/api/cs-inquiry.tsx"),
         ],
       ),
       route("/admin", "features/admin/screens/admin.tsx"),

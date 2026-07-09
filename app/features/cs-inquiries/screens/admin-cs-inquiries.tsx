@@ -121,7 +121,7 @@ export default function AdminCsInquiries({ loaderData }: Route.ComponentProps) {
             {rows.map((it) => (
               <li key={it.inquiryId}>
                 <Link
-                  to={`/support/${it.inquiryId}`}
+                  to={`/lecture/support/${it.inquiryId}`}
                   className="hover:bg-muted/40 flex items-center gap-3 px-4 py-3"
                 >
                   <span className="text-muted-foreground w-12 shrink-0 text-xs tabular-nums">

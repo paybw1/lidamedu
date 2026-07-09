@@ -48,7 +48,7 @@ export async function notifyAuthorAnswered(payload: {
     entityId: payload.inquiryId,
     title: `문의 #${payload.displayNo} 에 답변이 등록되었습니다`,
     body: clip(payload.answerExcerpt || payload.title),
-    href: `/support/${payload.inquiryId}`,
+    href: `/lecture/support/${payload.inquiryId}`,
     payload: { displayNo: payload.displayNo },
   });
 }
