@@ -650,20 +650,49 @@ export async function getOfflineTestPrintData(
 
 // ── 후보 탐색 (과목 · 파트(체계도 노드) · 중요도) ────────────────────────────
 
-// 노드에 귀속되는 문제 id — primary_node_id 직접 + primary_article_id→링크 간접
-// (getOxQuestionsForNode 와 동일 규칙).
+// 노드 subtree(자손 포함) 의 node_id 목록. 대목차 선택 시 하위 소목차 문제까지 롤업하기 위함.
+// materialized path 규칙: path === 자신 OR path.startsWith(자신 + ".")  (feat-4-A-340 과 동일).
+async function subtreeNodeIds(
+  client: SupabaseClient<Database>,
+  nodeId: string,
+): Promise<string[]> {
+  const { data: node } = await client
+    .from("systematic_nodes")
+    .select("path, law_code")
+    .eq("node_id", nodeId)
+    .maybeSingle();
+  const path = node?.path ? String(node.path) : null;
+  if (!path || !node?.law_code) return [nodeId];
+  const { data: nodes } = await client
+    .from("systematic_nodes")
+    .select("node_id, path")
+    .eq("law_code", node.law_code);
+  const ids = (nodes ?? [])
+    .filter((n) => {
+      const p = String(n.path);
+      return p === path || p.startsWith(path + ".");
+    })
+    .map((n) => n.node_id);
+  return ids.length ? ids : [nodeId];
+}
+
+// 노드 subtree 에 귀속되는 문제 id — primary_node_id 직접(자손 롤업) + primary_article_id→링크 간접.
 async function problemIdsForNode(
   client: SupabaseClient<Database>,
   nodeId: string,
 ): Promise<string[]> {
+  const nodeIds = await subtreeNodeIds(client, nodeId);
   const ids = new Set<string>();
-  const { data: pinned } = await client
-    .from("problems")
-    .select("problem_id")
-    .eq("primary_node_id", nodeId)
-    .is("deleted_at", null);
-  for (const p of pinned ?? []) ids.add(p.problem_id);
-  const articleIds = await articleIdsForNode(client, nodeId);
+  const pinned = await fetchAllIn(nodeIds, (slice) =>
+    client
+      .from("problems")
+      .select("problem_id")
+      .in("primary_node_id", slice)
+      .is("deleted_at", null)
+      .order("problem_id"),
+  );
+  for (const p of pinned) ids.add(p.problem_id);
+  const articleIds = await articleIdsForNodes(client, nodeIds);
   if (articleIds.length > 0) {
     const viaArticle = await fetchAllIn(articleIds, (slice) =>
       client
@@ -678,16 +707,19 @@ async function problemIdsForNode(
   return [...ids];
 }
 
-async function articleIdsForNode(
+// subtree node 들에 연결된 article_id 합집합.
+async function articleIdsForNodes(
   client: SupabaseClient<Database>,
-  nodeId: string,
+  nodeIds: readonly string[],
 ): Promise<string[]> {
-  const { data: links, error } = await client
-    .from("article_systematic_links")
-    .select("article_id")
-    .eq("node_id", nodeId);
-  if (error) throw error;
-  return [...new Set((links ?? []).map((l) => l.article_id))];
+  if (nodeIds.length === 0) return [];
+  const links = await fetchAllIn(nodeIds, (slice) =>
+    client
+      .from("article_systematic_links")
+      .select("article_id")
+      .in("node_id", slice),
+  );
+  return [...new Set(links.map((l) => l.article_id))];
 }
 
 async function lawIdByCode(
@@ -882,7 +914,7 @@ export async function listBlankCandidates(
   const lawId = await lawIdByCode(client, filter.lawCode);
   if (!lawId) return [];
   const nodeArticleIds = filter.nodeId
-    ? await articleIdsForNode(client, filter.nodeId)
+    ? await articleIdsForNodes(client, await subtreeNodeIds(client, filter.nodeId))
     : null;
   if (nodeArticleIds && nodeArticleIds.length === 0) return [];
 
