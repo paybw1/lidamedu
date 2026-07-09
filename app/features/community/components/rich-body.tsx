@@ -15,19 +15,23 @@ export function RichBody({
   body,
   refs,
   className,
+  trusted = false,
 }: {
   body: string;
   refs: ResolvedRefMap;
   className?: string;
+  // 운영자·강사 작성 글만 true — 원시 HTML(colspan/rowspan 병합 표 등)을 렌더한다.
+  // 학생 등 일반 작성 글은 반드시 false(저장형 XSS 차단, GFM 표는 그대로 렌더).
+  trusted?: boolean;
 }) {
   const segs = splitBodyByRefs(body);
   // 콘텐츠 인용 마커가 없는 글은 마크다운으로 렌더(표·목록·굵게 등). 합격 수기 등 표 포함 글의
-  // 표가 깨지지 않도록. 사용자 작성 콘텐츠라 trusted=false(XSS 차단, GFM 표는 그대로 렌더).
+  // 표가 깨지지 않도록. staff 작성 글이면 trusted=true 로 병합 표(HTML colspan)까지 렌더.
   if (!segs.some((s) => s.type === "marker")) {
     return (
       <MarkdownView
         text={body}
-        trusted={false}
+        trusted={trusted}
         className={cn("text-sm leading-relaxed", className)}
       />
     );

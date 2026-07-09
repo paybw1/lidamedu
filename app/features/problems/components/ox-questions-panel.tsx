@@ -1,6 +1,8 @@
 // 정오문제 패널 — 조문 viewer 우측 탭. 지문 단위 O/X 채점 + 해설.
+// 한 번에 보는 지문 수(1~5)를 학생이 선택 — 카드는 refId 키로 독립 상태(채점/해설/즐겨찾기/코멘트)를 가진다.
 
 import {
+  ArrowLeftIcon,
   ArrowRightIcon,
   CheckCircle2Icon,
   CircleXIcon,
@@ -31,6 +33,9 @@ import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 // 출처 구분 토글 — 전체 / 기출 / 기타(그 외). 학생이 기출을 먼저 풀고 예상 등은 선택적으로.
 // 기출 = past_exam + past_exam_variant(기출변형도 기출로 분류). 기타 = 예상·모의·AI초안 등.
 type OxOriginFilter = "all" | "past_exam" | "other";
+
+// 한 번에 보는 지문 수 옵션(학생 선택).
+const PAGE_SIZE_OPTIONS = [1, 2, 3, 4, 5] as const;
 
 // "기출" 분류 = 실제 기출 + 기출변형.
 function isPastExamOrigin(origin: string): boolean {
@@ -88,6 +93,56 @@ function OxOriginToggle({
   );
 }
 
+// 한 번에 보는 지문 수 선택(1~5). 남은 지문 수보다 큰 값은 비활성.
+function OxPageSizeToggle({
+  value,
+  onChange,
+  max,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  max: number;
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-muted-foreground text-[11px] font-medium">
+        한 번에
+      </span>
+      <div
+        className="bg-muted text-muted-foreground inline-flex h-7 items-center rounded-lg p-[3px]"
+        role="group"
+        aria-label="한 번에 보는 정오문제 수"
+        data-testid="ox-page-size"
+      >
+        {PAGE_SIZE_OPTIONS.map((n) => {
+          const active = value === n;
+          const disabled = n > max;
+          return (
+            <button
+              key={n}
+              type="button"
+              onClick={() => onChange(n)}
+              disabled={disabled}
+              aria-pressed={active}
+              className={cn(
+                "inline-flex h-full w-6 items-center justify-center rounded-md text-[11px] font-medium tabular-nums transition-colors",
+                active
+                  ? "bg-background text-[#2D5BA8] shadow-sm dark:text-[#8FB4E3]"
+                  : "hover:text-foreground",
+                disabled &&
+                  "cursor-not-allowed opacity-40 hover:text-muted-foreground",
+              )}
+            >
+              {n}
+            </button>
+          );
+        })}
+      </div>
+      <span className="text-muted-foreground text-[11px]">개</span>
+    </div>
+  );
+}
+
 export function OxQuestionsPanel({
   items,
   subject,
@@ -108,24 +163,16 @@ export function OxQuestionsPanel({
   const location = useLocation();
   // staff "수정" 왕복 후 편집하던 지문으로 복귀 — ?ox=<refId> 로 초기 위치를 지정.
   const restoreRefId = new URLSearchParams(location.search).get("ox");
-  const [idx, setIdx] = useState<number>(() => {
+  const [originFilter, setOriginFilter] = useState<OxOriginFilter>("all");
+  // 학생 개인 숨김: 기본은 숨긴 지문 제외, 토글 켜면 복원용으로 함께 표시.
+  const [showHidden, setShowHidden] = useState(false);
+  // 한 번에 보는 지문 수(1~5) + 현재 창 시작 위치.
+  const [pageSize, setPageSize] = useState(1);
+  const [pageStart, setPageStart] = useState<number>(() => {
     if (!restoreRefId) return 0;
     const i = items.findIndex((it) => it.refId === restoreRefId);
     return i >= 0 ? i : 0;
   });
-  const [picked, setPicked] = useState<OxTruth | null>(null);
-  const [revealed, setRevealed] = useState(false);
-  // 정답 확인 후 표시되는 보조 패널: 'bookmark' | 'comment' | null.
-  const [annoOpen, setAnnoOpen] = useState<"bookmark" | "comment" | null>(null);
-  const [originFilter, setOriginFilter] = useState<OxOriginFilter>("all");
-  // 학생 개인 숨김: 기본은 숨긴 지문 제외, 토글 켜면 복원용으로 함께 표시.
-  const [showHidden, setShowHidden] = useState(false);
-  const attemptFetcher = useFetcher();
-  const hideFetcher = useFetcher();
-  const userHideFetcher = useFetcher();
-  const startedAtRef = useRef<number>(Date.now());
-  // 한 지문당 1회만 기록 (다시 풀기 → 동일 지문 재기록 방지). refId 단위.
-  const recordedRefIdRef = useRef<string | null>(null);
 
   // 출처별 개수(토글 라벨) + 현재 토글로 거른 목록.
   const counts = useMemo<Record<OxOriginFilter, number>>(() => {
@@ -145,25 +192,18 @@ export function OxQuestionsPanel({
     [items, originFilter],
   );
 
-  // items 가 "내용상" 바뀌면(또는 출처 토글 변경 시) 처음으로 (다른 조문/장 이동 등).
+  // items 가 "내용상" 바뀌면(또는 출처 토글 변경 시) 창을 처음으로 (다른 조문/장 이동 등).
   // 단순히 items 참조만 비교하면 fetcher.submit 의 loader revalidate 로 새 배열이
-  // 내려올 때마다 idx/picked/revealed 가 리셋되어 정답 확인 박스가 접힘.
-  // refId 시퀀스 시그니처로 비교해 실제 변경된 경우에만 리셋.
+  // 내려올 때마다 창이 리셋됨 — refId 시퀀스 시그니처로 실제 변경 시에만 리셋.
   const itemsKey = items.map((it) => it.refId).join("|");
   const didInitRef = useRef(false);
   useEffect(() => {
     // 최초 마운트는 ?ox=<refId> 로 잡은 초기 위치를 보존(리셋 skip).
-    // 이후 조문/장 이동(itemsKey 변경)·출처 토글 변경 시에만 처음으로 리셋.
     if (!didInitRef.current) {
       didInitRef.current = true;
       return;
     }
-    setIdx(0);
-    setPicked(null);
-    setRevealed(false);
-    setAnnoOpen(null);
-    startedAtRef.current = Date.now();
-    recordedRefIdRef.current = null;
+    setPageStart(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemsKey, originFilter]);
 
@@ -213,9 +253,7 @@ export function OxQuestionsPanel({
         type="button"
         onClick={() => {
           setShowHidden((v) => !v);
-          setIdx(0);
-          setPicked(null);
-          setRevealed(false);
+          setPageStart(0);
         }}
         className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-[11px] underline-offset-2 hover:underline"
       >
@@ -244,50 +282,154 @@ export function OxQuestionsPanel({
     );
   }
 
-  const pos = Math.min(idx, workingItems.length - 1);
-  const cur = workingItems[pos];
-  const curHidden = isUserHidden(cur.refId);
-  // staff "수정" 진입 URL — 저장 후 이 viewer 로, 그리고 편집하던 지문(cur)으로 복귀.
-  const editSp = new URLSearchParams(location.search);
-  editSp.set("ox", cur.refId);
-  const editReturnTo = `${location.pathname}?${editSp.toString()}`;
-  const isCorrect = picked !== null && picked === cur.oxTruth;
-  const isWrong = picked !== null && picked !== cur.oxTruth;
+  // 현재 창(window) — pageStart 부터 pageSize 개.
+  const start = Math.min(pageStart, Math.max(0, workingItems.length - 1));
+  const effSize = Math.min(pageSize, PAGE_SIZE_OPTIONS.length);
+  const windowItems = workingItems.slice(start, start + effSize);
+  const windowEnd = start + windowItems.length; // exclusive
+  const hasPrev = start > 0;
+  const hasNext = windowEnd < workingItems.length || start > 0; // 끝에서는 처음으로 회전
+
+  const goNext = () => {
+    setPageStart(windowEnd >= workingItems.length ? 0 : windowEnd);
+  };
+  const goPrev = () => {
+    setPageStart(Math.max(0, start - effSize));
+  };
+
+  return (
+    <div className="space-y-3" data-testid="ox-panel">
+      <div className="flex items-center justify-between gap-2">
+        <div>{hiddenToggleEl}</div>
+        {toggleEl}
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <OxPageSizeToggle
+          value={pageSize}
+          onChange={(v) => {
+            setPageSize(v);
+            setPageStart(0);
+          }}
+          max={Math.min(PAGE_SIZE_OPTIONS.length, workingItems.length)}
+        />
+        <span className="text-muted-foreground text-[10px] tabular-nums">
+          {start + 1}
+          {windowItems.length > 1 ? `–${windowEnd}` : ""} /{" "}
+          {workingItems.length}
+        </span>
+      </div>
+
+      <div className="space-y-3">
+        {windowItems.map((item, i) => {
+          const editSp = new URLSearchParams(location.search);
+          editSp.set("ox", item.refId);
+          const editReturnTo = `${location.pathname}?${editSp.toString()}`;
+          return (
+            <OxPanelCard
+              key={item.refId}
+              item={item}
+              displayNo={start + i + 1}
+              subject={subject}
+              anno={annotationsByRef?.[item.refId]}
+              userHidden={isUserHidden(item.refId)}
+              isStaff={isStaff}
+              currentUserId={currentUserId}
+              isAdmin={isAdmin}
+              editReturnTo={editReturnTo}
+              bordered={windowItems.length > 1}
+            />
+          );
+        })}
+      </div>
+
+      {workingItems.length > effSize ? (
+        <div className="flex items-center justify-between gap-2 pt-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={goPrev}
+            disabled={!hasPrev}
+            className="h-7 text-xs"
+          >
+            <ArrowLeftIcon className="size-3" /> 이전
+          </Button>
+          <Button
+            size="sm"
+            onClick={goNext}
+            disabled={!hasNext}
+            className="h-7 text-xs"
+            data-testid="ox-next"
+          >
+            다음 <ArrowRightIcon className="size-3" />
+          </Button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// 단일 정오문제 카드 — refId 키로 마운트되어 독립 상태(채점/해설/즐겨찾기/코멘트)를 가진다.
+function OxPanelCard({
+  item,
+  displayNo,
+  subject,
+  anno,
+  userHidden,
+  isStaff,
+  currentUserId,
+  isAdmin,
+  editReturnTo,
+  bordered,
+}: {
+  item: OxQuestionItem;
+  displayNo: number;
+  subject: LawSubjectSlug;
+  anno: OxRefAnnotations | undefined;
+  userHidden: boolean;
+  isStaff: boolean;
+  currentUserId: string | null;
+  isAdmin: boolean;
+  editReturnTo: string;
+  bordered: boolean;
+}) {
+  const [picked, setPicked] = useState<OxTruth | null>(null);
+  const [revealed, setRevealed] = useState(false);
+  // 정답 확인 후 표시되는 보조 패널: 'bookmark' | 'comment' | null.
+  const [annoOpen, setAnnoOpen] = useState<"bookmark" | "comment" | null>(null);
+  const attemptFetcher = useFetcher();
+  const hideFetcher = useFetcher();
+  const userHideFetcher = useFetcher();
+  const startedAtRef = useRef<number>(Date.now());
+  const recordedRef = useRef(false);
+
+  const isCorrect = picked !== null && picked === item.oxTruth;
+  const isWrong = picked !== null && picked !== item.oxTruth;
 
   const handlePick = (choice: OxTruth) => {
     if (revealed) return;
     setPicked(choice);
     setRevealed(true);
-    // 첫 응답만 기록. 같은 지문에서 다시 풀기 후 같은 답을 골라도 중복 기록 안 함.
-    if (recordedRefIdRef.current === cur.refId) return;
-    recordedRefIdRef.current = cur.refId;
+    // 첫 응답만 기록.
+    if (recordedRef.current) return;
+    recordedRef.current = true;
     const fd = new FormData();
-    fd.set("problemId", cur.problemId);
+    fd.set("problemId", item.problemId);
     fd.set("oxAnswer", choice);
-    fd.set("isCorrect", choice === cur.oxTruth ? "true" : "false");
+    fd.set("isCorrect", choice === item.oxTruth ? "true" : "false");
     fd.set("mode", "study");
     fd.set(
       "timeSpentMs",
       String(Math.max(0, Date.now() - startedAtRef.current)),
     );
-    if (cur.refType === "choice") {
-      fd.set("selectedChoiceId", cur.refId);
+    if (item.refType === "choice") {
+      fd.set("selectedChoiceId", item.refId);
     } else {
-      fd.set("selectedBoxItemId", cur.refId);
+      fd.set("selectedBoxItemId", item.refId);
     }
     attemptFetcher.submit(fd, {
       method: "post",
       action: "/api/problems/attempt",
     });
-  };
-
-  const goNext = () => {
-    setIdx((i) => (i + 1) % workingItems.length);
-    setPicked(null);
-    setRevealed(false);
-    setAnnoOpen(null);
-    startedAtRef.current = Date.now();
-    recordedRefIdRef.current = null;
   };
 
   const reset = () => {
@@ -297,33 +439,37 @@ export function OxQuestionsPanel({
   };
 
   const annoTargetType =
-    cur.refType === "choice" ? "problem_choice" : "problem_box_item";
-  const curAnno = annotationsByRef?.[cur.refId];
-  const commentCount = curAnno?.comments.length ?? 0;
-  const starLevel = curAnno?.bookmark?.starLevel ?? 0;
+    item.refType === "choice" ? "problem_choice" : "problem_box_item";
+  const commentCount = anno?.comments.length ?? 0;
+  const starLevel = anno?.bookmark?.starLevel ?? 0;
 
   return (
-    <div className="space-y-3" data-testid="ox-panel">
-      <div className="flex items-center justify-between gap-2">
-        <div>{hiddenToggleEl}</div>
-        {toggleEl}
-      </div>
+    <div
+      className={cn(
+        "space-y-3",
+        bordered && "border-border bg-card rounded-lg border p-3",
+      )}
+      data-testid="ox-card"
+    >
       <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-muted-foreground text-[11px] font-bold tabular-nums">
+          {displayNo}.
+        </span>
         <Badge variant="secondary" className="text-[10px]">
-          {ORIGIN_LABEL[cur.origin as ProblemOrigin] ?? cur.origin}
+          {ORIGIN_LABEL[item.origin as ProblemOrigin] ?? item.origin}
         </Badge>
-        {cur.year ? (
+        {item.year ? (
           <Badge variant="outline" className="text-[10px] tabular-nums">
-            {cur.year}
-            {cur.problemNumber ? ` · ${cur.problemNumber}번` : ""}
+            {item.year}
+            {item.problemNumber ? ` · ${item.problemNumber}번` : ""}
           </Badge>
         ) : null}
-        {cur.dupCount && cur.dupCount > 1 ? (
+        {item.dupCount && item.dupCount > 1 ? (
           <Badge variant="outline" className="text-[10px]">
-            여러 회차 출제 {cur.dupCount}
+            여러 회차 출제 {item.dupCount}
           </Badge>
         ) : null}
-        {isStaff && cur.oxHidden ? (
+        {isStaff && item.oxHidden ? (
           <Badge
             variant="outline"
             className="border-amber-400/60 text-[10px] text-amber-700 dark:text-amber-300"
@@ -331,7 +477,7 @@ export function OxQuestionsPanel({
             숨김됨
           </Badge>
         ) : null}
-        {!isStaff && curHidden ? (
+        {!isStaff && userHidden ? (
           <Badge
             variant="outline"
             className="border-amber-400/60 text-[10px] text-amber-700 dark:text-amber-300"
@@ -340,38 +486,35 @@ export function OxQuestionsPanel({
           </Badge>
         ) : null}
         <div className="ml-auto flex items-center gap-1.5">
-          <span className="text-muted-foreground text-[10px] tabular-nums">
-            {pos + 1} / {workingItems.length}
-          </span>
           {isStaff ? (
             <hideFetcher.Form
               method="post"
               action="/api/problems/ox-review-update"
             >
-              <input type="hidden" name="refType" value={cur.refType} />
-              <input type="hidden" name="refId" value={cur.refId} />
+              <input type="hidden" name="refType" value={item.refType} />
+              <input type="hidden" name="refId" value={item.refId} />
               <input
                 type="hidden"
                 name="oxHidden"
-                value={cur.oxHidden ? "false" : "true"}
+                value={item.oxHidden ? "false" : "true"}
               />
               <button
                 type="submit"
                 disabled={hideFetcher.state !== "idle"}
                 title={
-                  cur.oxHidden
+                  item.oxHidden
                     ? "숨김 해제 — 학생에게 다시 노출"
                     : "이 정오문제 숨기기 — 학생 비노출(중복·부적합)"
                 }
-                aria-label={cur.oxHidden ? "숨김 해제" : "숨기기"}
+                aria-label={item.oxHidden ? "숨김 해제" : "숨기기"}
                 className={cn(
                   "inline-flex size-6 items-center justify-center rounded-md transition-colors disabled:opacity-50",
-                  cur.oxHidden
+                  item.oxHidden
                     ? "text-amber-600 hover:bg-amber-100 dark:hover:bg-amber-950/40"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted",
                 )}
               >
-                {cur.oxHidden ? (
+                {item.oxHidden ? (
                   <EyeIcon className="size-3.5" />
                 ) : (
                   <EyeOffIcon className="size-3.5" />
@@ -383,30 +526,30 @@ export function OxQuestionsPanel({
               method="post"
               action="/api/problems/ox-user-hide"
             >
-              <input type="hidden" name="refType" value={cur.refType} />
-              <input type="hidden" name="refId" value={cur.refId} />
+              <input type="hidden" name="refType" value={item.refType} />
+              <input type="hidden" name="refId" value={item.refId} />
               <input
                 type="hidden"
                 name="hidden"
-                value={curHidden ? "false" : "true"}
+                value={userHidden ? "false" : "true"}
               />
               <button
                 type="submit"
                 disabled={userHideFetcher.state !== "idle"}
                 title={
-                  curHidden
+                  userHidden
                     ? "숨김 해제 — 다시 이 지문을 봄"
                     : "이 지문 숨기기 — 나에게만 안 보이게"
                 }
-                aria-label={curHidden ? "숨김 해제" : "숨기기"}
+                aria-label={userHidden ? "숨김 해제" : "숨기기"}
                 className={cn(
                   "inline-flex size-6 items-center justify-center rounded-md transition-colors disabled:opacity-50",
-                  curHidden
+                  userHidden
                     ? "text-amber-600 hover:bg-amber-100 dark:hover:bg-amber-950/40"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted",
                 )}
               >
-                {curHidden ? (
+                {userHidden ? (
                   <EyeIcon className="size-3.5" />
                 ) : (
                   <EyeOffIcon className="size-3.5" />
@@ -418,7 +561,7 @@ export function OxQuestionsPanel({
       </div>
 
       <p className="font-serif text-sm leading-relaxed">
-        {stripLeadingMarker(cur.bodyMd)}
+        {stripLeadingMarker(item.bodyMd)}
       </p>
 
       <div className="flex gap-2">
@@ -429,9 +572,11 @@ export function OxQuestionsPanel({
           disabled={revealed}
           className={cn(
             "flex-1",
-            picked === "O" && isCorrect &&
+            picked === "O" &&
+              isCorrect &&
               "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200",
-            picked === "O" && isWrong &&
+            picked === "O" &&
+              isWrong &&
               "border-rose-500 bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-200",
           )}
           data-testid="ox-pick-O"
@@ -445,9 +590,11 @@ export function OxQuestionsPanel({
           disabled={revealed}
           className={cn(
             "flex-1",
-            picked === "X" && isCorrect &&
+            picked === "X" &&
+              isCorrect &&
               "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200",
-            picked === "X" && isWrong &&
+            picked === "X" &&
+              isWrong &&
               "border-rose-500 bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-200",
           )}
           data-testid="ox-pick-X"
@@ -473,12 +620,12 @@ export function OxQuestionsPanel({
             )}
             <span className="text-muted-foreground">
               · 정답:{" "}
-              <span className="text-foreground font-bold">{cur.oxTruth}</span>
+              <span className="text-foreground font-bold">{item.oxTruth}</span>
             </span>
           </p>
-          {cur.explanationMd ? (
+          {item.explanationMd ? (
             <p className="text-muted-foreground text-xs leading-relaxed">
-              {cur.explanationMd}
+              {item.explanationMd}
             </p>
           ) : (
             <p className="text-muted-foreground text-xs italic">
@@ -537,22 +684,9 @@ export function OxQuestionsPanel({
             >
               <RefreshCcwIcon className="size-3" /> 다시 풀기
             </Button>
-            <Button
-              size="sm"
-              onClick={goNext}
-              className="ml-auto h-7 text-xs"
-              data-testid="ox-next"
-            >
-              다음 지문 <ArrowRightIcon className="size-3" />
-            </Button>
-            <Button
-              asChild
-              variant="ghost"
-              size="sm"
-              className="h-7 text-xs"
-            >
+            <Button asChild variant="ghost" size="sm" className="h-7 text-xs">
               <Link
-                to={`/subjects/${subject}/problems/${cur.problemId}`}
+                to={`/subjects/${subject}/problems/${item.problemId}`}
                 viewTransition
               >
                 원문제 →
@@ -561,7 +695,7 @@ export function OxQuestionsPanel({
             {isStaff ? (
               <Button asChild variant="ghost" size="sm" className="h-7 text-xs">
                 <Link
-                  to={`/admin/problems/${cur.problemId}?returnTo=${encodeURIComponent(editReturnTo)}`}
+                  to={`/admin/problems/${item.problemId}?returnTo=${encodeURIComponent(editReturnTo)}`}
                   viewTransition
                 >
                   <PencilIcon className="size-3.5" /> 수정
@@ -576,10 +710,10 @@ export function OxQuestionsPanel({
               data-testid="ox-bookmark-panel"
             >
               <BookmarkStars
-                key={`bm:${cur.refId}`}
+                key={`bm:${item.refId}`}
                 targetType={annoTargetType}
-                targetId={cur.refId}
-                initial={curAnno?.bookmark ?? null}
+                targetId={item.refId}
+                initial={anno?.bookmark ?? null}
               />
             </div>
           ) : null}
@@ -590,10 +724,10 @@ export function OxQuestionsPanel({
               data-testid="ox-comment-panel"
             >
               <CommentsPanel
-                key={`comment:${cur.refId}`}
+                key={`comment:${item.refId}`}
                 targetType={annoTargetType}
-                targetId={cur.refId}
-                comments={curAnno?.comments ?? []}
+                targetId={item.refId}
+                comments={anno?.comments ?? []}
                 currentUserId={currentUserId}
                 isAdmin={isAdmin}
                 emptyHint="이 정오문제 지문에 대한 코멘트가 아직 없습니다."

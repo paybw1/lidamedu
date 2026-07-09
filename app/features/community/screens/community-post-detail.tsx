@@ -158,6 +158,10 @@ export default function CommunityPostDetail({
         <RichBody
           body={post.bodyMd}
           refs={refMap}
+          // 운영자·강사 작성 글(합격 수기 등)만 병합 표(HTML colspan) 렌더 허용.
+          trusted={
+            post.author?.role != null && post.author.role !== "student"
+          }
           className="text-foreground/85 mt-3.5 text-[15px] leading-[1.85]"
         />
 
