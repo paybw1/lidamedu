@@ -18,7 +18,7 @@ export const PLATFORMS: Record<PlatformId, PlatformDef> = {
   lecture: { id: "lecture", label: "강의 플랫폼", home: "/lecture/home" },
 };
 
-export const PLATFORM_ORDER: PlatformId[] = ["study", "lecture"];
+export const PLATFORM_ORDER: PlatformId[] = ["lecture", "study"];
 
 // 강의 플랫폼 소속 경로 판별. ★"/lectures/:itemId"(학습 플랫폼의 콘텐츠 연결 영상)와
 // "/lecture-note"(구 강의노트)는 세그먼트가 달라 매칭되지 않는다 — 정확히 "/lecture" 및
