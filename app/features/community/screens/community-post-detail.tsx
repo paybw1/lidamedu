@@ -124,7 +124,9 @@ export default function CommunityPostDetail({
       category={post.board}
       title={BOARD_LABEL[post.board]}
       backLink={{ to: `/community/${post.board}`, label: BOARD_LABEL[post.board] }}
-      width="narrow"
+      // 합격 수기(review)는 성적표 등 넓은 표가 많아 반별 게시판과 같은 폭(feed)으로.
+      // 산문 위주 게시판(자유·스터디)은 독서 폭(narrow) 유지.
+      width={post.board === "review" ? "feed" : "narrow"}
     >
       <article className="border-border bg-card mb-3.5 rounded-2xl border p-5 shadow-sm md:p-6">
         {post.isPinned || isStudy ? (
