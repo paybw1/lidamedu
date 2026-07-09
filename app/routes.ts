@@ -254,6 +254,11 @@ export default [
     route("/lecture/wishlist", "features/bookstore/screens/wishlist.tsx"),
     // 주문·배송 — 구 /me/orders 이관(아래 redirect 유지).
     route("/lecture/orders", "features/orders/screens/my-orders.tsx"),
+    // feat-12 마이페이지 하위 — 증명서·결제내역·쿠폰·포인트(오픈 예정).
+    route("/lecture/certificates", "features/lms/screens/lecture-certificates.tsx"),
+    route("/lecture/payments", "features/lms/screens/lecture-payments.tsx"),
+    route("/lecture/coupons", "features/lms/screens/lecture-coupons.tsx"),
+    route("/lecture/points", "features/lms/screens/lecture-points.tsx"),
     // feat-6-011 — 고객센터 문의(강의 플랫폼 소속). 접근통제는 RLS 가 DB 에서 강제.
     route("/lecture/support", "features/cs-inquiries/screens/support-list.tsx"),
     route(

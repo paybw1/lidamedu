@@ -6,19 +6,18 @@
 import type { Route } from "./+types/lecture.layout";
 
 import { BellIcon } from "lucide-react";
-import { Link, NavLink, Outlet, data } from "react-router";
+import { Link, Outlet, data } from "react-router";
 
 import Footer from "../components/footer";
+import { LectureNav, LectureNavMobile } from "../components/lecture-nav";
 import { PlatformSwitch } from "../components/platform-switch";
 import { CartClearOnPurchase } from "~/features/lms/components/cart-clear-on-purchase";
 import { CartLink } from "~/features/lms/components/cart-link";
 import { UserMenu } from "../components/navigation-bar";
 import { Button } from "../components/ui/button";
-import { LECTURE_NAV_LINKS } from "../lib/platforms";
 import makeServerClient from "../lib/supa-client.server";
 import { getUnreadCount } from "~/features/notifications/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
-import { cn } from "../lib/utils";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const [client, headers] = makeServerClient(request);
@@ -71,42 +70,8 @@ export default function LectureLayout({ loaderData }: Route.ComponentProps) {
           </Link>
           <PlatformSwitch />
 
-          {/* 강의 플랫폼 네비 */}
-          <nav className="hidden h-full items-center gap-1 md:flex">
-            {LECTURE_NAV_LINKS.map((l) => (
-              <NavLink
-                key={l.to}
-                to={l.to}
-                end={l.to === "/lecture"}
-                className={({ isActive }) =>
-                  cn(
-                    "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-accent text-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-accent/60",
-                  )
-                }
-              >
-                {l.label}
-              </NavLink>
-            ))}
-            {/* 강의 플랫폼에서도 운영관리 접근(staff 전용). */}
-            {isStaff ? (
-              <NavLink
-                to="/admin"
-                className={({ isActive }) =>
-                  cn(
-                    "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-accent text-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-accent/60",
-                  )
-                }
-              >
-                운영관리
-              </NavLink>
-            ) : null}
-          </nav>
+          {/* 강의 플랫폼 네비 — 데스크톱(마이페이지 드롭다운) */}
+          <LectureNav isStaff={isStaff} />
 
           <div className="ml-auto flex items-center gap-2">
             <CartLink />
@@ -141,39 +106,8 @@ export default function LectureLayout({ loaderData }: Route.ComponentProps) {
           </div>
         </div>
 
-        {/* 모바일 강의 네비 — 상단 바 아래 가로 스크롤 탭 */}
-        <nav className="flex items-center gap-1 overflow-x-auto border-t border-black/[0.04] px-4 py-1.5 md:hidden dark:border-white/[0.04]">
-          {LECTURE_NAV_LINKS.map((l) => (
-            <NavLink
-              key={l.to}
-              to={l.to}
-              end={l.to === "/lecture"}
-              className={({ isActive }) =>
-                cn(
-                  "rounded-md px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors",
-                  isActive
-                    ? "bg-accent text-foreground"
-                    : "text-muted-foreground",
-                )
-              }
-            >
-              {l.label}
-            </NavLink>
-          ))}
-          {isStaff ? (
-            <NavLink
-              to="/admin"
-              className={({ isActive }) =>
-                cn(
-                  "rounded-md px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors",
-                  isActive ? "bg-accent text-foreground" : "text-muted-foreground",
-                )
-              }
-            >
-              운영관리
-            </NavLink>
-          ) : null}
-        </nav>
+        {/* 모바일 강의 네비 — 상단 바 아래 가로 스크롤 탭(자식 노드 평탄화) */}
+        <LectureNavMobile isStaff={isStaff} />
       </header>
 
       <CartClearOnPurchase />

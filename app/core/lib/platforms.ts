@@ -14,7 +14,8 @@ export interface PlatformDef {
 
 export const PLATFORMS: Record<PlatformId, PlatformDef> = {
   study: { id: "study", label: "학습 플랫폼", home: "/dashboard" },
-  lecture: { id: "lecture", label: "강의 플랫폼", home: "/lecture" },
+  // 강의 플랫폼 진입 = 랜딩(/lecture/home). 수강현황(내 강의실)은 마이페이지 하위.
+  lecture: { id: "lecture", label: "강의 플랫폼", home: "/lecture/home" },
 };
 
 export const PLATFORM_ORDER: PlatformId[] = ["study", "lecture"];
@@ -41,13 +42,36 @@ export function getActivePlatform(pathname: string): PlatformId {
 // 강의 플랫폼 상단 네비 링크(단일 소스).
 //   도서는 강의 상품에 부속돼 판매·배송되므로(standalone 도서몰 없음), 배송 현황은
 //   주문·배송에서 확인. 별도 도서몰 메뉴는 두지 않는다.
-export const LECTURE_NAV_LINKS: ReadonlyArray<{ label: string; to: string }> = [
-  // 순서: 리담안내 · 수강신청 · 도서 · 내 강의실 · 주문·배송 · 리담소식 · 고객센터
+// 강의 플랫폼 상단 네비. children 이 있으면 hover 드롭다운(마이페이지 등).
+export type LectureNavItem = {
+  label: string;
+  to?: string;
+  children?: ReadonlyArray<{ label: string; to: string }>;
+};
+export const LECTURE_NAV_LINKS: ReadonlyArray<LectureNavItem> = [
   { label: "리담안내", to: "/about/instructors" },
   { label: "수강신청", to: "/lecture/catalog" },
   { label: "도서", to: "/lecture/books" },
-  { label: "내 강의실", to: "/lecture" },
-  { label: "주문·배송", to: "/lecture/orders" },
   { label: "리담소식", to: "/lecture/news" },
   { label: "고객센터", to: "/lecture/support" },
+  {
+    label: "마이페이지",
+    children: [
+      { label: "수강현황", to: "/lecture" },
+      { label: "주문·배송", to: "/lecture/orders" },
+      { label: "증명서 발급", to: "/lecture/certificates" },
+      { label: "결제내역 조회", to: "/lecture/payments" },
+      { label: "쿠폰 관리", to: "/lecture/coupons" },
+      { label: "포인트 관리", to: "/lecture/points" },
+    ],
+  },
+];
+// 활성 표시용 — 마이페이지 하위 경로 판별.
+export const MYPAGE_PATHS = [
+  "/lecture",
+  "/lecture/orders",
+  "/lecture/certificates",
+  "/lecture/payments",
+  "/lecture/coupons",
+  "/lecture/points",
 ];
