@@ -315,9 +315,13 @@ export function BlanksRenderProvider({
     [],
   );
 
-  // 정답 후 처리 — 자동 focus 이동은 한국어 IME composer 와 충돌(자모 분리·leak prefill)하므로
-  // 하지 않는다. 현재 input 의 focus 만 풀고(정답 확정 시 IME commit), 다음 빈칸은 highlight 로만
-  // 안내한다. 실제 이동은 사용자가 Tab/클릭으로 결정.
+  // 정답 후 처리 — 다음 빈칸으로 자동 focus 이동(Tab 없이).
+  // 과거엔 한국어 IME 조합 파괴(자모 분리·leak prefill) 때문에 highlight 만 하고 이동은
+  // 사용자 Tab/클릭에 맡겼다. 그러나 이 경로는 composing=false(조합 확정) 이후에만 실행되고,
+  // 각 input 이 autocomplete off·name 제거·data-*ignore·controlled value 강제로 누수를
+  // 구조적으로 막으므로, 조합이 끝난 시점의 다음-빈칸 focus 는 안전하다.
+  // provider 는 attempt revalidation 으로 remount 되지 않아(inputsRef 유효) rAF 로 다음
+  // 프레임에 focus 하면 된다. highlight(hintNextIdx) 는 focus 실패 시 폴백 안내로 유지.
   const [hintNextIdx, setHintNextIdx] = useState<number | null>(null);
   const scheduleFocusNext = useCallback(
     (idx: number) => {
@@ -329,9 +333,23 @@ export function BlanksRenderProvider({
           /* noop */
         }
       }
-      // 다음 빈칸 idx 만 결정 — 시각적 highlight 용. focus 는 안 줌.
       const next = findNextBlankIdx(idx);
       setHintNextIdx(next);
+      if (next != null && typeof requestAnimationFrame !== "undefined") {
+        // state 반영·리렌더 후(다음 프레임) 실제 focus. 커서는 끝으로.
+        requestAnimationFrame(() => {
+          const el = inputsRef.current.get(next);
+          if (el && !el.disabled) {
+            el.focus();
+            const len = el.value.length;
+            try {
+              el.setSelectionRange(len, len);
+            } catch {
+              /* noop */
+            }
+          }
+        });
+      }
     },
     [findNextBlankIdx],
   );
