@@ -150,7 +150,7 @@ function pickNumber(...candidates: unknown[]): number | undefined {
   return undefined;
 }
 
-function parseBlanks(value: unknown): BlankItem[] {
+export function parseBlanks(value: unknown): BlankItem[] {
   if (!Array.isArray(value)) return [];
   const out: BlankItem[] = [];
   for (const v of value) {

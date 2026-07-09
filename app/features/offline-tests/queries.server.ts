@@ -5,6 +5,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
 import { fetchAllIn } from "~/core/lib/supa-batch.server";
+import { parseBlanks } from "~/features/blanks/queries.server";
+import { buildPrintBlankBody } from "~/features/offline-tests/lib/blank-print.server";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
 import type { ScienceSubjectSlug } from "~/features/subjects/lib/science";
@@ -542,12 +544,34 @@ export async function getOfflineTestPrintData(
       ? fetchAllIn(blankSetIds, (slice) =>
           client
             .from("article_blank_sets")
-            .select("set_id, body_text, blanks, articles!inner(display_label)")
+            .select(
+              "set_id, blanks, articles!inner(display_label, current_revision_id)",
+            )
             .in("set_id", slice)
             .order("set_id"),
         )
       : Promise.resolve([]),
   ]);
+
+  // 빈칸 본문은 article body_json(정본) 기준으로 재구성 — body_text 는 누락/불완전할 수 있다.
+  const revisionIds = [
+    ...new Set(
+      blankSets
+        .map((b) => b.articles?.current_revision_id)
+        .filter((v): v is string => Boolean(v)),
+    ),
+  ];
+  const revisions = revisionIds.length
+    ? await fetchAllIn(revisionIds, (slice) =>
+        client
+          .from("article_revisions")
+          .select("revision_id, body_json")
+          .in("revision_id", slice),
+      )
+    : [];
+  const bodyJsonByRevision = new Map(
+    revisions.map((r) => [r.revision_id, r.body_json] as const),
+  );
 
   const problemById = new Map(problems.map((p) => [p.problem_id, p] as const));
   const choicesByProblem = new Map<
@@ -562,20 +586,6 @@ export async function getOfflineTestPrintData(
   const oxChoiceById = new Map(oxChoices.map((c) => [c.choice_id, c] as const));
   const oxBoxById = new Map(oxBoxes.map((b) => [b.box_item_id, b] as const));
   const blankById = new Map(blankSets.map((b) => [b.set_id, b] as const));
-
-  const parseBlankItems = (raw: unknown): PrintBlankItem[] => {
-    if (!Array.isArray(raw)) return [];
-    return raw
-      .map((b) => {
-        const o = b as { idx?: number; answer?: string; length?: number };
-        return {
-          idx: Number(o.idx ?? 0),
-          answer: String(o.answer ?? ""),
-          length: Number(o.length ?? String(o.answer ?? "").length),
-        };
-      })
-      .sort((a, b) => a.idx - b.idx);
-  };
 
   const questions: OfflineTestPrintQuestion[] = detail.questions.map((q) => {
     let mcq: OfflineTestPrintQuestion["mcq"] = null;
@@ -604,10 +614,13 @@ export async function getOfflineTestPrintData(
       };
     } else if (q.questionType === "blank" && q.blankSetId) {
       const b = blankById.get(q.blankSetId);
+      const revId = b?.articles?.current_revision_id ?? null;
+      const bodyJson = revId ? bodyJsonByRevision.get(revId) : null;
+      const built = buildPrintBlankBody(bodyJson, parseBlanks(b?.blanks));
       blank = {
         articleLabel: b?.articles?.display_label ?? "조문",
-        bodyText: b?.body_text ?? "",
-        blanks: parseBlankItems(b?.blanks),
+        bodyText: built.bodyText,
+        blanks: built.blanks,
       };
     }
     return {

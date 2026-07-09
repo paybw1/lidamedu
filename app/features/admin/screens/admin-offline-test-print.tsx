@@ -83,7 +83,7 @@ function BlankBody({
               key={i}
               className="mx-0.5 border-b-2 border-neutral-700 px-1 font-bold text-neutral-900"
             >
-              {circled(idx + 1)} {b?.answer ?? ""}
+              ({idx}) {b?.answer ?? ""}
             </span>
           );
         }
@@ -95,7 +95,7 @@ function BlankBody({
             className="mx-0.5 inline-flex items-end border-b-2 border-neutral-700 align-baseline"
             style={{ minWidth: `${width * 0.9 + 1.5}em` }}
           >
-            <span className="text-[11px] text-neutral-500">{circled(idx + 1)}</span>
+            <span className="text-[11px] text-neutral-500">({idx})</span>
             <span aria-hidden>&nbsp;</span>
           </span>
         );
