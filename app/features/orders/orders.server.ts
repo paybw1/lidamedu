@@ -159,12 +159,19 @@ export async function markOrderPaidAndFulfill(orderId: string): Promise<void> {
   }
 }
 
-/** 도서 항목 지급(4c) — shipment 생성(주문당 1건 unique=멱등) + 재고 sale 차감. */
+/** 도서 항목 지급(4c) — shipment 생성(주문당 1건 unique=멱등) + 재고 sale 차감.
+ *  ★PDF 도서는 배송·재고 없음(다운로드로 제공) → 지급 스킵. */
 async function fulfillBookShipment(input: {
   orderItemId: string;
   bookId: string;
   quantity: number;
 }): Promise<void> {
+  const { data: bk } = await adminClient
+    .from("books")
+    .select("book_type")
+    .eq("book_id", input.bookId)
+    .maybeSingle();
+  if (bk?.book_type === "pdf") return; // PDF = 다운로드 제공, 배송/재고 없음
   const { error } = await adminClient.from("shipments").insert({
     order_item_id: input.orderItemId,
     status: "preparing",

@@ -939,6 +939,11 @@ export default [
         "/api/lecture/restock-alert",
         "features/bookstore/api/restock-alert.tsx",
       ),
+      // feat-11 S2 — PDF 도서 다운로드(소유·횟수 검증 + signed URL).
+      route(
+        "/api/lecture/book-download",
+        "features/bookstore/api/book-download.tsx",
+      ),
       route(
         "/api/payments/toss/confirm",
         "features/subscriptions/api/toss-confirm.tsx",

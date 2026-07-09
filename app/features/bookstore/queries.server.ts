@@ -198,6 +198,7 @@ export async function listBundles(client: Client): Promise<BundleCard[]> {
 export interface BookDetail extends BookCard {
   description: string | null;
   isbn: string | null;
+  bookType: string;
   shortIntro: string | null;
   authorBio: string | null;
   toc: string | null;
@@ -223,7 +224,7 @@ export async function getBookDetail(
   const { data: b, error } = await client
     .from("books")
     .select(
-      "book_id, title, author, publisher, price_krw, list_price_krw, cover_path, cover_file_path, label_text, label_color, description, isbn, short_intro, author_bio, toc, published_on, preview_url, event_phrase, course_only, sale_status",
+      "book_id, title, author, publisher, price_krw, list_price_krw, cover_path, cover_file_path, label_text, label_color, description, isbn, book_type, short_intro, author_bio, toc, published_on, preview_url, event_phrase, course_only, sale_status",
     )
     .eq("book_id", bookId)
     .is("deleted_at", null)
@@ -285,6 +286,7 @@ export async function getBookDetail(
     soldOut: stock !== null && stock <= 0,
     description: b.description,
     isbn: b.isbn,
+    bookType: b.book_type,
     shortIntro: b.short_intro,
     authorBio: b.author_bio,
     toc: b.toc,

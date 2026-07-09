@@ -1,6 +1,7 @@
 // 도서 상세(강의 플랫폼) — 표지·정보·수량·담기/바로구매 + 강의↔교재 크로스셀. feat-11 B1.
 import {
   BookOpenIcon,
+  DownloadIcon,
   GraduationCapIcon,
   MinusIcon,
   PlusIcon,
@@ -18,6 +19,7 @@ import {
   DialogTrigger,
 } from "~/core/components/ui/dialog";
 import makeServerClient from "~/core/lib/supa-client.server";
+import adminClient from "~/core/lib/supa-admin-client.server";
 import { startCartCheckout } from "~/features/lms/lib/cart-checkout";
 import { useCart } from "~/features/lms/lib/cart";
 import { RestockAlertButton } from "~/features/bookstore/components/restock-alert-button";
@@ -56,21 +58,35 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       .maybeSingle();
     restockRequested = Boolean(alert);
   }
+  // PDF 도서 — 구매(결제완료) 여부 → 다운로드 버튼 노출.
+  let owned = false;
+  if (user && book.bookType === "pdf") {
+    const { data: oi } = await adminClient
+      .from("order_items")
+      .select("order_item_id, orders!inner(user_id, status)")
+      .eq("book_id", bookId)
+      .eq("orders.user_id", user.id)
+      .eq("orders.status", "paid")
+      .limit(1);
+    owned = (oi ?? []).length > 0;
+  }
   return {
     book,
     isAuthed: Boolean(user),
     wishlisted: wishlist.has(bookId),
     restockRequested,
+    owned,
     tossClientKey: process.env.TOSS_CLIENT_KEY ?? null,
   };
 }
 
 export default function BookDetail({ loaderData }: Route.ComponentProps) {
-  const { book, isAuthed, wishlisted, restockRequested, tossClientKey } =
+  const { book, isAuthed, wishlisted, restockRequested, owned, tossClientKey } =
     loaderData;
   const { addBook, has } = useCart();
   const [qty, setQty] = useState(1);
   const inCart = has(`book:${book.bookId}`);
+  const isPdf = book.bookType === "pdf";
 
   const buyNow = () => {
     if (!tossClientKey) return;
@@ -133,7 +149,7 @@ export default function BookDetail({ loaderData }: Route.ComponentProps) {
             )}
           </div>
 
-          {!book.soldOut ? (
+          {!book.soldOut && !isPdf ? (
             <div className="mt-4 flex items-center gap-3">
               <div className="flex items-center gap-1">
                 <Button
@@ -161,7 +177,13 @@ export default function BookDetail({ loaderData }: Route.ComponentProps) {
           ) : null}
 
           <div className="mt-4 flex flex-wrap gap-2">
-            {book.soldOut ? (
+            {isPdf && owned ? (
+              <Button asChild>
+                <a href={`/api/lecture/book-download?bookId=${book.bookId}`}>
+                  <DownloadIcon className="size-4" /> PDF 다운로드
+                </a>
+              </Button>
+            ) : book.soldOut ? (
               isAuthed ? (
                 <RestockAlertButton
                   bookId={book.bookId}
@@ -225,7 +247,9 @@ export default function BookDetail({ loaderData }: Route.ComponentProps) {
           ) : null}
 
           <p className="text-muted-foreground mt-3 text-xs">
-            배송비·예상 배송일은 결제 단계에서 안내됩니다.
+            {isPdf
+              ? "PDF 도서 — 결제 후 내려받을 수 있습니다."
+              : "배송비·예상 배송일은 결제 단계에서 안내됩니다."}
           </p>
         </div>
       </div>
