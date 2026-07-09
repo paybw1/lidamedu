@@ -13,6 +13,7 @@ import { roleAtLeast } from "~/core/lib/roles";
 import { getCohortById } from "~/features/cohorts/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { parseOfflineTestSubject } from "~/features/offline-tests/labels";
+import { lawSubjectSlugSchema } from "~/features/subjects/lib/subjects";
 import {
   addTestQuestions,
   createOfflineTest,
@@ -214,8 +215,12 @@ export async function action({ request }: Route.ActionArgs) {
         limit: n * 4,
       });
       refs = cands.map((c) => ({ questionType: "mcq" as const, problemId: c.problemId }));
-    } else if (test.lawCode) {
-      const filter = { lawCode: test.lawCode, nodeId, minImportance, limit: n * 4 };
+    } else {
+      // ?subject= 로 시험지 과목 외 다른 법률 과목 문항도 자동 추출 가능(피커 과목 선택 연동).
+      const subjParse = lawSubjectSlugSchema.safeParse(fd.get("subject"));
+      const lawCode = subjParse.success ? subjParse.data : test.lawCode;
+      if (!lawCode) return data({ error: "과목을 확인해 주세요" }, { status: 400 });
+      const filter = { lawCode, nodeId, minImportance, limit: n * 4 };
       if (typeParse.data === "mcq") {
         const cands = await listMcqCandidates(client, filter);
         refs = cands.map((c) => ({ questionType: "mcq" as const, problemId: c.problemId }));

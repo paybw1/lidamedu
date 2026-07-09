@@ -53,6 +53,11 @@ import {
   listSeries,
   type SeriesSummary,
 } from "~/features/offline-tests/series.server";
+import {
+  LAW_SUBJECTS,
+  LAW_SUBJECT_SLUGS,
+  type LawSubjectSlug,
+} from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/admin-offline-test-edit";
 
@@ -98,6 +103,16 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     Math.min(3, Number(url.searchParams.get("imp")) || 0),
   );
 
+  // 후보 탐색 과목 — ?subj= 로 시험지 과목 외 다른 과목도 담을 수 있다(법률 과목 한정).
+  // 자연과학 시험은 과목 고정. 저장은 과목 무관(offline_test_questions 는 문항 참조만).
+  const subjParam = url.searchParams.get("subj");
+  const candLawCode: LawSubjectSlug | null =
+    !isScience &&
+    subjParam &&
+    (LAW_SUBJECT_SLUGS as readonly string[]).includes(subjParam)
+      ? (subjParam as LawSubjectSlug)
+      : test.lawCode;
+
   let mcqCands: Awaited<ReturnType<typeof listMcqCandidates>> = [];
   let oxCands: Awaited<ReturnType<typeof listOxCandidates>> = [];
   let blankCands: Awaited<ReturnType<typeof listBlankCandidates>> = [];
@@ -107,8 +122,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       sectionId: nodeId,
       limit: 80,
     });
-  } else if (test.lawCode) {
-    const filter = { lawCode: test.lawCode, nodeId, minImportance, limit: 80 };
+  } else if (candLawCode) {
+    const filter = { lawCode: candLawCode, nodeId, minImportance, limit: 80 };
     [mcqCands, oxCands, blankCands] = await Promise.all([
       type === "mcq" ? listMcqCandidates(client, filter) : Promise.resolve([]),
       type === "ox" ? listOxCandidates(client, filter) : Promise.resolve([]),
@@ -129,11 +144,11 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       label: s.label,
       depth: 1,
     }));
-  } else if (test.lawCode) {
+  } else if (candLawCode) {
     const { data: rows } = await client
       .from("systematic_nodes")
       .select("node_id, display_label, path")
-      .eq("law_code", test.lawCode)
+      .eq("law_code", candLawCode)
       .eq("case_only", false)
       .order("path");
     nodes = (rows ?? []).map((n) => ({
@@ -151,6 +166,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     role,
     isScience,
     filter: { type, nodeId, minImportance },
+    candSubject: isScience ? null : candLawCode,
+    subjectOptions: isScience
+      ? []
+      : LAW_SUBJECT_SLUGS.map((s) => ({ code: s, name: LAW_SUBJECTS[s].name })),
     mcqCands,
     oxCands,
     blankCands,
@@ -185,6 +204,8 @@ export default function AdminOfflineTestEdit({
     role,
     isScience,
     filter,
+    candSubject,
+    subjectOptions,
     mcqCands,
     oxCands,
     blankCands,
@@ -256,7 +277,13 @@ export default function AdminOfflineTestEdit({
               유형·파트·중요도로 후보를 찾아 시험지에 담습니다.
             </p>
           </div>
-          <CandidateFilter filter={filter} nodes={nodes} isScience={isScience} />
+          <CandidateFilter
+            filter={filter}
+            nodes={nodes}
+            isScience={isScience}
+            candSubject={candSubject}
+            subjectOptions={subjectOptions}
+          />
           <CandidatePanel
             testId={test.testId}
             type={filter.type}
@@ -264,7 +291,11 @@ export default function AdminOfflineTestEdit({
             oxCands={oxCands}
             blankCands={blankCands}
           />
-          <AutoPickForm testId={test.testId} filter={filter} />
+          <AutoPickForm
+            testId={test.testId}
+            filter={filter}
+            candSubject={candSubject}
+          />
         </section>
 
         {/* 우: 담긴 문항 */}
@@ -543,13 +574,44 @@ function CandidateFilter({
   filter,
   nodes,
   isScience,
+  candSubject,
+  subjectOptions,
 }: {
   filter: { type: OfflineQuestionType; nodeId: string | null; minImportance: number };
   nodes: Array<{ nodeId: string; label: string; depth: number }>;
   isScience: boolean;
+  candSubject: LawSubjectSlug | null;
+  subjectOptions: Array<{ code: LawSubjectSlug; name: string }>;
 }) {
+  const navigate = useNavigate();
   return (
     <Form method="get" preventScrollReset className="flex flex-wrap items-end gap-2 border-b px-4 py-3">
+      {/* 과목 — 시험지 과목 외 다른 과목의 문항도 담을 수 있다(법률 과목). 변경 시 파트 초기화. */}
+      {!isScience && subjectOptions.length > 0 ? (
+        <div className="flex flex-col gap-1">
+          <Label className="text-[11px]">과목</Label>
+          <select
+            value={candSubject ?? ""}
+            onChange={(e) => {
+              const params = new URLSearchParams();
+              params.set("subj", e.target.value);
+              params.set("type", filter.type);
+              navigate(`?${params.toString()}`, { preventScrollReset: true });
+            }}
+            className="border-input bg-background h-8 rounded-md border px-2 text-xs"
+          >
+            {subjectOptions.map((s) => (
+              <option key={s.code} value={s.code}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
+      {/* 과목 유지용 hidden — '조회'(유형·파트·중요도 GET) 시 선택 과목 보존. */}
+      {!isScience && candSubject ? (
+        <input type="hidden" name="subj" value={candSubject} />
+      ) : null}
       <div className="flex flex-col gap-1">
         <Label className="text-[11px]">유형</Label>
         <select
@@ -729,9 +791,11 @@ function CandidatePanel({
 function AutoPickForm({
   testId,
   filter,
+  candSubject,
 }: {
   testId: string;
   filter: { type: OfflineQuestionType; nodeId: string | null; minImportance: number };
+  candSubject: LawSubjectSlug | null;
 }) {
   const fetcher = useFetcher<{ ok?: true; added?: number; error?: string }>();
   const reload = useReload();
@@ -751,6 +815,9 @@ function AutoPickForm({
       <input type="hidden" name="type" value={filter.type} />
       <input type="hidden" name="nodeId" value={filter.nodeId ?? ""} />
       <input type="hidden" name="minImportance" value={filter.minImportance} />
+      {candSubject ? (
+        <input type="hidden" name="subject" value={candSubject} />
+      ) : null}
       <WandSparklesIcon className="text-muted-foreground size-3.5" />
       <span className="text-xs">현재 조건에서</span>
       <Input
