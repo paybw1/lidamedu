@@ -271,6 +271,15 @@ export default [
   layout("core/layouts/navigation.layout.tsx", [
     index("features/home/screens/home.tsx"),
     route("/about", "features/home/screens/about.tsx"),
+    // feat-6-012 — 리담안내 · 강사진(공개).
+    route(
+      "/about/instructors",
+      "features/instructors/screens/instructors-index.tsx",
+    ),
+    route(
+      "/about/instructors/:slug",
+      "features/instructors/screens/instructor-detail.tsx",
+    ),
     route("/location", "features/home/screens/location.tsx"),
     route("/auth/confirm", "features/auth/screens/confirm.tsx"),
     route("/new-password", "features/auth/screens/new-password.tsx"),
@@ -575,6 +584,24 @@ export default [
       route(
         "/admin/cs-inquiries",
         "features/cs-inquiries/screens/admin-cs-inquiries.tsx",
+      ),
+      // feat-6-012 — 강사소개 관리.
+      route(
+        "/admin/instructors",
+        "features/instructors/screens/admin-instructors.tsx",
+      ),
+      route(
+        "/admin/instructors/new",
+        "features/instructors/screens/admin-instructor-edit.tsx",
+        { id: "admin-instructor-new" },
+      ),
+      route(
+        "/admin/instructors/:instructorId/edit",
+        "features/instructors/screens/admin-instructor-edit.tsx",
+      ),
+      route(
+        "/api/admin/instructor",
+        "features/instructors/api/admin-instructor.tsx",
       ),
       route(
         "/admin/announcements",

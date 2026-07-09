@@ -5457,6 +5457,99 @@ export type Database = {
           },
         ]
       }
+      instructors: {
+        Row: {
+          bio_md: string | null
+          books: Json
+          career: Json
+          category: string
+          created_at: string
+          deleted_at: string | null
+          display_order: number
+          education: Json
+          headline: string | null
+          instructor_id: string
+          metrics: Json
+          monogram: string | null
+          name: string
+          philosophy_md: string | null
+          photo_path: string | null
+          profile_id: string | null
+          published: boolean
+          role_label: string | null
+          slug: string
+          subject_codes: string[]
+          subject_label: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          bio_md?: string | null
+          books?: Json
+          career?: Json
+          category?: string
+          created_at?: string
+          deleted_at?: string | null
+          display_order?: number
+          education?: Json
+          headline?: string | null
+          instructor_id?: string
+          metrics?: Json
+          monogram?: string | null
+          name: string
+          philosophy_md?: string | null
+          photo_path?: string | null
+          profile_id?: string | null
+          published?: boolean
+          role_label?: string | null
+          slug: string
+          subject_codes?: string[]
+          subject_label: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bio_md?: string | null
+          books?: Json
+          career?: Json
+          category?: string
+          created_at?: string
+          deleted_at?: string | null
+          display_order?: number
+          education?: Json
+          headline?: string | null
+          instructor_id?: string
+          metrics?: Json
+          monogram?: string | null
+          name?: string
+          philosophy_md?: string | null
+          photo_path?: string | null
+          profile_id?: string | null
+          published?: boolean
+          role_label?: string | null
+          slug?: string
+          subject_codes?: string[]
+          subject_label?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instructors_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "instructors_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       law_revisions: {
         Row: {
           comparison_pdf: string | null

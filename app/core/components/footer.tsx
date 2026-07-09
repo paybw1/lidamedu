@@ -51,6 +51,9 @@ export default function Footer() {
           <Link to="/about" viewTransition>
             소개
           </Link>
+          <Link to="/about/instructors" viewTransition>
+            강사진
+          </Link>
           <Link to="/legal/terms-of-service" viewTransition>
             이용약관
           </Link>
