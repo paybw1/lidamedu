@@ -55,7 +55,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     client
       .from("books")
       .select(
-        "book_id, title, author, publisher, price_krw, sale_status, isbn, description, cover_path",
+        "book_id, title, author, publisher, price_krw, sale_status, isbn, description, cover_path, track_stock",
       )
       .is("deleted_at", null)
       .order("created_at", { ascending: false }),
@@ -93,7 +93,8 @@ export async function loader({ request }: Route.LoaderArgs) {
       isbn: b.isbn,
       description: b.description,
       coverPath: b.cover_path,
-      stock: stockByBook.get(b.book_id) ?? 0,
+      trackStock: b.track_stock,
+      stock: b.track_stock ? (stockByBook.get(b.book_id) ?? 0) : null,
       linkedPlans: (links ?? [])
         .filter((l) => l.book_id === b.book_id)
         .map((l) => ({ planId: l.plan_id, requirement: l.requirement })),
@@ -149,6 +150,8 @@ export async function action({ request }: Route.ActionArgs) {
       note: String(fd.get("note") ?? "").trim() || null,
     });
     if (error) return data({ error: error.message }, { status: 400 });
+    // 재고를 기록하면 이 도서는 수량 관리 대상으로 전환(품절 게이트 활성화).
+    await adminClient.from("books").update({ track_stock: true }).eq("book_id", bookId);
     // feat-11 B2-4 — 재입고 시 알림 신청자에게 발송(재고>0 + 미발송, 멱등).
     if (qty > 0) await notifyRestock(bookId);
     return data({ ok: true as const });
@@ -338,7 +341,8 @@ function BookRow({
     isbn: string | null;
     description: string | null;
     coverPath: string | null;
-    stock: number;
+    trackStock: boolean;
+    stock: number | null;
     linkedPlans: Array<{ planId: string; requirement: string }>;
     previews: Array<{ previewId: string; imageUrl: string }>;
   };
@@ -370,7 +374,15 @@ function BookRow({
       </TD>
       <TD align="right" mono>₩{book.priceKrw.toLocaleString("ko-KR")}</TD>
       <TD align="right" mono>
-        <span className={book.stock <= 0 ? "text-rose-600 dark:text-rose-400" : ""}>{book.stock}</span>
+        {book.stock === null ? (
+          <span className="text-muted-foreground" title="재고 미관리 — 항상 판매 가능">
+            —
+          </span>
+        ) : (
+          <span className={book.stock <= 0 ? "text-rose-600 dark:text-rose-400" : ""}>
+            {book.stock}
+          </span>
+        )}
       </TD>
       <TD>
         <fetcher.Form method="post">

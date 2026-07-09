@@ -76,6 +76,7 @@ export const bookFormSchema = z.object({
   extra1: z.string().trim().max(500).optional(),
   extra2: z.string().trim().max(500).optional(),
   isRecommended: z.boolean().default(false),
+  trackStock: z.boolean().default(false),
   saleStatus: z.enum(["draft", "on_sale", "paused", "closed"]).default("draft"),
   listed: z.boolean().default(true),
 });
@@ -116,6 +117,7 @@ export function parseBookForm(
     extra1: nz(fd.get("extra1")),
     extra2: nz(fd.get("extra2")),
     isRecommended: bool(fd.get("isRecommended")),
+    trackStock: bool(fd.get("trackStock")),
     saleStatus: nz(fd.get("saleStatus")) ?? "draft",
     listed: bool(fd.get("listed")),
   };
@@ -167,6 +169,7 @@ export function bookRow(
     extra1: v.extra1 ?? null,
     extra2: v.extra2 ?? null,
     is_recommended: v.isRecommended,
+    track_stock: v.trackStock,
     sale_status: v.saleStatus,
     listed: v.listed,
   };

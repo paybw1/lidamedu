@@ -1676,6 +1676,7 @@ export type Database = {
           tax_free: boolean
           title: string
           toc: string | null
+          track_stock: boolean
           updated_at: string
         }
         Insert: {
@@ -1715,6 +1716,7 @@ export type Database = {
           tax_free?: boolean
           title: string
           toc?: string | null
+          track_stock?: boolean
           updated_at?: string
         }
         Update: {
@@ -1754,6 +1756,7 @@ export type Database = {
           tax_free?: boolean
           title?: string
           toc?: string | null
+          track_stock?: boolean
           updated_at?: string
         }
         Relationships: [

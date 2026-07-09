@@ -84,6 +84,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     extra1: b.extra1,
     extra2: b.extra2,
     isRecommended: b.is_recommended,
+    trackStock: b.track_stock,
     saleStatus: b.sale_status,
     listed: b.listed,
   };

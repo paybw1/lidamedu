@@ -34,6 +34,7 @@ export interface BookFormData {
   extra1: string | null;
   extra2: string | null;
   isRecommended: boolean;
+  trackStock: boolean;
   saleStatus: string;
   listed: boolean;
 }
@@ -129,6 +130,9 @@ export function BookForm({
       </Row>
       <Row label="그룹할인 적용">
         <label className="flex items-center gap-1.5 text-sm"><input type="checkbox" name="groupDiscountOk" defaultChecked={b?.groupDiscountOk ?? false} /> 적용</label>
+      </Row>
+      <Row label="재고 관리">
+        <label className="flex items-center gap-1.5 text-sm"><input type="checkbox" name="trackStock" defaultChecked={b?.trackStock ?? false} /> 수량 관리(입고·판매차감). 해제 시 재고와 무관하게 항상 판매 가능</label>
       </Row>
       <Row label="1인당 판매 제한">
         <div className="flex items-center gap-1.5">

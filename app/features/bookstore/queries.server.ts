@@ -42,6 +42,17 @@ function pickCover(coverPath: string | null, coverFilePath: string | null) {
   return coverPath || coverFilePath || null;
 }
 
+// 재고 관리(track_stock) off 도서는 수량 미집계(null) → 항상 판매 가능(품절/재고 배지 없음).
+// on 도서만 v_book_stock 수량으로 게이트.
+function resolveStock(
+  trackStock: boolean,
+  stocks: Map<string, number>,
+  bookId: string,
+): number | null {
+  if (!trackStock) return null;
+  return stocks.has(bookId) ? stocks.get(bookId)! : 0;
+}
+
 async function stockMap(bookIds: string[]): Promise<Map<string, number>> {
   const map = new Map<string, number>();
   if (bookIds.length === 0) return map;
@@ -62,7 +73,7 @@ export async function listBookstoreBooks(
   let query = client
     .from("books")
     .select(
-      "book_id, title, author, publisher, price_krw, list_price_krw, cover_path, cover_file_path, label_text, label_color",
+      "book_id, title, author, publisher, price_krw, list_price_krw, cover_path, cover_file_path, label_text, label_color, track_stock",
     )
     .eq("sale_status", "on_sale")
     .eq("course_only", false) // 과정전용은 목록 미노출
@@ -88,7 +99,7 @@ export async function listBookstoreBooks(
   const rows = data ?? [];
   const stocks = await stockMap(rows.map((r) => r.book_id));
   return rows.map((r) => {
-    const stock = stocks.has(r.book_id) ? stocks.get(r.book_id)! : null;
+    const stock = resolveStock(r.track_stock, stocks, r.book_id);
     return {
       bookId: r.book_id,
       title: r.title,
@@ -121,7 +132,7 @@ export async function listWishlistBooks(
   const { data: books } = await client
     .from("books")
     .select(
-      "book_id, title, author, publisher, price_krw, list_price_krw, cover_path, cover_file_path, label_text, label_color",
+      "book_id, title, author, publisher, price_krw, list_price_krw, cover_path, cover_file_path, label_text, label_color, track_stock",
     )
     .in("book_id", ids)
     .eq("sale_status", "on_sale")
@@ -132,7 +143,7 @@ export async function listWishlistBooks(
   for (const id of ids) {
     const b = byId.get(id);
     if (!b) continue; // 판매종료/삭제 도서는 목록에서 제외
-    const stock = stocks.has(id) ? stocks.get(id)! : null;
+    const stock = resolveStock(b.track_stock, stocks, id);
     out.push({
       bookId: b.book_id,
       title: b.title,
@@ -224,7 +235,7 @@ export async function getBookDetail(
   const { data: b, error } = await client
     .from("books")
     .select(
-      "book_id, title, author, publisher, price_krw, list_price_krw, cover_path, cover_file_path, label_text, label_color, description, isbn, book_type, short_intro, author_bio, toc, published_on, preview_url, event_phrase, course_only, sale_status",
+      "book_id, title, author, publisher, price_krw, list_price_krw, cover_path, cover_file_path, label_text, label_color, description, isbn, book_type, short_intro, author_bio, toc, published_on, preview_url, event_phrase, course_only, sale_status, track_stock",
     )
     .eq("book_id", bookId)
     .is("deleted_at", null)
@@ -234,7 +245,7 @@ export async function getBookDetail(
   if (!b || b.sale_status !== "on_sale") return null;
 
   const stocks = await stockMap([bookId]);
-  const stock = stocks.has(bookId) ? stocks.get(bookId)! : null;
+  const stock = resolveStock(b.track_stock, stocks, bookId);
 
   // B2-2 미리보기 페이지(공개 RLS).
   const { data: previews } = await client
