@@ -1,12 +1,20 @@
 // feat-11-004 4c — 도서 관리: 등록·판매상태·재고 입고(원장)·강의 상품 연결. staff.
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { BookOpenIcon, PlusIcon } from "lucide-react";
 import { data, useFetcher } from "react-router";
 import { toast } from "sonner";
 import { z } from "zod";
 
 import { Button } from "~/core/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "~/core/components/ui/dialog";
 import makeServerClient from "~/core/lib/supa-client.server";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
@@ -54,7 +62,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   ] = await Promise.all([
     client
       .from("books")
-      .select("book_id, title, author, publisher, price_krw, sale_status, isbn")
+      .select(
+        "book_id, title, author, publisher, price_krw, sale_status, isbn, description, cover_path",
+      )
       .is("deleted_at", null)
       .order("created_at", { ascending: false }),
     adminClient.from("v_book_stock").select("book_id, stock"),
@@ -81,6 +91,8 @@ export async function loader({ request }: Route.LoaderArgs) {
       priceKrw: b.price_krw,
       saleStatus: b.sale_status,
       isbn: b.isbn,
+      description: b.description,
+      coverPath: b.cover_path,
       stock: stockByBook.get(b.book_id) ?? 0,
       linkedPlans: (links ?? [])
         .filter((l) => l.book_id === b.book_id)
@@ -92,15 +104,23 @@ export async function loader({ request }: Route.LoaderArgs) {
   };
 }
 
-const createSchema = z.object({
+const bookFields = {
   title: z.string().trim().min(1).max(200),
   author: z.string().trim().max(80).optional(),
   publisher: z.string().trim().max(80).optional(),
   priceKrw: z.coerce.number().int().min(0),
   isbn: z.string().trim().max(20).optional(),
+  // 책 소개·목차(도서 상세에 노출).
+  description: z.string().trim().max(5000).optional(),
   // 표지 이미지 URL(도서몰 썸네일). 스토리지 업로드 대신 URL 문자열로 보관.
   coverPath: z.string().trim().url().max(500).optional().or(z.literal("")),
+};
+const createSchema = z.object({
+  ...bookFields,
+  // 등록 시 초기 재고(입고 원장에 기록).
+  initialStock: z.coerce.number().int().min(0).max(100000).optional(),
 });
+const updateSchema = z.object({ bookId: z.string().uuid(), ...bookFields });
 
 export async function action({ request }: Route.ActionArgs) {
   const { client, user } = await requireStaff(request);
@@ -114,21 +134,67 @@ export async function action({ request }: Route.ActionArgs) {
       publisher: fd.get("publisher") || undefined,
       priceKrw: fd.get("priceKrw"),
       isbn: fd.get("isbn") || undefined,
+      description: fd.get("description") || undefined,
       coverPath: fd.get("coverPath") || undefined,
+      initialStock: fd.get("initialStock") || undefined,
     });
     if (!parsed.success)
       return data(
         { error: "도서명·판매가·표지 URL을 확인해 주세요." },
         { status: 400 },
       );
-    const { error } = await client.from("books").insert({
-      title: parsed.data.title,
-      author: parsed.data.author ?? null,
-      publisher: parsed.data.publisher ?? null,
-      price_krw: parsed.data.priceKrw,
-      isbn: parsed.data.isbn ?? null,
-      cover_path: parsed.data.coverPath || null,
+    const { data: created, error } = await client
+      .from("books")
+      .insert({
+        title: parsed.data.title,
+        author: parsed.data.author ?? null,
+        publisher: parsed.data.publisher ?? null,
+        price_krw: parsed.data.priceKrw,
+        isbn: parsed.data.isbn ?? null,
+        description: parsed.data.description ?? null,
+        cover_path: parsed.data.coverPath || null,
+      })
+      .select("book_id")
+      .single();
+    if (error) return data({ error: error.message }, { status: 400 });
+    // 초기 재고 → 입고 원장 기록.
+    if (parsed.data.initialStock && parsed.data.initialStock > 0) {
+      await adminClient.from("book_stock_moves").insert({
+        book_id: created.book_id,
+        delta: parsed.data.initialStock,
+        reason: "inbound",
+        actor_id: user.id,
+        note: "도서 등록 초기 재고",
+      });
+    }
+    return data({ ok: true as const });
+  }
+
+  if (intent === "update") {
+    const parsed = updateSchema.safeParse({
+      bookId: fd.get("bookId"),
+      title: fd.get("title"),
+      author: fd.get("author") || undefined,
+      publisher: fd.get("publisher") || undefined,
+      priceKrw: fd.get("priceKrw"),
+      isbn: fd.get("isbn") || undefined,
+      description: fd.get("description") || undefined,
+      coverPath: fd.get("coverPath") || undefined,
     });
+    if (!parsed.success)
+      return data({ error: "입력 내용을 확인해 주세요." }, { status: 400 });
+    const { error } = await client
+      .from("books")
+      .update({
+        title: parsed.data.title,
+        author: parsed.data.author ?? null,
+        publisher: parsed.data.publisher ?? null,
+        price_krw: parsed.data.priceKrw,
+        isbn: parsed.data.isbn ?? null,
+        description: parsed.data.description ?? null,
+        cover_path: parsed.data.coverPath || null,
+      })
+      .eq("book_id", parsed.data.bookId);
     if (error) return data({ error: error.message }, { status: 400 });
     return data({ ok: true as const });
   }
@@ -321,10 +387,104 @@ function CreateBookForm() {
         <span className="text-muted-foreground text-[11px] font-semibold">표지 URL</span>
         <input name="coverPath" type="url" maxLength={500} placeholder="https://…" className="border-input bg-background h-9 w-48 rounded-lg border px-2 text-sm" />
       </label>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-muted-foreground text-[11px] font-semibold">초기 재고</span>
+        <input name="initialStock" type="number" min={0} placeholder="0" className="border-input bg-background h-9 w-24 rounded-lg border px-2 text-sm tabular-nums" />
+      </label>
+      <label className="flex min-w-[220px] flex-1 basis-full flex-col gap-1.5">
+        <span className="text-muted-foreground text-[11px] font-semibold">책 소개·목차 (선택)</span>
+        <textarea name="description" rows={2} maxLength={5000} className="border-input bg-background rounded-lg border px-3 py-2 text-sm" />
+      </label>
       <Button type="submit" size="sm" className="h-9" disabled={fetcher.state !== "idle"}>
         <PlusIcon className="size-3.5" /> 도서 등록
       </Button>
     </fetcher.Form>
+  );
+}
+
+// 도서 수정 — 다이얼로그 폼(등록 후 모든 필드 편집).
+function EditBookButton({
+  book,
+}: {
+  book: {
+    bookId: string;
+    title: string;
+    author: string | null;
+    publisher: string | null;
+    priceKrw: number;
+    isbn: string | null;
+    description: string | null;
+    coverPath: string | null;
+  };
+}) {
+  const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (fetcher.state === "idle" && fetcher.data?.ok) {
+      toast.success("도서를 수정했습니다.");
+      setOpen(false);
+    } else if (fetcher.state === "idle" && fetcher.data?.error) {
+      toast.error(fetcher.data.error);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetcher.state, fetcher.data]);
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <button
+          type="button"
+          className="border-border hover:bg-muted/50 h-6 rounded-md border px-1.5 text-[11px]"
+        >
+          수정
+        </button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>도서 수정</DialogTitle>
+        </DialogHeader>
+        <fetcher.Form method="post" className="flex flex-col gap-3">
+          <input type="hidden" name="intent" value="update" />
+          <input type="hidden" name="bookId" value={book.bookId} />
+          <label className="flex flex-col gap-1">
+            <span className="text-muted-foreground text-[11px] font-semibold">도서명</span>
+            <input name="title" required defaultValue={book.title} maxLength={200} className="border-input bg-background h-9 rounded-lg border px-3 text-sm" />
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <label className="flex flex-1 flex-col gap-1">
+              <span className="text-muted-foreground text-[11px] font-semibold">저자</span>
+              <input name="author" defaultValue={book.author ?? ""} maxLength={80} className="border-input bg-background h-9 rounded-lg border px-2 text-sm" />
+            </label>
+            <label className="flex flex-1 flex-col gap-1">
+              <span className="text-muted-foreground text-[11px] font-semibold">출판사</span>
+              <input name="publisher" defaultValue={book.publisher ?? ""} maxLength={80} className="border-input bg-background h-9 rounded-lg border px-2 text-sm" />
+            </label>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <label className="flex flex-col gap-1">
+              <span className="text-muted-foreground text-[11px] font-semibold">판매가</span>
+              <input name="priceKrw" type="number" required min={0} defaultValue={book.priceKrw} className="border-input bg-background h-9 w-32 rounded-lg border px-2 text-sm tabular-nums" />
+            </label>
+            <label className="flex flex-1 flex-col gap-1">
+              <span className="text-muted-foreground text-[11px] font-semibold">ISBN</span>
+              <input name="isbn" defaultValue={book.isbn ?? ""} maxLength={20} className="border-input bg-background h-9 rounded-lg border px-2 font-mono text-sm" />
+            </label>
+          </div>
+          <label className="flex flex-col gap-1">
+            <span className="text-muted-foreground text-[11px] font-semibold">표지 URL</span>
+            <input name="coverPath" type="url" defaultValue={book.coverPath ?? ""} maxLength={500} placeholder="https://…" className="border-input bg-background h-9 rounded-lg border px-2 text-sm" />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-muted-foreground text-[11px] font-semibold">책 소개·목차</span>
+            <textarea name="description" rows={4} defaultValue={book.description ?? ""} maxLength={5000} className="border-input bg-background rounded-lg border px-3 py-2 text-sm" />
+          </label>
+          <DialogFooter>
+            <Button type="submit" disabled={fetcher.state !== "idle"}>
+              저장
+            </Button>
+          </DialogFooter>
+        </fetcher.Form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -340,6 +500,8 @@ function BookRow({
     priceKrw: number;
     saleStatus: string;
     isbn: string | null;
+    description: string | null;
+    coverPath: string | null;
     stock: number;
     linkedPlans: Array<{ planId: string; requirement: string }>;
     previews: Array<{ previewId: string; imageUrl: string }>;
@@ -355,10 +517,15 @@ function BookRow({
   return (
     <TR>
       <TD>
-        <p className="font-semibold">{book.title}</p>
-        <p className="text-muted-foreground text-[11px]">
-          {[book.author, book.publisher, book.isbn].filter(Boolean).join(" · ") || "—"}
-        </p>
+        <div className="flex items-start gap-2">
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold">{book.title}</p>
+            <p className="text-muted-foreground text-[11px]">
+              {[book.author, book.publisher, book.isbn].filter(Boolean).join(" · ") || "—"}
+            </p>
+          </div>
+          <EditBookButton book={book} />
+        </div>
       </TD>
       <TD align="right" mono>₩{book.priceKrw.toLocaleString("ko-KR")}</TD>
       <TD align="right" mono>
