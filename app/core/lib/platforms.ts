@@ -49,7 +49,14 @@ export type LectureNavItem = {
   children?: ReadonlyArray<{ label: string; to: string }>;
 };
 export const LECTURE_NAV_LINKS: ReadonlyArray<LectureNavItem> = [
-  { label: "리담안내", to: "/about/instructors" },
+  {
+    label: "리담안내",
+    children: [
+      { label: "인사말", to: "/about" },
+      { label: "강사진", to: "/about/instructors" },
+      { label: "찾아오시는 길", to: "/location" },
+    ],
+  },
   { label: "수강신청", to: "/lecture/catalog" },
   { label: "도서", to: "/lecture/books" },
   { label: "리담소식", to: "/lecture/news" },
@@ -66,12 +73,10 @@ export const LECTURE_NAV_LINKS: ReadonlyArray<LectureNavItem> = [
     ],
   },
 ];
-// 활성 표시용 — 마이페이지 하위 경로 판별.
-export const MYPAGE_PATHS = [
-  "/lecture",
-  "/lecture/orders",
-  "/lecture/certificates",
-  "/lecture/payments",
-  "/lecture/coupons",
-  "/lecture/points",
-];
+
+// 드롭다운 활성 판별 — 자식 경로 중 하나와 현재 경로 일치.
+// "/lecture" 는 형제(수강신청·도서 등)가 /lecture/* 라 정확일치만.
+export function childMatchesPath(to: string, pathname: string): boolean {
+  if (to === "/lecture") return pathname === "/lecture";
+  return pathname === to || pathname.startsWith(to + "/");
+}

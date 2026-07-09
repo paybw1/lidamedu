@@ -11,6 +11,7 @@ import { Link, Outlet, data } from "react-router";
 import Footer from "../components/footer";
 import { LectureNav, LectureNavMobile } from "../components/lecture-nav";
 import { PlatformSwitch } from "../components/platform-switch";
+import ThemeSwitcher from "../components/theme-switcher";
 import { CartClearOnPurchase } from "~/features/lms/components/cart-clear-on-purchase";
 import { CartLink } from "~/features/lms/components/cart-link";
 import { UserMenu } from "../components/navigation-bar";
@@ -74,6 +75,7 @@ export default function LectureLayout({ loaderData }: Route.ComponentProps) {
           <LectureNav isStaff={isStaff} />
 
           <div className="ml-auto flex items-center gap-2">
+            <ThemeSwitcher />
             <CartLink />
             {user ? (
               <>

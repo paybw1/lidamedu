@@ -6,7 +6,7 @@ import { NavLink, useLocation } from "react-router";
 import { cn } from "~/core/lib/utils";
 import {
   LECTURE_NAV_LINKS,
-  MYPAGE_PATHS,
+  childMatchesPath,
   type LectureNavItem,
 } from "~/core/lib/platforms";
 
@@ -19,15 +19,11 @@ const itemCls = (active: boolean) =>
       : "text-muted-foreground hover:text-foreground hover:bg-accent/60",
   );
 
-function isMypageActive(pathname: string): boolean {
-  return MYPAGE_PATHS.some((p) =>
-    p === "/lecture" ? pathname === "/lecture" : pathname.startsWith(p),
-  );
-}
-
 function Dropdown({ item }: { item: LectureNavItem }) {
   const { pathname } = useLocation();
-  const active = isMypageActive(pathname);
+  const active = (item.children ?? []).some((c) =>
+    childMatchesPath(c.to, pathname),
+  );
   return (
     <div className="group relative flex h-full items-center">
       <button type="button" className={itemCls(active)} aria-haspopup="menu">
