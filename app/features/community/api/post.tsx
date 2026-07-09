@@ -34,12 +34,14 @@ const schema = z.discriminatedUnion("intent", [
     board: communityBoardSchema,
     title: titleField,
     bodyMd: bodyField,
+    published: boolField.optional(),
   }),
   z.object({
     intent: z.literal("update"),
     postId: z.string().uuid(),
     title: titleField,
     bodyMd: bodyField,
+    published: boolField.optional(),
   }),
   z.object({ intent: z.literal("delete"), postId: z.string().uuid() }),
   z.object({
@@ -106,10 +108,13 @@ export async function action({ request }: Route.ActionArgs) {
   const input = parsed.data;
 
   if (input.intent === "create") {
+    // 노출 여부는 운영자만 지정(학생 글은 항상 published 기본값).
+    const canSetVis = roleAtLeast(await currentRole(client, user.id), "manager");
     const result = await createPost(client, user.id, {
       board: input.board,
       title: input.title,
       bodyMd: input.bodyMd,
+      published: canSetVis ? input.published : undefined,
     });
     if (!result.ok) {
       return data({ ok: false, error: result.error }, { status: 400, headers });
@@ -173,12 +178,15 @@ export async function action({ request }: Route.ActionArgs) {
   const isManager = roleAtLeast(role, "manager");
 
   if (input.intent === "update") {
-    if (!isAuthor) {
+    // 작성자 본인 또는 운영자(manager+)가 수정 가능. 운영자는 타 작성자 글(합격수기 등)도 편집.
+    if (!isAuthor && !isManager) {
       return data({ ok: false, error: "forbidden" }, { status: 403, headers });
     }
     const result = await updatePost(client, post.postId, {
       title: input.title,
       bodyMd: input.bodyMd,
+      // 노출 여부는 운영자만 변경(학생은 자기 글 노출 토글 불가 — 항상 published 유지).
+      published: isManager ? input.published : undefined,
     });
     if (!result.ok) {
       return data({ ok: false, error: result.error }, { status: 400, headers });

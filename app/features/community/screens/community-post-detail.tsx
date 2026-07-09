@@ -60,16 +60,22 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   if (!post || post.board !== boardParse.data) {
     throw data("글을 찾을 수 없습니다", { status: 404 });
   }
-  const [comments, attachments] = await Promise.all([
-    listComments(client, post.postId),
-    listAttachments(client, post.postId),
-  ]);
 
   const { data: profile } = await client
     .from("profiles")
     .select("role")
     .eq("profile_id", user.id)
     .maybeSingle();
+  const isStaff = profile?.role != null && profile.role !== "student";
+  // 미노출(초안) 글은 staff 만 열람. 학생은 직접 URL 로도 접근 불가.
+  if (!post.published && !isStaff) {
+    throw data("글을 찾을 수 없습니다", { status: 404 });
+  }
+
+  const [comments, attachments] = await Promise.all([
+    listComments(client, post.postId),
+    listAttachments(client, post.postId),
+  ]);
 
   // feat-6-005 — post + comments 본문에서 콘텐츠 marker 일괄 해석.
   const refMap = await resolveRefsForBodies(client, [

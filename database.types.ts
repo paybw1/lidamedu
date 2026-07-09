@@ -3091,6 +3091,7 @@ export type Database = {
           is_pinned: boolean
           max_members: number | null
           post_id: string
+          published: boolean
           title: string
           updated_at: string
           view_count: number
@@ -3105,6 +3106,7 @@ export type Database = {
           is_pinned?: boolean
           max_members?: number | null
           post_id?: string
+          published?: boolean
           title: string
           updated_at?: string
           view_count?: number
@@ -3119,6 +3121,7 @@ export type Database = {
           is_pinned?: boolean
           max_members?: number | null
           post_id?: string
+          published?: boolean
           title?: string
           updated_at?: string
           view_count?: number

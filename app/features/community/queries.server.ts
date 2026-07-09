@@ -57,7 +57,7 @@ function resolveAuthor(
 /* ── 게시글 조회 ──────────────────────────────────────────────────────── */
 
 const POST_SUMMARY_COLUMNS =
-  "post_id, board, title, author_id, is_pinned, closed_at, max_members, created_at, updated_at, community_post_comments(count)";
+  "post_id, board, title, author_id, is_pinned, published, closed_at, max_members, created_at, updated_at, community_post_comments(count)";
 const POST_DETAIL_COLUMNS = `${POST_SUMMARY_COLUMNS}, body_md`;
 
 type RawPostRow = {
@@ -66,6 +66,7 @@ type RawPostRow = {
   title: string;
   author_id: string | null;
   is_pinned: boolean;
+  published: boolean;
   closed_at: string | null;
   max_members: number | null;
   created_at: string;
@@ -85,6 +86,7 @@ function toSummary(
     title: row.title,
     author: resolveAuthor(row.author_id, authors),
     isPinned: row.is_pinned,
+    published: row.published,
     closedAt: row.closed_at,
     maxMembers: row.max_members,
     commentCount: row.community_post_comments[0]?.count ?? 0,
@@ -126,6 +128,8 @@ export interface ListPostsOptions {
   pageSize?: number;
   /** feat-6 v2.1 — 본인 좋아요 표시용. 없으면 likedByMe=false. */
   userId?: string | null;
+  /** 미노출(published=false) 초안 포함 — staff 만 true. */
+  includeUnpublished?: boolean;
 }
 
 export interface ListPostsResult {
@@ -150,6 +154,9 @@ export async function listPosts(
     .select(POST_SUMMARY_COLUMNS, { count: "exact" })
     .eq("board", options.board)
     .is("deleted_at", null);
+
+  // 미노출(초안) 글은 staff 만. 일반 학생은 published 만.
+  if (!options.includeUnpublished) q = q.eq("published", true);
 
   if (options.query && options.query.trim().length > 0) {
     const term = options.query.trim().replace(/[,()]/g, " ");
@@ -306,7 +313,12 @@ export async function listComments(
 export async function createPost(
   client: SupabaseClient<Database>,
   authorId: string,
-  input: { board: CommunityBoard; title: string; bodyMd: string },
+  input: {
+    board: CommunityBoard;
+    title: string;
+    bodyMd: string;
+    published?: boolean;
+  },
 ): Promise<{ ok: true; postId: string } | { ok: false; error: string }> {
   const { data, error } = await client
     .from("community_posts")
@@ -315,6 +327,7 @@ export async function createPost(
       author_id: authorId,
       title: input.title,
       body_md: input.bodyMd,
+      ...(input.published === undefined ? {} : { published: input.published }),
     })
     .select("post_id")
     .single();
@@ -326,11 +339,15 @@ export async function createPost(
 export async function updatePost(
   client: SupabaseClient<Database>,
   postId: string,
-  patch: { title: string; bodyMd: string },
+  patch: { title: string; bodyMd: string; published?: boolean },
 ): Promise<MutationResult> {
   const { data, error } = await client
     .from("community_posts")
-    .update({ title: patch.title, body_md: patch.bodyMd })
+    .update({
+      title: patch.title,
+      body_md: patch.bodyMd,
+      ...(patch.published === undefined ? {} : { published: patch.published }),
+    })
     .eq("post_id", postId)
     .is("deleted_at", null)
     .select("post_id");

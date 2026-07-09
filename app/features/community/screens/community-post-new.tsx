@@ -46,25 +46,34 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   }
   const board = boardParse.data;
 
+  const { data: meProf } = await client
+    .from("profiles")
+    .select("role")
+    .eq("profile_id", user.id)
+    .maybeSingle();
+  const isStaff = meProf?.role != null && meProf.role !== "student";
+
   if (params.postId) {
     const post = await getPost(client, params.postId);
     if (!post || post.board !== board) {
       throw data("글을 찾을 수 없습니다", { status: 404 });
     }
-    if (post.author?.id !== user.id) {
+    // 작성자 본인 또는 운영자(staff)만 수정. 운영자는 합격수기 등 타 작성자 글도 편집.
+    if (post.author?.id !== user.id && !isStaff) {
       throw data("수정 권한이 없습니다", { status: 403 });
     }
-    return { mode: "edit" as const, board, post };
+    return { mode: "edit" as const, board, post, isStaff };
   }
-  return { mode: "create" as const, board, post: null };
+  return { mode: "create" as const, board, post: null, isStaff };
 }
 
 export default function CommunityPostNew({ loaderData }: Route.ComponentProps) {
-  const { mode, board, post } = loaderData;
+  const { mode, board, post, isStaff } = loaderData;
   const isEdit = mode === "edit";
   const navigate = useNavigate();
   const [title, setTitle] = useState(post?.title ?? "");
   const [body, setBody] = useState(post?.bodyMd ?? "");
+  const [published, setPublished] = useState(post?.published ?? true);
   const [images, setImages] = useState<PendingImage[]>([]);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -155,6 +164,7 @@ export default function CommunityPostNew({ loaderData }: Route.ComponentProps) {
       else fd.set("board", board);
       fd.set("title", title);
       fd.set("bodyMd", body);
+      if (isStaff) fd.set("published", published ? "true" : "false");
       fd.set("returnJson", "1");
       const res = await fetch("/api/community/post", {
         method: "POST",
@@ -296,6 +306,18 @@ export default function CommunityPostNew({ loaderData }: Route.ComponentProps) {
             <p className="mt-3 text-[13px] font-medium text-rose-600 dark:text-rose-400">
               저장에 실패했습니다. 입력 내용을 확인해 주세요.
             </p>
+          ) : null}
+
+          {/* 운영자 전용 — 학생 노출 여부(미체크 시 초안: 학생에게 숨김, 운영자만 열람). */}
+          {isStaff ? (
+            <label className="mt-4 flex items-center gap-2 text-[13px] font-medium">
+              <input
+                type="checkbox"
+                checked={published}
+                onChange={(e) => setPublished(e.target.checked)}
+              />
+              학생에게 노출 (해제 시 초안 — 완성 전까지 학생에게 숨김)
+            </label>
           ) : null}
 
           <div className="mt-5 flex justify-end gap-2">

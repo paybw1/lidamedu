@@ -59,6 +59,14 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const roundFilter: "first" | "second" | null =
     roundRaw === "first" || roundRaw === "second" ? roundRaw : null;
 
+  // 미노출(초안) 글은 staff 에게만 목록 노출.
+  const { data: meProf } = await client
+    .from("profiles")
+    .select("role")
+    .eq("profile_id", user.id)
+    .maybeSingle();
+  const isStaff = meProf?.role != null && meProf.role !== "student";
+
   const [result, popular, passerSummaries] = await Promise.all([
     listPosts(client, {
       board: boardParse.data,
@@ -66,6 +74,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       page,
       pageSize: 20,
       userId: user.id,
+      includeUnpublished: isStaff,
     }),
     listPopularPosts(client, { board: boardParse.data, days: 7, limit: 3 }),
     boardParse.data === "review"

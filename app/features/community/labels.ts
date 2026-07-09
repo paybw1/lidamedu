@@ -37,6 +37,7 @@ export interface CommunityPostSummary {
   title: string;
   author: PostAuthor | null;
   isPinned: boolean;
+  published: boolean;
   /** study 게시판 모집 마감 시각. null = 모집 중 / 비대상 게시판. */
   closedAt: string | null;
   /** feat-6-008 study 모집 인원 한도. null = 제한 없음 / 비대상 게시판. */
