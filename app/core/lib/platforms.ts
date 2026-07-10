@@ -53,13 +53,13 @@ export const LECTURE_NAV_LINKS: ReadonlyArray<LectureNavItem> = [
     label: "리담안내",
     children: [
       { label: "인사말", to: "/about" },
-      { label: "강사진", to: "/about/instructors" },
+      { label: "강사소개", to: "/about/instructors" },
+      { label: "리담소식", to: "/lecture/news" },
       { label: "찾아오시는 길", to: "/location" },
     ],
   },
   { label: "수강신청", to: "/lecture/catalog" },
   { label: "도서", to: "/lecture/books" },
-  { label: "리담소식", to: "/lecture/news" },
   { label: "고객센터", to: "/lecture/support" },
   {
     label: "마이페이지",

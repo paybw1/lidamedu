@@ -16,7 +16,7 @@ const apply = process.argv.includes("--apply");
 if (!parsedPath) throw new Error("usage: seed-essay-2cha.mjs <parsed.json> [--apply]");
 const rows = JSON.parse(readFileSync(parsedPath, "utf8"));
 
-const SUBJECT_LAW = { 특허: "patent", 상표: "trademark", 민소: "civil-procedure" };
+const SUBJECT_LAW = { 특허: "patent", 상표: "trademark", 민소: "civil-procedure", 디보: "design" };
 
 const lawIdCache = new Map();
 async function lawId(subjectKo) {
