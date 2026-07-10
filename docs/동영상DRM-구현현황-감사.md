@@ -32,8 +32,8 @@
 
 **일부만(추가 개발 필요)**
 
-- ★★★★★ **수강기간 수정** — admin-lms-enrollments extend(+일)·pause만 있고 시작일/종료일 직접 편집 없음. expires_at 가산만 가능
-- ★★★★ **특정 강의 재생 차단** — playback.server.ts가 enrollments.blocked_lesson_ids로 lesson_blocked 판정(엔진 O). 그러나 blocked_lesson_ids를 설정하는 admin UI 없음(write 경로 부재).
+- ✅ **수강기간 수정** — [해결 2026-07-10] admin-lms-enrollments 행 '수정' 패널에서 시작일/종료일 date 직접 편집(set_dates, KST 경계, 종료일 미래면 만료→active 복구, 감사로그).
+- ✅ **특정 강의 재생 차단** — [해결 2026-07-10] 같은 '수정' 패널의 회차 체크박스로 blocked_lesson_ids 설정(set_blocked, 감사로그). playback.server lesson_blocked 판정 기존 완비.
 
 <sub>구현완료 6건: 회원별 수강 강의 조회, 수강권 수동 지급, 수강기간 연장, 회원별 일시정지 관리, 수강권 회수, 결제 없이 관리자 지급</sub>
 

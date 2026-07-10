@@ -308,6 +308,7 @@ export interface EnrollmentRow {
   multiplierSnapshot: number | null;
   baseDurationSnapshotSeconds: number;
   adminNote: string | null;
+  blockedLessonIds: string[];
 }
 
 export async function listEnrollments(options: {
@@ -318,7 +319,7 @@ export async function listEnrollments(options: {
   let q = adminClient
     .from("enrollments")
     .select(
-      "enrollment_id, user_id, course_id, plan_id, source, starts_at, expires_at, status, multiplier_snapshot, base_duration_snapshot_seconds, admin_note, user:profiles!enrollments_user_id_fkey(name, member_no), course:courses!enrollments_course_id_fkey(edition_label, series:course_series!courses_series_id_fkey(title)), plan:subscription_plans!enrollments_plan_id_fkey(name)",
+      "enrollment_id, user_id, course_id, plan_id, source, starts_at, expires_at, status, multiplier_snapshot, base_duration_snapshot_seconds, admin_note, blocked_lesson_ids, user:profiles!enrollments_user_id_fkey(name, member_no), course:courses!enrollments_course_id_fkey(edition_label, series:course_series!courses_series_id_fkey(title)), plan:subscription_plans!enrollments_plan_id_fkey(name)",
     )
     .order("created_at", { ascending: false })
     .limit(Math.min(options.limit ?? 100, 300));
@@ -349,6 +350,9 @@ export async function listEnrollments(options: {
       multiplierSnapshot: r.multiplier_snapshot,
       baseDurationSnapshotSeconds: r.base_duration_snapshot_seconds,
       adminNote: r.admin_note,
+      blockedLessonIds: Array.isArray(r.blocked_lesson_ids)
+        ? (r.blocked_lesson_ids as string[])
+        : [],
     };
   });
   const query = options.query?.trim();

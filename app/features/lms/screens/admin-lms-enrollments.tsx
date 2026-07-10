@@ -1,7 +1,7 @@
 // feat-11-002 — 영상 수강권: 수동 지급(이관·이벤트·직원용)·목록·연장·회수. manager+.
 // 쓰기는 전부 adminClient(RLS 에 쓰기 정책 없음 — 서버 권위) + enrollment_admin_logs 감사.
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { TicketIcon } from "lucide-react";
 import { Form, data, useFetcher } from "react-router";
 import { toast } from "sonner";
@@ -66,11 +66,34 @@ export async function loader({ request }: Route.LoaderArgs) {
   const balances = await getWatchBalances(rowsRaw.map((r) => r.enrollmentId));
   // ② 연장 정책 연동 — 각 수강권 플랜의 학생 셀프연장 허용 여부(advisory).
   const planIds = [...new Set(rowsRaw.map((r) => r.planId).filter((x): x is string => !!x))];
-  const policies = await getPlanPolicies(planIds);
+  // 회차 차단 UI — 표시된 수강권들의 강의 회차 목록(courseId 별).
+  const courseIds = [...new Set(rowsRaw.map((r) => r.courseId))];
+  const [policies, lessonRes] = await Promise.all([
+    getPlanPolicies(planIds),
+    courseIds.length
+      ? adminClient
+          .from("course_lessons")
+          .select("lesson_id, course_id, lesson_no, title")
+          .in("course_id", courseIds)
+          .is("deleted_at", null)
+          .order("sort_order")
+          .order("lesson_no")
+      : Promise.resolve({ data: [] as never[] }),
+  ]);
+  const lessonsByCourse = new Map<
+    string,
+    Array<{ lessonId: string; lessonNo: number; title: string }>
+  >();
+  for (const l of lessonRes.data ?? []) {
+    const arr = lessonsByCourse.get(l.course_id) ?? [];
+    arr.push({ lessonId: l.lesson_id, lessonNo: l.lesson_no, title: l.title });
+    lessonsByCourse.set(l.course_id, arr);
+  }
   const rows = rowsRaw.map((r) => ({
     ...r,
     balance: balances.get(r.enrollmentId) ?? null,
     extensionAllowed: r.planId ? (policies[r.planId]?.extensionAllowed ?? false) : false,
+    lessons: lessonsByCourse.get(r.courseId) ?? [],
   }));
   return {
     rows,
@@ -100,6 +123,11 @@ const grantSchema = z.object({
 const extendSchema = z.object({
   enrollmentId: z.string().uuid(),
   days: z.coerce.number().int().min(1).max(365),
+});
+const setDatesSchema = z.object({
+  enrollmentId: z.string().uuid(),
+  startsAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  expiresAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
 const revokeSchema = z.object({
   enrollmentId: z.string().uuid(),
@@ -197,6 +225,77 @@ export async function action({ request }: Route.ActionArgs) {
       before: { expires_at: cur.expires_at },
       after: { expires_at: next },
       reason: `+${parsed.data.days}일 연장`,
+    });
+    return data({ ok: true as const });
+  }
+
+  if (intent === "set_dates") {
+    const parsed = setDatesSchema.safeParse({
+      enrollmentId: fd.get("enrollmentId"),
+      startsAt: fd.get("startsAt"),
+      expiresAt: fd.get("expiresAt"),
+    });
+    if (!parsed.success) return data({ error: "시작일·종료일 형식을 확인해 주세요." }, { status: 400 });
+    // KST 경계로 저장 — 시작 00:00, 종료 23:59:59.
+    const startsIso = new Date(`${parsed.data.startsAt}T00:00:00+09:00`).toISOString();
+    const expiresIso = new Date(`${parsed.data.expiresAt}T23:59:59+09:00`).toISOString();
+    if (Date.parse(expiresIso) <= Date.parse(startsIso)) {
+      return data({ error: "종료일은 시작일 이후여야 합니다." }, { status: 400 });
+    }
+    const { data: cur } = await adminClient
+      .from("enrollments")
+      .select("starts_at, expires_at, status")
+      .eq("enrollment_id", parsed.data.enrollmentId)
+      .maybeSingle();
+    if (!cur) return data({ error: "수강권을 찾을 수 없습니다." }, { status: 404 });
+    // 종료일이 미래면 만료 상태를 active 로 되돌린다(회수 상태는 유지).
+    const nextStatus =
+      cur.status === "expired" && Date.parse(expiresIso) > Date.now()
+        ? "active"
+        : cur.status;
+    const { error } = await adminClient
+      .from("enrollments")
+      .update({ starts_at: startsIso, expires_at: expiresIso, status: nextStatus })
+      .eq("enrollment_id", parsed.data.enrollmentId);
+    if (error) return data({ error: error.message }, { status: 400 });
+    await logEnrollmentAdminAction({
+      enrollmentId: parsed.data.enrollmentId,
+      actorId: user.id,
+      action: "set_dates",
+      before: { starts_at: cur.starts_at, expires_at: cur.expires_at },
+      after: { starts_at: startsIso, expires_at: expiresIso },
+      reason: "수강기간 직접 수정",
+    });
+    return data({ ok: true as const });
+  }
+
+  if (intent === "set_blocked") {
+    const enrollmentId = String(fd.get("enrollmentId") ?? "");
+    if (!/^[0-9a-f-]{36}$/i.test(enrollmentId)) {
+      return data({ error: "잘못된 요청" }, { status: 400 });
+    }
+    const lessonIds = fd
+      .getAll("lessonIds")
+      .map(String)
+      .filter((s) => /^[0-9a-f-]{36}$/i.test(s));
+    const { data: cur } = await adminClient
+      .from("enrollments")
+      .select("blocked_lesson_ids")
+      .eq("enrollment_id", enrollmentId)
+      .maybeSingle();
+    if (!cur) return data({ error: "수강권을 찾을 수 없습니다." }, { status: 404 });
+    const { error } = await adminClient
+      .from("enrollments")
+      .update({ blocked_lesson_ids: lessonIds })
+      .eq("enrollment_id", enrollmentId);
+    if (error) return data({ error: error.message }, { status: 400 });
+    await logEnrollmentAdminAction({
+      enrollmentId,
+      actorId: user.id,
+      action: "set_blocked_lessons",
+      before: { blocked_lesson_ids: cur.blocked_lesson_ids ?? [] },
+      after: { blocked_lesson_ids: lessonIds },
+      reason: `재생 차단 회차 ${lessonIds.length}개`,
     });
     return data({ ok: true as const });
   }
@@ -497,9 +596,11 @@ function EnrollmentRowView({
   row: EnrollmentRow & {
     balance: WatchBalance | null;
     extensionAllowed: boolean;
+    lessons: Array<{ lessonId: string; lessonNo: number; title: string }>;
   };
 }) {
   const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  const [editing, setEditing] = useState(false);
   useEffect(() => {
     if (fetcher.state === "idle" && fetcher.data?.error) toast.error(fetcher.data.error);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -535,7 +636,8 @@ function EnrollmentRowView({
     submit({ intent: "pause", days: String(days) });
   };
   return (
-    <TR>
+    <>
+      <TR>
       <TD>
         <span className="font-semibold">{row.userName ?? "(이름 없음)"}</span>
         {row.memberNo != null ? (
@@ -597,6 +699,11 @@ function EnrollmentRowView({
                 정지
               </button>
             )}
+            <button type="button" onClick={() => setEditing((v) => !v)}
+              className="border-border hover:bg-muted/50 h-6 rounded-md border px-1.5 text-[11px] font-medium"
+              title="수강기간 직접 수정 · 회차 재생 차단">
+              수정
+            </button>
             <button type="button" onClick={revoke}
               className="border-border h-6 rounded-md border px-1.5 text-[11px] font-medium text-rose-600 hover:bg-rose-500/10 dark:text-rose-400">
               회수
@@ -606,6 +713,152 @@ function EnrollmentRowView({
           <span className="text-muted-foreground text-[11px]">{row.adminNote ?? ""}</span>
         )}
       </TD>
-    </TR>
+      </TR>
+      {editing && row.status !== "revoked" ? (
+        <tr className="border-border/60 border-b last:border-0">
+          <td colSpan={7} className="bg-muted/20 p-3">
+            <EnrollmentEditPanel
+              row={row}
+              busy={fetcher.state !== "idle"}
+              submitFd={(fd) => {
+                fd.set("enrollmentId", row.enrollmentId);
+                fetcher.submit(fd, { method: "post" });
+              }}
+              onDone={() => setEditing(false)}
+            />
+          </td>
+        </tr>
+      ) : null}
+    </>
+  );
+}
+
+function toDateInput(iso: string): string {
+  // KST 기준 날짜(YYYY-MM-DD).
+  const d = new Date(iso);
+  const kst = new Date(d.getTime() + 9 * 3600_000);
+  return kst.toISOString().slice(0, 10);
+}
+
+function EnrollmentEditPanel({
+  row,
+  busy,
+  submitFd,
+  onDone,
+}: {
+  row: EnrollmentRow & {
+    lessons: Array<{ lessonId: string; lessonNo: number; title: string }>;
+  };
+  busy: boolean;
+  submitFd: (fd: FormData) => void;
+  onDone: () => void;
+}) {
+  const [startsAt, setStartsAt] = useState(() => toDateInput(row.startsAt));
+  const [expiresAt, setExpiresAt] = useState(() => toDateInput(row.expiresAt));
+  const [blocked, setBlocked] = useState<Set<string>>(
+    () => new Set(row.blockedLessonIds),
+  );
+  const toggleBlocked = (lessonId: string) => {
+    setBlocked((prev) => {
+      const next = new Set(prev);
+      if (next.has(lessonId)) next.delete(lessonId);
+      else next.add(lessonId);
+      return next;
+    });
+  };
+  const saveDates = () => {
+    const fd = new FormData();
+    fd.set("intent", "set_dates");
+    fd.set("startsAt", startsAt);
+    fd.set("expiresAt", expiresAt);
+    submitFd(fd);
+  };
+  const saveBlocked = () => {
+    const fd = new FormData();
+    fd.set("intent", "set_blocked");
+    for (const id of blocked) fd.append("lessonIds", id);
+    submitFd(fd);
+  };
+
+  return (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      {/* 수강기간 직접 수정 */}
+      <div className="space-y-2">
+        <p className="text-muted-foreground text-[11px] font-semibold">
+          수강기간 직접 수정
+        </p>
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="flex flex-col gap-1">
+            <span className="text-muted-foreground text-[10px]">시작일</span>
+            <input
+              type="date"
+              value={startsAt}
+              onChange={(e) => setStartsAt(e.target.value)}
+              className="border-input bg-background h-8 rounded-md border px-2 text-[12px]"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-muted-foreground text-[10px]">종료일</span>
+            <input
+              type="date"
+              value={expiresAt}
+              onChange={(e) => setExpiresAt(e.target.value)}
+              className="border-input bg-background h-8 rounded-md border px-2 text-[12px]"
+            />
+          </label>
+          <Button size="sm" className="h-8 text-[12px]" disabled={busy} onClick={saveDates}>
+            기간 저장
+          </Button>
+        </div>
+        <p className="text-muted-foreground/70 text-[10px]">
+          종료일이 미래면 만료 상태가 자동으로 수강중으로 복구됩니다.
+        </p>
+      </div>
+
+      {/* 특정 회차 재생 차단 */}
+      <div className="space-y-2">
+        <p className="text-muted-foreground text-[11px] font-semibold">
+          특정 회차 재생 차단 ({blocked.size}개 차단)
+        </p>
+        {row.lessons.length === 0 ? (
+          <p className="text-muted-foreground/60 text-[11px]">회차가 없습니다.</p>
+        ) : (
+          <>
+            <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border p-2">
+              {row.lessons.map((l) => (
+                <label
+                  key={l.lessonId}
+                  className="flex items-center gap-1.5 text-[12px]"
+                >
+                  <input
+                    type="checkbox"
+                    checked={blocked.has(l.lessonId)}
+                    onChange={() => toggleBlocked(l.lessonId)}
+                    className="size-3.5 shrink-0"
+                  />
+                  <span className="text-muted-foreground shrink-0 tabular-nums">
+                    {l.lessonNo}강
+                  </span>
+                  <span className="truncate">{l.title}</span>
+                </label>
+              ))}
+            </div>
+            <Button size="sm" variant="outline" className="h-8 text-[12px]" disabled={busy} onClick={saveBlocked}>
+              차단 저장
+            </Button>
+          </>
+        )}
+      </div>
+
+      <div className="md:col-span-2 flex justify-end">
+        <button
+          type="button"
+          onClick={onDone}
+          className="text-muted-foreground text-[11px] hover:underline"
+        >
+          닫기
+        </button>
+      </div>
+    </div>
   );
 }
