@@ -1107,6 +1107,11 @@ export default [
         "/admin/sales/stats",
         "features/subscriptions/screens/admin-sales-stats.tsx",
       ),
+      // feat-8-029 P5 — 정기구독 통계 (manager+): 활성·유지율·해지·순증.
+      route(
+        "/admin/subscriptions/stats",
+        "features/subscriptions/screens/admin-subscription-stats.tsx",
+      ),
       // feat-8-029 Stage 2 — 강사 배분 기준 (manager+).
       route(
         "/admin/settlements/rules",

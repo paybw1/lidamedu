@@ -147,7 +147,7 @@
 
 **일부만(추가 개발 필요)**
 
-- ★★★ **정기구독통계** — admin-payments에 결제실패 건수 있으나 구독 갱신율/해지율 등 구독 전용 통계 대시보드 없음(billing key·구독 인프라는 존재) [P5 후보]
+- ✅ **정기구독통계** — [해결 2026-07-10 · P5] /admin/subscriptions/stats 신설(subscription-stats.server getSubscriptionStats). 스냅샷(활성·자동갱신 유지율·해지 예정·자동결제 카드·만료임박) + 기간(신규·해지[환불/갱신중지 구분]·순증·해지율=기간초 활성 기준) + 상태분포 + 상품별 활성 구독. 해지 의미(환불=status cancelled·즉시종료 / 갱신중지=auto_renew off·잔여이용) 반영.
 
 **[해결 2026-07-10 · P2] /admin/sales/stats 매출 통계 신설** — order_items × orders(결제완료) 항목 단위 집계(sales-stats.server getSalesStats). 아래 갭 일괄 해결:
 
