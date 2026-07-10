@@ -1,6 +1,6 @@
 # 동영상(DRM) 서비스 개발요청 — 구현 현황 감사
 
-> 스펙 148개 기능을 코드베이스와 대조. **구현완료 86 · 일부만 40 · 미구현 22**. (자동 감사, 2026-07-11 기준)
+> 스펙 148개 기능을 코드베이스와 대조. (자동 감사 기준선 2026-07-11) 이후 결제·정산 트랙(P1~P6)·주문·마이페이지·통계·정산 갭 일괄 해소 — **통계·정산 섹션 잔여 0**, 남은 대형 미구현은 대부분 DRM 벤더(Kollus) 연동 대기 항목.
 > 판정: **미구현**=코드 없음 / **일부만**=인프라(DB·엔진)는 있으나 설정·조회 UI 또는 소비 경로 없음.
 
 ## 영상 관리
@@ -141,12 +141,9 @@
 
 ## 통계·정산(매출/주문/환불)
 
-**미구현**
+> **전 항목 해결 완료 (2026-07-11).** 미구현·일부만 잔여 없음. 도서정산은 배분규칙 입력 + 실제 계산·지급 화면까지 완성.
 
-- ✅ **도서정산 메뉴** — [해결 2026-07-11 · P6] ①배분규칙 /admin/settlements/books(book_settlement_rules: 도서별/전체기본 × 정산대상 × 정률/정액, 세대교체). ②계산·지급 /admin/settlements/book-runs(book_settlements+items, 강사정산과 동형): 월별 order_items 도서판매에 규칙 적용→payee(저자/출판사)별 draft→confirmed→paid, 이중계상 방지, 확정분 환불 익월 음수차감. vitest 검증(share 10%·환불차감 순액0).
-
-**일부만(추가 개발 필요)**
-
+- ✅ **도서정산 메뉴** — [해결 2026-07-11 · P6] ①배분규칙 /admin/settlements/books(book_settlement_rules: 도서별/전체기본 × 정산대상 × 정률/정액, 세대교체). ②계산·지급 /admin/settlements/book-runs(book_settlements+items, 강사정산과 동형): 월별 order_items 도서판매에 규칙 적용→payee(저자/출판사)별 draft→confirmed→paid, 이중계상 방지, 확정분 환불 익월 음수차감. vitest 검증(share 10%·환불차감 순액0). **남은 항목 없음.**
 - ✅ **정기구독통계** — [해결 2026-07-10 · P5] /admin/subscriptions/stats 신설(subscription-stats.server getSubscriptionStats). 스냅샷(활성·자동갱신 유지율·해지 예정·자동결제 카드·만료임박) + 기간(신규·해지[환불/갱신중지 구분]·순증·해지율=기간초 활성 기준) + 상태분포 + 상품별 활성 구독. 해지 의미(환불=status cancelled·즉시종료 / 갱신중지=auto_renew off·잔여이용) 반영.
 
 **[해결 2026-07-10 · P2] /admin/sales/stats 매출 통계 신설** — order_items × orders(결제완료) 항목 단위 집계(sales-stats.server getSalesStats). 아래 갭 일괄 해결:
