@@ -125,6 +125,10 @@ export async function loader({ request }: Route.LoaderArgs) {
     name: string;
     dDay: number | null;
     examRound: "first" | "second";
+    // 학습 실적(활동 없는 신규 사용자는 null → 컴포넌트가 예시 목업으로 폴백).
+    stats: { studyHours: number; problems: number; accuracy: number } | null;
+    weak: string | null;
+    todos: { done: boolean; text: string }[] | null;
   } | null = null;
   try {
     const [client] = makeServerClient(request);
@@ -139,27 +143,59 @@ export async function loader({ request }: Route.LoaderArgs) {
         .maybeSingle();
       if (prof) {
         const examRound = (prof.next_exam_round ?? "first") as "first" | "second";
-        let dDay: number | null = null;
-        if (prof.next_exam_year) {
-          const { getExamScheduleDate } = await import(
-            "~/features/goals/queries.server"
-          );
-          const examDate = await getExamScheduleDate(
-            client,
-            prof.next_exam_year,
-            examRound,
-          );
-          if (examDate) {
-            dDay = Math.max(
+        const { getExamScheduleDate } = await import(
+          "~/features/goals/queries.server"
+        );
+        const { getDashboardKpis, getWeakAreas } = await import(
+          "~/features/study/queries.server"
+        );
+        const [examDate, kpis, weakAreas] = await Promise.all([
+          prof.next_exam_year
+            ? getExamScheduleDate(client, prof.next_exam_year, examRound)
+            : Promise.resolve(null),
+          getDashboardKpis(client, user.id),
+          getWeakAreas(client, user.id, 3),
+        ]);
+        const dDay = examDate
+          ? Math.max(
               0,
               Math.ceil(
                 (new Date(examDate).getTime() - Date.now()) /
                   (24 * 60 * 60 * 1000),
               ),
-            );
-          }
-        }
-        heroPreview = { name: prof.name ?? "수험생", dDay, examRound };
+            )
+          : null;
+        // 문제풀이 이력이 있을 때만 실적을 노출(없으면 예시 목업 유지).
+        const active = kpis.totalProblemsAttempted > 0;
+        const weakLabel = (l: (typeof weakAreas)[number]) =>
+          l.primaryArticleLabel ??
+          (l.bodySnippet ? l.bodySnippet.slice(0, 24) : "약점 문제");
+        heroPreview = {
+          name: prof.name ?? "수험생",
+          dDay,
+          examRound,
+          stats: active
+            ? {
+                studyHours: Math.round(kpis.totalProblemTimeMs / 3_600_000),
+                problems: kpis.totalProblemsAttempted,
+                accuracy: kpis.overallAccuracyPct,
+              }
+            : null,
+          weak:
+            weakAreas.length > 0
+              ? weakAreas
+                  .slice(0, 2)
+                  .map(weakLabel)
+                  .join(" · ")
+              : null,
+          todos:
+            weakAreas.length > 0
+              ? weakAreas.map((l) => ({
+                  done: false,
+                  text: `${weakLabel(l)} 복습`,
+                }))
+              : null,
+        };
       }
     }
   } catch {

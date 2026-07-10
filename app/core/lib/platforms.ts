@@ -59,7 +59,7 @@ export const LECTURE_NAV_LINKS: ReadonlyArray<LectureNavItem> = [
     ],
   },
   { label: "수강신청", to: "/lecture/catalog" },
-  { label: "도서", to: "/lecture/books" },
+  { label: "도서구입", to: "/lecture/books" },
   { label: "고객센터", to: "/lecture/support" },
   {
     label: "마이페이지",

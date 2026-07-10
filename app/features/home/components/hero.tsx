@@ -15,6 +15,9 @@ export interface HeroPreview {
   name: string;
   dDay: number | null;
   examRound: "first" | "second";
+  stats: { studyHours: number; problems: number; accuracy: number } | null;
+  weak: string | null;
+  todos: { done: boolean; text: string }[] | null;
 }
 
 export function Hero({ preview }: { preview?: HeroPreview | null }) {
@@ -163,16 +166,35 @@ function HeroPreviewCard({ preview }: { preview?: HeroPreview | null }) {
   const dDay = useCountUp(dDayTarget, 1400, inView);
   const greetName = preview?.name ?? "지원";
   const roundLabel = `변리사 ${preview?.examRound === "second" ? "2차" : "1차"} 시험`;
-  const stats = [
-    { lbl: "학습", num: "186", unit: "h" },
-    { lbl: "문제", num: "2,431", unit: "" },
-    { lbl: "정답률", num: "74", unit: "%" },
-  ];
-  const todos = [
-    { done: true, text: "특허법 제29조 — 신규성 본문 학습" },
-    { done: true, text: "대법원 2019다204869 판례 정리" },
-    { done: false, text: "객관식 12문제 · 진보성 단원" },
-  ];
+  // 로그인·활동 사용자는 실데이터, 그 외(비로그인·신규)는 예시 목업.
+  const stats = preview?.stats
+    ? [
+        {
+          lbl: "학습",
+          num: preview.stats.studyHours.toLocaleString("ko-KR"),
+          unit: "h",
+        },
+        {
+          lbl: "문제",
+          num: preview.stats.problems.toLocaleString("ko-KR"),
+          unit: "",
+        },
+        { lbl: "정답률", num: String(preview.stats.accuracy), unit: "%" },
+      ]
+    : [
+        { lbl: "학습", num: "186", unit: "h" },
+        { lbl: "문제", num: "2,431", unit: "" },
+        { lbl: "정답률", num: "74", unit: "%" },
+      ];
+  const todos =
+    preview?.todos && preview.todos.length > 0
+      ? preview.todos.slice(0, 3)
+      : [
+          { done: true, text: "특허법 제29조 — 신규성 본문 학습" },
+          { done: true, text: "대법원 2019다204869 판례 정리" },
+          { done: false, text: "객관식 12문제 · 진보성 단원" },
+        ];
+  const weakText = preview?.weak ?? "진보성 · 판례";
   return (
     <div
       ref={ref}
@@ -377,7 +399,7 @@ function HeroPreviewCard({ preview }: { preview?: HeroPreview | null }) {
         />
         이번 주 약점{" "}
         <strong style={{ color: PALETTE.ink, fontWeight: 700 }}>
-          진보성 · 판례
+          {weakText}
         </strong>
       </div>
       <style>{`@keyframes landing-slide-in { to { opacity: 1; transform: translateX(0); } }`}</style>
