@@ -133,7 +133,7 @@
 **일부만(추가 개발 필요)**
 
 - ★★★★★ **환불관리** — admin-orders 항목별 부분/전체 환불+토스 부분취소 관리 있으나 사용자 환불요청→승인/거절 워크플로 없음(운영자 개시만)
-- ★★★★★ **전자결제관리** — admin-payments 결제 성공/실패(failed·failure_reason)·toss_order_id·상태 표시. PG 승인번호(paymentKey)·결제수단 컬럼 미표시
+- ✅ **전자결제관리** — [해결 2026-07-10] admin-payments 결제내역에 결제수단(toss_response.method '카드' 등 → 비토스는 order.payment_method 라벨)·승인번호(toss_payment_key, 토스주문번호 병기) 컬럼 추가. 학생 /lecture/payments 결제내역에도 승인번호 노출.
 - ★★ **임시주문항목관리** — orders draft/pending 상태 존재·admin-orders status 필터로 조회 가능하나 전용 임시주문항목 관리 화면 없음
 - ★★★★ **도서 주문 분리 조회** — order_items.item_type(book) 기록·'(도서)' 라벨·상태/텍스트 검색은 있으나 강의/도서 구분 필터·'교재 포함만' 필터 없음
 
@@ -184,7 +184,7 @@
 - ★★★★★ **결제내역조회** — lecture-payments.tsx·my-orders.tsx: 주문번호·상품·금액·결제일·환불상태 표시하나 영수증 출력 기능 없음
 - ★★★★ **최근 수강 강의** — watch_positions 이어보기 인프라·my-courses 진도 표시는 있으나 '최근 수강 바로 이어보기' CTA·재생 플레이어 화면 없음
 - ★★★ **다음 결제 예정일 확인** — my-subscription.tsx 만료일 + '매월 자동결제' 배지 표시하나 명시적 '다음 결제 예정일' 필드/날짜 없음
-- ★★★ **결제내역 조회** — lecture-payments.tsx 결제수단·금액·결제일·주문번호 표시하나 승인번호(approval no) 미노출
+- ✅ **결제내역 조회** — [해결 2026-07-10] lecture-payments.tsx 에 승인번호(payments.toss_payment_key, self-read 조인) 노출 추가.
 - ★★★★★ **송장번호 확인 및 배송조회** — my-orders 택배사·송장번호 텍스트 표시하나 택배사 배송조회 페이지 링크 없음
 - ★★★★ **쿠폰 적용 가능 상품 확인** — 쿠폰 scope 데이터·couponScopeTokens·redeem 자격판정 존재하나 학생용 '적용 가능 강의/상품 목록' 확인 뷰 없음
 

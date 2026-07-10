@@ -69,10 +69,23 @@ export async function loader({ request }: Route.LoaderArgs) {
       itemsByOrder.set(it.order_id, arr);
     }
   }
+  // 승인번호(PG paymentKey) — 주문에 연결된 결제건. RLS self-read.
+  const payKeyByOrder = new Map<string, string>();
+  if (ids.length) {
+    const { data: pays } = await client
+      .from("payments")
+      .select("order_id, toss_payment_key")
+      .in("order_id", ids)
+      .not("toss_payment_key", "is", null);
+    for (const p of pays ?? []) {
+      if (p.order_id && p.toss_payment_key) payKeyByOrder.set(p.order_id, p.toss_payment_key);
+    }
+  }
   return {
     orders: (orders ?? []).map((o) => ({
       ...o,
       items: itemsByOrder.get(o.order_id) ?? [],
+      paymentKey: payKeyByOrder.get(o.order_id) ?? null,
     })),
   };
 }
@@ -128,6 +141,12 @@ export default function LecturePayments({ loaderData }: Route.ComponentProps) {
                 <p className="text-muted-foreground mt-0.5 text-xs">
                   {METHOD[o.payment_method ?? ""] ?? o.payment_method ?? "-"} · 주문번호{" "}
                   <span className="font-mono">{o.order_id.slice(0, 8)}</span>
+                  {o.paymentKey ? (
+                    <>
+                      {" · 승인번호 "}
+                      <span className="font-mono">{o.paymentKey}</span>
+                    </>
+                  ) : null}
                 </p>
               </div>
               <div className="text-right">

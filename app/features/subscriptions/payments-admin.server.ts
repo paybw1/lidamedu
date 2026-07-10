@@ -16,6 +16,8 @@ export interface AdminPaymentRow {
   amountKrw: number;
   status: PaymentStatus;
   tossOrderId: string | null;
+  paymentKey: string | null;
+  method: string | null;
   failureReason: string | null;
   subjectCode: string | null;
   discountId: string | null;
@@ -58,6 +60,23 @@ export function kstBucketKey(iso: string, g: StatsGranularity): string {
   return monday.toISOString().slice(0, 10);
 }
 
+/** 비-토스(주문 기반) 결제수단 라벨. 토스 승인건은 toss_response.method 를 우선 사용. */
+const ORDER_METHOD_LABEL: Record<string, string> = {
+  bank_transfer: "무통장",
+  free: "무료",
+  manual: "수동",
+  toss: "토스",
+};
+
+function resolveMethod(tossResponse: unknown, orderMethod: string | null): string | null {
+  if (tossResponse && typeof tossResponse === "object" && "method" in tossResponse) {
+    const m = (tossResponse as { method?: unknown }).method;
+    if (typeof m === "string" && m.trim()) return m.trim();
+  }
+  if (orderMethod) return ORDER_METHOD_LABEL[orderMethod] ?? orderMethod;
+  return null;
+}
+
 function rowToAdmin(r: {
   payment_id: string;
   user_id: string;
@@ -65,6 +84,8 @@ function rowToAdmin(r: {
   amount_krw: number;
   status: string;
   toss_order_id: string | null;
+  toss_payment_key: string | null;
+  toss_response: unknown;
   failure_reason: string | null;
   subject_code: string | null;
   discount_id: string | null;
@@ -74,6 +95,7 @@ function rowToAdmin(r: {
   created_at: string;
   subscription_plans: { code: string; name: string } | null;
   profiles: { name: string | null } | null;
+  orders: { payment_method: string | null } | null;
 }): AdminPaymentRow {
   return {
     paymentId: r.payment_id,
@@ -85,6 +107,8 @@ function rowToAdmin(r: {
     amountKrw: r.amount_krw,
     status: r.status as PaymentStatus,
     tossOrderId: r.toss_order_id,
+    paymentKey: r.toss_payment_key,
+    method: resolveMethod(r.toss_response, r.orders?.payment_method ?? null),
     failureReason: r.failure_reason,
     subjectCode: r.subject_code,
     discountId: r.discount_id,
@@ -96,7 +120,7 @@ function rowToAdmin(r: {
 }
 
 const SELECT =
-  "payment_id, user_id, plan_id, amount_krw, status, toss_order_id, failure_reason, subject_code, discount_id, refunded_at, refund_amount_krw, refund_reason, created_at, subscription_plans(code, name), profiles(name)";
+  "payment_id, user_id, plan_id, amount_krw, status, toss_order_id, toss_payment_key, toss_response, failure_reason, subject_code, discount_id, refunded_at, refund_amount_krw, refund_reason, created_at, subscription_plans(code, name), profiles(name), orders(payment_method)";
 
 /**
  * 기간 내 결제(created_at 기준) ∪ 기간 내 환불(refunded_at 기준) — 두 축을 합쳐 반환.

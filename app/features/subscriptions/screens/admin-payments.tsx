@@ -282,14 +282,15 @@ export default function AdminPayments({ loaderData }: Route.ComponentProps) {
           <EmptyBox>조건에 맞는 결제가 없습니다.</EmptyBox>
         ) : (
           <IndexTable
-            minWidth={860}
+            minWidth={960}
             headers={[
               { label: "결제일시", width: "10rem" },
               { label: "학생" },
               { label: "상품" },
               { label: "금액", align: "right", width: "8rem" },
               { label: "상태", align: "center", width: "6rem" },
-              { label: "토스 주문번호" },
+              { label: "결제수단", align: "center", width: "5.5rem" },
+              { label: "승인번호(주문번호)", width: "14rem" },
             ]}
             footer={
               <div className="border-border/60 text-muted-foreground border-t px-3 py-2 text-[11px] font-medium tabular-nums">
@@ -314,8 +315,25 @@ export default function AdminPayments({ loaderData }: Route.ComponentProps) {
                 <TD align="center">
                   <Chip tone={STATUS_TONE[p.status]}>{PAYMENT_STATUS_LABEL[p.status]}</Chip>
                 </TD>
-                <TD mono soft className="max-w-[14rem] truncate">
-                  {p.tossOrderId ?? "—"}
+                <TD align="center" soft>
+                  {p.method ?? "—"}
+                </TD>
+                <TD mono soft className="max-w-[14rem]">
+                  {p.paymentKey ? (
+                    <span className="block truncate" title={`승인번호 ${p.paymentKey}`}>
+                      {p.paymentKey}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                  {p.tossOrderId ? (
+                    <span
+                      className="text-muted-foreground/70 block truncate text-[10px]"
+                      title={`토스 주문번호 ${p.tossOrderId}`}
+                    >
+                      {p.tossOrderId}
+                    </span>
+                  ) : null}
                 </TD>
               </TR>
             ))}
