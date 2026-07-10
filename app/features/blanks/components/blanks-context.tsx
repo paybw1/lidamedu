@@ -248,6 +248,14 @@ export function BlanksRenderProvider({
     [],
   );
 
+  // 최신 states 를 ref 로 보관 — checkAnswer/doFocusNext 가 deps 없이 현재 상태를 읽는다.
+  const statesRef = useRef(states);
+  statesRef.current = states;
+  // ★한글 IME 조합이 어느 input 에서든 진행 중인지(전역). 조합 중 focus 이동 = 조합 잔여가
+  //   다음 칸으로 이월(전국내…)되므로, 이동은 조합 종료 후로 미룬다.
+  const anyComposingRef = useRef(false);
+  const pendingFocusIdxRef = useRef<number | null>(null);
+
   // 음성 인식 — 한 번에 하나의 input 만 활성화. activeVoiceIdx 가 null 이 아니면 그 input 의
   // 마이크 버튼이 active 상태로 표시된다. final transcript 가 들어오면 그 idx 의 checkAnswer 호출.
   const [activeVoiceIdx, setActiveVoiceIdx] = useState<number | null>(null);
@@ -323,41 +331,72 @@ export function BlanksRenderProvider({
   // provider 는 attempt revalidation 으로 remount 되지 않아(inputsRef 유효) rAF 로 다음
   // 프레임에 focus 하면 된다. highlight(hintNextIdx) 는 focus 실패 시 폴백 안내로 유지.
   const [hintNextIdx, setHintNextIdx] = useState<number | null>(null);
+  // 실제 focus 이동 — 대상 칸을 그 컨트롤드 값(보통 빈 문자열)으로 정리해 이월 조합 잔여를
+  // 버린 뒤 focus·커서 끝 이동. 조합 중엔 호출하지 않는다(호출부에서 가드).
+  const doFocusNext = useCallback((next: number) => {
+    const el = inputsRef.current.get(next);
+    if (!el || el.disabled) return;
+    const controlled = statesRef.current[next]?.input ?? "";
+    if (el.value !== controlled) {
+      try {
+        el.value = controlled;
+      } catch {
+        /* noop */
+      }
+    }
+    el.focus();
+    const len = el.value.length;
+    try {
+      el.setSelectionRange(len, len);
+    } catch {
+      /* noop */
+    }
+  }, []);
   const scheduleFocusNext = useCallback(
     (idx: number) => {
-      const cur = inputsRef.current.get(idx);
-      if (cur) {
-        try {
-          cur.blur();
-        } catch {
-          /* noop */
-        }
-      }
+      // 직전 칸 blur 는 명시하지 않는다 — 다음 칸 focus 가 자동으로 blur 하며, 미루는
+      // 경우엔 조합이 끝날 때까지 현재 focus 를 유지해야 입력이 유실되지 않기 때문.
       const next = findNextBlankIdx(idx);
       setHintNextIdx(next);
-      if (next != null && typeof requestAnimationFrame !== "undefined") {
-        // state 반영·리렌더 후(다음 프레임) 실제 focus. 커서는 끝으로.
-        requestAnimationFrame(() => {
-          const el = inputsRef.current.get(next);
-          if (el && !el.disabled) {
-            el.focus();
-            const len = el.value.length;
-            try {
-              el.setSelectionRange(len, len);
-            } catch {
-              /* noop */
-            }
-          }
-        });
+      if (next == null) return;
+      // ★조합이 진행 중이면 focus 이동을 조합 종료까지 미룬다(handleComposingChange 에서 수행).
+      //   이동 중 조합이 살아 있으면 잔여가 다음 칸으로 이월(전국내…)되기 때문.
+      if (anyComposingRef.current) {
+        pendingFocusIdxRef.current = next;
+        return;
+      }
+      // 조합이 없는 지금(대개 compositionend 직후) 즉시 이동한다. rAF 로 미루면 그 사이
+      // 직전 칸을 확정시킨 키의 다음 조합이 옛 칸에서 시작돼 버리므로, 동기 focus 로
+      // 새 칸에서 다음 조합이 시작되게 한다.
+      doFocusNext(next);
+    },
+    [findNextBlankIdx, doFocusNext],
+  );
+  // input 조합 상태 변화 통지 — 조합이 끝나면 미뤄둔 focus 이동을 수행.
+  const handleComposingChange = useCallback(
+    (composing: boolean) => {
+      anyComposingRef.current = composing;
+      if (!composing && pendingFocusIdxRef.current != null) {
+        const next = pendingFocusIdxRef.current;
+        pendingFocusIdxRef.current = null;
+        if (typeof requestAnimationFrame !== "undefined") {
+          requestAnimationFrame(() => doFocusNext(next));
+        } else {
+          doFocusNext(next);
+        }
       }
     },
-    [findNextBlankIdx],
+    [doFocusNext],
   );
 
   const checkAnswer = useCallback(
     (idx: number, rawInput: string, composing = false) => {
       const blank = blanks.find((b) => b.idx === idx);
       if (!blank?.answer) return;
+
+      // ★이미 맞힌 칸은 잠금 — 직전 칸의 마지막 글자를 확정시킨 경계 키가 (disabled 적용
+      //   전 race 로) 정답 칸에 다시 입력돼 상태를 훼손하거나 잔여 글자를 남기는 것을 막는다.
+      if (statesRef.current[idx]?.status === "correct") return;
 
       // ★한글 IME 조합 중에는 어떤 DOM 조작·값 변형도 하지 않는다 — 조합 중
       // el.value 재작성이 조합을 파괴해 "첫 글자가 지워지는" 버그의 원인.
@@ -461,6 +500,7 @@ export function BlanksRenderProvider({
               widthCh={widthCh}
               hintNext={hintNextIdx === h.blank.idx}
               onChange={(v, composing) => checkAnswer(h.blank.idx, v, composing)}
+              onComposingChange={handleComposingChange}
               onFocusInput={() => setHintNextIdx(null)}
               registerInput={registerInput}
               voiceSupported={voice.isSupported}
@@ -482,6 +522,7 @@ export function BlanksRenderProvider({
       states,
       reveal,
       checkAnswer,
+      handleComposingChange,
       registerInput,
       voice.isSupported,
       activeVoiceIdx,
@@ -535,6 +576,7 @@ function BlankInputInline({
   widthCh,
   hintNext,
   onChange,
+  onComposingChange,
   onFocusInput,
   registerInput,
   voiceSupported,
@@ -548,6 +590,7 @@ function BlankInputInline({
   widthCh: number;
   hintNext: boolean;
   onChange: (v: string, composing: boolean) => void;
+  onComposingChange: (composing: boolean) => void;
   onFocusInput: () => void;
   registerInput: (idx: number, el: HTMLInputElement | null) => void;
   voiceSupported: boolean;
@@ -579,7 +622,10 @@ function BlankInputInline({
           // ref callback 은 React mount 직후 동기 호출 — Chrome autofill 보다
           // 먼저. 이 시점에 DOM value 를 controlled value 로 강제 set 해두면
           // autofill 이 적용되기 전에 우리 값이 자리잡음.
-          if (el && el.value !== value) {
+          // ★단, 한글 IME 조합 중에는 절대 덮어쓰지 않는다 — 리렌더(예: attempt
+          //   revalidation)로 이 콜백이 조합 도중 실행되면 조합이 파괴돼 글자가
+          //   지워지거나(첫 글자 소실) 반복 등장한다.
+          if (el && !composingRef.current && el.value !== value) {
             try {
               el.value = value;
             } catch {
@@ -605,9 +651,13 @@ function BlankInputInline({
             e.currentTarget.value = value;
           }
           composingRef.current = true;
+          onComposingChange(true); // 전역 조합 플래그 ON → 이 사이 focus 이동 금지
         }}
         onCompositionEnd={(e) => {
           composingRef.current = false;
+          // 전역 조합 플래그를 먼저 내린다 — 이어지는 onChange→scheduleFocusNext 가
+          // '조합 없음'을 보고 동기 이동하도록. (미뤄둔 이동이 있으면 여기서 수행)
+          onComposingChange(false);
           // 조합 확정값으로 최종 판정(조합 중엔 상태 반영만 했음).
           onChange(e.currentTarget.value, false);
         }}
