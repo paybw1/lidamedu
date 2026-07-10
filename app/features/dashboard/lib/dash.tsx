@@ -200,7 +200,7 @@ export function Eyebrow({
   return (
     <div
       style={{
-        font: `600 11px/1 Pretendard, sans-serif`,
+        font: `600 12px/1 Pretendard, sans-serif`,
         letterSpacing: "0.08em",
         textTransform: "uppercase",
         color: color ?? "var(--ink-faint)",
