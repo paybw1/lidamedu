@@ -28,6 +28,32 @@ export interface SeriesWithEditions {
   }>;
 }
 
+export interface CourseEditionRef {
+  courseId: string;
+  label: string; // "{시리즈} — {에디션}"
+  status: "draft" | "published" | "archived";
+}
+
+// 상품↔강의 연결 picker 용 — 보관(archived) 제외 에디션 플랫 목록. staff RLS.
+export async function listCourseEditionsForPicker(
+  client: Client,
+): Promise<CourseEditionRef[]> {
+  const { data, error } = await client
+    .from("courses")
+    .select(
+      "course_id, edition_label, status, series:course_series!courses_series_id_fkey(title)",
+    )
+    .is("deleted_at", null)
+    .neq("status", "archived")
+    .order("edition_year", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((c) => ({
+    courseId: c.course_id,
+    label: `${(c.series as { title: string } | null)?.title ?? "?"} — ${c.edition_label}`,
+    status: c.status as CourseEditionRef["status"],
+  }));
+}
+
 export async function listSeriesWithEditions(
   client: Client,
 ): Promise<SeriesWithEditions[]> {

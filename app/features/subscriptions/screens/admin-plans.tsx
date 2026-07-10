@@ -26,10 +26,15 @@ import {
   type SubscriptionPlan,
 } from "~/features/subscriptions/labels";
 import {
+  getPlanCourseLinks,
   getPlanPolicies,
   listAllPlans,
   type PlanPolicy,
 } from "~/features/subscriptions/queries.server";
+import {
+  listCourseEditionsForPicker,
+  type CourseEditionRef,
+} from "~/features/lms/queries.server";
 import { LAW_SUBJECTS, LAW_SUBJECT_SLUGS } from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/admin-plans";
@@ -52,8 +57,12 @@ export async function loader({ request }: Route.LoaderArgs) {
   const coursePlanIds = plans
     .filter((p) => p.productKind === "course" || p.productKind === "tpass")
     .map((p) => p.planId);
-  const policies = await getPlanPolicies(coursePlanIds);
-  return { plans, policies, role };
+  const [policies, courseLinks, editions] = await Promise.all([
+    getPlanPolicies(coursePlanIds),
+    getPlanCourseLinks(coursePlanIds),
+    listCourseEditionsForPicker(client),
+  ]);
+  return { plans, policies, courseLinks, editions, role };
 }
 
 const subjectName = (slug: string) =>
@@ -69,7 +78,7 @@ function isoToLocalInput(iso: string | null): string {
 }
 
 export default function AdminPlans({ loaderData }: Route.ComponentProps) {
-  const { plans, policies, role } = loaderData;
+  const { plans, policies, courseLinks, editions, role } = loaderData;
   const [adding, setAdding] = useState(false);
   const coursePlans = plans
     .filter((p) => p.productKind === "course" || p.productKind === "tpass")
@@ -92,6 +101,8 @@ export default function AdminPlans({ loaderData }: Route.ComponentProps) {
           <PlanForm
             mode="create"
             coursePlans={coursePlans}
+            editions={editions}
+            linkedCourseIds={[]}
             onClose={() => setAdding(false)}
           />
         </div>
@@ -115,6 +126,8 @@ export default function AdminPlans({ loaderData }: Route.ComponentProps) {
             plan={p}
             policy={policies[p.planId]}
             coursePlans={coursePlans}
+            editions={editions}
+            linkedCourseIds={courseLinks[p.planId] ?? []}
           />
         ))}
       </IndexTable>
@@ -128,10 +141,14 @@ function PlanRow({
   plan,
   policy,
   coursePlans,
+  editions,
+  linkedCourseIds,
 }: {
   plan: SubscriptionPlan;
   policy?: PlanPolicy;
   coursePlans: CoursePlanRef[];
+  editions: CourseEditionRef[];
+  linkedCourseIds: string[];
 }) {
   const [editing, setEditing] = useState(false);
   return (
@@ -186,6 +203,8 @@ function PlanRow({
               plan={plan}
               policy={policy}
               coursePlans={coursePlans}
+              editions={editions}
+              linkedCourseIds={linkedCourseIds}
               onClose={() => setEditing(false)}
             />
           </td>
@@ -219,12 +238,16 @@ function PlanForm({
   plan,
   policy,
   coursePlans,
+  editions,
+  linkedCourseIds,
   onClose,
 }: {
   mode: "create" | "update";
   plan?: SubscriptionPlan;
   policy?: PlanPolicy;
   coursePlans: CoursePlanRef[];
+  editions: CourseEditionRef[];
+  linkedCourseIds: string[];
   onClose: () => void;
 }) {
   const fetcher = useFetcher<{ ok?: true; error?: string }>();
@@ -399,6 +422,48 @@ function PlanForm({
           </div>
         </div>
       </div>
+
+      {showPolicy ? (
+        <div className="border-border bg-muted/30 space-y-1.5 rounded-lg border border-dashed p-3">
+          <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+            연결 강의 (에디션)
+          </p>
+          <p className="text-muted-foreground/70 text-[11px]">
+            {productKind === "tpass"
+              ? "T-PASS 는 보통 여러 에디션을 포함합니다."
+              : "단과 상품은 보통 1개 에디션을 연결합니다."}{" "}
+            결제 시 연결된 강의의 수강권이 지급됩니다.
+          </p>
+          {editions.length === 0 ? (
+            <p className="text-muted-foreground/60 text-[11px]">
+              등록된 에디션이 없습니다. (강의 관리에서 먼저 생성)
+            </p>
+          ) : (
+            <div className="flex flex-col gap-1">
+              {editions.map((e) => (
+                <label
+                  key={e.courseId}
+                  className="inline-flex items-center gap-1.5 text-[12px]"
+                >
+                  <input
+                    type="checkbox"
+                    name="courseIds"
+                    value={e.courseId}
+                    defaultChecked={linkedCourseIds.includes(e.courseId)}
+                    className="size-3.5"
+                  />
+                  <span>{e.label}</span>
+                  {e.status !== "published" ? (
+                    <span className="text-muted-foreground/60 text-[10px]">
+                      ({e.status === "draft" ? "초안" : e.status})
+                    </span>
+                  ) : null}
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : null}
 
       {showPolicy ? (
         <PlanPolicyFields

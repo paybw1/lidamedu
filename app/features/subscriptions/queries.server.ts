@@ -243,6 +243,60 @@ export async function getPlanPolicies(
   return out;
 }
 
+// ─── 상품↔강의(에디션) 연결 (plan_courses) ───
+// course = 보통 1개 에디션, tpass = 여러 에디션. 지급 시 orders.server 가 이 연결로 enrollment 생성.
+
+// planId → 연결된 courseId[] 맵. adminClient.
+export async function getPlanCourseLinks(
+  planIds: string[],
+): Promise<Record<string, string[]>> {
+  if (planIds.length === 0) return {};
+  const admin = adminClient as SupabaseClient<Database>;
+  const { data, error } = await admin
+    .from("plan_courses")
+    .select("plan_id, course_id")
+    .in("plan_id", planIds);
+  if (error) throw error;
+  const out: Record<string, string[]> = {};
+  for (const r of data ?? []) (out[r.plan_id] ??= []).push(r.course_id);
+  return out;
+}
+
+// 연결 동기화 — 목표 courseIds 로 교체(제거분 delete + 추가분 upsert). adminClient.
+export async function syncPlanCourses(
+  planId: string,
+  courseIds: string[],
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const admin = adminClient as SupabaseClient<Database>;
+  const target = new Set(courseIds);
+  const { data: existing, error: exErr } = await admin
+    .from("plan_courses")
+    .select("course_id")
+    .eq("plan_id", planId);
+  if (exErr) return { ok: false, error: exErr.message };
+  const have = new Set((existing ?? []).map((r) => r.course_id));
+  const toRemove = [...have].filter((c) => !target.has(c));
+  const toAdd = [...target].filter((c) => !have.has(c));
+  if (toRemove.length > 0) {
+    const { error } = await admin
+      .from("plan_courses")
+      .delete()
+      .eq("plan_id", planId)
+      .in("course_id", toRemove);
+    if (error) return { ok: false, error: error.message };
+  }
+  if (toAdd.length > 0) {
+    const { error } = await admin
+      .from("plan_courses")
+      .upsert(
+        toAdd.map((cid) => ({ plan_id: planId, course_id: cid })),
+        { onConflict: "plan_id,course_id" },
+      );
+    if (error) return { ok: false, error: error.message };
+  }
+  return { ok: true };
+}
+
 export type UpsertPlanPolicyInput = Omit<PlanPolicy, "planId">;
 
 // 정책 생성/갱신(plan_id 유일). adminClient.
