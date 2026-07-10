@@ -8,10 +8,15 @@ import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
+import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 
 import { cn } from "~/core/lib/utils";
+
+// GFM 취소선은 `~~이중틸드~~` 만 인정 — 단일 `~`(예: "9월~1월" 기간 표기)를 취소선으로
+// 오인하지 않도록 singleTilde 비활성(한국어 본문에서 `~` 를 범위 구분에 흔히 사용).
+const REMARK_GFM_OPTIONS = { singleTilde: false } as const;
 
 // 표 셀(td/th) 안 텍스트에서 " 1.", " ①", " ▪", "  - " 등 번호/원형/불릿 마커 앞에서
 // 줄바꿈을 삽입한다 (첫 항목은 셀 머리에 있어 건드리지 않음 — 앞이 공백/파이프인 경우 제외).
@@ -162,6 +167,7 @@ export function MarkdownView({
   text,
   className,
   trusted = true,
+  breaks = false,
 }: {
   text: string;
   className?: string;
@@ -169,6 +175,10 @@ export function MarkdownView({
   // 사용자(강사 등)가 작성해 타인(학생)에게 보이는 콘텐츠(상담 코멘트 등)는 반드시 false.
   // 신뢰 콘텐츠(운영자 해설·HWPX 적재 등 rowspan/colspan 표 포함)만 기본 true 유지.
   trusted?: boolean;
+  // breaks=true → 단일 줄바꿈(\n)을 <br> 로 렌더(remark-breaks). 사용자가 직접 줄바꿈으로
+  // 문단을 나누는 콘텐츠(커뮤니티 글·합격 수기)에만 사용. HWPX 적재 본문은 우발적 \n 이 많아
+  // 기본 false(문단은 \n\n 로만).
+  breaks?: boolean;
 }) {
   return (
     <div
@@ -180,7 +190,11 @@ export function MarkdownView({
       <ReactMarkdown
         // remarkMath — $inline$ / $$display$$ LaTeX 파싱.
         // rehypeKatex — KaTeX HTML 렌더 (자연과학 수식). XSS 무관.
-        remarkPlugins={[remarkGfm, remarkMath]}
+        remarkPlugins={
+          breaks
+            ? [[remarkGfm, REMARK_GFM_OPTIONS], remarkMath, remarkBreaks]
+            : [[remarkGfm, REMARK_GFM_OPTIONS], remarkMath]
+        }
         // rehypeRaw — raw HTML(rowspan/colspan 병합 표) 보존. 신뢰 콘텐츠에서만.
         // trusted=false 면 제외 → react-markdown 기본 동작(원시 HTML 미렌더)으로 XSS 안전.
         rehypePlugins={trusted ? [rehypeRaw, rehypeKatex] : [rehypeKatex]}

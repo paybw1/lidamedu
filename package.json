@@ -85,6 +85,7 @@
     "react-turnstile": "^1.1.4",
     "rehype-katex": "^7.0.1",
     "rehype-raw": "^7.0.0",
+    "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
     "remix-i18next": "^7.1.0",

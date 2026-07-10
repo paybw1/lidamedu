@@ -32,7 +32,13 @@ export function RichBody({
       <MarkdownView
         text={body}
         trusted={trusted}
-        className={cn("text-sm leading-relaxed", className)}
+        // 커뮤니티 글은 사용자가 직접 줄바꿈으로 문단을 나눈다 → 단일 \n 도 <br> 로.
+        breaks
+        // 긴 URL(블로그 주소 등)이 폭을 넘지 않도록 줄바꿈 허용.
+        className={cn(
+          "text-sm leading-relaxed [word-break:break-word] [&_a]:break-all",
+          className,
+        )}
       />
     );
   }
