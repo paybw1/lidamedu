@@ -149,13 +149,30 @@ export async function loader({ request }: Route.LoaderArgs) {
         const { getDashboardKpis, getWeakAreas } = await import(
           "~/features/study/queries.server"
         );
-        const [examDate, kpis, weakAreas] = await Promise.all([
+        const [planExamDate, kpis, weakAreas] = await Promise.all([
           prof.next_exam_year
             ? getExamScheduleDate(client, prof.next_exam_year, examRound)
             : Promise.resolve(null),
           getDashboardKpis(client, user.id),
           getWeakAreas(client, user.id, 3),
         ]);
+        // 목표 미설정(관리자 등)이면 가짜 D-87 대신 "가장 가까운 예정 시험"으로 폴백 —
+        // 해당 차수 우선, 없으면 최근접 일정.
+        let examDate = planExamDate;
+        if (!examDate) {
+          const todayKst = new Date(Date.now() + 9 * 60 * 60 * 1000)
+            .toISOString()
+            .slice(0, 10);
+          const { data: upcoming } = await client
+            .from("exam_schedules")
+            .select("exam_date, exam_round")
+            .gte("exam_date", todayKst)
+            .order("exam_date", { ascending: true });
+          examDate =
+            upcoming?.find((r) => r.exam_round === examRound)?.exam_date ??
+            upcoming?.[0]?.exam_date ??
+            null;
+        }
         const dDay = examDate
           ? Math.max(
               0,
