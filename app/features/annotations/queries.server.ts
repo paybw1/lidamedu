@@ -1733,3 +1733,20 @@ export async function softDeleteMemo(
 
   if (error) throw error;
 }
+
+/** 포스트잇 본문 수정 — 본인(user_id) 것만. snippet/위치는 유지. */
+export async function updateMemo(
+  client: SupabaseClient<Database>,
+  userId: string,
+  memoId: string,
+  bodyMd: string,
+): Promise<void> {
+  const { error } = await client
+    .from("user_memos")
+    .update({ body_md: bodyMd, updated_at: new Date().toISOString() })
+    .eq("memo_id", memoId)
+    .eq("user_id", userId)
+    .is("deleted_at", null);
+
+  if (error) throw error;
+}

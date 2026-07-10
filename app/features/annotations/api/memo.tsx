@@ -7,6 +7,7 @@ import {
   annotationTargetTypeSchema,
   createMemo,
   softDeleteMemo,
+  updateMemo,
 } from "../queries.server";
 
 import type { Route } from "./+types/memo";
@@ -27,12 +28,22 @@ const createSchema = z.object({
   cumOffset: z.coerce.number().int().min(0).optional(),
 });
 
+const updateSchema = z.object({
+  intent: z.literal("update"),
+  memoId: z.string().uuid(),
+  bodyMd: z.string().min(1).max(10000),
+});
+
 const deleteSchema = z.object({
   intent: z.literal("delete"),
   memoId: z.string().uuid(),
 });
 
-const schema = z.discriminatedUnion("intent", [createSchema, deleteSchema]);
+const schema = z.discriminatedUnion("intent", [
+  createSchema,
+  updateSchema,
+  deleteSchema,
+]);
 
 export async function action({ request }: Route.ActionArgs) {
   if (request.method !== "POST") {
@@ -73,6 +84,11 @@ export async function action({ request }: Route.ActionArgs) {
       position,
     );
     return data({ ok: true, memo }, { headers });
+  }
+
+  if (parsed.data.intent === "update") {
+    await updateMemo(client, user.id, parsed.data.memoId, parsed.data.bodyMd);
+    return data({ ok: true }, { headers });
   }
 
   await softDeleteMemo(client, user.id, parsed.data.memoId);

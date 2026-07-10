@@ -3,7 +3,7 @@
 // feat-8-023: 강사 작성 포스트잇은 모든 수험생에게 노출(읽기 전용), 본인 것은 삭제 가능.
 import type { AnnotationTargetType, MemoRecord } from "../labels";
 
-import { QuoteIcon, Trash2Icon, XIcon } from "lucide-react";
+import { CheckIcon, PencilIcon, QuoteIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useFetcher } from "react-router";
 
@@ -251,7 +251,26 @@ function PostItMemo({
   const pending = memo.memoId === "pending";
   // 강사 작성 포스트잇 = 내 것이 아니거나(전체 공개), 내가 강사.
   const isStaffNote = !memo.isMine || viewerIsStaff;
+  const canEdit = memo.isMine && !pending;
   const canDelete = memo.isMine && !pending;
+
+  const editFetcher = useFetcher<{ ok?: boolean }>();
+  const [editing, setEditing] = useState(false);
+  const [editDraft, setEditDraft] = useState(memo.bodyMd);
+  const isSaving = editFetcher.state !== "idle";
+
+  // 저장 성공 시 편집 모드 종료(revalidation 으로 본문 갱신).
+  useEffect(() => {
+    if (editFetcher.state === "idle" && editFetcher.data?.ok) {
+      setEditing(false);
+    }
+  }, [editFetcher.state, editFetcher.data]);
+
+  const startEdit = () => {
+    setEditDraft(memo.bodyMd);
+    setEditing(true);
+  };
+
   return (
     <li
       className={cn(
@@ -260,7 +279,7 @@ function PostItMemo({
         "transition-transform hover:-translate-y-0.5 hover:rotate-0",
       )}
       style={{
-        transform: `rotate(${rotateDeg}deg)`,
+        transform: `rotate(${editing ? 0 : rotateDeg}deg)`,
         boxShadow:
           "0 1px 1px rgba(0,0,0,0.12), 0 6px 14px -4px rgba(120,90,0,0.18)",
       }}
@@ -278,27 +297,86 @@ function PostItMemo({
           </span>
         </div>
       ) : null}
-      <p className="text-sm leading-snug whitespace-pre-line">{memo.bodyMd}</p>
-      <div className="mt-1.5 flex items-center justify-between">
-        <span className="text-[11px] text-amber-900/60 tabular-nums dark:text-amber-900/70">
-          {formatDate(memo.createdAt)}
-        </span>
-        {pending ? (
-          <span className="text-[11px] text-amber-900/60">저장 중…</span>
-        ) : canDelete ? (
-          <deleteFetcher.Form method="post" action="/api/annotations/memo">
-            <input type="hidden" name="intent" value="delete" />
-            <input type="hidden" name="memoId" value={memo.memoId} />
+
+      {editing ? (
+        <editFetcher.Form
+          method="post"
+          action="/api/annotations/memo"
+          onSubmit={(e) => {
+            if (!editDraft.trim()) e.preventDefault();
+          }}
+        >
+          <input type="hidden" name="intent" value="update" />
+          <input type="hidden" name="memoId" value={memo.memoId} />
+          <textarea
+            name="bodyMd"
+            value={editDraft}
+            onChange={(e) => setEditDraft(e.target.value)}
+            rows={3}
+            autoFocus
+            className="w-full resize-none rounded-sm border border-amber-300 bg-amber-50/70 px-2 py-1.5 text-sm leading-snug text-amber-950 focus:ring-2 focus:ring-amber-400/50 focus:outline-none"
+          />
+          <div className="mt-1.5 flex items-center justify-end gap-1.5">
+            <button
+              type="button"
+              onClick={() => setEditing(false)}
+              disabled={isSaving}
+              className="inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-semibold text-amber-900/70 hover:text-amber-900"
+            >
+              <XIcon className="size-3" /> 취소
+            </button>
             <button
               type="submit"
-              aria-label="포스트잇 삭제"
-              className="text-amber-900/60 opacity-0 transition-opacity group-hover:opacity-100 hover:text-rose-600"
+              disabled={isSaving || !editDraft.trim()}
+              className="inline-flex items-center gap-1 rounded bg-amber-700 px-2 py-1 text-[11px] font-semibold text-amber-50 hover:bg-amber-800 disabled:opacity-50"
             >
-              <Trash2Icon className="size-3.5" />
+              <CheckIcon className="size-3" /> 저장
             </button>
-          </deleteFetcher.Form>
-        ) : null}
-      </div>
+          </div>
+        </editFetcher.Form>
+      ) : (
+        <p className="text-sm leading-snug whitespace-pre-line">{memo.bodyMd}</p>
+      )}
+
+      {editing ? null : (
+        <div className="mt-1.5 flex items-center justify-between">
+          <span className="text-[11px] text-amber-900/60 tabular-nums dark:text-amber-900/70">
+            {formatDate(memo.createdAt)}
+          </span>
+          {pending ? (
+            <span className="text-[11px] text-amber-900/60">저장 중…</span>
+          ) : canEdit || canDelete ? (
+            <div className="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+              {canEdit ? (
+                <button
+                  type="button"
+                  onClick={startEdit}
+                  aria-label="포스트잇 수정"
+                  className="text-amber-900/60 hover:text-amber-900"
+                >
+                  <PencilIcon className="size-3.5" />
+                </button>
+              ) : null}
+              {canDelete ? (
+                <deleteFetcher.Form method="post" action="/api/annotations/memo">
+                  <input type="hidden" name="intent" value="delete" />
+                  <input type="hidden" name="memoId" value={memo.memoId} />
+                  <button
+                    type="submit"
+                    aria-label="포스트잇 삭제"
+                    className="text-amber-900/60 hover:text-rose-600"
+                    onClick={(e) => {
+                      if (!confirm("이 포스트잇을 삭제하시겠습니까?")) e.preventDefault();
+                    }}
+                  >
+                    <Trash2Icon className="size-3.5" />
+                  </button>
+                </deleteFetcher.Form>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      )}
     </li>
   );
 }
