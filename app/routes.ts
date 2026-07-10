@@ -737,6 +737,10 @@ export default [
       ),
       route("/api/lms/playback-grant", "features/lms/api/playback-grant.tsx"),
       route("/api/lms/watch-heartbeat", "features/lms/api/watch-heartbeat.tsx"),
+      route(
+        "/api/lms/material/:materialId",
+        "features/lms/api/material-download.tsx",
+      ),
       // 관리자 관리 — 운영 업무별 알림 담당자 지정 (admin 전용).
       route(
         "/admin/staff-duties",

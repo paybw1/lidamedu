@@ -1,12 +1,16 @@
 // feat-11-002 — 에디션 상세: 회차 등록·순서·미리보기·공개, 영상 등록/교체(이력), 운영 메모.
 // 영상 교체 시 duration 이 달라지면 배수 모수 조정은 M3(adjust 이벤트)에서 — 여기선 경고만.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
+  DownloadIcon,
+  FileTextIcon,
   PlusIcon,
   RefreshCwIcon,
+  Trash2Icon,
+  UploadIcon,
 } from "lucide-react";
 import { Link, data, useFetcher } from "react-router";
 import { toast } from "sonner";
@@ -30,6 +34,14 @@ import type { Route } from "./+types/admin-lms-course-detail";
 export const meta: Route.MetaFunction = () => [
   { title: "에디션 상세 | 리담변리사학원" },
 ];
+
+const MATERIAL_BUCKET = "lesson-materials";
+const MATERIAL_MAX_SIZE = 50 * 1024 * 1024;
+// 강의 자료 허용 확장자 — 배포 자료(교재·판서·오피스·압축). 실행파일 등 차단.
+const MATERIAL_EXTS = new Set([
+  "pdf", "png", "jpg", "jpeg", "webp", "gif",
+  "hwp", "hwpx", "ppt", "pptx", "doc", "docx", "xls", "xlsx", "zip",
+]);
 
 async function requireStaff(request: Request) {
   const [client] = makeServerClient(request);
@@ -229,6 +241,77 @@ export async function action({ request, params }: Route.ActionArgs) {
     return data({ ok: true as const, adjusted });
   }
 
+  if (intent === "add_material") {
+    const lessonId = String(fd.get("lessonId") ?? "");
+    const title = String(fd.get("title") ?? "").trim();
+    const file = fd.get("file");
+    if (!lessonId || !title) return data({ error: "회차·제목을 확인해 주세요." }, { status: 400 });
+    if (title.length > 200) return data({ error: "제목은 200자 이하로 입력해 주세요." }, { status: 400 });
+    if (!(file instanceof File) || file.size === 0) return data({ error: "파일을 선택해 주세요." }, { status: 400 });
+    if (file.size > MATERIAL_MAX_SIZE) return data({ error: "파일은 50MB 이하만 올릴 수 있습니다." }, { status: 400 });
+    const ext = (file.name.includes(".") ? file.name.split(".").pop()! : "").toLowerCase();
+    if (!MATERIAL_EXTS.has(ext)) {
+      return data(
+        { error: "허용되지 않는 형식입니다 (PDF·이미지·한글·오피스·zip 만 가능)." },
+        { status: 400 },
+      );
+    }
+    // 정렬 순서 — 현재 자료 max + 1
+    const { data: maxRow } = await client
+      .from("lesson_materials")
+      .select("sort_order")
+      .eq("lesson_id", lessonId)
+      .order("sort_order", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const nextOrder = (maxRow?.sort_order ?? -1) + 1;
+    const path = `${lessonId}/${crypto.randomUUID()}.${ext}`;
+    const { error: upErr } = await adminClient.storage
+      .from(MATERIAL_BUCKET)
+      .upload(path, file, { contentType: file.type || "application/octet-stream", upsert: false });
+    if (upErr) return data({ error: upErr.message }, { status: 400 });
+    // DB insert 는 RLS client — lesson_materials_write_staff 가 최종 차단(실패 시 블롭 롤백).
+    const { error: insErr } = await client.from("lesson_materials").insert({
+      lesson_id: lessonId,
+      title,
+      storage_path: path,
+      sort_order: nextOrder,
+      is_published: false,
+    });
+    if (insErr) {
+      void adminClient.storage.from(MATERIAL_BUCKET).remove([path]);
+      return data({ error: insErr.message }, { status: 400 });
+    }
+    return data({ ok: true as const });
+  }
+
+  if (intent === "toggle_material") {
+    const materialId = String(fd.get("materialId") ?? "");
+    const value = fd.get("value") === "1";
+    if (!materialId) return data({ error: "잘못된 요청" }, { status: 400 });
+    const { error } = await client
+      .from("lesson_materials")
+      .update({ is_published: value })
+      .eq("material_id", materialId);
+    if (error) return data({ error: error.message }, { status: 400 });
+    return data({ ok: true as const });
+  }
+
+  if (intent === "delete_material") {
+    const materialId = String(fd.get("materialId") ?? "");
+    if (!materialId) return data({ error: "잘못된 요청" }, { status: 400 });
+    // RLS delete — 권한 0행이면 차단. 반환된 storage_path 블롭 제거.
+    const { data: deleted, error } = await client
+      .from("lesson_materials")
+      .delete()
+      .eq("material_id", materialId)
+      .select("storage_path")
+      .maybeSingle();
+    if (error) return data({ error: error.message }, { status: 400 });
+    if (deleted?.storage_path) void adminClient.storage.from(MATERIAL_BUCKET).remove([deleted.storage_path]);
+    return data({ ok: true as const });
+  }
+
   if (intent === "save_memo") {
     const lessonId = String(fd.get("lessonId") ?? "");
     const memo = String(fd.get("memo") ?? "").trim();
@@ -287,6 +370,125 @@ export default function AdminLmsCourseDetail({ loaderData }: Route.ComponentProp
         ) : null}
       </div>
     </AdminShell>
+  );
+}
+
+function MaterialsSection({
+  lessonId,
+  materials,
+}: {
+  lessonId: string;
+  materials: CourseDetail["lessons"][number]["materials"];
+}) {
+  const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  const formRef = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    if (fetcher.state !== "idle" || !fetcher.data) return;
+    if (fetcher.data.error) toast.error(fetcher.data.error);
+    else if (fetcher.data.ok) formRef.current?.reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetcher.state, fetcher.data]);
+
+  const busy = fetcher.state !== "idle";
+  const setPublish = (materialId: string, value: boolean) => {
+    const fd = new FormData();
+    fd.set("intent", "toggle_material");
+    fd.set("materialId", materialId);
+    fd.set("value", value ? "1" : "0");
+    fetcher.submit(fd, { method: "post" });
+  };
+  const remove = (materialId: string, title: string) => {
+    if (!window.confirm(`"${title}" 자료를 삭제할까요?`)) return;
+    const fd = new FormData();
+    fd.set("intent", "delete_material");
+    fd.set("materialId", materialId);
+    fetcher.submit(fd, { method: "post" });
+  };
+
+  return (
+    <div className="bg-muted/20 border-border/60 mt-2 rounded-lg border p-2.5">
+      <p className="text-muted-foreground mb-1.5 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.06em]">
+        <FileTextIcon className="size-3" /> 강의 자료
+      </p>
+      {materials.length > 0 ? (
+        <ul className="mb-2 space-y-1">
+          {materials.map((m) => (
+            <li
+              key={m.materialId}
+              className="border-border/60 bg-background flex items-center gap-2 rounded-md border px-2 py-1.5"
+            >
+              <a
+                href={`/api/lms/material/${m.materialId}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-link inline-flex min-w-0 flex-1 items-center gap-1 text-[12px] font-medium hover:underline"
+              >
+                <DownloadIcon className="size-3 shrink-0" />
+                <span className="truncate">{m.title}</span>
+              </a>
+              <Chip tone={m.isPublished ? "emerald" : "amber"}>
+                {m.isPublished ? "공개" : "비공개"}
+              </Chip>
+              <button
+                type="button"
+                onClick={() => setPublish(m.materialId, !m.isPublished)}
+                disabled={busy}
+                className="border-border hover:bg-muted/50 h-6 rounded-md border px-2 text-[11px] font-medium disabled:opacity-40"
+              >
+                {m.isPublished ? "비공개로" : "공개로"}
+              </button>
+              <button
+                type="button"
+                onClick={() => remove(m.materialId, m.title)}
+                disabled={busy}
+                className="text-muted-foreground hover:text-rose-600 p-1 disabled:opacity-40"
+                title="삭제"
+              >
+                <Trash2Icon className="size-3.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-muted-foreground/70 mb-2 text-[11px]">
+          등록된 자료가 없습니다.
+        </p>
+      )}
+      <fetcher.Form
+        ref={formRef}
+        method="post"
+        encType="multipart/form-data"
+        className="flex flex-wrap items-end gap-2"
+      >
+        <input type="hidden" name="intent" value="add_material" />
+        <input type="hidden" name="lessonId" value={lessonId} />
+        <label className="flex min-w-[180px] flex-1 flex-col gap-1">
+          <span className="text-muted-foreground text-[10px] font-semibold">자료 제목</span>
+          <input
+            name="title"
+            required
+            maxLength={200}
+            placeholder="예: 1강 판서노트"
+            className="border-input bg-background h-8 rounded-md border px-2 text-[12px]"
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-muted-foreground text-[10px] font-semibold">
+            파일 (PDF·이미지·한글·오피스·zip, 50MB↓)
+          </span>
+          <input
+            name="file"
+            type="file"
+            required
+            accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.hwp,.hwpx,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.zip"
+            className="text-[12px] file:mr-2 file:rounded file:border-0 file:bg-muted file:px-2 file:py-1 file:text-[11px]"
+          />
+        </label>
+        <Button type="submit" size="sm" variant="outline" className="h-8 text-[12px]" disabled={busy}>
+          <UploadIcon className="size-3" /> 자료 업로드
+        </Button>
+      </fetcher.Form>
+    </div>
   );
 }
 
@@ -487,6 +689,9 @@ function LessonCard({
           </div>
         </fetcher.Form>
       ) : null}
+
+      {/* 강의 자료 (배포용 첨부 — 학생은 공개된 것만 서명 URL 로 열람) */}
+      <MaterialsSection lessonId={lesson.lessonId} materials={lesson.materials} />
 
       {/* 운영 메모 (staff 전용 테이블) */}
       <fetcher.Form method="post" className="mt-2 flex items-end gap-2">
