@@ -26,15 +26,23 @@ export interface StudentPostItem {
   title: string;
   createdAt: string;
 }
+export interface StudentBugReportItem {
+  reportId: string;
+  message: string;
+  url: string | null;
+  status: string;
+  createdAt: string;
+}
 
 export interface StudentActivity {
   qna: StudentQnaItem[];
   inquiries: StudentInquiryItem[];
   posts: StudentPostItem[];
+  bugReports: StudentBugReportItem[];
 }
 
 export async function getStudentActivity(profileId: string): Promise<StudentActivity> {
-  const [qnaRes, csRes, postRes] = await Promise.all([
+  const [qnaRes, csRes, postRes, bugRes] = await Promise.all([
     adminClient
       .from("qna_threads")
       .select("thread_id, title, target_type, status, created_at, answered_at")
@@ -52,6 +60,12 @@ export async function getStudentActivity(profileId: string): Promise<StudentActi
       .select("post_id, board, title, created_at")
       .eq("author_id", profileId)
       .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(50),
+    adminClient
+      .from("bug_reports")
+      .select("report_id, message, url, status, created_at")
+      .eq("reporter_id", profileId)
       .order("created_at", { ascending: false })
       .limit(50),
   ]);
@@ -78,6 +92,13 @@ export async function getStudentActivity(profileId: string): Promise<StudentActi
       postId: r.post_id,
       board: r.board,
       title: r.title,
+      createdAt: r.created_at,
+    })),
+    bugReports: (bugRes.data ?? []).map((r) => ({
+      reportId: r.report_id,
+      message: r.message,
+      url: r.url,
+      status: r.status,
       createdAt: r.created_at,
     })),
   };

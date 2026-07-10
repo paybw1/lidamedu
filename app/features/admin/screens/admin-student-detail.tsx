@@ -268,7 +268,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
         getUserWatchHistory(params.profileId),
         getStudentActivity(params.profileId),
       ])
-    : [[], [], { qna: [], inquiries: [], posts: [] }];
+    : [[], [], { qna: [], inquiries: [], posts: [], bugReports: [] }];
 
   return {
     student,
@@ -1795,10 +1795,19 @@ const BOARD_LABEL: Record<string, string> = {
   study: "스터디",
   notice: "공지",
 };
+const BUG_STATUS_LABEL: Record<string, string> = {
+  open: "접수",
+  in_progress: "처리중",
+  done: "완료",
+};
 
 function ActivitySection({ activity }: { activity: StudentActivity }) {
-  const { qna, inquiries, posts } = activity;
-  const empty = qna.length === 0 && inquiries.length === 0 && posts.length === 0;
+  const { qna, inquiries, posts, bugReports } = activity;
+  const empty =
+    qna.length === 0 &&
+    inquiries.length === 0 &&
+    posts.length === 0 &&
+    bugReports.length === 0;
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -1814,6 +1823,21 @@ function ActivitySection({ activity }: { activity: StudentActivity }) {
       <CardContent className="space-y-4 p-4">
         {empty ? (
           <p className="text-muted-foreground text-[13px]">활동 내역이 없습니다.</p>
+        ) : null}
+
+        {bugReports.length > 0 ? (
+          <ActivityGroup title="오류신고" count={bugReports.length}>
+            {bugReports.map((b) => (
+              <ActivityRow
+                key={b.reportId}
+                to="/admin/bug-reports"
+                title={b.message}
+                status={BUG_STATUS_LABEL[b.status] ?? b.status}
+                answered={b.status === "done"}
+                createdAt={b.createdAt}
+              />
+            ))}
+          </ActivityGroup>
         ) : null}
 
         {qna.length > 0 ? (
