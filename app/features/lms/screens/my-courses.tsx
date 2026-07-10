@@ -3,11 +3,12 @@
 
 import { useEffect } from "react";
 import {
+  CalendarPlusIcon,
   ClapperboardIcon,
   MonitorSmartphoneIcon,
   PauseCircleIcon,
 } from "lucide-react";
-import { data, redirect, useFetcher } from "react-router";
+import { data, redirect, useFetcher, useNavigate } from "react-router";
 import { toast } from "sonner";
 
 import { Badge } from "~/core/components/ui/badge";
@@ -16,6 +17,7 @@ import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import makeServerClient from "~/core/lib/supa-client.server";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import { resetDevice } from "~/features/lms/devices.server";
+import { useCart } from "~/features/lms/lib/cart";
 import { getWatchBalances } from "~/features/lms/queries.server";
 import { getLessonProgressForUser } from "~/features/lms/watch.server";
 
@@ -69,16 +71,26 @@ export async function loader({ request }: Route.LoaderArgs) {
   const allLessonIds = [...lessonsByCourse.values()].flat();
   const progress = await getLessonProgressForUser(user.id, allLessonIds);
 
-  // 일시정지 정책·사용 이력
+  // 일시정지 정책·사용 이력 + ① 연장 정책
   const planIds = [...new Set(list.map((e) => e.plan_id).filter(Boolean))] as string[];
   const policyByPlan = new Map<
     string,
-    { pauseAllowed: boolean; totalDays: number; maxCount: number; minDays: number; maxDays: number }
+    {
+      pauseAllowed: boolean;
+      totalDays: number;
+      maxCount: number;
+      minDays: number;
+      maxDays: number;
+      extensionAllowed: boolean;
+      extensionPlanIds: string[];
+    }
   >();
   if (planIds.length > 0) {
     const { data: policies } = await adminClient
       .from("plan_policies")
-      .select("plan_id, pause_allowed, pause_total_days, pause_max_count, pause_min_days, pause_max_days")
+      .select(
+        "plan_id, pause_allowed, pause_total_days, pause_max_count, pause_min_days, pause_max_days, extension_allowed, extension_plan_ids",
+      )
       .in("plan_id", planIds);
     for (const p of policies ?? []) {
       policyByPlan.set(p.plan_id, {
@@ -87,6 +99,34 @@ export async function loader({ request }: Route.LoaderArgs) {
         maxCount: p.pause_max_count,
         minDays: p.pause_min_days,
         maxDays: p.pause_max_days,
+        extensionAllowed: p.extension_allowed,
+        extensionPlanIds: Array.isArray(p.extension_plan_ids)
+          ? (p.extension_plan_ids as string[])
+          : [],
+      });
+    }
+  }
+  // ① 연장 상품 해석 — extension_plan_ids 중 판매중(on_sale) 상품만 구매 진입점으로.
+  const extPlanIds = [
+    ...new Set(
+      [...policyByPlan.values()].flatMap((p) => p.extensionPlanIds),
+    ),
+  ];
+  const extPlanById = new Map<
+    string,
+    { code: string; name: string; priceKrw: number }
+  >();
+  if (extPlanIds.length > 0) {
+    const { data: extPlans } = await adminClient
+      .from("subscription_plans")
+      .select("plan_id, code, name, price_krw, sale_status")
+      .in("plan_id", extPlanIds)
+      .eq("sale_status", "on_sale");
+    for (const p of extPlans ?? []) {
+      extPlanById.set(p.plan_id, {
+        code: p.code,
+        name: p.name,
+        priceKrw: p.price_krw,
       });
     }
   }
@@ -148,6 +188,13 @@ export async function loader({ request }: Route.LoaderArgs) {
               maxDays: policy.maxDays,
             }
           : null,
+        // ① 연장 상품 진입점 — 정책 허용 + 판매중 연장 상품이 있을 때만.
+        extensionProducts:
+          policy?.extensionAllowed && e.status !== "revoked"
+            ? policy.extensionPlanIds
+                .map((pid) => extPlanById.get(pid))
+                .filter((x): x is { code: string; name: string; priceKrw: number } => !!x)
+            : [],
       };
     }),
     devices: (devices ?? []).map((d) => ({
@@ -316,8 +363,11 @@ function CourseCard({
       minDays: number;
       maxDays: number;
     } | null;
+    extensionProducts: Array<{ code: string; name: string; priceKrw: number }>;
   };
 }) {
+  const navigate = useNavigate();
+  const { addPlan } = useCart();
   const fetcher = useFetcher<{ ok?: boolean; error?: string; paused?: number }>();
   useEffect(() => {
     if (fetcher.state !== "idle" || !fetcher.data) return;
@@ -342,6 +392,11 @@ function CourseCard({
     fd.set("enrollmentId", course.enrollmentId);
     fd.set("days", String(days));
     fetcher.submit(fd, { method: "post" });
+  };
+  const extendTo = (code: string) => {
+    addPlan(code);
+    toast.success("연장 상품을 장바구니에 담았습니다.");
+    navigate("/lecture/cart");
   };
   const completed =
     course.lessonCount > 0 && course.completedCount >= course.lessonCount;
@@ -394,6 +449,26 @@ function CourseCard({
             </button>
           ) : null}
         </div>
+        {course.extensionProducts.length > 0 ? (
+          <div className="border-border/60 flex flex-wrap items-center gap-2 border-t pt-2.5">
+            <span className="text-muted-foreground inline-flex items-center gap-1 text-[12px]">
+              <CalendarPlusIcon className="size-3.5" /> 수강 연장
+            </span>
+            {course.extensionProducts.map((p) => (
+              <button
+                key={p.code}
+                type="button"
+                onClick={() => extendTo(p.code)}
+                className="border-border hover:bg-muted/50 inline-flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[12px] font-medium"
+              >
+                {p.name}
+                <span className="tabular-nums">
+                  ₩{p.priceKrw.toLocaleString("ko-KR")}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );

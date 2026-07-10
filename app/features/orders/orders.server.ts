@@ -3,7 +3,10 @@
 // 전부 서버 전용(adminClient — orders/order_items RLS 에 쓰기 정책 없음).
 
 import adminClient from "~/core/lib/supa-admin-client.server";
-import { getCourseTotalDuration } from "~/features/lms/queries.server";
+import {
+  getCourseTotalDuration,
+  logEnrollmentAdminAction,
+} from "~/features/lms/queries.server";
 
 // ── 생성 ────────────────────────────────────────────────────────────────────
 
@@ -233,19 +236,70 @@ async function fulfillCourseEnrollments(input: {
       .maybeSingle(),
     adminClient.from("plan_courses").select("course_id").eq("plan_id", input.planId),
   ]);
-  const expiresAt = policy?.fixed_end_date
-    ? new Date(`${policy.fixed_end_date}T23:59:59+09:00`).toISOString()
-    : new Date(Date.now() + (policy?.duration_days ?? 180) * 86400_000).toISOString();
+
+  // 수강기간 계산 — current(기존 만료일) 있으면 그로부터 연장(중복 지급 대신 만료일 연장).
+  const now = Date.now();
+  const addMs = (policy?.duration_days ?? 180) * 86400_000;
+  const computeExpiry = (currentIso: string | null): string => {
+    if (policy?.fixed_end_date) {
+      const fixed = new Date(`${policy.fixed_end_date}T23:59:59+09:00`).getTime();
+      return new Date(
+        currentIso ? Math.max(Date.parse(currentIso), fixed) : fixed,
+      ).toISOString();
+    }
+    const base = currentIso ? Math.max(now, Date.parse(currentIso)) : now;
+    return new Date(base + addMs).toISOString();
+  };
 
   for (const link of links ?? []) {
     const baseDuration = await getCourseTotalDuration(link.course_id);
+    // ① 이미 이 강의 수강권이 있으면 = 연장(만료일 연장 + 배수 모수 갱신). 없으면 신규 지급.
+    const { data: existing } = await adminClient
+      .from("enrollments")
+      .select("enrollment_id, expires_at")
+      .eq("user_id", input.userId)
+      .eq("course_id", link.course_id)
+      .is("deleted_at", null)
+      .order("expires_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existing) {
+      const nextExpires = computeExpiry(existing.expires_at);
+      const { error } = await adminClient
+        .from("enrollments")
+        .update({
+          plan_id: input.planId,
+          order_item_id: input.orderItemId,
+          expires_at: nextExpires,
+          status: "active",
+          // 재구매 = 새 시청 허용량 부여(배수 모수·강의시간 갱신).
+          multiplier_snapshot: policy?.multiplier ?? null,
+          base_duration_snapshot_seconds: baseDuration,
+        })
+        .eq("enrollment_id", existing.enrollment_id);
+      if (error) {
+        console.error("[orders] enrollment extend failed:", error.message);
+        continue;
+      }
+      await logEnrollmentAdminAction({
+        enrollmentId: existing.enrollment_id,
+        actorId: input.userId,
+        action: "extend",
+        before: { expires_at: existing.expires_at },
+        after: { expires_at: nextExpires, via: "order" },
+        reason: "주문 결제 — 수강 연장/재지급",
+      });
+      continue;
+    }
+
     const { error } = await adminClient.from("enrollments").insert({
       user_id: input.userId,
       course_id: link.course_id,
       plan_id: input.planId,
       source: "order",
       order_item_id: input.orderItemId,
-      expires_at: expiresAt,
+      expires_at: computeExpiry(null),
       multiplier_snapshot: policy?.multiplier ?? null,
       base_duration_snapshot_seconds: baseDuration,
     });

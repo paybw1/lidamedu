@@ -24,6 +24,7 @@ import {
   type WatchBalance,
 } from "~/features/lms/queries.server";
 import { insertLedgerAdjustment, resetWatchUsage } from "~/features/lms/watch.server";
+import { getPlanPolicies } from "~/features/subscriptions/queries.server";
 
 import type { Route } from "./+types/admin-lms-enrollments";
 
@@ -63,9 +64,13 @@ export async function loader({ request }: Route.LoaderArgs) {
       .order("display_order"),
   ]);
   const balances = await getWatchBalances(rowsRaw.map((r) => r.enrollmentId));
+  // ② 연장 정책 연동 — 각 수강권 플랜의 학생 셀프연장 허용 여부(advisory).
+  const planIds = [...new Set(rowsRaw.map((r) => r.planId).filter((x): x is string => !!x))];
+  const policies = await getPlanPolicies(planIds);
   const rows = rowsRaw.map((r) => ({
     ...r,
     balance: balances.get(r.enrollmentId) ?? null,
+    extensionAllowed: r.planId ? (policies[r.planId]?.extensionAllowed ?? false) : false,
   }));
   return {
     rows,
@@ -489,7 +494,10 @@ function fmtHours(sec: number | null): string {
 function EnrollmentRowView({
   row,
 }: {
-  row: EnrollmentRow & { balance: WatchBalance | null };
+  row: EnrollmentRow & {
+    balance: WatchBalance | null;
+    extensionAllowed: boolean;
+  };
 }) {
   const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
   useEffect(() => {
@@ -549,7 +557,15 @@ function EnrollmentRowView({
         ) : null}
       </TD>
       <TD>
-        <Chip tone={STATUS_TONE[row.status] ?? "neutral"}>{STATUS_LABEL[row.status] ?? row.status}</Chip>
+        <div className="flex flex-col items-start gap-1">
+          <Chip tone={STATUS_TONE[row.status] ?? "neutral"}>{STATUS_LABEL[row.status] ?? row.status}</Chip>
+          <Chip
+            tone={row.extensionAllowed ? "emerald" : "outline"}
+            className="text-[10px]"
+          >
+            {row.extensionAllowed ? "셀프연장 허용" : "셀프연장 불가"}
+          </Chip>
+        </div>
       </TD>
       <TD align="right">
         {row.status !== "revoked" ? (

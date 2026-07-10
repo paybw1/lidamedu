@@ -22,7 +22,7 @@
 - ✅ **수강기간 일시정지 정책 설정** — [해결 2026-07-10] PlanForm 정책 섹션에서 pause_allowed + max_count/min·max_days/total_days 편집. 학생측 강제 기존 완비.
 - ✅ **수강 배수 설정** — [해결 2026-07-10] PlanForm 정책 섹션 배수(N) 입력 → plan_policies.multiplier. playback/orders/enrollments 강제 기존 완비.
 - ✅ **PC / 모바일 수강 가능 여부** — [해결 2026-07-10] PlanForm 정책 섹션에서 allow_pc/allow_mobile + max_devices_pc/mobile 편집. (단 playback 실제 슬롯강제는 ENFORCE_DEVICE off·벤더 fingerprint 대기 — 별개 gap)
-- ★★★★ **수강 연장 가능 여부** — [부분해결 2026-07-10] PlanForm 정책 섹션에서 extension_allowed·extension_plan_ids 설정 UI 추가. 단 학생/관리자 연장 소비 로직은 미구현(수동 extend만).
+- ✅ **수강 연장 가능 여부** — [해결 2026-07-10] ① 학생 셀프연장: my-courses '수강 연장' CTA(정책 허용+판매중 extension_plan_ids 상품→장바구니). 지급 시 fulfillCourseEnrollments 가 같은 강의 기존 수강권을 **중복 없이 만료일 연장**(재구매=만료일 연장+배수 모수 갱신). ② 관리자: 수강권 목록에 '셀프연장 허용/불가' advisory 배지. ★설정 전제: 연장 상품(plan)이 plan_courses 로 같은 강의에 연결돼 있어야 함(A-2 연결 UI).
 - ✅ **판매중 / 판매중지 설정** — [해결 2026-07-10] admin-plans PlanForm '판매 상태' 5단계(판매예정/판매중/일시중지/판매종료/숨김) select. sale_status 단일 소유자, is_active=on_sale 자동 미러(기존 storefront 무변경). ★기존 plan 중 patent_basic_2026 만 active=true+scheduled 로 불일치(다음 저장 시 정렬) — storefront 노출 유지 위해 자동 backfill 안 함.
 - ★★★★★ **강의 자료 업로드** — lesson_materials 테이블 존재·queries.server CourseDetail에서 조회만. 업로드 action/UI 없고 course-detail 화면에 렌더도 안 됨.
 

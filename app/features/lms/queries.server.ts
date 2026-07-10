@@ -299,6 +299,7 @@ export interface EnrollmentRow {
   memberNo: number | null;
   courseId: string;
   courseLabel: string;
+  planId: string | null;
   planName: string | null;
   source: string;
   startsAt: string;
@@ -339,6 +340,7 @@ export async function listEnrollments(options: {
       courseLabel: course
         ? `${course.series?.title ?? ""} ${course.edition_label}`.trim()
         : r.course_id,
+      planId: r.plan_id,
       planName: (r.plan as { name: string } | null)?.name ?? null,
       source: r.source,
       startsAt: r.starts_at,
