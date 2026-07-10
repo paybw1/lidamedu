@@ -197,9 +197,32 @@ export default function Notes({ loaderData }: Route.ComponentProps) {
                   </span>
                 ) : null}
               </div>
+              {/* 판례 포스트잇 — 걸린 판결 요지(쟁점) 전문을 노출해 한 눈에 복습. */}
+              {m.anchorTitle || m.anchorBody ? (
+                <div className="border-violet-400/70 bg-violet-500/[0.06] mb-2 rounded-md border-l-[3px] px-3 py-2">
+                  {m.anchorLabel ? (
+                    <div className="text-violet-700 dark:text-violet-300 mb-0.5 text-[11px] font-bold">
+                      {m.anchorLabel}
+                    </div>
+                  ) : null}
+                  {m.anchorTitle ? (
+                    <p className="text-foreground text-[13px] leading-relaxed font-semibold">
+                      {m.anchorTitle}
+                    </p>
+                  ) : null}
+                  {m.anchorBody ? (
+                    <p className="text-muted-foreground mt-1 line-clamp-4 text-[12.5px] leading-relaxed">
+                      {m.anchorBody}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
               {m.snippet ? (
-                <div className="border-border bg-muted/50 text-muted-foreground mb-2 rounded-md border-l-[3px] px-3 py-2 text-[13px] leading-relaxed">
-                  {m.snippet}
+                <div className="text-muted-foreground mb-2 text-[12px] leading-relaxed">
+                  <span className="font-semibold">표시한 부분</span>
+                  <span className="bg-amber-200/50 mx-1 rounded px-1 py-0.5 dark:bg-amber-300/30">
+                    {m.snippet}
+                  </span>
                 </div>
               ) : null}
               <div className="border-primary bg-primary/[0.06] flex gap-2 rounded-lg border-l-[3px] px-3 py-2.5">

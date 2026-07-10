@@ -841,24 +841,41 @@ export interface MemoListItem {
   secondaryLabel: string | null;
   bodySnippet: string | null;
   href: string;
-  // 판례 포스트잇이 특정 판결 요지(쟁점)에 걸린 경우 "요지 N" — snippet↔summary_items 매칭 파생.
-  anchorLabel: string | null;
+  // 판례 포스트잇이 특정 판결 요지(쟁점)에 걸린 경우 — snippet↔summary_items 매칭 파생.
+  anchorLabel: string | null; // "요지 N" 배지
+  anchorTitle: string | null; // 그 요지의 쟁점 문구(전체) — 한 눈에 복습용
+  anchorBody: string | null; // 그 요지의 판시 내용(있으면)
 }
 
-/** 판례 포스트잇 발췌(snippet)가 몇 번째 판결 요지(summary_items)에 속하는지 → "요지 N". */
-function resolveCaseIssueLabel(
+interface CaseIssueMatch {
+  label: string;
+  title: string | null;
+  body: string | null;
+}
+
+/** 판례 포스트잇 발췌(snippet)가 몇 번째 판결 요지(summary_items)에 속하는지 + 그 요지 전문. */
+function resolveCaseIssue(
   snippet: string | null,
   summaryItems: Array<{ title?: string; body?: string }> | null,
-): string | null {
-  if (!snippet || !summaryItems || summaryItems.length <= 1) return null;
+): CaseIssueMatch | null {
+  if (!snippet || !summaryItems || summaryItems.length === 0) return null;
   const norm = (s: string) => s.replace(/\s+/g, "");
   const needle = norm(snippet);
   if (needle.length < 4) return null;
   for (let i = 0; i < summaryItems.length; i++) {
     const it = summaryItems[i];
-    const hay = norm(`${it.title ?? ""}${it.body ?? ""}`);
-    if (hay.includes(needle) || (needle.length > hay.length && needle.includes(hay) && hay.length > 8)) {
-      return `요지 ${i + 1}`;
+    const title = it.title?.trim() || null;
+    const body = it.body?.trim() || null;
+    const hay = norm(`${title ?? ""}${body ?? ""}`);
+    if (
+      hay.includes(needle) ||
+      (needle.length > hay.length && needle.includes(hay) && hay.length > 8)
+    ) {
+      return {
+        label: summaryItems.length > 1 ? `요지 ${i + 1}` : "판결 요지",
+        title,
+        body,
+      };
     }
   }
   return null;
@@ -1021,6 +1038,8 @@ export async function listAllMemos(
       createdAt: r.created_at,
       updatedAt: r.updated_at,
       anchorLabel: null as string | null,
+      anchorTitle: null as string | null,
+      anchorBody: null as string | null,
     };
     if (r.target_type === "article") {
       const a = articleMap.get(r.target_id);
@@ -1120,11 +1139,16 @@ export async function listAllMemos(
     return [];
   });
 
-  // 판례 포스트잇 — 발췌가 걸린 판결 요지(쟁점) 번호("요지 N")를 파생해 채운다.
+  // 판례 포스트잇 — 발췌가 걸린 판결 요지(쟁점) 번호·전문을 파생해 채운다(한 눈에 복습용).
   for (const item of memoItems) {
     if (item.targetType === "case") {
       const c = caseMap.get(item.targetId);
-      item.anchorLabel = resolveCaseIssueLabel(item.snippet, c?.summaryItems ?? null);
+      const issue = resolveCaseIssue(item.snippet, c?.summaryItems ?? null);
+      if (issue) {
+        item.anchorLabel = issue.label;
+        item.anchorTitle = issue.title;
+        item.anchorBody = issue.body;
+      }
     }
   }
   return memoItems;
