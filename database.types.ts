@@ -1447,6 +1447,70 @@ export type Database = {
           },
         ]
       }
+      book_settlement_items: {
+        Row: {
+          base_amount_krw: number
+          created_at: string
+          item_id: string
+          kind: string
+          note: string | null
+          order_item_id: string
+          rule_id: string | null
+          settlement_id: string
+          share_amount_krw: number
+          share_kind: string
+          share_value: number
+        }
+        Insert: {
+          base_amount_krw: number
+          created_at?: string
+          item_id?: string
+          kind: string
+          note?: string | null
+          order_item_id: string
+          rule_id?: string | null
+          settlement_id: string
+          share_amount_krw: number
+          share_kind: string
+          share_value: number
+        }
+        Update: {
+          base_amount_krw?: number
+          created_at?: string
+          item_id?: string
+          kind?: string
+          note?: string | null
+          order_item_id?: string
+          rule_id?: string | null
+          settlement_id?: string
+          share_amount_krw?: number
+          share_kind?: string
+          share_value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_settlement_items_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
+            referencedColumns: ["order_item_id"]
+          },
+          {
+            foreignKeyName: "book_settlement_items_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "book_settlement_rules"
+            referencedColumns: ["rule_id"]
+          },
+          {
+            foreignKeyName: "book_settlement_items_settlement_id_fkey"
+            columns: ["settlement_id"]
+            isOneToOne: false
+            referencedRelation: "book_settlements"
+            referencedColumns: ["settlement_id"]
+          },
+        ]
+      }
       book_settlement_rules: {
         Row: {
           book_id: string | null
@@ -1515,6 +1579,77 @@ export type Database = {
           },
           {
             foreignKeyName: "book_settlement_rules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      book_settlements: {
+        Row: {
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          created_by: string | null
+          paid_at: string | null
+          payee_name: string
+          period_end: string
+          period_start: string
+          settlement_id: string
+          status: string
+          total_share_krw: number
+        }
+        Insert: {
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          paid_at?: string | null
+          payee_name: string
+          period_end: string
+          period_start: string
+          settlement_id?: string
+          status?: string
+          total_share_krw?: number
+        }
+        Update: {
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          paid_at?: string | null
+          payee_name?: string
+          period_end?: string
+          period_start?: string
+          settlement_id?: string
+          status?: string
+          total_share_krw?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_settlements_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "book_settlements_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "book_settlements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "book_settlements_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "public_profiles"

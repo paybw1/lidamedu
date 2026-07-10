@@ -143,7 +143,7 @@
 
 **미구현**
 
-- 🟡 **도서정산 메뉴** — [배분규칙 입력 해결 2026-07-11 · P6] /admin/settlements/books 도서 배분 기준 관리(book_settlement_rules): 도서별/전체기본 × 정산대상(저자/출판사) × 정률(%)/정액(원/권), 세대교체(새 규칙+비활성). ★남음=실제 정산 계산·지급 화면(매출×규칙→정산액, 정책 확정 후).
+- ✅ **도서정산 메뉴** — [해결 2026-07-11 · P6] ①배분규칙 /admin/settlements/books(book_settlement_rules: 도서별/전체기본 × 정산대상 × 정률/정액, 세대교체). ②계산·지급 /admin/settlements/book-runs(book_settlements+items, 강사정산과 동형): 월별 order_items 도서판매에 규칙 적용→payee(저자/출판사)별 draft→confirmed→paid, 이중계상 방지, 확정분 환불 익월 음수차감. vitest 검증(share 10%·환불차감 순액0).
 
 **일부만(추가 개발 필요)**
 

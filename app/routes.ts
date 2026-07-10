@@ -1130,6 +1130,19 @@ export default [
         "/api/admin/book-settlement-rule",
         "features/subscriptions/api/admin-book-settlement-rule.tsx",
       ),
+      // feat-8-029 P6 — 도서 정산 계산·지급 (manager+).
+      route(
+        "/admin/settlements/book-runs",
+        "features/subscriptions/screens/admin-book-settlement-runs.tsx",
+      ),
+      route(
+        "/admin/settlements/book-runs/:settlementId",
+        "features/subscriptions/screens/admin-book-settlement-detail.tsx",
+      ),
+      route(
+        "/api/admin/book-settlement",
+        "features/subscriptions/api/admin-book-settlement.tsx",
+      ),
       // feat-7-042 — Q&A 답변 적립·지급 (manager+).
       route(
         "/admin/settlements/qna-rewards",
