@@ -58,6 +58,11 @@ import {
   type UserWatchCourse,
 } from "~/features/lms/watch.server";
 import {
+  getStudentActivity,
+  type StudentActivity,
+} from "~/features/admin/queries/student-activity.server";
+import { CS_CATEGORY_LABEL } from "~/features/cs-inquiries/labels";
+import {
   isFirstExamSubject,
   isSecondExamSubject,
   LAW_SUBJECT_SLUGS,
@@ -256,13 +261,14 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     };
   });
 
-  // CS 처리 이력(cs_actions) + 영상 시청 기록 — manager+ 만.
-  const [csActions, watchHistory] = roleAtLeast(role, "manager")
+  // CS 처리 이력(cs_actions) + 영상 시청 기록 + 활동 내역(질의·문의·커뮤니티) — manager+ 만.
+  const [csActions, watchHistory, activity] = roleAtLeast(role, "manager")
     ? await Promise.all([
         listCsActionsForUser(params.profileId),
         getUserWatchHistory(params.profileId),
+        getStudentActivity(params.profileId),
       ])
-    : [[], []];
+    : [[], [], { qna: [], inquiries: [], posts: [] }];
 
   return {
     student,
@@ -270,6 +276,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     notes,
     csActions,
     watchHistory,
+    activity,
     passTrend,
     subscriptions,
     payments,
@@ -309,6 +316,7 @@ export default function AdminStudentDetail({
     notes,
     csActions,
     watchHistory,
+    activity,
     passTrend,
     subscriptions,
     payments,
@@ -504,6 +512,12 @@ export default function AdminStudentDetail({
       {isAdmin && watchHistory.length > 0 ? (
         <div className="mb-6">
           <WatchHistorySection courses={watchHistory} />
+        </div>
+      ) : null}
+
+      {isAdmin ? (
+        <div className="mb-6">
+          <ActivitySection activity={activity} />
         </div>
       ) : null}
 
@@ -1758,6 +1772,167 @@ function WatchHistorySection({ courses }: { courses: UserWatchCourse[] }) {
         ))}
       </CardContent>
     </Card>
+  );
+}
+
+const QNA_STATUS_LABEL: Record<string, string> = {
+  open: "답변 대기",
+  answered: "답변 완료",
+  ai_answered: "AI 답변",
+  reviewing: "검토 중",
+  closed: "종료",
+  resolved: "해결",
+};
+const CS_STATUS_LABEL_MAP: Record<string, string> = {
+  open: "답변 대기",
+  answered: "답변 완료",
+  closed: "종료",
+};
+const BOARD_LABEL: Record<string, string> = {
+  free: "자유",
+  qna: "질문",
+  review: "합격수기",
+  study: "스터디",
+  notice: "공지",
+};
+
+function ActivitySection({ activity }: { activity: StudentActivity }) {
+  const { qna, inquiries, posts } = activity;
+  const empty = qna.length === 0 && inquiries.length === 0 && posts.length === 0;
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <p className="inline-flex items-center gap-1.5 text-sm font-semibold">
+          <MessageSquareIcon className="text-link size-4" />
+          플랫폼 활동 내역
+        </p>
+        <p className="text-muted-foreground text-[11px]">
+          이 수강생이 남긴 질의(Q&amp;A)·고객센터 문의·커뮤니티 글입니다.
+        </p>
+      </CardHeader>
+      <Separator />
+      <CardContent className="space-y-4 p-4">
+        {empty ? (
+          <p className="text-muted-foreground text-[13px]">활동 내역이 없습니다.</p>
+        ) : null}
+
+        {qna.length > 0 ? (
+          <ActivityGroup title="질의 (Q&A)" count={qna.length}>
+            {qna.map((q) => (
+              <ActivityRow
+                key={q.threadId}
+                to={`/qna/${q.threadId}`}
+                title={q.title || "(제목 없음)"}
+                status={QNA_STATUS_LABEL[q.status] ?? q.status}
+                answered={q.answeredAt != null}
+                createdAt={q.createdAt}
+              />
+            ))}
+          </ActivityGroup>
+        ) : null}
+
+        {inquiries.length > 0 ? (
+          <ActivityGroup title="고객센터 문의" count={inquiries.length}>
+            {inquiries.map((i) => (
+              <ActivityRow
+                key={i.inquiryId}
+                to="/admin/cs-inquiries"
+                title={i.title}
+                badge={CS_CATEGORY_LABEL[i.category as keyof typeof CS_CATEGORY_LABEL] ?? i.category}
+                status={CS_STATUS_LABEL_MAP[i.status] ?? i.status}
+                answered={i.answeredAt != null}
+                createdAt={i.createdAt}
+              />
+            ))}
+          </ActivityGroup>
+        ) : null}
+
+        {posts.length > 0 ? (
+          <ActivityGroup title="커뮤니티 글" count={posts.length}>
+            {posts.map((p) => (
+              <ActivityRow
+                key={p.postId}
+                title={p.title}
+                badge={BOARD_LABEL[p.board] ?? p.board}
+                createdAt={p.createdAt}
+              />
+            ))}
+          </ActivityGroup>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ActivityGroup({
+  title,
+  count,
+  children,
+}: {
+  title: string;
+  count: number;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-1">
+      <p className="text-muted-foreground text-[11px] font-bold tracking-wide">
+        {title} <span className="tabular-nums">({count})</span>
+      </p>
+      <ul className="divide-border/40 divide-y">{children}</ul>
+    </div>
+  );
+}
+
+function ActivityRow({
+  to,
+  title,
+  badge,
+  status,
+  answered,
+  createdAt,
+}: {
+  to?: string;
+  title: string;
+  badge?: string;
+  status?: string;
+  answered?: boolean;
+  createdAt: string;
+}) {
+  const inner = (
+    <div className="flex items-center gap-2 py-1.5 text-[12px]">
+      {badge ? (
+        <span className="bg-muted text-muted-foreground shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold">
+          {badge}
+        </span>
+      ) : null}
+      <span className="min-w-0 flex-1 truncate">{title}</span>
+      {status ? (
+        <span
+          className={
+            "shrink-0 text-[11px] font-semibold " +
+            (answered
+              ? "text-emerald-600 dark:text-emerald-400"
+              : "text-amber-600 dark:text-amber-400")
+          }
+        >
+          {status}
+        </span>
+      ) : null}
+      <span className="text-muted-foreground shrink-0 text-[11px] tabular-nums">
+        {createdAt.slice(0, 10)}
+      </span>
+    </div>
+  );
+  return (
+    <li>
+      {to ? (
+        <Link to={to} className="hover:bg-muted/50 block rounded px-1">
+          {inner}
+        </Link>
+      ) : (
+        <div className="px-1">{inner}</div>
+      )}
+    </li>
   );
 }
 
