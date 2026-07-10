@@ -252,3 +252,117 @@ export async function getLessonProgressForUser(
   }
   return out;
 }
+
+// ── 회원별 영상 시청 기록 상세(운영자) — 강의·회차별 시청시간 + 최초/마지막 재생일 ──
+
+export interface UserWatchLesson {
+  lessonId: string;
+  lessonNo: number;
+  title: string;
+  watchedSeconds: number;
+  durationSeconds: number;
+  progressRatio: number;
+  firstAt: string | null;
+  lastAt: string | null;
+}
+export interface UserWatchCourse {
+  courseId: string;
+  courseLabel: string;
+  lessons: UserWatchLesson[];
+  totalWatchedSeconds: number;
+}
+
+// 회원의 강의별·회차별 시청 상세. 시청 활동(구간 보고)이 있는 회차만 포함.
+export async function getUserWatchHistory(
+  userId: string,
+): Promise<UserWatchCourse[]> {
+  // 대상 강의 = 회원의 수강권 강의.
+  const { data: enrolls } = await adminClient
+    .from("enrollments")
+    .select("course_id")
+    .eq("user_id", userId)
+    .is("revoked_at", null);
+  const courseIds = [...new Set((enrolls ?? []).map((e) => e.course_id))];
+  if (courseIds.length === 0) return [];
+
+  const { data: courses } = await adminClient
+    .from("courses")
+    .select(
+      "course_id, edition_label, series:course_series!courses_series_id_fkey(title)",
+    )
+    .in("course_id", courseIds);
+  const courseLabel = new Map<string, string>();
+  for (const c of courses ?? []) {
+    const title = (c.series as { title: string } | null)?.title ?? "";
+    courseLabel.set(
+      c.course_id,
+      `${title} ${c.edition_label}`.trim() || c.course_id,
+    );
+  }
+
+  const { data: lessons } = await adminClient
+    .from("course_lessons")
+    .select("lesson_id, course_id, lesson_no, title")
+    .in("course_id", courseIds)
+    .is("deleted_at", null)
+    .order("sort_order")
+    .order("lesson_no");
+  const lessonRows = lessons ?? [];
+  const lessonIds = lessonRows.map((l) => l.lesson_id);
+  if (lessonIds.length === 0) return [];
+
+  const progress = await getLessonProgressForUser(userId, lessonIds);
+
+  // 회차별 최초/마지막 재생일 — watch_events reported_at min/max(JS 집계).
+  const firstAt = new Map<string, string>();
+  const lastAt = new Map<string, string>();
+  for (let i = 0; i < lessonIds.length; i += 150) {
+    const { data: events } = await adminClient
+      .from("watch_events")
+      .select("lesson_id, reported_at")
+      .eq("user_id", userId)
+      .in("lesson_id", lessonIds.slice(i, i + 150))
+      .limit(50000);
+    for (const e of events ?? []) {
+      const prevFirst = firstAt.get(e.lesson_id);
+      if (!prevFirst || e.reported_at < prevFirst)
+        firstAt.set(e.lesson_id, e.reported_at);
+      const prevLast = lastAt.get(e.lesson_id);
+      if (!prevLast || e.reported_at > prevLast)
+        lastAt.set(e.lesson_id, e.reported_at);
+    }
+  }
+
+  const byCourse = new Map<string, UserWatchLesson[]>();
+  for (const l of lessonRows) {
+    const p = progress.get(l.lesson_id);
+    const watched = p?.watchedSeconds ?? 0;
+    const first = firstAt.get(l.lesson_id) ?? null;
+    if (watched <= 0 && !first) continue; // 시청 활동 없는 회차 제외
+    const arr = byCourse.get(l.course_id) ?? [];
+    arr.push({
+      lessonId: l.lesson_id,
+      lessonNo: l.lesson_no,
+      title: l.title,
+      watchedSeconds: watched,
+      durationSeconds: p?.durationSeconds ?? 0,
+      progressRatio: p?.progressRatio ?? 0,
+      firstAt: first,
+      lastAt: lastAt.get(l.lesson_id) ?? null,
+    });
+    byCourse.set(l.course_id, arr);
+  }
+
+  const out: UserWatchCourse[] = [];
+  for (const cid of courseIds) {
+    const ls = byCourse.get(cid);
+    if (!ls || ls.length === 0) continue;
+    out.push({
+      courseId: cid,
+      courseLabel: courseLabel.get(cid) ?? cid,
+      lessons: ls,
+      totalWatchedSeconds: ls.reduce((s, l) => s + l.watchedSeconds, 0),
+    });
+  }
+  return out;
+}

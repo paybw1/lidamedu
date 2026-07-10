@@ -54,9 +54,9 @@
 
 **일부만(추가 개발 필요)**
 
-- ★★★★★ **회원별 영상 시청 기록** — watch_events가 강의·회차·구간·시각 기록·집계 사용량은 admin-enrollments에서 확인. 그러나 회원별 회차·시청시간·시청일 상세 조회 화면 없음.
+- ✅ **회원별 영상 시청 기록** — [해결 2026-07-10] admin-student-detail '영상 시청 기록' 섹션(manager+): getUserWatchHistory 가 강의별·회차별 시청시간(구간 union)·진도·최초/마지막 재생일 표로 표시.
 - ★★★★★ **마지막 재생 위치 저장** — watch.server 하트비트가 watch_positions upsert(저장)하나 이를 읽어 이어보기 제공하는 플레이어/소비 코드 없음(벤더 플레이어 미연동)
-- ★★★★ **최초 재생일 / 마지막 재생일 확인** — watch_events created_at 원본 보존되나 최초/마지막 재생일 파생·조회 화면 없음(getLessonProgress 미반환)
+- ✅ **최초 재생일 / 마지막 재생일 확인** — [해결 2026-07-10] getUserWatchHistory 가 watch_events reported_at min/max 로 회차별 최초·마지막 재생일 파생, 회원 상세 시청기록 표에 표시.
 
 <sub>구현완료 5건: 영상별 누적 재생시간, 진도율 확인, 수강기간 일시정지 신청, 배수 사용량 확인, 강의별 완강 여부 확인</sub>
 

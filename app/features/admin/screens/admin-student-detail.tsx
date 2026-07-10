@@ -54,6 +54,10 @@ import {
   type CsActionRow,
 } from "~/features/orders/cs.server";
 import {
+  getUserWatchHistory,
+  type UserWatchCourse,
+} from "~/features/lms/watch.server";
+import {
   isFirstExamSubject,
   isSecondExamSubject,
   LAW_SUBJECT_SLUGS,
@@ -252,16 +256,20 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     };
   });
 
-  // CS 처리 이력(cs_actions) — manager+ 만(지원/응대 원장).
-  const csActions = roleAtLeast(role, "manager")
-    ? await listCsActionsForUser(params.profileId)
-    : [];
+  // CS 처리 이력(cs_actions) + 영상 시청 기록 — manager+ 만.
+  const [csActions, watchHistory] = roleAtLeast(role, "manager")
+    ? await Promise.all([
+        listCsActionsForUser(params.profileId),
+        getUserWatchHistory(params.profileId),
+      ])
+    : [[], []];
 
   return {
     student,
     cohortComparisons,
     notes,
     csActions,
+    watchHistory,
     passTrend,
     subscriptions,
     payments,
@@ -300,6 +308,7 @@ export default function AdminStudentDetail({
     cohortComparisons,
     notes,
     csActions,
+    watchHistory,
     passTrend,
     subscriptions,
     payments,
@@ -489,6 +498,12 @@ export default function AdminStudentDetail({
       {isAdmin ? (
         <div className="mb-6">
           <CsHistorySection studentId={student.profileId} actions={csActions} />
+        </div>
+      ) : null}
+
+      {isAdmin && watchHistory.length > 0 ? (
+        <div className="mb-6">
+          <WatchHistorySection courses={watchHistory} />
         </div>
       ) : null}
 
@@ -1674,6 +1689,76 @@ const CS_ACTION_LABEL: Record<string, string> = {
 function fmtCsTime(iso: string): string {
   const d = new Date(new Date(iso).getTime() + 9 * 3600_000);
   return `${d.toISOString().slice(0, 10)} ${d.toISOString().slice(11, 16)}`;
+}
+
+function fmtWatchDur(sec: number): string {
+  if (sec <= 0) return "0분";
+  const h = Math.floor(sec / 3600);
+  const m = Math.round((sec % 3600) / 60);
+  return h > 0 ? `${h}시간 ${m}분` : `${m}분`;
+}
+
+function WatchHistorySection({ courses }: { courses: UserWatchCourse[] }) {
+  return (
+    <Card id="watch-history" className="scroll-mt-20">
+      <CardHeader className="pb-2">
+        <p className="inline-flex items-center gap-1.5 text-sm font-semibold">
+          <ClockIcon className="text-link size-4" />
+          영상 시청 기록
+        </p>
+      </CardHeader>
+      <Separator />
+      <CardContent className="space-y-4 p-4">
+        {courses.map((c) => (
+          <div key={c.courseId} className="space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[13px] font-semibold">{c.courseLabel}</p>
+              <span className="text-muted-foreground text-[11px]">
+                총 {fmtWatchDur(c.totalWatchedSeconds)} · {c.lessons.length}개 회차
+              </span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[440px] text-[11px]">
+                <thead>
+                  <tr className="text-muted-foreground border-b text-left">
+                    <th className="py-1 pr-2 font-medium">회차</th>
+                    <th className="py-1 pr-2 text-right font-medium">시청</th>
+                    <th className="py-1 pr-2 text-right font-medium">진도</th>
+                    <th className="py-1 pr-2 font-medium">최초</th>
+                    <th className="py-1 font-medium">마지막</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {c.lessons.map((l) => (
+                    <tr key={l.lessonId} className="border-border/40 border-b last:border-0">
+                      <td className="py-1 pr-2">
+                        <span className="text-muted-foreground tabular-nums">
+                          {l.lessonNo}강
+                        </span>{" "}
+                        {l.title}
+                      </td>
+                      <td className="py-1 pr-2 text-right tabular-nums">
+                        {fmtWatchDur(l.watchedSeconds)}
+                      </td>
+                      <td className="py-1 pr-2 text-right tabular-nums">
+                        {Math.round(l.progressRatio * 100)}%
+                      </td>
+                      <td className="text-muted-foreground py-1 pr-2 tabular-nums">
+                        {l.firstAt ? fmtCsTime(l.firstAt).slice(0, 10) : "-"}
+                      </td>
+                      <td className="text-muted-foreground py-1 tabular-nums">
+                        {l.lastAt ? fmtCsTime(l.lastAt).slice(0, 10) : "-"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
 }
 
 function CsHistorySection({
