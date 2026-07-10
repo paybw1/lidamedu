@@ -26,6 +26,15 @@ function formatDate(iso: string): string {
   });
 }
 
+// 포스트잇 placeholder 명사 — 대상 종류별 ("이 {명사}에 대한 포스트잇").
+const TARGET_NOUN: Record<AnnotationTargetType, string> = {
+  article: "조문",
+  case: "판례",
+  problem: "문제",
+  problem_choice: "문제",
+  problem_box_item: "문제",
+};
+
 export function MemoList({
   targetType,
   targetId,
@@ -190,7 +199,7 @@ export function MemoList({
             placeholder={
               snippet
                 ? `「${truncate(snippet, 30)}」에 대한 포스트잇`
-                : "이 조문에 대한 포스트잇"
+                : `이 ${TARGET_NOUN[targetType]}에 대한 포스트잇`
             }
             rows={3}
             className="text-sm"

@@ -467,6 +467,59 @@ export function CasesTree({
   );
 }
 
+// 주제(topic) 목록 — 판례 탭 좌패널 "주제" 뷰. 주제 노드(라벨 "주제N …")를 평면
+// 리스트로 나열하고, 클릭 시 해당 주제로 판례 필터(case_node 재사용). 상표=46개,
+// 디자인=아직 없음(빈 상태 안내). 트리(체계도/조문)와 달리 계층 없이 번호순 나열.
+export function CaseTopicList({
+  topicNodes,
+  byNodeId,
+  activeNodeId,
+  linkBase = "",
+}: {
+  topicNodes: SystematicNode[];
+  byNodeId: Record<string, number>;
+  activeNodeId: string | undefined;
+  linkBase?: string;
+}) {
+  const [searchParams] = useSearchParams();
+  if (topicNodes.length === 0) {
+    return (
+      <p className="text-muted-foreground px-2 py-4 text-xs">
+        주제가 아직 등록되지 않았습니다.
+      </p>
+    );
+  }
+  return (
+    <ul className="space-y-0.5 px-1 text-sm">
+      {topicNodes.map((n) => {
+        const isActive = activeNodeId === n.nodeId;
+        const href = buildTreeHref(linkBase, searchParams, {
+          kind: "node",
+          nodeId: n.nodeId,
+        });
+        return (
+          <li key={n.nodeId} data-cases-tree-active={isActive ? "true" : undefined}>
+            <Link
+              to={href}
+              preventScrollReset
+              aria-current={isActive ? "page" : undefined}
+              className={cn(
+                "group flex items-center gap-1.5 rounded-md px-2 py-1.5 text-left",
+                isActive
+                  ? "bg-accent text-accent-foreground font-semibold"
+                  : "text-foreground/80 hover:bg-accent",
+              )}
+            >
+              <span className="flex-1 truncate">{n.displayLabel}</span>
+              <CountChip value={byNodeId[n.nodeId] ?? 0} isActive={isActive} />
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 // 노드 우측 판례 개수 chip. row 상태에 따라 가시성 차등:
 //   • 기본: muted (조용)
 //   • group-hover: text-current (accent-foreground 로 대비 ↑, hover 시 잘 보임)

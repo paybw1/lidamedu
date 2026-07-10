@@ -116,6 +116,17 @@ export const SECOND_EXAM_LAW_SLUGS = [
   "civil-procedure",
 ] as const satisfies readonly LawSubjectSlug[];
 
+/** 판례를 "주제(topic)" 축으로도 분류하는 과목 — 판례 탭에 주제 토글 노출.
+ *  상표(주제1~46 배치 완료) · 디자인(주제 토글만 우선, 판례 적재 시 채움). */
+export const CASE_TOPIC_SUBJECTS = [
+  "trademark",
+  "design",
+] as const satisfies readonly LawSubjectSlug[];
+
+export function subjectUsesCaseTopics(slug: string): boolean {
+  return (CASE_TOPIC_SUBJECTS as readonly string[]).includes(slug);
+}
+
 /** 1차 시험 과목인가 — 민법·산업재산권법. (exam 이 "second" 가 아님) */
 export function isFirstExamSubject(slug: string): boolean {
   const meta = LAW_SUBJECTS[slug as LawSubjectSlug];
