@@ -853,7 +853,30 @@ interface CaseIssueMatch {
   body: string | null;
 }
 
-/** 판례 포스트잇 발췌(snippet)가 몇 번째 판결 요지(summary_items)에 속하는지 + 그 요지 전문. */
+/** 문자 트라이그램 집합(공백 제거). 한국어는 어절 분해 없이 n-gram 이 잘 동작. */
+function charTrigrams(s: string): Set<string> {
+  const t = s.replace(/\s+/g, "");
+  const set = new Set<string>();
+  if (t.length < 3) {
+    if (t.length > 0) set.add(t);
+    return set;
+  }
+  for (let i = 0; i + 3 <= t.length; i++) set.add(t.slice(i, i + 3));
+  return set;
+}
+
+/** containment = |a ∩ b| / |a| — a(발췌)의 트라이그램이 b(요지)에 얼마나 포함되는지. */
+function trigramContainment(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0) return 0;
+  let n = 0;
+  for (const g of a) if (b.has(g)) n += 1;
+  return n / a.size;
+}
+
+/**
+ * 판례 포스트잇 발췌(snippet)가 몇 번째 판결 요지(summary_items)에 속하는지 + 그 요지 전문.
+ * 1순위: 정규화 substring 정확 매칭. 2순위: 트라이그램 유사도(의역·부분 발췌 대응).
+ */
 function resolveCaseIssue(
   snippet: string | null,
   summaryItems: Array<{ title?: string; body?: string }> | null,
@@ -862,21 +885,53 @@ function resolveCaseIssue(
   const norm = (s: string) => s.replace(/\s+/g, "");
   const needle = norm(snippet);
   if (needle.length < 4) return null;
-  for (let i = 0; i < summaryItems.length; i++) {
-    const it = summaryItems[i];
+
+  const items = summaryItems.map((it) => {
     const title = it.title?.trim() || null;
     const body = it.body?.trim() || null;
-    const hay = norm(`${title ?? ""}${body ?? ""}`);
+    return { title, body, hay: norm(`${title ?? ""}${body ?? ""}`) };
+  });
+  const asMatch = (i: number): CaseIssueMatch => ({
+    label: summaryItems.length > 1 ? `요지 ${i + 1}` : "판결 요지",
+    title: items[i].title,
+    body: items[i].body,
+  });
+
+  // 1) 정확 substring — 높은 신뢰도.
+  for (let i = 0; i < items.length; i++) {
+    const hay = items[i].hay;
     if (
       hay.includes(needle) ||
       (needle.length > hay.length && needle.includes(hay) && hay.length > 8)
     ) {
-      return {
-        label: summaryItems.length > 1 ? `요지 ${i + 1}` : "판결 요지",
-        title,
-        body,
-      };
+      return asMatch(i);
     }
+  }
+
+  // 2) 트라이그램 유사도 폴백 — 의역·부분 발췌. 최고점이 임계 이상 & 2등과 충분히 벌어질 때만.
+  const sg = charTrigrams(snippet);
+  if (sg.size < 3) return null;
+  let bestI = -1;
+  let best = 0;
+  let second = 0;
+  for (let i = 0; i < items.length; i++) {
+    const score = trigramContainment(sg, charTrigrams(items[i].hay));
+    if (score > best) {
+      second = best;
+      best = score;
+      bestI = i;
+    } else if (score > second) {
+      second = score;
+    }
+  }
+  const THRESHOLD = 0.5;
+  const MARGIN = 0.12;
+  if (
+    bestI >= 0 &&
+    best >= THRESHOLD &&
+    (summaryItems.length === 1 || best - second >= MARGIN || best >= 0.75)
+  ) {
+    return asMatch(bestI);
   }
   return null;
 }
