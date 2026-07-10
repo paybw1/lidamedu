@@ -851,7 +851,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
               // 예측 카드는 숨기고 공식 합격선 안내만. 실 합격자 ≥ 임계 누적 시 자동 노출.
               // (예측 점수·스냅샷은 runAfterResponse 로 계속 기록 → 데이터 준비되면 그대로 표시)
               <SpanCol span={6}>
-                <PassCriterionAnnouncementCard gate={passerGate} />
+                <PassCriterionAnnouncementCard />
               </SpanCol>
             ) : (
               <>

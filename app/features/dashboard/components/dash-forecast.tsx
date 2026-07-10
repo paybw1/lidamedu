@@ -551,7 +551,6 @@ import {
   type Round1YearStat,
   type Round2YearStat,
 } from "~/features/exam-results/official-stats";
-import type { PasserBenchmarkGate } from "~/features/exam-results/passer-benchmark-gate.server";
 
 function CutLineSparkline({ round }: { round: ExamRound }) {
   const rows: (Round1YearStat | Round2YearStat)[] =
@@ -637,21 +636,13 @@ function RoundBlock({
   );
 }
 
-export function PassCriterionAnnouncementCard({
-  gate,
-}: {
-  gate: PasserBenchmarkGate;
-}) {
+export function PassCriterionAnnouncementCard() {
   return (
     <Card>
       <Eyebrow>PASS CRITERION · 공식 합격선</Eyebrow>
       <Title>한국산업인력공단 공식 합격선 기준</Title>
       <div className="mt-2">
-        <Sub>
-          {gate.offReason
-            ? `합격자 학습 패턴 비교는 ${gate.offReason}`
-            : "공식 채점통계 기반 합격선 안내"}
-        </Sub>
+        <Sub>공식 채점통계 기반 합격선 안내</Sub>
       </div>
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <RoundBlock round="first" />
@@ -663,13 +654,7 @@ export function PassCriterionAnnouncementCard({
       <div className="mt-3 text-[11px] text-muted-foreground">
         실측 합격선은 한국산업인력공단(큐넷) 공개 채점통계 기준입니다 — 1차
         합격선은 평균 60점보다 훨씬 높고(상대 3배수 선발), 2차는 60점보다
-        낮습니다(최소인원 보정). 합격자 학습 패턴 비교는 실제 합격자{" "}
-        <span className="font-medium text-foreground">{gate.minSample}명</span>{" "}
-        이상이 쌓이면 자동으로 열립니다(현재{" "}
-        <span className="font-medium text-foreground">
-          {gate.realSampleSize}/{gate.minSample}
-        </span>
-        ).
+        낮습니다(최소인원 보정).
       </div>
     </Card>
   );
