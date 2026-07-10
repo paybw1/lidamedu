@@ -404,6 +404,8 @@ const CS_KIND_BY_ACTION: Record<string, string> = {
   pause: "pause_admin",
   resume: "pause_admin",
   adjust_snapshot: "memo",
+  set_dates: "period_extend",
+  set_blocked_lessons: "enrollment_block",
 };
 
 export async function logEnrollmentAdminAction(input: {

@@ -27,7 +27,7 @@ import {
   UsersIcon,
   XIcon,
 } from "lucide-react";
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { Link, data, useFetcher, useLocation, useNavigate } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
@@ -49,6 +49,10 @@ import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Chip } from "~/features/admin/components/admin-ui";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { roleAtLeast } from "~/core/lib/roles";
+import {
+  listCsActionsForUser,
+  type CsActionRow,
+} from "~/features/orders/cs.server";
 import {
   isFirstExamSubject,
   isSecondExamSubject,
@@ -248,10 +252,16 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     };
   });
 
+  // CS 처리 이력(cs_actions) — manager+ 만(지원/응대 원장).
+  const csActions = roleAtLeast(role, "manager")
+    ? await listCsActionsForUser(params.profileId)
+    : [];
+
   return {
     student,
     cohortComparisons,
     notes,
+    csActions,
     passTrend,
     subscriptions,
     payments,
@@ -289,6 +299,7 @@ export default function AdminStudentDetail({
     student,
     cohortComparisons,
     notes,
+    csActions,
     passTrend,
     subscriptions,
     payments,
@@ -474,6 +485,12 @@ export default function AdminStudentDetail({
           isAdmin={isAdmin}
         />
       </div>
+
+      {isAdmin ? (
+        <div className="mb-6">
+          <CsHistorySection studentId={student.profileId} actions={csActions} />
+        </div>
+      ) : null}
 
       {/* feat-7-014 — manager+ 만 노출. loader 가 비 manager 면 빈 배열 반환. */}
       {isAdmin && plans.length > 0 ? (
@@ -1639,6 +1656,109 @@ function SrsTile({
 }
 
 // ─── 1:1 상담 코멘트 (feat-7-025) ───
+
+const CS_ACTION_LABEL: Record<string, string> = {
+  device_reset: "기기 초기화",
+  multiplier_credit: "배수 복구",
+  multiplier_reset: "사용량 초기화",
+  period_extend: "수강기간 연장",
+  enrollment_block: "회차 차단",
+  enrollment_grant: "수강권 지급",
+  enrollment_revoke: "수강권 회수",
+  pause_admin: "일시정지",
+  refund_assist: "환불 지원",
+  memo: "상담 메모",
+  set_dates: "수강기간 수정",
+};
+
+function fmtCsTime(iso: string): string {
+  const d = new Date(new Date(iso).getTime() + 9 * 3600_000);
+  return `${d.toISOString().slice(0, 10)} ${d.toISOString().slice(11, 16)}`;
+}
+
+function CsHistorySection({
+  studentId,
+  actions,
+}: {
+  studentId: string;
+  actions: CsActionRow[];
+}) {
+  const fetcher = useFetcher<{ ok?: true; error?: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const formRef = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    if (fetcher.state === "idle" && fetcher.data && "ok" in fetcher.data && fetcher.data.ok) {
+      formRef.current?.reset();
+      navigate(location.pathname + location.search, {
+        replace: true,
+        preventScrollReset: true,
+      });
+    }
+  }, [fetcher.state, fetcher.data, navigate, location.pathname, location.search]);
+  return (
+    <Card id="cs-history" className="scroll-mt-20">
+      <CardHeader className="pb-2">
+        <p className="inline-flex items-center gap-1.5 text-sm font-semibold">
+          <ClipboardListIcon className="text-link size-4" />
+          CS 처리 이력 ({actions.length})
+        </p>
+      </CardHeader>
+      <Separator />
+      <CardContent className="space-y-3 p-4">
+        <fetcher.Form
+          ref={formRef}
+          method="post"
+          action="/api/admin/cs-memo"
+          className="bg-muted/30 flex items-end gap-2 rounded-md border p-3"
+        >
+          <input type="hidden" name="studentId" value={studentId} />
+          <label className="flex flex-1 flex-col gap-1">
+            <span className="text-muted-foreground text-[11px] font-semibold">
+              상담 메모 (내부용 — 응대·문의·처리 내용 기록)
+            </span>
+            <input
+              name="note"
+              required
+              maxLength={2000}
+              placeholder="예: 결제 오류 문의 — 카드사 승인지연 안내, 재시도 요청"
+              className="border-input bg-background h-8 rounded-md border px-2 text-xs"
+            />
+          </label>
+          <Button type="submit" size="sm" disabled={fetcher.state !== "idle"}>
+            <PlusIcon className="size-3.5" /> 메모
+          </Button>
+        </fetcher.Form>
+        {fetcher.data && "error" in fetcher.data ? (
+          <p className="text-rose-600 text-xs">{fetcher.data.error}</p>
+        ) : null}
+
+        {actions.length === 0 ? (
+          <p className="text-muted-foreground py-2 text-center text-xs">
+            아직 CS 처리 이력이 없습니다.
+          </p>
+        ) : (
+          <ul className="space-y-1.5">
+            {actions.map((a) => (
+              <li
+                key={a.actionId}
+                className="bg-card flex items-start gap-2 rounded-md border p-2.5 text-xs"
+              >
+                <span className="bg-muted text-foreground/80 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold">
+                  {CS_ACTION_LABEL[a.kind] ?? a.kind}
+                </span>
+                <span className="min-w-0 flex-1 break-words">{a.note}</span>
+                <span className="text-muted-foreground shrink-0 text-[10px] tabular-nums">
+                  {a.actorName ?? "-"} · {fmtCsTime(a.createdAt)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 function NotesSection({
   studentId,

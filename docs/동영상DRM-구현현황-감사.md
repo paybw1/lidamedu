@@ -87,7 +87,7 @@
 **일부만(추가 개발 필요)**
 
 - ★★ **회원별 접속 환경 확인** — admin-access-logs가 회원별 client(PC/모바일)/browser/device(OS)/ip 표시(parseUserAgent). 단 '오류 발생 당시' 연계·앱 버전 정보는 없음(로그인 시점 환경만).
-- ★★★★ **관리자 메모 등록** — cs_actions 'memo' kind 정의만. recordCsAction는 기기초기화에서만 호출·회원 상담메모 입력 UI 없음
+- ✅ **관리자 메모 등록** — [해결 2026-07-10] admin-student-detail CS 처리 이력 섹션의 상담 메모 입력(cs_actions memo). recordCsAction 이 기기초기화 외 memo 경로로도 호출됨.
 
 <sub>구현완료 1건: 배수 복구 / 수강기간 보상 처리</sub>
 
@@ -123,8 +123,8 @@
 
 **일부만(추가 개발 필요)**
 
-- ★★★★★ **상담 메모 저장** — student_notes(상담 코멘트) admin-student-detail CRUD 존재하나 cohort 학습상담 한정. CS용 cs_actions memo kind는 저장/조회 UI 없음(listCsActionsForUser 미소비)
-- ★★★★ **처리 이력 확인** — cs_actions 통합원장+enrollment/device 미러·listCsActionsForUser 함수 존재하나 이를 표시하는 화면 없음(미소비)
+- ✅ **상담 메모 저장** — [해결 2026-07-10] admin-student-detail 'CS 처리 이력' 섹션(manager+)에 상담 메모 입력(cs_actions kind=memo, /api/admin/cs-memo).
+- ✅ **처리 이력 확인** — [해결 2026-07-10] 같은 섹션이 listCsActionsForUser 를 소비해 기기초기화·연장·차단·환불지원·메모 등 CS 원장 통합 표시. enrollment 조치(set_dates/set_blocked_lessons 포함)는 logEnrollmentAdminAction 이 cs_actions 로 미러.
 
 <sub>구현완료 5건: 회원 검색, 수강 중인 강의 확인, 기기 초기화, 배수 복구, 수강기간 연장</sub>
 

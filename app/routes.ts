@@ -935,6 +935,7 @@ export default [
       // 페이지 이미지 signed URL 창 발급(유출방지 ① — 원본 PDF 비전달).
       route("/api/note-pages", "features/lectures/api/lecture-note-pages.tsx"),
       route("/api/admin/student-note", "features/admin/api/student-note.tsx"),
+      route("/api/admin/cs-memo", "features/admin/api/cs-memo.tsx"),
       route(
         "/api/admin/problem-review",
         "features/admin/api/problem-review.tsx",
