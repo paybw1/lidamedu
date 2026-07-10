@@ -18,6 +18,10 @@ import {
   expireOverdueBankTransfers,
 } from "~/features/orders/bank-transfer.server";
 import { refundOrderItem } from "~/features/orders/orders.server";
+import {
+  listPendingRefundRequests,
+  resolveRefundRequest,
+} from "~/features/orders/refund-requests.server";
 
 import type { Route } from "./+types/admin-orders";
 
@@ -84,6 +88,9 @@ export async function loader({ request }: Route.LoaderArgs) {
     monthRefund += Number(s.refund_krw ?? 0);
     if (s.sale_date === todayKst) todayGross = Number(s.gross_krw ?? 0);
   }
+
+  // P3 — 대기 환불 요청(사용자 개시)
+  const refundRequests = await listPendingRefundRequests();
 
   // 입금 대기 무통장 목록
   const { data: pendingTransfers } = await adminClient
@@ -180,6 +187,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   return {
     rows,
     transfers,
+    refundRequests,
     q,
     status,
     role,
@@ -201,6 +209,25 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ ok: true as const, confirmed: true });
   }
 
+  if (intent === "resolve_refund") {
+    const refundRequestId = String(fd.get("refundRequestId") ?? "");
+    const approve = fd.get("approve") === "1";
+    const note = String(fd.get("note") ?? "").trim();
+    if (!refundRequestId) return data({ error: "잘못된 요청" }, { status: 400 });
+    const result = await resolveRefundRequest({
+      refundRequestId,
+      approve,
+      actorId: user.id,
+      note,
+    });
+    if (!result.ok) return data({ error: result.error }, { status: 400 });
+    return data({
+      ok: true as const,
+      resolved: approve ? "approved" : "rejected",
+      refundedKrw: result.refundedKrw,
+    });
+  }
+
   const orderItemId = String(fd.get("orderItemId") ?? "");
   const reason = String(fd.get("reason") ?? "").trim();
   if (!orderItemId || !reason) return data({ error: "환불 사유를 입력해 주세요." }, { status: 400 });
@@ -210,7 +237,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function AdminOrders({ loaderData }: Route.ComponentProps) {
-  const { rows, transfers, q, status, role, sales } = loaderData;
+  const { rows, transfers, refundRequests, q, status, role, sales } = loaderData;
   return (
     <AdminShell
       cluster="sales"
@@ -238,6 +265,20 @@ export default function AdminOrders({ loaderData }: Route.ComponentProps) {
           </div>
         ))}
       </div>
+
+      {/* P3 — 사용자 환불 요청 대기 (승인 시 부분취소·회수 실행) */}
+      {refundRequests.length > 0 ? (
+        <section className="border-rose-500/40 bg-rose-500/5 mb-4 rounded-xl border p-3">
+          <h3 className="mb-2 text-[13px] font-bold">
+            환불 요청 대기 {refundRequests.length}건 — 승인 시 토스 부분취소 + 수강권 회수가 실행됩니다
+          </h3>
+          <ul className="space-y-1.5">
+            {refundRequests.map((r) => (
+              <RefundRequestRow key={r.refundRequestId} req={r} />
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {/* 4b — 무통장 입금 대기 (수동 승인) */}
       {transfers.length > 0 ? (
@@ -355,6 +396,104 @@ function BankTransferRow({
       >
         입금 확인 → 지급
       </Button>
+    </li>
+  );
+}
+
+function RefundRequestRow({
+  req,
+}: {
+  req: {
+    refundRequestId: string;
+    orderNo: string;
+    userName: string | null;
+    memberNo: number | null;
+    itemLabel: string;
+    itemAmountKrw: number;
+    alreadyRefunded: boolean;
+    reason: string;
+    createdAt: string;
+  };
+}) {
+  const fetcher = useFetcher<{ ok?: boolean; error?: string; resolved?: string }>();
+  useEffect(() => {
+    if (fetcher.state !== "idle" || !fetcher.data) return;
+    if (fetcher.data.error) toast.error(fetcher.data.error);
+    else if (fetcher.data.ok) {
+      toast.success(
+        fetcher.data.resolved === "approved"
+          ? "환불을 승인했습니다 — 부분취소·회수가 실행되었습니다."
+          : "환불 요청을 반려했습니다.",
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetcher.state, fetcher.data]);
+
+  const approve = () => {
+    if (req.alreadyRefunded) {
+      toast.error("이미 환불된 항목입니다.");
+      return;
+    }
+    const note = prompt(
+      `'${req.itemLabel}' (₩${req.itemAmountKrw.toLocaleString("ko-KR")}) 환불을 승인합니다.\n메모(선택):`,
+      "",
+    );
+    if (note === null) return;
+    if (!confirm("승인하면 토스 부분취소와 수강권 회수가 즉시 실행됩니다. 진행할까요?")) return;
+    const fd = new FormData();
+    fd.set("intent", "resolve_refund");
+    fd.set("refundRequestId", req.refundRequestId);
+    fd.set("approve", "1");
+    fd.set("note", note.trim());
+    fetcher.submit(fd, { method: "post" });
+  };
+  const reject = () => {
+    const note = prompt(`환불 요청 반려 사유(학생에게 참고용으로 기록됩니다):`);
+    if (!note?.trim()) return;
+    const fd = new FormData();
+    fd.set("intent", "resolve_refund");
+    fd.set("refundRequestId", req.refundRequestId);
+    fd.set("approve", "0");
+    fd.set("note", note.trim());
+    fetcher.submit(fd, { method: "post" });
+  };
+
+  return (
+    <li className="bg-card border-border/60 flex flex-wrap items-center gap-2.5 rounded-lg border px-3 py-2 text-[12px]">
+      <span className="font-mono text-muted-foreground">{req.orderNo}</span>
+      <span className="font-semibold">{req.userName ?? "(이름 없음)"}</span>
+      {req.memberNo != null ? (
+        <span className="text-muted-foreground tabular-nums">No.{req.memberNo}</span>
+      ) : null}
+      <span>{req.itemLabel}</span>
+      <span className="tabular-nums">₩{req.itemAmountKrw.toLocaleString("ko-KR")}</span>
+      <span className="text-muted-foreground max-w-[16rem] truncate" title={req.reason}>
+        사유: {req.reason}
+      </span>
+      {req.alreadyRefunded ? (
+        <Chip tone="coral">이미 환불됨</Chip>
+      ) : null}
+      <div className="ml-auto flex items-center gap-1.5">
+        <Button
+          type="button"
+          size="sm"
+          className="h-7 text-[12px]"
+          onClick={approve}
+          disabled={fetcher.state !== "idle" || req.alreadyRefunded}
+        >
+          승인 → 환불
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-7 text-[12px]"
+          onClick={reject}
+          disabled={fetcher.state !== "idle"}
+        >
+          반려
+        </Button>
+      </div>
     </li>
   );
 }

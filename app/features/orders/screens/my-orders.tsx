@@ -1,11 +1,14 @@
 // /lecture/orders — 내 주문·배송 조회 (feat-11-004 4c, 구 /me/orders). RLS self-read.
 
+import { useEffect } from "react";
 import { PackageIcon } from "lucide-react";
-import { redirect } from "react-router";
+import { redirect, useFetcher } from "react-router";
+import { toast } from "sonner";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { getMyRefundRequestMap } from "~/features/orders/refund-requests.server";
 
 import type { Route } from "./+types/my-orders";
 
@@ -85,6 +88,10 @@ export async function loader({ request }: Route.LoaderArgs) {
     }
   }
 
+  // P3 — 내 항목별 환불요청 상태(pending/approved/rejected)
+  const allItemIds = [...itemsByOrder.values()].flat().map((it) => it.orderItemId);
+  const refundMap = await getMyRefundRequestMap(client, user.id, allItemIds);
+
   // 4d — 내 쿠폰 (발급/사용 내역)
   const { data: coupons } = await client
     .from("user_coupons")
@@ -114,7 +121,10 @@ export async function loader({ request }: Route.LoaderArgs) {
       totalKrw: o.total_krw,
       paymentMethod: o.payment_method,
       createdAt: o.created_at,
-      items: itemsByOrder.get(o.order_id) ?? [],
+      items: (itemsByOrder.get(o.order_id) ?? []).map((it) => ({
+        ...it,
+        refundStatus: refundMap.get(it.orderItemId) ?? null,
+      })),
     })),
   };
 }
@@ -178,30 +188,7 @@ export default function MyOrders({ loaderData }: Route.ComponentProps) {
             </CardHeader>
             <CardContent className="space-y-1.5">
               {o.items.map((it) => (
-                <div
-                  key={it.orderItemId}
-                  className="border-border/60 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-[13px]"
-                >
-                  <span className={it.refundedAt ? "text-muted-foreground line-through" : "font-medium"}>
-                    {it.label}
-                    {it.quantity > 1 ? ` ×${it.quantity}` : ""}
-                  </span>
-                  {it.refundedAt ? <Badge variant="outline">환불됨</Badge> : null}
-                  {it.shipment ? (
-                    <span className="text-muted-foreground ml-auto text-[12px]">
-                      {SHIP_STATUS_LABEL[it.shipment.status] ?? it.shipment.status}
-                      {it.shipment.courier && it.shipment.trackingNo ? (
-                        <span className="ml-1 font-mono">
-                          {it.shipment.courier} {it.shipment.trackingNo}
-                        </span>
-                      ) : null}
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground ml-auto text-[12px] tabular-nums">
-                      ₩{(it.unitPriceKrw * it.quantity).toLocaleString("ko-KR")}
-                    </span>
-                  )}
-                </div>
+                <OrderItemRow key={it.orderItemId} item={it} orderStatus={o.status} />
               ))}
               <p className="text-right text-[13px] font-semibold tabular-nums">
                 합계 ₩{o.totalKrw.toLocaleString("ko-KR")}
@@ -210,6 +197,85 @@ export default function MyOrders({ loaderData }: Route.ComponentProps) {
           </Card>
         ))
       )}
+    </div>
+  );
+}
+
+const REFUND_STATUS_LABEL: Record<string, string> = {
+  pending: "환불 요청됨 (검토중)",
+  approved: "환불 승인됨",
+  rejected: "환불 요청 반려",
+};
+
+type OrderItem = {
+  orderItemId: string;
+  label: string;
+  itemType: string;
+  quantity: number;
+  unitPriceKrw: number;
+  refundedAt: string | null;
+  shipment: { status: string; courier: string | null; trackingNo: string | null } | null;
+  refundStatus: "pending" | "approved" | "rejected" | null;
+};
+
+function OrderItemRow({ item: it, orderStatus }: { item: OrderItem; orderStatus: string }) {
+  const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  useEffect(() => {
+    if (fetcher.state !== "idle" || !fetcher.data) return;
+    if (fetcher.data.error) toast.error(fetcher.data.error);
+    else if (fetcher.data.ok) toast.success("환불 요청이 접수되었습니다. 검토 후 처리됩니다.");
+  }, [fetcher.state, fetcher.data]);
+
+  const canRequest =
+    !it.refundedAt &&
+    it.refundStatus == null &&
+    ["paid", "partially_refunded"].includes(orderStatus);
+
+  const requestRefund = () => {
+    const reason = prompt(`'${it.label}' 항목 환불 사유를 입력해 주세요:`);
+    if (!reason?.trim()) return;
+    const fd = new FormData();
+    fd.set("orderItemId", it.orderItemId);
+    fd.set("reason", reason.trim());
+    fetcher.submit(fd, { method: "post", action: "/api/refund-request" });
+  };
+
+  return (
+    <div className="border-border/60 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-[13px]">
+      <span className={it.refundedAt ? "text-muted-foreground line-through" : "font-medium"}>
+        {it.label}
+        {it.quantity > 1 ? ` ×${it.quantity}` : ""}
+      </span>
+      {it.refundedAt ? <Badge variant="outline">환불됨</Badge> : null}
+      {!it.refundedAt && it.refundStatus ? (
+        <Badge variant={it.refundStatus === "rejected" ? "outline" : "secondary"} className="text-[11px]">
+          {REFUND_STATUS_LABEL[it.refundStatus]}
+        </Badge>
+      ) : null}
+      {it.shipment ? (
+        <span className="text-muted-foreground ml-auto text-[12px]">
+          {SHIP_STATUS_LABEL[it.shipment.status] ?? it.shipment.status}
+          {it.shipment.courier && it.shipment.trackingNo ? (
+            <span className="ml-1 font-mono">
+              {it.shipment.courier} {it.shipment.trackingNo}
+            </span>
+          ) : null}
+        </span>
+      ) : (
+        <span className="text-muted-foreground ml-auto text-[12px] tabular-nums">
+          ₩{(it.unitPriceKrw * it.quantity).toLocaleString("ko-KR")}
+        </span>
+      )}
+      {canRequest ? (
+        <button
+          type="button"
+          onClick={requestRefund}
+          disabled={fetcher.state !== "idle"}
+          className="border-border h-6 rounded border px-2 text-[11px] font-medium text-rose-600 hover:bg-rose-500/10 disabled:opacity-50 dark:text-rose-400"
+        >
+          환불 요청
+        </button>
+      ) : null}
     </div>
   );
 }

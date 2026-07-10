@@ -132,7 +132,7 @@
 
 **일부만(추가 개발 필요)**
 
-- ★★★★★ **환불관리** — admin-orders 항목별 부분/전체 환불+토스 부분취소 관리 있으나 사용자 환불요청→승인/거절 워크플로 없음(운영자 개시만)
+- ✅ **환불관리** — [해결 2026-07-10] 사용자 개시 환불요청 워크플로 신설(refund_requests 테이블). 학생 /lecture/orders 항목별 '환불 요청'(reason 필수, 항목당 대기 1건 유니크)→admin-orders 상단 대기 큐에서 승인(refundOrderItem=토스 부분취소·수강권 회수·CS 미러 실행)/반려(사유 기록). 상태는 학생 주문화면에 배지 노출.
 - ✅ **전자결제관리** — [해결 2026-07-10] admin-payments 결제내역에 결제수단(toss_response.method '카드' 등 → 비토스는 order.payment_method 라벨)·승인번호(toss_payment_key, 토스주문번호 병기) 컬럼 추가. 학생 /lecture/payments 결제내역에도 승인번호 노출.
 - ★★ **임시주문항목관리** — orders draft/pending 상태 존재·admin-orders status 필터로 조회 가능하나 전용 임시주문항목 관리 화면 없음
 - ★★★★ **도서 주문 분리 조회** — order_items.item_type(book) 기록·'(도서)' 라벨·상태/텍스트 검색은 있으나 강의/도서 구분 필터·'교재 포함만' 필터 없음
