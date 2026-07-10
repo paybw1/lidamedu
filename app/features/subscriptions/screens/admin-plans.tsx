@@ -11,6 +11,7 @@ import { Input } from "~/core/components/ui/input";
 import { roleAtLeast } from "~/core/lib/roles";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
+import { PlanPolicyFields } from "~/features/subscriptions/components/plan-policy-fields";
 import {
   Chip,
   IndexTable,
@@ -24,7 +25,11 @@ import {
   type ProductKind,
   type SubscriptionPlan,
 } from "~/features/subscriptions/labels";
-import { listAllPlans } from "~/features/subscriptions/queries.server";
+import {
+  getPlanPolicies,
+  listAllPlans,
+  type PlanPolicy,
+} from "~/features/subscriptions/queries.server";
 import { LAW_SUBJECTS, LAW_SUBJECT_SLUGS } from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/admin-plans";
@@ -44,7 +49,11 @@ export async function loader({ request }: Route.LoaderArgs) {
     throw data("Forbidden — manager only", { status: 403 });
   }
   const plans = await listAllPlans();
-  return { plans, role };
+  const coursePlanIds = plans
+    .filter((p) => p.productKind === "course" || p.productKind === "tpass")
+    .map((p) => p.planId);
+  const policies = await getPlanPolicies(coursePlanIds);
+  return { plans, policies, role };
 }
 
 const subjectName = (slug: string) =>
@@ -60,8 +69,11 @@ function isoToLocalInput(iso: string | null): string {
 }
 
 export default function AdminPlans({ loaderData }: Route.ComponentProps) {
-  const { plans, role } = loaderData;
+  const { plans, policies, role } = loaderData;
   const [adding, setAdding] = useState(false);
+  const coursePlans = plans
+    .filter((p) => p.productKind === "course" || p.productKind === "tpass")
+    .map((p) => ({ planId: p.planId, name: p.name }));
 
   return (
     <AdminShell
@@ -77,7 +89,11 @@ export default function AdminPlans({ loaderData }: Route.ComponentProps) {
     >
       {adding ? (
         <div className="mb-3">
-          <PlanForm mode="create" onClose={() => setAdding(false)} />
+          <PlanForm
+            mode="create"
+            coursePlans={coursePlans}
+            onClose={() => setAdding(false)}
+          />
         </div>
       ) : null}
 
@@ -94,14 +110,29 @@ export default function AdminPlans({ loaderData }: Route.ComponentProps) {
         ]}
       >
         {plans.map((p) => (
-          <PlanRow key={p.planId} plan={p} />
+          <PlanRow
+            key={p.planId}
+            plan={p}
+            policy={policies[p.planId]}
+            coursePlans={coursePlans}
+          />
         ))}
       </IndexTable>
     </AdminShell>
   );
 }
 
-function PlanRow({ plan }: { plan: SubscriptionPlan }) {
+type CoursePlanRef = { planId: string; name: string };
+
+function PlanRow({
+  plan,
+  policy,
+  coursePlans,
+}: {
+  plan: SubscriptionPlan;
+  policy?: PlanPolicy;
+  coursePlans: CoursePlanRef[];
+}) {
   const [editing, setEditing] = useState(false);
   return (
     <>
@@ -153,6 +184,8 @@ function PlanRow({ plan }: { plan: SubscriptionPlan }) {
             <PlanForm
               mode="update"
               plan={plan}
+              policy={policy}
+              coursePlans={coursePlans}
               onClose={() => setEditing(false)}
             />
           </td>
@@ -184,10 +217,14 @@ function FormField({
 function PlanForm({
   mode,
   plan,
+  policy,
+  coursePlans,
   onClose,
 }: {
   mode: "create" | "update";
   plan?: SubscriptionPlan;
+  policy?: PlanPolicy;
+  coursePlans: CoursePlanRef[];
   onClose: () => void;
 }) {
   const fetcher = useFetcher<{ ok?: true; error?: string }>();
@@ -195,6 +232,10 @@ function PlanForm({
   const location = useLocation();
   const isSaving = fetcher.state !== "idle";
   const hasError = fetcher.data && "error" in fetcher.data;
+  const [productKind, setProductKind] = useState<ProductKind>(
+    (plan?.productKind ?? "subject") as ProductKind,
+  );
+  const showPolicy = productKind === "course" || productKind === "tpass";
 
   useEffect(() => {
     if (
@@ -252,7 +293,8 @@ function PlanForm({
         <FormField label="종류">
           <select
             name="productKind"
-            defaultValue={(plan?.productKind ?? "subject") as ProductKind}
+            value={productKind}
+            onChange={(e) => setProductKind(e.target.value as ProductKind)}
             className="border-input bg-background h-8 w-full rounded-md border px-2 text-xs"
           >
             <option value="subject">개별 과목</option>
@@ -357,6 +399,14 @@ function PlanForm({
           </div>
         </div>
       </div>
+
+      {showPolicy ? (
+        <PlanPolicyFields
+          policy={policy}
+          coursePlans={coursePlans}
+          currentPlanId={plan?.planId}
+        />
+      ) : null}
 
       <label className="inline-flex items-center gap-1.5 text-xs">
         <input

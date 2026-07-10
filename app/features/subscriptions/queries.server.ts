@@ -161,6 +161,122 @@ export async function upsertPlan(
   return { ok: true, planId: data.plan_id };
 }
 
+// ─── 강의 수강 정책 (plan_policies, course/tpass 전용) ───
+// DRM 감사 ★★★★★ 공백(배수·수강기간·일시정지·기기·다운로드·연장) 편집 대상.
+// enforcement 소비처: orders.server(수강기간·배수 스냅샷), playback.server(기기 슬롯).
+
+export interface PlanPolicy {
+  planId: string;
+  multiplier: number | null;
+  durationDays: number | null;
+  fixedEndDate: string | null;
+  allowDownload: boolean;
+  allowPc: boolean;
+  allowMobile: boolean;
+  maxDevicesPc: number;
+  maxDevicesMobile: number;
+  pauseAllowed: boolean;
+  pauseMaxCount: number;
+  pauseMinDays: number;
+  pauseMaxDays: number;
+  pauseTotalDays: number;
+  extensionAllowed: boolean;
+  extensionPlanIds: string[];
+}
+
+const POLICY_COLUMNS =
+  "plan_id, multiplier, duration_days, fixed_end_date, allow_download, allow_pc, allow_mobile, max_devices_pc, max_devices_mobile, pause_allowed, pause_max_count, pause_min_days, pause_max_days, pause_total_days, extension_allowed, extension_plan_ids";
+
+function rowToPolicy(r: {
+  plan_id: string;
+  multiplier: number | null;
+  duration_days: number | null;
+  fixed_end_date: string | null;
+  allow_download: boolean;
+  allow_pc: boolean;
+  allow_mobile: boolean;
+  max_devices_pc: number;
+  max_devices_mobile: number;
+  pause_allowed: boolean;
+  pause_max_count: number;
+  pause_min_days: number;
+  pause_max_days: number;
+  pause_total_days: number;
+  extension_allowed: boolean;
+  extension_plan_ids: unknown;
+}): PlanPolicy {
+  return {
+    planId: r.plan_id,
+    multiplier: r.multiplier,
+    durationDays: r.duration_days,
+    fixedEndDate: r.fixed_end_date,
+    allowDownload: r.allow_download,
+    allowPc: r.allow_pc,
+    allowMobile: r.allow_mobile,
+    maxDevicesPc: r.max_devices_pc,
+    maxDevicesMobile: r.max_devices_mobile,
+    pauseAllowed: r.pause_allowed,
+    pauseMaxCount: r.pause_max_count,
+    pauseMinDays: r.pause_min_days,
+    pauseMaxDays: r.pause_max_days,
+    pauseTotalDays: r.pause_total_days,
+    extensionAllowed: r.extension_allowed,
+    extensionPlanIds: Array.isArray(r.extension_plan_ids)
+      ? (r.extension_plan_ids as string[])
+      : [],
+  };
+}
+
+// planId → PlanPolicy 맵. 정책 행이 없는 플랜은 맵에서 제외(폼이 기본값 사용). adminClient.
+export async function getPlanPolicies(
+  planIds: string[],
+): Promise<Record<string, PlanPolicy>> {
+  if (planIds.length === 0) return {};
+  const admin = adminClient as SupabaseClient<Database>;
+  const { data, error } = await admin
+    .from("plan_policies")
+    .select(POLICY_COLUMNS)
+    .in("plan_id", planIds);
+  if (error) throw error;
+  const out: Record<string, PlanPolicy> = {};
+  for (const r of data ?? []) out[r.plan_id] = rowToPolicy(r);
+  return out;
+}
+
+export type UpsertPlanPolicyInput = Omit<PlanPolicy, "planId">;
+
+// 정책 생성/갱신(plan_id 유일). adminClient.
+export async function upsertPlanPolicy(
+  planId: string,
+  input: UpsertPlanPolicyInput,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const admin = adminClient as SupabaseClient<Database>;
+  const { error } = await admin.from("plan_policies").upsert(
+    {
+      plan_id: planId,
+      multiplier: input.multiplier,
+      duration_days: input.durationDays,
+      fixed_end_date: input.fixedEndDate,
+      allow_download: input.allowDownload,
+      allow_pc: input.allowPc,
+      allow_mobile: input.allowMobile,
+      max_devices_pc: input.maxDevicesPc,
+      max_devices_mobile: input.maxDevicesMobile,
+      pause_allowed: input.pauseAllowed,
+      pause_max_count: input.pauseMaxCount,
+      pause_min_days: input.pauseMinDays,
+      pause_max_days: input.pauseMaxDays,
+      pause_total_days: input.pauseTotalDays,
+      extension_allowed: input.extensionAllowed,
+      extension_plan_ids: input.extensionPlanIds as never,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "plan_id" },
+  );
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
 export interface ActiveSubscriptionInfo {
   hasActive: boolean;
   subscription: UserSubscription | null;

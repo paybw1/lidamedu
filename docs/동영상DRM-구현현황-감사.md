@@ -18,11 +18,11 @@
 **일부만(추가 개발 필요)**
 
 - ★★★★★ **단과 강의 생성** — product_kind 'course'(admin-plans)+plan_courses+fulfillCourseEnrollments+카탈로그 판매 지원. 단, 단과(course)상품↔강의 연결 UI 없음 — publish 연결제안은 tpass 전용(queries listTpassLinkSuggestions).
-- ★★★★★ **수강기간 설정** — 상대 일수(durationDays) 설정·orders.server는 fixed_end_date 분기도 처리하나 plan_policies.fixed_end_date/'특정 날짜까지' 편집 UI 없음
-- ★★★★★ **수강기간 일시정지 정책 설정** — plan_policies 컬럼(pause_allowed/total_days/max_count/min·max_days)·학생측 강제 존재하나 관리자 설정 UI 없음(admin-plans PlanForm에 pause/배수/기기 필드 부재, SQL로만 세팅)
-- ★★★★★ **수강 배수 설정** — plan_policies.multiplier가 지급 스냅샷·재생판정에 강제(playback/orders/enrollments)되나, 배수를 설정하는 admin UI 없음(plan_policies는 읽기만, admin-plans 폼에 없음).
-- ★★★★★ **PC / 모바일 수강 가능 여부** — plan_policies.max_devices_pc/mobile + playback 슬롯검사 존재하나 상품별 PC/모바일 허용 설정 UI 없음(admin-plans 미편집), ENFORCE_DEVICE off
-- ★★★★ **수강 연장 가능 여부** — plan_policies.extension_allowed/extension_plan_ids 컬럼만 존재·미소비·설정UI 없음. 관리자 수동 extend만 구현
+- ✅ **수강기간 설정** — [해결 2026-07-10] admin-plans PlanForm '강의 수강 정책' 섹션에서 배수/고정일수/고정종료일 3방식 편집(plan_policies upsert). orders.server 소비 기존 완비.
+- ✅ **수강기간 일시정지 정책 설정** — [해결 2026-07-10] PlanForm 정책 섹션에서 pause_allowed + max_count/min·max_days/total_days 편집. 학생측 강제 기존 완비.
+- ✅ **수강 배수 설정** — [해결 2026-07-10] PlanForm 정책 섹션 배수(N) 입력 → plan_policies.multiplier. playback/orders/enrollments 강제 기존 완비.
+- ✅ **PC / 모바일 수강 가능 여부** — [해결 2026-07-10] PlanForm 정책 섹션에서 allow_pc/allow_mobile + max_devices_pc/mobile 편집. (단 playback 실제 슬롯강제는 ENFORCE_DEVICE off·벤더 fingerprint 대기 — 별개 gap)
+- ★★★★ **수강 연장 가능 여부** — [부분해결 2026-07-10] PlanForm 정책 섹션에서 extension_allowed·extension_plan_ids 설정 UI 추가. 단 학생/관리자 연장 소비 로직은 미구현(수동 extend만).
 - ★★★★★ **판매중 / 판매중지 설정** — admin-plans.tsx isActive(활성/비활성)+availableFrom(오픈일)만. 판매예정/일시중지/판매종료/숨김 5단계 상태 미구현
 - ★★★★★ **강의 자료 업로드** — lesson_materials 테이블 존재·queries.server CourseDetail에서 조회만. 업로드 action/UI 없고 course-detail 화면에 렌더도 안 됨.
 
