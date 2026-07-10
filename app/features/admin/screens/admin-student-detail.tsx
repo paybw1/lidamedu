@@ -1809,7 +1809,7 @@ function ActivitySection({ activity }: { activity: StudentActivity }) {
     posts.length === 0 &&
     bugReports.length === 0;
   return (
-    <Card>
+    <Card id="activity" className="scroll-mt-20">
       <CardHeader className="pb-2">
         <p className="inline-flex items-center gap-1.5 text-sm font-semibold">
           <MessageSquareIcon className="text-link size-4" />

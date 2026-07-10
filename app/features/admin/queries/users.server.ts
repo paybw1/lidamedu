@@ -32,6 +32,10 @@ export interface AdminUserRow {
   activePlanNames: string[];
   /** 실결제금액 = 완료 결제 합 − 환불 합. */
   netPaidKrw: number;
+  /** 이 회원이 제출한 오류신고(bug_reports) 총 건수. */
+  bugReportCount: number;
+  /** 그 중 미처리(접수·처리중) 건수. */
+  bugOpenCount: number;
 }
 
 export interface ListAdminUsersOptions {
@@ -64,6 +68,7 @@ export async function listAdminUsers(
     { data: memberRows },
     { data: subRows },
     { data: payRows },
+    { data: bugRows },
   ] = await Promise.all([
     (client as SupabaseClient<Database>)
       .from("profiles")
@@ -84,6 +89,10 @@ export async function listAdminUsers(
       .from("payments")
       .select("user_id, amount_krw, status, refund_amount_krw")
       .in("status", ["completed", "refunded"])
+      .limit(10000),
+    (client as SupabaseClient<Database>)
+      .from("bug_reports")
+      .select("reporter_id, status")
       .limit(10000),
   ]);
   if (pErr) throw pErr;
@@ -114,6 +123,16 @@ export async function listAdminUsers(
     const net = p.amount_krw - (p.refund_amount_krw ?? 0);
     netByUser.set(p.user_id, (netByUser.get(p.user_id) ?? 0) + net);
   }
+  // 오류신고 건수(전체 + 미처리) — 목록에서 바로 확인.
+  const bugTotalByUser = new Map<string, number>();
+  const bugOpenByUser = new Map<string, number>();
+  for (const b of bugRows ?? []) {
+    if (!b.reporter_id) continue;
+    bugTotalByUser.set(b.reporter_id, (bugTotalByUser.get(b.reporter_id) ?? 0) + 1);
+    if (b.status !== "done") {
+      bugOpenByUser.set(b.reporter_id, (bugOpenByUser.get(b.reporter_id) ?? 0) + 1);
+    }
+  }
 
   let rows: AdminUserRow[] = authList.data.users.map((u) => {
     const profile = profilesById.get(u.id);
@@ -136,6 +155,8 @@ export async function listAdminUsers(
       cohortNames: cohortsByUser.get(u.id) ?? [],
       activePlanNames: plansByUser.get(u.id) ?? [],
       netPaidKrw: netByUser.get(u.id) ?? 0,
+      bugReportCount: bugTotalByUser.get(u.id) ?? 0,
+      bugOpenCount: bugOpenByUser.get(u.id) ?? 0,
     };
   });
 
