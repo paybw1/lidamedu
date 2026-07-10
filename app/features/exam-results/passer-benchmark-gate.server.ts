@@ -48,7 +48,7 @@ export async function isPasserBenchmarkEnabled(
   let q = admin
     .from("exam_results")
     .select(
-      "user_id, profiles!exam_results_user_id_fkey(pool_consent_at, is_synthetic)",
+      "user_id, profiles!exam_results_user_id_fkey(pool_consent_at, is_synthetic, role)",
     )
     .eq("status", "passed");
   if (round) q = q.eq("exam_round", round);
@@ -66,10 +66,12 @@ export async function isPasserBenchmarkEnabled(
     };
   }
 
+  // 운영자/강사의 자가신고 합격은 실 합격자 풀에서 제외 — 학생만 카운트.
   const realSampleSize = (data ?? []).filter(
     (r) =>
       r.profiles?.pool_consent_at !== null &&
-      r.profiles?.is_synthetic !== true,
+      r.profiles?.is_synthetic !== true &&
+      r.profiles?.role === "student",
   ).length;
 
   const enabled = realSampleSize >= PASSER_BENCHMARK_MIN_SAMPLE;

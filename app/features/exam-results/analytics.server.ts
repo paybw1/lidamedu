@@ -71,6 +71,11 @@ export interface ListPasserCasesFilter {
    * 1년차 운영에서 실 합격자가 0명이면 결과 표본 = 0 이 정상 동작.
    */
   excludeSynthetic?: boolean;
+  /**
+   * 운영자/강사(role≠student)의 자가신고 합격을 실 합격자 풀에서 제외.
+   * 학생 벤치마크(합격자 평균)는 true — 원장 시연 데이터가 평균을 오염하지 않게.
+   */
+  excludeStaff?: boolean;
 }
 
 // 내부 헬퍼 — 합격/비합격 공용. status 별 case + 학습 집계.
@@ -82,7 +87,7 @@ async function listExamCasesByStatus(
   let q = admin
     .from("exam_results")
     .select(
-      "result_id, user_id, exam_year, exam_round, status, verification_status, self_reported_total_score, study_summary_md, profiles!exam_results_user_id_fkey(name, pool_consent_at, is_synthetic)",
+      "result_id, user_id, exam_year, exam_round, status, verification_status, self_reported_total_score, study_summary_md, profiles!exam_results_user_id_fkey(name, pool_consent_at, is_synthetic, role)",
     )
     .eq("status", status)
     .order("exam_year", { ascending: false })
@@ -91,8 +96,12 @@ async function listExamCasesByStatus(
   if (filter.year) q = q.eq("exam_year", filter.year);
   if (filter.round) q = q.eq("exam_round", filter.round);
   if (filter.onlyVerified) q = q.eq("verification_status", "verified");
-  const { data: rows, error } = await q;
+  const { data: rowsRaw, error } = await q;
   if (error) throw error;
+  // 운영자/강사 자가신고 제외 — 매핑 전 raw 단계에서 걸러낸다.
+  const rows = filter.excludeStaff
+    ? (rowsRaw ?? []).filter((r) => (r.profiles?.role ?? "student") === "student")
+    : (rowsRaw ?? []);
 
   let list = (rows ?? []).map((r) => ({
     resultId: r.result_id,
@@ -682,6 +691,7 @@ export async function getPasserBenchmarks(
   const passerCases = await listPasserCases({
     onlyConsented: true,
     excludeSynthetic: opts.excludeSynthetic,
+    excludeStaff: true, // 학생 벤치마크 — 운영자/강사 자가신고 제외(게이트와 일관).
     round: hasPlan ? (profile!.next_exam_round as ExamRound) : null,
   });
   const consented = passerCases.filter((c) => c.aggregates !== null);
