@@ -38,6 +38,7 @@ import {
   Pill,
 } from "~/features/latest/components/latest-list";
 import { McqAreaShell } from "~/features/mcq-packs/components/mcq-area-shell";
+import { PastExamRoundToggle } from "~/features/latest/components/past-exam-round-toggle";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
@@ -222,6 +223,9 @@ export default function LatestMcq({ loaderData }: Route.ComponentProps) {
         ) : undefined
       }
     >
+      {/* 기출문제 통합 진입점 — 1차/2차 토글. 모의고사 화면(isMock)에는 숨김. */}
+      {!isMock ? <PastExamRoundToggle active="first" /> : null}
+
       {canEdit && showAdd ? (
         <div className="mb-3.5">
           <PackForm

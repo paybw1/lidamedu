@@ -26,6 +26,7 @@ import {
   relativeKo,
 } from "~/features/latest/components/latest-list";
 import { LatestShell } from "~/features/latest/components/latest-shell";
+import { PastExamRoundToggle } from "~/features/latest/components/past-exam-round-toggle";
 import makeServerClient from "~/core/lib/supa-client.server";
 import {
   LAW_SUBJECTS,
@@ -142,6 +143,8 @@ export default function LatestEssay({ loaderData }: Route.ComponentProps) {
       title="2차 기출문제"
       desc={`${descParts.join(" · ")} — 최근 시험부터, 문제 순서대로 정리한 2차 기출문제입니다.`}
     >
+      <PastExamRoundToggle active="second" />
+
       <LatestFilterForm
         search={{
           name: "q",

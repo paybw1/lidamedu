@@ -99,8 +99,8 @@ export const NAV_GROUP_POOL = {
     items: [
       { label: "법 개정", to: "/latest/laws" },
       { label: "최근 판례", to: "/latest/cases" },
-      { label: "1차 기출문제", to: "/latest/mcq?kind=past_exam" },
-      { label: "2차 기출문제", to: "/latest/essay" },
+      // 기출문제 = 1차/2차 통합 진입점(화면 상단 토글로 구분, 기본 1차).
+      { label: "기출문제", to: "/latest/mcq?kind=past_exam" },
       // 논문·합격자 분석 = 오픈 준비 중 → 학생 숨김, staff 만 노출(staffOnly).
       { label: "논문", to: "/latest/papers", staffOnly: true },
       { label: "추록·정오표", to: "/latest/book-updates" },

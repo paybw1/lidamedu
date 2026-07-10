@@ -49,7 +49,8 @@ function LatestTabs({ active: _active }: { active: LatestCategory }) {
         to: link.to,
         label: link.label,
         dotClass: INFO_DOT_BY_TO[path],
-        match: [path],
+        // 기출문제(1차=/latest/mcq)는 2차(/latest/essay)에서도 활성 표시 — 통합 진입점.
+        match: path === "/latest/mcq" ? [path, "/latest/essay"] : [path],
       };
     },
   );
