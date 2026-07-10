@@ -55,8 +55,13 @@ function shuffle<T>(arr: T[]): T[] {
 
 export default function SubjectOx({ loaderData }: Route.ComponentProps) {
   const { subject, items, isStaff, currentUserId, isAdmin } = loaderData;
-  // 진입 시 1회 셔플 (서버 사이드 useMemo 는 idempotent — Date.now seed 없음).
-  const shuffled = useMemo(() => shuffle(items), [items]);
+  // 셔플은 지문 구성(refId 시그니처)이 바뀔 때만 재계산한다.
+  // ★채점(attempt) POST 는 loader 를 revalidate 하여 items 배열이 새 참조로 다시 내려오는데,
+  //   [items] 참조로 memo 하면 그때마다 재셔플→현재 카드가 다른 지문으로 교체되어
+  //   "해설 보는 중 다음 문제로 튀는" 버그가 났다. 내용 시그니처로 고정해 방지.
+  const itemsSig = items.map((it) => it.refId).join("|");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const shuffled = useMemo(() => shuffle(items), [itemsSig]);
 
   return (
     <div className="min-h-[calc(100vh-56px)] bg-background">
