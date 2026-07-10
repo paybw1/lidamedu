@@ -22,7 +22,10 @@ import { getStaffRole } from "~/features/laws/queries.server";
 import {
   FEATURE_LABEL,
   PRODUCT_KIND_LABEL,
+  SALE_STATUS_LABEL,
+  SALE_STATUS_ORDER,
   type ProductKind,
+  type SaleStatus,
   type SubscriptionPlan,
 } from "~/features/subscriptions/labels";
 import {
@@ -64,6 +67,17 @@ export async function loader({ request }: Route.LoaderArgs) {
   ]);
   return { plans, policies, courseLinks, editions, role };
 }
+
+const SALE_STATUS_TONE: Record<
+  SaleStatus,
+  "emerald" | "blue" | "amber" | "coral" | "outline"
+> = {
+  on_sale: "emerald",
+  scheduled: "blue",
+  paused: "amber",
+  ended: "coral",
+  hidden: "outline",
+};
 
 const subjectName = (slug: string) =>
   slug === "science"
@@ -116,7 +130,7 @@ export default function AdminPlans({ loaderData }: Route.ComponentProps) {
           { label: "종류", width: "7rem" },
           { label: "가격", align: "right", width: "7rem" },
           { label: "부여 과목" },
-          { label: "활성", align: "center", width: "5rem" },
+          { label: "판매상태", align: "center", width: "6rem" },
           { label: "", align: "right", width: "4rem" },
         ]}
       >
@@ -178,11 +192,9 @@ function PlanRow({
           )}
         </TD>
         <TD align="center">
-          {plan.isActive ? (
-            <Chip tone="emerald">활성</Chip>
-          ) : (
-            <Chip tone="neutral">비활성</Chip>
-          )}
+          <Chip tone={SALE_STATUS_TONE[plan.saleStatus] ?? "neutral"}>
+            {SALE_STATUS_LABEL[plan.saleStatus] ?? plan.saleStatus}
+          </Chip>
         </TD>
         <TD align="right">
           <button
@@ -473,16 +485,22 @@ function PlanForm({
         />
       ) : null}
 
-      <label className="inline-flex items-center gap-1.5 text-xs">
-        <input
-          type="checkbox"
-          name="isActive"
-          value="1"
-          defaultChecked={plan?.isActive ?? true}
-          className="size-3.5"
-        />
-        활성 (요금표에 노출)
-      </label>
+      <FormField label="판매 상태">
+        <select
+          name="saleStatus"
+          defaultValue={plan?.saleStatus ?? "hidden"}
+          className="border-input bg-background h-8 w-full rounded-md border px-2 text-xs sm:w-56"
+        >
+          {SALE_STATUS_ORDER.map((s) => (
+            <option key={s} value={s}>
+              {SALE_STATUS_LABEL[s]}
+            </option>
+          ))}
+        </select>
+        <span className="text-muted-foreground/70 text-[10px]">
+          판매중일 때만 요금표·카탈로그에 노출·구매 가능합니다.
+        </span>
+      </FormField>
 
       {hasError ? (
         <p className="text-rose-600 text-xs">

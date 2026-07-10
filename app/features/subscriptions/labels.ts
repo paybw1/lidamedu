@@ -46,6 +46,31 @@ export const LECTURE_PRODUCT_KINDS: ReadonlyArray<ProductKind> = [
   "tpass",
 ];
 
+// feat-8-028 / A-3 — 판매 단계(5단계). sale_status 가 단일 소유자.
+//   is_active 는 저장 시 (sale_status==='on_sale') 로 자동 미러 → 기존 소비처 무변경.
+export type SaleStatus =
+  | "scheduled" // 판매예정 — 준비됐으나 아직 미노출(오픈일 전)
+  | "on_sale" // 판매중 — 노출·구매 가능
+  | "paused" // 일시중지 — 일시적으로 판매 보류
+  | "ended" // 판매종료 — 더 이상 판매 안 함(기존 수강권 유지)
+  | "hidden"; // 숨김 — 카탈로그·요금표에서 감춤
+
+export const SALE_STATUS_LABEL: Record<SaleStatus, string> = {
+  scheduled: "판매예정",
+  on_sale: "판매중",
+  paused: "일시중지",
+  ended: "판매종료",
+  hidden: "숨김",
+};
+
+export const SALE_STATUS_ORDER: ReadonlyArray<SaleStatus> = [
+  "on_sale",
+  "scheduled",
+  "paused",
+  "ended",
+  "hidden",
+];
+
 export interface SubscriptionPlan {
   planId: string;
   code: string;
@@ -61,6 +86,8 @@ export interface SubscriptionPlan {
   availableFrom: string | null;
   displayOrder: number;
   isActive: boolean;
+  /** 판매 단계(5). is_active 는 이 값의 파생(on_sale ↔ true). */
+  saleStatus: SaleStatus;
 }
 
 export interface UserSubscription {

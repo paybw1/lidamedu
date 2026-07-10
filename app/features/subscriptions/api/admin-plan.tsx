@@ -61,7 +61,7 @@ const schema = z.object({
   productKind: z.enum(["subject", "bundle", "membership", "course", "tpass"]),
   availableFrom: z.string().datetime().nullable(),
   displayOrder: z.coerce.number().int().min(0).max(9999),
-  isActive: z.boolean(),
+  saleStatus: z.enum(["scheduled", "on_sale", "paused", "ended", "hidden"]),
 });
 
 export async function action({ request }: Route.ActionArgs) {
@@ -92,7 +92,7 @@ export async function action({ request }: Route.ActionArgs) {
     productKind: fd.get("productKind"),
     availableFrom: toIso(fd.get("availableFrom")),
     displayOrder: fd.get("displayOrder"),
-    isActive: fd.get("isActive") === "1",
+    saleStatus: fd.get("saleStatus"),
   });
   if (!parsed.success) {
     return data(
@@ -123,7 +123,7 @@ export async function action({ request }: Route.ActionArgs) {
       features,
       availableFrom: parsed.data.availableFrom,
       displayOrder: parsed.data.displayOrder,
-      isActive: parsed.data.isActive,
+      saleStatus: parsed.data.saleStatus,
     },
     parsed.data.intent,
   );
@@ -207,7 +207,7 @@ export async function action({ request }: Route.ActionArgs) {
       priceKrw: parsed.data.priceKrw,
       productKind: parsed.data.productKind,
       subjectCodes,
-      isActive: parsed.data.isActive,
+      saleStatus: parsed.data.saleStatus,
     },
   });
 
