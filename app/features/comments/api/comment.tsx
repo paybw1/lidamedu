@@ -14,7 +14,15 @@ import {
 
 const createSchema = z.object({
   intent: z.literal("create"),
-  targetType: z.enum(["article", "case", "problem"]),
+  // 정오문제(OX) 코멘트는 problem_choice / problem_box_item 을 대상으로 한다 —
+  // 이 두 값이 빠져 있어 OX 코멘트 등록이 "invalid enum value" 로 실패했었다.
+  targetType: z.enum([
+    "article",
+    "case",
+    "problem",
+    "problem_choice",
+    "problem_box_item",
+  ]),
   targetId: z.string().uuid(),
   bodyMd: z.string().min(1).max(16000),
   isPinned: z.coerce.boolean().optional(),
