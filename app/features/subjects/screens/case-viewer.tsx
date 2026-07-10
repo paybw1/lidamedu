@@ -18,6 +18,7 @@ import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
 import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
+import { SrsReturnBar } from "~/features/srs/components/srs-return-bar";
 import {
   getBookmark,
   listHighlights,
@@ -393,6 +394,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
           currentId={kase.caseId}
         />
         <HighlightToolbar targetType="case" targetId={kase.caseId} />
+        <SrsReturnBar />
 
         {replacedNotice ? (
           <div className="mb-3 rounded-lg border border-amber-300/60 bg-amber-50/60 px-4 py-2.5 text-xs text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-200">

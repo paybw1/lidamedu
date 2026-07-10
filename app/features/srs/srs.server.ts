@@ -84,6 +84,8 @@ export interface QueueItem {
   back: string;
   lawRef: string | null;
   sourceType: string | null;
+  /** 원본 조문/판례 id — 학습과목 화면 이동 링크용. */
+  sourceId: string | null;
   /** due 일 때만. */
   state: SrsState | null;
   dueDate: string | null;
@@ -133,7 +135,7 @@ export async function getReviewQueue(
   let dueQ = client
     .from("srs_review_states")
     .select(
-      "item_id, due_date, state, interval_days, repetitions, ease_factor, srs_items!inner(item_id, subject, topic, type, front, back, law_ref, source_type, deleted_at)",
+      "item_id, due_date, state, interval_days, repetitions, ease_factor, srs_items!inner(item_id, subject, topic, type, front, back, law_ref, source_type, source_id, deleted_at)",
     )
     .eq("user_id", userId)
     .lte("due_date", today)
@@ -156,6 +158,7 @@ export async function getReviewQueue(
       back: r.srs_items.back,
       lawRef: r.srs_items.law_ref,
       sourceType: r.srs_items.source_type,
+      sourceId: r.srs_items.source_id,
       state: r.state as SrsState,
       dueDate: r.due_date,
       intervalDays: r.interval_days,
@@ -240,7 +243,7 @@ async function fetchNewCandidates(
 ): Promise<QueueItem[]> {
   let q = client
     .from("srs_items")
-    .select("item_id, subject, topic, type, front, back, law_ref, source_type")
+    .select("item_id, subject, topic, type, front, back, law_ref, source_type, source_id")
     .is("deleted_at", null)
     .eq("source_type", opts.sourceType);
   if (opts.subject) q = q.eq("subject", opts.subject);
@@ -257,6 +260,7 @@ async function fetchNewCandidates(
     back: it.back,
     lawRef: it.law_ref,
     sourceType: it.source_type,
+    sourceId: it.source_id,
     state: null,
     dueDate: null,
     intervalDays: null,

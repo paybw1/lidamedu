@@ -8,11 +8,12 @@ import {
   CheckCircle2Icon,
   ClockIcon,
   EyeIcon,
+  NotebookPenIcon,
   RotateCcwIcon,
   SparklesIcon,
 } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { Link, redirect, useFetcher } from "react-router";
+import { Link, redirect, useFetcher, useLocation } from "react-router";
 
 import { PageHeader, StudentShell, Surface } from "~/core/components/student";
 import { Button } from "~/core/components/ui/button";
@@ -36,6 +37,48 @@ import {
 
 function subjectLabel(slug: string): string {
   return LAW_SUBJECTS[slug as LawSubjectSlug]?.shortName ?? slug;
+}
+
+// 카드 원본(조문/판례)의 학습과목 화면 경로. 조문은 law_ref("patent#29")의 번호로,
+// 판례는 case_id 로 링크. 없으면 null(버튼 미표시).
+function sourceHref(item: {
+  subject: string;
+  sourceType: string | null;
+  sourceId: string | null;
+  lawRef: string | null;
+}): string | null {
+  if (item.sourceType === "case" && item.sourceId) {
+    return `/subjects/${item.subject}/cases/${item.sourceId}`;
+  }
+  if (item.sourceType === "article") {
+    const num =
+      item.lawRef && item.lawRef.includes("#")
+        ? item.lawRef.split("#")[1]
+        : null;
+    if (num) return `/subjects/${item.subject}/articles/${num}`;
+  }
+  return null;
+}
+
+// 조문/판례 화면으로 넘어가는 링크 + 복귀용 srsReturn(현재 필터 + 이 카드) 부착.
+function recordHrefFor(
+  item: {
+    itemId: string;
+    subject: string;
+    sourceType: string | null;
+    sourceId: string | null;
+    lawRef: string | null;
+  },
+  filter: { sourceType: string | null; subject: string | null },
+): string | null {
+  const base = sourceHref(item);
+  if (!base) return null;
+  const ret = new URLSearchParams();
+  if (filter.sourceType) ret.set("type", filter.sourceType);
+  if (filter.subject) ret.set("subject", filter.subject);
+  ret.set("card", item.itemId);
+  const returnUrl = `/srs?${ret.toString()}`;
+  return `${base}?srsReturn=${encodeURIComponent(returnUrl)}`;
 }
 
 export const meta: Route.MetaFunction = () => [{ title: "암기 카드 | 리담" }];
@@ -138,7 +181,14 @@ function SrsReviewInner({
 }) {
   const { today, items, dueCount, newCount, newIntroducedToday, settings } =
     data;
-  const [cursor, setCursor] = useState(0);
+  const location = useLocation();
+  // 조문/판례 화면으로 넘어갔다 돌아왔을 때(?card=<itemId>) 그 카드로 복귀.
+  const [cursor, setCursor] = useState(() => {
+    const restore = new URLSearchParams(location.search).get("card");
+    if (!restore) return 0;
+    const i = items.findIndex((it) => it.itemId === restore);
+    return i >= 0 ? i : 0;
+  });
   const [flipped, setFlipped] = useState(false);
   const shownAtRef = useRef<number>(Date.now());
   const fetcher = useFetcher<{
@@ -256,6 +306,7 @@ function SrsReviewInner({
         ) : current ? (
           <CardArea
             item={current}
+            recordHref={recordHrefFor(current, data.filter)}
             flipped={flipped}
             submitting={fetcher.state !== "idle"}
             onFlip={() => setFlipped(true)}
@@ -425,17 +476,20 @@ type Item = Extract<
 
 function CardArea({
   item,
+  recordHref,
   flipped,
   submitting,
   onFlip,
   onGrade,
 }: {
   item: Item;
+  recordHref: string | null;
   flipped: boolean;
   submitting: boolean;
   onFlip: () => void;
   onGrade: (g: Grade) => void;
 }) {
+  const sourceNoun = item.sourceType === "case" ? "판례" : "조문";
   return (
     <Surface pad={0} tone="subtle">
       <div className="px-6 pt-6 pb-2">
@@ -475,6 +529,19 @@ function CardArea({
             </p>
           ) : null}
         </div>
+
+        {/* 원본 조문/판례로 이동 — 안 떠오른 부분을 실시간 기록(포스트잇·하이라이트·즐겨찾기) */}
+        {recordHref ? (
+          <div className="mt-3 flex justify-center">
+            <Link
+              to={recordHref}
+              className="border-border bg-card text-foreground hover:border-primary hover:text-link inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors"
+            >
+              <NotebookPenIcon className="size-3.5" />
+              {sourceNoun}에서 기록하기
+            </Link>
+          </div>
+        ) : null}
 
         {/* Back (flipped) */}
         {flipped ? (

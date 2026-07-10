@@ -31,6 +31,7 @@ import { cn } from "~/core/lib/utils";
 import { GuideHelpButton } from "~/features/guide/components/guide-help-button";
 import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
 import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
+import { SrsReturnBar } from "~/features/srs/components/srs-return-bar";
 import {
   getBookmark,
   getUserArticleAnnotationCounts,
@@ -510,6 +511,7 @@ function ArticleViewerInner({
         />
       ) : null}
       <HighlightToolbar targetType="article" targetId={article.articleId} />
+      <SrsReturnBar />
 
       {/* 시점/비교 배너 — amber tone */}
       {atDate || compareDate ? (
