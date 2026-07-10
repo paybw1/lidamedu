@@ -448,6 +448,11 @@ export interface LectureProductCourse {
   courseId: string;
   title: string; // 시리즈 제목 + 에디션 라벨
 }
+export interface LectureProductBook {
+  bookId: string;
+  title: string;
+  priceKrw: number;
+}
 export interface LectureProduct {
   planId: string;
   code: string;
@@ -457,6 +462,7 @@ export interface LectureProduct {
   productKind: "course" | "tpass";
   durationDays: number;
   courses: LectureProductCourse[];
+  books: LectureProductBook[];
   owned: boolean;
 }
 
@@ -516,6 +522,37 @@ export async function listSellableLectureProducts(
     coursesByPlan.set(l.plan_id, arr);
   }
 
+  // 연결 교재(plan_books) — 판매중(listed) 도서만 크로스셀로 표시.
+  const { data: bookLinks } = await client
+    .from("plan_books")
+    .select("plan_id, book_id, sort_order")
+    .in("plan_id", planIds);
+  const bookLinkRows = bookLinks ?? [];
+  const bookInfo = new Map<string, LectureProductBook>();
+  const bookIds = [...new Set(bookLinkRows.map((l) => l.book_id))];
+  if (bookIds.length > 0) {
+    const { data: bookRows } = await client
+      .from("books")
+      .select("book_id, title, price_krw")
+      .in("book_id", bookIds)
+      .eq("listed", true)
+      .is("deleted_at", null);
+    for (const b of bookRows ?? [])
+      bookInfo.set(b.book_id, {
+        bookId: b.book_id,
+        title: b.title,
+        priceKrw: b.price_krw ?? 0,
+      });
+  }
+  const booksByPlan = new Map<string, LectureProductBook[]>();
+  for (const l of bookLinkRows) {
+    const info = bookInfo.get(l.book_id);
+    if (!info) continue; // 미판매·삭제 도서 제외
+    const arr = booksByPlan.get(l.plan_id) ?? [];
+    arr.push(info);
+    booksByPlan.set(l.plan_id, arr);
+  }
+
   // 보유 여부 — 활성·미만료 enrollment 의 plan_id.
   const ownedPlanIds = new Set<string>();
   if (userId) {
@@ -540,6 +577,7 @@ export async function listSellableLectureProducts(
     productKind: p.product_kind as "course" | "tpass",
     durationDays: p.duration_days,
     courses: coursesByPlan.get(p.plan_id) ?? [],
+    books: booksByPlan.get(p.plan_id) ?? [],
     owned: ownedPlanIds.has(p.plan_id),
   }));
 }

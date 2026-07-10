@@ -8,6 +8,7 @@ import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { FEATURE_LABEL } from "~/features/subscriptions/labels";
 import {
+  syncPlanBooks,
   syncPlanCourses,
   upsertPlan,
   upsertPlanPolicy,
@@ -195,6 +196,14 @@ export async function action({ request }: Route.ActionArgs) {
       .filter((s) => /^[0-9a-f-]{36}$/i.test(s));
     const linkRes = await syncPlanCourses(res.planId, courseIds);
     if (!linkRes.ok) return data({ error: linkRes.error }, { status: 400 });
+
+    // 연결 교재(도서) 동기화 — plan_books.
+    const bookIds = fd
+      .getAll("bookIds")
+      .map(String)
+      .filter((s) => /^[0-9a-f-]{36}$/i.test(s));
+    const bookRes = await syncPlanBooks(res.planId, bookIds);
+    if (!bookRes.ok) return data({ error: bookRes.error }, { status: 400 });
   }
 
   await logAuditEvent({

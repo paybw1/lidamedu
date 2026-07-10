@@ -12,7 +12,7 @@
 **미구현**
 
 - ★★★★ **다운로드 허용 여부** — plan_policies.allow_download 컬럼만 존재. 상품 admin-plans 폼에 토글 없고 playback/플레이어가 읽지 않음(벤더 미연동)
-- ★★★★★ **강의별 사용 도서 연결** — plan_books/course_books 링크 테이블·UI 없음. lms/lecture 결제 화면에 교재 크로스셀 연결 없음(book_bundles는 도서몰 전용)
+- ✅ **강의별 사용 도서 연결** — [해결 2026-07-10] plan_books 링크 테이블 신설. admin-plans PlanForm(course/tpass) '연결 교재' 멀티셀렉트(getPlanBookLinks/syncPlanBooks) + 수강신청 카탈로그 카드에 교재 목록·담기(addBook) 크로스셀. 판매중(listed) 도서만 노출.
 - ★★★★ **도서 재고 및 판매상태 연동** — plan_book_links 테이블 미사용·수강생 강의화면에 교재 상태 표시 없음(도서몰 v_book_stock/sale_status는 별개 존재)
 
 **일부만(추가 개발 필요)**

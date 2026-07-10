@@ -66,6 +66,29 @@ async function stockMap(bookIds: string[]): Promise<Map<string, number>> {
   return map;
 }
 
+export interface BookPickerItem {
+  bookId: string;
+  title: string;
+  priceKrw: number;
+  courseOnly: boolean;
+}
+
+// 상품↔교재 연결 picker 용 — 삭제 안 된 도서 플랫 목록. adminClient(운영 화면).
+export async function listBooksForPicker(): Promise<BookPickerItem[]> {
+  const { data, error } = await adminClient
+    .from("books")
+    .select("book_id, title, price_krw, course_only")
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((b) => ({
+    bookId: b.book_id,
+    title: b.title,
+    priceKrw: b.price_krw ?? 0,
+    courseOnly: b.course_only,
+  }));
+}
+
 export async function listBookstoreBooks(
   client: Client,
   opts: { q?: string; sort?: BookSort } = {},

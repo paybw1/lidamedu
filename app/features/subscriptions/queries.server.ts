@@ -301,6 +301,60 @@ export async function syncPlanCourses(
   return { ok: true };
 }
 
+// ─── 상품↔교재(도서) 연결 (plan_books) ───
+// 강의 상품에 사용 교재를 연결 → 카탈로그·수강화면 교재 크로스셀.
+
+// planId → 연결된 bookId[] 맵. adminClient.
+export async function getPlanBookLinks(
+  planIds: string[],
+): Promise<Record<string, string[]>> {
+  if (planIds.length === 0) return {};
+  const admin = adminClient as SupabaseClient<Database>;
+  const { data, error } = await admin
+    .from("plan_books")
+    .select("plan_id, book_id")
+    .in("plan_id", planIds);
+  if (error) throw error;
+  const out: Record<string, string[]> = {};
+  for (const r of data ?? []) (out[r.plan_id] ??= []).push(r.book_id);
+  return out;
+}
+
+// 연결 동기화 — 목표 bookIds 로 교체(제거분 delete + 추가분 upsert). adminClient.
+export async function syncPlanBooks(
+  planId: string,
+  bookIds: string[],
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const admin = adminClient as SupabaseClient<Database>;
+  const target = new Set(bookIds);
+  const { data: existing, error: exErr } = await admin
+    .from("plan_books")
+    .select("book_id")
+    .eq("plan_id", planId);
+  if (exErr) return { ok: false, error: exErr.message };
+  const have = new Set((existing ?? []).map((r) => r.book_id));
+  const toRemove = [...have].filter((b) => !target.has(b));
+  const toAdd = [...target].filter((b) => !have.has(b));
+  if (toRemove.length > 0) {
+    const { error } = await admin
+      .from("plan_books")
+      .delete()
+      .eq("plan_id", planId)
+      .in("book_id", toRemove);
+    if (error) return { ok: false, error: error.message };
+  }
+  if (toAdd.length > 0) {
+    const { error } = await admin
+      .from("plan_books")
+      .upsert(
+        toAdd.map((bid) => ({ plan_id: planId, book_id: bid })),
+        { onConflict: "plan_id,book_id" },
+      );
+    if (error) return { ok: false, error: error.message };
+  }
+  return { ok: true };
+}
+
 export type UpsertPlanPolicyInput = Omit<PlanPolicy, "planId">;
 
 // 정책 생성/갱신(plan_id 유일). adminClient.

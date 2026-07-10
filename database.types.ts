@@ -7658,6 +7658,59 @@ export type Database = {
           },
         ]
       }
+      plan_books: {
+        Row: {
+          book_id: string
+          created_at: string
+          plan_id: string
+          relation_kind: string
+          sort_order: number
+        }
+        Insert: {
+          book_id: string
+          created_at?: string
+          plan_id: string
+          relation_kind?: string
+          sort_order?: number
+        }
+        Update: {
+          book_id?: string
+          created_at?: string
+          plan_id?: string
+          relation_kind?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_books_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["book_id"]
+          },
+          {
+            foreignKeyName: "plan_books_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "v_book_stock"
+            referencedColumns: ["book_id"]
+          },
+          {
+            foreignKeyName: "plan_books_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "v_sales_books"
+            referencedColumns: ["book_id"]
+          },
+          {
+            foreignKeyName: "plan_books_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["plan_id"]
+          },
+        ]
+      }
       plan_courses: {
         Row: {
           course_id: string

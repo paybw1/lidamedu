@@ -29,6 +29,7 @@ import {
   type SubscriptionPlan,
 } from "~/features/subscriptions/labels";
 import {
+  getPlanBookLinks,
   getPlanCourseLinks,
   getPlanPolicies,
   listAllPlans,
@@ -38,6 +39,10 @@ import {
   listCourseEditionsForPicker,
   type CourseEditionRef,
 } from "~/features/lms/queries.server";
+import {
+  listBooksForPicker,
+  type BookPickerItem,
+} from "~/features/bookstore/queries.server";
 import { LAW_SUBJECTS, LAW_SUBJECT_SLUGS } from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/admin-plans";
@@ -60,12 +65,14 @@ export async function loader({ request }: Route.LoaderArgs) {
   const coursePlanIds = plans
     .filter((p) => p.productKind === "course" || p.productKind === "tpass")
     .map((p) => p.planId);
-  const [policies, courseLinks, editions] = await Promise.all([
+  const [policies, courseLinks, editions, bookLinks, books] = await Promise.all([
     getPlanPolicies(coursePlanIds),
     getPlanCourseLinks(coursePlanIds),
     listCourseEditionsForPicker(client),
+    getPlanBookLinks(coursePlanIds),
+    listBooksForPicker(),
   ]);
-  return { plans, policies, courseLinks, editions, role };
+  return { plans, policies, courseLinks, editions, bookLinks, books, role };
 }
 
 const SALE_STATUS_TONE: Record<
@@ -92,7 +99,8 @@ function isoToLocalInput(iso: string | null): string {
 }
 
 export default function AdminPlans({ loaderData }: Route.ComponentProps) {
-  const { plans, policies, courseLinks, editions, role } = loaderData;
+  const { plans, policies, courseLinks, editions, bookLinks, books, role } =
+    loaderData;
   const [adding, setAdding] = useState(false);
   const coursePlans = plans
     .filter((p) => p.productKind === "course" || p.productKind === "tpass")
@@ -117,6 +125,8 @@ export default function AdminPlans({ loaderData }: Route.ComponentProps) {
             coursePlans={coursePlans}
             editions={editions}
             linkedCourseIds={[]}
+            books={books}
+            linkedBookIds={[]}
             onClose={() => setAdding(false)}
           />
         </div>
@@ -142,6 +152,8 @@ export default function AdminPlans({ loaderData }: Route.ComponentProps) {
             coursePlans={coursePlans}
             editions={editions}
             linkedCourseIds={courseLinks[p.planId] ?? []}
+            books={books}
+            linkedBookIds={bookLinks[p.planId] ?? []}
           />
         ))}
       </IndexTable>
@@ -157,12 +169,16 @@ function PlanRow({
   coursePlans,
   editions,
   linkedCourseIds,
+  books,
+  linkedBookIds,
 }: {
   plan: SubscriptionPlan;
   policy?: PlanPolicy;
   coursePlans: CoursePlanRef[];
   editions: CourseEditionRef[];
   linkedCourseIds: string[];
+  books: BookPickerItem[];
+  linkedBookIds: string[];
 }) {
   const [editing, setEditing] = useState(false);
   return (
@@ -217,6 +233,8 @@ function PlanRow({
               coursePlans={coursePlans}
               editions={editions}
               linkedCourseIds={linkedCourseIds}
+              books={books}
+              linkedBookIds={linkedBookIds}
               onClose={() => setEditing(false)}
             />
           </td>
@@ -252,6 +270,8 @@ function PlanForm({
   coursePlans,
   editions,
   linkedCourseIds,
+  books,
+  linkedBookIds,
   onClose,
 }: {
   mode: "create" | "update";
@@ -260,6 +280,8 @@ function PlanForm({
   coursePlans: CoursePlanRef[];
   editions: CourseEditionRef[];
   linkedCourseIds: string[];
+  books: BookPickerItem[];
+  linkedBookIds: string[];
   onClose: () => void;
 }) {
   const fetcher = useFetcher<{ ok?: true; error?: string }>();
@@ -468,6 +490,45 @@ function PlanForm({
                   {e.status !== "published" ? (
                     <span className="text-muted-foreground/60 text-[10px]">
                       ({e.status === "draft" ? "초안" : e.status})
+                    </span>
+                  ) : null}
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {showPolicy ? (
+        <div className="border-border bg-muted/30 space-y-1.5 rounded-lg border border-dashed p-3">
+          <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+            연결 교재
+          </p>
+          <p className="text-muted-foreground/70 text-[11px]">
+            이 강의의 사용 교재를 연결하면 수강신청 화면에 교재로 함께 표시됩니다.
+          </p>
+          {books.length === 0 ? (
+            <p className="text-muted-foreground/60 text-[11px]">
+              등록된 도서가 없습니다. (도서 관리에서 먼저 등록)
+            </p>
+          ) : (
+            <div className="grid max-h-44 grid-cols-1 gap-1 overflow-y-auto sm:grid-cols-2">
+              {books.map((b) => (
+                <label
+                  key={b.bookId}
+                  className="inline-flex items-center gap-1.5 text-[12px]"
+                >
+                  <input
+                    type="checkbox"
+                    name="bookIds"
+                    value={b.bookId}
+                    defaultChecked={linkedBookIds.includes(b.bookId)}
+                    className="size-3.5 shrink-0"
+                  />
+                  <span className="truncate">{b.title}</span>
+                  {b.courseOnly ? (
+                    <span className="text-muted-foreground/60 shrink-0 text-[10px]">
+                      (강의전용)
                     </span>
                   ) : null}
                 </label>

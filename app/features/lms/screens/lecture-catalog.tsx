@@ -119,7 +119,7 @@ function ProductCard({
   tossClientKey: string | null;
 }) {
   const isTpass = product.productKind === "tpass";
-  const { addPlan, has } = useCart();
+  const { addPlan, addBook, has } = useCart();
   const inCart = has(`plan:${product.code}`);
   return (
     <Card className="flex flex-col">
@@ -163,6 +163,48 @@ function ProductCard({
         ) : (
           <div className="mt-auto" />
         )}
+
+        {product.books.length > 0 ? (
+          <div className="border-t pt-2.5">
+            <p className="text-muted-foreground mb-1 text-[11px] font-semibold">
+              교재
+            </p>
+            <ul className="space-y-1">
+              {product.books.map((b) => {
+                const inBookCart = has(`book:${b.bookId}`);
+                return (
+                  <li
+                    key={b.bookId}
+                    className="flex items-center gap-2 text-xs"
+                  >
+                    <span className="min-w-0 flex-1 truncate">{b.title}</span>
+                    <span className="tabular-nums shrink-0">
+                      {b.priceKrw.toLocaleString("ko-KR")}원
+                    </span>
+                    {isAuthed ? (
+                      inBookCart ? (
+                        <Link
+                          to="/lecture/cart"
+                          className="text-link shrink-0 text-[11px] font-semibold hover:underline"
+                        >
+                          담김
+                        </Link>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => addBook(b.bookId, 1)}
+                          className="border-border hover:bg-muted/50 shrink-0 rounded border px-1.5 py-0.5 text-[11px] font-medium"
+                        >
+                          담기
+                        </button>
+                      )
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ) : null}
 
         <div className="mt-2 flex items-center justify-between border-t pt-3">
           <span className="text-lg font-bold tabular-nums">

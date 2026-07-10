@@ -1124,6 +1124,7 @@ create table public.popup_notices (
 - **lesson_node_links**: 회차↔체계도 노드 다대다(약점 단원→재수강 루프. M2엔 테이블만).
 - **subscription_plans 확장**: product_kind CHECK += 'course'|'tpass'('book'은 예약), **sale_status**('scheduled'|'on_sale'|'paused'|'closed'|'hidden') — 백필: is_active=true→on_sale(6), false→hidden(3).
 - **plan_courses**: 상품↔강의(단과 1행/패키지 N행/T-PASS 명시 연결 — 에디션 발행 시 연결 제안 필수).
+- **plan_books**: 상품↔사용 교재(도서) 연결(relation_kind required|recommended, sort_order). 공개 읽기·staff 쓰기. 수강신청 카탈로그 교재 크로스셀에 사용(판매중 listed 도서만 노출).
 - **plan_policies**: 상품 정책 1:1 명시 컬럼 — duration_days XOR fixed_end_date(CHECK 둘 중 하나), multiplier(null=무제한), pause_*(허용·총일수·횟수·1회 min/max), allow_pc/mobile/download, max_devices_pc/mobile, extension_allowed/extension_plan_ids.
 - **enrollments**: 영상 수강권(user_subscriptions 와 별개 축 — course 단위). course_id(에디션 고정), plan_id(정책 참조), source('order'|'manual'|'migration'|'event'), order_item_id(M4 FK 승격 예정), granted_by/admin_note, starts_at/expires_at(저장 — 연장·정지로 변동), **multiplier_snapshot + base_duration_snapshot_seconds(지급 시점 고정 — ★자동 재계산 금지, 조정은 adjust 이벤트로)**, status('active'|'paused'|'expired'|'revoked'), blocked_lesson_ids uuid[](회차 재생 차단).
 - **enrollment_pauses**: 일시정지 이력(신청자·기간·is_admin_exception). 잔여 일수/횟수=정책−이력 합(파생).
