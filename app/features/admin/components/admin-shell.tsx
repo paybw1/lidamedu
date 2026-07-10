@@ -221,6 +221,8 @@ export const ADMIN_NAV: NavCluster[] = [
     Icon: BanknoteIcon,
     screens: [
       { label: "주문·결제 관리", to: "/admin/payments" },
+      // feat-8-029 P2 — 항목(강의/교재)별 매출 통계.
+      { label: "매출 통계", to: "/admin/sales/stats" },
       // feat-11-004 4a — 항목 단위 주문·부분 환불.
       { label: "주문 관리 (항목·환불)", to: "/admin/orders" },
       { label: "강사 배분 기준", to: "/admin/settlements/rules" },

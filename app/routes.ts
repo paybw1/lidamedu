@@ -1100,6 +1100,11 @@ export default [
         "/admin/payments",
         "features/subscriptions/screens/admin-payments.tsx",
       ),
+      // feat-8-029 P2 — 매출 통계 (manager+): 항목(강의/교재)별 매출·상품 랭킹.
+      route(
+        "/admin/sales/stats",
+        "features/subscriptions/screens/admin-sales-stats.tsx",
+      ),
       // feat-8-029 Stage 2 — 강사 배분 기준 (manager+).
       route(
         "/admin/settlements/rules",
