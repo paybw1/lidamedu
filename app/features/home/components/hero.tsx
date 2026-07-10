@@ -11,7 +11,13 @@ import {
   useInView,
 } from "~/features/home/lib/landing";
 
-export function Hero() {
+export interface HeroPreview {
+  name: string;
+  dDay: number | null;
+  examRound: "first" | "second";
+}
+
+export function Hero({ preview }: { preview?: HeroPreview | null }) {
   const h1 = "변리사 시험,\n이곳에서 합격까지\n함께해요";
   const words = h1.split(/(\s+|\n)/).filter(Boolean);
   const [mounted, setMounted] = useState(false);
@@ -136,7 +142,7 @@ export function Hero() {
         </div>
 
         <Reveal delay={300} className="hero-preview">
-          <HeroPreviewCard />
+          <HeroPreviewCard preview={preview} />
         </Reveal>
       </div>
 
@@ -150,9 +156,13 @@ export function Hero() {
   );
 }
 
-function HeroPreviewCard() {
+function HeroPreviewCard({ preview }: { preview?: HeroPreview | null }) {
   const [ref, inView] = useInView<HTMLDivElement>(0.3);
-  const dDay = useCountUp(87, 1400, inView);
+  // 로그인 시 실데이터(이름·D-day·차수), 비로그인이면 목업으로 폴백.
+  const dDayTarget = preview?.dDay ?? 87;
+  const dDay = useCountUp(dDayTarget, 1400, inView);
+  const greetName = preview?.name ?? "지원";
+  const roundLabel = `변리사 ${preview?.examRound === "second" ? "2차" : "1차"} 시험`;
   const stats = [
     { lbl: "학습", num: "186", unit: "h" },
     { lbl: "문제", num: "2,431", unit: "" },
@@ -206,7 +216,7 @@ function HeroPreviewCard() {
             marginBottom: 6,
           }}
         >
-          변리사 1차 시험
+          {roundLabel}
         </div>
         <div
           style={{
@@ -226,7 +236,7 @@ function HeroPreviewCard() {
             letterSpacing: "-0.01em",
           }}
         >
-          어서오세요, 지원님 ☕
+          어서오세요, {greetName}님 ☕
         </div>
       </div>
 

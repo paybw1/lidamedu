@@ -118,12 +118,61 @@ export async function loader({ request }: Route.LoaderArgs) {
     latestFeed = [];
   }
 
+  // 히어로 "대시보드 미리보기" — 로그인 시 이름·D-day·차수를 실데이터로 개인화.
+  //   비로그인이면 null → 컴포넌트가 목업(지원님/D-87)으로 폴백. best-effort.
+  //   D-day 는 대시보드와 동일 소스(profiles.next_exam_* → exam_schedules).
+  let heroPreview: {
+    name: string;
+    dDay: number | null;
+    examRound: "first" | "second";
+  } | null = null;
+  try {
+    const [client] = makeServerClient(request);
+    const {
+      data: { user },
+    } = await client.auth.getUser();
+    if (user) {
+      const { data: prof } = await client
+        .from("profiles")
+        .select("name, next_exam_year, next_exam_round")
+        .eq("profile_id", user.id)
+        .maybeSingle();
+      if (prof) {
+        const examRound = (prof.next_exam_round ?? "first") as "first" | "second";
+        let dDay: number | null = null;
+        if (prof.next_exam_year) {
+          const { getExamScheduleDate } = await import(
+            "~/features/goals/queries.server"
+          );
+          const examDate = await getExamScheduleDate(
+            client,
+            prof.next_exam_year,
+            examRound,
+          );
+          if (examDate) {
+            dDay = Math.max(
+              0,
+              Math.ceil(
+                (new Date(examDate).getTime() - Date.now()) /
+                  (24 * 60 * 60 * 1000),
+              ),
+            );
+          }
+        }
+        heroPreview = { name: prof.name ?? "수험생", dDay, examRound };
+      }
+    }
+  } catch {
+    heroPreview = null;
+  }
+
   return {
     title: t("home.title"),
     subtitle: t("home.subtitle"),
     stats,
     bundleTeaser,
     latestFeed,
+    heroPreview,
   };
 }
 
@@ -139,7 +188,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           'Pretendard, "Pretendard Variable", -apple-system, system-ui, sans-serif',
       }}
     >
-      <Hero />
+      <Hero preview={loaderData.heroPreview} />
       <TrialCalloutSection />
       <Band tone="shelf">
         <WeaknessEngineSection />
