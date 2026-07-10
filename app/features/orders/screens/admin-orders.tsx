@@ -69,6 +69,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const q = (url.searchParams.get("q") ?? "").trim().slice(0, 60);
   const status = url.searchParams.get("status") ?? "";
+  const itemType = url.searchParams.get("itemType") ?? ""; // "" | "course" | "book"
 
   // 4b — 기한 초과 무통장 lazy 만료(cron 이중 안전망).
   await expireOverdueBankTransfers();
@@ -184,12 +185,19 @@ export async function loader({ request }: Route.LoaderArgs) {
         r.items.some((i) => i.label.includes(q)),
     );
   }
+  // P4 — 항목유형 필터: 교재 포함만 / 강의 포함만.
+  if (itemType === "book") {
+    rows = rows.filter((r) => r.items.some((i) => i.itemType === "book"));
+  } else if (itemType === "course") {
+    rows = rows.filter((r) => r.items.some((i) => i.itemType !== "book"));
+  }
   return {
     rows,
     transfers,
     refundRequests,
     q,
     status,
+    itemType,
     role,
     sales: { todayGross, monthGross, monthRefund },
   };
@@ -237,7 +245,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function AdminOrders({ loaderData }: Route.ComponentProps) {
-  const { rows, transfers, refundRequests, q, status, role, sales } = loaderData;
+  const { rows, transfers, refundRequests, q, status, itemType, role, sales } = loaderData;
   return (
     <AdminShell
       cluster="sales"
@@ -311,6 +319,15 @@ export default function AdminOrders({ loaderData }: Route.ComponentProps) {
           {Object.entries(ORDER_STATUS_LABEL).map(([v, l]) => (
             <option key={v} value={v}>{l}</option>
           ))}
+        </select>
+        <select
+          name="itemType"
+          defaultValue={itemType}
+          className="border-input bg-background h-9 rounded-lg border px-2 text-sm"
+        >
+          <option value="">전체 항목</option>
+          <option value="course">강의 포함</option>
+          <option value="book">교재 포함</option>
         </select>
         <Button type="submit" size="sm" variant="outline" className="h-9">검색</Button>
       </Form>
