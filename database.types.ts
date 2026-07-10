@@ -1447,6 +1447,81 @@ export type Database = {
           },
         ]
       }
+      book_settlement_rules: {
+        Row: {
+          book_id: string | null
+          created_at: string
+          created_by: string | null
+          effective_from: string
+          is_active: boolean
+          memo: string | null
+          payee_name: string
+          rule_id: string
+          share_kind: string
+          share_value: number
+        }
+        Insert: {
+          book_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          is_active?: boolean
+          memo?: string | null
+          payee_name: string
+          rule_id?: string
+          share_kind: string
+          share_value: number
+        }
+        Update: {
+          book_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          is_active?: boolean
+          memo?: string | null
+          payee_name?: string
+          rule_id?: string
+          share_kind?: string
+          share_value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_settlement_rules_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["book_id"]
+          },
+          {
+            foreignKeyName: "book_settlement_rules_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "v_book_stock"
+            referencedColumns: ["book_id"]
+          },
+          {
+            foreignKeyName: "book_settlement_rules_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "v_sales_books"
+            referencedColumns: ["book_id"]
+          },
+          {
+            foreignKeyName: "book_settlement_rules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "book_settlement_rules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       book_stock_moves: {
         Row: {
           actor_id: string | null

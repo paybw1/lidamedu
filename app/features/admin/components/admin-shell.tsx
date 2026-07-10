@@ -229,6 +229,8 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "주문 관리 (항목·환불)", to: "/admin/orders" },
       { label: "강사 배분 기준", to: "/admin/settlements/rules" },
       { label: "강사 정산", to: "/admin/settlements" },
+      // feat-8-029 P6 — 도서 배분 기준(정산 계산은 추후).
+      { label: "도서 배분 기준", to: "/admin/settlements/books" },
       { label: "Q&A 답변 적립", to: "/admin/settlements/qna-rewards" },
       // feat-13 할인 쿠폰.
       { label: "쿠폰 관리", to: "/admin/coupons" },

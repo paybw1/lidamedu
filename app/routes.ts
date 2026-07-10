@@ -1121,6 +1121,15 @@ export default [
         "/api/admin/share-rule",
         "features/subscriptions/api/admin-share-rule.tsx",
       ),
+      // feat-8-029 P6 — 도서 배분 기준 (manager+).
+      route(
+        "/admin/settlements/books",
+        "features/subscriptions/screens/admin-book-settlements.tsx",
+      ),
+      route(
+        "/api/admin/book-settlement-rule",
+        "features/subscriptions/api/admin-book-settlement-rule.tsx",
+      ),
       // feat-7-042 — Q&A 답변 적립·지급 (manager+).
       route(
         "/admin/settlements/qna-rewards",

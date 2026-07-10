@@ -1151,6 +1151,7 @@ create table public.popup_notices (
 - **books / book_stock_moves / v_book_stock**: 재고=append-only 원장 SUM 파생. plan_book_links(필수/선택). **shipments**(order_item 1:1, 본인 RLS self-read — 관리자 갱신 즉시 마이페이지 반영).
 - **user_coupons**: 개인 발급(unique user+discount), discounts.auto_issue('signup'|'first_purchase') — welcome 로더·첫 paid 주문 훅에서 멱등 발급. 사용=기존 체크아웃 code 흐름, paid 시 discount_id 매칭 used_at 마킹.
 - **cs_actions**: CS 공통 원장 — enrollment 조치(enrollment_admin_logs 미러)·기기 강제 초기화·항목 환불 자동 기록. **playback_issues**: 재생 오류 로그([벤더] 콜백 대기).
+- **book_settlement_rules** (feat-8-029 P6): 도서정산 배분규칙(관리자 입력). book_id(null=전체 기본)·payee_name(저자/출판사)·share_kind(percent/fixed)·share_value·effective_from·memo·is_active. 세대교체 모델(값수정 대신 새 규칙+비활성). RLS enable+정책無(adminClient 전용). 정산 계산/지급은 추후.
 - **refund_requests** (feat-8-029 P3): 사용자 개시 환불요청. order_item_id·user_id·reason·status(pending/approved/rejected)·resolved_by/at·resolve_note·refunded_krw. 항목당 대기중 1건 부분 유니크 인덱스. RLS: 학생 insert 본인·select 본인+staff, 승인/거절 UPDATE 는 service_role(adminClient). 승인=refundOrderItem(토스 부분취소·회수·CS 미러) 실행 후 approved 기록.
 - **v_sales_daily / v_sales_books**: 주문 기준 매출 파생 뷰(저장 아님, security_invoker).
 - **duty 확장**: staff_duty_assignments CHECK += lms_video_admin(시리즈·도서)/lms_cs(수강권·기기)/lms_orders_admin(주문·배송)/lms_stats_view — 6개 LMS 화면 access 게이트(원장 항상, 관리자 관리에서 배정).
