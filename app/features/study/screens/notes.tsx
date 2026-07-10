@@ -187,8 +187,15 @@ export default function Notes({ loaderData }: Route.ComponentProps) {
                   </span>
                 }
               />
-              <div className="mt-1.5 mb-2 text-[15px] font-bold tracking-tight">
-                {m.primaryLabel}
+              <div className="mt-1.5 mb-2 flex flex-wrap items-center gap-2">
+                <span className="text-[15px] font-bold tracking-tight">
+                  {m.primaryLabel}
+                </span>
+                {m.anchorLabel ? (
+                  <span className="bg-primary/10 text-primary inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold">
+                    {m.anchorLabel}
+                  </span>
+                ) : null}
               </div>
               {m.snippet ? (
                 <div className="border-border bg-muted/50 text-muted-foreground mb-2 rounded-md border-l-[3px] px-3 py-2 text-[13px] leading-relaxed">

@@ -841,6 +841,27 @@ export interface MemoListItem {
   secondaryLabel: string | null;
   bodySnippet: string | null;
   href: string;
+  // 판례 포스트잇이 특정 판결 요지(쟁점)에 걸린 경우 "요지 N" — snippet↔summary_items 매칭 파생.
+  anchorLabel: string | null;
+}
+
+/** 판례 포스트잇 발췌(snippet)가 몇 번째 판결 요지(summary_items)에 속하는지 → "요지 N". */
+function resolveCaseIssueLabel(
+  snippet: string | null,
+  summaryItems: Array<{ title?: string; body?: string }> | null,
+): string | null {
+  if (!snippet || !summaryItems || summaryItems.length <= 1) return null;
+  const norm = (s: string) => s.replace(/\s+/g, "");
+  const needle = norm(snippet);
+  if (needle.length < 4) return null;
+  for (let i = 0; i < summaryItems.length; i++) {
+    const it = summaryItems[i];
+    const hay = norm(`${it.title ?? ""}${it.body ?? ""}`);
+    if (hay.includes(needle) || (needle.length > hay.length && needle.includes(hay) && hay.length > 8)) {
+      return `요지 ${i + 1}`;
+    }
+  }
+  return null;
 }
 
 export async function listAllMemos(
@@ -903,18 +924,26 @@ export async function listAllMemos(
   }
   const caseMap = new Map<
     string,
-    { caseNumber: string; caseTitle: string | null; lawCode: string }
+    {
+      caseNumber: string;
+      caseTitle: string | null;
+      lawCode: string;
+      summaryItems: Array<{ title?: string; body?: string }> | null;
+    }
   >();
   if (caseIds.length > 0) {
     const { data: rs } = await client
       .from("cases")
-      .select("case_id, case_number, case_title, subject_laws")
+      .select("case_id, case_number, case_title, subject_laws, summary_items")
       .in("case_id", caseIds);
     for (const r of rs ?? []) {
       caseMap.set(r.case_id, {
         caseNumber: r.case_number,
         caseTitle: r.case_title,
         lawCode: (r.subject_laws as string[] | null)?.[0] ?? "patent",
+        summaryItems:
+          (r.summary_items as Array<{ title?: string; body?: string }> | null) ??
+          null,
       });
     }
   }
@@ -982,7 +1011,7 @@ export async function listAllMemos(
     }
   }
 
-  return list.flatMap((r): MemoListItem[] => {
+  const memoItems = list.flatMap((r): MemoListItem[] => {
     const base = {
       memoId: r.memo_id,
       targetType: r.target_type,
@@ -991,6 +1020,7 @@ export async function listAllMemos(
       snippet: r.snippet ?? null,
       createdAt: r.created_at,
       updatedAt: r.updated_at,
+      anchorLabel: null as string | null,
     };
     if (r.target_type === "article") {
       const a = articleMap.get(r.target_id);
@@ -1089,6 +1119,15 @@ export async function listAllMemos(
     }
     return [];
   });
+
+  // 판례 포스트잇 — 발췌가 걸린 판결 요지(쟁점) 번호("요지 N")를 파생해 채운다.
+  for (const item of memoItems) {
+    if (item.targetType === "case") {
+      const c = caseMap.get(item.targetId);
+      item.anchorLabel = resolveCaseIssueLabel(item.snippet, c?.summaryItems ?? null);
+    }
+  }
+  return memoItems;
 }
 
 // 하이라이트 모아보기 페이지(`/study/highlights`) — 5 target type 전체.
