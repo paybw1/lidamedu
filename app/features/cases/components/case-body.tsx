@@ -553,40 +553,25 @@ function CasePrevNextButton({
 }
 
 // ── 본문 이미지 그리드 ───────────────────────────────────────
-// 자연스러운 흐름: lightbox 없이 클릭 시 새 탭으로. 객체 비율 보존(object-contain),
-// 흰 배경(상표·도형 투명 PNG 대응). alt 캡션은 이미지 아래.
+// 이미지만 크게: 카드·테두리·흰 배경 박스·캡션·letterbox 제거하고 이미지를 폭 전체로
+// 자연 렌더(배경 없이 이미지만). 1장=본문 폭 전체, 2장 이상=2열. 클릭 시 새 탭 원본.
 function CaseImagesGrid({ images }: { images: CaseImage[] }) {
   if (images.length === 0) return null;
-  // 이미지 크게: 1장이면 본문 폭 전체, 2장 이상만 2열. (기존 3열은 도형이 너무 작았음)
-  // 배경 축소: 고정 4:3 박스(letterbox) 제거 → 이미지 자연 높이로 흰 여백 최소화.
   const single = images.length === 1;
   return (
     <ul
-      className={`mt-4 grid grid-cols-1 gap-3 ${single ? "" : "sm:grid-cols-2"}`}
+      className={`mt-4 grid grid-cols-1 gap-4 ${single ? "" : "sm:grid-cols-2"}`}
     >
       {images.map((img) => (
-        <li
-          key={img.id}
-          className="border-border bg-card overflow-hidden rounded-lg border"
-        >
-          <a
-            href={img.url}
-            target="_blank"
-            rel="noreferrer"
-            className="block bg-white dark:brightness-[.85]"
-          >
+        <li key={img.id}>
+          <a href={img.url} target="_blank" rel="noreferrer" className="block">
             <img
               src={img.url}
               alt={img.alt}
               loading="lazy"
-              className="mx-auto block h-auto w-full max-h-[80vh] object-contain"
+              className="block h-auto w-full dark:brightness-[.9]"
             />
           </a>
-          {img.alt ? (
-            <p className="text-muted-foreground border-border border-t px-3 py-2 text-xs leading-relaxed">
-              {img.alt}
-            </p>
-          ) : null}
         </li>
       ))}
     </ul>
