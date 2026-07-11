@@ -10,9 +10,88 @@ import {
   PanelRightCloseIcon,
   PanelRightOpenIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { cn } from "~/core/lib/utils";
+
+/* ── 좌패널 폭 조절(드래그 리사이즈) ─────────────────────────────────────
+   좌 트랙 폭을 CSS 변수 --left-w 로 구동(기본 312px 폴백). 목차 글자가 잘릴 때
+   경계 핸들을 드래그해 폭을 넓히거나 줄인다. localStorage 로 화면 간 유지. */
+const LEFT_W_KEY = "subjects-left-width";
+export const LEFT_W_DEFAULT = 312;
+const LEFT_W_MIN = 240;
+const LEFT_W_MAX = 640;
+
+function clampLeftW(n: number): number {
+  return Math.max(LEFT_W_MIN, Math.min(LEFT_W_MAX, Math.round(n)));
+}
+
+export function useLeftPanelWidth() {
+  const [width, setWidthState] = useState(LEFT_W_DEFAULT);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(LEFT_W_KEY);
+      const n = raw ? Number.parseInt(raw, 10) : NaN;
+      if (Number.isFinite(n)) setWidthState(clampLeftW(n));
+    } catch {
+      // localStorage 불가 — 기본 폭.
+    }
+  }, []);
+  const setWidth = useCallback((w: number) => {
+    const c = clampLeftW(w);
+    setWidthState(c);
+    try {
+      localStorage.setItem(LEFT_W_KEY, String(c));
+    } catch {
+      // 무시 — 메모리 상태만.
+    }
+  }, []);
+  return { width, setWidth };
+}
+
+/** 좌패널 오른쪽 경계 드래그 핸들 — 폭을 조절한다. 좌패널이 펼쳐졌을 때만 렌더. */
+export function LeftPanelResizer({
+  width,
+  onWidth,
+}: {
+  width: number;
+  onWidth: (w: number) => void;
+}) {
+  const start = useRef<{ x: number; w: number } | null>(null);
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    start.current = { x: e.clientX, w: width };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  };
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!start.current) return;
+    onWidth(start.current.w + (e.clientX - start.current.x));
+  };
+  const end = (e: React.PointerEvent<HTMLDivElement>) => {
+    start.current = null;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      // 무시.
+    }
+  };
+  return (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="목차 폭 조절"
+      title="드래그하여 목차 폭 조절"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={end}
+      onPointerCancel={end}
+      onDoubleClick={() => onWidth(LEFT_W_DEFAULT)}
+      className="group absolute top-0 right-[-9px] z-20 hidden h-full w-[16px] cursor-col-resize touch-none lg:block"
+    >
+      <div className="bg-border group-hover:bg-primary/50 mx-auto h-full w-px transition-colors" />
+    </div>
+  );
+}
 
 function usePanelCollapse(key: string) {
   const [collapsed, setCollapsed] = useState(false);
@@ -66,8 +145,10 @@ export function panelGridCls(
   if (leftCollapsed && rightCollapsed)
     return "lg:grid-cols-[2.5rem_minmax(0,1fr)_2.5rem]";
   if (leftCollapsed) return "lg:grid-cols-[2.5rem_minmax(0,1fr)_320px]";
-  if (rightCollapsed) return "lg:grid-cols-[312px_minmax(0,1fr)_2.5rem]";
-  return "lg:grid-cols-[312px_minmax(0,1fr)_320px]";
+  // 좌 트랙 = var(--left-w, 312px) — 드래그로 조절(미설정 시 기본 312px).
+  if (rightCollapsed)
+    return "lg:grid-cols-[var(--left-w,312px)_minmax(0,1fr)_2.5rem]";
+  return "lg:grid-cols-[var(--left-w,312px)_minmax(0,1fr)_320px]";
 }
 
 // 좌측 트리만 접는 2-컬럼 그리드(체계도 노드/장 뷰어 — 우측 패널이 본문 카드 내부라
@@ -75,7 +156,7 @@ export function panelGridCls(
 export function leftOnlyGridCls(leftCollapsed: boolean): string {
   return leftCollapsed
     ? "lg:grid-cols-[2.5rem_minmax(0,1fr)]"
-    : "lg:grid-cols-[312px_minmax(0,1fr)]";
+    : "lg:grid-cols-[var(--left-w,312px)_minmax(0,1fr)]";
 }
 
 // bg-card 헤더 위에서도 또렷하게 보이도록 — muted 배경 + foreground 아이콘 + 그림자.

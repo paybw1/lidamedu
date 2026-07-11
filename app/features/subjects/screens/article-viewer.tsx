@@ -86,9 +86,11 @@ import { FlowNav } from "~/features/study/components/flow-nav";
 import { recordStudySession } from "~/features/study/queries.server";
 import { ArticleTree } from "~/features/subjects/components/article-tree";
 import {
+  LeftPanelResizer,
   PanelEdgeHandle,
   panelGridCls,
   useLeftPanelCollapse,
+  useLeftPanelWidth,
   useRightPanelCollapse,
 } from "~/features/subjects/components/left-panel-collapse";
 import { MobileNavDrawer } from "~/features/subjects/components/mobile-nav-drawer";
@@ -429,6 +431,7 @@ function ArticleViewerInner({
     toggle: toggleLeft,
     set: setLeft,
   } = useLeftPanelCollapse();
+  const { width: leftWidth, setWidth: setLeftWidth } = useLeftPanelWidth();
   // 조문 트리 검색 — 헤더 돋보기 아이콘으로 열고 닫음(기본 닫힘).
   const [treeSearchOpen, setTreeSearchOpen] = useState(false);
   const {
@@ -542,9 +545,13 @@ function ArticleViewerInner({
       <div className="mx-auto flex w-full max-w-screen-2xl flex-1 flex-row items-start gap-0 px-4 py-5 md:px-8 md:py-7">
         <div
           className={`grid min-w-0 flex-1 gap-5 ${panelGridCls(leftCollapsed, rightCollapsed)}`}
+          style={{ ["--left-w" as string]: `${leftWidth}px` }}
         >
           {/* ── LEFT TREE (desktop sticky, 경계 손잡이로 접기/펼치기) ────── */}
           <aside className="relative hidden lg:sticky lg:top-20 lg:block lg:self-start">
+            {!leftCollapsed ? (
+              <LeftPanelResizer width={leftWidth} onWidth={setLeftWidth} />
+            ) : null}
             {leftCollapsed ? (
               <div className="flex h-[70vh] items-center justify-start">
                 <PanelEdgeHandle

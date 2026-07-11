@@ -65,9 +65,11 @@ import { recordStudySession } from "~/features/study/queries.server";
 import { CasesTree } from "~/features/subjects/components/cases-tree";
 import { SubjectBookmarkRail } from "~/features/subjects/components/subject-bookmark-rail";
 import {
+  LeftPanelResizer,
   PanelEdgeHandle,
   panelGridCls,
   useLeftPanelCollapse,
+  useLeftPanelWidth,
   useRightPanelCollapse,
 } from "~/features/subjects/components/left-panel-collapse";
 import { MobileNavDrawer } from "~/features/subjects/components/mobile-nav-drawer";
@@ -327,6 +329,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
     toggle: toggleLeft,
     set: setLeft,
   } = useLeftPanelCollapse();
+  const { width: leftWidth, setWidth: setLeftWidth } = useLeftPanelWidth();
   const {
     collapsed: rightCollapsed,
     toggle: toggleRight,
@@ -412,9 +415,13 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
         <div className="flex flex-row items-start gap-0">
           <div
             className={`grid min-w-0 flex-1 gap-5 ${panelGridCls(leftCollapsed, rightCollapsed)}`}
+            style={{ ["--left-w" as string]: `${leftWidth}px` }}
           >
             {/* ── 좌측 조문 트리 (데스크톱 sticky, 경계 손잡이로 접기/펼치기) ── */}
             <aside className="relative hidden lg:sticky lg:top-20 lg:block lg:self-start">
+              {!leftCollapsed ? (
+                <LeftPanelResizer width={leftWidth} onWidth={setLeftWidth} />
+              ) : null}
               {leftCollapsed ? (
                 <div className="flex h-[70vh] items-center justify-start">
                   <PanelEdgeHandle side="left" collapsed onToggle={toggleLeft} />
