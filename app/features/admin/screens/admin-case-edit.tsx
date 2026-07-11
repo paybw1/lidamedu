@@ -170,7 +170,22 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
   // 판결요지·판시이유·비고 편집 카드는 숨기고, 값은 hidden 으로 보존(목록 제목·검색용 컬럼이
   // 저장 시 지워지지 않게). 섹션을 전부 삭제하고 저장하면 다음 진입부터 카드가 다시 보인다.
   const bookSectionsDefault = parseBookSections(kase?.book_sections);
-  const bookMode = bookSectionsDefault.length > 0;
+  const hasBookSections = bookSectionsDefault.length > 0;
+  // 판례 본문 구조 — 과목별 명시 구분(땜질 제거).
+  //   generic: 요지·이유 / 코멘트(비고·관련판례·평석) / 관련자료 — 특허법·민법 등
+  //   book:    교재 구조 본문(book_sections) — 상표법·디자인 판례집
+  // 기본값: 이미 교재 구조 데이터가 있으면 book, 없으면 과목(상표·디자인)으로 추정.
+  const subjectHasBookLaw = (kase?.subject_laws ?? []).some(
+    (s) => s === "trademark" || s === "design",
+  );
+  const initialStructureMode: "generic" | "book" = hasBookSections
+    ? "book"
+    : subjectHasBookLaw
+      ? "book"
+      : "generic";
+  const [structureMode, setStructureMode] = useState<"generic" | "book">(
+    initialStructureMode,
+  );
   // "비고 — 전체 판결문"(comment_body_md) 블록의 학생 뷰어 표시 분류. 기본 remark.
   const commentLabelDefault = (
     CASE_COMMENT_LABEL_VALUES as readonly string[]
@@ -352,9 +367,165 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
         {/* 공식 전문 PDF (official_text_md 자동 조판) — 재생성 */}
         {!isNew ? <OfficialTextPdfCard kase={kase} /> : null}
 
-        {/* 요지 · 이유 — 교재 구조 판례는 편집 불필요(표시 SSOT=book_sections), 값만 보존 */}
-        {bookMode ? (
+        {/* ── 판례 본문 구조 토글 (과목별 명시 구분) ──────────────────
+            일반 구조(특허법 등) ↔ 교재 구조 본문(상표법·디자인). 선택 모드의
+            카드만 편집 가능 + 저장 정합성(generic → book_sections 정리). */}
+        <Card>
+          <CardHeader>
+            <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+              판례 본문 구조
+            </p>
+            <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">
+              과목에 따라 본문 편집 방식을 선택합니다. <strong>일반 구조</strong>는
+              요지·이유·코멘트(비고/관련판례/평석)·관련자료로 입력하고(특허법·민법 등),{" "}
+              <strong>교재 구조 본문</strong>은 판례집 구조(쟁점상표 → 사안의 쟁점 → …
+              → 평석)로 입력합니다(상표법·디자인). 선택한 구조만 학생 화면에 노출됩니다.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="border-input inline-flex rounded-md border p-0.5">
+              {(
+                [
+                  { value: "generic", label: "일반 구조 (특허법 등)" },
+                  { value: "book", label: "교재 구조 본문 (상표법·디자인)" },
+                ] as const
+              ).map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setStructureMode(opt.value)}
+                  aria-pressed={structureMode === opt.value}
+                  className={cn(
+                    "rounded px-3 py-1.5 text-xs font-medium transition-colors",
+                    structureMode === opt.value
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {structureMode === "generic" && hasBookSections ? (
+              <p className="mt-2 rounded-md border border-amber-400 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+                ⚠ 이 판례에는 기존 <strong>교재 구조 본문</strong>이 있습니다. "일반
+                구조" 상태로 <strong>변경 저장</strong>하면 교재 구조 본문이 삭제되고
+                일반 구조로 전환됩니다.
+              </p>
+            ) : null}
+          </CardContent>
+        </Card>
+
+        {structureMode === "generic" ? (
           <>
+            {/* 일반 구조 저장 시 book_sections 정리 → 학생 뷰어 generic 렌더. */}
+            <input type="hidden" name="bookSections" value="[]" />
+
+            {/* 요지 · 이유 */}
+            <Card>
+              <CardHeader>
+                <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                  요지 · 이유
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Field label="판결요지 (여러 항목 가능)">
+                  <SummaryItemsEditor
+                    defaultItems={parseSummaryItems(kase?.summary_items)}
+                    caseId={isNew ? null : kase.case_id}
+                  />
+                </Field>
+                <Field label="판시이유 (Markdown)" htmlFor="reasoningMd">
+                  <ReflowableTextarea
+                    name="reasoningMd"
+                    defaultValue={kase?.reasoning_md ?? ""}
+                    rows={8}
+                    fieldLabel="판시이유"
+                    caseId={isNew ? null : kase.case_id}
+                    imagePosition="reasoning"
+                  />
+                </Field>
+              </CardContent>
+            </Card>
+
+            {/* 비고 · 관련판례 · 평석 — 전체 판결문 코멘트 (표시 분류 선택) */}
+            <Card>
+              <CardHeader>
+                <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                  비고 · 관련판례 · 평석 — 전체 판결문
+                </p>
+                <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">
+                  요지 [N] 항목별 코멘트는 위 "요지" 섹션 각 항목 안의 비고 [N] 입력란을
+                  사용하세요. 이 필드는 <strong>판결문 전체에 걸친 일반 코멘트</strong>를
+                  위한 용도이며, 아래 <strong>표시 분류</strong>에서 학생 화면에 노출될
+                  제목(비고 / 관련판례 / 평석)을 선택합니다.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Field label="표시 분류" htmlFor="commentLabel">
+                  <AdminSelect
+                    id="commentLabel"
+                    name="commentLabel"
+                    defaultValue={commentLabelDefault}
+                    className="w-48"
+                  >
+                    {CASE_COMMENT_LABEL_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </AdminSelect>
+                  <p className="text-muted-foreground mt-1 text-[10px]">
+                    학생 뷰어 제목:{" "}
+                    {CASE_COMMENT_LABEL_OPTIONS.map(
+                      (o) => `${o.label}=「${o.heading}」`,
+                    ).join(" · ")}
+                  </p>
+                </Field>
+                <Field label="본문 (Markdown)" htmlFor="commentBodyMd">
+                  <ReflowableTextarea
+                    name="commentBodyMd"
+                    defaultValue={kase?.comment_body_md ?? ""}
+                    rows={6}
+                    fieldLabel="전체 판결문 코멘트"
+                    caseId={isNew ? null : kase.case_id}
+                    imagePosition="comment"
+                  />
+                </Field>
+              </CardContent>
+            </Card>
+
+            {/* 관련자료 — 그림·표 등 본문 보조 자료 설명. 그림/표 자체는 폼 외부
+                ImagesCard 의 position=관련자료 로 업로드. */}
+            <Card>
+              <CardHeader>
+                <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                  관련자료
+                </p>
+                <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">
+                  그림·표·도면 등 본문 보조 자료에 대한 설명을 입력합니다. 그림/표
+                  자체는 아래 "본문 이미지" 카드에서 표시 영역을 "관련자료" 로 지정해
+                  업로드하세요.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Field label="관련자료 본문 (Markdown)" htmlFor="relatedMd">
+                  <ReflowableTextarea
+                    name="relatedMd"
+                    defaultValue={kase?.related_md ?? ""}
+                    rows={6}
+                    fieldLabel="관련자료 본문"
+                    caseId={isNew ? null : kase.case_id}
+                    imagePosition="related"
+                  />
+                </Field>
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          <>
+            {/* 교재 구조 모드 — 일반 필드는 목록·검색 컬럼 보존용 hidden 미러
+                (저장 시 API 가 book_sections 에서 파생 값으로 덮어씀). */}
             <input
               type="hidden"
               name="summaryItems"
@@ -365,60 +536,6 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
               name="reasoningMd"
               value={kase?.reasoning_md ?? ""}
             />
-          </>
-        ) : (
-          <Card>
-            <CardHeader>
-              <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                요지 · 이유
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Field label="판결요지 (여러 항목 가능)">
-                <SummaryItemsEditor
-                  defaultItems={parseSummaryItems(kase?.summary_items)}
-                  caseId={isNew ? null : kase.case_id}
-                />
-              </Field>
-              <Field label="판시이유 (Markdown)" htmlFor="reasoningMd">
-                <ReflowableTextarea
-                  name="reasoningMd"
-                  defaultValue={kase?.reasoning_md ?? ""}
-                  rows={8}
-                  fieldLabel="판시이유"
-                  caseId={isNew ? null : kase.case_id}
-                  imagePosition="reasoning"
-                />
-              </Field>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* feat-3-213 — 판례집 구조화 본문 (상표 제16판 등). 있으면 학생 뷰어 표시의 SSOT.
-            섹션 0개로 저장하면 null → 위의 generic 필드(요지/판시이유/비고)로 렌더 복귀. */}
-        <Card>
-          <CardHeader>
-            <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-              교재 구조 본문 (쟁점상표 표 → 사안의 쟁점 → … → 평석)
-            </p>
-            <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">
-              이 섹션이 있으면 학생 뷰어는 <strong>교재 구조로만</strong> 렌더하며,
-              판결요지·판시이유·비고 편집 카드는 숨겨집니다(값은 검색·목록 제목용으로
-              보존). 표 셀 이미지는 아래 "본문 이미지" 카드에 업로드한 뒤 URL 을 셀에
-              붙여넣으세요.
-            </p>
-          </CardHeader>
-          <CardContent>
-            <BookSectionsEditor defaultSections={bookSectionsDefault} />
-          </CardContent>
-        </Card>
-
-        {/* 비고 · 평석 — 두 종류 분리 (사용자 결정):
-              · 항목별 비고 → SummaryItemsEditor 안 "비고 [N]" textarea (요지별 인라인)
-              · 전체 비고 → 이 textarea. 판결문 전체에 대한 일반 코멘트.
-            교재 구조 판례는 평석을 book_sections 에서 편집 — 카드 숨기고 값 보존. */}
-        {bookMode ? (
-          <>
             <input
               type="hidden"
               name="commentBodyMd"
@@ -429,81 +546,31 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
               name="commentLabel"
               value={commentLabelDefault}
             />
-          </>
-        ) : (
-          <Card>
-            <CardHeader>
-              <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                비고 · 관련판례 · 평석 — 전체 판결문
-              </p>
-              <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">
-                요지 [N] 항목별 코멘트는 위 "요지" 섹션 각 항목 안의 비고 [N] 입력란을
-                사용하세요. 이 필드는 <strong>판결문 전체에 걸친 일반 코멘트</strong>를
-                위한 용도이며, 아래 <strong>표시 분류</strong>에서 학생 화면에 노출될
-                제목(비고 / 관련판례 / 평석)을 선택합니다.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Field label="표시 분류" htmlFor="commentLabel">
-                <AdminSelect
-                  id="commentLabel"
-                  name="commentLabel"
-                  defaultValue={commentLabelDefault}
-                  className="w-48"
-                >
-                  {CASE_COMMENT_LABEL_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </AdminSelect>
-                <p className="text-muted-foreground mt-1 text-[10px]">
-                  학생 뷰어 제목:{" "}
-                  {CASE_COMMENT_LABEL_OPTIONS.map(
-                    (o) => `${o.label}=「${o.heading}」`,
-                  ).join(" · ")}
-                </p>
-              </Field>
-              <Field label="본문 (Markdown)" htmlFor="commentBodyMd">
-                <ReflowableTextarea
-                  name="commentBodyMd"
-                  defaultValue={kase?.comment_body_md ?? ""}
-                  rows={6}
-                  fieldLabel="전체 판결문 코멘트"
-                  caseId={isNew ? null : kase.case_id}
-                  imagePosition="comment"
-                />
-              </Field>
-            </CardContent>
-          </Card>
-        )}
+            <input
+              type="hidden"
+              name="relatedMd"
+              value={kase?.related_md ?? ""}
+            />
 
-        {/* 관련자료 — 그림·표 등 본문 보조 자료. 그림/표 자체는 폼 외부 ImagesCard
-            의 position=관련자료 로 업로드, 본문 설명은 여기서 작성. */}
-        <Card>
-          <CardHeader>
-            <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-              관련자료
-            </p>
-            <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">
-              그림·표·도면 등 본문 보조 자료에 대한 설명을 입력합니다. 그림/표
-              자체는 아래 "본문 이미지" 카드에서 표시 영역을 "관련자료" 로
-              지정해 업로드하세요.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Field label="관련자료 본문 (Markdown)" htmlFor="relatedMd">
-              <ReflowableTextarea
-                name="relatedMd"
-                defaultValue={kase?.related_md ?? ""}
-                rows={6}
-                fieldLabel="관련자료 본문"
-                caseId={isNew ? null : kase.case_id}
-                imagePosition="related"
-              />
-            </Field>
-          </CardContent>
-        </Card>
+            {/* feat-3-213 — 판례집 구조화 본문 (상표 제16판 등). 학생 뷰어 표시 SSOT. */}
+            <Card>
+              <CardHeader>
+                <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                  교재 구조 본문 (쟁점상표 표 → 사안의 쟁점 → … → 평석)
+                </p>
+                <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">
+                  판례집 구조로 본문을 입력합니다. 학생 뷰어는 이 구조로만 렌더하며,
+                  요지·이유·코멘트는 이 구조에서 자동 파생됩니다(검색·목록 제목 동기화).
+                  표 셀 이미지는 아래 "본문 이미지" 카드에 업로드한 뒤 URL 을 셀에
+                  붙여넣으세요.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <BookSectionsEditor defaultSections={bookSectionsDefault} />
+              </CardContent>
+            </Card>
+          </>
+        )}
 
         {/* 저장/삭제 바닥 */}
         <div className="flex flex-wrap items-center justify-between gap-2">
