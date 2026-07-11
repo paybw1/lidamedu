@@ -75,9 +75,11 @@ import {
 import { listThreadsForTarget } from "~/features/qna/queries.server";
 import { ArticleTree } from "~/features/subjects/components/article-tree";
 import {
+  LeftPanelResizer,
   PanelEdgeHandle,
   leftOnlyGridCls,
   useLeftPanelCollapse,
+  useLeftPanelWidth,
 } from "~/features/subjects/components/left-panel-collapse";
 import {
   SortAxisProvider,
@@ -331,6 +333,7 @@ function Inner({
   const { axis } = useSortAxis();
   const { collapsed: leftCollapsed, toggle: toggleLeft } =
     useLeftPanelCollapse();
+  const { width: leftWidth, setWidth: setLeftWidth } = useLeftPanelWidth();
   // 조문 트리 검색 — 헤더 돋보기 아이콘으로 열고 닫음(기본 닫힘).
   const [treeSearchOpen, setTreeSearchOpen] = useState(false);
   const systematicEmpty = systematicNodes.length === 0;
@@ -405,9 +408,13 @@ function Inner({
 
       <div
         className={`grid min-w-0 flex-1 gap-5 ${leftOnlyGridCls(leftCollapsed)}`}
+        style={{ ["--left-w" as string]: `${leftWidth}px` }}
       >
         {/* ── 좌측 트리 (데스크톱, 경계 손잡이로 접기/펼치기) ── */}
         <aside className="relative hidden lg:sticky lg:top-20 lg:block lg:self-start">
+          {!leftCollapsed ? (
+            <LeftPanelResizer width={leftWidth} onWidth={setLeftWidth} />
+          ) : null}
           {leftCollapsed ? (
             <div className="flex h-[70vh] items-center justify-start">
               <PanelEdgeHandle side="left" collapsed onToggle={toggleLeft} />
