@@ -116,21 +116,23 @@ export function Hero({
               {`조문 · 판례 · 문제를 한곳에서 잇는 통합 학습 플랫폼입니다.\n매일의 진도를 따뜻하게 받쳐주는, 카공 같은 책상이 되어 드릴게요.`}
             </p>
           </Reveal>
-          <Reveal delay={400}>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              {/* 가입(무료로 시작하기)은 바로 아래 무료 체험 콜아웃이 담당 —
-                  중복을 피해 Hero 상단은 로그인만. 로그인 상태면 로그인 버튼 대신
-                  대시보드 이동 CTA(로그인한 사용자에게 '로그인'은 불필요). */}
-              <LandingButton
-                size="lg"
-                variant="primary"
-                to={isLoggedIn ? "/dashboard" : "/login"}
-                iconRight={<ArrowRightIcon size={17} strokeWidth={1.8} />}
-              >
-                {isLoggedIn ? "대시보드로 가기" : "로그인"}
-              </LandingButton>
-            </div>
-          </Reveal>
+          {/* 가입(무료로 시작하기)은 바로 아래 무료 체험 콜아웃이 담당 —
+              중복을 피해 Hero 상단은 로그인만. 로그인 상태면 CTA 자체를 숨긴다
+              (이미 로그인한 사용자에게 히어로 CTA 불필요). */}
+          {isLoggedIn ? null : (
+            <Reveal delay={400}>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <LandingButton
+                  size="lg"
+                  variant="primary"
+                  to="/login"
+                  iconRight={<ArrowRightIcon size={17} strokeWidth={1.8} />}
+                >
+                  로그인
+                </LandingButton>
+              </div>
+            </Reveal>
+          )}
           <Reveal delay={550}>
             <div
               style={{
