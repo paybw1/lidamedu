@@ -254,7 +254,6 @@ export function BlanksRenderProvider({
   // ★한글 IME 조합이 어느 input 에서든 진행 중인지(전역). 조합 중 focus 이동 = 조합 잔여가
   //   다음 칸으로 이월(전국내…)되므로, 이동은 조합 종료 후로 미룬다.
   const anyComposingRef = useRef(false);
-  const pendingFocusIdxRef = useRef<number | null>(null);
 
   // 음성 인식 — 한 번에 하나의 input 만 활성화. activeVoiceIdx 가 null 이 아니면 그 input 의
   // 마이크 버튼이 active 상태로 표시된다. final transcript 가 들어오면 그 idx 의 checkAnswer 호출.
@@ -352,42 +351,29 @@ export function BlanksRenderProvider({
       /* noop */
     }
   }, []);
-  const scheduleFocusNext = useCallback(
+  // ★정답을 맞혀도 자동으로 다음 칸으로 이동하지 않는다 — 과거 자동이동은 IME 조합
+  //   잔여가 다음 칸으로 이월(leak: "이전 빈칸 마지막 글자가 따라옴")되는 근본 원인이었다.
+  //   정답 칸은 하이라이트로 다음 빈칸을 안내만 하고, 실제 이동은 사용자가 Enter 를
+  //   눌렀을 때(조합이 이미 끝난 뒤라 잔여 이월이 없음) advanceToNext 로 수행한다.
+  const updateNextHint = useCallback(
     (idx: number) => {
-      // 직전 칸 blur 는 명시하지 않는다 — 다음 칸 focus 가 자동으로 blur 하며, 미루는
-      // 경우엔 조합이 끝날 때까지 현재 focus 를 유지해야 입력이 유실되지 않기 때문.
+      setHintNextIdx(findNextBlankIdx(idx));
+    },
+    [findNextBlankIdx],
+  );
+  // Enter → 다음 빈칸 이동. 조합 중이면 무시(조합 확정 후에만 이동해야 leak 없음).
+  const advanceToNext = useCallback(
+    (idx: number) => {
+      if (anyComposingRef.current) return;
       const next = findNextBlankIdx(idx);
-      setHintNextIdx(next);
-      if (next == null) return;
-      // ★조합이 진행 중이면 focus 이동을 조합 종료까지 미룬다(handleComposingChange 에서 수행).
-      //   이동 중 조합이 살아 있으면 잔여가 다음 칸으로 이월(전국내…)되기 때문.
-      if (anyComposingRef.current) {
-        pendingFocusIdxRef.current = next;
-        return;
-      }
-      // 조합이 없는 지금(대개 compositionend 직후) 즉시 이동한다. rAF 로 미루면 그 사이
-      // 직전 칸을 확정시킨 키의 다음 조합이 옛 칸에서 시작돼 버리므로, 동기 focus 로
-      // 새 칸에서 다음 조합이 시작되게 한다.
-      doFocusNext(next);
+      if (next != null) doFocusNext(next);
     },
     [findNextBlankIdx, doFocusNext],
   );
-  // input 조합 상태 변화 통지 — 조합이 끝나면 미뤄둔 focus 이동을 수행.
-  const handleComposingChange = useCallback(
-    (composing: boolean) => {
-      anyComposingRef.current = composing;
-      if (!composing && pendingFocusIdxRef.current != null) {
-        const next = pendingFocusIdxRef.current;
-        pendingFocusIdxRef.current = null;
-        if (typeof requestAnimationFrame !== "undefined") {
-          requestAnimationFrame(() => doFocusNext(next));
-        } else {
-          doFocusNext(next);
-        }
-      }
-    },
-    [doFocusNext],
-  );
+  // input 조합 상태 변화 통지 — 전역 조합 플래그만 갱신(Enter 이동 가드에 사용).
+  const handleComposingChange = useCallback((composing: boolean) => {
+    anyComposingRef.current = composing;
+  }, []);
 
   const checkAnswer = useCallback(
     (idx: number, rawInput: string, composing = false) => {
@@ -450,12 +436,12 @@ export function BlanksRenderProvider({
             action: "/api/blanks/auto-attempt",
           });
         }
-        scheduleFocusNext(idx);
+        updateNextHint(idx);
       } else {
         updateState(idx, { input, status: input.length > 0 ? "wrong" : "empty" });
       }
     },
-    [blanks, fetcher, setId, autoMeta, updateState, scheduleFocusNext],
+    [blanks, fetcher, setId, autoMeta, updateState, updateNextHint],
   );
   // 음성 인식 final → checkAnswer 직접 호출. checkAnswerRef 로 latest function 보관.
   checkAnswerRef.current = checkAnswer;
@@ -501,6 +487,7 @@ export function BlanksRenderProvider({
               hintNext={hintNextIdx === h.blank.idx}
               onChange={(v, composing) => checkAnswer(h.blank.idx, v, composing)}
               onComposingChange={handleComposingChange}
+              onEnter={() => advanceToNext(h.blank.idx)}
               onFocusInput={() => setHintNextIdx(null)}
               registerInput={registerInput}
               voiceSupported={voice.isSupported}
@@ -523,6 +510,7 @@ export function BlanksRenderProvider({
       reveal,
       checkAnswer,
       handleComposingChange,
+      advanceToNext,
       registerInput,
       voice.isSupported,
       activeVoiceIdx,
@@ -577,6 +565,7 @@ function BlankInputInline({
   hintNext,
   onChange,
   onComposingChange,
+  onEnter,
   onFocusInput,
   registerInput,
   voiceSupported,
@@ -591,6 +580,7 @@ function BlankInputInline({
   hintNext: boolean;
   onChange: (v: string, composing: boolean) => void;
   onComposingChange: (composing: boolean) => void;
+  onEnter: () => void;
   onFocusInput: () => void;
   registerInput: (idx: number, el: HTMLInputElement | null) => void;
   voiceSupported: boolean;
@@ -637,8 +627,18 @@ function BlankInputInline({
         className={cls}
         style={{ width: `${widthCh}ch` }}
         value={value}
-        disabled={filled}
+        // 정답 칸은 disabled 로 잠그지 않는다 — Enter 로 다음 칸 이동을 받으려면 focus·keydown
+        //   이 살아 있어야 하기 때문. 재입력은 checkAnswer 의 correct 가드가 무시하므로 잠금 유지.
+        //   정답 모두 보기(revealed) 만 실제 disabled.
+        disabled={status === "revealed"}
         onChange={(e) => onChange(e.target.value, composingRef.current)}
+        onKeyDown={(e) => {
+          // Enter → 다음 빈칸 이동(조합 중이면 조합 확정만 하고 이동은 상위 가드가 무시).
+          if (e.key === "Enter") {
+            e.preventDefault();
+            if (!composingRef.current) onEnter();
+          }
+        }}
         onFocus={(e) => {
           if (e.currentTarget.value !== value) {
             e.currentTarget.value = value;
@@ -655,10 +655,10 @@ function BlankInputInline({
         }}
         onCompositionEnd={(e) => {
           composingRef.current = false;
-          // 전역 조합 플래그를 먼저 내린다 — 이어지는 onChange→scheduleFocusNext 가
-          // '조합 없음'을 보고 동기 이동하도록. (미뤄둔 이동이 있으면 여기서 수행)
+          // 전역 조합 플래그 OFF — 이후 Enter 이동 가드(advanceToNext)가 통과되게 한다.
           onComposingChange(false);
-          // 조합 확정값으로 최종 판정(조합 중엔 상태 반영만 했음).
+          // 조합 확정값으로 최종 판정(조합 중엔 상태 반영만 했음). 정답이어도 자동이동은
+          // 하지 않으므로 조합 잔여가 다음 칸으로 이월되지 않는다.
           onChange(e.currentTarget.value, false);
         }}
         onBeforeInput={(e) => {

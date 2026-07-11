@@ -48,6 +48,10 @@ export function BlankFillView({
     <div className="space-y-4">
       <div className="bg-muted/40 flex flex-wrap items-center gap-3 rounded-md border border-dashed px-3 py-2 text-xs">
         <span className="font-medium">총 빈칸 {totalBlanks}개</span>
+        <span className="text-muted-foreground">
+          정답을 맞히면 초록색 · <kbd className="rounded border px-1">Enter</kbd>{" "}
+          로 다음 빈칸 이동
+        </span>
         {unmappedCount > 0 ? (
           <span className="text-muted-foreground">
             (정답 미입력 {unmappedCount}개 — 운영자 보강 대기)
