@@ -130,11 +130,13 @@ export async function loader({ request }: Route.LoaderArgs) {
     weak: string | null;
     todos: { done: boolean; text: string }[] | null;
   } | null = null;
+  let isLoggedIn = false;
   try {
     const [client] = makeServerClient(request);
     const {
       data: { user },
     } = await client.auth.getUser();
+    isLoggedIn = !!user;
     if (user) {
       const { data: prof } = await client
         .from("profiles")
@@ -226,6 +228,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     bundleTeaser,
     latestFeed,
     heroPreview,
+    isLoggedIn,
   };
 }
 
@@ -241,7 +244,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           'Pretendard, "Pretendard Variable", -apple-system, system-ui, sans-serif',
       }}
     >
-      <Hero preview={loaderData.heroPreview} />
+      <Hero preview={loaderData.heroPreview} isLoggedIn={loaderData.isLoggedIn} />
       <TrialCalloutSection />
       <Band tone="shelf">
         <WeaknessEngineSection />

@@ -20,7 +20,13 @@ export interface HeroPreview {
   todos: { done: boolean; text: string }[] | null;
 }
 
-export function Hero({ preview }: { preview?: HeroPreview | null }) {
+export function Hero({
+  preview,
+  isLoggedIn = false,
+}: {
+  preview?: HeroPreview | null;
+  isLoggedIn?: boolean;
+}) {
   const h1 = "변리사 시험,\n이곳에서 합격까지\n함께해요";
   const words = h1.split(/(\s+|\n)/).filter(Boolean);
   const [mounted, setMounted] = useState(false);
@@ -113,14 +119,15 @@ export function Hero({ preview }: { preview?: HeroPreview | null }) {
           <Reveal delay={400}>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               {/* 가입(무료로 시작하기)은 바로 아래 무료 체험 콜아웃이 담당 —
-                  중복을 피해 Hero 상단은 로그인만. */}
+                  중복을 피해 Hero 상단은 로그인만. 로그인 상태면 로그인 버튼 대신
+                  대시보드 이동 CTA(로그인한 사용자에게 '로그인'은 불필요). */}
               <LandingButton
                 size="lg"
                 variant="primary"
-                to="/login"
+                to={isLoggedIn ? "/dashboard" : "/login"}
                 iconRight={<ArrowRightIcon size={17} strokeWidth={1.8} />}
               >
-                로그인
+                {isLoggedIn ? "대시보드로 가기" : "로그인"}
               </LandingButton>
             </div>
           </Reveal>
