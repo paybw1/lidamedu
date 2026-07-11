@@ -242,6 +242,8 @@ export interface CaseDetail extends CaseListItem {
   fullTextPdf: string | null;
   commentSource: string | null;
   commentBodyMd: string | null;
+  // "비고 — 전체 판결문"(commentBodyMd) 블록의 학생 뷰어 표시 분류. remark 기본.
+  commentLabel: CaseCommentLabel;
   // feat-7-005 후속: 관련자료 본문 (그림·표 설명). 그림 자체는 images[position=related].
   relatedMd: string | null;
   images: CaseImage[];
@@ -253,6 +255,27 @@ export interface CaseDetail extends CaseListItem {
   officialTextPdfPath: string | null;
   /** feat-3-213 — 판례집 구조화 본문. 비어 있으면 기존 필드(summary/reasoning/comment) 렌더. */
   bookSections: BookSection[];
+}
+
+// "비고 — 전체 판결문"(cases.comment_body_md) 블록의 표시 분류.
+//   value   → DB 저장값(cases.comment_label CHECK)
+//   label   → admin select 표기(짧게)
+//   heading → 학생 뷰어 BodySection 제목
+export const CASE_COMMENT_LABEL_OPTIONS = [
+  { value: "remark", label: "비고", heading: "비고 (전체 판결문)" },
+  { value: "related_cases", label: "관련판례", heading: "관련판례" },
+  { value: "commentary", label: "평석", heading: "평석" },
+] as const;
+export type CaseCommentLabel =
+  (typeof CASE_COMMENT_LABEL_OPTIONS)[number]["value"];
+export const CASE_COMMENT_LABEL_VALUES = CASE_COMMENT_LABEL_OPTIONS.map(
+  (o) => o.value,
+) as readonly CaseCommentLabel[];
+export function caseCommentHeading(label: CaseCommentLabel): string {
+  return (
+    CASE_COMMENT_LABEL_OPTIONS.find((o) => o.value === label)?.heading ??
+    "비고 (전체 판결문)"
+  );
 }
 
 // feat-4-A-214 관련논문/기사 링크.

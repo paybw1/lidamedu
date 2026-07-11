@@ -68,6 +68,10 @@ const upsertSchema = z.object({
   // commentSource 는 admin UI 에서 입력 필드 제거됨 — DB 컬럼·기존 데이터는 보존하고,
   // upsert 시 이 필드는 건드리지 않는다(payload 에 comment_source 포함 안 함).
   commentBodyMd: z.string().max(50_000).nullable(),
+  // "비고 — 전체 판결문" 블록 표시 분류 (비고/관련판례/평석). 기본 remark.
+  commentLabel: z
+    .enum(["remark", "related_cases", "commentary"])
+    .default("remark"),
   relatedMd: z.string().max(50_000).nullable(),
   exam1stYears: z.array(z.number().int().min(1990).max(2099)),
   exam2ndYears: z.array(z.number().int().min(1990).max(2099)),
@@ -717,6 +721,7 @@ export async function action({ request }: Route.ActionArgs) {
     summaryItems: summaryItemsRaw,
     reasoningMd: emptyToNull(fd.get("reasoningMd")),
     commentBodyMd: emptyToNull(fd.get("commentBodyMd")),
+    commentLabel: emptyToNull(fd.get("commentLabel")) ?? "remark",
     relatedMd: emptyToNull(fd.get("relatedMd")),
     exam1stYears: parseIntList(fd.get("exam1stYears")),
     exam2ndYears: parseIntList(fd.get("exam2ndYears")),
@@ -855,6 +860,7 @@ export async function action({ request }: Route.ActionArgs) {
     summary_body_md: summaryItems[0]?.body || null,
     reasoning_md: input.reasoningMd,
     comment_body_md: input.commentBodyMd,
+    comment_label: input.commentLabel,
     related_md: input.relatedMd,
     exam_1st_years: input.exam1stYears,
     exam_2nd_years: input.exam2ndYears,

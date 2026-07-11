@@ -28,6 +28,7 @@ import {
 } from "~/features/cases/components/exam-year-chip";
 import {
   COURT_LABELS,
+  caseCommentHeading,
   type BookSection,
   type BookSectionBlock,
   type BookSectionCell,
@@ -467,7 +468,7 @@ export function CaseBody({
         ) : null}
 
         {!bookMode && kase.commentBodyMd ? (
-          <BodySection title="비고 (전체 판결문)">
+          <BodySection title={caseCommentHeading(kase.commentLabel)}>
             <MaybeHighlight
               on={enableHighlights}
               fieldPath="case.comment"

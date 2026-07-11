@@ -2378,6 +2378,7 @@ export type Database = {
           case_title: string
           case_type: string | null
           comment_body_md: string | null
+          comment_label: string
           comment_source: string | null
           court: Database["public"]["Enums"]["case_court"]
           created_at: string
@@ -2415,6 +2416,7 @@ export type Database = {
           case_title: string
           case_type?: string | null
           comment_body_md?: string | null
+          comment_label?: string
           comment_source?: string | null
           court: Database["public"]["Enums"]["case_court"]
           created_at?: string
@@ -2452,6 +2454,7 @@ export type Database = {
           case_title?: string
           case_type?: string | null
           comment_body_md?: string | null
+          comment_label?: string
           comment_source?: string | null
           court?: Database["public"]["Enums"]["case_court"]
           created_at?: string

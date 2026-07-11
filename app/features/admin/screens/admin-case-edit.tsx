@@ -33,6 +33,8 @@ import { Textarea } from "~/core/components/ui/textarea";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
 import {
+  CASE_COMMENT_LABEL_OPTIONS,
+  CASE_COMMENT_LABEL_VALUES,
   CASE_IMAGE_POSITIONS,
   CASE_IMAGE_POSITION_LABELS,
   COURT_LABELS,
@@ -169,6 +171,12 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
   // 저장 시 지워지지 않게). 섹션을 전부 삭제하고 저장하면 다음 진입부터 카드가 다시 보인다.
   const bookSectionsDefault = parseBookSections(kase?.book_sections);
   const bookMode = bookSectionsDefault.length > 0;
+  // "비고 — 전체 판결문"(comment_body_md) 블록의 학생 뷰어 표시 분류. 기본 remark.
+  const commentLabelDefault = (
+    CASE_COMMENT_LABEL_VALUES as readonly string[]
+  ).includes(kase?.comment_label ?? "")
+    ? (kase!.comment_label as string)
+    : "remark";
 
   return (
     <AdminShell
@@ -410,30 +418,58 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
               · 전체 비고 → 이 textarea. 판결문 전체에 대한 일반 코멘트.
             교재 구조 판례는 평석을 book_sections 에서 편집 — 카드 숨기고 값 보존. */}
         {bookMode ? (
-          <input
-            type="hidden"
-            name="commentBodyMd"
-            value={kase?.comment_body_md ?? ""}
-          />
+          <>
+            <input
+              type="hidden"
+              name="commentBodyMd"
+              value={kase?.comment_body_md ?? ""}
+            />
+            <input
+              type="hidden"
+              name="commentLabel"
+              value={commentLabelDefault}
+            />
+          </>
         ) : (
           <Card>
             <CardHeader>
               <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                비고 — 전체 판결문
+                비고 · 관련판례 · 평석 — 전체 판결문
               </p>
               <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">
                 요지 [N] 항목별 코멘트는 위 "요지" 섹션 각 항목 안의 비고 [N] 입력란을
-                사용하세요. 이 필드는 <strong>판결문 전체에 걸친 일반 비고</strong>를
-                위한 용도입니다.
+                사용하세요. 이 필드는 <strong>판결문 전체에 걸친 일반 코멘트</strong>를
+                위한 용도이며, 아래 <strong>표시 분류</strong>에서 학생 화면에 노출될
+                제목(비고 / 관련판례 / 평석)을 선택합니다.
               </p>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Field label="비고 본문 (Markdown)" htmlFor="commentBodyMd">
+              <Field label="표시 분류" htmlFor="commentLabel">
+                <AdminSelect
+                  id="commentLabel"
+                  name="commentLabel"
+                  defaultValue={commentLabelDefault}
+                  className="w-48"
+                >
+                  {CASE_COMMENT_LABEL_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </AdminSelect>
+                <p className="text-muted-foreground mt-1 text-[10px]">
+                  학생 뷰어 제목:{" "}
+                  {CASE_COMMENT_LABEL_OPTIONS.map(
+                    (o) => `${o.label}=「${o.heading}」`,
+                  ).join(" · ")}
+                </p>
+              </Field>
+              <Field label="본문 (Markdown)" htmlFor="commentBodyMd">
                 <ReflowableTextarea
                   name="commentBodyMd"
                   defaultValue={kase?.comment_body_md ?? ""}
                   rows={6}
-                  fieldLabel="비고 본문"
+                  fieldLabel="전체 판결문 코멘트"
                   caseId={isNew ? null : kase.case_id}
                   imagePosition="comment"
                 />
