@@ -469,6 +469,9 @@ for (let i = 0; i < paras.length; i++) {
   const secM = /^\[([^\]]{1,20})\]$/.exec(plain);
   if (secM && SECTION_KEYS[secM[1]]) {
     curSection = SECTION_KEYS[secM[1]];
+    // 원래 명칭 보존(첫 등장) — 백필이 lower/holding 을 "전심/본심의 판단" 으로
+    // 정규화하므로, 워크북 원문 헤딩(특허법원의 판단·대법원의 판단·심판원의 판단 등)을 별도 기록.
+    (curCase.sectionLabels ??= {})[curSection] ??= secM[1].replace(/\s+/g, " ").trim();
     continue;
   }
 
