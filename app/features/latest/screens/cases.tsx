@@ -11,7 +11,7 @@ import {
   PencilIcon,
   SearchXIcon,
 } from "lucide-react";
-import { Link, data, useFetcher } from "react-router";
+import { Link, data, useFetcher, useLocation } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Input } from "~/core/components/ui/input";
@@ -227,6 +227,9 @@ function lawName(slug: string): string {
 
 export default function LatestCases({ loaderData }: Route.ComponentProps) {
   const { cases, total, filters, isStaff, recencyMonths } = loaderData;
+  // 수정 진입 시 현재 목록(필터 포함)으로 복귀하도록 returnTo 전달.
+  const location = useLocation();
+  const listReturnTo = `${location.pathname}${location.search}`;
   const filterActive =
     !!filters.subject ||
     filters.importantOnly ||
@@ -343,7 +346,7 @@ export default function LatestCases({ loaderData }: Route.ComponentProps) {
               <div key={c.caseId} className="relative">
                 {isStaff ? (
                   <Link
-                    to={`/admin/cases/edit/${c.caseId}`}
+                    to={`/admin/cases/edit/${c.caseId}?returnTo=${encodeURIComponent(listReturnTo)}`}
                     viewTransition
                     className="text-muted-foreground hover:text-link bg-card/80 absolute top-3 right-3 z-10 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs font-semibold backdrop-blur-sm"
                   >

@@ -84,7 +84,9 @@ function safeReturnTo(raw: unknown): string {
   if (typeof raw !== "string" || !raw.startsWith("/") || raw.startsWith("//"))
     return "/admin/cases?law=patent";
   if (/^\/admin\/cases(\/|\?|$)/.test(raw)) return raw;
-  if (/^\/subjects\/[a-z_]+\/cases\/[a-f0-9-]+(\?|#|$)/i.test(raw)) return raw;
+  // 학생/공개 뷰어 계열(subjects·latest) 전반 — 진입 경로 변형(query 포함) 수용.
+  if (/^\/subjects\//.test(raw)) return raw;
+  if (/^\/latest\/cases(\/|\?|$)/.test(raw)) return raw;
   return "/admin/cases?law=patent";
 }
 

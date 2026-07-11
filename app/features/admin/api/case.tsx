@@ -159,7 +159,10 @@ function safeReturnTo(raw: unknown): string {
   if (typeof raw !== "string" || !raw.startsWith("/") || raw.startsWith("//"))
     return "/admin/cases?law=patent";
   if (/^\/admin\/cases(\/|\?|$)/.test(raw)) return raw;
-  if (/^\/subjects\/[a-z_]+\/cases\/[a-f0-9-]+(\?|#|$)/i.test(raw)) return raw;
+  // 학생/공개 뷰어 계열(학습과목 subjects·학습정보 latest) 전반 — 판례 본문·체계도·flow 등
+  // 진입 경로 변형(query 포함)을 모두 수용. 같은 도메인 내부 경로라 open-redirect 안전.
+  if (/^\/subjects\//.test(raw)) return raw;
+  if (/^\/latest\/cases(\/|\?|$)/.test(raw)) return raw;
   return "/admin/cases?law=patent";
 }
 
