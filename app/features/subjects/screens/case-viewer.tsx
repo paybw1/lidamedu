@@ -31,8 +31,8 @@ import {
   getCaseById,
   getCaseIdsByArticleLinks,
   getCasePlacementMaps,
-  getCaseSiblings,
   getCasesByIds,
+  getOverallOrderedCaseSiblings,
   listCaseReferences,
 } from "~/features/cases/queries.server";
 import { listComments } from "~/features/comments/queries.server";
@@ -200,8 +200,17 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       const list = await getCasesByIds(client, ids);
       return { kind: "article", placementId: ctxArticleId, siblings: list };
     }
-    // 컨텍스트 없음 — case 자체 primary placement 기반.
-    return getCaseSiblings(client, kase.caseId);
+    // 컨텍스트 없음 — "전체"(체계도 전체 순번) 목록 기준 prev/next.
+    // 전체 판례 목록에서 판례를 선택해 진입한 경우, 그 판례가 속한 노드 안이 아니라
+    // 전체 목록 순서(체계도 트리순)로 이웃 이동해야 한다. (사용자 보고)
+    const overall = await getOverallOrderedCaseSiblings(
+      client,
+      lawCode,
+      systematicNodes.map((n) => n.nodeId),
+      placementMaps.caseSetByNodeId,
+    );
+    if (overall.length === 0) return null;
+    return { kind: "node", placementId: "__overall__", siblings: overall };
   })();
 
   // Phase A2 — getSubjectAxisCounts 를 12 병렬에 합쳐 별도 RTT 1단 제거.

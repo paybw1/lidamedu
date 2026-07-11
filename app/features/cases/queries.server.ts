@@ -559,6 +559,68 @@ export async function computeCaseOverallOrder(
   return map;
 }
 
+// 전체(체계도 전체 순번) 판례 이웃 목록 — 뷰어 prev/next 가 노드/조문 컨텍스트 없이
+// 진입했을 때(전체 목록에서 판례 선택) "전체" 목록 순서로 이웃 이동하도록.
+// computeCaseOverallOrder 와 동일 정렬 규칙(체계도 트리순 → 노드 내 source_asc → 사건번호)을
+// 쓰되 CaseSibling[] 로 반환한다.
+export async function getOverallOrderedCaseSiblings(
+  client: SupabaseClient<Database>,
+  lawCode: string,
+  nodeOrder: readonly string[],
+  caseSetByNodeId: Record<string, string[]>,
+): Promise<CaseSibling[]> {
+  const nodeRank = new Map<string, number>();
+  nodeOrder.forEach((id, i) => nodeRank.set(id, i));
+  const caseMinRank = new Map<string, number>();
+  for (const [nodeId, caseIds] of Object.entries(caseSetByNodeId)) {
+    const rank = nodeRank.get(nodeId);
+    if (rank === undefined) continue;
+    for (const cid of caseIds) {
+      const cur = caseMinRank.get(cid);
+      if (cur === undefined || rank < cur) caseMinRank.set(cid, rank);
+    }
+  }
+  const CASE_PAGE = 1000;
+  const rows: Array<{
+    case_id: string;
+    source_seq: number | null;
+    case_number: string | null;
+    case_title: string | null;
+  }> = [];
+  for (let offset = 0; offset < CASE_LIST_MAX; offset += CASE_PAGE) {
+    const to = Math.min(offset + CASE_PAGE, CASE_LIST_MAX) - 1;
+    const { data, error } = await client
+      .from("cases")
+      .select("case_id, source_seq, case_number, case_title")
+      .contains("subject_laws", [lawCode])
+      .is("deleted_at", null)
+      .order("case_id", { ascending: true })
+      .range(offset, to);
+    if (error) throw error;
+    const batch = data ?? [];
+    rows.push(...batch);
+    if (batch.length < to - offset + 1) break;
+  }
+  const UNPLACED = nodeOrder.length;
+  const enriched = rows.map((c) => ({
+    sib: {
+      caseId: c.case_id,
+      caseNumber: c.case_number ?? "",
+      caseTitle: c.case_title ?? "",
+      sourceSeq: c.source_seq,
+    } as CaseSibling,
+    rank: caseMinRank.get(c.case_id) ?? UNPLACED,
+    seq: c.source_seq ?? Number.POSITIVE_INFINITY,
+  }));
+  enriched.sort(
+    (a, b) =>
+      a.rank - b.rank ||
+      a.seq - b.seq ||
+      a.sib.caseNumber.localeCompare(b.sib.caseNumber),
+  );
+  return enriched.map((e) => e.sib);
+}
+
 // (deprecated) getCaseIdsByArticleIds — placement 모델로 전환되며 사용 안 함.
 // 호출처 없음. getCaseIdsByPlacement(articleIds, nodeIds=[]) 가 동일 역할 + legacy fallback.
 
