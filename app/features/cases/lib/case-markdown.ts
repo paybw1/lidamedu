@@ -118,6 +118,29 @@ const ALLOWED_TABLE_ATTR = [
   "rel",
 ];
 
+// 비교표 판정 — GFM 표에서 첫 열 셀이 모두 "짧은 라벨"(≤ 임계)이고 열이 2개 이상이면
+// 비교표로 보고 table.cmp class 를 부여한다(CSS: 첫 열 nowrap 한 줄 + 나머지 열 균등).
+// 첫 열에 긴 본문이 들어가는 박스형 표는 임계 초과라 미해당 → 기존 렌더 유지(가로 스크롤 방지).
+const CMP_FIRST_COL_MAX = 30; // 첫 열 라벨 최대 길이(문자). "발명의 설명 참작의 원칙"=12 여유.
+function isComparisonTable(gfm: string): boolean {
+  const lines = gfm
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.startsWith("|") && l.endsWith("|"));
+  if (lines.length < 2) return false;
+  let cols = 0;
+  let maxFirst = 0;
+  for (const l of lines) {
+    // 구분선(| --- | --- |) 은 건너뜀.
+    if (/^\|[\s:|-]+\|$/.test(l)) continue;
+    const cells = l.slice(1, -1).split("|");
+    if (cells.length < 2) return false;
+    cols = Math.max(cols, cells.length);
+    maxFirst = Math.max(maxFirst, cells[0].trim().length);
+  }
+  return cols >= 2 && maxFirst > 0 && maxFirst <= CMP_FIRST_COL_MAX;
+}
+
 export function renderTableHtml(p: string): string {
   // raw HTML `<table>` 입력은 marked 거치지 않고 그대로 sanitize.
   // (marked 의 inline-html 통과 동작에 의존하지 않고 명시적으로 처리.)
@@ -125,10 +148,15 @@ export function renderTableHtml(p: string): string {
   const html = isRawHtml
     ? p
     : (marked.parse(p, { async: false, gfm: true }) as string);
-  return DOMPurify.sanitize(html, {
+  const clean = DOMPurify.sanitize(html, {
     ALLOWED_TAGS: ALLOWED_TABLE_TAGS,
     ALLOWED_ATTR: ALLOWED_TABLE_ATTR,
   });
+  // 비교표면 sanitize 이후(안전한 자체 문자열)에 class 주입 — 첫 <table> 한 번만.
+  if (!isRawHtml && isComparisonTable(p)) {
+    return clean.replace(/<table(?![^>]*\bclass=)/i, '<table class="cmp"');
+  }
+  return clean;
 }
 
 // 사용자 작성용 표 템플릿 — "표 삽입" 버튼이 cursor 위치에 삽입할 markdown 원문.
