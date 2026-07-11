@@ -255,6 +255,40 @@ export interface CaseDetail extends CaseListItem {
   officialTextPdfPath: string | null;
   /** feat-3-213 — 판례집 구조화 본문. 비어 있으면 기존 필드(summary/reasoning/comment) 렌더. */
   bookSections: BookSection[];
+  /** 관련 판례 인용 목록(구조화). 예: "의정부지방법원 2011. 9. 8. 선고 2009가합7325". */
+  relatedCases: RelatedCaseCitation[];
+}
+
+// 관련 판례 인용 한 건 — 자유 인용 텍스트 + 선택 사건명/비고. DB 판례 링크 없음.
+export interface RelatedCaseCitation {
+  citation: string;
+  caseTitle: string | null;
+  note: string | null;
+}
+
+// cases.related_cases (jsonb) → RelatedCaseCitation[]. 잡값·빈 인용은 제거.
+export function parseRelatedCases(raw: unknown): RelatedCaseCitation[] {
+  if (!Array.isArray(raw)) return [];
+  const out: RelatedCaseCitation[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const rec = item as Record<string, unknown>;
+    const citation =
+      typeof rec.citation === "string" ? rec.citation.trim() : "";
+    if (!citation) continue;
+    out.push({
+      citation,
+      caseTitle:
+        typeof rec.caseTitle === "string" && rec.caseTitle.trim() !== ""
+          ? rec.caseTitle.trim()
+          : null,
+      note:
+        typeof rec.note === "string" && rec.note.trim() !== ""
+          ? rec.note.trim()
+          : null,
+    });
+  }
+  return out;
 }
 
 // "비고 — 전체 판결문"(cases.comment_body_md) 블록의 표시 분류.

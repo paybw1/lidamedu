@@ -2400,6 +2400,7 @@ export type Database = {
           primary_article_id: string | null
           primary_node_id: string | null
           reasoning_md: string | null
+          related_cases: Json
           related_md: string | null
           search_tsv: unknown
           source_seq: number | null
@@ -2438,6 +2439,7 @@ export type Database = {
           primary_article_id?: string | null
           primary_node_id?: string | null
           reasoning_md?: string | null
+          related_cases?: Json
           related_md?: string | null
           search_tsv?: unknown
           source_seq?: number | null
@@ -2476,6 +2478,7 @@ export type Database = {
           primary_article_id?: string | null
           primary_node_id?: string | null
           reasoning_md?: string | null
+          related_cases?: Json
           related_md?: string | null
           search_tsv?: unknown
           source_seq?: number | null

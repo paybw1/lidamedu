@@ -482,6 +482,35 @@ export function CaseBody({
           </BodySection>
         ) : null}
 
+        {/* 관련 판례 — 구조화 인용 목록(사건명·번호 등). staff 가 입력한 자유 인용 텍스트. */}
+        {kase.relatedCases.length > 0 ? (
+          <BodySection title="관련판례">
+            <ul className="space-y-2">
+              {kase.relatedCases.map((rc, i) => (
+                <li
+                  key={i}
+                  className="border-border/70 border-l-2 pl-3 text-[length:calc(15px*var(--study-fs))] leading-relaxed"
+                >
+                  <span className="text-foreground font-medium">
+                    {rc.citation}
+                  </span>
+                  {rc.caseTitle ? (
+                    <span className="text-muted-foreground">
+                      {" "}
+                      — {rc.caseTitle}
+                    </span>
+                  ) : null}
+                  {rc.note ? (
+                    <span className="text-muted-foreground block text-[0.92em]">
+                      {rc.note}
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </BodySection>
+        ) : null}
+
         {/* 관련자료 — 본문(텍스트) 또는 이미지(그림·표) 하나라도 있으면 표시.
             본문은 case.related fieldPath 로 하이라이트 활성, 그림은 그 아래 그리드. */}
         {kase.relatedMd || imagesByPosition.related.length > 0 ? (

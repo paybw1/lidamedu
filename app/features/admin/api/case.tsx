@@ -73,6 +73,16 @@ const upsertSchema = z.object({
     .enum(["remark", "related_cases", "commentary"])
     .default("remark"),
   relatedMd: z.string().max(50_000).nullable(),
+  // 관련 판례 인용 목록 — 자유 인용 텍스트(+ 선택 사건명/비고). 빈 인용은 제거.
+  relatedCases: z
+    .array(
+      z.object({
+        citation: z.string().max(300),
+        caseTitle: z.string().max(500).nullable().optional(),
+        note: z.string().max(500).nullable().optional(),
+      }),
+    )
+    .max(50),
   exam1stYears: z.array(z.number().int().min(1990).max(2099)),
   exam2ndYears: z.array(z.number().int().min(1990).max(2099)),
 });
@@ -709,6 +719,15 @@ export async function action({ request }: Route.ActionArgs) {
       { status: 400 },
     );
   }
+  let relatedCasesRaw: unknown;
+  try {
+    relatedCasesRaw = JSON.parse(String(fd.get("relatedCases") ?? "[]"));
+  } catch {
+    return data(
+      { error: "관련 판례 형식이 올바르지 않습니다." },
+      { status: 400 },
+    );
+  }
   const parsed = upsertSchema.safeParse({
     subjectLaws,
     court: fd.get("court"),
@@ -723,6 +742,7 @@ export async function action({ request }: Route.ActionArgs) {
     commentBodyMd: emptyToNull(fd.get("commentBodyMd")),
     commentLabel: emptyToNull(fd.get("commentLabel")) ?? "remark",
     relatedMd: emptyToNull(fd.get("relatedMd")),
+    relatedCases: relatedCasesRaw,
     exam1stYears: parseIntList(fd.get("exam1stYears")),
     exam2ndYears: parseIntList(fd.get("exam2ndYears")),
   });
@@ -752,6 +772,15 @@ export async function action({ request }: Route.ActionArgs) {
         it.body.trim() !== "" ||
         (it.commentMd !== undefined && it.commentMd !== ""),
     );
+
+  // 관련 판례 — 인용(citation) 이 빈 항목은 제거, 선택 필드는 trim 후 빈 값이면 null.
+  const relatedCases = input.relatedCases
+    .map((rc) => ({
+      citation: rc.citation.trim(),
+      caseTitle: (rc.caseTitle ?? "").trim() || null,
+      note: (rc.note ?? "").trim() || null,
+    }))
+    .filter((rc) => rc.citation !== "");
 
   // book_sections — 폼에 필드가 있을 때만 반영. 빈 문단·빈 섹션 정리 후 0개면 null.
   // 섹션이 있으면 목록 제목·검색용 필드(summary_items/reasoning_md/comment_body_md)를
@@ -862,6 +891,7 @@ export async function action({ request }: Route.ActionArgs) {
     comment_body_md: input.commentBodyMd,
     comment_label: input.commentLabel,
     related_md: input.relatedMd,
+    related_cases: relatedCases as unknown as Json,
     exam_1st_years: input.exam1stYears,
     exam_2nd_years: input.exam2ndYears,
     summary_items: summaryItems,

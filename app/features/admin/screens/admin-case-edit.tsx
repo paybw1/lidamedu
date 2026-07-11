@@ -40,8 +40,10 @@ import {
   COURT_LABELS,
   parseBookSections,
   parseCaseImages,
+  parseRelatedCases,
   type CaseImage,
   type CaseImagePosition,
+  type RelatedCaseCitation,
 } from "~/features/cases/labels";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { BookSectionsEditor } from "~/features/admin/components/book-sections-editor";
@@ -192,6 +194,7 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
   ).includes(kase?.comment_label ?? "")
     ? (kase!.comment_label as string)
     : "remark";
+  const relatedCasesDefault = parseRelatedCases(kase?.related_cases);
 
   return (
     <AdminShell
@@ -495,6 +498,23 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
               </CardContent>
             </Card>
 
+            {/* 관련 판례 — 사건명·번호 등 자유 인용 목록 (DB 미적재 하급심 등 포함). */}
+            <Card>
+              <CardHeader>
+                <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                  관련 판례
+                </p>
+                <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">
+                  이 판례와 관련된 판례를 <strong>사건명·번호 등</strong>으로 입력합니다
+                  (예: 의정부지방법원 2011. 9. 8. 선고 2009가합7325). 학생 화면의
+                  "관련판례" 섹션에 목록으로 노출됩니다.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <RelatedCasesEditor defaultItems={relatedCasesDefault} />
+              </CardContent>
+            </Card>
+
             {/* 관련자료 — 그림·표 등 본문 보조 자료 설명. 그림/표 자체는 폼 외부
                 ImagesCard 의 position=관련자료 로 업로드. */}
             <Card>
@@ -550,6 +570,11 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
               type="hidden"
               name="relatedMd"
               value={kase?.related_md ?? ""}
+            />
+            <input
+              type="hidden"
+              name="relatedCases"
+              value={JSON.stringify(relatedCasesDefault)}
             />
 
             {/* feat-3-213 — 판례집 구조화 본문 (상표 제16판 등). 학생 뷰어 표시 SSOT. */}
@@ -2012,6 +2037,83 @@ function SummaryItemsEditor({
         }
       >
         <PlusIcon className="size-3.5" /> 요지 항목 추가
+      </Button>
+    </div>
+  );
+}
+
+/* ── RelatedCasesEditor — 관련 판례 인용 목록 ─────────────────────────
+   각 행: 인용(전체) + 사건명(선택) + 비고(선택). hidden JSON(relatedCases)로 제출.
+   SummaryItemsEditor 와 동일 패턴(flushSync 로 stale FormData race 방지). */
+function RelatedCasesEditor({
+  defaultItems,
+}: {
+  defaultItems: RelatedCaseCitation[];
+}) {
+  const [items, setItems] = useState<RelatedCaseCitation[]>(defaultItems);
+  const setSync = (updater: (prev: RelatedCaseCitation[]) => RelatedCaseCitation[]) =>
+    flushSync(() => setItems(updater));
+  const patch = (i: number, p: Partial<RelatedCaseCitation>) =>
+    setSync((prev) => prev.map((it, j) => (j === i ? { ...it, ...p } : it)));
+
+  return (
+    <div className="space-y-3">
+      <input type="hidden" name="relatedCases" value={JSON.stringify(items)} />
+      {items.length === 0 ? (
+        <p className="text-muted-foreground rounded-md border border-dashed px-3 py-2 text-xs">
+          아직 관련 판례가 없습니다. 아래 버튼으로 추가하세요.
+        </p>
+      ) : null}
+      {items.map((it, i) => (
+        <div
+          key={i}
+          className="border-input bg-muted/20 space-y-2 rounded-md border p-3"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold">관련 판례 {i + 1}</span>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-6 gap-1 px-2 text-[11px] text-rose-600 hover:text-rose-700"
+              onClick={() => setSync((prev) => prev.filter((_, j) => j !== i))}
+            >
+              <Trash2Icon className="size-3" /> 삭제
+            </Button>
+          </div>
+          <Input
+            value={it.citation}
+            onChange={(e) => patch(i, { citation: e.target.value })}
+            placeholder="예: 의정부지방법원 2011. 9. 8. 선고 2009가합7325"
+            maxLength={300}
+          />
+          <Input
+            value={it.caseTitle ?? ""}
+            onChange={(e) =>
+              patch(i, { caseTitle: e.target.value === "" ? null : e.target.value })
+            }
+            placeholder="사건명 (선택)"
+            maxLength={500}
+          />
+          <Input
+            value={it.note ?? ""}
+            onChange={(e) =>
+              patch(i, { note: e.target.value === "" ? null : e.target.value })
+            }
+            placeholder="비고 (선택)"
+            maxLength={500}
+          />
+        </div>
+      ))}
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        onClick={() =>
+          setSync((prev) => [...prev, { citation: "", caseTitle: null, note: null }])
+        }
+      >
+        <PlusIcon className="size-3.5" /> 관련 판례 추가
       </Button>
     </div>
   );
