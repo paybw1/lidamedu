@@ -118,27 +118,66 @@ const ALLOWED_TABLE_ATTR = [
   "rel",
 ];
 
-// 비교표 판정 — GFM 표에서 첫 열 셀이 모두 "짧은 라벨"(≤ 임계)이고 열이 2개 이상이면
-// 비교표로 보고 table.cmp class 를 부여한다(CSS: 첫 열 nowrap 한 줄 + 나머지 열 균등).
+// 비교표 판정 + 열 분류 — GFM 표에서 첫 열이 "짧은 라벨"(≤ 임계)이고 열이 2개 이상이면
+// 비교표(table.cmp)로 본다. 각 열은 "라벨 열"(모든 셀이 짧음 → 내용 폭·nowrap)과
+// "값 열"(긴 비교 본문 → 균등 폭)로 분류. 예:
+//   · "발명의 특정 | 특허요건 판단 | 보호범위 판단" → 라벨[0] · 값[1,2]
+//   · "종류 | 형태 | 미국 | 한국"                    → 라벨[0,1] · 값[2,3]
 // 첫 열에 긴 본문이 들어가는 박스형 표는 임계 초과라 미해당 → 기존 렌더 유지(가로 스크롤 방지).
 const CMP_FIRST_COL_MAX = 30; // 첫 열 라벨 최대 길이(문자). "발명의 설명 참작의 원칙"=12 여유.
-function isComparisonTable(gfm: string): boolean {
+const CMP_LABEL_MAX = 24; // 라벨 열 판정 — 열의 최대 셀 길이가 이 이하면 라벨(짧은) 열.
+function analyzeCmpTable(
+  gfm: string,
+): { labelCols: Set<number>; cols: number } | null {
   const lines = gfm
     .split("\n")
     .map((l) => l.trim())
     .filter((l) => l.startsWith("|") && l.endsWith("|"));
-  if (lines.length < 2) return false;
+  if (lines.length < 2) return null;
   let cols = 0;
   let maxFirst = 0;
+  const colMax: number[] = [];
   for (const l of lines) {
     // 구분선(| --- | --- |) 은 건너뜀.
     if (/^\|[\s:|-]+\|$/.test(l)) continue;
-    const cells = l.slice(1, -1).split("|");
-    if (cells.length < 2) return false;
+    const cells = l.slice(1, -1).split("|").map((s) => s.trim());
+    if (cells.length < 2) return null;
     cols = Math.max(cols, cells.length);
-    maxFirst = Math.max(maxFirst, cells[0].trim().length);
+    maxFirst = Math.max(maxFirst, cells[0].length);
+    cells.forEach((cell, i) => {
+      colMax[i] = Math.max(colMax[i] ?? 0, cell.length);
+    });
   }
-  return cols >= 2 && maxFirst > 0 && maxFirst <= CMP_FIRST_COL_MAX;
+  if (cols < 2 || maxFirst === 0 || maxFirst > CMP_FIRST_COL_MAX) return null;
+  const labelCols = new Set<number>();
+  for (let i = 0; i < cols; i++) {
+    if ((colMax[i] ?? 0) <= CMP_LABEL_MAX) labelCols.add(i);
+  }
+  // 값 열이 하나도 없으면(전부 짧은 표) 첫 열만 라벨·나머지는 값(균등)으로 —
+  // 2열 등에서 우측 여백이 크게 남지 않게.
+  if (labelCols.size >= cols) {
+    labelCols.clear();
+    labelCols.add(0);
+  }
+  return { labelCols, cols };
+}
+
+// sanitize 된 표 HTML 의 각 셀(th/td)에 열 위치별 class(lbl/val)를 부여.
+// <tr> 마다 열 인덱스를 리셋. marked 산출 표라 colspan 없음(열 위치 안정).
+function annotateCmpColumns(html: string, labelCols: Set<number>): string {
+  let col = 0;
+  return html.replace(
+    /(<tr\b[^>]*>)|(<(?:th|td)\b)([^>]*)>/gi,
+    (_m, trTag: string | undefined, cellOpen: string, cellAttrs: string) => {
+      if (trTag) {
+        col = 0;
+        return trTag;
+      }
+      const cls = labelCols.has(col) ? "lbl" : "val";
+      col += 1;
+      return `${cellOpen}${cellAttrs} class="${cls}">`;
+    },
+  );
 }
 
 export function renderTableHtml(p: string): string {
@@ -152,9 +191,16 @@ export function renderTableHtml(p: string): string {
     ALLOWED_TAGS: ALLOWED_TABLE_TAGS,
     ALLOWED_ATTR: ALLOWED_TABLE_ATTR,
   });
-  // 비교표면 sanitize 이후(안전한 자체 문자열)에 class 주입 — 첫 <table> 한 번만.
-  if (!isRawHtml && isComparisonTable(p)) {
-    return clean.replace(/<table(?![^>]*\bclass=)/i, '<table class="cmp"');
+  // 비교표면 sanitize 이후(안전한 자체 문자열)에 class 주입 — table.cmp + 셀별 lbl/val.
+  if (!isRawHtml) {
+    const info = analyzeCmpTable(p);
+    if (info) {
+      const withClass = clean.replace(
+        /<table(?![^>]*\bclass=)/i,
+        '<table class="cmp"',
+      );
+      return annotateCmpColumns(withClass, info.labelCols);
+    }
   }
   return clean;
 }

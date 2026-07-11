@@ -374,17 +374,19 @@ body {
   vertical-align: top;
   text-align: left;
 }
-/* 비교표(table.cmp — renderTableHtml 이 "첫 열이 모두 짧은 라벨" 표에만 자동 부여):
-   첫 열(구분/라벨)은 내용 폭(한 줄)으로 축소, 나머지 열은 동일 폭 균등 분배.
-   예: "발명의 특정 | 특허요건 판단 | 보호범위 판단" → 라벨 한 줄 + 판단 열 동일 폭.
+/* 비교표(table.cmp — renderTableHtml 이 "첫 열이 짧은 라벨" 표에만 자동 부여):
+   라벨 열(.lbl, 모든 셀이 짧음)은 내용 폭(한 줄)으로 축소, 값 열(.val, 긴 비교 본문)은
+   동일 폭 균등 분배. 예:
+     · "발명의 특정 | 특허요건 판단 | 보호범위 판단" → 라벨1 + 값2(동일 폭)
+     · "종류 | 형태 | 미국 | 한국"                    → 라벨2 + 값2(미국=한국)
    ★일반 표(첫 열에 긴 본문이 들어가는 박스형)는 class 미부여라 영향 없음. */
-.case-md-table table.cmp th:first-child,
-.case-md-table table.cmp td:first-child {
+.case-md-table table.cmp th.lbl,
+.case-md-table table.cmp td.lbl {
   width: 1%;
   white-space: nowrap;
 }
-.case-md-table table.cmp th:not(:first-child),
-.case-md-table table.cmp td:not(:first-child) {
+.case-md-table table.cmp th.val,
+.case-md-table table.cmp td.val {
   width: 50%;
 }
 .case-md-table thead th {
