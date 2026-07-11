@@ -262,7 +262,7 @@ export interface CaseDetail extends CaseListItem {
 //   label   → admin select 표기(짧게)
 //   heading → 학생 뷰어 BodySection 제목
 export const CASE_COMMENT_LABEL_OPTIONS = [
-  { value: "remark", label: "비고", heading: "비고 (전체 판결문)" },
+  { value: "remark", label: "비고", heading: "비고" },
   { value: "related_cases", label: "관련판례", heading: "관련판례" },
   { value: "commentary", label: "평석", heading: "평석" },
 ] as const;
@@ -273,8 +273,7 @@ export const CASE_COMMENT_LABEL_VALUES = CASE_COMMENT_LABEL_OPTIONS.map(
 ) as readonly CaseCommentLabel[];
 export function caseCommentHeading(label: CaseCommentLabel): string {
   return (
-    CASE_COMMENT_LABEL_OPTIONS.find((o) => o.value === label)?.heading ??
-    "비고 (전체 판결문)"
+    CASE_COMMENT_LABEL_OPTIONS.find((o) => o.value === label)?.heading ?? "비고"
   );
 }
 
