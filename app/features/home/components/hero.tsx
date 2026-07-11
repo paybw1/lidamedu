@@ -395,6 +395,9 @@ function HeroPreviewCard({ preview }: { preview?: HeroPreview | null }) {
           font: "500 12px/1.4 Pretendard, sans-serif",
           color: PALETTE.inkSoft,
           letterSpacing: "-0.01em",
+          flexWrap: "nowrap",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
         }}
       >
         <span
@@ -406,8 +409,18 @@ function HeroPreviewCard({ preview }: { preview?: HeroPreview | null }) {
             flexShrink: 0,
           }}
         />
-        이번 주 약점{" "}
-        <strong style={{ color: PALETTE.ink, fontWeight: 700 }}>
+        <span style={{ flexShrink: 0 }}>이번 주 약점</span>{" "}
+        <strong
+          style={{
+            color: PALETTE.ink,
+            fontWeight: 700,
+            minWidth: 0,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+          title={weakText}
+        >
           {weakText}
         </strong>
       </div>
