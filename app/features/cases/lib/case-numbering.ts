@@ -72,6 +72,14 @@ export function splitCaseNumbering(text: string): NumberingSegment[] {
       if (next && /\d/.test(next[1])) continue;
     }
 
+    // 줄 맨 앞 가드 — ")" 로 끝나는 마커("N)" / "가)") 는 그 앞(같은 줄)에 공백만 있을 때만
+    // 목록 마커로 인정한다. 본문 중간의 열거("… 달리 1) … 점, 2) … 점에 특색")나
+    // "(예시 1)" 의 닫는 괄호처럼 줄 중간의 "N)" 는 마커가 아니므로 줄바꿈하지 않는다.
+    if (depth === 2 || depth === 3) {
+      const lineStart = text.lastIndexOf("\n", markerStart - 1) + 1;
+      if (text.slice(lineStart, markerStart).trim() !== "") continue;
+    }
+
     boundaries.push({ index: markerStart, depth });
   }
 
@@ -96,16 +104,20 @@ export function splitCaseNumbering(text: string): NumberingSegment[] {
  * 있는 문단이 4단(56px)씩 밀리는 문제 방지.
  * 문단의 첫(최상위) 층위는 들여쓰기 없음(0px) — 절대 계층과 무관하게 그 문단에서
  * 처음 나오는 마커는 본문과 나란히, 하위 층위만 한 글자(14px)씩 계단.
+ *
+ * ★rank 는 절대 depth 값이 아니라 "문단 내 첫 등장 순서" 로 매긴다. 절대 depth 로
+ *   정렬하면 "(2) 확대된 선출원" 처럼 (N) 을 소제목으로, 그 아래 "가." 를 쓰는 문단에서
+ *   "가."(depth1) 가 rank0(0px), "(2)"(depth4) 가 rank1(14px) 이 되어 소제목이 밀려난다.
+ *   첫 등장 순서로 매기면 먼저 나온 "(2)" 가 0px(다른 (N) 소제목과 정렬), "가." 는 14px.
  */
 export function relativeIndentByDepth(
   segments: NumberingSegment[],
 ): Map<number, number> {
-  const depths = [
-    ...new Set(
-      segments.map((s) => s.depth).filter((d): d is number => d !== null),
-    ),
-  ].sort((a, b) => a - b);
+  const order: number[] = [];
+  for (const s of segments) {
+    if (s.depth !== null && !order.includes(s.depth)) order.push(s.depth);
+  }
   const map = new Map<number, number>();
-  depths.forEach((d, rank) => map.set(d, rank * 14));
+  order.forEach((d, rank) => map.set(d, rank * 14));
   return map;
 }
