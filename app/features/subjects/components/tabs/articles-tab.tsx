@@ -17,6 +17,10 @@ import type {
 import { ListTreeIcon } from "lucide-react";
 import { useState } from "react";
 
+import {
+  LeftPanelResizer,
+  useLeftPanelWidth,
+} from "~/features/subjects/components/left-panel-collapse";
 import { Button } from "~/core/components/ui/button";
 import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
 
@@ -69,6 +73,7 @@ export function ArticlesTab({
 
   // 트리 필터(중요도/즐겨찾기)가 켜지면 가운데 본문 영역을 매칭 조문 정독으로 전환.
   const [treeFilter, setTreeFilter] = useState({ importance: 0, bookmark: 0 });
+  const { width: leftWidth, setWidth: setLeftWidth } = useLeftPanelWidth();
   const filterReading =
     !renderSystematic &&
     (treeFilter.importance > 0 || treeFilter.bookmark > 0);
@@ -116,9 +121,13 @@ export function ArticlesTab({
   );
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-      {/* Left: chapter outline — 데스크톱만 sticky 사이드바. 모바일은 드로어. */}
-      <aside className="hidden lg:sticky lg:top-20 lg:block">
+    <div
+      className="grid gap-6 lg:grid-cols-[var(--left-w,280px)_1fr]"
+      style={{ ["--left-w" as string]: `${leftWidth}px` }}
+    >
+      {/* Left: chapter outline — 데스크톱만 sticky 사이드바. 모바일은 드로어. 경계 드래그로 폭 조절. */}
+      <aside className="relative hidden lg:sticky lg:top-20 lg:block">
+        <LeftPanelResizer width={leftWidth} onWidth={setLeftWidth} />
         {treePanel}
       </aside>
 

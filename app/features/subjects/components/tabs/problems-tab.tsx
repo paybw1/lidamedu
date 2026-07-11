@@ -25,6 +25,10 @@ import {
 } from "lucide-react";
 import { Form, Link, useFetcher, useSearchParams } from "react-router";
 
+import {
+  LeftPanelResizer,
+  useLeftPanelWidth,
+} from "~/features/subjects/components/left-panel-collapse";
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
@@ -139,6 +143,7 @@ export function ProblemsTab({
     nodeFilter != null;
 
   const [searchParams] = useSearchParams();
+  const { width: leftWidth, setWidth: setLeftWidth } = useLeftPanelWidth();
 
   // 정오문제 불가 런처 — fetcher 로 제출(성공=세션 redirect 자동 추종, 실패=인라인 메시지).
   const ineligibleFetcher = useFetcher<{ error?: string }>();
@@ -201,9 +206,13 @@ export function ProblemsTab({
   );
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
-      {/* Left: tree panel — 데스크톱만 sticky 사이드바. 모바일은 드로어. */}
-      <aside className="hidden lg:sticky lg:top-20 lg:block">
+    <div
+      className="grid gap-6 lg:grid-cols-[var(--left-w,260px)_minmax(0,1fr)]"
+      style={{ ["--left-w" as string]: `${leftWidth}px` }}
+    >
+      {/* Left: tree panel — 데스크톱만 sticky 사이드바. 모바일은 드로어. 경계 드래그로 폭 조절. */}
+      <aside className="relative hidden lg:sticky lg:top-20 lg:block">
+        <LeftPanelResizer width={leftWidth} onWidth={setLeftWidth} />
         {treePanel}
       </aside>
       <section className="space-y-4">

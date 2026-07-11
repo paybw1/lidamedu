@@ -16,6 +16,10 @@ import {
 import { Link, useSearchParams } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
+import {
+  LeftPanelResizer,
+  useLeftPanelWidth,
+} from "~/features/subjects/components/left-panel-collapse";
 import { Button } from "~/core/components/ui/button";
 import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
 import type { SystematicNode } from "~/features/laws/queries.server";
@@ -84,6 +88,7 @@ export function SubjectiveTab({
   systematicNodes: SystematicNode[];
 }) {
   const [searchParams] = useSearchParams();
+  const { width: leftWidth, setWidth: setLeftWidth } = useLeftPanelWidth();
   const filterActive =
     appliedFilters.origin != null ||
     appliedFilters.year != null ||
@@ -127,9 +132,13 @@ export function SubjectiveTab({
   );
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
-      {/* Left: 체계도 패널 — 데스크톱만 sticky 사이드바. 모바일은 드로어. */}
-      <aside className="hidden lg:sticky lg:top-20 lg:block">
+    <div
+      className="grid gap-6 lg:grid-cols-[var(--left-w,260px)_minmax(0,1fr)]"
+      style={{ ["--left-w" as string]: `${leftWidth}px` }}
+    >
+      {/* Left: 체계도 패널 — 데스크톱만 sticky 사이드바. 모바일은 드로어. 경계 드래그로 폭 조절. */}
+      <aside className="relative hidden lg:sticky lg:top-20 lg:block">
+        <LeftPanelResizer width={leftWidth} onWidth={setLeftWidth} />
         {treePanel}
       </aside>
 
