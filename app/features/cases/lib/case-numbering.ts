@@ -47,6 +47,8 @@ export function splitCaseNumbering(text: string): NumberingSegment[] {
     uRanges.some(([s, e]) => i >= s && i < e);
 
   const boundaries: Array<{ index: number; depth: number }> = [];
+  // 직전에 "채택된" 마커의 끝 위치 — 연속(compound) 마커 병합 판정용.
+  let lastMarkerEnd = -1;
   MARKER_RE.lastIndex = 0;
   let m: RegExpExecArray | null;
   while ((m = MARKER_RE.exec(text)) !== null) {
@@ -80,7 +82,19 @@ export function splitCaseNumbering(text: string): NumberingSegment[] {
       if (text.slice(lineStart, markerStart).trim() !== "") continue;
     }
 
+    // 연속(compound) 마커 병합 — 직전 채택 마커 바로 뒤(같은 줄, 가로 공백만)면 새 경계를
+    // 만들지 않는다(둘 사이 줄바꿈 금지). 예: "가. (1) …", "(1) (가) …" 는 한 줄로 유지.
+    const markerEnd = markerStart + (m[0].length - m[1].length);
+    if (
+      lastMarkerEnd >= 0 &&
+      /^[^\S\n]*$/.test(text.slice(lastMarkerEnd, markerStart))
+    ) {
+      lastMarkerEnd = markerEnd; // 사슬 유지 — 다음 마커도 같은 줄이면 계속 병합
+      continue;
+    }
+
     boundaries.push({ index: markerStart, depth });
+    lastMarkerEnd = markerEnd;
   }
 
   if (boundaries.length === 0) return [{ text, depth: null }];
