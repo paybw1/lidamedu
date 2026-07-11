@@ -557,8 +557,13 @@ function CasePrevNextButton({
 // 흰 배경(상표·도형 투명 PNG 대응). alt 캡션은 이미지 아래.
 function CaseImagesGrid({ images }: { images: CaseImage[] }) {
   if (images.length === 0) return null;
+  // 이미지 크게: 1장이면 본문 폭 전체, 2장 이상만 2열. (기존 3열은 도형이 너무 작았음)
+  // 배경 축소: 고정 4:3 박스(letterbox) 제거 → 이미지 자연 높이로 흰 여백 최소화.
+  const single = images.length === 1;
   return (
-    <ul className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
+    <ul
+      className={`mt-4 grid grid-cols-1 gap-3 ${single ? "" : "sm:grid-cols-2"}`}
+    >
       {images.map((img) => (
         <li
           key={img.id}
@@ -568,13 +573,13 @@ function CaseImagesGrid({ images }: { images: CaseImage[] }) {
             href={img.url}
             target="_blank"
             rel="noreferrer"
-            className="block aspect-[4/3] bg-white dark:brightness-[.85]"
+            className="block bg-white dark:brightness-[.85]"
           >
             <img
               src={img.url}
               alt={img.alt}
               loading="lazy"
-              className="h-full w-full object-contain"
+              className="mx-auto block h-auto w-full max-h-[80vh] object-contain"
             />
           </a>
           {img.alt ? (
