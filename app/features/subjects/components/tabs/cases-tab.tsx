@@ -10,12 +10,9 @@ import {
   ArrowUpIcon,
   ChevronDownIcon,
   GavelIcon,
-  LayoutListIcon,
   ListTreeIcon,
-  NetworkIcon,
   SearchIcon,
   StarIcon,
-  TagIcon,
   XIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -56,7 +53,7 @@ import type {
 } from "~/features/laws/queries.server";
 import { cn } from "~/core/lib/utils";
 
-import { CaseTopicList, CasesTree } from "../cases-tree";
+import { CaseTopicList, CaseTreeViewToggle, CasesTree } from "../cases-tree";
 import { LevelChipFilter } from "../level-chip-filter";
 import { MobileNavDrawer } from "../mobile-nav-drawer";
 import { useSortAxis } from "../sort-axis";
@@ -263,68 +260,16 @@ export function CasesTab({
     });
 
   // 트리 패널 — 데스크톱 사이드바 / 모바일 드로어에서 동일 마크업 재사용.
-  // 좌패널 뷰 토글 — 체계도/조문(전역 axis) + 주제(로컬). 주제 배치 과목만 3-way.
+  // 좌패널 뷰 토글 — 체계도/조문(전역 axis) + 주제(로컬). 공유 컴포넌트(case-viewer 와 통일).
   const viewToggle = (
-    <div
-      className="bg-muted text-muted-foreground inline-flex h-7 items-center rounded-lg p-[3px]"
-      role="group"
-      aria-label="판례 목차 기준"
-    >
-      {[
-        {
-          key: "systematic" as const,
-          label: "체계도",
-          icon: NetworkIcon,
-          active: !topicMode && axis === "systematic",
-          disabled: systematicEmpty,
-          onClick: () => {
-            setTopicMode(false);
-            setAxis("systematic");
-          },
-        },
-        {
-          key: "statutory" as const,
-          label: "조문",
-          icon: LayoutListIcon,
-          active: !topicMode && axis === "statutory",
-          disabled: false,
-          onClick: () => {
-            setTopicMode(false);
-            setAxis("statutory");
-          },
-        },
-        ...(usesTopics
-          ? [
-              {
-                key: "topic" as const,
-                label: "주제",
-                icon: TagIcon,
-                active: topicMode,
-                disabled: false,
-                onClick: () => setTopicMode(true),
-              },
-            ]
-          : []),
-      ].map(({ key, label, icon: Icon, active, disabled, onClick }) => (
-        <button
-          key={key}
-          type="button"
-          onClick={onClick}
-          aria-pressed={active}
-          disabled={disabled}
-          className={cn(
-            "inline-flex h-full items-center gap-1.5 rounded-md px-2 text-[11px] font-medium transition-colors",
-            active
-              ? "bg-background text-[#2D5BA8] shadow-sm dark:text-[#8FB4E3]"
-              : "hover:text-foreground",
-            disabled ? "cursor-not-allowed opacity-50 hover:text-muted-foreground" : "",
-          )}
-        >
-          <Icon className="size-3" />
-          {label}
-        </button>
-      ))}
-    </div>
+    <CaseTreeViewToggle
+      axis={axis}
+      onAxis={setAxis}
+      topicMode={topicMode}
+      onTopicMode={setTopicMode}
+      usesTopics={usesTopics}
+      systematicEmpty={systematicEmpty}
+    />
   );
 
   const treePanel = (

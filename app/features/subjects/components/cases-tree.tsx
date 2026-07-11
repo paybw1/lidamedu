@@ -5,7 +5,15 @@
 // 무관하게 조문·판례·문제 탭이 같은 목차를 보여야 하므로 trim하지 않는다.
 // 노드 클릭 → 현재 URL search 에 case_article / case_chapter / case_node 셋업 → 셔플.
 
-import { ChevronRightIcon, GavelIcon, SearchIcon, XIcon } from "lucide-react";
+import {
+  ChevronRightIcon,
+  GavelIcon,
+  LayoutListIcon,
+  NetworkIcon,
+  SearchIcon,
+  TagIcon,
+  XIcon,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 
@@ -470,6 +478,90 @@ export function CasesTree({
 // 주제(topic) 목록 — 판례 탭 좌패널 "주제" 뷰. 주제 노드(라벨 "주제N …")를 평면
 // 리스트로 나열하고, 클릭 시 해당 주제로 판례 필터(case_node 재사용). 상표=46개,
 // 디자인=아직 없음(빈 상태 안내). 트리(체계도/조문)와 달리 계층 없이 번호순 나열.
+// 판례 좌패널 뷰 토글 — 체계도/조문(전역 axis) + 주제(로컬, 주제 배치 과목만).
+// cases-tab 목록과 case-viewer 좌패널이 공유하는 단일 스타일 소스. 상태는 호출부 소유.
+export function CaseTreeViewToggle({
+  axis,
+  onAxis,
+  topicMode,
+  onTopicMode,
+  usesTopics,
+  systematicEmpty,
+}: {
+  axis: SortAxis;
+  onAxis: (a: SortAxis) => void;
+  topicMode: boolean;
+  onTopicMode: (v: boolean) => void;
+  usesTopics: boolean;
+  systematicEmpty: boolean;
+}) {
+  const items = [
+    {
+      key: "systematic" as const,
+      label: "체계도",
+      icon: NetworkIcon,
+      active: !topicMode && axis === "systematic",
+      disabled: systematicEmpty,
+      onClick: () => {
+        onTopicMode(false);
+        onAxis("systematic");
+      },
+    },
+    {
+      key: "statutory" as const,
+      label: "조문",
+      icon: LayoutListIcon,
+      active: !topicMode && axis === "statutory",
+      disabled: false,
+      onClick: () => {
+        onTopicMode(false);
+        onAxis("statutory");
+      },
+    },
+    ...(usesTopics
+      ? [
+          {
+            key: "topic" as const,
+            label: "주제",
+            icon: TagIcon,
+            active: topicMode,
+            disabled: false,
+            onClick: () => onTopicMode(true),
+          },
+        ]
+      : []),
+  ];
+  return (
+    <div
+      className="bg-muted text-muted-foreground inline-flex h-7 items-center rounded-lg p-[3px]"
+      role="group"
+      aria-label="판례 목차 기준"
+    >
+      {items.map(({ key, label, icon: Icon, active, disabled, onClick }) => (
+        <button
+          key={key}
+          type="button"
+          onClick={onClick}
+          aria-pressed={active}
+          disabled={disabled}
+          className={cn(
+            "inline-flex h-full items-center gap-1.5 rounded-md px-2 text-[11px] font-medium transition-colors",
+            active
+              ? "bg-background text-[#2D5BA8] shadow-sm dark:text-[#8FB4E3]"
+              : "hover:text-foreground",
+            disabled
+              ? "cursor-not-allowed opacity-50 hover:text-muted-foreground"
+              : "",
+          )}
+        >
+          <Icon className="size-3" />
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function CaseTopicList({
   topicNodes,
   byNodeId,

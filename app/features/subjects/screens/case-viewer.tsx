@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
 import type { Route } from "./+types/case-viewer";
@@ -62,7 +62,12 @@ import { listThreadsForTarget } from "~/features/qna/queries.server";
 import { getRelatedArticlesByCase } from "~/features/relations/queries.server";
 import { FlowNav } from "~/features/study/components/flow-nav";
 import { recordStudySession } from "~/features/study/queries.server";
-import { CasesTree } from "~/features/subjects/components/cases-tree";
+import {
+  CaseTopicList,
+  CaseTreeViewToggle,
+  CasesTree,
+} from "~/features/subjects/components/cases-tree";
+import { subjectUsesCaseTopics } from "~/features/subjects/lib/subjects";
 import { SubjectBookmarkRail } from "~/features/subjects/components/subject-bookmark-rail";
 import {
   LeftPanelResizer,
@@ -75,7 +80,6 @@ import {
 import { MobileNavDrawer } from "~/features/subjects/components/mobile-nav-drawer";
 import {
   SortAxisProvider,
-  SortAxisToggle,
   useSortAxis,
 } from "~/features/subjects/components/sort-axis";
 import { ViewerBackButton } from "~/features/subjects/components/viewer-back-button";
@@ -684,15 +688,47 @@ function CaseTreeSidebarInner({
   activeFilter: CaseTreeFilter | null;
   desktopHeader?: boolean;
 }) {
-  const { axis } = useSortAxis();
+  const { axis, setAxis } = useSortAxis();
   const systematicEmpty = systematicNodes.length === 0;
+  // 주제 축(상표·디자인 등 주제 배치 과목) — cases-tab 좌패널과 동일 3-way 토글.
+  const usesTopics = subjectUsesCaseTopics(subjectSlug);
+  const topicNodes = useMemo(
+    () =>
+      systematicNodes
+        .filter((n) => /^주제\s*\d+/.test(n.displayLabel))
+        .sort((a, b) => {
+          const na = Number(/^주제\s*(\d+)/.exec(a.displayLabel)?.[1] ?? 0);
+          const nb = Number(/^주제\s*(\d+)/.exec(b.displayLabel)?.[1] ?? 0);
+          return na - nb || a.displayLabel.localeCompare(b.displayLabel);
+        }),
+    [systematicNodes],
+  );
+  // 현재 판례의 배치 노드가 주제 노드면 그 노드를 활성 주제로.
+  const activeTopicNodeId =
+    activeFilter?.kind === "node" &&
+    topicNodes.some((n) => n.nodeId === activeFilter.nodeId)
+      ? activeFilter.nodeId
+      : undefined;
+  const [topicMode, setTopicMode] = useState(
+    usesTopics && Boolean(activeTopicNodeId),
+  );
   // 트리 검색 — 다른 뷰어와 동일하게 헤더 돋보기 아이콘 토글(데스크톱).
   // 모바일 드로어는 기존처럼 검색 입력 상시 노출.
   const [treeSearchOpen, setTreeSearchOpen] = useState(false);
+  const viewToggle = (
+    <CaseTreeViewToggle
+      axis={axis}
+      onAxis={setAxis}
+      topicMode={topicMode}
+      onTopicMode={setTopicMode}
+      usesTopics={usesTopics}
+      systematicEmpty={systematicEmpty}
+    />
+  );
   return (
     <div>
-      {/* 헤더 — 데스크톱: [돋보기 토글][체계도/조문] sticky.
-          모바일 드로어: 정렬축 토글만 우측 정렬(기존 동작). */}
+      {/* 헤더 — 데스크톱: [돋보기 토글][체계도/조문/주제] sticky.
+          모바일 드로어: 뷰 토글만 우측 정렬(기존 동작). */}
       {desktopHeader ? (
         <div className="border-border bg-card sticky top-0 z-10 rounded-t-xl border-b">
           <div className="flex items-center justify-between gap-2 px-3 py-2">
@@ -711,30 +747,31 @@ function CaseTreeSidebarInner({
             >
               <SearchIcon className="size-3.5" />
             </button>
-            <SortAxisToggle
-              size="sm"
-              disabledAxes={systematicEmpty ? ["systematic"] : undefined}
-            />
+            {viewToggle}
           </div>
         </div>
       ) : (
-        <div className="flex items-center justify-end gap-2 pb-2">
-          <SortAxisToggle
-            size="sm"
-            disabledAxes={systematicEmpty ? ["systematic"] : undefined}
-          />
-        </div>
+        <div className="flex items-center justify-end gap-2 pb-2">{viewToggle}</div>
       )}
       <div className={desktopHeader ? "px-1.5 py-2" : ""}>
-        <CasesTree
-          axis={axis}
-          articles={articles}
-          systematicNodes={systematicNodes}
-          caseTreeCounts={caseTreeCounts}
-          active={activeFilter}
-          searchVisible={desktopHeader ? treeSearchOpen : true}
-          linkBase={`/subjects/${subjectSlug}`}
-        />
+        {topicMode ? (
+          <CaseTopicList
+            topicNodes={topicNodes}
+            byNodeId={caseTreeCounts.byNodeId}
+            activeNodeId={activeTopicNodeId}
+            linkBase={`/subjects/${subjectSlug}`}
+          />
+        ) : (
+          <CasesTree
+            axis={axis}
+            articles={articles}
+            systematicNodes={systematicNodes}
+            caseTreeCounts={caseTreeCounts}
+            active={activeFilter}
+            searchVisible={desktopHeader ? treeSearchOpen : true}
+            linkBase={`/subjects/${subjectSlug}`}
+          />
+        )}
       </div>
     </div>
   );
