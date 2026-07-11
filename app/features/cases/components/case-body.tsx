@@ -482,32 +482,29 @@ export function CaseBody({
           </BodySection>
         ) : null}
 
-        {/* 관련 판례 — 구조화 인용 목록(사건명·번호 등). staff 가 입력한 자유 인용 텍스트. */}
+        {/* 관련 판례 — 구조화 목록(인용 + 사건명 + 요지/내용). staff 가 입력한 자유 인용. */}
         {kase.relatedCases.length > 0 ? (
           <BodySection title="관련판례">
-            <ul className="space-y-2">
+            <ol className="space-y-4">
               {kase.relatedCases.map((rc, i) => (
-                <li
-                  key={i}
-                  className="border-border/70 border-l-2 pl-3 text-[length:calc(15px*var(--study-fs))] leading-relaxed"
-                >
-                  <span className="text-foreground font-medium">
+                <li key={i} className="border-border/70 border-l-2 pl-3">
+                  <p className="text-foreground font-medium">
                     {rc.citation}
-                  </span>
-                  {rc.caseTitle ? (
-                    <span className="text-muted-foreground">
-                      {" "}
-                      — {rc.caseTitle}
-                    </span>
-                  ) : null}
-                  {rc.note ? (
-                    <span className="text-muted-foreground block text-[0.92em]">
-                      {rc.note}
-                    </span>
+                    {rc.caseTitle ? (
+                      <span className="text-muted-foreground font-normal">
+                        {" "}
+                        — {rc.caseTitle}
+                      </span>
+                    ) : null}
+                  </p>
+                  {rc.content ? (
+                    <div className="mt-1.5">
+                      <Prose text={rc.content} />
+                    </div>
                   ) : null}
                 </li>
               ))}
-            </ul>
+            </ol>
           </BodySection>
         ) : null}
 

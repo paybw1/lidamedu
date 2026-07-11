@@ -259,11 +259,13 @@ export interface CaseDetail extends CaseListItem {
   relatedCases: RelatedCaseCitation[];
 }
 
-// 관련 판례 인용 한 건 — 자유 인용 텍스트 + 선택 사건명/비고. DB 판례 링크 없음.
+// 관련 판례 인용 한 건 — 자유 인용 텍스트 + 선택 사건명 + 요지/내용(긴 마크다운).
+// DB 판례 링크 없음(하급심 등 미적재 판례 포함).
 export interface RelatedCaseCitation {
   citation: string;
   caseTitle: string | null;
-  note: string | null;
+  /** 요지/내용 — 관련 판례의 판시·요지 등 긴 본문(마크다운, 넘버링 자동정렬 대상). */
+  content: string | null;
 }
 
 // cases.related_cases (jsonb) → RelatedCaseCitation[]. 잡값·빈 인용은 제거.
@@ -276,16 +278,20 @@ export function parseRelatedCases(raw: unknown): RelatedCaseCitation[] {
     const citation =
       typeof rec.citation === "string" ? rec.citation.trim() : "";
     if (!citation) continue;
+    // content 우선, 과거 note 키(있으면) fallback.
+    const contentRaw =
+      typeof rec.content === "string"
+        ? rec.content
+        : typeof rec.note === "string"
+          ? rec.note
+          : "";
     out.push({
       citation,
       caseTitle:
         typeof rec.caseTitle === "string" && rec.caseTitle.trim() !== ""
           ? rec.caseTitle.trim()
           : null,
-      note:
-        typeof rec.note === "string" && rec.note.trim() !== ""
-          ? rec.note.trim()
-          : null,
+      content: contentRaw.trim() !== "" ? contentRaw : null,
     });
   }
   return out;

@@ -73,13 +73,13 @@ const upsertSchema = z.object({
     .enum(["remark", "related_cases", "commentary"])
     .default("remark"),
   relatedMd: z.string().max(50_000).nullable(),
-  // 관련 판례 인용 목록 — 자유 인용 텍스트(+ 선택 사건명/비고). 빈 인용은 제거.
+  // 관련 판례 인용 목록 — 자유 인용 텍스트(+ 선택 사건명 + 요지/내용). 빈 인용은 제거.
   relatedCases: z
     .array(
       z.object({
         citation: z.string().max(300),
         caseTitle: z.string().max(500).nullable().optional(),
-        note: z.string().max(500).nullable().optional(),
+        content: z.string().max(20_000).nullable().optional(),
       }),
     )
     .max(50),
@@ -773,12 +773,13 @@ export async function action({ request }: Route.ActionArgs) {
         (it.commentMd !== undefined && it.commentMd !== ""),
     );
 
-  // 관련 판례 — 인용(citation) 이 빈 항목은 제거, 선택 필드는 trim 후 빈 값이면 null.
+  // 관련 판례 — 인용(citation) 이 빈 항목은 제거. 사건명은 trim, 요지/내용은 원문 보존
+  // (내부 줄바꿈·공백 유지, 앞뒤 공백만 정리).
   const relatedCases = input.relatedCases
     .map((rc) => ({
       citation: rc.citation.trim(),
       caseTitle: (rc.caseTitle ?? "").trim() || null,
-      note: (rc.note ?? "").trim() || null,
+      content: (rc.content ?? "").trim() !== "" ? rc.content! : null,
     }))
     .filter((rc) => rc.citation !== "");
 

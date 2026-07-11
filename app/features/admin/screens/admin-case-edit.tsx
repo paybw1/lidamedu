@@ -2095,13 +2095,14 @@ function RelatedCasesEditor({
             placeholder="사건명 (선택)"
             maxLength={500}
           />
-          <Input
-            value={it.note ?? ""}
+          <Textarea
+            value={it.content ?? ""}
             onChange={(e) =>
-              patch(i, { note: e.target.value === "" ? null : e.target.value })
+              patch(i, { content: e.target.value === "" ? null : e.target.value })
             }
-            placeholder="비고 (선택)"
-            maxLength={500}
+            placeholder="요지/내용 (선택) — 관련 판례의 판시·요지 등. 넘버링([1] 1. 가. 등)은 자동 정렬됩니다."
+            rows={4}
+            maxLength={20000}
           />
         </div>
       ))}
@@ -2110,7 +2111,10 @@ function RelatedCasesEditor({
         size="sm"
         variant="outline"
         onClick={() =>
-          setSync((prev) => [...prev, { citation: "", caseTitle: null, note: null }])
+          setSync((prev) => [
+            ...prev,
+            { citation: "", caseTitle: null, content: null },
+          ])
         }
       >
         <PlusIcon className="size-3.5" /> 관련 판례 추가
