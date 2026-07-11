@@ -1172,8 +1172,8 @@ function EmbeddedInlineImage({ alt, url }: { alt: string; url: string }) {
   );
 }
 
-// 이미지 단독 paragraph — clickable(새 탭) + 흰 배경 + object-contain.
-// CaseImagesGrid 의 단일 이미지 카드와 동일 톤이지만 본문 흐름 안에 인라인 배치.
+// 이미지 단독 paragraph — clickable(새 탭). 배경 박스 없이 이미지만(w-fit 로 이미지에
+// 딱 맞게 감싸 좌우 여백/배경 제거). CaseImagesGrid(그리드 이미지)와 동일하게 배경 없음.
 function InlineImage({ alt, url }: { alt: string; url: string }) {
   return (
     <figure className="my-2">
@@ -1181,13 +1181,13 @@ function InlineImage({ alt, url }: { alt: string; url: string }) {
         href={url}
         target="_blank"
         rel="noreferrer"
-        className="border-border bg-white block overflow-hidden rounded-lg border dark:brightness-[.85]"
+        className="mx-auto block w-fit dark:brightness-[.9]"
       >
         <img
           src={url}
           alt={alt}
           loading="lazy"
-          className="mx-auto block max-h-[480px] w-auto object-contain"
+          className="block max-h-[480px] w-auto max-w-full object-contain"
         />
       </a>
       {alt ? (
