@@ -18,6 +18,7 @@ import { Link, redirect, useFetcher, useLocation } from "react-router";
 import { PageHeader, StudentShell, Surface } from "~/core/components/student";
 import { Button } from "~/core/components/ui/button";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { STUDENT_DISABLED_SUBJECTS } from "~/core/lib/nav-groups";
 import { GuideHelpButton } from "~/features/guide/components/guide-help-button";
 import { cn } from "~/core/lib/utils";
 import { hasMyAnalysisConsent } from "~/features/exam-results/queries.server";
@@ -110,9 +111,11 @@ export async function loader({ request }: Route.LoaderArgs) {
     (LAW_SUBJECT_SLUGS as readonly string[]).includes(subjectParam)
       ? subjectParam
       : null;
+  // 학생에게 비활성인 준비 중 과목(상표·디자인·민법·민소법)은 SRS 에서도 숨김 — staff 는 전체.
+  const excludeSubjects = mgmtNav.gradeStaff ? [] : STUDENT_DISABLED_SUBJECTS;
   const [queue, dueByType] = await Promise.all([
-    getReviewQueue(client, user.id, { sourceType, subject }),
-    getDueCountsByType(client, user.id),
+    getReviewQueue(client, user.id, { sourceType, subject, excludeSubjects }),
+    getDueCountsByType(client, user.id, excludeSubjects),
   ]);
   return {
     myAnalysisOff: false as const,
@@ -277,7 +280,17 @@ function SrsReviewInner({
           }
         />
 
-        <ChipFilters filter={data.filter} cardDue={data.cardDue} />
+        <ChipFilters
+          filter={data.filter}
+          cardDue={data.cardDue}
+          subjectSlugs={
+            data.mgmtNav.gradeStaff
+              ? LAW_SUBJECT_SLUGS
+              : LAW_SUBJECT_SLUGS.filter(
+                  (s) => !STUDENT_DISABLED_SUBJECTS.includes(s),
+                )
+          }
+        />
 
         {/* 카드 카운터 */}
         <div className="mb-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
@@ -382,12 +395,15 @@ function DueBadge({ stat }: { stat: { due: number; backlogged: boolean } }) {
 function ChipFilters({
   filter,
   cardDue,
+  subjectSlugs,
 }: {
   filter: { sourceType: string | null; subject: string | null };
   cardDue: {
     article: { due: number; backlogged: boolean };
     case: { due: number; backlogged: boolean };
   };
+  /** 표시할 과목 칩 — 학생은 비활성 과목 제외 목록, staff 는 전체. */
+  subjectSlugs: readonly string[];
 }) {
   const { sourceType, subject } = filter;
   return (
@@ -421,7 +437,7 @@ function ChipFilters({
         <FilterChip active={subject === null} to={srsHref(sourceType, null)}>
           전체
         </FilterChip>
-        {LAW_SUBJECT_SLUGS.map((slug) => (
+        {subjectSlugs.map((slug) => (
           <FilterChip
             key={slug}
             active={subject === slug}

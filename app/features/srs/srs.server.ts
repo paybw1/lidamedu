@@ -111,6 +111,13 @@ export interface ReviewQueueOptions {
   subject?: string | null;
   /** 종류 필터 — 조문/판례. 미지정 = 전체("전체"는 종류 인터리브). */
   sourceType?: SrsSourceKind | null;
+  /** 학생에게 비활성인 과목(STUDENT_DISABLED_SUBJECTS) 제외 — staff 면 빈 배열. */
+  excludeSubjects?: readonly string[];
+}
+
+/** supabase `in` 필터용 리스트 문자열 — 슬러그는 단순해 인용부호 불필요. */
+function inList(arr: readonly string[]): string {
+  return `(${arr.join(",")})`;
 }
 
 /**
@@ -129,6 +136,7 @@ export async function getReviewQueue(
   const settings = await getUserSettings(client, userId);
   const sourceType = opts.sourceType ?? null;
   const subject = opts.subject ?? null;
+  const excludeSubjects = opts.excludeSubjects ?? [];
 
   // 1) due 항목 (review/relearning/learning) — due_date <= today. 종류·과목 필터(임베디드).
   //    ★ limit 전에 필터해야 정확(필터 후 상한 적용).
@@ -142,6 +150,8 @@ export async function getReviewQueue(
     .is("srs_items.deleted_at", null);
   if (sourceType) dueQ = dueQ.eq("srs_items.source_type", sourceType);
   if (subject) dueQ = dueQ.eq("srs_items.subject", subject);
+  if (excludeSubjects.length > 0)
+    dueQ = dueQ.not("srs_items.subject", "in", inList(excludeSubjects));
   const { data: dueRows } = await dueQ
     .order("due_date", { ascending: true })
     .limit(settings.maxReviewsPerDay);
@@ -203,6 +213,7 @@ export async function getReviewQueue(
       const cands = await fetchNewCandidates(client, {
         sourceType,
         subject,
+        excludeSubjects,
         limit: fetchLimit,
       });
       newItems = cands
@@ -210,8 +221,8 @@ export async function getReviewQueue(
         .slice(0, newPickCount);
     } else {
       const [arts, cases] = await Promise.all([
-        fetchNewCandidates(client, { sourceType: "article", subject, limit: fetchLimit }),
-        fetchNewCandidates(client, { sourceType: "case", subject, limit: fetchLimit }),
+        fetchNewCandidates(client, { sourceType: "article", subject, excludeSubjects, limit: fetchLimit }),
+        fetchNewCandidates(client, { sourceType: "case", subject, excludeSubjects, limit: fetchLimit }),
       ]);
       newItems = interleaveGroups(
         [
@@ -239,7 +250,12 @@ export async function getReviewQueue(
 /** 미학습 신규 후보 fetch(종류·과목 필터, created_at asc) → QueueItem(new). seen 필터는 호출처에서. */
 async function fetchNewCandidates(
   client: SupabaseClient<Database>,
-  opts: { sourceType: SrsSourceKind; subject: string | null; limit: number },
+  opts: {
+    sourceType: SrsSourceKind;
+    subject: string | null;
+    excludeSubjects?: readonly string[];
+    limit: number;
+  },
 ): Promise<QueueItem[]> {
   let q = client
     .from("srs_items")
@@ -247,6 +263,8 @@ async function fetchNewCandidates(
     .is("deleted_at", null)
     .eq("source_type", opts.sourceType);
   if (opts.subject) q = q.eq("subject", opts.subject);
+  if (opts.excludeSubjects && opts.excludeSubjects.length > 0)
+    q = q.not("subject", "in", inList(opts.excludeSubjects));
   const { data } = await q
     .order("created_at", { ascending: true })
     .limit(opts.limit);
@@ -313,15 +331,19 @@ export function isKindBacklogged(s: DueKindStat): boolean {
 export async function getDueCountsByType(
   client: SupabaseClient<Database>,
   userId: string,
+  excludeSubjects: readonly string[] = [],
 ): Promise<DueByType> {
   const today = srsToday();
-  const { data } = await client
+  let q = client
     .from("srs_review_states")
-    .select("due_date, srs_items!inner(source_type, deleted_at)")
+    .select("due_date, srs_items!inner(source_type, subject, deleted_at)")
     .eq("user_id", userId)
     .lte("due_date", today)
     .is("srs_items.deleted_at", null)
     .limit(20000);
+  if (excludeSubjects.length > 0)
+    q = q.not("srs_items.subject", "in", inList(excludeSubjects));
+  const { data } = await q;
 
   const acc: Record<SrsSourceKind, { due: number; oldest: string | null }> = {
     article: { due: 0, oldest: null },
