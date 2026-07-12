@@ -42,6 +42,10 @@ import {
   OPEN_COMMENT_TAB_EVENT,
   type OpenCommentTabEventDetail,
 } from "~/features/laws/lib/comment-event";
+import {
+  OPEN_PANEL_TAB_EVENT,
+  type OpenPanelTabEventDetail,
+} from "~/features/laws/lib/panel-tab-event";
 import type { RevisionHistoryEntry } from "~/features/laws/queries.server";
 import { LectureResourcesPanel } from "~/features/lectures/components/lecture-resources-panel";
 import type {
@@ -276,6 +280,18 @@ export function ArticleRightPanel({
     };
     document.addEventListener(OPEN_COMMENT_TAB_EVENT, handler);
     return () => document.removeEventListener(OPEN_COMMENT_TAB_EVENT, handler);
+  }, [target.type, target.id]);
+  // 조문 헤더 "연결 콘텐츠" 배지 클릭 → 해당 탭(판례/정오/유사문제) 활성화.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<OpenPanelTabEventDetail>).detail;
+      if (!detail) return;
+      if (detail.targetType !== target.type || detail.targetId !== target.id)
+        return;
+      setActiveTab(detail.tab as TabKey);
+    };
+    document.addEventListener(OPEN_PANEL_TAB_EVENT, handler);
+    return () => document.removeEventListener(OPEN_PANEL_TAB_EVENT, handler);
   }, [target.type, target.id]);
 
   const placeholderTabs = PLACEHOLDER_TABS.filter(

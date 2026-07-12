@@ -7,7 +7,9 @@ import {
   ClockIcon,
   EyeIcon,
   EyeOffIcon,
+  CheckSquareIcon,
   FileEditIcon,
+  GavelIcon,
   ListTreeIcon,
   PanelRightIcon,
   PencilIcon,
@@ -51,6 +53,7 @@ import { ArticleBodyView } from "~/features/laws/components/article-body";
 import { ReadingControls } from "~/features/study/components/study-font-control";
 import { ArticleEditor } from "~/features/laws/components/article-editor";
 import { ArticleRightPanel } from "~/features/laws/components/article-right-panel";
+import { dispatchOpenPanelTab } from "~/features/laws/lib/panel-tab-event";
 import { parseArticleBody } from "~/features/laws/lib/article-body";
 import { compareArticlesNatural } from "~/features/laws/lib/article-sort";
 import { dispatchOpenCommentTab } from "~/features/laws/lib/comment-event";
@@ -845,6 +848,68 @@ function ArticleViewerInner({
                   ) : null}
                 </div>
               </div>
+
+              {/* ── 이 조문 연결 콘텐츠 — 그래프 가시화 + 원클릭 이동 ────── */}
+              {relatedCases.length > 0 ||
+              oxQuestions.length > 0 ||
+              blankAvailable ? (
+                <div className="mx-6 mb-4 flex flex-wrap items-center gap-1.5">
+                  <span className="text-muted-foreground mr-0.5 text-[11px] font-semibold">
+                    이 조문 연결
+                  </span>
+                  {relatedCases.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        dispatchOpenPanelTab({
+                          targetType: "article",
+                          targetId: article.articleId,
+                          tab: "cases",
+                        })
+                      }
+                      className="border-border hover:border-primary hover:bg-primary/5 text-foreground inline-flex items-center gap-1 rounded-full border bg-background px-2.5 py-1 text-xs font-medium transition-colors"
+                    >
+                      <GavelIcon className="size-3" /> 판례{" "}
+                      <span className="tabular-nums">{relatedCases.length}</span>
+                    </button>
+                  ) : null}
+                  {oxQuestions.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        dispatchOpenPanelTab({
+                          targetType: "article",
+                          targetId: article.articleId,
+                          tab: "ox",
+                        })
+                      }
+                      className="border-border hover:border-primary hover:bg-primary/5 text-foreground inline-flex items-center gap-1 rounded-full border bg-background px-2.5 py-1 text-xs font-medium transition-colors"
+                    >
+                      <CheckSquareIcon className="size-3" /> 정오문제{" "}
+                      <span className="tabular-nums">{oxQuestions.length}</span>
+                    </button>
+                  ) : null}
+                  {blankAvailable ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBlankMode(true);
+                        setSubjectBlankMode(false);
+                        setPeriodBlankMode(false);
+                        setRecitationMode(false);
+                        setSubtitlesOnly(false);
+                        setEditMode(false);
+                      }}
+                      className="border-border hover:border-primary hover:bg-primary/5 text-foreground inline-flex items-center gap-1 rounded-full border bg-background px-2.5 py-1 text-xs font-medium transition-colors"
+                    >
+                      <PencilLineIcon className="size-3" /> 빈칸{" "}
+                      <span className="tabular-nums">
+                        {blankSet!.blanks.length}
+                      </span>
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
 
               {/* ── Mode toolbar ───────────────────────────────────────── */}
               <div className="border-border bg-muted/50 mx-6 mb-5 flex flex-wrap items-center gap-2 rounded-xl border px-3 py-2.5">
