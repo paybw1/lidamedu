@@ -27,9 +27,24 @@ let userId = "";
 let setId = "";
 const answerByIdx = new Map<number, string>();
 
+// 운영 팝업 공지 모달(PopupNoticeModal)이 떠 있으면 클릭을 가로채므로 먼저 닫는다.
+// 여러 공지가 큐로 뜰 수 있어 반복 닫기.
+async function dismissPopupNotice(page: Page): Promise<void> {
+  for (let i = 0; i < 5; i++) {
+    const dialog = page.locator('[role="dialog"][aria-modal="true"]');
+    if (!(await dialog.count())) return;
+    if (!(await dialog.first().isVisible().catch(() => false))) return;
+    const close = dialog.first().getByRole("button", { name: "닫기" });
+    if (!(await close.count())) return;
+    await close.first().click({ timeout: 3000 }).catch(() => {});
+    await page.waitForTimeout(150);
+  }
+}
+
 // 클로즈(내용 빈칸) 모드 진입 후 렌더된 빈칸 input 들의 idx 를 DOM 순서대로 반환.
 async function enterClozeMode(page: Page): Promise<number[]> {
   await page.goto(`/subjects/patent/articles/29?blank=${setId}`);
+  await dismissPopupNotice(page);
   await page.getByRole("button", { name: /내용 빈칸/ }).first().click();
   // 콜드 컴파일 대비 넉넉한 타임아웃.
   await expect(page.locator('input[aria-label^="빈칸"]').first()).toBeVisible({
@@ -95,7 +110,16 @@ test.describe.serial("조문 빈칸 — 자동이동 없음 + Enter 이동(leak 
     expect(activeAfterCorrect).toBe(`빈칸 ${idx}`);
 
     // Enter → 다음 빈칸으로 이동, 그 칸은 빈 값(이월 leak 없음).
+    // ★focus 이동은 IME 버퍼 flush 를 위해 blur→rAF 로 한 프레임 지연되므로 waitForFunction 으로 대기.
     await input.press("Enter");
+    await page.waitForFunction(
+      (cur) => {
+        const label = document.activeElement?.getAttribute("aria-label");
+        return !!label && label.startsWith("빈칸 ") && label !== cur;
+      },
+      `빈칸 ${idx}`,
+      { timeout: 5000 },
+    );
     const moved = await page.evaluate(() => {
       const el = document.activeElement as HTMLInputElement | null;
       return { label: el?.getAttribute("aria-label"), value: el?.value };
@@ -117,6 +141,15 @@ test.describe.serial("조문 빈칸 — 자동이동 없음 + Enter 이동(leak 
       await input.fill(answerByIdx.get(idx)!);
       await expect(input).toHaveClass(/emerald/, { timeout: 10000 });
       await input.press("Enter");
+      // blur→rAF 지연 이동 대기 후, 이동한 칸이 빈 값인지 확인.
+      await page.waitForFunction(
+        (cur) => {
+          const label = document.activeElement?.getAttribute("aria-label");
+          return !!label && label.startsWith("빈칸 ") && label !== cur;
+        },
+        `빈칸 ${idx}`,
+        { timeout: 5000 },
+      );
       const val = await page.evaluate(
         () => (document.activeElement as HTMLInputElement | null)?.value ?? "",
       );

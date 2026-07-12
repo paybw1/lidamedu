@@ -332,23 +332,47 @@ export function BlanksRenderProvider({
   const [hintNextIdx, setHintNextIdx] = useState<number | null>(null);
   // 실제 focus 이동 — 대상 칸을 그 컨트롤드 값(보통 빈 문자열)으로 정리해 이월 조합 잔여를
   // 버린 뒤 focus·커서 끝 이동. 조합 중엔 호출하지 않는다(호출부에서 가드).
+  //
+  // ★IME 조합 버퍼 flush 순서가 핵심 — compositionend(=composingRef false) 이후에도 Windows
+  //   한글 IME 는 마지막 음절을 OS 레벨 조합 버퍼에 잠시 남겨두고, 그 상태에서 다른 input 으로
+  //   프로그램 포커스가 옮겨가면 잔여가 새 칸으로 이월(leak: "이전 칸 마지막 글자가 따라옴")된다.
+  //   사용자가 "새 칸에서 스페이스 1회 치면 안 따라온다"고 보고한 것과 동일한 원리로,
+  //   이동 직전 현재(이전) input 을 blur 해 IME 버퍼를 그 칸에 확정(flush)시켜 비운 뒤,
+  //   다음 프레임(rAF)에 새 칸으로 focus 한다. 이전 칸은 이미 정답 잠금 상태라 flush 무해.
   const doFocusNext = useCallback((next: number) => {
     const el = inputsRef.current.get(next);
     if (!el || el.disabled) return;
-    const controlled = statesRef.current[next]?.input ?? "";
-    if (el.value !== controlled) {
+    // 1) 현재 포커스된(이전) input 을 blur → OS IME 조합 버퍼를 그 칸에 flush·소진.
+    const activeEl =
+      typeof document !== "undefined"
+        ? (document.activeElement as HTMLElement | null)
+        : null;
+    if (activeEl && activeEl !== el && typeof activeEl.blur === "function") {
+      activeEl.blur();
+    }
+    const focusTarget = () => {
+      const controlled = statesRef.current[next]?.input ?? "";
+      if (el.value !== controlled) {
+        try {
+          el.value = controlled;
+        } catch {
+          /* noop */
+        }
+      }
+      el.focus();
+      const len = el.value.length;
       try {
-        el.value = controlled;
+        el.setSelectionRange(len, len);
       } catch {
         /* noop */
       }
-    }
-    el.focus();
-    const len = el.value.length;
-    try {
-      el.setSelectionRange(len, len);
-    } catch {
-      /* noop */
+    };
+    // 2) blur 로 flush 된 조합 잔여가 완전히 처리된 뒤(=activeElement 가 잠시 body) 다음
+    //    프레임에 새 칸으로 focus. 버퍼가 빈 뒤라 이월 없음. rAF 미지원 시 동기 폴백.
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(focusTarget);
+    } else {
+      focusTarget();
     }
   }, []);
   // ★정답을 맞혀도 자동으로 다음 칸으로 이동하지 않는다 — 과거 자동이동은 IME 조합
