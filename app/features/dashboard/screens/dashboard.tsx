@@ -40,6 +40,8 @@ import {
   type GrowthStripData,
 } from "~/features/dashboard/components/dash-growth";
 import { DashKpiStripV2 } from "~/features/dashboard/components/dash-kpi-strip-v2";
+import { NextActionCard } from "~/features/dashboard/components/dash-next-action";
+import { buildNextActions } from "~/features/dashboard/lib/next-actions";
 import { OxRecentCard } from "~/features/dashboard/components/dash-ox";
 import {
   OverallProgressCard,
@@ -642,6 +644,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
     difficulty: bucketToDifficulty(w.bucket),
     globalAccuracyPct: w.globalAccuracyPct,
   }));
+  const nextActions = buildNextActions({ today: todaySummary, weakNodes });
   const weakNodeRows = weakNodes.map((n) => {
     const avg = (
       passerLawAverages as Record<
@@ -766,15 +769,19 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
             <InstructorAccessNotice />
           ) : null}
 
-          {/* 최상단 — 오늘로 가는 입구. 통계가 아니라 오늘 할 일 요약 + 큰 진입 버튼.
-             ★ Notion·Linear 톤 시범 리디자인 — 학생 공용 프리미티브 사용.
-             종합반(cohort) + 임박 과제 있으면 과제를 오늘의 학습 오른쪽 별도 카드로 분리. */}
-          {todaySummary.assignments.isCohortMember &&
-          pendingAssignments.length > 0 ? (
+          {/* 최상단 — 다음 행동(지금 할 일) 우선순위 카드. 흩어진 신호(복습·과제·약점·추천)를
+             1~3개로 압축해 원클릭 시작. 빈상태(신규/완료)는 기존 오늘 입구 카드가 처리.
+             종합반 + 임박 과제 있으면 전체 과제 목록을 오른쪽 별도 카드로 유지. */}
+          {todaySummary.isEmptyForNewUser ? (
+            <div className="mb-8">
+              <TodayEntryCard summary={todaySummary} />
+            </div>
+          ) : todaySummary.assignments.isCohortMember &&
+            pendingAssignments.length > 0 ? (
             <div className="mb-8">
               <DashGrid>
                 <SpanCol span={4}>
-                  <TodayEntryCard summary={todaySummary} hideAssignmentChip />
+                  <NextActionCard actions={nextActions} />
                 </SpanCol>
                 <SpanCol span={2}>
                   <PendingAssignmentsCard
@@ -796,7 +803,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
             </div>
           ) : (
             <div className="mb-8">
-              <TodayEntryCard summary={todaySummary} />
+              <NextActionCard actions={nextActions} />
             </div>
           )}
 
