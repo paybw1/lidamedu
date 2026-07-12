@@ -41,6 +41,7 @@ import {
 } from "~/features/dashboard/components/dash-growth";
 import { DashKpiStripV2 } from "~/features/dashboard/components/dash-kpi-strip-v2";
 import { NextActionCard } from "~/features/dashboard/components/dash-next-action";
+import { ResumeCard } from "~/features/dashboard/components/dash-resume";
 import { buildNextActions } from "~/features/dashboard/lib/next-actions";
 import { OxRecentCard } from "~/features/dashboard/components/dash-ox";
 import {
@@ -110,6 +111,7 @@ import {
   getDashboardKpis,
   getOverallProgress,
   getRecentActivity,
+  getResumePoint,
   getStudyAidCounts,
   getUserGsAveragePct,
   getWeakAreas,
@@ -438,6 +440,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     trialEnded &&
     Date.now() - trialEndsAtMs! <= TRIAL_ENDED_BANNER_DAYS * 86_400_000;
 
+  const resumePoint = await getResumePoint(client, user.id);
+
   return {
     isStaff,
     hasMgmt,
@@ -449,6 +453,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     poolConsentAt: predictProfile?.pool_consent_at ?? null,
     weekTrack,
     todaySummary,
+    resumePoint,
     passerGate,
     passerBenchmark,
     passerSummaries,
@@ -806,6 +811,13 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
               <NextActionCard actions={nextActions} />
             </div>
           )}
+
+          {/* 이어서 학습 — 마지막 학습 지점 한 클릭 재개(재방문 마찰↓). 신규는 숨김. */}
+          {loaderData.resumePoint ? (
+            <div className="mb-6">
+              <ResumeCard point={loaderData.resumePoint} />
+            </div>
+          ) : null}
 
           {/* 그 아래 — 내 위치 조망 (누적·추세). KPI 부터 시작. */}
           <div className="mb-6">

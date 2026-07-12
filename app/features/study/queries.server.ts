@@ -3,7 +3,10 @@ import type { Database } from "database.types";
 
 import type { AnnotationTargetType } from "~/features/annotations/queries.server";
 import { articleSlug } from "~/features/laws/lib/identifier";
-import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
+import {
+  LAW_SUBJECTS,
+  type LawSubjectSlug,
+} from "~/features/subjects/lib/subjects";
 
 // ---- 문제 난이도 (전체 사용자 시도 집계) ----
 // 표시용 상수/타입은 client-safe 한 ./lib/difficulty 로 분리.
@@ -326,6 +329,99 @@ export async function getLastStudyPointsBySubject(
     out[slug] = points;
   }
   return out;
+}
+
+// ── 대시보드 "이어서 학습" — 전 과목 통틀어 가장 최근 학습 지점 1건 ──
+// study_sessions 최신순으로 훑어 조문/판례/문제 중 첫 유효 항목을 잡고 라벨·경로 해결.
+export interface ResumePoint {
+  type: "조문" | "판례" | "문제";
+  label: string;
+  subjectName: string;
+  when: string; // 상대 시간("3시간 전")
+  path: string;
+}
+
+export async function getResumePoint(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<ResumePoint | null> {
+  const { data } = await client
+    .from("study_sessions")
+    .select("scope, started_at")
+    .eq("user_id", userId)
+    .order("started_at", { ascending: false })
+    .limit(30);
+  let hit:
+    | { tt: "article" | "case" | "problem"; id: string; subject: LawSubjectSlug; at: string }
+    | null = null;
+  for (const row of data ?? []) {
+    const scope = row.scope as Partial<StudyScope> | null;
+    const tt = scope?.target_type;
+    if (
+      scope?.subject &&
+      scope?.target_id &&
+      (tt === "article" || tt === "case" || tt === "problem")
+    ) {
+      hit = { tt, id: scope.target_id, subject: scope.subject, at: row.started_at };
+      break;
+    }
+  }
+  if (!hit) return null;
+
+  const subjectName = LAW_SUBJECTS[hit.subject]?.name ?? hit.subject;
+  const when = relativeKoTime(hit.at, Date.now());
+
+  if (hit.tt === "article") {
+    const { data: a } = await client
+      .from("articles")
+      .select("article_number, display_label")
+      .eq("article_id", hit.id)
+      .maybeSingle();
+    return {
+      type: "조문",
+      label: a?.display_label || `제${a?.article_number ?? ""}조`,
+      subjectName,
+      when,
+      path:
+        a?.article_number != null
+          ? `/subjects/${hit.subject}/articles/${a.article_number}`
+          : `/subjects/${hit.subject}`,
+    };
+  }
+  if (hit.tt === "case") {
+    const { data: c } = await client
+      .from("cases")
+      .select("case_title, case_number")
+      .eq("case_id", hit.id)
+      .maybeSingle();
+    return {
+      type: "판례",
+      label: c?.case_title || c?.case_number || "판례",
+      subjectName,
+      when,
+      path: `/subjects/${hit.subject}/cases/${hit.id}`,
+    };
+  }
+  const { data: p } = await client
+    .from("problems")
+    .select("body_md, year, problem_number")
+    .eq("problem_id", hit.id)
+    .maybeSingle();
+  const body = (p?.body_md ?? "").replace(/\s+/g, " ").trim();
+  const label = body
+    ? body.length > 30
+      ? `${body.slice(0, 30)}…`
+      : body
+    : p?.year
+      ? `${p.year}년 ${p.problem_number ?? ""}번`
+      : "문제";
+  return {
+    type: "문제",
+    label,
+    subjectName,
+    when,
+    path: `/subjects/${hit.subject}/problems/${hit.id}`,
+  };
 }
 
 // 문제 시도 기록.
