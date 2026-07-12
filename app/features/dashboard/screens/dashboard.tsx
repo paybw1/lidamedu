@@ -919,10 +919,16 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
                     <WeakReviewCard areas={weakRows} />
                   ) : null,
                   weakNodeRows.length > 0 ? (
-                    <WeakNodesCard nodes={weakNodeRows} />
+                    <WeakNodesCard
+                      nodes={weakNodeRows}
+                      isCohortMember={todaySummary.assignments.isCohortMember}
+                    />
                   ) : null,
                   recommendedActions.length > 0 ? (
-                    <RecommendedActionsCard actions={recommendedActions} />
+                    <RecommendedActionsCard
+                      actions={recommendedActions}
+                      dataBacked={passerGate.enabled}
+                    />
                   ) : null,
                 ]
                   .filter(Boolean)

@@ -175,12 +175,18 @@ export interface WeakNodeRow {
 
 export function WeakNodesCard({
   nodes,
+  isCohortMember = false,
 }: {
   nodes: ReadonlyArray<WeakNodeRow>;
+  // 종합반 학생만 "내 과제로 추가" 노출 — 과제는 반(cohort) 스코프라 비종합반은 불가.
+  isCohortMember?: boolean;
 }) {
   // 약점 단원 기반 셀프 세션("D") — getWeakNodes→pickProblemsFromWeakNodes→quiz_session.
   const fetcher = useFetcher<{ error?: string }>();
   const busy = fetcher.state !== "idle";
+  // 약점 → 개인 과제 직접 추가(종합반 학생) — 별도 fetcher(자체 busy/error).
+  const asgFetcher = useFetcher<{ error?: string }>();
+  const asgBusy = asgFetcher.state !== "idle";
   return (
     <Card padding={20} hover={false}>
       <div
@@ -332,6 +338,42 @@ export function WeakNodesCard({
           }}
         >
           {fetcher.data.error}
+        </div>
+      ) : null}
+      {isCohortMember ? (
+        <asgFetcher.Form
+          method="post"
+          action="/api/study/weak-to-assignment"
+          style={{ marginTop: 8 }}
+        >
+          <button
+            type="submit"
+            disabled={asgBusy}
+            style={{
+              width: "100%",
+              padding: "9px 12px",
+              borderRadius: 10,
+              border: `1px solid ${T.lineSoft}`,
+              background: "transparent",
+              color: T.inkSoft,
+              font: "600 12px/1 Pretendard, sans-serif",
+              cursor: asgBusy ? "default" : "pointer",
+              opacity: asgBusy ? 0.6 : 1,
+            }}
+          >
+            {asgBusy ? "과제 만드는 중…" : "약점을 내 과제로 추가 →"}
+          </button>
+        </asgFetcher.Form>
+      ) : null}
+      {asgFetcher.data?.error ? (
+        <div
+          style={{
+            marginTop: 8,
+            font: "500 11px/1.4 Pretendard, sans-serif",
+            color: T.coral,
+          }}
+        >
+          {asgFetcher.data.error}
         </div>
       ) : null}
     </Card>

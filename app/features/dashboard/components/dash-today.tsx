@@ -379,8 +379,12 @@ const REC_TONE: Record<
 
 export function RecommendedActionsCard({
   actions,
+  dataBacked = true,
 }: {
   actions: ReadonlyArray<RecActionData>;
+  // 합격자 데이터 게이트(≥10명) ON 일 때만 "합격자 데이터 기반" 표기. 데이터 없으면 숨김
+  // — 없는 근거를 내세우지 않도록(honest). 추천 자체는 본인 학습 기록 기반이라 유지.
+  dataBacked?: boolean;
 }) {
   return (
     <Card padding={20} hover={false}>
@@ -393,9 +397,11 @@ export function RecommendedActionsCard({
         }}
       >
         <Eyebrow>자동 추천 액션</Eyebrow>
-        <Sub style={{ font: "500 11px/1 Pretendard, sans-serif" }}>
-          합격자 데이터 기반
-        </Sub>
+        {dataBacked ? (
+          <Sub style={{ font: "500 11px/1 Pretendard, sans-serif" }}>
+            합격자 데이터 기반
+          </Sub>
+        ) : null}
       </div>
       <ul
         style={{

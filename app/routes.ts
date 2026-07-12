@@ -189,6 +189,11 @@ export default [
         "/session-from-weakness",
         "features/study/api/session-from-weakness.tsx",
       ),
+      // 약점 → 개인 과제 직접 추가(종합반 학생 셀프).
+      route(
+        "/weak-to-assignment",
+        "features/study/api/weak-to-assignment.tsx",
+      ),
       route(
         "/session-from-bookmarks",
         "features/study/api/session-from-bookmarks.tsx",
