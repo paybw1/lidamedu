@@ -2,11 +2,10 @@
 // 스냅샷(활성·자동갱신 유지율·해지 예정·자동결제 카드) + 기간(신규·해지·순증·해지율).
 
 import { RefreshCwIcon, UsersIcon } from "lucide-react";
-import { Form, redirect } from "react-router";
+import { Form } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
-import { roleAtLeast } from "~/core/lib/roles";
-import makeServerClient from "~/core/lib/supa-client.server";
+import { requireManager } from "~/core/lib/admin-guard.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { AdminSelect, Bar, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
 import { SUBSCRIPTION_STATUS_LABEL } from "~/features/subscriptions/labels";
@@ -37,17 +36,7 @@ function presetRange(preset: PeriodPreset): { fromIso: string | null; toIso: str
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const [client] = makeServerClient(request);
-  const {
-    data: { user },
-  } = await client.auth.getUser();
-  if (!user) throw redirect("/login");
-  const { data: prof } = await client
-    .from("profiles")
-    .select("role")
-    .eq("profile_id", user.id)
-    .maybeSingle();
-  if (!roleAtLeast(prof?.role, "manager")) throw redirect("/admin");
+  await requireManager(request);
 
   const url = new URL(request.url);
   const preset = (url.searchParams.get("period") ?? "this_month") as PeriodPreset;

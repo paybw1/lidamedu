@@ -1,10 +1,9 @@
 // feat-8-029 Stage 3 — 강사 정산 상세 (manager+): 항목별 내역·합계·상태 전이.
 
 import { ArrowLeftIcon } from "lucide-react";
-import { Link, data, redirect } from "react-router";
+import { Link, data } from "react-router";
 
-import { roleAtLeast } from "~/core/lib/roles";
-import makeServerClient from "~/core/lib/supa-client.server";
+import { requireManager } from "~/core/lib/admin-guard.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Chip, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
 import { getSettlementDetail } from "~/features/subscriptions/settlements-admin.server";
@@ -19,17 +18,7 @@ export const meta: Route.MetaFunction = () => [
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  const [client] = makeServerClient(request);
-  const {
-    data: { user },
-  } = await client.auth.getUser();
-  if (!user) throw redirect("/login");
-  const { data: prof } = await client
-    .from("profiles")
-    .select("role")
-    .eq("profile_id", user.id)
-    .maybeSingle();
-  if (!roleAtLeast(prof?.role, "manager")) throw redirect("/admin");
+  await requireManager(request);
 
   if (!params.settlementId) throw data("정산 없음", { status: 404 });
   const detail = await getSettlementDetail(params.settlementId);

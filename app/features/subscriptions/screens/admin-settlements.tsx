@@ -2,13 +2,12 @@
 // 월 선택 → 정산 생성(초안 재생성) → 강사별 정산 확정 → 지급완료.
 
 import { CalculatorIcon, DownloadIcon } from "lucide-react";
-import { Form, Link, redirect, useSearchParams } from "react-router";
+import { Form, Link, useSearchParams } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Input } from "~/core/components/ui/input";
 import { csvResponse } from "~/core/lib/csv.server";
-import { roleAtLeast } from "~/core/lib/roles";
-import makeServerClient from "~/core/lib/supa-client.server";
+import { requireManager } from "~/core/lib/admin-guard.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Chip, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
 import {
@@ -32,17 +31,7 @@ function prevMonthKst(): string {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const [client] = makeServerClient(request);
-  const {
-    data: { user },
-  } = await client.auth.getUser();
-  if (!user) throw redirect("/login");
-  const { data: prof } = await client
-    .from("profiles")
-    .select("role")
-    .eq("profile_id", user.id)
-    .maybeSingle();
-  if (!roleAtLeast(prof?.role, "manager")) throw redirect("/admin");
+  await requireManager(request);
 
   const url = new URL(request.url);
   const month = url.searchParams.get("month") ?? prevMonthKst();

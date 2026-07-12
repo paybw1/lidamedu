@@ -3,12 +3,11 @@
 // (정산 항목이 규칙을 참조하므로 지급 근거 보존).
 
 import { PercentIcon } from "lucide-react";
-import { Form, redirect, useActionData } from "react-router";
+import { Form, useActionData } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Input } from "~/core/components/ui/input";
-import { roleAtLeast } from "~/core/lib/roles";
-import makeServerClient from "~/core/lib/supa-client.server";
+import { requireManager } from "~/core/lib/admin-guard.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import {
   AdminSelect,
@@ -32,17 +31,7 @@ export const meta: Route.MetaFunction = () => [
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const [client] = makeServerClient(request);
-  const {
-    data: { user },
-  } = await client.auth.getUser();
-  if (!user) throw redirect("/login");
-  const { data: prof } = await client
-    .from("profiles")
-    .select("role")
-    .eq("profile_id", user.id)
-    .maybeSingle();
-  if (!roleAtLeast(prof?.role, "manager")) throw redirect("/admin");
+  const { client } = await requireManager(request);
 
   const [rules, instructors, plans] = await Promise.all([
     listShareRules(),

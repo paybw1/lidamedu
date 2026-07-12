@@ -7,12 +7,11 @@ import {
   GraduationCapIcon,
   LayersIcon,
 } from "lucide-react";
-import { Form, redirect, useSearchParams } from "react-router";
+import { Form, useSearchParams } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { csvResponse } from "~/core/lib/csv.server";
-import { roleAtLeast } from "~/core/lib/roles";
-import makeServerClient from "~/core/lib/supa-client.server";
+import { requireManager } from "~/core/lib/admin-guard.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { AdminSelect, Bar, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
 import {
@@ -50,17 +49,7 @@ function presetRange(preset: PeriodPreset): { fromIso: string | null; toIso: str
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const [client] = makeServerClient(request);
-  const {
-    data: { user },
-  } = await client.auth.getUser();
-  if (!user) throw redirect("/login");
-  const { data: prof } = await client
-    .from("profiles")
-    .select("role")
-    .eq("profile_id", user.id)
-    .maybeSingle();
-  if (!roleAtLeast(prof?.role, "manager")) throw redirect("/admin");
+  await requireManager(request);
 
   const url = new URL(request.url);
   const preset = (url.searchParams.get("period") ?? "this_month") as PeriodPreset;

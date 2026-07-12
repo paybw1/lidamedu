@@ -4,12 +4,11 @@
 // ※ 실제 도서정산 계산·지급은 추후 — 지금은 규칙 입력만.
 
 import { BookIcon } from "lucide-react";
-import { Form, redirect, useActionData } from "react-router";
+import { Form, useActionData } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Input } from "~/core/components/ui/input";
-import { roleAtLeast } from "~/core/lib/roles";
-import makeServerClient from "~/core/lib/supa-client.server";
+import { requireManager } from "~/core/lib/admin-guard.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { AdminSelect, Chip, Field, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
 import { listBooksForPicker } from "~/features/bookstore/queries.server";
@@ -20,17 +19,7 @@ import type { Route } from "./+types/admin-book-settlements";
 export const meta: Route.MetaFunction = () => [{ title: "도서 배분 기준 | 운영자" }];
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const [client] = makeServerClient(request);
-  const {
-    data: { user },
-  } = await client.auth.getUser();
-  if (!user) throw redirect("/login");
-  const { data: prof } = await client
-    .from("profiles")
-    .select("role")
-    .eq("profile_id", user.id)
-    .maybeSingle();
-  if (!roleAtLeast(prof?.role, "manager")) throw redirect("/admin");
+  await requireManager(request);
 
   const [rules, books] = await Promise.all([
     listBookSettlementRules(),
