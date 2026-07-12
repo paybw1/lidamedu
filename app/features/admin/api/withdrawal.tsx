@@ -3,12 +3,11 @@
 import { data, redirect } from "react-router";
 import { z } from "zod";
 
-import makeServerClient from "~/core/lib/supa-client.server";
+import { requireAdmin } from "~/core/lib/admin-guard.server";
 import {
   alertSecurityEvent,
   logAuditEvent,
 } from "~/features/admin/queries/audit-log.server";
-import { getStaffRole } from "~/features/laws/queries.server";
 import {
   cancelWithdrawal,
   deleteWithdrawnUser,
@@ -28,13 +27,7 @@ const schema = z.discriminatedUnion("intent", [
 ]);
 
 export async function action({ request }: Route.ActionArgs) {
-  const [client] = makeServerClient(request);
-  const {
-    data: { user },
-  } = await client.auth.getUser();
-  if (!user) throw data("Unauthorized", { status: 401 });
-  const role = await getStaffRole(client, user.id);
-  if (role !== "admin") throw data("Forbidden — admin only", { status: 403 });
+  const { user, role } = await requireAdmin(request);
 
   const parsed = schema.safeParse(Object.fromEntries(await request.formData()));
   if (!parsed.success)

@@ -2,20 +2,18 @@
 // 접근: admin 항상 + '수강생 관리 접근' duty. 데이터는 파생 집계(별도 저장 없음).
 
 import { DownloadIcon, TimerIcon } from "lucide-react";
-import { Link, data, useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 
+import { requireDuty } from "~/core/lib/admin-guard.server";
 import { Button } from "~/core/components/ui/button";
 import { csvResponse } from "~/core/lib/csv.server";
 import { cn } from "~/core/lib/utils";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
-import { hasDutyAccess } from "~/features/admin/lib/duties.server";
 import {
   getTrialConversionOverview,
   type TrialWorklistRow,
 } from "~/features/admin/queries/trial-conversion.server";
-import { getStaffRole } from "~/features/laws/queries.server";
-import makeServerClient from "~/core/lib/supa-client.server";
 
 import type { Route } from "./+types/admin-trial-conversion";
 
@@ -31,14 +29,7 @@ function fmtDay(iso: string): string {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const [client] = makeServerClient(request);
-  const {
-    data: { user },
-  } = await client.auth.getUser();
-  if (!user) throw data("Unauthorized", { status: 401 });
-  const role = await getStaffRole(client, user.id);
-  const canAccess = await hasDutyAccess("student_admin_access", user.id, role);
-  if (!canAccess) throw data("Forbidden", { status: 403 });
+  await requireDuty(request, "student_admin_access");
 
   const overview = await getTrialConversionOverview();
 
