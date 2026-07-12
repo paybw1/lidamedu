@@ -10,6 +10,7 @@ import {
   CheckSquareIcon,
   FileEditIcon,
   GavelIcon,
+  ListChecksIcon,
   ListTreeIcon,
   PanelRightIcon,
   PencilIcon,
@@ -81,6 +82,7 @@ import { getPdfLocationsEnabled } from "~/features/lectures/settings.server";
 import {
   getOxAnnotationsForRefs,
   getOxQuestionsForArticle,
+  getRelatedProblemsByArticle,
 } from "~/features/problems/queries.server";
 import { listThreadsForTarget } from "~/features/qna/queries.server";
 import { RecitationView } from "~/features/recitation/components/recitation-view";
@@ -202,6 +204,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     blankSets,
     staffRole,
     oxQuestions,
+    relatedProblems,
     articleComments,
     lectureResources,
     axisCounts,
@@ -220,6 +223,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     getOxQuestionsForArticle(client, article.articleId, 500, {
       includeUnapproved: viewerStaffRole !== null,
     }),
+    getRelatedProblemsByArticle(client, article.articleId),
     listComments(client, "article", article.articleId),
     listLectureResources(client, "article", article.articleId),
     getSubjectAxisCounts(client, lawCode, law.lawId),
@@ -323,6 +327,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     articles,
     systematicNodes,
     relatedCases,
+    relatedProblems,
     bookmark,
     memos,
     highlights,
@@ -373,6 +378,7 @@ function ArticleViewerInner({
     articles,
     systematicNodes,
     relatedCases,
+    relatedProblems,
     bookmark,
     memos,
     highlights,
@@ -732,6 +738,9 @@ function ArticleViewerInner({
                     highlights={highlights}
                     qnaThreads={qnaThreads}
                     relatedCases={relatedCases}
+                    relatedProblems={
+                      relatedProblems.length > 0 ? relatedProblems : undefined
+                    }
                     oxQuestions={oxQuestions}
                     oxAnnotationsByRef={oxAnnotationsByRef}
                     comments={articleComments}
@@ -851,6 +860,7 @@ function ArticleViewerInner({
 
               {/* ── 이 조문 연결 콘텐츠 — 그래프 가시화 + 원클릭 이동 ────── */}
               {relatedCases.length > 0 ||
+              relatedProblems.length > 0 ||
               oxQuestions.length > 0 ||
               blankAvailable ? (
                 <div className="mx-6 mb-4 flex flex-wrap items-center gap-1.5">
@@ -871,6 +881,24 @@ function ArticleViewerInner({
                     >
                       <GavelIcon className="size-3" /> 판례{" "}
                       <span className="tabular-nums">{relatedCases.length}</span>
+                    </button>
+                  ) : null}
+                  {relatedProblems.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        dispatchOpenPanelTab({
+                          targetType: "article",
+                          targetId: article.articleId,
+                          tab: "related-problems",
+                        })
+                      }
+                      className="border-border hover:border-primary hover:bg-primary/5 text-foreground inline-flex items-center gap-1 rounded-full border bg-background px-2.5 py-1 text-xs font-medium transition-colors"
+                    >
+                      <ListChecksIcon className="size-3" /> 문제{" "}
+                      <span className="tabular-nums">
+                        {relatedProblems.length}
+                      </span>
                     </button>
                   ) : null}
                   {oxQuestions.length > 0 ? (
@@ -1423,6 +1451,9 @@ function ArticleViewerInner({
                   highlights={highlights}
                   qnaThreads={qnaThreads}
                   relatedCases={relatedCases}
+                  relatedProblems={
+                    relatedProblems.length > 0 ? relatedProblems : undefined
+                  }
                   oxQuestions={oxQuestions}
                   oxAnnotationsByRef={oxAnnotationsByRef}
                   comments={articleComments}

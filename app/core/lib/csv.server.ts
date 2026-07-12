@@ -3,7 +3,10 @@
 
 function escapeCell(v: unknown): string {
   if (v == null) return "";
-  const s = String(v);
+  let s = String(v);
+  // CSV 수식 인젝션 방지(CWE-1236): =,+,-,@,탭,CR 로 시작하는 값은
+  // Excel/Sheets 가 수식으로 실행할 수 있으므로 선두에 작은따옴표를 붙여 무력화.
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   // 콤마·따옴표·개행 포함 시 따옴표로 감싸고 내부 따옴표는 두 번.
   if (/[",\n\r]/.test(s)) return `"${s.replaceAll('"', '""')}"`;
   return s;

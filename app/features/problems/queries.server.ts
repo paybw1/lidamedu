@@ -1727,6 +1727,40 @@ export async function getRelatedProblems(
   }));
 }
 
+// article-viewer "이 조문 연결" 배지 → 우측 "유사 문제" 탭용.
+// 이 조문(primary_article_id)이 일차 분류된 문제(승인분·미삭제)를 최신 기출순으로.
+// 학생 draft 누수 방지로 review_status=approved 강제(problems RLS 는 draft 안 가림).
+export async function getRelatedProblemsByArticle(
+  client: SupabaseClient<Database>,
+  articleId: string,
+  limit = 12,
+): Promise<RelatedProblemItem[]> {
+  const { data: rows, error } = await client
+    .from("problems")
+    .select(
+      "problem_id, year, problem_number, body_md, format, origin, laws!inner(law_code)",
+    )
+    .eq("primary_article_id", articleId)
+    .eq("review_status", "approved")
+    .is("deleted_at", null)
+    .order("year", { ascending: false, nullsFirst: false })
+    .order("problem_number", { ascending: true })
+    .limit(limit);
+  if (error) throw error;
+  return (rows ?? []).map((r) => ({
+    problemId: r.problem_id,
+    year: r.year,
+    problemNumber: r.problem_number,
+    bodySnippet:
+      (r.body_md ?? "").length > 100
+        ? `${(r.body_md ?? "").slice(0, 100)}…`
+        : (r.body_md ?? ""),
+    format: r.format,
+    origin: r.origin,
+    lawCode: r.laws.law_code,
+  }));
+}
+
 // 체계도 노드 미니그래프 / 진척도용 — 여러 article 의 primary 문제 일괄 조회.
 // 한 article 당 여러 문제 가능. 반환: articleId → 문제 목록.
 export async function listProblemsByArticleIds(
