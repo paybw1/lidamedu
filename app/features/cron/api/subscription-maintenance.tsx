@@ -1,6 +1,8 @@
 // 구독 유지보수 cron (feat-8-028).
 //  #4 — 만료 지난 활성 구독을 expired 로 강등(접근은 expires_at 로 이미 차단되지만
 //       status='active' 잔존이 운영자 화면·집계와 모순되던 것을 정리).
+//       ★단, dunning 유예 중(grace_until 미래)인 구독은 제외 — 재시도·접근을 위해
+//       active 를 유지해야 한다(feat-8-030). 유예까지 지나면 그때 expired.
 //  #3 — 1시간 넘게 미완료(pending)인 결제를 failed 로 마킹(결제 중단 고아 정리).
 // 외부 cron 일별 호출. CRON_SECRET 인증. adminClient(RLS 우회).
 
@@ -31,12 +33,13 @@ async function run(request: Request) {
     Date.now() - STALE_PENDING_MINUTES * 60_000,
   ).toISOString();
 
-  // #4 — 만료 지난 활성 구독 → expired.
+  // #4 — 만료 지난 활성 구독 → expired. (dunning 유예 중인 건은 제외 — grace_until 미래면 유지)
   const { data: expired, error: expErr } = await adminClient
     .from("user_subscriptions")
     .update({ status: "expired", updated_at: nowIso })
     .eq("status", "active")
     .lt("expires_at", nowIso)
+    .or(`grace_until.is.null,grace_until.lt.${nowIso}`)
     .select("subscription_id");
   if (expErr) return data({ error: expErr.message }, { status: 500 });
 

@@ -173,14 +173,16 @@ export async function getMembershipAccess(
   }
 
   // 3) 활성 자기학습 상품 구독(개별 과목 / 번들). 부여 과목 = plan.subject_codes 합집합.
+  //    ★dunning 유예(grace_until) 중에는 만료(expires_at 경과)여도 접근 유지 — 자동결제
+  //    실패 재시도 기간 동안 학습이 끊기지 않도록. 유예까지 지나면 자연 차단.
   const { data: subs } = await admin
     .from("user_subscriptions")
     .select(
-      "subject_code, subscription_plans!inner(product_kind, subject_codes, features)",
+      "subject_code, expires_at, grace_until, subscription_plans!inner(product_kind, subject_codes, features)",
     )
     .eq("user_id", userId)
     .eq("status", "active")
-    .gte("expires_at", nowIso);
+    .or(`expires_at.gte.${nowIso},grace_until.gte.${nowIso}`);
   const selfSubs = (subs ?? []).filter((s) =>
     SELF_STUDY_PRODUCT_KINDS.includes(s.subscription_plans.product_kind),
   );

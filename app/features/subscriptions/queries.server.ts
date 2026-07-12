@@ -8,6 +8,7 @@ import type { Database } from "database.types";
 import { redirect } from "react-router";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
+import { createUserNotifications } from "~/features/notifications/queries.server";
 import {
   markOrderPaidAndFulfill,
   markOrderRefundedAndRevoke,
@@ -1151,30 +1152,290 @@ export async function chargeAndActivateBilling(input: {
   return { ok: true };
 }
 
-// 갱신 청구(크론) — 만료 임박 auto_renew 구독을 빌링키로 청구·연장.
-// 대상: status=active · auto_renew=true · cancelled_at IS NULL · 만료 24h 이내.
+// ── Dunning (결제 실패 재시도/유예) 파라미터 (feat-8-030) ──────────────────
+// 초기 실패 포함 총 4회 시도(=3회 재시도). 유예 6일 동안 접근 유지하며 재시도.
+const DUNNING_MAX_FAILURES = 4;
+const DUNNING_GRACE_DAYS = 6;
+// 실패 누적 횟수(newCount)별 다음 재시도까지 일수 — D+1 · D+3 · D+5.
+function dunningBackoffDays(failureCount: number): number {
+  return failureCount <= 1 ? 1 : 2;
+}
+const DAY_MS = 86_400_000;
+
+/** ISO → "M월 D일" (KST). 알림 문구용. */
+function fmtKstDay(iso: string): string {
+  const k = new Date(new Date(iso).getTime() + 9 * 3_600_000);
+  return `${k.getUTCMonth() + 1}월 ${k.getUTCDate()}일`;
+}
+
+// 자동갱신 대상 구독 select — 청구·할인·dunning 판정에 필요한 필드.
+const RENEWAL_SELECT =
+  "subscription_id, user_id, plan_id, subject_code, expires_at, failure_count, grace_until, " +
+  "subscription_plans!inner(code, name, price_krw, duration_days, product_kind)";
+
+interface RenewalSub {
+  subscription_id: string;
+  user_id: string;
+  plan_id: string;
+  subject_code: string | null;
+  expires_at: string | null;
+  failure_count: number | null;
+  grace_until: string | null;
+  subscription_plans: {
+    code: string;
+    name: string;
+    price_krw: number;
+    duration_days: number;
+    product_kind: string;
+  };
+}
+
+type ActiveDiscount = Awaited<ReturnType<typeof listActiveDiscounts>>[number];
+
+// 실패 결제 1건 기록(빌링 청구 실패). 마이페이지 결제내역·환불율 정합용.
+async function recordFailedBillingPayment(
+  admin: SupabaseClient<Database>,
+  input: {
+    userId: string;
+    planId: string;
+    amountKrw: number;
+    tossOrderId: string;
+    reason: string;
+  },
+): Promise<void> {
+  await admin.from("payments").insert({
+    user_id: input.userId,
+    plan_id: input.planId,
+    amount_krw: input.amountKrw,
+    status: "failed",
+    toss_order_id: input.tossOrderId,
+    failure_reason: input.reason.slice(0, 300),
+  });
+}
+
+// 청구 성공 — 해당 구독 row 를 직접 연장하고 dunning 상태 리셋.
+//   ★유예 중(expires_at 과거)에는 upsertPaidSubscription 의 'expires>=now' 매칭이
+//   실패해 새 row 를 INSERT 하므로, 여기서 subscription_id 로 직접 갱신한다.
+async function applyRenewalSuccess(
+  admin: SupabaseClient<Database>,
+  sub: RenewalSub,
+  paymentId: string,
+): Promise<void> {
+  const nowMs = Date.now();
+  const expMs = sub.expires_at ? new Date(sub.expires_at).getTime() : nowMs;
+  // 만료 전이면 이어붙이고, 유예(과거 만료)면 now 기준으로 새 기간 부여.
+  const base = Math.max(nowMs, expMs);
+  const newExpires = new Date(
+    base + sub.subscription_plans.duration_days * DAY_MS,
+  ).toISOString();
+  await admin
+    .from("user_subscriptions")
+    .update({
+      expires_at: newExpires,
+      payment_id: paymentId,
+      status: "active",
+      auto_renew: true,
+      failure_count: 0,
+      next_retry_at: null,
+      grace_until: null,
+      last_failure_at: null,
+      last_failure_reason: null,
+    })
+    .eq("subscription_id", sub.subscription_id);
+}
+
+// 청구 실패 — 실패 결제 기록 + 카운트↑·백오프·유예 설정 + 학생 알림.
+//   반환: 최종 실패(만료)면 "lapsed", 재시도 여지 있으면 "failed".
+async function applyRenewalFailure(
+  admin: SupabaseClient<Database>,
+  sub: RenewalSub,
+  chargeAmount: number,
+  reason: string,
+): Promise<"failed" | "lapsed"> {
+  const nowMs = Date.now();
+  const newCount = (sub.failure_count ?? 0) + 1;
+  const planName = sub.subscription_plans.name;
+
+  await recordFailedBillingPayment(admin, {
+    userId: sub.user_id,
+    planId: sub.plan_id,
+    amountKrw: chargeAmount,
+    tossOrderId: `lidam-rf-${randomUUID()}`,
+    reason,
+  });
+
+  const grace =
+    sub.grace_until ?? new Date(nowMs + DUNNING_GRACE_DAYS * DAY_MS).toISOString();
+  const isFinal = newCount >= DUNNING_MAX_FAILURES;
+  const nextRetry = isFinal
+    ? null
+    : new Date(nowMs + dunningBackoffDays(newCount) * DAY_MS).toISOString();
+
+  await admin
+    .from("user_subscriptions")
+    .update({
+      failure_count: newCount,
+      last_failure_at: new Date(nowMs).toISOString(),
+      last_failure_reason: reason.slice(0, 300),
+      grace_until: grace,
+      next_retry_at: nextRetry,
+    })
+    .eq("subscription_id", sub.subscription_id);
+
+  if (isFinal) {
+    await createUserNotifications({
+      recipientIds: [sub.user_id],
+      kind: "subscription_lapsed",
+      entityType: "subscription",
+      entityId: sub.subscription_id,
+      title: "구독이 만료되었습니다",
+      body: `자동결제가 여러 번 실패해 ‘${planName}’ 구독이 종료됩니다. 계속 학습하려면 다시 결제해 주세요.`,
+      href: "/pricing",
+    });
+    return "lapsed";
+  }
+
+  await createUserNotifications({
+    recipientIds: [sub.user_id],
+    kind: "payment_failed",
+    entityType: "subscription",
+    entityId: sub.subscription_id,
+    title: "자동결제에 실패했어요",
+    body: `‘${planName}’ 자동결제가 거절되었습니다(${reason}). ${nextRetry ? `${fmtKstDay(nextRetry)}에 다시 시도합니다. ` : ""}${fmtKstDay(grace)}까지 결제 수단을 확인해 주세요.`,
+    href: "/me/subscription",
+  });
+  return "failed";
+}
+
+// 구독 1건 갱신 청구 — 할인 지속 판정 → 카드 청구 → 성공/실패 처리.
+async function processSubscriptionRenewal(
+  admin: SupabaseClient<Database>,
+  sub: RenewalSub,
+  discountById: Map<string, ActiveDiscount>,
+): Promise<"charged" | "failed" | "lapsed"> {
+  const nowMs = Date.now();
+  const plan = sub.subscription_plans;
+
+  // 직전 완료 결제의 할인이 지속 유효하면 이어간다('지속' 모델).
+  let priorQuery = admin
+    .from("payments")
+    .select("discount_id")
+    .eq("user_id", sub.user_id)
+    .eq("plan_id", sub.plan_id)
+    .eq("status", "completed")
+    .order("created_at", { ascending: false })
+    .limit(1);
+  priorQuery = sub.subject_code
+    ? priorQuery.eq("subject_code", sub.subject_code)
+    : priorQuery.is("subject_code", null);
+  const { data: prior } = await priorQuery.maybeSingle();
+  const priorDiscount = prior?.discount_id
+    ? (discountById.get(prior.discount_id) ?? null)
+    : null;
+  const auto =
+    priorDiscount &&
+    discountAppliesAtRenewal(
+      priorDiscount,
+      { productKind: plan.product_kind as ProductKind, code: plan.code },
+      plan.price_krw,
+      nowMs,
+    )
+      ? priorDiscount
+      : null;
+  const amount = auto ? effectivePriceKrw(plan.price_krw, auto) : plan.price_krw;
+  // 할인 후 0원이면 청구 불가 → 정가 청구.
+  const chargeAmount = amount > 0 ? amount : plan.price_krw;
+  const appliedDiscountId = amount > 0 && auto ? auto.discountId : null;
+
+  const { data: bk } = await admin
+    .from("billing_keys")
+    .select("billing_key, customer_key")
+    .eq("user_id", sub.user_id)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!bk) {
+    return applyRenewalFailure(
+      admin,
+      sub,
+      chargeAmount,
+      "등록된 자동결제 카드가 없습니다",
+    );
+  }
+
+  const orderId = `lidam-r-${randomUUID()}`;
+  const charge = await chargeBillingKey({
+    billingKey: bk.billing_key,
+    customerKey: bk.customer_key,
+    amountKrw: chargeAmount,
+    orderId,
+    orderName: `${plan.name} 자동갱신`,
+  });
+  if (!charge.ok) {
+    return applyRenewalFailure(admin, sub, chargeAmount, charge.error);
+  }
+  const paymentId = await recordCompletedBillingPayment(admin, {
+    userId: sub.user_id,
+    planId: sub.plan_id,
+    amountKrw: chargeAmount,
+    discountId: appliedDiscountId,
+    tossOrderId: orderId,
+    tossPaymentKey: charge.paymentKey,
+    tossPayload: charge.payload,
+  });
+  if (!paymentId) {
+    return applyRenewalFailure(admin, sub, chargeAmount, "결제 기록 실패");
+  }
+  if (appliedDiscountId) await incrementDiscountUse(appliedDiscountId);
+  await applyRenewalSuccess(admin, sub, paymentId);
+  return "charged";
+}
+
+// 갱신 청구(크론) — 만료 임박 auto_renew 구독 청구 + 실패건 재시도(dunning).
+// 대상: status=active · auto_renew=true · cancelled_at IS NULL.
+//   ① 신규 만료 임박(24h 이내, dunning 진행 중 아님) ∪ ② 재시도 예정(유예 내).
+//   ③ 유예가 만료됐는데 재시도 스케줄이 남은 건은 최종 만료 처리(sweep).
 export async function chargeDueRenewals(): Promise<{
   charged: number;
   failed: number;
+  lapsed: number;
 }> {
   const admin = adminClient as SupabaseClient<Database>;
   const nowMs = Date.now();
   const windowIso = new Date(nowMs + 24 * 3_600_000).toISOString();
   const nowIso = new Date(nowMs).toISOString();
+
+  // ① 신규 만료 임박 — next_retry_at IS NULL(dunning 미진입)만. 진행 중 건은 ②가 백오프대로 처리.
   const { data: due } = await admin
     .from("user_subscriptions")
-    .select(
-      "subscription_id, user_id, plan_id, subject_code, subscription_plans!inner(code, name, price_krw, duration_days, product_kind)",
-    )
+    .select(RENEWAL_SELECT)
     .eq("status", "active")
     .eq("auto_renew", true)
     .is("cancelled_at", null)
+    .is("next_retry_at", null)
     .lte("expires_at", windowIso)
     .gte("expires_at", nowIso);
 
-  // 갱신 할인 = '지속' 모델: 신규 프로모션을 새로 부여하지 않고, 그 구독이 원래
-  //   받던 할인(직전 완료 결제의 discount_id)을 혜택 지속 종료일(renewal_until)까지
-  //   유지한다. 가입 창에 시작해 지속 중인 구독만 혜택을 이어받는다.
+  // ② 재시도 예정 — next_retry_at 도래 + 유예 이내.
+  const { data: retry } = await admin
+    .from("user_subscriptions")
+    .select(RENEWAL_SELECT)
+    .eq("status", "active")
+    .eq("auto_renew", true)
+    .is("cancelled_at", null)
+    .not("next_retry_at", "is", null)
+    .lte("next_retry_at", nowIso)
+    .gte("grace_until", nowIso);
+
+  const byId = new Map<string, RenewalSub>();
+  for (const s of [
+    ...((due ?? []) as unknown as RenewalSub[]),
+    ...((retry ?? []) as unknown as RenewalSub[]),
+  ]) {
+    byId.set(s.subscription_id, s);
+  }
+
   const activeDiscounts = await listActiveDiscounts(admin);
   const discountById = new Map(
     activeDiscounts.map((d) => [d.discountId, d] as const),
@@ -1182,90 +1443,43 @@ export async function chargeDueRenewals(): Promise<{
 
   let charged = 0;
   let failed = 0;
-  for (const sub of due ?? []) {
-    const { data: bk } = await admin
-      .from("billing_keys")
-      .select("billing_key, customer_key")
-      .eq("user_id", sub.user_id)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (!bk) {
-      failed += 1;
-      continue;
-    }
-    const plan = sub.subscription_plans;
-    // 직전 완료 결제(가장 최근) — 할인 체인의 연속성 판정 기준.
-    //   직전 결제에 할인이 붙어 있었고 그 할인이 아직 지속 유효하면 이어간다.
-    let priorQuery = admin
-      .from("payments")
-      .select("discount_id")
-      .eq("user_id", sub.user_id)
-      .eq("plan_id", sub.plan_id)
-      .eq("status", "completed")
-      .order("created_at", { ascending: false })
-      .limit(1);
-    priorQuery = sub.subject_code
-      ? priorQuery.eq("subject_code", sub.subject_code)
-      : priorQuery.is("subject_code", null);
-    const { data: prior } = await priorQuery.maybeSingle();
-    const priorDiscount = prior?.discount_id
-      ? (discountById.get(prior.discount_id) ?? null)
-      : null;
-    const auto =
-      priorDiscount &&
-      discountAppliesAtRenewal(
-        priorDiscount,
-        { productKind: plan.product_kind as ProductKind, code: plan.code },
-        plan.price_krw,
-        nowMs,
-      )
-        ? priorDiscount
-        : null;
-    const amount = auto
-      ? effectivePriceKrw(plan.price_krw, auto)
-      : plan.price_krw;
-    // 할인 후 0원이면 청구 불가 → 할인 없이 정가 청구(0원 청구 회피).
-    const chargeAmount = amount > 0 ? amount : plan.price_krw;
-    const appliedDiscountId = amount > 0 && auto ? auto.discountId : null;
-    const orderId = `lidam-r-${randomUUID()}`;
-    const charge = await chargeBillingKey({
-      billingKey: bk.billing_key,
-      customerKey: bk.customer_key,
-      amountKrw: chargeAmount,
-      orderId,
-      orderName: `${plan.name} 자동갱신`,
-    });
-    if (!charge.ok) {
-      failed += 1;
-      continue;
-    }
-    const paymentId = await recordCompletedBillingPayment(admin, {
-      userId: sub.user_id,
-      planId: sub.plan_id,
-      amountKrw: chargeAmount,
-      discountId: appliedDiscountId,
-      tossOrderId: orderId,
-      tossPaymentKey: charge.paymentKey,
-      tossPayload: charge.payload,
-    });
-    if (!paymentId) {
-      failed += 1;
-      continue;
-    }
-    if (appliedDiscountId) await incrementDiscountUse(appliedDiscountId);
-    await upsertPaidSubscription(admin, {
-      userId: sub.user_id,
-      planId: sub.plan_id,
-      subjectCode: sub.subject_code ?? null,
-      durationDays: plan.duration_days,
-      paymentId,
-      autoRenew: true,
-    });
-    charged += 1;
+  let lapsed = 0;
+  for (const sub of byId.values()) {
+    const r = await processSubscriptionRenewal(admin, sub, discountById);
+    if (r === "charged") charged += 1;
+    else if (r === "lapsed") lapsed += 1;
+    else failed += 1;
   }
-  return { charged, failed };
+
+  // ③ 유예 만료 sweep — 재시도 스케줄이 남았는데 유예가 지난 건(크론 공백 등) 최종 만료.
+  const { data: expiredGrace } = await admin
+    .from("user_subscriptions")
+    .select("subscription_id, user_id, subscription_plans!inner(name)")
+    .eq("status", "active")
+    .not("next_retry_at", "is", null)
+    .lt("grace_until", nowIso);
+  for (const s of (expiredGrace ?? []) as unknown as Array<{
+    subscription_id: string;
+    user_id: string;
+    subscription_plans: { name: string };
+  }>) {
+    await admin
+      .from("user_subscriptions")
+      .update({ next_retry_at: null })
+      .eq("subscription_id", s.subscription_id);
+    await createUserNotifications({
+      recipientIds: [s.user_id],
+      kind: "subscription_lapsed",
+      entityType: "subscription",
+      entityId: s.subscription_id,
+      title: "구독이 만료되었습니다",
+      body: `자동결제 재시도 기간이 지나 ‘${s.subscription_plans.name}’ 구독이 종료됩니다. 계속 학습하려면 다시 결제해 주세요.`,
+      href: "/pricing",
+    });
+    lapsed += 1;
+  }
+
+  return { charged, failed, lapsed };
 }
 
 // 본인 자동결제 카드 조회(표시용).
