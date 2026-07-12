@@ -1,11 +1,12 @@
 // feat-8-029 Stage 3 — 강사 정산 목록 (manager+).
 // 월 선택 → 정산 생성(초안 재생성) → 강사별 정산 확정 → 지급완료.
 
-import { CalculatorIcon } from "lucide-react";
-import { Form, Link, redirect } from "react-router";
+import { CalculatorIcon, DownloadIcon } from "lucide-react";
+import { Form, Link, redirect, useSearchParams } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Input } from "~/core/components/ui/input";
+import { csvResponse } from "~/core/lib/csv.server";
 import { roleAtLeast } from "~/core/lib/roles";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
@@ -48,6 +49,37 @@ export async function loader({ request }: Route.LoaderArgs) {
   const msg = url.searchParams.get("msg") ?? null;
   const all = url.searchParams.get("all") === "1";
   const settlements = await listSettlements(all ? {} : { month });
+
+  // CSV 내보내기 — 강사 정산 지급 명세(회계·이체 핸드오프).
+  if (url.searchParams.get("export") === "csv") {
+    const statusLabel: Record<SettlementStatus, string> = {
+      draft: "초안",
+      confirmed: "확정",
+      paid: "지급완료",
+    };
+    const headers = [
+      "강사",
+      "기간시작",
+      "기간종료",
+      "상태",
+      "정산액(원)",
+      "항목수",
+      "확정일",
+      "지급일",
+    ];
+    const rows = settlements.map((s) => [
+      s.instructorName ?? "",
+      s.periodStart,
+      s.periodEnd,
+      statusLabel[s.status],
+      s.totalShareKrw,
+      s.itemCount,
+      s.confirmedAt ?? "",
+      s.paidAt ?? "",
+    ]);
+    return csvResponse(`강사정산_${all ? "전체" : month}.csv`, headers, rows);
+  }
+
   return { settlements, month, msg, all };
 }
 
@@ -64,6 +96,12 @@ const STATUS_META: Record<SettlementStatus, { label: string; tone: "amber" | "bl
 
 export default function AdminSettlements({ loaderData }: Route.ComponentProps) {
   const { settlements, month, msg, all } = loaderData;
+  const [searchParams] = useSearchParams();
+  const exportHref = (() => {
+    const p = new URLSearchParams(searchParams);
+    p.set("export", "csv");
+    return `?${p.toString()}`;
+  })();
   const totalKrw = settlements.reduce((a, s) => a + s.totalShareKrw, 0);
 
   return (
@@ -71,6 +109,13 @@ export default function AdminSettlements({ loaderData }: Route.ComponentProps) {
       cluster="sales"
       title="강사 정산"
       desc="배분 규칙을 적용해 월 단위 정산을 생성합니다. 초안은 재생성할 수 있고, 확정 후에는 재생성에서 제외됩니다. 확정 후 발생한 환불은 다음 달 정산에서 음수 항목으로 차감됩니다."
+      headerRight={
+        <Button asChild size="sm" variant="outline">
+          <a href={exportHref} download>
+            <DownloadIcon className="size-3.5" /> CSV 내보내기
+          </a>
+        </Button>
+      }
     >
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <Form method="get" className="flex items-end gap-2">

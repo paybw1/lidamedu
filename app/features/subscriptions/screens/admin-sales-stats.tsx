@@ -1,10 +1,16 @@
 // feat-8-029 P2 — 매출 통계 (manager+). 항목(강의/교재)별 매출·환불·순매출 + 상품/도서 랭킹.
 // 소스: order_items × orders(결제 완료). admin-payments(결제건 중심)와 상보적 — 항목 단위 집계.
 
-import { BookIcon, GraduationCapIcon, LayersIcon } from "lucide-react";
-import { Form, redirect } from "react-router";
+import {
+  BookIcon,
+  DownloadIcon,
+  GraduationCapIcon,
+  LayersIcon,
+} from "lucide-react";
+import { Form, redirect, useSearchParams } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
+import { csvResponse } from "~/core/lib/csv.server";
 import { roleAtLeast } from "~/core/lib/roles";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
@@ -62,6 +68,27 @@ export async function loader({ request }: Route.LoaderArgs) {
   const { fromIso, toIso } = presetRange(preset);
   const stats = await getSalesStats({ fromIso, toIso, granularity });
 
+  // CSV 내보내기 — 상품(강의/교재)별 매출. 회계·상품 성과 핸드오프용.
+  if (url.searchParams.get("export") === "csv") {
+    const headers = [
+      "구분",
+      "상품",
+      "수량",
+      "결제액(원)",
+      "환불액(원)",
+      "순매출(원)",
+    ];
+    const rows = [...stats.courseRank, ...stats.bookRank].map((p) => [
+      p.category === "book" ? "교재" : "강의",
+      p.name,
+      p.qty,
+      p.grossKrw,
+      p.refundKrw,
+      p.netKrw,
+    ]);
+    return csvResponse(`매출통계_상품별_${preset}.csv`, headers, rows);
+  }
+
   return { stats, filter: { preset, granularity } };
 }
 
@@ -78,6 +105,12 @@ const GRANULARITY_LABEL: Record<StatsGranularity, string> = {
 export default function AdminSalesStats({ loaderData }: Route.ComponentProps) {
   const { stats, filter } = loaderData;
   const { summary, buckets, courseRank, bookRank } = stats;
+  const [searchParams] = useSearchParams();
+  const exportHref = (() => {
+    const p = new URLSearchParams(searchParams);
+    p.set("export", "csv");
+    return `?${p.toString()}`;
+  })();
   const maxNet = Math.max(
     1,
     ...buckets.map((b) => b.course.netKrw + b.book.netKrw),
@@ -88,6 +121,13 @@ export default function AdminSalesStats({ loaderData }: Route.ComponentProps) {
       cluster="sales"
       title="매출 통계"
       desc="강의·교재 항목 단위 매출을 집계합니다. 결제 완료(부분환불·환불 포함) 주문의 항목이 대상이며, 집계는 KST 결제일 기준입니다. 순매출 = 결제액 − 환불액."
+      headerRight={
+        <Button asChild size="sm" variant="outline">
+          <a href={exportHref} download>
+            <DownloadIcon className="size-3.5" /> CSV 내보내기
+          </a>
+        </Button>
+      }
     >
       <Form
         method="get"

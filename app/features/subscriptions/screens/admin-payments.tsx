@@ -1,10 +1,16 @@
 // feat-8-029 Stage 1 — 운영자 주문결제 관리 (manager+).
 // 기간·상품 필터 + 일/주/월 집계 + 결제내역 / 환불내역 탭.
 
-import { BanknoteIcon, ReceiptTextIcon, RotateCcwIcon } from "lucide-react";
+import {
+  BanknoteIcon,
+  DownloadIcon,
+  ReceiptTextIcon,
+  RotateCcwIcon,
+} from "lucide-react";
 import { Form, Link, redirect, useSearchParams } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
+import { csvResponse } from "~/core/lib/csv.server";
 import { roleAtLeast } from "~/core/lib/roles";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
@@ -104,6 +110,42 @@ export async function loader({ request }: Route.LoaderArgs) {
     )
     .sort((a, b) => (b.refundedAt ?? "").localeCompare(a.refundedAt ?? ""));
 
+  // CSV 내보내기 — 현재 탭(결제/환불)·필터 그대로. 회계 핸드오프용.
+  if (url.searchParams.get("export") === "csv") {
+    const src = tab === "refunds" ? refunds : payments;
+    const headers = [
+      "결제ID",
+      "일시",
+      "회원",
+      "상품",
+      "금액(원)",
+      "상태",
+      "결제수단",
+      "토스주문ID",
+      "환불일시",
+      "환불액(원)",
+      "환불사유",
+    ];
+    const csvRows = src.map((r) => [
+      r.paymentId,
+      fmtDateTime(r.createdAt),
+      r.userName ?? "",
+      r.planName || r.planCode,
+      r.amountKrw,
+      PAYMENT_STATUS_LABEL[r.status] ?? r.status,
+      r.method ?? "",
+      r.tossOrderId ?? "",
+      r.refundedAt ? fmtDateTime(r.refundedAt) : "",
+      r.refundAmountKrw ?? "",
+      r.refundReason ?? "",
+    ]);
+    return csvResponse(
+      `${tab === "refunds" ? "환불내역" : "결제내역"}_${preset}.csv`,
+      headers,
+      csvRows,
+    );
+  }
+
   return {
     payments,
     refunds,
@@ -144,6 +186,11 @@ export default function AdminPayments({ loaderData }: Route.ComponentProps) {
     p.set("tab", tab);
     return `?${p.toString()}`;
   };
+  const exportHref = (() => {
+    const p = new URLSearchParams(searchParams);
+    p.set("export", "csv");
+    return `?${p.toString()}`;
+  })();
   const maxNet = Math.max(1, ...buckets.map((b) => Math.max(b.paidKrw, b.refundKrw)));
 
   return (
@@ -151,6 +198,13 @@ export default function AdminPayments({ loaderData }: Route.ComponentProps) {
       cluster="sales"
       title="주문·결제 관리"
       desc="기간별 결제·환불 내역과 매출 통계를 조회합니다. 집계는 KST 기준이며, 결제는 결제일·환불은 환불일 기준으로 버킷됩니다."
+      headerRight={
+        <Button asChild size="sm" variant="outline">
+          <a href={exportHref} download>
+            <DownloadIcon className="size-3.5" /> CSV 내보내기
+          </a>
+        </Button>
+      }
     >
       <Form
         method="get"
