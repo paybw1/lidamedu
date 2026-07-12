@@ -313,6 +313,7 @@ export function StudentSidebar({
           inboxUnread={inboxUnread}
           inboxHref={inboxHref}
           orientation={collapsed ? "vertical" : "horizontal"}
+          showSearch
         />
       </div>
     </aside>
