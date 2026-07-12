@@ -190,14 +190,49 @@ export async function runGlobalSearch(
     });
   }
 
-  // problems — similarity ranked.
+  // problems — P-번호 정확 매칭 우선 + similarity ranked.
   async function fetchProblems(): Promise<SearchHit[]> {
+    const hits: SearchHit[] = [];
+    const seen = new Set<string>();
+
+    // "P-1234" / "P1234" / "p 1234" → 문제 고유번호(display_no)로 직행.
+    //   ★명시적 P 접두 필수 — 순수 숫자("123")는 조문/내용 검색을 가리지 않게.
+    const dn = /^p-?\s*(\d{1,7})$/i.exec(q.trim());
+    if (dn) {
+      const { data: exact } = await client
+        .from("problems")
+        .select(
+          "problem_id, display_no, year, problem_number, body_md, laws!inner(law_code)",
+        )
+        .eq("display_no", Number(dn[1]))
+        .eq("review_status", "approved")
+        .is("deleted_at", null)
+        .limit(1)
+        .maybeSingle();
+      if (exact) {
+        seen.add(exact.problem_id);
+        hits.push({
+          group: "problem",
+          id: exact.problem_id,
+          primaryLabel: `P-${exact.display_no}`,
+          secondaryLabel: exact.year
+            ? `${exact.year}년${exact.problem_number ? ` · ${exact.problem_number}번` : ""}`
+            : null,
+          bodySnippet: snippet(exact.body_md),
+          href: `/subjects/${exact.laws.law_code}/problems/${exact.problem_id}`,
+          lawCode: exact.laws.law_code,
+        });
+      }
+    }
+
     const { data: ranked } = await client.rpc("search_problems_ranked", {
       q,
       lim: GROUP_LIMIT,
     });
-    const ids = (ranked ?? []).map((r) => r.problem_id);
-    if (ids.length === 0) return [];
+    const ids = (ranked ?? [])
+      .map((r) => r.problem_id)
+      .filter((id) => !seen.has(id));
+    if (ids.length === 0) return hits;
     const { data: rows } = await client
       .from("problems")
       .select(
@@ -205,24 +240,23 @@ export async function runGlobalSearch(
       )
       .in("problem_id", ids);
     const byId = new Map((rows ?? []).map((r) => [r.problem_id, r] as const));
-    return ids.flatMap((id): SearchHit[] => {
+    for (const id of ids) {
       const r = byId.get(id);
-      if (!r) return [];
+      if (!r) continue;
       const yearLabel = r.year
         ? `${r.year}년${r.problem_number ? ` · ${r.problem_number}번` : ""}`
         : "문제";
-      return [
-        {
-          group: "problem",
-          id: r.problem_id,
-          primaryLabel: yearLabel,
-          secondaryLabel: null,
-          bodySnippet: snippet(r.body_md),
-          href: `/subjects/${r.laws.law_code}/problems/${r.problem_id}`,
-          lawCode: r.laws.law_code,
-        },
-      ];
-    });
+      hits.push({
+        group: "problem",
+        id: r.problem_id,
+        primaryLabel: yearLabel,
+        secondaryLabel: null,
+        bodySnippet: snippet(r.body_md),
+        href: `/subjects/${r.laws.law_code}/problems/${r.problem_id}`,
+        lawCode: r.laws.law_code,
+      });
+    }
+    return hits;
   }
 
   // 본인 메모 — body_md / snippet.
