@@ -4,6 +4,7 @@ import { data } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { roleAtLeast } from "~/core/lib/roles";
 import {
@@ -90,6 +91,14 @@ export async function action({ request }: Route.ActionArgs) {
       accessScope: parsed.data.accessScope ?? "full",
     });
     if (!res.ok) return data({ error: res.error }, { status: 400 });
+    await logAuditEvent({
+      actorId: user.id,
+      actorRole: role,
+      action: "cohort.create",
+      entityType: "cohort",
+      entityId: res.cohortId,
+      metadata: { name: parsed.data.name, ownerId },
+    });
     return data({ ok: true, cohortId: res.cohortId });
   }
 
@@ -127,6 +136,14 @@ export async function action({ request }: Route.ActionArgs) {
       accessScope: parsed.data.accessScope,
     });
     if (!res.ok) return data({ error: res.error }, { status: 400 });
+    await logAuditEvent({
+      actorId: user.id,
+      actorRole: role,
+      action: "cohort.update",
+      entityType: "cohort",
+      entityId: cohortId,
+      metadata: { name: parsed.data.name, isArchived },
+    });
     return data({ ok: true });
   }
 
@@ -142,6 +159,14 @@ export async function action({ request }: Route.ActionArgs) {
     }
     const res = await deleteCohort(client, cohortId);
     if (!res.ok) return data({ error: res.error }, { status: 400 });
+    await logAuditEvent({
+      actorId: user.id,
+      actorRole: role,
+      action: "cohort.delete",
+      entityType: "cohort",
+      entityId: cohortId,
+      metadata: { name: cohort.name },
+    });
     return data({ ok: true });
   }
 
@@ -161,6 +186,14 @@ export async function action({ request }: Route.ActionArgs) {
     }
     const res = await addCohortMember(client, cohortId, profileId, user.id);
     if (!res.ok) return data({ error: res.error }, { status: 400 });
+    await logAuditEvent({
+      actorId: user.id,
+      actorRole: role,
+      action: "cohort.add_member",
+      entityType: "cohort",
+      entityId: cohortId,
+      metadata: { profileId },
+    });
     return data({ ok: true });
   }
 
@@ -180,6 +213,14 @@ export async function action({ request }: Route.ActionArgs) {
     }
     const res = await removeCohortMember(client, cohortId, profileId);
     if (!res.ok) return data({ error: res.error }, { status: 400 });
+    await logAuditEvent({
+      actorId: user.id,
+      actorRole: role,
+      action: "cohort.remove_member",
+      entityType: "cohort",
+      entityId: cohortId,
+      metadata: { profileId },
+    });
     return data({ ok: true });
   }
 

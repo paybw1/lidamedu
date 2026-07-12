@@ -10,6 +10,7 @@ import { cn } from "~/core/lib/utils";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
+import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 
 import {
@@ -78,6 +79,15 @@ export async function action({ request }: Route.ActionArgs) {
   } catch {
     return data({ error: "save-failed" }, { status: 400 });
   }
+  // 감사 — Q&A 답변 라우팅(담당자) 변경은 거버넌스 이벤트.
+  await logAuditEvent({
+    actorId: user.id,
+    actorRole: role,
+    action: "qna.set_answerers",
+    entityType: "qna_answerer_category",
+    entityId: parsed.data,
+    metadata: { answererIds },
+  });
   return data({ ok: true, savedCategory: parsed.data });
 }
 

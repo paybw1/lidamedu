@@ -4,6 +4,7 @@ import { data } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
 import {
   createAnnouncement,
   deleteAnnouncement,
@@ -91,6 +92,18 @@ export async function action({ request }: Route.ActionArgs) {
       publish: parsed.data.publish,
     });
     if (!res.ok) return data({ error: res.error }, { status: 400 });
+    await logAuditEvent({
+      actorId: user.id,
+      actorRole: role,
+      action: "announcement.create",
+      entityType: "announcement",
+      entityId: res.announcementId,
+      metadata: {
+        title: parsed.data.title,
+        publish: parsed.data.publish,
+        audienceKind: parsed.data.audienceKind,
+      },
+    });
     return data({ ok: true, announcementId: res.announcementId });
   }
 
@@ -127,6 +140,14 @@ export async function action({ request }: Route.ActionArgs) {
       publish: parsed.data.publish,
     });
     if (!res.ok) return data({ error: res.error }, { status: 400 });
+    await logAuditEvent({
+      actorId: user.id,
+      actorRole: role,
+      action: "announcement.update",
+      entityType: "announcement",
+      entityId: announcementId,
+      metadata: { title: parsed.data.title, publish: parsed.data.publish },
+    });
     return data({ ok: true });
   }
 
@@ -144,6 +165,14 @@ export async function action({ request }: Route.ActionArgs) {
       publish: intent === "publish",
     });
     if (!res.ok) return data({ error: res.error }, { status: 400 });
+    await logAuditEvent({
+      actorId: user.id,
+      actorRole: role,
+      action: `announcement.${intent}`,
+      entityType: "announcement",
+      entityId: announcementId,
+      metadata: { title: ann.title },
+    });
     return data({ ok: true });
   }
 
@@ -159,6 +188,14 @@ export async function action({ request }: Route.ActionArgs) {
     }
     const res = await deleteAnnouncement(client, announcementId);
     if (!res.ok) return data({ error: res.error }, { status: 400 });
+    await logAuditEvent({
+      actorId: user.id,
+      actorRole: role,
+      action: "announcement.delete",
+      entityType: "announcement",
+      entityId: announcementId,
+      metadata: { title: ann.title },
+    });
     return data({ ok: true });
   }
 

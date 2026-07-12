@@ -4,6 +4,7 @@ import { data, redirect } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   cancelWithdrawal,
@@ -44,5 +45,35 @@ export async function action({ request }: Route.ActionArgs) {
         ? await cancelWithdrawal(v.withdrawalId)
         : await deleteWithdrawnUser(v.withdrawalId, user.id);
   if (!res.ok) return data({ error: res.error }, { status: 400 });
+
+  // 감사 기록 — 계정 탈퇴/취소/완전삭제는 회원 데이터·PII 를 다루는 민감 작업.
+  // 특히 hard_delete 는 비가역(auth 계정 cascade)이라 반드시 흔적을 남긴다.
+  if (v.intent === "withdraw") {
+    await logAuditEvent({
+      actorId: user.id,
+      actorRole: role,
+      action: "user.withdraw",
+      entityType: "user",
+      entityId: v.userId,
+      metadata: { reason: v.reason || null },
+    });
+  } else if (v.intent === "cancel") {
+    await logAuditEvent({
+      actorId: user.id,
+      actorRole: role,
+      action: "user.withdraw_cancel",
+      entityType: "user_withdrawal",
+      entityId: v.withdrawalId,
+    });
+  } else {
+    await logAuditEvent({
+      actorId: user.id,
+      actorRole: role,
+      action: "user.hard_delete",
+      entityType: "user_withdrawal",
+      entityId: v.withdrawalId,
+      metadata: { irreversible: true },
+    });
+  }
   return redirect("/admin/withdrawals");
 }

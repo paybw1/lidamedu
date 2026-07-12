@@ -14,6 +14,7 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Chip } from "~/features/admin/components/admin-ui";
+import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
 import { STAFF_DUTIES, type StaffDuty } from "~/features/admin/lib/duties";
 import {
   listDutyAssignments,
@@ -71,6 +72,15 @@ export async function action({ request }: Route.ActionArgs) {
   });
   if (!parsed.success) return data({ error: "잘못된 입력입니다." }, { status: 400 });
   await setDutyAssignees(parsed.data.duty, parsed.data.assignees, user.id);
+  // 감사 — 알림/접근 권한 라우팅 변경은 거버넌스 이벤트.
+  await logAuditEvent({
+    actorId: user.id,
+    actorRole: "admin",
+    action: "duty.assign",
+    entityType: "staff_duty",
+    entityId: parsed.data.duty,
+    metadata: { assignees: parsed.data.assignees },
+  });
   return data({ ok: true, duty: parsed.data.duty });
 }
 
