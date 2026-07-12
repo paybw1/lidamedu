@@ -11429,7 +11429,12 @@ export type Database = {
           cancelled_at: string | null
           created_at: string
           expires_at: string
+          failure_count: number
+          grace_until: string | null
           granted_by: string | null
+          last_failure_at: string | null
+          last_failure_reason: string | null
+          next_retry_at: string | null
           payment_id: string | null
           plan_id: string
           started_at: string
@@ -11445,7 +11450,12 @@ export type Database = {
           cancelled_at?: string | null
           created_at?: string
           expires_at: string
+          failure_count?: number
+          grace_until?: string | null
           granted_by?: string | null
+          last_failure_at?: string | null
+          last_failure_reason?: string | null
+          next_retry_at?: string | null
           payment_id?: string | null
           plan_id: string
           started_at?: string
@@ -11461,7 +11471,12 @@ export type Database = {
           cancelled_at?: string | null
           created_at?: string
           expires_at?: string
+          failure_count?: number
+          grace_until?: string | null
           granted_by?: string | null
+          last_failure_at?: string | null
+          last_failure_reason?: string | null
+          next_retry_at?: string | null
           payment_id?: string | null
           plan_id?: string
           started_at?: string
@@ -12731,6 +12746,8 @@ export type Database = {
         | "book_restock"
         | "cs_inquiry_created"
         | "cs_inquiry_answered"
+        | "payment_failed"
+        | "subscription_lapsed"
       student_note_visibility: "staff_only" | "share_with_student"
       subjective_kind: "case_based" | "theory" | "mixed"
       subscription_status: "pending" | "active" | "expired" | "cancelled"
@@ -13023,6 +13040,8 @@ export const Constants = {
         "book_restock",
         "cs_inquiry_created",
         "cs_inquiry_answered",
+        "payment_failed",
+        "subscription_lapsed",
       ],
       student_note_visibility: ["staff_only", "share_with_student"],
       subjective_kind: ["case_based", "theory", "mixed"],
