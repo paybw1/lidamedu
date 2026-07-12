@@ -1979,6 +1979,60 @@ export type Database = {
           },
         ]
       }
+      broadcasts: {
+        Row: {
+          body_md: string
+          broadcast_id: string
+          channels: string[]
+          created_at: string
+          email_sent: number
+          recipient_count: number
+          segment_key: string
+          segment_label: string
+          sender_id: string | null
+          title: string
+        }
+        Insert: {
+          body_md?: string
+          broadcast_id?: string
+          channels?: string[]
+          created_at?: string
+          email_sent?: number
+          recipient_count?: number
+          segment_key: string
+          segment_label: string
+          sender_id?: string | null
+          title: string
+        }
+        Update: {
+          body_md?: string
+          broadcast_id?: string
+          channels?: string[]
+          created_at?: string
+          email_sent?: number
+          recipient_count?: number
+          segment_key?: string
+          segment_label?: string
+          sender_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broadcasts_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "broadcasts_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       bug_reports: {
         Row: {
           created_at: string
@@ -12749,6 +12803,7 @@ export type Database = {
         | "payment_failed"
         | "subscription_lapsed"
         | "security_alert"
+        | "broadcast_message"
       student_note_visibility: "staff_only" | "share_with_student"
       subjective_kind: "case_based" | "theory" | "mixed"
       subscription_status: "pending" | "active" | "expired" | "cancelled"
@@ -13044,6 +13099,7 @@ export const Constants = {
         "payment_failed",
         "subscription_lapsed",
         "security_alert",
+        "broadcast_message",
       ],
       student_note_visibility: ["staff_only", "share_with_student"],
       subjective_kind: ["case_based", "theory", "mixed"],

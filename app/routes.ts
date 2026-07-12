@@ -680,6 +680,11 @@ export default [
         "/admin/announcements",
         "features/admin/screens/admin-announcements.tsx",
       ),
+      // 세그먼트 대량 안내 발송(인앱+이메일).
+      route(
+        "/admin/broadcasts",
+        "features/admin/screens/admin-broadcasts.tsx",
+      ),
       route(
         "/admin/announcements/audiences",
         "features/admin/screens/admin-announcement-audiences.tsx",

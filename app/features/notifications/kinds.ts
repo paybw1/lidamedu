@@ -40,6 +40,8 @@ export const STUDENT_KINDS: NotificationKind[] = [
   "book_restock",
   // feat-6-011 — 고객센터 문의 답변 등록 알림(작성자에게).
   "cs_inquiry_answered",
+  // 운영자 세그먼트 대량 안내(broadcast).
+  "broadcast_message",
   // feat-8-030 dunning — 자동결제 실패 재시도 안내 / 최종 만료.
   "payment_failed",
   "subscription_lapsed",

@@ -1,7 +1,7 @@
 // 체험→유료 전환 추적 (P1). 진행 중 체험·만료 임박 워크리스트·전환율·팔로업.
 // 접근: admin 항상 + '수강생 관리 접근' duty. 데이터는 파생 집계(별도 저장 없음).
 
-import { DownloadIcon, TimerIcon } from "lucide-react";
+import { DownloadIcon, SendIcon, TimerIcon } from "lucide-react";
 import { Link, useSearchParams } from "react-router";
 
 import { requireDuty } from "~/core/lib/admin-guard.server";
@@ -145,20 +145,36 @@ export default function AdminTrialConversion({
       </div>
 
       <section className="mb-8">
-        <div className="mb-2 flex items-center gap-1.5">
-          <TimerIcon className="text-amber-600 size-3.5 dark:text-amber-400" />
-          <h2 className="text-sm font-bold tracking-tight">
-            만료 임박 ({overview.expiringSoon.length})
-          </h2>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            <TimerIcon className="text-amber-600 size-3.5 dark:text-amber-400" />
+            <h2 className="text-sm font-bold tracking-tight">
+              만료 임박 ({overview.expiringSoon.length})
+            </h2>
+          </div>
+          {overview.expiringSoon.length > 0 ? (
+            <Button asChild size="sm" variant="outline">
+              <Link to="/admin/broadcasts?segment=trial_expiring">
+                <SendIcon className="size-3.5" /> 안내 발송
+              </Link>
+            </Button>
+          ) : null}
         </div>
         <WorklistTable rows={overview.expiringSoon} emptyLabel="임박한 체험 없음" />
       </section>
 
       <section>
-        <div className="mb-2 flex items-center gap-1.5">
+        <div className="mb-2 flex items-center justify-between gap-2">
           <h2 className="text-sm font-bold tracking-tight">
             최근 만료 미전환 ({overview.followup.length})
           </h2>
+          {overview.followup.length > 0 ? (
+            <Button asChild size="sm" variant="outline">
+              <Link to="/admin/broadcasts?segment=trial_followup">
+                <SendIcon className="size-3.5" /> 안내 발송
+              </Link>
+            </Button>
+          ) : null}
         </div>
         <WorklistTable
           rows={overview.followup}

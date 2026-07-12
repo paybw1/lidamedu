@@ -277,6 +277,7 @@ export const ADMIN_NAV: NavCluster[] = [
     Icon: BellIcon,
     screens: [
       { label: "공지 발송", to: "/admin/announcements" },
+      { label: "대량 안내 발송", to: "/admin/broadcasts" },
       { label: "팝업 공지", to: "/admin/popup-notices" },
       { label: "고객센터 문의", to: "/admin/cs-inquiries" },
       { label: "강사소개 관리", to: "/admin/instructor-profiles" },
