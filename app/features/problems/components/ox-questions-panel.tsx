@@ -78,7 +78,7 @@ function OxOriginToggle({
             className={cn(
               "inline-flex h-full items-center gap-1 rounded-md px-2 text-[11px] font-medium transition-colors",
               active
-                ? "bg-background text-[#2D5BA8] shadow-sm dark:text-[#8FB4E3]"
+                ? "bg-background text-link shadow-sm"
                 : "hover:text-foreground",
               disabled &&
                 "cursor-not-allowed opacity-40 hover:text-muted-foreground",
@@ -127,7 +127,7 @@ function OxPageSizeToggle({
               className={cn(
                 "inline-flex h-full w-6 items-center justify-center rounded-md text-[11px] font-medium tabular-nums transition-colors",
                 active
-                  ? "bg-background text-[#2D5BA8] shadow-sm dark:text-[#8FB4E3]"
+                  ? "bg-background text-link shadow-sm"
                   : "hover:text-foreground",
                 disabled &&
                   "cursor-not-allowed opacity-40 hover:text-muted-foreground",

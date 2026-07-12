@@ -474,7 +474,7 @@ function TreeMatrix({
                 className={cn(
                   "inline-flex h-full items-center rounded-md px-2 text-[11px] font-medium transition-colors",
                   subjectFilter === g.key
-                    ? "bg-background shadow-sm text-[#2D5BA8] dark:text-[#8FB4E3]"
+                    ? "bg-background text-link shadow-sm"
                     : "hover:text-foreground",
                 )}
               >
