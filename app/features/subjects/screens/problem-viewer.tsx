@@ -122,7 +122,8 @@ import {
 const MD_IMAGE_RE = /!\[[^\]]*\]\([^)]*\)|<(img|table|div)\b|\|[\s:]*-{3,}/i;
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => {
-  if (!loaderData) return [{ title: "문제 | 리담변리사학원" }];
+  if (!loaderData || "deleted" in loaderData)
+    return [{ title: "문제 | 리담변리사학원" }];
   return [
     {
       title: `${loaderData.subject.name} 객관식 #${loaderData.problem.problemNumber ?? "?"} | 리담변리사학원`,
@@ -168,6 +169,17 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const problem = await problemPromise;
   if (!problem) {
     await Promise.allSettled([authPromise, lawPromise, nodeSeqPromise]);
+    // 소프트 삭제(중복 정리 등)된 문제 URL 은 "없는 페이지"가 아니라 "통합·삭제된
+    // 문제". 존재하되 deleted 이면 친절 안내 상태를 반환(200)해 검색·목록으로 유도한다.
+    // (RLS 는 deleted 를 가리지 않으므로 요청 클라이언트로 존재 확인 가능.)
+    const { data: existing } = await client
+      .from("problems")
+      .select("deleted_at")
+      .eq("problem_id", params.problemId)
+      .maybeSingle();
+    if (existing?.deleted_at) {
+      return { deleted: true as const, lawCode };
+    }
     throw data("Problem not found", { status: 404 });
   }
 
@@ -538,7 +550,49 @@ function useExamTimer(
   }, [startedAtIso, timeLimitSec, onExpire]);
 }
 
+// loader 가 반환하는 두 형태 중 정상(문제 존재) 브랜치만.
+type ProblemViewerData = Exclude<
+  Route.ComponentProps["loaderData"],
+  { deleted: true }
+>;
+
+// 통합·삭제된 문제 URL(옛 링크·중복 정리 대상) 친절 안내. 404 대신 목록·검색으로 유도.
+function DeletedProblemNotice({ lawCode }: { lawCode: string }) {
+  return (
+    <div className="bg-muted/20 flex min-h-[calc(100vh-56px)] items-center justify-center px-4">
+      <div className="border-border bg-card w-full max-w-md rounded-xl border p-8 text-center shadow-sm">
+        <div className="bg-muted text-muted-foreground mx-auto flex size-12 items-center justify-center rounded-full">
+          <SearchIcon className="size-6" />
+        </div>
+        <h1 className="text-foreground mt-4 text-lg font-bold tracking-tight">
+          통합·삭제된 문제입니다
+        </h1>
+        <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+          이 링크의 문제는 중복 정리 등으로 삭제되었습니다. 같은 내용의 문제가
+          현행 목록에 남아 있을 수 있으니, 목록이나 검색(⌘K)에서 다시 찾아
+          주세요.
+        </p>
+        <div className="mt-6 flex flex-wrap justify-center gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link to={`/subjects/${lawCode}/problems`} viewTransition>
+              <ArrowLeftIcon className="size-3.5" /> 문제 목록으로
+            </Link>
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
+  if ("deleted" in loaderData) {
+    // lawCode 는 삭제 브랜치에서 항상 유효한 slug(loader 가 검증 후 채움).
+    return <DeletedProblemNotice lawCode={loaderData.lawCode ?? ""} />;
+  }
+  return <ProblemViewerInner loaderData={loaderData} />;
+}
+
+function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
   const {
     collapsed: leftCollapsed,
     toggle: toggleLeft,
