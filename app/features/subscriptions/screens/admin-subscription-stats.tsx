@@ -116,6 +116,12 @@ export default function AdminSubscriptionStats({ loaderData }: Route.ComponentPr
           value={snapshot.billingKeyCount.toLocaleString("ko-KR")}
           sub="빌링키 보유 회원"
         />
+        <StatCard
+          label="결제 실패 회수 중"
+          value={snapshot.dunningCount.toLocaleString("ko-KR")}
+          sub="자동결제 실패·재시도 유예 중"
+          tone={snapshot.dunningCount > 0 ? "coral" : undefined}
+        />
       </div>
 
       {/* 기간 지표 */}

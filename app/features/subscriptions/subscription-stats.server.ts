@@ -16,6 +16,7 @@ export interface SubscriptionSnapshot {
   autoRenewRatio: number; // autoRenewCount / activeCount (0~1)
   billingKeyCount: number; // 자동결제 카드 보유(활성 billing_keys)
   expiringSoonCount: number; // 30일 내 만료 예정 활성 구독
+  dunningCount: number; // 자동결제 실패 회수 중(재시도 유예 내) — feat-8-030
 }
 
 export interface SubscriptionPeriod {
@@ -53,6 +54,8 @@ interface SubRow {
   started_at: string | null;
   expires_at: string | null;
   plan_id: string | null;
+  failure_count: number | null;
+  grace_until: string | null;
   subscription_plans: { name: string } | null;
 }
 
@@ -79,7 +82,7 @@ export async function getSubscriptionStats(range: {
     adminClient
       .from("user_subscriptions")
       .select(
-        "status, auto_renew, cancelled_at, started_at, expires_at, plan_id, subscription_plans(name)",
+        "status, auto_renew, cancelled_at, started_at, expires_at, plan_id, failure_count, grace_until, subscription_plans(name)",
       )
       .limit(20000),
     adminClient
@@ -109,6 +112,7 @@ export async function getSubscriptionStats(range: {
     autoRenewRatio: 0,
     billingKeyCount: billingKeyCount ?? 0,
     expiringSoonCount: 0,
+    dunningCount: 0,
   };
   const period: SubscriptionPeriod = {
     newCount: 0,
@@ -124,6 +128,16 @@ export async function getSubscriptionStats(range: {
 
   for (const r of subs) {
     statusMap.set(r.status, (statusMap.get(r.status) ?? 0) + 1);
+
+    // dunning 회수 중 — 실패 이력 + 유예 미경과(재시도 진행) 활성 구독.
+    if (
+      r.status === "active" &&
+      (r.failure_count ?? 0) > 0 &&
+      r.grace_until != null &&
+      Date.parse(r.grace_until) >= nowMs
+    ) {
+      snapshot.dunningCount += 1;
+    }
 
     const liveNow = wasActiveAt(r, nowMs);
     if (liveNow) {
