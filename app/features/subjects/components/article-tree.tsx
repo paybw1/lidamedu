@@ -590,7 +590,7 @@ function TreeItem({
       aria-hidden="true"
       className={cn(
         "size-1 shrink-0 rounded-full",
-        isActive ? "bg-[#2D5BA8] dark:bg-[#8FB4E3]" : "bg-foreground/25",
+        isActive ? "bg-primary" : "bg-foreground/25",
       )}
     />
   ) : null;
@@ -613,8 +613,8 @@ function TreeItem({
     "group flex items-center gap-1.5 rounded-lg px-2 py-[5px] text-left text-[13px] transition-colors",
     levelClass,
     isActive
-      ? "bg-[#2D5BA8]/10 font-semibold text-[#1E4789] shadow-[inset_2px_0_0_#2D5BA8] dark:bg-[#3B6FC4]/15 dark:text-[#8FB4E3]"
-      : "hover:bg-[#2D5BA8]/[0.06] dark:hover:bg-[#3B6FC4]/10",
+      ? "bg-primary/10 font-semibold text-link shadow-[inset_2px_0_0_var(--primary)] dark:bg-primary/15"
+      : "hover:bg-primary/[0.06] dark:hover:bg-primary/10",
   );
 
   // chevron — 모든 row 에서 별도 button 으로 토글. button-in-link 도 안전 (preventDefault).

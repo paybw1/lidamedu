@@ -547,7 +547,7 @@ export function CaseTreeViewToggle({
           className={cn(
             "inline-flex h-full items-center gap-1.5 rounded-md px-2 text-[11px] font-medium transition-colors",
             active
-              ? "bg-background text-[#2D5BA8] shadow-sm dark:text-[#8FB4E3]"
+              ? "bg-background text-link shadow-sm"
               : "hover:text-foreground",
             disabled
               ? "cursor-not-allowed opacity-50 hover:text-muted-foreground"
