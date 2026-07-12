@@ -4,11 +4,13 @@ import {
   MenuIcon,
   PanelLeftOpenIcon,
   PanelTopOpenIcon,
+  SearchIcon,
   UserIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 
+import { openCommandPalette } from "./command-palette";
 import { PlatformSwitch } from "./platform-switch";
 
 import {
@@ -152,6 +154,26 @@ function AuthButtons() {
         </SheetClose>
       </Button>
     </>
+  );
+}
+
+// 전역 검색(⌘K) 진입점 — 데스크톱 상단바에 상시 노출해 검색 발견성을 높인다.
+//   (기존엔 ⌘K 단축키·대시보드/모바일 하단바에서만 열려 대다수가 존재를 몰랐음.)
+function PaletteSearchButton() {
+  return (
+    <button
+      type="button"
+      onClick={() => openCommandPalette()}
+      aria-label="전역 검색 (조문·판례·문제)"
+      title="검색 (⌘K / Ctrl+K)"
+      className="border-border text-muted-foreground hover:text-foreground hover:border-primary/50 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-colors"
+    >
+      <SearchIcon className="size-3.5" />
+      <span>검색</span>
+      <kbd className="border-border/70 bg-muted text-muted-foreground/80 ml-0.5 hidden rounded border px-1 py-px font-mono text-[10px] leading-none lg:inline">
+        ⌘K
+      </kbd>
+    </button>
   );
 }
 
@@ -516,6 +538,8 @@ export function NavigationBar({
 
         {/* '운영자' 이후 — 오른쪽 정렬 */}
         <div className="ml-auto hidden h-full items-center gap-3 md:flex">
+          {/* 전역 검색 — 인증 사용자만(팔레트는 private.layout 에서만 마운트). */}
+          {name ? <PaletteSearchButton /> : null}
           <Actions
             inboxUnread={inboxUnread}
             inboxHref={inboxHref}
