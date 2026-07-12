@@ -12748,6 +12748,7 @@ export type Database = {
         | "cs_inquiry_answered"
         | "payment_failed"
         | "subscription_lapsed"
+        | "security_alert"
       student_note_visibility: "staff_only" | "share_with_student"
       subjective_kind: "case_based" | "theory" | "mixed"
       subscription_status: "pending" | "active" | "expired" | "cancelled"
@@ -13042,6 +13043,7 @@ export const Constants = {
         "cs_inquiry_answered",
         "payment_failed",
         "subscription_lapsed",
+        "security_alert",
       ],
       student_note_visibility: ["staff_only", "share_with_student"],
       subjective_kind: ["case_based", "theory", "mixed"],

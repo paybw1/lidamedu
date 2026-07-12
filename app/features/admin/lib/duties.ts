@@ -9,6 +9,8 @@ export const STAFF_DUTIES = [
   "ai_usage_alert",
   "lecture_abuse_alert",
   "student_admin_access",
+  // 감사 이상(권한 변경·완전삭제 등) 실시간 경보 라우팅.
+  "audit_alert",
   // feat-6-011 — 고객센터 문의 접수 알림 라우팅.
   "cs_inquiry",
   // feat-11-004 4d — LMS 접근 권한 4종 (설계 §3.12)
@@ -52,6 +54,12 @@ export const DUTY_META: Record<StaffDuty, DutyMeta> = {
     desc: "학생·회원이 고객센터에 문의를 남기면 접수 알림.",
     kind: "notify",
     fallbackRoles: ["manager", "admin"],
+  },
+  audit_alert: {
+    label: "감사 이상 경보",
+    desc: "권한 변경·계정 완전삭제 등 고위험 운영 작업 발생 시 실시간 경보.",
+    kind: "notify",
+    fallbackRoles: ["admin"],
   },
   qna_question: {
     label: "Q&A 신규 질문",

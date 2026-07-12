@@ -4,7 +4,7 @@ import { data } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
-import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
+import { alertSecurityEvent } from "~/features/admin/queries/audit-log.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { updateUserRole } from "~/features/admin/queries/users.server";
 
@@ -49,13 +49,15 @@ export async function action({ request }: Route.ActionArgs) {
 
   const res = await updateUserRole(parsed.data.profileId, parsed.data.role);
   if (!res.ok) return data({ error: res.error }, { status: 400 });
-  void logAuditEvent({
+  // 권한 변경 → 감사 기록 + 실시간 경보(권한 상승은 특히 고위험).
+  void alertSecurityEvent({
     actorId: user.id,
     actorRole: role,
     action: "user.role.update",
     entityType: "profile",
     entityId: parsed.data.profileId,
     metadata: { newRole: parsed.data.role },
+    summary: `회원 권한이 ‘${parsed.data.role}’(으)로 변경되었습니다.`,
   });
   return data({ ok: true });
 }

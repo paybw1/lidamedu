@@ -4,6 +4,8 @@
 
 import adminClient from "~/core/lib/supa-admin-client.server";
 import type { UserRole } from "~/core/lib/roles";
+import { getDutyRecipientIds } from "~/features/admin/lib/duties.server";
+import { createUserNotifications } from "~/features/notifications/queries.server";
 
 export interface AuditEventInput {
   actorId: string | null;
@@ -29,6 +31,33 @@ export async function logAuditEvent(input: AuditEventInput): Promise<void> {
     }
   } catch (err) {
     console.error("[audit] insert threw:", err);
+  }
+}
+
+// 고위험 감사 이벤트 — 기록 + audit_alert 담당자에게 실시간 경보(인박스).
+// 권한 변경·계정 완전삭제처럼 사후 확인이 늦으면 위험한 작업에만 사용한다.
+// best-effort: 알림 실패해도 본 흐름·감사 기록은 유지.
+export async function alertSecurityEvent(
+  input: AuditEventInput & { summary: string },
+): Promise<void> {
+  await logAuditEvent(input);
+  try {
+    const recipients = await getDutyRecipientIds("audit_alert");
+    // 행위자 본인은 제외(자기 작업 경보 불필요).
+    const targets = recipients.filter((id) => id !== input.actorId);
+    if (targets.length === 0) return;
+    await createUserNotifications({
+      recipientIds: targets,
+      kind: "security_alert",
+      entityType: input.entityType,
+      entityId: input.entityId,
+      title: "감사 이상 경보",
+      body: input.summary,
+      href: "/admin/audit-logs",
+      payload: { action: input.action, actorId: input.actorId },
+    });
+  } catch (err) {
+    console.error("[audit] security alert threw:", err);
   }
 }
 

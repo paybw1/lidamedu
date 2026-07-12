@@ -4,7 +4,10 @@ import { data, redirect } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
-import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
+import {
+  alertSecurityEvent,
+  logAuditEvent,
+} from "~/features/admin/queries/audit-log.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   cancelWithdrawal,
@@ -66,13 +69,15 @@ export async function action({ request }: Route.ActionArgs) {
       entityId: v.withdrawalId,
     });
   } else {
-    await logAuditEvent({
+    // 완전삭제=비가역 PII cascade → 감사 기록 + 실시간 경보(감사 담당자).
+    await alertSecurityEvent({
       actorId: user.id,
       actorRole: role,
       action: "user.hard_delete",
       entityType: "user_withdrawal",
       entityId: v.withdrawalId,
       metadata: { irreversible: true },
+      summary: "회원 계정이 완전 삭제되었습니다(비가역). 즉시 확인이 필요합니다.",
     });
   }
   return redirect("/admin/withdrawals");

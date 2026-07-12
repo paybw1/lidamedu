@@ -19,6 +19,8 @@ export const STAFF_KINDS: NotificationKind[] = [
   "gs_cap_reached",
   // feat-6-011 — 고객센터 신규 문의 접수.
   "cs_inquiry_created",
+  // 감사 이상(권한 변경·완전삭제) 실시간 경보.
+  "security_alert",
 ];
 
 // 학생용 kinds.
