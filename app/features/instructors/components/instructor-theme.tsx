@@ -10,16 +10,16 @@ export function InstructorStyle() {
     <style>{`
 .instr {
   --i-ground:#f5f6fb; --i-surface:#fff; --i-ink:#171b24; --i-soft:#4b5265; --i-faint:#79839a;
-  --i-line:#dfe3ee; --i-line2:#cdd3e2; --i-navy:#22406e; --i-navy2:#1a2f52;
-  --i-blue:#2d5ba8; --i-blueink:#274e8f; --i-gilt:#977224; --i-gilts:#b08a35;
+  --i-line:#dfe3ee; --i-line2:#cdd3e2; --i-navy:var(--prestige-navy); --i-navy2:var(--prestige-navy-deep);
+  --i-blue:#2d5ba8; --i-blueink:#274e8f; --i-gilt:var(--prestige-gilt); --i-gilts:var(--prestige-gilt-bright);
   --i-heroink:#eef2fb; --i-herosoft:#aebbd6;
   --i-serif:${SERIF};
   background:var(--i-ground); color:var(--i-ink);
 }
 .dark .instr {
   --i-ground:#0f131b; --i-surface:#161b25; --i-ink:#e8ebf3; --i-soft:#aab2c6; --i-faint:#7c8398;
-  --i-line:#262d3c; --i-line2:#333c4f; --i-navy:#0e1a30; --i-navy2:#0a1424;
-  --i-blue:#6a97da; --i-blueink:#84a8e0; --i-gilt:#c9a44e; --i-gilts:#d8b968;
+  --i-line:#262d3c; --i-line2:#333c4f;
+  --i-blue:#6a97da; --i-blueink:#84a8e0;
   --i-heroink:#eef2fb; --i-herosoft:#9fb0cf;
 }
 .instr .i-serif{font-family:var(--i-serif);}

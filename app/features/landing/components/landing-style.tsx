@@ -4,9 +4,9 @@ export function LandingStyle() {
   return (
     <style>{`
 .llx{
-  --navy:#16294a; --navy2:#0e1d38; --navy-soft:#25406b;
+  --navy:var(--prestige-navy); --navy2:var(--prestige-navy-deep); --navy-soft:var(--prestige-navy-soft);
   --blue:#2d5ba8; --blue-ink:#27508f; --blue-wash:#eef3fb;
-  --gilt:#9a7526; --gilt-2:#bd9440; --gilt-soft:#c9a44e;
+  --gilt:var(--prestige-gilt); --gilt-2:var(--prestige-gilt-bright); --gilt-soft:#c9a44e;
   --ink:#16202e; --soft:#48526a; --faint:#7a8499;
   --line:#e3e7f0; --line2:#d3d9e6;
   --lground:#f5f6fa; --lsurface:#ffffff;
@@ -17,9 +17,8 @@ export function LandingStyle() {
   background:var(--lground); color:var(--ink); font-family:var(--lfont); letter-spacing:-.01em;
 }
 .dark .llx{
-  --navy:#0d1a30; --navy2:#0a1424; --navy-soft:#1b3054;
   --blue:#6a97da; --blue-ink:#84a8e0; --blue-wash:#132844;
-  --gilt:#c9a44e; --gilt-2:#d8b968; --gilt-soft:#d8b968;
+  --gilt-soft:#d8b968;
   --ink:#e8ebf3; --soft:#aab2c6; --faint:#7c8398;
   --line:#26303f; --line2:#334053;
   --lground:#0f131b; --lsurface:#161b25;

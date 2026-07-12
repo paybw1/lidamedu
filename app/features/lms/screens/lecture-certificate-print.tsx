@@ -80,11 +80,11 @@ export default function LectureCertificatePrint({ loaderData }: Route.ComponentP
         className="mx-auto max-w-[720px] bg-white px-14 py-16 text-neutral-900 shadow-lg print:max-w-none print:px-16 print:py-20 print:shadow-none"
         style={{ fontFamily: '"Pretendard Variable",Pretendard,serif' }}
       >
-        <div className="border-b-2 border-[#22406e] pb-4 text-center">
-          <p className="text-[13px] font-bold tracking-[0.4em] text-[#9a7526]">
+        <div className="border-prestige-navy border-b-2 pb-4 text-center">
+          <p className="text-gilt text-[13px] font-bold tracking-[0.4em]">
             리담변리사학원
           </p>
-          <h1 className="mt-3 text-[34px] font-black tracking-[0.3em] text-[#16294a]">
+          <h1 className="text-prestige-navy mt-3 text-[34px] font-black tracking-[0.3em]">
             수강증명서
           </h1>
         </div>
@@ -115,7 +115,7 @@ export default function LectureCertificatePrint({ loaderData }: Route.ComponentP
           <p className="text-[16px] font-bold tracking-widest text-neutral-800">
             {issuedAt}
           </p>
-          <p className="mt-6 text-[19px] font-black tracking-[0.3em] text-[#16294a]">
+          <p className="text-prestige-navy mt-6 text-[19px] font-black tracking-[0.3em]">
             리담변리사학원 원장 <span className="relative">임 병 웅</span>
             <span className="ml-1 inline-block size-11 translate-y-2 rounded-full border-2 border-[#c0392b]/70" />
           </p>
