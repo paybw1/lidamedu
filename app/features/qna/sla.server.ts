@@ -89,6 +89,29 @@ function kstWeekStart(ts: number): string {
   return monday.toISOString().slice(0, 10);
 }
 
+/**
+ * SLA 위반(응답 기한 초과) 미응답 Q&A 수 — 허브 워크큐 타일용 경량 count.
+ * 전체 대시보드(getQnaSlaDashboard)의 무거운 전량 스캔 없이 근사한다:
+ *   미응답(answered_at NULL) + 상태 대기(open/ai_answered) + 등록 후 BREACH 시간 초과.
+ * 강사가 answered_at 없이 처리해 상태만 남은 극소 케이스는 상태 필터(open/ai_answered)로
+ * 대부분 제외되므로 트리아지 카운터로 충분하다(정확한 판정·목록은 /admin/qna/sla).
+ */
+export async function getQnaSlaBreachCount(): Promise<number> {
+  const admin = adminClient as SupabaseClient<Database>;
+  const cutoff = new Date(
+    Date.now() - QNA_SLA_BREACH_HOURS * HOUR_MS,
+  ).toISOString();
+  const { count, error } = await admin
+    .from("qna_threads")
+    .select("thread_id", { count: "exact", head: true })
+    .is("deleted_at", null)
+    .is("answered_at", null)
+    .in("status", ["open", "ai_answered"])
+    .lt("created_at", cutoff);
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export async function getQnaSlaDashboard(): Promise<QnaSlaDashboard> {
   const admin = adminClient as SupabaseClient<Database>;
   const now = Date.now();

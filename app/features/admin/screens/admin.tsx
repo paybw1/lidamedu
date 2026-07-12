@@ -9,8 +9,10 @@ import { Link, redirect } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
+import { roleAtLeast } from "~/core/lib/roles";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
+import { QNA_SLA_BREACH_HOURS } from "~/features/qna/labels";
 import {
   ADMIN_NAV,
   ADMIN_SECTIONS,
@@ -26,8 +28,14 @@ import {
   getSubjectCoverage,
 } from "~/features/admin/queries/subject-coverage.server";
 import {
+  type BusinessKpis,
+  getBusinessKpis,
+} from "~/features/admin/queries/business-kpis.server";
+import {
   type AdminWorkQueueCounts,
+  type ManagerWorkQueueCounts,
   getAdminWorkQueue,
+  getManagerWorkQueue,
 } from "~/features/admin/queries/work-queue.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
@@ -43,24 +51,47 @@ export async function loader({ request }: Route.LoaderArgs) {
   } = await client.auth.getUser();
   if (!user) throw redirect("/login?next=/admin");
   const role = await getStaffRole(client, user.id);
-  const [contentStats, subjectCoverage, workQueue] = role
+  const isManager = roleAtLeast(role, "manager");
+  const [
+    contentStats,
+    subjectCoverage,
+    workQueue,
+    managerWorkQueue,
+    businessKpis,
+  ] = role
     ? await Promise.all([
         getStaffContentStats(client, user.id),
         getSubjectCoverage(client),
         getAdminWorkQueue(client),
+        // 매출·운영 워크큐(SLA·환불)와 경영 KPI는 manager+ 전용 — 강사에겐 미노출·미조회.
+        isManager
+          ? getManagerWorkQueue()
+          : Promise.resolve<ManagerWorkQueueCounts | null>(null),
+        isManager
+          ? getBusinessKpis()
+          : Promise.resolve<BusinessKpis | null>(null),
       ])
-    : [null, null, null];
+    : [null, null, null, null, null];
   return {
     role,
     userEmail: user.email ?? null,
     contentStats,
     subjectCoverage,
     workQueue,
+    managerWorkQueue,
+    businessKpis,
   };
 }
 
 export default function Admin({ loaderData }: Route.ComponentProps) {
-  const { role, contentStats, subjectCoverage, workQueue } = loaderData;
+  const {
+    role,
+    contentStats,
+    subjectCoverage,
+    workQueue,
+    managerWorkQueue,
+    businessKpis,
+  } = loaderData;
 
   if (!role) {
     return <StudentGuidance />;
@@ -73,11 +104,124 @@ export default function Admin({ loaderData }: Route.ComponentProps) {
       desc="콘텐츠 제작·수강생 운영·시험 운영·데이터 분석을 한 곳에서."
       role={role}
     >
-      {workQueue ? <WorkQueueRow counts={workQueue} /> : null}
+      {businessKpis ? <BusinessKpiRow kpis={businessKpis} /> : null}
+      {workQueue ? (
+        <WorkQueueRow counts={workQueue} manager={managerWorkQueue} />
+      ) : null}
       {contentStats ? <ContentStatsRow stats={contentStats} /> : null}
       {subjectCoverage ? <SubjectCoverageCard rows={subjectCoverage} /> : null}
       <ClusterGrid />
     </AdminShell>
+  );
+}
+
+/* ── 경영 KPI 밴드 (manager+) — 최근 30일 매출·구독 건강 6 타일 ─────────── */
+
+function wonLabel(n: number): string {
+  return `₩${Math.round(n).toLocaleString("ko-KR")}`;
+}
+function pctLabel(v: number | null): string {
+  return v == null ? "—" : `${v.toFixed(1)}%`;
+}
+function signedLabel(n: number): string {
+  return `${n > 0 ? "+" : ""}${n.toLocaleString("ko-KR")}`;
+}
+
+interface KpiTile {
+  label: string;
+  value: string;
+  to: string;
+  hint: string;
+  tone: "neutral" | "good" | "warn" | "bad";
+}
+
+function BusinessKpiRow({ kpis }: { kpis: BusinessKpis }) {
+  // 환불율 10%↑·해지율 5%↑·순증 음수는 주의 톤.
+  const refundWarn = (kpis.refundRatePct ?? 0) >= 10;
+  const churnWarn = (kpis.churnRatePct ?? 0) >= 5;
+  const tiles: KpiTile[] = [
+    {
+      label: `순매출 ${kpis.windowDays}일`,
+      value: wonLabel(kpis.netKrw),
+      to: "/admin/sales/stats",
+      hint: `결제 ${wonLabel(kpis.grossKrw)} − 환불 ${wonLabel(kpis.refundKrw)}`,
+      tone: "good",
+    },
+    {
+      label: "환불율",
+      value: pctLabel(kpis.refundRatePct),
+      to: "/admin/payments",
+      hint: `최근 ${kpis.windowDays}일 환불액/결제액`,
+      tone: refundWarn ? "warn" : "neutral",
+    },
+    {
+      label: "활성 구독",
+      value: kpis.activeSubs.toLocaleString("ko-KR"),
+      to: "/admin/subscriptions/stats",
+      hint: "현재 이용 가능한 정기구독",
+      tone: "neutral",
+    },
+    {
+      label: `해지율 ${kpis.windowDays}일`,
+      value: pctLabel(kpis.churnRatePct),
+      to: "/admin/subscriptions/stats",
+      hint: "기간 해지 / 기간초 활성 추정",
+      tone: churnWarn ? "warn" : "neutral",
+    },
+    {
+      label: "만료 임박",
+      value: kpis.expiringSoon.toLocaleString("ko-KR"),
+      to: "/admin/subscriptions/stats",
+      hint: "30일 내 만료 예정 활성 구독",
+      tone: kpis.expiringSoon > 0 ? "warn" : "neutral",
+    },
+    {
+      label: `구독 순증 ${kpis.windowDays}일`,
+      value: signedLabel(kpis.netSubChange),
+      to: "/admin/subscriptions/stats",
+      hint: "기간 신규 − 해지",
+      tone: kpis.netSubChange < 0 ? "bad" : "good",
+    },
+  ];
+  return (
+    <section className="mb-6" data-testid="admin-hub-business-kpis">
+      <p className="text-muted-foreground mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+        경영 지표 · 최근 {kpis.windowDays}일
+      </p>
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
+        {tiles.map((t) => {
+          const valueTone =
+            t.tone === "warn"
+              ? "text-amber-700 dark:text-amber-300"
+              : t.tone === "bad"
+                ? "text-rose-700 dark:text-rose-300"
+                : t.tone === "good"
+                  ? "text-emerald-700 dark:text-emerald-300"
+                  : "text-foreground";
+          return (
+            <Link
+              key={t.label}
+              to={t.to}
+              viewTransition
+              title={t.hint}
+              className="border-border bg-card hover:border-primary block rounded-xl border p-3.5 shadow-sm transition-colors"
+            >
+              <p className="text-muted-foreground font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+                {t.label}
+              </p>
+              <p
+                className={cn(
+                  "mt-1.5 truncate text-[19px] leading-none font-extrabold tracking-tight tabular-nums",
+                  valueTone,
+                )}
+              >
+                {t.value}
+              </p>
+            </Link>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -90,7 +234,13 @@ interface WorkQueueTile {
   hint: string;
 }
 
-function WorkQueueRow({ counts }: { counts: AdminWorkQueueCounts }) {
+function WorkQueueRow({
+  counts,
+  manager,
+}: {
+  counts: AdminWorkQueueCounts;
+  manager: ManagerWorkQueueCounts | null;
+}) {
   const tiles: WorkQueueTile[] = [
     {
       // 1차 객관식 §1-§5 — review_status='draft' 검토 대기.
@@ -137,6 +287,23 @@ function WorkQueueRow({ counts }: { counts: AdminWorkQueueCounts }) {
       hint: "오늘 다건 삭제·권한 변경",
     },
   ];
+  // 매출·운영 축(manager+ 전용) — SLA 위반 Q&A · 환불 대기.
+  if (manager) {
+    tiles.push(
+      {
+        label: "SLA 위반 Q&A",
+        value: manager.qnaSlaBreaches,
+        to: "/admin/qna/sla",
+        hint: `응답 기한 ${QNA_SLA_BREACH_HOURS}시간 초과 미응답`,
+      },
+      {
+        label: "환불 대기",
+        value: manager.refundsPending,
+        to: "/admin/orders",
+        hint: "학생 환불 요청 승인 대기",
+      },
+    );
+  }
   return (
     <section className="mb-6" data-testid="admin-hub-work-queue">
       <p className="text-muted-foreground mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">

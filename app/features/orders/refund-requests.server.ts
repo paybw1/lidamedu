@@ -90,6 +90,16 @@ export async function getMyRefundRequestMap(
   return map;
 }
 
+/** 대기 환불요청 수 — 허브 워크큐 타일용 경량 count. adminClient. */
+export async function getPendingRefundCount(): Promise<number> {
+  const { count, error } = await adminClient
+    .from("refund_requests")
+    .select("refund_request_id", { count: "exact", head: true })
+    .eq("status", "pending");
+  if (error) throw error;
+  return count ?? 0;
+}
+
 /** 운영자 대기 환불요청 목록(오래된 순). adminClient. */
 export async function listPendingRefundRequests(): Promise<AdminRefundRequestRow[]> {
   const { data, error } = await adminClient
