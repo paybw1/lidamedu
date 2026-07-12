@@ -5,50 +5,18 @@
 
 import adminClient from "~/core/lib/supa-admin-client.server";
 import resendClient from "~/core/lib/resend-client.server";
+import {
+  type BroadcastChannel,
+  type BroadcastSegmentKey,
+  broadcastSegmentLabel as segmentLabel,
+} from "~/features/admin/lib/broadcasts";
 import { createUserNotifications } from "~/features/notifications/queries.server";
 import { getTrialConversionOverview } from "~/features/admin/queries/trial-conversion.server";
 
+export type { BroadcastChannel, BroadcastSegmentKey };
+
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? "noreply@lidamedu.com";
 const REPLY_TO_EMAIL = process.env.RESEND_REPLY_TO_EMAIL ?? "bwyim@lidamip.com";
-
-export type BroadcastSegmentKey =
-  | "trial_expiring"
-  | "trial_followup"
-  | "unapproved"
-  | "all_students";
-
-export type BroadcastChannel = "in_app" | "email";
-
-export const BROADCAST_SEGMENTS: {
-  key: BroadcastSegmentKey;
-  label: string;
-  desc: string;
-}[] = [
-  {
-    key: "trial_expiring",
-    label: "체험 만료 임박",
-    desc: "무료 체험이 곧 끝나는 미전환 학생 (전환 유도)",
-  },
-  {
-    key: "trial_followup",
-    label: "체험 만료 미전환",
-    desc: "최근 체험이 끝났으나 전환하지 않은 학생 (팔로업)",
-  },
-  {
-    key: "unapproved",
-    label: "이용 승인 대기",
-    desc: "가입 후 이용 승인이 나지 않은 학생",
-  },
-  {
-    key: "all_students",
-    label: "전체 학생",
-    desc: "모든 수험생 계정 (공지·안내)",
-  },
-];
-
-function segmentLabel(key: BroadcastSegmentKey): string {
-  return BROADCAST_SEGMENTS.find((s) => s.key === key)?.label ?? key;
-}
 
 // 세그먼트별 수신 profile_id 목록.
 async function resolveSegmentIds(

@@ -13,10 +13,12 @@ import { runAfterResponse } from "~/core/lib/wait-until.server";
 import { cn } from "~/core/lib/utils";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
-import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
 import {
   BROADCAST_SEGMENTS,
   type BroadcastSegmentKey,
+} from "~/features/admin/lib/broadcasts";
+import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
+import {
   getSegmentCounts,
   listBroadcasts,
   sendBroadcast,
