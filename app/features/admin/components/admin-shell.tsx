@@ -175,6 +175,8 @@ export const ADMIN_NAV: NavCluster[] = [
     Icon: UsersIcon,
     screens: [
       { label: "수강생 관리", to: "/admin/users" },
+      // P1 — 체험→유료 전환 추적(만료 임박 워크리스트·전환율).
+      { label: "체험 전환", to: "/admin/trial-conversion" },
       // feat-7-041 — 강사 담당 과목(콘텐츠 쓰기 권한) + 배분 규칙 연결.
       { label: "강사 담당·권한", to: "/admin/instructors" },
       // 운영 업무별 알림 담당자 지정 (admin 전용).
