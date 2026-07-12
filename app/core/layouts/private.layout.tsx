@@ -4,6 +4,7 @@ import { Outlet, data, redirect } from "react-router";
 
 import { CommandPalette } from "~/core/components/command-palette";
 import { SessionHeartbeat } from "~/core/components/session-heartbeat";
+import { getStaffRole } from "~/features/laws/queries.server";
 import { requireAccessApproval } from "../lib/require-approval.server";
 import { requireServiceDataConsent } from "../lib/require-consent.server";
 import { enforceSingleSession } from "../lib/single-session.server";
@@ -31,6 +32,16 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   // feat-8-026 — 학습 데이터 활용 미동의 학생은 /consent 로. staff/동의자/allow-list 통과.
   await requireServiceDataConsent(client, user, request, headers);
+
+  // ★운영자 영역 방어선 — /admin/* 하위 화면은 스태프 전용. 개별 화면이 가드를
+  // 빠뜨려도(신규 화면 실수 등) 비스태프는 여기서 차단되어 허브(학생 안내)로 돌아간다.
+  // /admin 허브 자체는 자체적으로 학생 안내를 렌더하므로 제외. 세밀한 권한(manager/duty)은
+  // 각 화면 loader 의 requireManager/requireDuty 가 추가로 강제.
+  const pathname = new URL(request.url).pathname;
+  if (pathname.startsWith("/admin/")) {
+    const role = await getStaffRole(client, user.id);
+    if (!role) throw redirect("/admin", { headers });
+  }
 
   return data({}, { headers });
 }
