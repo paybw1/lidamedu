@@ -99,21 +99,31 @@ export default function SupportList({ loaderData }: Route.ComponentProps) {
         <section className="mb-8">
           <h2 className="mb-1 text-sm font-bold">자주 묻는 질문</h2>
           <p className="text-muted-foreground mb-3 text-xs">
-            문의를 남기기 전에 먼저 확인해 보세요.
+            분류를 눌러 자주 묻는 질문을 먼저 확인해 보세요.
           </p>
-          <div className="flex flex-col gap-4">
+          {/* 분류별로 접어 둔다 — 목록이 길어 문의 작성을 가리지 않도록 기본 접힘. */}
+          <div className="flex flex-col gap-2">
             {faqGroups.map((g) => (
-              <div key={g.category}>
-                <h3 className="text-muted-foreground mb-1.5 text-[11px] font-bold tracking-wide">
-                  {g.category}
-                </h3>
-                <div className="divide-border bg-card divide-y rounded-xl border">
+              <details
+                key={g.category}
+                className="group/cat bg-card overflow-hidden rounded-xl border"
+              >
+                <summary className="hover:bg-muted/40 flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-bold [&::-webkit-details-marker]:hidden">
+                  <span className="min-w-0 flex-1">{g.category}</span>
+                  <span className="text-muted-foreground text-xs font-normal tabular-nums">
+                    {g.items.length}
+                  </span>
+                  <span className="text-muted-foreground shrink-0 transition-transform group-open/cat:rotate-180">
+                    ⌄
+                  </span>
+                </summary>
+                <div className="divide-border divide-y border-t">
                   {g.items.map((f) => (
-                    <details key={f.faqId} className="group px-4">
-                      <summary className="flex cursor-pointer list-none items-center gap-2 py-3 text-sm font-medium [&::-webkit-details-marker]:hidden">
+                    <details key={f.faqId} className="group/q px-4">
+                      <summary className="flex cursor-pointer list-none items-center gap-2 py-3 text-[13px] font-medium [&::-webkit-details-marker]:hidden">
                         <span className="text-primary font-bold">Q</span>
                         <span className="min-w-0 flex-1">{f.question}</span>
-                        <span className="text-muted-foreground shrink-0 transition-transform group-open:rotate-180">
+                        <span className="text-muted-foreground shrink-0 transition-transform group-open/q:rotate-180">
                           ⌄
                         </span>
                       </summary>
@@ -123,7 +133,7 @@ export default function SupportList({ loaderData }: Route.ComponentProps) {
                     </details>
                   ))}
                 </div>
-              </div>
+              </details>
             ))}
           </div>
         </section>

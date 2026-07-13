@@ -5,11 +5,6 @@ import { Link } from "react-router";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { listPasserSummaries } from "~/features/exam-results/analytics.server";
 import { EXAM_ROUND_LABEL } from "~/features/exam-results/labels";
-import {
-  CATEGORY_LABEL,
-  CATEGORY_ORDER,
-  type InstructorCategory,
-} from "~/features/instructors/labels";
 import { listInstructors } from "~/features/instructors/queries.server";
 
 import { HeroCarousel } from "../components/hero-carousel";
@@ -55,18 +50,16 @@ export async function loader({ request }: Route.LoaderArgs) {
       excludeSynthetic: true,
     }).catch(() => []),
   ]);
-  const groups = CATEGORY_ORDER.map((cat) => ({
-    cat,
-    items: instructors.filter((i) => i.category === cat),
-  })).filter((g) => g.items.length > 0);
-  return { banners, schedules, news, groups, passers, todayISO };
+  // 랜딩 강사진은 계열 구분 없이 한 줄 가로 스크롤 — 배치 순서(display_order) 그대로.
+  return { banners, schedules, news, instructors, passers, todayISO };
 }
 
 const SEAT_CLASS = (rem: number) =>
   rem === 0 ? "low" : rem <= 8 ? "low" : rem <= 16 ? "mid" : "ok";
 
 export default function Landing({ loaderData }: Route.ComponentProps) {
-  const { banners, schedules, news, groups, passers, todayISO } = loaderData;
+  const { banners, schedules, news, instructors, passers, todayISO } =
+    loaderData;
   return (
     <div className="llx">
       <LandingStyle />
@@ -163,39 +156,30 @@ export default function Landing({ loaderData }: Route.ComponentProps) {
               강사진 전체 →
             </Link>
           </Reveal>
-          {groups.map((g) => (
-            <Reveal className="igroup" key={g.cat}>
-              <div className="ihd">
-                <span className="kr">
-                  {CATEGORY_LABEL[g.cat as InstructorCategory].kr}
-                </span>
-                <span className="en">
-                  {CATEGORY_LABEL[g.cat as InstructorCategory].en}
-                </span>
-              </div>
-              <div className="igrid">
-                {g.items.map((it) => (
-                  <Link
-                    className="ic"
-                    to={`/about/instructors/${it.slug}`}
-                    key={it.instructorId}
-                  >
-                    <span className="por">
-                      {it.photoPath ? (
-                        <img src={it.photoPath} alt={it.name} loading="lazy" />
-                      ) : (
-                        <b>{it.monogram ?? it.name.slice(0, 1)}</b>
-                      )}
-                    </span>
-                    <span className="icb">
-                      <span className="nm">{it.name}</span>
-                      <span className="role">{it.subjectLabel}</span>
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            </Reveal>
-          ))}
+          {/* 계열 구분 없이 한 줄 가로 스크롤 — 너무 길면 좌우로 넘긴다. */}
+          <Reveal className="igroup">
+            <div className="igrid">
+              {instructors.map((it) => (
+                <Link
+                  className="ic"
+                  to={`/about/instructors/${it.slug}`}
+                  key={it.instructorId}
+                >
+                  <span className="por">
+                    {it.photoPath ? (
+                      <img src={it.photoPath} alt={it.name} loading="lazy" />
+                    ) : (
+                      <b>{it.monogram ?? it.name.slice(0, 1)}</b>
+                    )}
+                  </span>
+                  <span className="icb">
+                    <span className="nm">{it.name}</span>
+                    <span className="role">{it.subjectLabel}</span>
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </Reveal>
         </div>
       </section>
 

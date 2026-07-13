@@ -16,11 +16,12 @@ export const CATEGORY_LABEL: Record<
   science: { kr: "자연과학", en: "Science" },
 };
 
+// 강사소개(/about/instructors) 계열 표시 순서 — 민법·산업재산권법·자연과학·민사소송법.
 export const CATEGORY_ORDER: InstructorCategory[] = [
-  "ip_law",
   "civil",
-  "civil_procedure",
+  "ip_law",
   "science",
+  "civil_procedure",
 ];
 
 export function isInstructorCategory(v: string): v is InstructorCategory {
