@@ -76,8 +76,59 @@ export default function Landing({ loaderData }: Route.ComponentProps) {
       <HeroCarousel banners={tier1} schedules={schedules} todayISO={todayISO} />
       <BannerTiers tier2={tier2} tier3={tier3} />
 
+      {/* 리담소식 */}
+      <section className="band" id="news">
+        <div className="wrap">
+          <Reveal className="shead">
+            <div>
+              <p className="eyebrow">리담소식</p>
+              <h2>공지 · 이벤트 · 합격 속보</h2>
+            </div>
+            <Link className="more" to="/lecture/news">
+              소식 전체 →
+            </Link>
+          </Reveal>
+          <div className="newswrap">
+            <Reveal className="newslist">
+              {news.map((it) => (
+                <Link className="nrow" to={`/lecture/news/${it.news_id}`} key={it.news_id}>
+                  <span className={`chip ${it.kind}`}>
+                    {NEWS_KIND_LABEL[it.kind as NewsKind]}
+                  </span>
+                  <span className="nt">{it.title}</span>
+                  <span className="nd tnum">
+                    {it.published_at.slice(5, 10).replace("-", "/")}
+                  </span>
+                </Link>
+              ))}
+              {news.length === 0 ? (
+                <p style={{ color: "var(--soft)", fontSize: 14, padding: "8px 0" }}>
+                  등록된 소식이 없습니다.
+                </p>
+              ) : null}
+            </Reveal>
+            <Reveal className="eventcard">
+              <div className="in">
+                <span className="k">진행중 이벤트</span>
+                <h3>
+                  특허법 무료체험
+                  <br />
+                  15일, 지금 시작
+                </h3>
+                <p>
+                  가입만 해도 특허법 강의와 통합 학습 자료를 15일간 무료로.
+                </p>
+                <Link className="btn gilt" to="/join">
+                  무료로 시작 →
+                </Link>
+              </div>
+            </Reveal>
+          </div>
+        </div>
+      </section>
+
       {/* 현장강의 일정 */}
-      <section className="band" id="schedule">
+      <section className="band tint" id="schedule">
         <div className="wrap">
           <Reveal className="shead">
             <div>
@@ -151,26 +202,6 @@ export default function Landing({ loaderData }: Route.ComponentProps) {
               })}
             </div>
           )}
-        </div>
-      </section>
-
-      {/* 강사진 */}
-      <section className="band tint" id="tutors">
-        <div className="wrap">
-          <Reveal className="shead">
-            <div>
-              <p className="eyebrow">전임 강사진</p>
-              <h2>가르치는 사람이 곧 교재입니다</h2>
-              <p>과목마다 전임 강사가 강의와 학습 자료를 함께 설계합니다.</p>
-            </div>
-            <Link className="more" to="/about/instructors">
-              강사진 전체 →
-            </Link>
-          </Reveal>
-          {/* 계열 구분 없이 한 줄 가로 레일 — 양 끝 화살표 버튼으로 좌우로 넘긴다. */}
-          <Reveal className="igroup">
-            <InstructorRail items={instructors} />
-          </Reveal>
         </div>
       </section>
 
@@ -251,6 +282,60 @@ export default function Landing({ loaderData }: Route.ComponentProps) {
         </div>
       </section>
 
+      {/* 도서 */}
+      <section className="band tint" id="books">
+        <div className="wrap">
+          <Reveal className="shead">
+            <div>
+              <p className="eyebrow">리담 교재</p>
+              <h2>강의와 하나로 설계된 교재</h2>
+            </div>
+            <Link className="more" to="/lecture/books">
+              도서몰 →
+            </Link>
+          </Reveal>
+          <Reveal className="books">
+            {[
+              ["리담\n특허법\n기본서", "기본이론"],
+              ["리담\n상표법\n조문노트", "조문 정리"],
+              ["디자인\n보호법\n기본서", "기본이론"],
+              ["민법\n핵심\n정리", "1차 대비"],
+              ["민사\n소송법\n사례", "2차 논술"],
+              ["자연\n과학\n기출", "기출 문제집"],
+            ].map(([t, cap], i) => (
+              <Link className="bk" to="/lecture/books" key={i}>
+                <div className="cov">
+                  <span className="bt" style={{ whiteSpace: "pre-line" }}>
+                    {t}
+                  </span>
+                </div>
+                <span className="cap">{cap}</span>
+              </Link>
+            ))}
+          </Reveal>
+        </div>
+      </section>
+
+      {/* 강사진 */}
+      <section className="band" id="tutors">
+        <div className="wrap">
+          <Reveal className="shead">
+            <div>
+              <p className="eyebrow">전임 강사진</p>
+              <h2>가르치는 사람이 곧 교재입니다</h2>
+              <p>과목마다 전임 강사가 강의와 학습 자료를 함께 설계합니다.</p>
+            </div>
+            <Link className="more" to="/about/instructors">
+              강사진 전체 →
+            </Link>
+          </Reveal>
+          {/* 계열 구분 없이 한 줄 가로 레일 — 양 끝 화살표 버튼으로 좌우로 넘긴다. */}
+          <Reveal className="igroup">
+            <InstructorRail items={instructors} />
+          </Reveal>
+        </div>
+      </section>
+
       {/* 후기 (실데이터: 합격자 수기, 없으면 CTA) */}
       <section className="band tint" id="reviews">
         <div className="wrap">
@@ -311,94 +396,9 @@ export default function Landing({ loaderData }: Route.ComponentProps) {
         </div>
       </section>
 
-      {/* 리담소식 */}
-      <section className="band" id="news">
-        <div className="wrap">
-          <Reveal className="shead">
-            <div>
-              <p className="eyebrow">리담소식</p>
-              <h2>공지 · 이벤트 · 합격 속보</h2>
-            </div>
-            <Link className="more" to="/lecture/news">
-              소식 전체 →
-            </Link>
-          </Reveal>
-          <div className="newswrap">
-            <Reveal className="newslist">
-              {news.map((it) => (
-                <Link className="nrow" to={`/lecture/news/${it.news_id}`} key={it.news_id}>
-                  <span className={`chip ${it.kind}`}>
-                    {NEWS_KIND_LABEL[it.kind as NewsKind]}
-                  </span>
-                  <span className="nt">{it.title}</span>
-                  <span className="nd tnum">
-                    {it.published_at.slice(5, 10).replace("-", "/")}
-                  </span>
-                </Link>
-              ))}
-              {news.length === 0 ? (
-                <p style={{ color: "var(--soft)", fontSize: 14, padding: "8px 0" }}>
-                  등록된 소식이 없습니다.
-                </p>
-              ) : null}
-            </Reveal>
-            <Reveal className="eventcard">
-              <div className="in">
-                <span className="k">진행중 이벤트</span>
-                <h3>
-                  특허법 무료체험
-                  <br />
-                  15일, 지금 시작
-                </h3>
-                <p>
-                  가입만 해도 특허법 강의와 통합 학습 자료를 15일간 무료로.
-                </p>
-                <Link className="btn gilt" to="/join">
-                  무료로 시작 →
-                </Link>
-              </div>
-            </Reveal>
-          </div>
-        </div>
-      </section>
-
-      {/* 도서 */}
-      <section className="band tint" id="books">
-        <div className="wrap">
-          <Reveal className="shead">
-            <div>
-              <p className="eyebrow">리담 교재</p>
-              <h2>강의와 하나로 설계된 교재</h2>
-            </div>
-            <Link className="more" to="/lecture/books">
-              도서몰 →
-            </Link>
-          </Reveal>
-          <Reveal className="books">
-            {[
-              ["리담\n특허법\n기본서", "기본이론"],
-              ["리담\n상표법\n조문노트", "조문 정리"],
-              ["디자인\n보호법\n기본서", "기본이론"],
-              ["민법\n핵심\n정리", "1차 대비"],
-              ["민사\n소송법\n사례", "2차 논술"],
-              ["자연\n과학\n기출", "기출 문제집"],
-            ].map(([t, cap], i) => (
-              <Link className="bk" to="/lecture/books" key={i}>
-                <div className="cov">
-                  <span className="bt" style={{ whiteSpace: "pre-line" }}>
-                    {t}
-                  </span>
-                </div>
-                <span className="cap">{cap}</span>
-              </Link>
-            ))}
-          </Reveal>
-        </div>
-      </section>
-
       {/* FAQ — 고객센터에서 옮겨 온 실제 FAQ(support_faqs). 분류 가로 탭. */}
       {faqGroups.length > 0 ? (
-        <section className="band tint" id="faq">
+        <section className="band" id="faq">
           <div className="wrap">
             <Reveal
               className="shead"
