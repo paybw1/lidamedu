@@ -120,16 +120,21 @@ export function LandingStyle() {
 .llx .ihd{display:flex;align-items:baseline;gap:12px;margin-bottom:14px;padding-bottom:9px;border-bottom:1px solid var(--line)}
 .llx .ihd .kr{font-size:17px;font-weight:900}
 .llx .ihd .en{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);font-weight:800}
-.llx .igrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-.llx .ic{display:flex;gap:13px;align-items:center;background:var(--lsurface);border:1px solid var(--line);border-radius:13px;padding:14px;transition:transform .2s,border-color .2s,box-shadow .2s}
-.llx .ic:hover{transform:translateY(-3px);border-color:var(--line2);box-shadow:var(--lshadow)}
-.llx .ic .por{width:54px;height:68px;flex-shrink:0;border-radius:6px;position:relative;display:grid;place-items:center;overflow:hidden;background:linear-gradient(150deg,var(--navy-soft),var(--navy2));border:1px solid rgba(201,164,78,.35)}
-.llx .ic .por::before{content:"";position:absolute;inset:5px;border:1px solid rgba(201,164,78,.4);border-radius:3px}
-.llx .ic .por b{position:relative;color:rgba(238,242,251,.94);font-size:25px;font-weight:800}
-.llx .ic .por img{width:100%;height:100%;object-fit:cover}
-.llx .ic .nm{font-size:16px;font-weight:900}
-.llx .ic .role{display:inline-block;margin:5px 0 4px;font-size:11px;font-weight:800;color:var(--blue-ink);background:var(--blue-wash);padding:2px 8px;border-radius:6px}
-.llx .ic .cap{font-size:12px;color:var(--soft)}
+/* 대형 인물 사진 세로 카드 + 가로 스크롤(옆으로 넘김). 금박 오버레이 프레임 제거. */
+.llx .igrid{display:flex;gap:16px;overflow-x:auto;padding:4px 2px 14px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+.llx .igrid::-webkit-scrollbar{height:8px}
+.llx .igrid::-webkit-scrollbar-track{background:transparent}
+.llx .igrid::-webkit-scrollbar-thumb{background:var(--line2);border-radius:99px}
+.llx .ic{flex:0 0 auto;width:186px;scroll-snap-align:start;display:flex;flex-direction:column;text-decoration:none;color:inherit;background:var(--lsurface);border:1px solid var(--line);border-radius:15px;overflow:hidden;box-shadow:var(--lshadow);transition:transform .2s,border-color .2s}
+.llx .ic:hover{transform:translateY(-4px);border-color:var(--line2)}
+.llx .ic .por{width:100%;aspect-ratio:4/5;position:relative;display:grid;place-items:center;overflow:hidden;background:linear-gradient(150deg,var(--navy-soft),var(--navy2))}
+.llx .ic .por b{color:rgba(238,242,251,.94);font-size:46px;font-weight:800}
+.llx .ic .por img{width:100%;height:100%;object-fit:cover;transition:transform .5s cubic-bezier(.2,.7,.2,1)}
+.llx .ic:hover .por img{transform:scale(1.04)}
+.llx .ic .icb{padding:13px 14px 16px;display:flex;flex-direction:column;gap:6px}
+.llx .ic .nm{font-size:16.5px;font-weight:900}
+.llx .ic .role{align-self:flex-start;font-size:11px;font-weight:800;color:var(--blue-ink);background:var(--blue-wash);padding:3px 9px;border-radius:6px}
+.llx .ic .cap{font-size:12px;color:var(--soft);line-height:1.5}
 
 /* tiers */
 .llx .tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}

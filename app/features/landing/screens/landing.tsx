@@ -182,19 +182,14 @@ export default function Landing({ loaderData }: Route.ComponentProps) {
                   >
                     <span className="por">
                       {it.photoPath ? (
-                        <img src={it.photoPath} alt={it.name} />
+                        <img src={it.photoPath} alt={it.name} loading="lazy" />
                       ) : (
                         <b>{it.monogram ?? it.name.slice(0, 1)}</b>
                       )}
                     </span>
-                    <span style={{ minWidth: 0 }}>
+                    <span className="icb">
                       <span className="nm">{it.name}</span>
-                      <br />
                       <span className="role">{it.subjectLabel}</span>
-                      <br />
-                      <span className="cap">
-                        {it.roleLabel ?? it.headline ?? ""}
-                      </span>
                     </span>
                   </Link>
                 ))}
