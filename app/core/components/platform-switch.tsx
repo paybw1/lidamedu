@@ -25,7 +25,7 @@ export function PlatformSwitch({ className }: { className?: string }) {
       role="tablist"
       aria-label="플랫폼 선택"
       className={cn(
-        "bg-muted/70 ring-border/50 inline-flex items-center gap-1 rounded-full p-1 text-[12px] font-semibold ring-1",
+        "bg-muted/70 ring-border/50 inline-flex items-center gap-1 rounded-full p-1 text-[11px] font-semibold ring-1",
         className,
       )}
     >
@@ -40,13 +40,13 @@ export function PlatformSwitch({ className }: { className?: string }) {
             role="tab"
             aria-selected={isActive}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 whitespace-nowrap transition-all duration-200",
+              "inline-flex items-center gap-1 rounded-full px-2 py-1 whitespace-nowrap transition-all duration-200",
               isActive
                 ? "bg-primary text-primary-foreground shadow-primary/25 shadow-sm"
                 : "text-muted-foreground hover:text-primary hover:bg-primary/10",
             )}
           >
-            <Icon className="size-3" />
+            <Icon className="size-2.5" />
             {p.label}
           </Link>
         );
