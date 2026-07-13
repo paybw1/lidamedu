@@ -5,9 +5,13 @@
 //   화면(내 강의실)은 각 loader 가 자체 redirect 로 게이트한다(my-courses 참조).
 import type { Route } from "./+types/lecture.layout";
 
-import { BellIcon } from "lucide-react";
+import { BellIcon, SearchIcon } from "lucide-react";
 import { Link, Outlet, data } from "react-router";
 
+import {
+  CommandPalette,
+  openCommandPalette,
+} from "../components/command-palette";
 import Footer from "../components/footer";
 import { LectureNav, LectureNavMobile } from "../components/lecture-nav";
 import { PlatformSwitch } from "../components/platform-switch";
@@ -80,6 +84,16 @@ export default function LectureLayout({ loaderData }: Route.ComponentProps) {
             {user ? (
               <>
                 <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-9"
+                  onClick={() => openCommandPalette()}
+                  aria-label="전역 검색 (조문·판례·문제)"
+                  title="검색 (⌘K / Ctrl+K)"
+                >
+                  <SearchIcon className="size-5" />
+                </Button>
+                <Button
                   asChild
                   variant="ghost"
                   size="icon"
@@ -113,6 +127,7 @@ export default function LectureLayout({ loaderData }: Route.ComponentProps) {
       </header>
 
       <CartClearOnPurchase />
+      {user ? <CommandPalette /> : null}
       <main className="mx-auto w-full flex-1">
         <Outlet />
       </main>
