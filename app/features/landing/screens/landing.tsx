@@ -3,6 +3,7 @@
 import { Link } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { listBookstoreBooks } from "~/features/bookstore/queries.server";
 import { listSupportFaqGroups } from "~/features/cs-inquiries/faq.server";
 import { listPasserSummaries } from "~/features/exam-results/analytics.server";
 import { EXAM_ROUND_LABEL } from "~/features/exam-results/labels";
@@ -34,7 +35,7 @@ export function meta() {
 export async function loader({ request }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);
   const todayISO = new Date().toISOString();
-  const [banners, schedules, news, instructors, passers, faqGroups] =
+  const [banners, schedules, news, instructors, passers, faqGroups, books] =
     await Promise.all([
       listBanners(client),
       listSchedules(client, { todayISO, limit: 4 }),
@@ -47,13 +48,24 @@ export async function loader({ request }: Route.LoaderArgs) {
         excludeSynthetic: true,
       }).catch(() => []),
       listSupportFaqGroups(client).catch(() => []),
+      // 리담 교재 섹션 — 도서몰(도서구입) 판매중 도서 노출.
+      listBookstoreBooks(client).catch(() => []),
     ]);
   // 랜딩 강사진은 계열 구분 없이 한 줄 가로 레일(좌우 화살표) — 배치 순서(display_order) 그대로.
-  return { banners, schedules, news, instructors, passers, faqGroups, todayISO };
+  return {
+    banners,
+    schedules,
+    news,
+    instructors,
+    passers,
+    faqGroups,
+    books: books.slice(0, 6),
+    todayISO,
+  };
 }
 
 export default function Landing({ loaderData }: Route.ComponentProps) {
-  const { banners, schedules, news, instructors, passers, faqGroups, todayISO } =
+  const { banners, schedules, news, instructors, passers, faqGroups, books, todayISO } =
     loaderData;
   // tier 1=메인 히어로 캐러셀, 2·3=히어로 아래 추가 단.
   const tier1 = banners.filter((b) => (b.tier ?? 1) === 1);
@@ -230,25 +242,34 @@ export default function Landing({ loaderData }: Route.ComponentProps) {
               도서몰 →
             </Link>
           </Reveal>
-          <Reveal className="books">
-            {[
-              ["리담\n특허법\n기본서", "기본이론"],
-              ["리담\n상표법\n조문노트", "조문 정리"],
-              ["디자인\n보호법\n기본서", "기본이론"],
-              ["민법\n핵심\n정리", "1차 대비"],
-              ["민사\n소송법\n사례", "2차 논술"],
-              ["자연\n과학\n기출", "기출 문제집"],
-            ].map(([t, cap], i) => (
-              <Link className="bk" to="/lecture/books" key={i}>
-                <div className="cov">
-                  <span className="bt" style={{ whiteSpace: "pre-line" }}>
-                    {t}
+          {books.length > 0 ? (
+            <Reveal className="books">
+              {books.map((b) => (
+                <Link className="bk" to={`/lecture/books/${b.bookId}`} key={b.bookId}>
+                  <div className="cov">
+                    {b.coverPath ? (
+                      <img
+                        className="bkimg"
+                        src={b.coverPath}
+                        alt={b.title}
+                        loading="lazy"
+                      />
+                    ) : (
+                      <span className="bt">{b.title}</span>
+                    )}
+                  </div>
+                  <span className="bkt">{b.title}</span>
+                  <span className="cap tnum">
+                    {b.priceKrw.toLocaleString("ko-KR")}원
                   </span>
-                </div>
-                <span className="cap">{cap}</span>
-              </Link>
-            ))}
-          </Reveal>
+                </Link>
+              ))}
+            </Reveal>
+          ) : (
+            <p style={{ color: "var(--soft)", fontSize: 14 }}>
+              판매 중인 교재가 곧 공개됩니다.
+            </p>
+          )}
         </div>
       </section>
 

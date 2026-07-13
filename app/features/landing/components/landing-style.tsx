@@ -221,7 +221,9 @@ export function LandingStyle() {
 .llx .bk .cov::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:rgba(0,0,0,.18)}
 .llx .bk:hover .cov{transform:translateY(-4px)}
 .llx .bk .bt{position:relative;color:#fff;font-size:13px;font-weight:800;line-height:1.3}
-.llx .bk .cap{font-size:11.5px;color:var(--soft);text-align:center}
+.llx .bk .cov .bkimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1}
+.llx .bk .bkt{margin-top:8px;font-size:12.5px;font-weight:700;color:var(--ink);text-align:center;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.llx .bk .cap{font-size:12px;font-weight:800;color:var(--blue-ink);text-align:center}
 
 /* faq */
 .llx .faq{max-width:820px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
