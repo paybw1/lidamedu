@@ -9,14 +9,14 @@ import { Link, redirect } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import { roleAtLeast } from "~/core/lib/roles";
+import { roleAtLeast, type UserRole } from "~/core/lib/roles";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
 import { QNA_SLA_BREACH_HOURS } from "~/features/qna/labels";
 import {
-  ADMIN_NAV,
   ADMIN_SECTIONS,
   AdminShell,
+  visibleAdminNav,
 } from "~/features/admin/components/admin-shell";
 import { Chip } from "~/features/admin/components/admin-ui";
 import {
@@ -110,7 +110,7 @@ export default function Admin({ loaderData }: Route.ComponentProps) {
       ) : null}
       {contentStats ? <ContentStatsRow stats={contentStats} /> : null}
       {subjectCoverage ? <SubjectCoverageCard rows={subjectCoverage} /> : null}
-      <ClusterGrid />
+      <ClusterGrid role={role} />
     </AdminShell>
   );
 }
@@ -537,11 +537,12 @@ function SeedTable({
 /* ── 클러스터 바로가기 (4개 섹션 그룹) ──────────────────────────────── */
 
 // 허브 IA = 4개 상위 섹션 × 소속 클러스터. hub 자기 자신은 제외.
-function ClusterGrid() {
+function ClusterGrid({ role }: { role: UserRole | null }) {
+  const nav = visibleAdminNav(role);
   return (
     <div className="space-y-7" data-testid="admin-hub-clusters">
       {ADMIN_SECTIONS.map((section) => {
-        const clusters = ADMIN_NAV.filter((c) => c.section === section.id);
+        const clusters = nav.filter((c) => c.section === section.id);
         if (clusters.length === 0) return null;
         return (
           <section key={section.id}>

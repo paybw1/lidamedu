@@ -28,7 +28,7 @@ import {
 import { type ReactNode, useState } from "react";
 import { Link, useLocation } from "react-router";
 
-import { ROLE_LABEL, type UserRole } from "~/core/lib/roles";
+import { ROLE_LABEL, roleAtLeast, type UserRole } from "~/core/lib/roles";
 import { cn } from "~/core/lib/utils";
 
 export type AdminClusterId =
@@ -72,6 +72,9 @@ export const ADMIN_SECTIONS: { id: AdminSectionId; label: string }[] = [
 interface NavScreen {
   label: string;
   to: string;
+  // 이 역할 이상만 사이드바·허브에 노출. loader 가드는 별개 유지(이중 방어).
+  // ★duty 로 접근하거나 가드가 불확실한 화면엔 지정하지 않는다(오hide 방지).
+  minRole?: UserRole;
 }
 
 interface NavCluster {
@@ -200,7 +203,7 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "접속이력 관리", to: "/admin/access-logs" },
       { label: "탈퇴 관리", to: "/admin/withdrawals" },
       { label: "위험 수강생 (7일 무접속)", to: "/admin/cohorts/at-risk" },
-      { label: "등급 체험 테스트", to: "/admin/membership-test" },
+      { label: "등급 체험 테스트", to: "/admin/membership-test", minRole: "admin" },
     ],
   },
   {
@@ -237,8 +240,8 @@ export const ADMIN_NAV: NavCluster[] = [
     Icon: PackageIcon,
     screens: [
       // feat-8-028 — manager+ 상품·요금·할인.
-      { label: "상품·요금 관리", to: "/admin/pricing" },
-      { label: "할인 관리", to: "/admin/discounts" },
+      { label: "상품·요금 관리", to: "/admin/pricing", minRole: "manager" },
+      { label: "할인 관리", to: "/admin/discounts", minRole: "manager" },
       // feat-7-014 — 수강권 = 상품의 학생별 인스턴스(재량 부여·연장·취소).
       { label: "수강권 관리", to: "/admin/subscriptions" },
     ],
@@ -250,19 +253,19 @@ export const ADMIN_NAV: NavCluster[] = [
     label: "매출·정산 관리",
     Icon: BanknoteIcon,
     screens: [
-      { label: "주문·결제 관리", to: "/admin/payments" },
+      { label: "주문·결제 관리", to: "/admin/payments", minRole: "manager" },
       // feat-8-029 P2 — 항목(강의/교재)별 매출 통계.
-      { label: "매출 통계", to: "/admin/sales/stats" },
+      { label: "매출 통계", to: "/admin/sales/stats", minRole: "manager" },
       // feat-8-029 P5 — 정기구독 통계.
-      { label: "구독 통계", to: "/admin/subscriptions/stats" },
+      { label: "구독 통계", to: "/admin/subscriptions/stats", minRole: "manager" },
       // feat-11-004 4a — 항목 단위 주문·부분 환불.
       { label: "주문 관리 (항목·환불)", to: "/admin/orders" },
-      { label: "강사 배분 기준", to: "/admin/settlements/rules" },
-      { label: "강사 정산", to: "/admin/settlements" },
+      { label: "강사 배분 기준", to: "/admin/settlements/rules", minRole: "manager" },
+      { label: "강사 정산", to: "/admin/settlements", minRole: "manager" },
       // feat-8-029 P6 — 도서 배분 기준 + 도서 정산(계산·지급).
-      { label: "도서 배분 기준", to: "/admin/settlements/books" },
-      { label: "도서 정산", to: "/admin/settlements/book-runs" },
-      { label: "Q&A 답변 적립", to: "/admin/settlements/qna-rewards" },
+      { label: "도서 배분 기준", to: "/admin/settlements/books", minRole: "manager" },
+      { label: "도서 정산", to: "/admin/settlements/book-runs", minRole: "manager" },
+      { label: "Q&A 답변 적립", to: "/admin/settlements/qna-rewards", minRole: "manager" },
       // feat-13 할인 쿠폰.
       { label: "쿠폰 관리", to: "/admin/coupons" },
     ],
@@ -290,8 +293,8 @@ export const ADMIN_NAV: NavCluster[] = [
     Icon: TrendingUpIcon,
     screens: [
       // 전체 학습현황(학원 전체 집계) — feat-7-041, manager+ 게이트.
-      { label: "전체 학습현황", to: "/admin/analytics/students" },
-      { label: "시험일 관리", to: "/admin/exam-schedules" },
+      { label: "전체 학습현황", to: "/admin/analytics/students", minRole: "manager" },
+      { label: "시험일 관리", to: "/admin/exam-schedules", minRole: "manager" },
       { label: "합격 결과", to: "/admin/exam-results" },
       { label: "합격자 사례", to: "/admin/analytics/passers" },
       { label: "합격 vs 불합격 패턴", to: "/admin/analytics/failure-patterns" },
@@ -305,7 +308,7 @@ export const ADMIN_NAV: NavCluster[] = [
     Icon: BellIcon,
     screens: [
       { label: "공지 발송", to: "/admin/announcements" },
-      { label: "대량 안내 발송", to: "/admin/broadcasts" },
+      { label: "대량 안내 발송", to: "/admin/broadcasts", minRole: "manager" },
       { label: "팝업 공지", to: "/admin/popup-notices" },
       { label: "고객센터 문의", to: "/admin/cs-inquiries" },
       { label: "커뮤니티 신고", to: "/admin/community/reports" },
@@ -318,7 +321,7 @@ export const ADMIN_NAV: NavCluster[] = [
     label: "Q&A 운영",
     Icon: MessageCircleQuestionIcon,
     screens: [
-      { label: "Q&A 답변 현황", to: "/admin/qna/sla" },
+      { label: "Q&A 답변 현황", to: "/admin/qna/sla", minRole: "manager" },
       { label: "Q&A 답변자 지정", to: "/admin/qna/answerers" },
       { label: "AI 부정 피드백", to: "/admin/ai-qna/feedback" },
       { label: "AI 지표", to: "/admin/ai-qna/metrics" },
@@ -348,9 +351,9 @@ export const ADMIN_NAV: NavCluster[] = [
     Icon: SettingsIcon,
     screens: [
       // 운영 업무별 알림 담당자 지정 (admin 전용).
-      { label: "관리자 관리", to: "/admin/staff-duties" },
+      { label: "관리자 관리", to: "/admin/staff-duties", minRole: "admin" },
       // feat-000-017 — id/pw 로그인 노출 토글.
-      { label: "로그인 방식", to: "/admin/auth" },
+      { label: "로그인 방식", to: "/admin/auth", minRole: "admin" },
       { label: "감사 기록", to: "/admin/audit-logs" },
       { label: "받은 알림함", to: "/admin/inbox" },
       { label: "이용 가이드 관리", to: "/admin/guides" },
@@ -361,6 +364,15 @@ export const ADMIN_NAV: NavCluster[] = [
 
 function clusterById(id: AdminClusterId): NavCluster {
   return ADMIN_NAV.find((c) => c.id === id) ?? ADMIN_NAV[0];
+}
+
+// 역할 맞춤 내비 — 각 클러스터의 화면을 minRole 로 필터하고, 남은 화면이 없는
+// 클러스터는 제거. hub(섹션 없음)는 항상 유지. 사이드바·허브 그리드 공용.
+export function visibleAdminNav(role: UserRole | null | undefined): NavCluster[] {
+  return ADMIN_NAV.map((c) => ({
+    ...c,
+    screens: c.screens.filter((s) => !s.minRole || roleAtLeast(role, s.minRole)),
+  })).filter((c) => !c.section || c.screens.length > 0);
 }
 
 /* ── Sidebar ──────────────────────────────────────────────────────────── */
@@ -478,6 +490,7 @@ function AdminSidebar({
   role?: UserRole | null;
 }) {
   const [collapsed, setCollapsed] = useState(false);
+  const nav = visibleAdminNav(role);
   return (
     <aside
       className={cn(
@@ -517,7 +530,7 @@ function AdminSidebar({
 
       <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto">
         {/* hub — 섹션에 속하지 않는 단독 진입점 */}
-        {ADMIN_NAV.filter((c) => !c.section).map((c) => (
+        {nav.filter((c) => !c.section).map((c) => (
           <ClusterGroup
             key={c.id}
             cluster={c}
@@ -528,7 +541,7 @@ function AdminSidebar({
         ))}
         {/* 4개 상위 섹션 — 헤더 + 소속 클러스터 */}
         {ADMIN_SECTIONS.map((section) => {
-          const clusters = ADMIN_NAV.filter((c) => c.section === section.id);
+          const clusters = nav.filter((c) => c.section === section.id);
           if (clusters.length === 0) return null;
           return (
             <div key={section.id} className="mt-3 first:mt-2">
