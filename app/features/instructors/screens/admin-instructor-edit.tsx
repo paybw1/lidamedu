@@ -55,7 +55,7 @@ export default function AdminInstructorEdit({ loaderData }: Route.ComponentProps
 
   return (
     <AdminShell
-      cluster="comms"
+      cluster="instructors"
       role={loaderData.role}
       title={it ? `강사 편집 · ${it.name}` : "강사 등록"}
       desc="게시(published)를 켜야 공개 강사진에 노출됩니다."

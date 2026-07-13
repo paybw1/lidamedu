@@ -34,7 +34,7 @@ export default function AdminInstructors({ loaderData }: Route.ComponentProps) {
   const { role, instructors } = loaderData;
   return (
     <AdminShell
-      cluster="comms"
+      cluster="instructors"
       role={role}
       title="강사 관리"
       desc="리담안내 · 강사진에 노출되는 강사 프로필을 등록·편집합니다. 게시(published)된 강사만 공개됩니다."

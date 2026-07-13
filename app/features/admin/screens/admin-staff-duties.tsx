@@ -76,7 +76,7 @@ export default function AdminStaffDuties({ loaderData }: Route.ComponentProps) {
   const { duties, staff } = loaderData;
   return (
     <AdminShell
-      cluster="students"
+      cluster="ops"
       role="admin"
       title="관리자 관리"
       desc="운영 업무별 알림 담당자와 화면 접근 권한을 지정합니다. 알림 업무는 담당자에게만 발송(미지정 시 역할 전체 발송)되고, 접근 권한은 지정된 스태프와 원장만 해당 화면을 열 수 있습니다."

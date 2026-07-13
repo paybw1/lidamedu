@@ -138,7 +138,7 @@ export default function AdminInstructors({ loaderData }: Route.ComponentProps) {
 
   return (
     <AdminShell
-      cluster="students"
+      cluster="instructors"
       role={role}
       title="강사 관리"
       desc="강사별 담당 과목을 지정합니다. 강사는 담당 과목의 콘텐츠(문제·판례·조문 개정)만 작성·수정할 수 있으며, 담당 과목이 없으면 콘텐츠를 수정할 수 없습니다. 정산 배분율은 매출·정산 > 강사 배분 기준에서 설정합니다."

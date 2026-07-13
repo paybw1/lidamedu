@@ -116,7 +116,7 @@ export default function AdminSeedsPreview({
 
   return (
     <AdminShell
-      cluster="laws"
+      cluster="checks"
       role={role}
       title="시드 가져오기 미리 점검"
       desc="CSV 일괄 정정 — 미리보기로 변경분을 확인한 뒤 승인하면 적용됩니다. 한 번에 500행 이내를 권장합니다."

@@ -109,7 +109,7 @@ export default function StaffInbox({ loaderData }: Route.ComponentProps) {
 
   return (
     <AdminShell
-      cluster="comms"
+      cluster="ops"
       role={role}
       title="알림 인박스"
       desc="운영진 수신 알림. 미읽음 항목을 우선으로 표시합니다."

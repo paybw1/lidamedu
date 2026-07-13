@@ -56,7 +56,7 @@ export default function AdminRelationGaps({
 
   return (
     <AdminShell
-      cluster="relations"
+      cluster="checks"
       role={role}
       title="미배정 자료 점검"
       desc="체계도에 매핑되지 않은 조문, 조문 없는 판례·문제를 과목별로 점검합니다."

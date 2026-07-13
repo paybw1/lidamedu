@@ -61,7 +61,7 @@ export default function AdminQnaSla({ loaderData }: Route.ComponentProps) {
     loaderData.dashboard;
 
   return (
-    <AdminShell title="Q&A 답변 현황" cluster="comms">
+    <AdminShell title="Q&A 답변 현황" cluster="ai-qna">
       <div className="mx-auto max-w-5xl space-y-8">
         <header>
           <h1 className="text-xl font-bold tracking-tight">Q&A 답변 현황</h1>

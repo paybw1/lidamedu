@@ -47,7 +47,7 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
 export default function AdminBannerEdit({ loaderData }: Route.ComponentProps) {
   const { role, row: b } = loaderData;
   return (
-    <AdminShell cluster="comms" role={role} title={b ? "배너 편집" : "배너 추가"} desc="종류에 따라 우측 카드가 달라집니다. 일정형=개강 임박 카드, 프로모션=대형 숫자, 합격속보=배지.">
+    <AdminShell cluster="landing" role={role} title={b ? "배너 편집" : "배너 추가"} desc="종류에 따라 우측 카드가 달라집니다. 일정형=개강 임박 카드, 프로모션=대형 숫자, 합격속보=배지.">
       <div className="mx-auto max-w-2xl p-5 md:p-8">
         <Link to="/admin/landing-banners" className="text-muted-foreground hover:text-foreground mb-4 inline-block text-sm">
           ← 배너 목록

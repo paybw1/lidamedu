@@ -34,7 +34,7 @@ export default function AdminSchedules({ loaderData }: Route.ComponentProps) {
   const { role, schedules } = loaderData;
   return (
     <AdminShell
-      cluster="comms"
+      cluster="landing"
       role={role}
       title="현장강의 일정 관리"
       desc="랜딩·시간표에 노출되는 개강 일정을 등록·편집합니다. 순서(↑/↓)는 같은 개강일 내 표시 순서입니다."

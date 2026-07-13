@@ -55,7 +55,7 @@ export default function AdminGuides({ loaderData }: Route.ComponentProps) {
 
   return (
     <AdminShell
-      cluster="comms"
+      cluster="ops"
       role={role}
       title="이용 가이드 관리"
       desc="학생 '이용 가이드'(커뮤니티 탭)에 노출되는 사용법 콘텐츠를 만들고 발행합니다. 영상은 유튜브 미등록(unlisted) 링크를 붙이면 화면에 임베드됩니다. (manager 이상)"

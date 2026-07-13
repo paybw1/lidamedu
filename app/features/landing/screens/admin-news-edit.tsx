@@ -36,7 +36,7 @@ export default function AdminNewsEdit({ loaderData }: Route.ComponentProps) {
   // datetime-local 은 초 없는 로컬 시각. 저장 시 그대로 문자열 → published_at.
   const dtLocal = n?.published_at ? n.published_at.slice(0, 16) : "";
   return (
-    <AdminShell cluster="comms" role={role} title={n ? "소식 편집" : "소식 등록"} desc="공개를 켜야 랜딩·리담소식에 노출됩니다.">
+    <AdminShell cluster="landing" role={role} title={n ? "소식 편집" : "소식 등록"} desc="공개를 켜야 랜딩·리담소식에 노출됩니다.">
       <div className="mx-auto max-w-2xl p-5 md:p-8">
         <Link to="/admin/lecture-news" className="text-muted-foreground hover:text-foreground mb-4 inline-block text-sm">
           ← 소식 목록

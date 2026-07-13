@@ -86,7 +86,7 @@ export default function AdminLawHealth({ loaderData }: Route.ComponentProps) {
   const { rows, role } = loaderData;
   return (
     <AdminShell
-      cluster="laws"
+      cluster="checks"
       role={role}
       title="콘텐츠 헬스 점수"
       desc="4법+민소법 × 8지표 매트릭스. 종합 점수가 가장 낮은 항목부터 작업하세요."

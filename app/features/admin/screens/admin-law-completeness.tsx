@@ -143,7 +143,7 @@ export default function AdminLawCompleteness({
 
   return (
     <AdminShell
-      cluster="laws"
+      cluster="checks"
       role={role}
       width={960}
       title={`${subject.name} 완성도`}

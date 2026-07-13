@@ -39,7 +39,7 @@ export default function AdminBanners({ loaderData }: Route.ComponentProps) {
   const { role, banners } = loaderData;
   return (
     <AdminShell
-      cluster="comms"
+      cluster="landing"
       role={role}
       title="히어로 배너 관리"
       desc="랜딩 상단에서 자동 순환하는 배너를 추가·삭제·정렬합니다. 공개된 배너만 순서(↑/↓)대로 노출됩니다."

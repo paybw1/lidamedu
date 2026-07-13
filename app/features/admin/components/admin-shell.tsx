@@ -5,21 +5,24 @@ import {
   AwardIcon,
   BanknoteIcon,
   BellIcon,
-  BotIcon,
   ChevronDownIcon,
   ClapperboardIcon,
+  ClipboardCheckIcon,
   GavelIcon,
   GraduationCapIcon,
-  KeyRoundIcon,
   LayoutDashboardIcon,
   Link2Icon,
   ListChecksIcon,
   type LucideIcon,
+  MegaphoneIcon,
+  MessageCircleQuestionIcon,
   PackageIcon,
   PanelLeftIcon,
   PencilLineIcon,
   ScaleIcon,
+  SettingsIcon,
   TrendingUpIcon,
+  UserCogIcon,
   UsersIcon,
 } from "lucide-react";
 import { type ReactNode, useState } from "react";
@@ -35,16 +38,19 @@ export type AdminClusterId =
   | "problems"
   | "blanks"
   | "relations"
+  | "checks"
   | "lms"
-  | "students"
-  | "sales"
-  | "cohorts"
   | "products"
+  | "sales"
+  | "students"
+  | "cohorts"
+  | "instructors"
   | "gs"
   | "analytics"
   | "comms"
   | "ai-qna"
-  | "auth-settings";
+  | "landing"
+  | "ops";
 
 // 상위 섹션 — 클러스터를 5개 도메인으로 묶어 사이드바·허브에서 그룹 표시.
 // (커머스를 별도 축으로 분리 — 상품·매출·정산·도서몰이 '수강생 운영/콘텐츠'에 섞이던 문제 해소.)
@@ -93,10 +99,8 @@ export const ADMIN_NAV: NavCluster[] = [
     Icon: GavelIcon,
     screens: [
       { label: "법령 허브", to: "/admin/laws" },
-      { label: "콘텐츠 완성도", to: "/admin/laws/health" },
       { label: "단원 체계도", to: "/admin/systematic-tree" },
       { label: "강의노트 위치 확인", to: "/admin/lecture-locations" },
-      { label: "데이터 가져오기 점검", to: "/admin/seeds/preview" },
     ],
   },
   {
@@ -108,10 +112,7 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "판례·조문 매칭", to: "/admin/cases" },
       { label: "판례·기출 매칭", to: "/admin/relations/exam-cases" },
       { label: "판례 등록", to: "/admin/cases/edit" },
-      { label: "전문 PDF 미적재", to: "/admin/cases/pdf-missing" },
       { label: "판례 쟁점훈련 출제", to: "/admin/case-training" },
-      { label: "체계도 배치 점검", to: "/admin/cases/violations" },
-      { label: "고아 하이라이트 점검", to: "/admin/cases/orphan-highlights" },
       { label: "강의노트 사례연구 검토", to: "/admin/case-study-review" },
     ],
   },
@@ -153,9 +154,21 @@ export const ADMIN_NAV: NavCluster[] = [
     section: "content",
     label: "연관관계",
     Icon: Link2Icon,
+    screens: [{ label: "연결 일괄 등록", to: "/admin/relations/bulk" }],
+  },
+  {
+    // 데이터 무결성 점검 — 각 콘텐츠 클러스터에 흩어져 있던 health 화면을 한곳에.
+    id: "checks",
+    section: "content",
+    label: "데이터 점검",
+    Icon: ClipboardCheckIcon,
     screens: [
+      { label: "콘텐츠 완성도", to: "/admin/laws/health" },
+      { label: "데이터 가져오기 점검", to: "/admin/seeds/preview" },
+      { label: "전문 PDF 미적재", to: "/admin/cases/pdf-missing" },
+      { label: "체계도 배치 점검", to: "/admin/cases/violations" },
+      { label: "고아 하이라이트 점검", to: "/admin/cases/orphan-highlights" },
       { label: "연결 누락 점검", to: "/admin/relations/gaps" },
-      { label: "연결 일괄 등록", to: "/admin/relations/bulk" },
     ],
   },
   {
@@ -184,10 +197,6 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "수강생 관리", to: "/admin/users" },
       // P1 — 체험→유료 전환 추적(만료 임박 워크리스트·전환율).
       { label: "체험 전환", to: "/admin/trial-conversion" },
-      // feat-7-041 — 강사 담당 과목(콘텐츠 쓰기 권한) + 배분 규칙 연결.
-      { label: "강사 담당·권한", to: "/admin/instructors" },
-      // 운영 업무별 알림 담당자 지정 (admin 전용).
-      { label: "관리자 관리", to: "/admin/staff-duties" },
       { label: "접속이력 관리", to: "/admin/access-logs" },
       { label: "탈퇴 관리", to: "/admin/withdrawals" },
       { label: "위험 수강생 (7일 무접속)", to: "/admin/cohorts/at-risk" },
@@ -206,6 +215,18 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "등업 신청", to: "/admin/cohort-requests" },
       { label: "반별 게시판 관리", to: "/admin/cohort-boards" },
       { label: "커리큘럼 관리", to: "/admin/curricula" },
+    ],
+  },
+  {
+    // 강사 관리 — 담당·권한 + 강사소개 프로필 통합(배분·정산은 커머스로).
+    id: "instructors",
+    section: "students",
+    label: "강사 관리",
+    Icon: UserCogIcon,
+    screens: [
+      // feat-7-041 — 강사 담당 과목(콘텐츠 쓰기 권한) + 배분 규칙 연결.
+      { label: "강사 담당·권한", to: "/admin/instructors" },
+      { label: "강사소개 관리", to: "/admin/instructor-profiles" },
     ],
   },
   {
@@ -277,7 +298,7 @@ export const ADMIN_NAV: NavCluster[] = [
     ],
   },
   {
-    // 공지·커뮤니티 운영 + 감사. AI Q&A 운영은 별도 클러스터(ai-qna)로 분리.
+    // 공지·커뮤니티 운영(슬림) — 랜딩 콘텐츠·Q&A·감사·알림은 별도 클러스터로 분리.
     id: "comms",
     section: "system",
     label: "공지·커뮤니티",
@@ -287,41 +308,54 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "대량 안내 발송", to: "/admin/broadcasts" },
       { label: "팝업 공지", to: "/admin/popup-notices" },
       { label: "고객센터 문의", to: "/admin/cs-inquiries" },
-      { label: "강사소개 관리", to: "/admin/instructor-profiles" },
-      // feat-12 강의 플랫폼 랜딩 관리.
-      { label: "히어로 배너", to: "/admin/landing-banners" },
-      { label: "현장강의 일정", to: "/admin/lecture-schedules" },
-      { label: "리담소식", to: "/admin/lecture-news" },
-      { label: "이용 가이드 관리", to: "/admin/guides" },
-      { label: "받은 알림함", to: "/admin/inbox" },
-      { label: "Q&A 답변 현황", to: "/admin/qna/sla" },
-      { label: "Q&A 답변자 지정", to: "/admin/qna/answerers" },
-      { label: "감사 기록", to: "/admin/audit-logs" },
       { label: "커뮤니티 신고", to: "/admin/community/reports" },
     ],
   },
   {
-    // AI Q&A 운영 — feat-9-005/006. comms 과적재 해소를 위해 별도 클러스터.
+    // Q&A 운영 통합 — 강사 답변(SLA·답변자) + AI Q&A(feat-9-005/006).
     id: "ai-qna",
     section: "system",
-    label: "AI Q&A 운영",
-    Icon: BotIcon,
+    label: "Q&A 운영",
+    Icon: MessageCircleQuestionIcon,
     screens: [
-      { label: "부정 피드백", to: "/admin/ai-qna/feedback" },
-      { label: "지표", to: "/admin/ai-qna/metrics" },
-      { label: "평가 세트", to: "/admin/ai-qna/eval" },
-      { label: "월별 사용량", to: "/admin/ai-qna/usage" },
-      { label: "색인 상태", to: "/admin/ai-qna/embed-status" },
-      { label: "한도 설정", to: "/admin/ai-qna/settings" },
+      { label: "Q&A 답변 현황", to: "/admin/qna/sla" },
+      { label: "Q&A 답변자 지정", to: "/admin/qna/answerers" },
+      { label: "AI 부정 피드백", to: "/admin/ai-qna/feedback" },
+      { label: "AI 지표", to: "/admin/ai-qna/metrics" },
+      { label: "AI 평가 세트", to: "/admin/ai-qna/eval" },
+      { label: "AI 월별 사용량", to: "/admin/ai-qna/usage" },
+      { label: "AI 색인 상태", to: "/admin/ai-qna/embed-status" },
+      { label: "AI 한도 설정", to: "/admin/ai-qna/settings" },
     ],
   },
   {
-    // 로그인 방식 등 인증 설정. feat-000-017 — id/pw 로그인 노출 토글.
-    id: "auth-settings",
+    // feat-12 강의 플랫폼 랜딩·마케팅 콘텐츠.
+    id: "landing",
     section: "system",
-    label: "로그인 설정",
-    Icon: KeyRoundIcon,
-    screens: [{ label: "로그인 방식", to: "/admin/auth" }],
+    label: "강의 플랫폼 콘텐츠",
+    Icon: MegaphoneIcon,
+    screens: [
+      { label: "히어로 배너", to: "/admin/landing-banners" },
+      { label: "현장강의 일정", to: "/admin/lecture-schedules" },
+      { label: "리담소식", to: "/admin/lecture-news" },
+    ],
+  },
+  {
+    // 시스템 — 관리자·인증·감사·알림·가이드·버그. (auth-settings 흡수)
+    id: "ops",
+    section: "system",
+    label: "시스템",
+    Icon: SettingsIcon,
+    screens: [
+      // 운영 업무별 알림 담당자 지정 (admin 전용).
+      { label: "관리자 관리", to: "/admin/staff-duties" },
+      // feat-000-017 — id/pw 로그인 노출 토글.
+      { label: "로그인 방식", to: "/admin/auth" },
+      { label: "감사 기록", to: "/admin/audit-logs" },
+      { label: "받은 알림함", to: "/admin/inbox" },
+      { label: "이용 가이드 관리", to: "/admin/guides" },
+      { label: "버그 리포트", to: "/admin/bug-reports" },
+    ],
   },
 ];
 

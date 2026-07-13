@@ -35,7 +35,7 @@ export default function AdminNews({ loaderData }: Route.ComponentProps) {
   // 순서는 고정→최신순 자동이라 ↑/↓ 미제공(reorder 는 display_order 기반 배너/일정만).
   return (
     <AdminShell
-      cluster="comms"
+      cluster="landing"
       role={role}
       title="리담소식 관리"
       desc="공지·이벤트·합격속보를 등록·편집합니다. 고정(pin)한 글이 먼저, 그다음 발행일 최신순."

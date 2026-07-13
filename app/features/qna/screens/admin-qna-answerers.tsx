@@ -103,7 +103,7 @@ export default function AdminQnaAnswerers({
   const error = actionData && "error" in actionData ? actionData.error : null;
 
   return (
-    <AdminShell title="Q&A 답변자 지정" cluster="comms">
+    <AdminShell title="Q&A 답변자 지정" cluster="ai-qna">
       <div className="mx-auto max-w-3xl space-y-6">
         <header>
           <h1 className="text-xl font-bold tracking-tight">Q&A 답변자 지정</h1>

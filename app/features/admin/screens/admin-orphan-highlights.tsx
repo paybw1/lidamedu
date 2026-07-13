@@ -62,7 +62,7 @@ export default function AdminOrphanHighlights({
 
   return (
     <AdminShell
-      cluster="cases"
+      cluster="checks"
       role={role}
       title="미연결 밑줄 점검"
       desc={

@@ -56,7 +56,7 @@ export default function AdminCaseViolations({
 
   return (
     <AdminShell
-      cluster="cases"
+      cluster="checks"
       role={role}
       title="체계도 단일 배치 위반"
       desc={

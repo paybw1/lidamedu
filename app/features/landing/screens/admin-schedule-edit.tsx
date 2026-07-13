@@ -46,7 +46,7 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
 export default function AdminScheduleEdit({ loaderData }: Route.ComponentProps) {
   const { role, row: s } = loaderData;
   return (
-    <AdminShell cluster="comms" role={role} title={s ? "일정 편집" : "일정 등록"} desc="공개를 켜야 랜딩·시간표에 노출됩니다.">
+    <AdminShell cluster="landing" role={role} title={s ? "일정 편집" : "일정 등록"} desc="공개를 켜야 랜딩·시간표에 노출됩니다.">
       <div className="mx-auto max-w-2xl p-5 md:p-8">
         <Link to="/admin/lecture-schedules" className="text-muted-foreground hover:text-foreground mb-4 inline-block text-sm">
           ← 일정 목록

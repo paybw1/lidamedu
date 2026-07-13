@@ -109,7 +109,7 @@ export default function AdminAuditLogs({ loaderData }: Route.ComponentProps) {
 
   return (
     <AdminShell
-      cluster="comms"
+      cluster="ops"
       role={role}
       title="감사 로그"
       desc={`누가 · 언제 · 어떤 대상에 · 무엇을 했는지. 전체 ${total.toLocaleString("ko-KR")}건.`}

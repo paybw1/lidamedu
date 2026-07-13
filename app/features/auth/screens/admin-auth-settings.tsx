@@ -60,7 +60,7 @@ export default function AdminAuthSettings({
   const error = actionData && "error" in actionData ? actionData.error : null;
 
   return (
-    <AdminShell title="로그인 설정" cluster="auth-settings">
+    <AdminShell title="로그인 설정" cluster="ops">
       <div className="mx-auto max-w-2xl space-y-6">
         <header>
           <h1 className="text-xl font-bold tracking-tight">로그인 설정</h1>

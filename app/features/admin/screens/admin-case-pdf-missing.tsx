@@ -106,7 +106,7 @@ export default function AdminCasePdfMissing({
   const loading = nav.state === "loading";
 
   return (
-    <AdminShell cluster="cases" title="전문 PDF 미적재 판례">
+    <AdminShell cluster="checks" title="전문 PDF 미적재 판례">
       {/* 통계 카드 */}
       <section className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label="전체 판례" value={stats.total} />
