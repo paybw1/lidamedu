@@ -48,17 +48,20 @@ export type LectureNavItem = {
   to?: string;
   children?: ReadonlyArray<{ label: string; to: string }>;
 };
+// 리담안내 하위 6개 — 상단 드롭다운과 /about 섹션 sticky 서브내비가 공유(단일 소스).
+export const LECTURE_GUIDE_LINKS: ReadonlyArray<{ label: string; to: string }> = [
+  { label: "인사말", to: "/about" },
+  { label: "강사소개", to: "/about/instructors" },
+  { label: "시험정보", to: "/lecture/exam-info" },
+  { label: "리담소식", to: "/lecture/news" },
+  { label: "학원시설", to: "/lecture/facilities" },
+  { label: "찾아오시는 길", to: "/location" },
+];
+
 export const LECTURE_NAV_LINKS: ReadonlyArray<LectureNavItem> = [
   {
     label: "리담안내",
-    children: [
-      { label: "인사말", to: "/about" },
-      { label: "강사소개", to: "/about/instructors" },
-      { label: "시험정보", to: "/lecture/exam-info" },
-      { label: "리담소식", to: "/lecture/news" },
-      { label: "학원시설", to: "/lecture/facilities" },
-      { label: "찾아오시는 길", to: "/location" },
-    ],
+    children: LECTURE_GUIDE_LINKS,
   },
   { label: "수강신청", to: "/lecture/catalog" },
   { label: "도서구입", to: "/lecture/books" },
