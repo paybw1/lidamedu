@@ -10381,6 +10381,8 @@ export type Database = {
           code: string
           created_at: string
           description: string | null
+          detail_html: string | null
+          detail_image_url: string | null
           display_order: number
           duration_days: number
           features: Json
@@ -10399,6 +10401,8 @@ export type Database = {
           code: string
           created_at?: string
           description?: string | null
+          detail_html?: string | null
+          detail_image_url?: string | null
           display_order?: number
           duration_days: number
           features?: Json
@@ -10417,6 +10421,8 @@ export type Database = {
           code?: string
           created_at?: string
           description?: string | null
+          detail_html?: string | null
+          detail_image_url?: string | null
           display_order?: number
           duration_days?: number
           features?: Json

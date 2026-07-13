@@ -1,8 +1,11 @@
 // 상품(플랜) 생성·수정 — feat-8-028 Stage B. manager+ 전용.
+import { randomUUID } from "node:crypto";
+
 import { data } from "react-router";
 import { z } from "zod";
 
 import { roleAtLeast } from "~/core/lib/roles";
+import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
 import { getStaffRole } from "~/features/laws/queries.server";
@@ -120,6 +123,36 @@ export async function action({ request }: Route.ActionArgs) {
     .map(String)
     .filter((s) => FEATURE_KEYS.has(s));
 
+  // 수강신청 상세 본문(이미지 또는 HTML) — 히어로 배너와 동일 방식.
+  //   detailKind: none=미사용 / image=이미지(업로드 또는 URL) / html=직접 HTML.
+  const detailKind = String(fd.get("detailKind") ?? "none");
+  let detailImageUrl: string | null = null;
+  let detailHtml: string | null = null;
+  if (detailKind === "image") {
+    const urlText = String(fd.get("detailImageUrl") ?? "").trim();
+    detailImageUrl = urlText === "" ? null : urlText;
+    const file = fd.get("detailImageFile");
+    if (file instanceof File && file.size > 0) {
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+      const path = `product-details/${randomUUID()}.${ext}`;
+      const { error: upErr } = await adminClient.storage
+        .from("landing-banners")
+        .upload(path, file, { contentType: file.type || undefined });
+      if (upErr) {
+        return data(
+          { error: `이미지 업로드 실패: ${upErr.message}` },
+          { status: 400 },
+        );
+      }
+      detailImageUrl = adminClient.storage
+        .from("landing-banners")
+        .getPublicUrl(path).data.publicUrl;
+    }
+  } else if (detailKind === "html") {
+    const htmlText = String(fd.get("detailHtml") ?? "").trim();
+    detailHtml = htmlText === "" ? null : htmlText;
+  }
+
   const res = await upsertPlan(
     {
       code: parsed.data.code,
@@ -134,6 +167,8 @@ export async function action({ request }: Route.ActionArgs) {
       displayOrder: parsed.data.displayOrder,
       saleStatus: parsed.data.saleStatus,
       lectureCategory: parsed.data.lectureCategory,
+      detailImageUrl,
+      detailHtml,
     },
     parsed.data.intent,
   );

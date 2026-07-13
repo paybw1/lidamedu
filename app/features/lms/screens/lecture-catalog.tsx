@@ -230,6 +230,10 @@ function ProductCard({
   return (
     <Card className="flex flex-col">
       <CardContent className="flex flex-1 flex-col gap-3 p-5">
+        <Link
+          to={`/lecture/catalog/${product.code}`}
+          className="group flex flex-1 flex-col gap-3"
+        >
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="gap-1 text-[11px]">
             {isTpass ? (
@@ -251,7 +255,7 @@ function ProductCard({
           ) : null}
         </div>
 
-        <h2 className="text-base leading-snug font-semibold text-balance">
+        <h2 className="text-base leading-snug font-semibold text-balance group-hover:underline">
           {product.name}
         </h2>
         {product.description ? (
@@ -274,6 +278,7 @@ function ProductCard({
         ) : (
           <div className="mt-auto" />
         )}
+        </Link>
 
         {product.books.length > 0 ? (
           <div className="border-t pt-2.5">

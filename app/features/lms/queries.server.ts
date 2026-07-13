@@ -475,6 +475,9 @@ export interface LectureProduct {
   courses: LectureProductCourse[];
   books: LectureProductBook[];
   owned: boolean;
+  // 수강신청 상세 본문(이미지 또는 HTML) — /lecture/catalog/:code 렌더.
+  detailImageUrl: string | null;
+  detailHtml: string | null;
 }
 
 export async function listSellableLectureProducts(
@@ -484,7 +487,7 @@ export async function listSellableLectureProducts(
   const { data: plans, error } = await client
     .from("subscription_plans")
     .select(
-      "plan_id, code, name, description, price_krw, duration_days, product_kind, lecture_category",
+      "plan_id, code, name, description, price_krw, duration_days, product_kind, lecture_category, detail_image_url, detail_html",
     )
     .in("product_kind", ["course", "tpass"])
     .eq("is_active", true)
@@ -591,5 +594,7 @@ export async function listSellableLectureProducts(
     courses: coursesByPlan.get(p.plan_id) ?? [],
     books: booksByPlan.get(p.plan_id) ?? [],
     owned: ownedPlanIds.has(p.plan_id),
+    detailImageUrl: p.detail_image_url,
+    detailHtml: p.detail_html,
   }));
 }

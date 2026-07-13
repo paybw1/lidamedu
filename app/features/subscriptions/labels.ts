@@ -90,6 +90,9 @@ export interface SubscriptionPlan {
   saleStatus: SaleStatus;
   /** 강의 카탈로그 분류(course/tpass 상품). null=미분류. */
   lectureCategory: "round1" | "round2" | "package" | "onsite" | null;
+  /** 수강신청 상세(/lecture/catalog/:code) 본문 — 히어로 배너와 동일하게 이미지 또는 HTML. */
+  detailImageUrl: string | null;
+  detailHtml: string | null;
 }
 
 export interface UserSubscription {

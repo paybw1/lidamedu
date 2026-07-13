@@ -297,6 +297,9 @@ function PlanForm({
     (plan?.productKind ?? "subject") as ProductKind,
   );
   const showPolicy = productKind === "course" || productKind === "tpass";
+  const [detailKind, setDetailKind] = useState<"none" | "image" | "html">(
+    plan?.detailImageUrl ? "image" : plan?.detailHtml ? "html" : "none",
+  );
 
   useEffect(() => {
     if (
@@ -320,6 +323,7 @@ function PlanForm({
     <fetcher.Form
       method="post"
       action="/api/admin/plan"
+      encType="multipart/form-data"
       className="bg-card border-border space-y-3 rounded-xl border p-4 shadow-sm"
     >
       <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
@@ -560,6 +564,77 @@ function PlanForm({
             수강신청(/lecture/catalog) 카테고리 탭 분류입니다.
           </span>
         </FormField>
+      ) : null}
+
+      {showPolicy ? (
+        <div className="border-border bg-muted/30 space-y-2 rounded-lg border border-dashed p-3">
+          <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+            수강신청 상세 페이지
+          </p>
+          <p className="text-muted-foreground/70 text-[11px]">
+            수강신청 목록에서 이 강의를 클릭하면 열리는 상세 화면 본문입니다.
+            히어로 배너처럼 이미지 또는 HTML 로 직접 구성합니다. (미사용 시 이름·소개·포함
+            강의·교재만 표시)
+          </p>
+          <input type="hidden" name="detailKind" value={detailKind} />
+          <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs">
+            {(
+              [
+                ["none", "미사용"],
+                ["image", "이미지"],
+                ["html", "HTML"],
+              ] as const
+            ).map(([k, label]) => (
+              <label key={k} className="inline-flex items-center gap-1">
+                <input
+                  type="radio"
+                  name="detailKindRadio"
+                  checked={detailKind === k}
+                  onChange={() => setDetailKind(k)}
+                  className="size-3.5"
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+          {detailKind === "image" ? (
+            <div className="space-y-1.5">
+              {plan?.detailImageUrl ? (
+                <img
+                  src={plan.detailImageUrl}
+                  alt="현재 상세 이미지"
+                  className="border-border max-h-48 rounded border"
+                />
+              ) : null}
+              <FormField label="이미지 파일 업로드 (세로로 긴 상세 이미지 권장)">
+                <input
+                  type="file"
+                  name="detailImageFile"
+                  accept="image/*"
+                  className="text-xs"
+                />
+              </FormField>
+              <FormField label="또는 이미지 URL 직접 입력 (파일 업로드 시 무시)">
+                <Input
+                  name="detailImageUrl"
+                  defaultValue={plan?.detailImageUrl ?? ""}
+                  placeholder="https://..."
+                  className="h-8 text-xs"
+                />
+              </FormField>
+            </div>
+          ) : detailKind === "html" ? (
+            <FormField label="HTML 본문">
+              <textarea
+                name="detailHtml"
+                rows={8}
+                defaultValue={plan?.detailHtml ?? ""}
+                placeholder="<section>...</section>"
+                className="border-input bg-background w-full rounded-md border px-2 py-1 font-mono text-[11px]"
+              />
+            </FormField>
+          ) : null}
+        </div>
       ) : null}
 
       {showPolicy ? (

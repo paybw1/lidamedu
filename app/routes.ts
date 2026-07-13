@@ -253,6 +253,10 @@ export default [
     // 내 강의실(수강현황) — 구 /me/courses 를 여기로 이관(아래 redirect 유지).
     route("/lecture", "features/lms/screens/my-courses.tsx"),
     route("/lecture/catalog", "features/lms/screens/lecture-catalog.tsx"),
+    route(
+      "/lecture/catalog/:productCode",
+      "features/lms/screens/lecture-product-detail.tsx",
+    ),
     route("/lecture/cart", "features/lms/screens/lecture-cart.tsx"),
     // 도서몰(B1) — 썸네일 카탈로그 + 상세.
     route("/lecture/books", "features/bookstore/screens/bookstore-catalog.tsx"),
