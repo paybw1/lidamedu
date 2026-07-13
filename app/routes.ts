@@ -285,6 +285,10 @@ export default [
     // feat-12 강의 플랫폼 랜딩 + 현장강의 일정 + 리담소식(공개).
     route("/lecture/home", "features/landing/screens/landing.tsx"),
     route("/lecture/schedule", "features/landing/screens/schedule.tsx"),
+    route(
+      "/lecture/schedule/:scheduleId",
+      "features/landing/screens/schedule-detail.tsx",
+    ),
     route("/lecture/news", "features/landing/screens/news.tsx"),
     route("/lecture/news/:newsId", "features/landing/screens/news-detail.tsx"),
     // 시험정보 — 리담안내 하위 공개 정적 페이지(변리사 시험 일정·과목·기준).
