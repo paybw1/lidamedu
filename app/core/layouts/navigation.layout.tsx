@@ -1,7 +1,7 @@
 import type { Route } from "./+types/navigation.layout";
 
 import { type CSSProperties, Suspense, useEffect, useState } from "react";
-import { Await, Link, Outlet, data } from "react-router";
+import { Await, Link, Outlet, data, useLocation } from "react-router";
 
 import { BugReportWidget } from "~/features/bug-reports/components/bug-report-widget";
 import { listActivePopupNotices } from "~/features/admin/queries/popup-notices.server";
@@ -82,6 +82,11 @@ export async function loader({ request }: Route.LoaderArgs) {
 export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
   const { userPromise, inboxPromise, navMode, popupNoticesPromise } =
     loaderData;
+  // 운영관리(/admin)는 두 플랫폼 공용 영역 — 학습 플랫폼 메뉴를 숨긴 중립 상단 바로
+  // 렌더(로고·플랫폼 스위처·인박스·계정만). 강의 플랫폼에서 진입해도 학습 플랫폼으로
+  // 바뀐 것처럼 보이지 않도록. 콘솔 UI 는 AdminShell 사이드바가 담당.
+  const { pathname } = useLocation();
+  const isAdminArea = pathname === "/admin" || pathname.startsWith("/admin/");
   const isSidebar = navMode === "sidebar";
   // 하단 탭바 접기 상태 — 공부 화면 확대용. localStorage 로 유지.
   const [navCollapsed, setNavCollapsed] = useState(false);
@@ -116,13 +121,17 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
       }
     >
       {/* 상단 NavigationBar — sidebar 모드에선 hideAll=true → null. 그 외는 정상 노출. */}
-      <Suspense fallback={<NavigationBar loading={true} hideAll={isSidebar} />}>
+      <Suspense
+        fallback={
+          <NavigationBar loading={true} hideAll={isSidebar} hideMenus={isAdminArea} />
+        }
+      >
         <Await resolve={userPromise}>
           {({ data: { user } }) =>
             user === null ? (
               // 비로그인 — 사이드바 모드 쿠키가 있어도 상단 바를 유지한다.
               // (사이드바는 인증 사용자 전용이라 hideAll 로 숨기면 내비가 통째로 사라짐)
-              <NavigationBar loading={false} hideAll={false} />
+              <NavigationBar loading={false} hideAll={false} hideMenus={isAdminArea} />
             ) : (
               <Suspense
                 fallback={
@@ -132,6 +141,7 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
                     avatarUrl={user.user_metadata.avatar_url}
                     loading={false}
                     hideAll={isSidebar}
+                    hideMenus={isAdminArea}
                   />
                 }
               >
@@ -150,6 +160,7 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
                       subjects={inbox.subjects}
                       staffPreparing={inbox.staffPreparing}
                       hideAll={isSidebar}
+                      hideMenus={isAdminArea}
                     />
                   )}
                 </Await>
