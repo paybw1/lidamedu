@@ -618,6 +618,18 @@ export default [
         "/admin/cs-inquiries",
         "features/cs-inquiries/screens/admin-cs-inquiries.tsx",
       ),
+      // 고객센터 FAQ 관리(/lecture/support 상단 노출).
+      route("/admin/support-faqs", "features/cs-inquiries/screens/admin-faqs.tsx"),
+      route(
+        "/admin/support-faqs/new",
+        "features/cs-inquiries/screens/admin-faq-edit.tsx",
+        { id: "admin-faq-new" },
+      ),
+      route(
+        "/admin/support-faqs/:faqId/edit",
+        "features/cs-inquiries/screens/admin-faq-edit.tsx",
+      ),
+      route("/api/admin/support-faq", "features/cs-inquiries/api/admin-faq.tsx"),
       // feat-6-012 — 강사소개 관리(프로필: 경력·저서·철학·사진, /about/instructors 노출).
       // 경로는 feat-7-041 강사 담당·배분(/admin/instructors)과 충돌 방지 위해 분리.
       route(

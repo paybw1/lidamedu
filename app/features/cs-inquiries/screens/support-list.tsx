@@ -12,6 +12,7 @@ import {
   CS_STATUS_LABEL,
   type CsStatus,
 } from "../labels";
+import { listSupportFaqGroups } from "../faq.server";
 import { listInquiries, type CsInquiryRow } from "../queries.server";
 
 import type { Route } from "./+types/support-list";
@@ -26,10 +27,13 @@ export async function loader({ request }: Route.LoaderArgs) {
     data: { user },
   } = await client.auth.getUser();
   if (!user) throw data(null, { status: 401 });
-  const rows = await listInquiries(client);
+  const [rows, faqGroups] = await Promise.all([
+    listInquiries(client),
+    listSupportFaqGroups(client),
+  ]);
   const mine = rows.filter((r) => r.authorId === user.id);
   const others = rows.filter((r) => r.authorId !== user.id); // 공개 문의(비공개는 RLS 로 이미 제외)
-  return { mine, others };
+  return { mine, others, faqGroups };
 }
 
 const STATUS_VARIANT: Record<CsStatus, "default" | "secondary" | "outline"> = {
@@ -77,7 +81,7 @@ function InquiryRow({ it, mine }: { it: CsInquiryRow; mine: boolean }) {
 }
 
 export default function SupportList({ loaderData }: Route.ComponentProps) {
-  const { mine, others } = loaderData;
+  const { mine, others, faqGroups } = loaderData;
   return (
     <CohortBoardShell
       title="고객센터"
@@ -91,6 +95,40 @@ export default function SupportList({ loaderData }: Route.ComponentProps) {
         </Button>
       }
     >
+      {faqGroups.length > 0 ? (
+        <section className="mb-8">
+          <h2 className="mb-1 text-sm font-bold">자주 묻는 질문</h2>
+          <p className="text-muted-foreground mb-3 text-xs">
+            문의를 남기기 전에 먼저 확인해 보세요.
+          </p>
+          <div className="flex flex-col gap-4">
+            {faqGroups.map((g) => (
+              <div key={g.category}>
+                <h3 className="text-muted-foreground mb-1.5 text-[11px] font-bold tracking-wide">
+                  {g.category}
+                </h3>
+                <div className="divide-border bg-card divide-y rounded-xl border">
+                  {g.items.map((f) => (
+                    <details key={f.faqId} className="group px-4">
+                      <summary className="flex cursor-pointer list-none items-center gap-2 py-3 text-sm font-medium [&::-webkit-details-marker]:hidden">
+                        <span className="text-primary font-bold">Q</span>
+                        <span className="min-w-0 flex-1">{f.question}</span>
+                        <span className="text-muted-foreground shrink-0 transition-transform group-open:rotate-180">
+                          ⌄
+                        </span>
+                      </summary>
+                      <p className="text-muted-foreground pb-4 pl-5 text-[13px] leading-relaxed whitespace-pre-wrap">
+                        {f.answer}
+                      </p>
+                    </details>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       <section className="mb-6">
         <h2 className="mb-2 text-sm font-bold">내 문의</h2>
         {mine.length === 0 ? (

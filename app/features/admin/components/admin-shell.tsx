@@ -314,6 +314,7 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "대량 안내 발송", to: "/admin/broadcasts", minRole: "manager" },
       { label: "팝업 공지", to: "/admin/popup-notices" },
       { label: "고객센터 문의", to: "/admin/cs-inquiries" },
+      { label: "FAQ 관리", to: "/admin/support-faqs" },
       { label: "커뮤니티 신고", to: "/admin/community/reports" },
     ],
   },

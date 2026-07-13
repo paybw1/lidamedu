@@ -10414,6 +10414,42 @@ export type Database = {
         }
         Relationships: []
       }
+      support_faqs: {
+        Row: {
+          answer: string
+          category: string
+          created_at: string
+          deleted_at: string | null
+          faq_id: string
+          published: boolean
+          question: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          answer?: string
+          category?: string
+          created_at?: string
+          deleted_at?: string | null
+          faq_id?: string
+          published?: boolean
+          question: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          answer?: string
+          category?: string
+          created_at?: string
+          deleted_at?: string | null
+          faq_id?: string
+          published?: boolean
+          question?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       systematic_nodes: {
         Row: {
           case_display_label: string | null
