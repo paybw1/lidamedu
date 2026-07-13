@@ -2,13 +2,19 @@
 // 구매는 단건 결제: /api/payments/create-order(1-item 주문 경유) → 토스 requestPayment.
 // 결제 성공 시 confirm 이 주문 fulfill → enrollments 지급(M4).
 import { CheckIcon, GraduationCapIcon, TicketIcon } from "lucide-react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent } from "~/core/components/ui/card";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { cn } from "~/core/lib/utils";
 import { useCart } from "~/features/lms/lib/cart";
+import {
+  LECTURE_CATEGORIES,
+  LECTURE_CATEGORY_LABEL,
+  type LectureCategory,
+} from "~/features/lms/lib/lecture-category";
 import { PRODUCT_KIND_LABEL } from "~/features/subscriptions/labels";
 import {
   type LectureProduct,
@@ -78,12 +84,61 @@ async function startLectureCheckout(
 
 export default function LectureCatalog({ loaderData }: Route.ComponentProps) {
   const { products, isAuthed, tossClientKey } = loaderData;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const catParam = searchParams.get("cat");
+  const activeCat: LectureCategory | null =
+    catParam && (LECTURE_CATEGORIES as readonly string[]).includes(catParam)
+      ? (catParam as LectureCategory)
+      : null;
+
+  const counts = LECTURE_CATEGORIES.reduce(
+    (acc, c) => {
+      acc[c] = products.filter((p) => p.category === c).length;
+      return acc;
+    },
+    {} as Record<LectureCategory, number>,
+  );
+  const filtered = activeCat
+    ? products.filter((p) => p.category === activeCat)
+    : products;
+
+  const setCat = (c: LectureCategory | null) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (c) next.set("cat", c);
+        else next.delete("cat");
+        return next;
+      },
+      { preventScrollReset: true },
+    );
+  };
+
   return (
     <div className="mx-auto w-full max-w-[1200px] px-4 py-10 md:px-6">
       <h1 className="text-2xl font-bold tracking-tight">수강신청</h1>
       <p className="text-muted-foreground mt-1 text-sm">
         영상 강의와 기간권(T-PASS)을 수강신청·구매합니다.
       </p>
+
+      {/* 카테고리 탭 — 전체 / 1차 / 2차 / 패키지 / 현장 */}
+      <div className="mt-6 flex flex-wrap gap-1.5">
+        <CatTab
+          label="전체"
+          count={products.length}
+          active={activeCat === null}
+          onClick={() => setCat(null)}
+        />
+        {LECTURE_CATEGORIES.map((c) => (
+          <CatTab
+            key={c}
+            label={LECTURE_CATEGORY_LABEL[c]}
+            count={counts[c]}
+            active={activeCat === c}
+            onClick={() => setCat(c)}
+          />
+        ))}
+      </div>
 
       {products.length === 0 ? (
         <div className="mt-8 flex flex-col items-center justify-center rounded-xl border border-dashed px-6 py-16 text-center">
@@ -93,9 +148,23 @@ export default function LectureCatalog({ loaderData }: Route.ComponentProps) {
             강의가 오픈되면 이곳에서 수강신청할 수 있습니다.
           </p>
         </div>
+      ) : filtered.length === 0 ? (
+        <div className="mt-8 flex flex-col items-center justify-center rounded-xl border border-dashed px-6 py-16 text-center">
+          <GraduationCapIcon className="text-muted-foreground/50 size-10" />
+          <p className="mt-4 text-sm font-medium">
+            이 분류의 강의가 아직 없습니다
+          </p>
+          <button
+            type="button"
+            onClick={() => setCat(null)}
+            className="text-link mt-2 text-sm font-semibold hover:underline"
+          >
+            전체 보기 →
+          </button>
+        </div>
       ) : (
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {products.map((p) => (
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {filtered.map((p) => (
             <ProductCard
               key={p.planId}
               product={p}
@@ -106,6 +175,43 @@ export default function LectureCatalog({ loaderData }: Route.ComponentProps) {
         </div>
       )}
     </div>
+  );
+}
+
+// 카테고리 탭 — 세그먼트 pill(수 뱃지 포함).
+function CatTab({
+  label,
+  count,
+  active,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[13px] font-semibold transition-colors",
+        active
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-border bg-background text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {label}
+      <span
+        className={cn(
+          "rounded-full px-1.5 text-[11px] tabular-nums",
+          active ? "bg-primary-foreground/20" : "bg-muted",
+        )}
+      >
+        {count}
+      </span>
+    </button>
   );
 }
 
@@ -133,6 +239,11 @@ function ProductCard({
             )}
             {PRODUCT_KIND_LABEL[product.productKind]}
           </Badge>
+          {product.category ? (
+            <Badge variant="outline" className="text-[11px]">
+              {LECTURE_CATEGORY_LABEL[product.category]}
+            </Badge>
+          ) : null}
           {product.durationDays > 0 ? (
             <span className="text-muted-foreground text-[11px]">
               {product.durationDays}일 수강

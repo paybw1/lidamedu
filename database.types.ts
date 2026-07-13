@@ -10295,6 +10295,7 @@ export type Database = {
           duration_days: number
           features: Json
           is_active: boolean
+          lecture_category: string | null
           name: string
           plan_id: string
           price_krw: number
@@ -10312,6 +10313,7 @@ export type Database = {
           duration_days: number
           features?: Json
           is_active?: boolean
+          lecture_category?: string | null
           name: string
           plan_id?: string
           price_krw: number
@@ -10329,6 +10331,7 @@ export type Database = {
           duration_days?: number
           features?: Json
           is_active?: boolean
+          lecture_category?: string | null
           name?: string
           plan_id?: string
           price_krw?: number

@@ -6,6 +6,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
+import {
+  type LectureCategory,
+  toLectureCategory,
+} from "~/features/lms/lib/lecture-category";
 
 type Client = SupabaseClient<Database>;
 
@@ -467,6 +471,7 @@ export interface LectureProduct {
   priceKrw: number;
   productKind: "course" | "tpass";
   durationDays: number;
+  category: LectureCategory | null;
   courses: LectureProductCourse[];
   books: LectureProductBook[];
   owned: boolean;
@@ -479,7 +484,7 @@ export async function listSellableLectureProducts(
   const { data: plans, error } = await client
     .from("subscription_plans")
     .select(
-      "plan_id, code, name, description, price_krw, duration_days, product_kind",
+      "plan_id, code, name, description, price_krw, duration_days, product_kind, lecture_category",
     )
     .in("product_kind", ["course", "tpass"])
     .eq("is_active", true)
@@ -582,6 +587,7 @@ export async function listSellableLectureProducts(
     priceKrw: p.price_krw,
     productKind: p.product_kind as "course" | "tpass",
     durationDays: p.duration_days,
+    category: toLectureCategory(p.lecture_category),
     courses: coursesByPlan.get(p.plan_id) ?? [],
     books: booksByPlan.get(p.plan_id) ?? [],
     owned: ownedPlanIds.has(p.plan_id),
