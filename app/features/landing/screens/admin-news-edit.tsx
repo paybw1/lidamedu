@@ -8,6 +8,7 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { getStaffRole } from "~/features/laws/queries.server";
 
+import { newsKindLabel } from "../labels";
 import { getNews } from "../queries.server";
 
 import type { Route } from "./+types/admin-news-edit";
@@ -48,12 +49,22 @@ export default function AdminNewsEdit({ loaderData }: Route.ComponentProps) {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
-              <Label className="text-[13px]">종류</Label>
-              <select name="kind" defaultValue={n?.kind ?? "notice"} className="border-input bg-background h-9 rounded-md border px-2 text-sm">
-                <option value="notice">공지</option>
-                <option value="event">이벤트</option>
-                <option value="passer">합격속보</option>
-              </select>
+              <Label className="text-[13px]">
+                종류
+                <span className="text-muted-foreground ml-2 text-[11px] font-normal">직접 입력 가능</span>
+              </Label>
+              <Input
+                name="kind"
+                list="news-kind-suggest"
+                defaultValue={newsKindLabel(n?.kind ?? "공지")}
+                maxLength={20}
+                placeholder="공지 · 이벤트 · 직접 입력"
+                className={IN}
+              />
+              <datalist id="news-kind-suggest">
+                <option value="공지" />
+                <option value="이벤트" />
+              </datalist>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label className="text-[13px]">발행 일시</Label>

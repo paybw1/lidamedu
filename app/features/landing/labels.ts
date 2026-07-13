@@ -28,6 +28,19 @@ export const NEWS_KIND_LABEL: Record<NewsKind, string> = {
   passer: "합격속보",
 };
 
+// 종류는 운영자 자유 입력 — 알려진 코드는 한글 라벨로, 자유 입력은 그대로 표시.
+export function newsKindLabel(kind: string): string {
+  return NEWS_KIND_LABEL[kind as NewsKind] ?? kind;
+}
+// 칩 색상 클래스 — 알려진 종류만 색, 자유 입력은 기본(공지 색).
+export function newsKindChipClass(kind: string): string {
+  if (kind === "notice" || kind === "event" || kind === "passer") return kind;
+  if (kind === "공지") return "notice";
+  if (kind === "이벤트") return "event";
+  if (kind === "합격속보") return "passer";
+  return "notice";
+}
+
 // ── 배너 ──
 export type BannerKind = "schedule" | "promo" | "passer" | "custom";
 export const BANNER_KIND_LABEL: Record<BannerKind, string> = {

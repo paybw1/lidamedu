@@ -5,7 +5,7 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import { MarkdownView } from "~/features/problems/components/markdown-view";
 
 import { LandingStyle } from "../components/landing-style";
-import { NEWS_KIND_LABEL, type NewsKind } from "../labels";
+import { newsKindChipClass, newsKindLabel } from "../labels";
 import { getNews } from "../queries.server";
 
 import type { Route } from "./+types/news-detail";
@@ -32,8 +32,8 @@ export default function NewsDetail({ loaderData }: Route.ComponentProps) {
             ← 리담소식
           </Link>
           <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 10 }}>
-            <span className={`chip ${news.kind}`}>
-              {NEWS_KIND_LABEL[news.kind as NewsKind]}
+            <span className={`chip ${newsKindChipClass(news.kind)}`}>
+              {newsKindLabel(news.kind)}
             </span>
             <span className="tnum" style={{ color: "var(--faint)", fontSize: 13 }}>
               {news.published_at.slice(0, 10).replace(/-/g, ".")}

@@ -9,7 +9,7 @@ import { AdminShell } from "~/features/admin/components/admin-shell";
 import { getStaffRole } from "~/features/laws/queries.server";
 
 import { AdminRowControls } from "../components/admin-row-controls";
-import { NEWS_KIND_LABEL, type NewsKind } from "../labels";
+import { newsKindLabel } from "../labels";
 import { listNews } from "../queries.server";
 
 import type { Route } from "./+types/admin-news";
@@ -64,7 +64,7 @@ export default function AdminNews({ loaderData }: Route.ComponentProps) {
                     {it.published_at.slice(0, 10)}
                   </span>
                   <Badge variant="outline" className="shrink-0 text-[11px]">
-                    {NEWS_KIND_LABEL[it.kind as NewsKind]}
+                    {newsKindLabel(it.kind)}
                   </Badge>
                   <span className="min-w-0 flex-1 truncate text-sm font-semibold">
                     {it.pinned ? (

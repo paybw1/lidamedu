@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import makeServerClient from "~/core/lib/supa-client.server";
 
 import { LandingStyle } from "../components/landing-style";
-import { NEWS_KIND_LABEL, type NewsKind } from "../labels";
+import { newsKindChipClass, newsKindLabel } from "../labels";
 import { listNews } from "../queries.server";
 
 import type { Route } from "./+types/news";
@@ -44,8 +44,8 @@ export default function News({ loaderData }: Route.ComponentProps) {
                   to={`/lecture/news/${it.news_id}`}
                   key={it.news_id}
                 >
-                  <span className={`chip ${it.kind}`}>
-                    {NEWS_KIND_LABEL[it.kind as NewsKind]}
+                  <span className={`chip ${newsKindChipClass(it.kind)}`}>
+                    {newsKindLabel(it.kind)}
                   </span>
                   <span className="nt">{it.title}</span>
                   <span className="nd tnum">

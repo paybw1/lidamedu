@@ -14,7 +14,7 @@ import { HeroCarousel } from "../components/hero-carousel";
 import { InstructorRail } from "../components/instructor-rail";
 import { LandingStyle } from "../components/landing-style";
 import { ScheduleRail } from "../components/schedule-rail";
-import { NEWS_KIND_LABEL, type NewsKind } from "../labels";
+import { newsKindChipClass, newsKindLabel } from "../labels";
 import { listBanners, listNews, listSchedules } from "../queries.server";
 
 import { Reveal } from "../components/reveal";
@@ -81,8 +81,8 @@ export default function Landing({ loaderData }: Route.ComponentProps) {
             <Reveal className="newslist">
               {news.map((it) => (
                 <Link className="nrow" to={`/lecture/news/${it.news_id}`} key={it.news_id}>
-                  <span className={`chip ${it.kind}`}>
-                    {NEWS_KIND_LABEL[it.kind as NewsKind]}
+                  <span className={`chip ${newsKindChipClass(it.kind)}`}>
+                    {newsKindLabel(it.kind)}
                   </span>
                   <span className="nt">{it.title}</span>
                   <span className="nd tnum">
