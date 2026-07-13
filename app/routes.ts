@@ -287,6 +287,8 @@ export default [
     route("/lecture/schedule", "features/landing/screens/schedule.tsx"),
     route("/lecture/news", "features/landing/screens/news.tsx"),
     route("/lecture/news/:newsId", "features/landing/screens/news-detail.tsx"),
+    // 시험정보 — 리담안내 하위 공개 정적 페이지(변리사 시험 일정·과목·기준).
+    route("/lecture/exam-info", "features/landing/screens/exam-info.tsx"),
     // 리담안내(인사말·강사진·찾아오시는 길) — 강의 플랫폼 소속. 강의 nav 의 "리담안내"
     // 클릭 시 학습 플랫폼으로 튕기지 않도록 lecture.layout 아래에 둔다(공개 접근 가능).
     route("/about", "features/home/screens/about.tsx"),
