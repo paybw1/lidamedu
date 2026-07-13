@@ -21,7 +21,7 @@ export function ProblemCodeChip({ displayNo }: { displayNo: number }) {
         }
       }}
       className="border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold tabular-nums"
-      title="문제번호 복사 — Q&A에서 이 번호로 문제를 특정할 수 있어요"
+      title="문제번호 복사 — Q&A에서 이 번호로 문제를 특정할 수 있습니다"
     >
       {code}
       {copied ? (

@@ -1300,7 +1300,7 @@ async function applyRenewalFailure(
     kind: "payment_failed",
     entityType: "subscription",
     entityId: sub.subscription_id,
-    title: "자동결제에 실패했어요",
+    title: "자동결제에 실패했습니다",
     body: `‘${planName}’ 자동결제가 거절되었습니다(${reason}). ${nextRetry ? `${fmtKstDay(nextRetry)}에 다시 시도합니다. ` : ""}${fmtKstDay(grace)}까지 결제 수단을 확인해 주세요.`,
     href: "/me/subscription",
   });

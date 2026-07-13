@@ -814,7 +814,7 @@ function MasteryCard({ rows }: { rows: StatsData["nodeMastery"] }) {
       <div className="space-y-3 px-6 pb-6">
         {engaged === 0 ? (
           <p className="text-muted-foreground text-sm">
-            아직 학습한 단원이 없어요. 문제를 풀면 단원별 숙련도가 쌓여요.
+            아직 학습한 단원이 없습니다. 문제를 풀면 단원별 숙련도가 쌓입니다.
           </p>
         ) : (
           <>
@@ -1015,7 +1015,7 @@ function StudyTimeTrendCard({
           <TrendingUpIcon className="size-4" /> 주별 학습시간
         </h2>
         <p className="text-muted-foreground text-xs">
-          선택한 기간의 주별 문제 풀이 시간입니다 · 가장 오른쪽이 최근 주예요.
+          선택한 기간의 주별 문제 풀이 시간입니다 · 가장 오른쪽이 최근 주입니다.
         </p>
       </div>
       <div className="px-6 pb-6">

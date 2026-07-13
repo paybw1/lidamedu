@@ -211,7 +211,7 @@ export default function Pricing({ loaderData }: Route.ComponentProps) {
               <span>
                 🧪 관리자 결제 테스트 모드 —{" "}
                 {testStudentMode
-                  ? "학생처럼 결제 UI가 표시됩니다. 실제 결제(테스트 키)까지 진행할 수 있어요."
+                  ? "학생처럼 결제 UI가 표시됩니다. 실제 결제(테스트 키)까지 진행할 수 있습니다."
                   : "관리자는 전 과목 보유 중이라 결제 버튼이 숨겨집니다. 켜면 학생처럼 결제 UI가 보입니다."}
               </span>
               <Button asChild size="sm" variant="outline">

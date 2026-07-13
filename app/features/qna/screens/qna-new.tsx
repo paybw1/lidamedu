@@ -340,7 +340,7 @@ function QnaTargetPicker() {
       <CommunityShell
         category="qna"
         title="새 질문"
-        desc="이 조문은 여러 쟁점에 걸쳐 있어요. 어느 쟁점에 대한 질문인가요?"
+        desc="이 조문은 여러 쟁점에 걸쳐 있습니다. 어느 쟁점에 대한 질문인가요?"
         backLink={{ to: "/qna", label: "Q&A 목록" }}
         width="narrow"
       >
@@ -742,7 +742,7 @@ function QnaForm({
               name="questionMd"
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              placeholder="질문 배경과 본인이 어디까지 정리했는지, 막히는 부분을 구체적으로 적으면 더 좋은 답변을 받을 수 있어요."
+              placeholder="질문 배경과 본인이 어디까지 정리했는지, 막히는 부분을 구체적으로 적으면 더 좋은 답변을 받을 수 있습니다."
               rows={10}
               className="text-sm leading-relaxed"
               required
