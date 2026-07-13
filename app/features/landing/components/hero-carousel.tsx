@@ -23,6 +23,26 @@ function Headline({ text, hl }: { text: string; hl: string | null }) {
   );
 }
 
+// 이미지 배너 — 슬라이드 전체를 이미지로. cta_href 있으면 클릭 이동.
+function BannerImage({
+  src,
+  alt,
+  href,
+}: {
+  src: string;
+  alt: string;
+  href: string | null;
+}) {
+  const img = <img className="slide-img" src={src} alt={alt} />;
+  return href ? (
+    <Link to={href} className="slide-imglink">
+      {img}
+    </Link>
+  ) : (
+    img
+  );
+}
+
 function Cta({ banner }: { banner: BannerRow }) {
   return (
     <div className="cta">
@@ -197,11 +217,26 @@ export function HeroCarousel({
       >
         {banners.map((b) => (
           <div
-            className={`slide ${b.accent}`}
+            className={`slide ${b.accent}${
+              b.kind === "image" && b.image_url
+                ? " imgslide"
+                : b.kind === "html" && b.body_html
+                  ? " htmlslide"
+                  : ""
+            }`}
             key={b.banner_id}
             role="group"
             aria-roledescription="슬라이드"
           >
+            {b.kind === "image" && b.image_url ? (
+              <BannerImage src={b.image_url} alt={b.headline || "배너"} href={b.cta_href} />
+            ) : b.kind === "html" && b.body_html ? (
+              <div
+                className="slide-html"
+                // 운영자(staff)가 작성하는 랜딩 CMS 콘텐츠 — 코드 편집과 동등한 신뢰 경계.
+                dangerouslySetInnerHTML={{ __html: b.body_html }}
+              />
+            ) : (
             <div className="wrap hero-in">
               <div>
                 {b.eyebrow ? <p className="eyebrow">{b.eyebrow}</p> : null}
@@ -235,6 +270,7 @@ export function HeroCarousel({
               </div>
               <RightCard banner={b} schedules={schedules} todayISO={todayISO} />
             </div>
+            )}
           </div>
         ))}
       </div>

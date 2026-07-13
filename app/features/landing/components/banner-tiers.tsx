@@ -1,0 +1,67 @@
+// feat-12 히어로 아래 추가 단(2·3단) 배너 밴드. 이미지/HTML/구조형(간이 카드) 지원.
+//   tier 로 나눈 배너를 각 밴드(band)로 렌더. *.server 값 import 금지(빌드 함정).
+import { Link } from "react-router";
+
+import type { BannerRow } from "../labels";
+
+function Block({ b }: { b: BannerRow }) {
+  if (b.kind === "image" && b.image_url) {
+    const img = (
+      <img className="bt-img" src={b.image_url} alt={b.headline || "배너"} loading="lazy" />
+    );
+    return b.cta_href ? (
+      <Link to={b.cta_href} className="bt-block bt-imglink">
+        {img}
+      </Link>
+    ) : (
+      <div className="bt-block">{img}</div>
+    );
+  }
+  if (b.kind === "html" && b.body_html) {
+    return (
+      <div
+        className="bt-block bt-html"
+        // 운영자(staff) 작성 랜딩 CMS 콘텐츠 — 코드 편집과 동등한 신뢰 경계.
+        dangerouslySetInnerHTML={{ __html: b.body_html }}
+      />
+    );
+  }
+  // 구조형(텍스트) — 간이 카드.
+  return (
+    <div className={`bt-block bt-card ${b.accent}`}>
+      {b.eyebrow ? <span className="bt-eye">{b.eyebrow}</span> : null}
+      {b.headline ? <h3>{b.headline}</h3> : null}
+      {b.sub ? <p>{b.sub}</p> : null}
+      {b.cta_label ? (
+        <Link className="btn gilt" to={b.cta_href || "#"}>
+          {b.cta_label} →
+        </Link>
+      ) : null}
+    </div>
+  );
+}
+
+function Tier({ banners }: { banners: BannerRow[] }) {
+  if (banners.length === 0) return null;
+  return (
+    <section className="btier">
+      <div className="wrap">
+        <div className={`bt-grid${banners.length === 1 ? " one" : ""}`}>
+          {banners.map((b) => (
+            <Block b={b} key={b.banner_id} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function BannerTiers({ tier2, tier3 }: { tier2: BannerRow[]; tier3: BannerRow[] }) {
+  if (tier2.length === 0 && tier3.length === 0) return null;
+  return (
+    <>
+      <Tier banners={tier2} />
+      <Tier banners={tier3} />
+    </>
+  );
+}

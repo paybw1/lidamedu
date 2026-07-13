@@ -6087,6 +6087,7 @@ export type Database = {
           banner_id: string
           big_unit: string | null
           big_value: string | null
+          body_html: string | null
           created_at: string
           cta_href: string | null
           cta_label: string | null
@@ -6095,11 +6096,13 @@ export type Database = {
           eyebrow: string | null
           headline: string
           highlight: string | null
+          image_url: string | null
           kind: string
           published: boolean
           secondary_href: string | null
           secondary_label: string | null
           sub: string | null
+          tier: number
           updated_at: string
         }
         Insert: {
@@ -6108,6 +6111,7 @@ export type Database = {
           banner_id?: string
           big_unit?: string | null
           big_value?: string | null
+          body_html?: string | null
           created_at?: string
           cta_href?: string | null
           cta_label?: string | null
@@ -6116,11 +6120,13 @@ export type Database = {
           eyebrow?: string | null
           headline: string
           highlight?: string | null
+          image_url?: string | null
           kind?: string
           published?: boolean
           secondary_href?: string | null
           secondary_label?: string | null
           sub?: string | null
+          tier?: number
           updated_at?: string
         }
         Update: {
@@ -6129,6 +6135,7 @@ export type Database = {
           banner_id?: string
           big_unit?: string | null
           big_value?: string | null
+          body_html?: string | null
           created_at?: string
           cta_href?: string | null
           cta_label?: string | null
@@ -6137,11 +6144,13 @@ export type Database = {
           eyebrow?: string | null
           headline?: string
           highlight?: string | null
+          image_url?: string | null
           kind?: string
           published?: boolean
           secondary_href?: string | null
           secondary_label?: string | null
           sub?: string | null
+          tier?: number
           updated_at?: string
         }
         Relationships: []

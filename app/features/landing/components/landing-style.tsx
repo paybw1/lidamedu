@@ -48,6 +48,11 @@ export function LandingStyle() {
 .llx .slide.green{background:radial-gradient(120% 130% at 50% -32%,rgba(74,222,128,.16),transparent 55%),linear-gradient(158deg,var(--navy),var(--navy2))}
 .llx .slide::after{content:"";position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(var(--hero-soft) 1px,transparent 1px);background-size:100% 38px;opacity:.045}
 .llx .hero-in{position:relative;z-index:1;display:grid;grid-template-columns:1.15fr .85fr;gap:48px;align-items:center;padding:72px 0 92px}
+/* 이미지/HTML 배너 슬라이드 — 만든 그대로 노출 */
+.llx .slide.imgslide,.llx .slide.htmlslide{min-height:clamp(320px,40vw,500px);display:flex}
+.llx .slide-imglink,.llx .slide-img{display:block;width:100%}
+.llx .slide-img{height:100%;object-fit:cover;position:relative;z-index:1}
+.llx .slide-html{position:relative;z-index:1;width:100%;align-self:center;color:var(--hero-ink)}
 .llx .slide h1{font-size:clamp(32px,4.4vw,52px);font-weight:900;line-height:1.09;letter-spacing:-.035em;text-wrap:balance;margin:16px 0 18px}
 .llx .slide h1 .hl{color:var(--gilt-soft)}
 .llx .slide .sub{color:var(--hero-soft);font-size:clamp(15px,1.5vw,17px);max-width:34ch;line-height:1.75}
@@ -86,6 +91,24 @@ export function LandingStyle() {
 .llx .promo p{color:var(--hero-soft);font-size:14px;margin-bottom:20px;line-height:1.6}
 .llx .pbadges{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:16px 0 20px}
 .llx .pbadges span{font-size:12px;font-weight:800;color:#fff;background:rgba(74,222,128,.16);border:1px solid rgba(74,222,128,.32);padding:6px 11px;border-radius:99px}
+
+/* 히어로 아래 추가 단(2·3단) 배너 */
+.llx .btier{padding:22px 0 0}
+.llx .btier:first-of-type{padding-top:26px}
+.llx .bt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+.llx .bt-grid.one{grid-template-columns:1fr}
+.llx .bt-block{border-radius:16px;overflow:hidden;box-shadow:var(--lshadow)}
+.llx .bt-imglink{display:block;transition:transform .18s}
+.llx .bt-imglink:hover{transform:translateY(-3px)}
+.llx .bt-img{display:block;width:100%;height:auto}
+.llx .bt-html{background:var(--lsurface);border:1px solid var(--line);padding:0}
+.llx .bt-card{background:linear-gradient(158deg,var(--navy),var(--navy2));color:var(--hero-ink);padding:26px 24px;display:flex;flex-direction:column;gap:10px;align-items:flex-start;position:relative;overflow:hidden}
+.llx .bt-card.blue{background:linear-gradient(158deg,#2d5ba8,#1c3f75)}
+.llx .bt-card::after{content:"";position:absolute;inset:0;background:radial-gradient(90% 90% at 92% 0,rgba(154,117,38,.26),transparent 55%);pointer-events:none}
+.llx .bt-card>*{position:relative;z-index:1}
+.llx .bt-card .bt-eye{font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--gilt-soft)}
+.llx .bt-card h3{font-size:20px;font-weight:900;line-height:1.3}
+.llx .bt-card p{font-size:14px;color:var(--hero-soft);line-height:1.6}
 
 /* section frame */
 .llx .band{padding:70px 0}

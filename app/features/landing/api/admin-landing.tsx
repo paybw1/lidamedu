@@ -1,9 +1,12 @@
 // feat-12 강의 플랫폼 랜딩 운영자 액션 — 일정·소식·배너 저장/삭제/순서변경.
 // staff 게이트, 쓰기는 요청 클라이언트(RLS staff 백스톱). entity 로 대상 구분.
+import { randomUUID } from "node:crypto";
+
 import type { Database } from "database.types";
 import { data, redirect } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import adminClient from "~/core/lib/supa-admin-client.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 
 import { reorderRow, softDeleteRow, upsertExamInfo } from "../queries.server";
@@ -119,9 +122,27 @@ export async function action({ request }: Route.ActionArgs) {
     const { error } = await q;
     if (error) return data({ error: error.message }, { status: 400 });
   } else {
+    // 이미지 배너 — 파일 업로드 시 공개 버킷에 저장(URL 직접 입력도 허용).
+    let imageUrl = str(fd, "image_url");
+    const file = fd.get("image_file");
+    if (file instanceof File && file.size > 0) {
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+      const path = `banners/${randomUUID()}.${ext}`;
+      const { error: upErr } = await adminClient.storage
+        .from("landing-banners")
+        .upload(path, file, { contentType: file.type || undefined });
+      if (!upErr)
+        imageUrl = adminClient.storage
+          .from("landing-banners")
+          .getPublicUrl(path).data.publicUrl;
+    }
+    const tierRaw = int(fd, "tier");
     const row = {
       kind: str(fd, "kind") ?? "promo",
       accent: str(fd, "accent") ?? "gilt",
+      tier: tierRaw >= 1 && tierRaw <= 3 ? tierRaw : 1,
+      image_url: imageUrl,
+      body_html: str(fd, "body_html"),
       eyebrow: str(fd, "eyebrow"),
       headline: str(fd, "headline") ?? "",
       highlight: str(fd, "highlight"),

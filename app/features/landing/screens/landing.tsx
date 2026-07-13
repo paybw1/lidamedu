@@ -8,6 +8,7 @@ import { listPasserSummaries } from "~/features/exam-results/analytics.server";
 import { EXAM_ROUND_LABEL } from "~/features/exam-results/labels";
 import { listInstructors } from "~/features/instructors/queries.server";
 
+import { BannerTiers } from "../components/banner-tiers";
 import { FaqTabs } from "../components/faq-tabs";
 import { HeroCarousel } from "../components/hero-carousel";
 import { InstructorRail } from "../components/instructor-rail";
@@ -65,10 +66,15 @@ const SEAT_CLASS = (rem: number) =>
 export default function Landing({ loaderData }: Route.ComponentProps) {
   const { banners, schedules, news, instructors, passers, faqGroups, todayISO } =
     loaderData;
+  // tier 1=메인 히어로 캐러셀, 2·3=히어로 아래 추가 단.
+  const tier1 = banners.filter((b) => (b.tier ?? 1) === 1);
+  const tier2 = banners.filter((b) => b.tier === 2);
+  const tier3 = banners.filter((b) => b.tier === 3);
   return (
     <div className="llx">
       <LandingStyle />
-      <HeroCarousel banners={banners} schedules={schedules} todayISO={todayISO} />
+      <HeroCarousel banners={tier1} schedules={schedules} todayISO={todayISO} />
+      <BannerTiers tier2={tier2} tier3={tier3} />
 
       {/* 현장강의 일정 */}
       <section className="band" id="schedule">

@@ -47,26 +47,57 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
 export default function AdminBannerEdit({ loaderData }: Route.ComponentProps) {
   const { role, row: b } = loaderData;
   return (
-    <AdminShell cluster="landing" role={role} title={b ? "배너 편집" : "배너 추가"} desc="종류에 따라 우측 카드가 달라집니다. 일정형=개강 임박 카드, 프로모션=대형 숫자, 합격속보=배지.">
+    <AdminShell cluster="landing" role={role} title={b ? "배너 편집" : "배너 추가"} desc="이미지/HTML 배너는 만든 그대로 노출됩니다. 단(tier)으로 히어로 아래 2·3단에 배치할 수 있습니다.">
       <div className="mx-auto max-w-2xl p-5 md:p-8">
         <Link to="/admin/landing-banners" className="text-muted-foreground hover:text-foreground mb-4 inline-block text-sm">
           ← 배너 목록
         </Link>
-        <Form method="post" action="/api/admin/landing" className="flex flex-col gap-4">
+        <Form method="post" action="/api/admin/landing" encType="multipart/form-data" className="flex flex-col gap-4">
           <input type="hidden" name="entity" value="banner" />
           <input type="hidden" name="intent" value="save" />
           {b ? <input type="hidden" name="id" value={b.banner_id} /> : null}
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <Row label="종류" hint="우측 카드 형태">
-              <select name="kind" defaultValue={b?.kind ?? "promo"} className={SEL}>
+            <Row label="종류" hint="이미지/HTML은 만든 그대로 노출">
+              <select name="kind" defaultValue={b?.kind ?? "image"} className={SEL}>
+                <option value="image">이미지(직접 부착)</option>
+                <option value="html">HTML(직접 작성)</option>
                 <option value="schedule">일정형(개강 임박 카드)</option>
                 <option value="promo">프로모션(대형 숫자)</option>
                 <option value="passer">합격속보(배지)</option>
                 <option value="custom">일반(텍스트만)</option>
               </select>
             </Row>
-            <Row label="강조색">
+            <Row label="단(tier)" hint="1=메인 히어로 · 2·3=아래쪽 단">
+              <select name="tier" defaultValue={String(b?.tier ?? 1)} className={SEL}>
+                <option value="1">1단 (메인 히어로)</option>
+                <option value="2">2단</option>
+                <option value="3">3단</option>
+              </select>
+            </Row>
+          </div>
+
+          <div className="bg-muted/40 flex flex-col gap-4 rounded-lg border p-4">
+            <p className="text-muted-foreground text-[12px]">
+              이미지/HTML 배너용 · 종류를 이미지·HTML로 선택했을 때 사용합니다.
+            </p>
+            <Row label="배너 이미지" hint="이미지 종류일 때. 파일 업로드 또는 URL">
+              <input type="file" name="image_file" accept="image/*" className="text-xs" />
+              <Input name="image_url" defaultValue={b?.image_url ?? ""} placeholder="https://… (외부 URL)" className={IN} />
+              {b?.image_url ? (
+                <img src={b.image_url} alt="현재 배너" className="mt-1 max-h-32 rounded border object-contain" />
+              ) : null}
+            </Row>
+            <Row label="HTML 내용" hint="HTML 종류일 때. 작성한 HTML 그대로 렌더">
+              <textarea name="body_html" rows={5} defaultValue={b?.body_html ?? ""} className={`${TA} font-mono text-xs`} placeholder='<div style="text-align:center;padding:40px">…</div>' />
+            </Row>
+            <p className="text-muted-foreground text-[11px]">
+              이미지 클릭 시 이동할 주소는 아래 <b>기본 버튼 링크</b>에 입력하세요.
+            </p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Row label="강조색" hint="구조형(일정·프로모션 등) 배경색">
               <select name="accent" defaultValue={b?.accent ?? "gilt"} className={SEL}>
                 <option value="gilt">금박</option>
                 <option value="blue">블루</option>
