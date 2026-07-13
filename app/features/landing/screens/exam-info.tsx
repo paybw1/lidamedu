@@ -250,7 +250,10 @@ export default function ExamInfo({ loaderData }: Route.ComponentProps) {
             {d.statNotes.length ? (
               <ul className="ei-bullets">
                 {d.statNotes.map((s, i) => (
-                  <li key={i}>{s}</li>
+                  <li key={i}>
+                    <span className="ei-no">{i + 1}</span>
+                    <span>{s}</span>
+                  </li>
                 ))}
               </ul>
             ) : null}
@@ -280,7 +283,10 @@ export default function ExamInfo({ loaderData }: Route.ComponentProps) {
                   </div>
                   <ol className="ei-ol">
                     {d.studyPrinciples.map((p, i) => (
-                      <li key={i}>{p}</li>
+                      <li key={i}>
+                        <span className="ei-no">{i + 1}</span>
+                        <span>{p}</span>
+                      </li>
                     ))}
                   </ol>
                 </div>
@@ -428,10 +434,11 @@ function ExamStyle() {
 .llx .ei-engn{font-size:12.5px;font-weight:800;color:var(--soft)}
 .llx .ei-engs{font-size:24px;font-weight:900;color:var(--gilt);letter-spacing:-.02em}
 .llx .ei-note{font-size:12px;color:var(--faint);line-height:1.7;margin-top:14px}
-.llx .ei-bullets{margin:16px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:7px}
-.llx .ei-bullets li{font-size:13px;color:var(--soft);line-height:1.7}
-.llx .ei-ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:9px}
-.llx .ei-ol li{font-size:13.5px;color:var(--ink);line-height:1.6}
+.llx .ei-bullets{margin:16px 0 0;padding-left:0;list-style:none;display:flex;flex-direction:column;gap:7px}
+.llx .ei-bullets li{font-size:13px;color:var(--soft);line-height:1.7;display:flex;gap:8px}
+.llx .ei-ol{margin:0;padding-left:0;list-style:none;display:flex;flex-direction:column;gap:9px}
+.llx .ei-ol li{font-size:13.5px;color:var(--ink);line-height:1.6;display:flex;gap:8px}
+.llx .ei-no{flex-shrink:0;display:inline-grid;place-items:center;min-width:19px;height:19px;padding:0 5px;border-radius:6px;background:var(--blue-wash);color:var(--blue-ink);font-size:11px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:2px}
 .llx .ei-faq{display:flex;flex-direction:column;gap:10px}
 .llx details.ei-qa{background:var(--lsurface);border:1px solid var(--line);border-radius:12px;padding:2px 18px;box-shadow:var(--lshadow)}
 .llx details.ei-qa summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;padding:15px 0;font-weight:800;font-size:14.5px;color:var(--ink)}
