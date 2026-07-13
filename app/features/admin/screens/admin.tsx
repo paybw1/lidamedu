@@ -20,8 +20,12 @@ import {
 } from "~/features/admin/components/admin-shell";
 import {
   Chip,
+  IndexTable,
   StatCard,
   StatSection,
+  type TableHeaderDef,
+  TD,
+  TR,
 } from "~/features/admin/components/admin-ui";
 import {
   type StaffContentStats,
@@ -420,82 +424,67 @@ function SeedTable({
   rows: SubjectCoverageRow[];
   baseline: Record<CoverageMetricKey, number>;
 }) {
+  const headers: TableHeaderDef[] = [
+    { label: "과목", width: "22%" },
+    ...METRIC_KEYS.map((k) => ({
+      label: COVERAGE_METRIC_LABEL[k],
+      align: "right" as const,
+    })),
+  ];
   return (
-    <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
-      <table className="w-full border-collapse table-fixed">
-        <thead>
-          <tr className="bg-muted/60">
-            <th className="text-muted-foreground w-[28%] px-3 py-2.5 text-left font-mono text-[11px] font-semibold tracking-[0.04em] uppercase sm:w-[22%]">
-              과목
-            </th>
-            {METRIC_KEYS.map((k) => (
-              <th
-                key={k}
-                className="text-muted-foreground px-2 py-2.5 text-right font-mono text-[11px] font-semibold tracking-[0.04em] uppercase sm:px-3"
+    <IndexTable headers={headers} testid="admin-hub-seed-table">
+      {rows.map((r) => {
+        const meta = LAW_SUBJECTS[r.lawCode];
+        return (
+          <TR key={r.lawCode}>
+            <TD>
+              <Link
+                to={`/subjects/${r.lawCode}`}
+                className="text-foreground text-[13px] font-semibold hover:underline"
+                viewTransition
               >
-                {COVERAGE_METRIC_LABEL[k]}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-            {rows.map((r) => {
-              const meta = LAW_SUBJECTS[r.lawCode];
+                {meta?.name ?? r.displayLabel}
+              </Link>
+              <Link
+                to={`/admin/laws/${r.lawCode}/completeness`}
+                className="text-link ml-2 text-[10.5px] font-medium hover:underline"
+                viewTransition
+              >
+                완성도 점검 →
+              </Link>
+            </TD>
+            {METRIC_KEYS.map((k) => {
+              const value = r[k];
+              const ratio = baseline[k] ? value / baseline[k] : 0;
+              const widthPct = Math.round(ratio * 100);
+              const fill =
+                value === 0
+                  ? "bg-rose-500"
+                  : ratio < 0.1
+                    ? "bg-amber-500"
+                    : ratio < 0.5
+                      ? "bg-sky-500"
+                      : "bg-emerald-500";
               return (
-                <tr
-                  key={r.lawCode}
-                  className="border-border/60 border-t first:border-t-0"
-                >
-                  <td className="px-3 py-2.5">
-                    <Link
-                      to={`/subjects/${r.lawCode}`}
-                      className="text-foreground text-[13px] font-semibold hover:underline"
-                      viewTransition
-                    >
-                      {meta?.name ?? r.displayLabel}
-                    </Link>
-                    <Link
-                      to={`/admin/laws/${r.lawCode}/completeness`}
-                      className="text-link ml-2 text-[10.5px] font-medium hover:underline"
-                      viewTransition
-                    >
-                      완성도 점검 →
-                    </Link>
-                  </td>
-                  {METRIC_KEYS.map((k) => {
-                    const value = r[k];
-                    const ratio = baseline[k] ? value / baseline[k] : 0;
-                    const widthPct = Math.round(ratio * 100);
-                    const fill =
-                      value === 0
-                        ? "bg-rose-500"
-                        : ratio < 0.1
-                          ? "bg-amber-500"
-                          : ratio < 0.5
-                            ? "bg-sky-500"
-                            : "bg-emerald-500";
-                    return (
-                      <td key={k} className="px-2 py-2.5 text-right sm:px-3">
-                        <div className="flex items-center justify-end gap-2">
-                          <div className="bg-muted hidden h-1.5 w-12 overflow-hidden rounded-full md:block lg:w-16">
-                            <div
-                              className={cn("h-full rounded-full", fill)}
-                              style={{ width: `${widthPct}%` }}
-                            />
-                          </div>
-                          <span className="text-foreground min-w-[3ch] text-right font-mono text-xs font-bold tabular-nums">
-                            {value.toLocaleString("ko-KR")}
-                          </span>
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
+                <TD key={k} align="right" mono>
+                  <div className="flex items-center justify-end gap-2">
+                    <div className="bg-muted hidden h-1.5 w-12 overflow-hidden rounded-full md:block lg:w-16">
+                      <div
+                        className={cn("h-full rounded-full", fill)}
+                        style={{ width: `${widthPct}%` }}
+                      />
+                    </div>
+                    <span className="min-w-[3ch]">
+                      {value.toLocaleString("ko-KR")}
+                    </span>
+                  </div>
+                </TD>
               );
             })}
-        </tbody>
-      </table>
-    </div>
+          </TR>
+        );
+      })}
+    </IndexTable>
   );
 }
 
