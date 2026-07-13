@@ -46,14 +46,21 @@ export type AdminClusterId =
   | "ai-qna"
   | "auth-settings";
 
-// 상위 섹션 — 클러스터를 4개 도메인으로 묶어 사이드바·허브에서 그룹 표시.
-export type AdminSectionId = "content" | "students" | "exam" | "system";
+// 상위 섹션 — 클러스터를 5개 도메인으로 묶어 사이드바·허브에서 그룹 표시.
+// (커머스를 별도 축으로 분리 — 상품·매출·정산·도서몰이 '수강생 운영/콘텐츠'에 섞이던 문제 해소.)
+export type AdminSectionId =
+  | "content"
+  | "commerce"
+  | "students"
+  | "exam"
+  | "system";
 
 export const ADMIN_SECTIONS: { id: AdminSectionId; label: string }[] = [
-  { id: "content", label: "콘텐츠 제작" },
-  { id: "students", label: "수강생 운영" },
+  { id: "content", label: "콘텐츠" },
+  { id: "commerce", label: "커머스·판매" },
+  { id: "students", label: "수강생·반" },
   { id: "exam", label: "시험·분석" },
-  { id: "system", label: "시스템" },
+  { id: "system", label: "운영·시스템" },
 ];
 
 interface NavScreen {
@@ -152,10 +159,10 @@ export const ADMIN_NAV: NavCluster[] = [
     ],
   },
   {
-    // feat-11 — 영상 강의 LMS (시리즈·에디션·회차·영상·수강권).
+    // feat-11 — 영상 강의 LMS (시리즈·에디션·회차·영상·수강권) + 도서몰. 커머스 축.
     id: "lms",
-    section: "content",
-    label: "강의 영상",
+    section: "commerce",
+    label: "강의·도서몰",
     Icon: ClapperboardIcon,
     screens: [
       { label: "강의 시리즈·에디션", to: "/admin/lms/courses" },
@@ -204,7 +211,7 @@ export const ADMIN_NAV: NavCluster[] = [
   {
     // 상품 관리 — 상품 정의(요금·할인)와 학생별 보유(수강권). 거래(매출·정산)와 분리.
     id: "products",
-    section: "students",
+    section: "commerce",
     label: "상품 관리",
     Icon: PackageIcon,
     screens: [
@@ -218,7 +225,7 @@ export const ADMIN_NAV: NavCluster[] = [
   {
     // 매출·정산 관리 — 거래 축(주문결제·강사 배분·정산·적립). manager+ 전용(loader 차단).
     id: "sales",
-    section: "students",
+    section: "commerce",
     label: "매출·정산 관리",
     Icon: BanknoteIcon,
     screens: [
