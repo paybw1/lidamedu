@@ -446,7 +446,7 @@ export async function setTestQuestionPoints(
 
 // ── 인쇄(시험지/정답지)용 전문 데이터 ───────────────────────────────────────
 // 빌더의 라벨 스니펫과 달리 문제 전문·선지·정답·해설·빈칸 본문을 전부 싣는다.
-// (mc_box 는 wrong-note 인쇄와 동일하게 body_md 에 박스가 포함된 형태를 그대로 사용.)
+// ★mc_box 의 Ⅰ·Ⅱ·Ⅲ 박스는 body_md 가 아니라 problem_box_items 에 있어 별도로 싣는다.
 
 export interface PrintBlankItem {
   idx: number;
@@ -462,6 +462,7 @@ export interface OfflineTestPrintQuestion {
     bodyMd: string;
     year: number | null;
     problemNumber: number | null;
+    boxItems: Array<{ marker: string | null; bodyMd: string }>;
     choices: Array<{ index: number; bodyMd: string; isCorrect: boolean }>;
     explanationMd: string | null;
   } | null;
@@ -506,7 +507,8 @@ export async function getOfflineTestPrintData(
     .filter((q) => q.questionType === "blank" && q.blankSetId)
     .map((q) => q.blankSetId as string);
 
-  const [problems, choices, oxChoices, oxBoxes, blankSets] = await Promise.all([
+  const [problems, choices, mcqBoxes, oxChoices, oxBoxes, blankSets] =
+    await Promise.all([
     mcqIds.length
       ? fetchAllIn(mcqIds, (slice) =>
           client
@@ -523,6 +525,16 @@ export async function getOfflineTestPrintData(
             .select("problem_id, choice_index, body_md, is_correct")
             .in("problem_id", slice)
             .order("choice_index"),
+        )
+      : Promise.resolve([]),
+    // ★mc_box 박스 지문(Ⅰ·Ⅱ·Ⅲ) — position_index 순.
+    mcqIds.length
+      ? fetchAllIn(mcqIds, (slice) =>
+          client
+            .from("problem_box_items")
+            .select("problem_id, marker, body_md, position_index")
+            .in("problem_id", slice)
+            .order("position_index"),
         )
       : Promise.resolve([]),
     choiceRefIds.length
@@ -586,6 +598,15 @@ export async function getOfflineTestPrintData(
     arr.push({ index: c.choice_index, bodyMd: c.body_md ?? "", isCorrect: c.is_correct });
     choicesByProblem.set(c.problem_id, arr);
   }
+  const boxesByProblem = new Map<
+    string,
+    Array<{ marker: string | null; bodyMd: string }>
+  >();
+  for (const b of mcqBoxes) {
+    const arr = boxesByProblem.get(b.problem_id) ?? [];
+    arr.push({ marker: b.marker, bodyMd: b.body_md ?? "" });
+    boxesByProblem.set(b.problem_id, arr);
+  }
   const oxChoiceById = new Map(oxChoices.map((c) => [c.choice_id, c] as const));
   const oxBoxById = new Map(oxBoxes.map((b) => [b.box_item_id, b] as const));
   const blankById = new Map(blankSets.map((b) => [b.set_id, b] as const));
@@ -600,6 +621,7 @@ export async function getOfflineTestPrintData(
         bodyMd: p?.body_md ?? "",
         year: p?.year ?? null,
         problemNumber: p?.problem_number ?? null,
+        boxItems: boxesByProblem.get(q.problemId) ?? [],
         choices: (choicesByProblem.get(q.problemId) ?? []).sort(
           (a, b) => a.index - b.index,
         ),

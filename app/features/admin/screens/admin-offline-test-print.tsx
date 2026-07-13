@@ -175,6 +175,26 @@ function QuestionBlock({
           <div className="text-[13px] leading-relaxed text-neutral-800">
             <MarkdownView text={q.mcq.bodyMd} className="text-[13px] leading-relaxed" />
           </div>
+          {q.mcq.boxItems.length > 0 ? (
+            <ul className="mt-2 space-y-1 rounded border border-neutral-300 px-3 py-2">
+              {q.mcq.boxItems.map((b, i) => (
+                <li
+                  key={i}
+                  className="flex gap-1.5 text-[13px] leading-relaxed text-neutral-800"
+                >
+                  {b.marker ? (
+                    <span className="shrink-0 font-bold">{b.marker}.</span>
+                  ) : null}
+                  <div className="min-w-0 flex-1">
+                    <MarkdownView
+                      text={b.bodyMd}
+                      className="text-[13px] leading-relaxed"
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : null}
           <ol className="mt-2 space-y-1">
             {q.mcq.choices.map((c) => {
               const highlight = answers && c.isCorrect;
