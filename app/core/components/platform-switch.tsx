@@ -10,6 +10,7 @@ import {
   PLATFORM_ORDER,
   type PlatformId,
   getActivePlatform,
+  isPlatformNeutralPath,
 } from "~/core/lib/platforms";
 
 const ICONS: Record<PlatformId, typeof BookOpenIcon> = {
@@ -19,7 +20,9 @@ const ICONS: Record<PlatformId, typeof BookOpenIcon> = {
 
 export function PlatformSwitch({ className }: { className?: string }) {
   const { pathname } = useLocation();
-  const active = getActivePlatform(pathname);
+  // 운영관리·인박스는 두 플랫폼 공용 — 어느 쪽도 활성 표시하지 않는다(전환처럼 보이지 않게).
+  const neutral = isPlatformNeutralPath(pathname);
+  const active = neutral ? null : getActivePlatform(pathname);
   return (
     <div
       role="tablist"

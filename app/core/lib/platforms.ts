@@ -39,6 +39,18 @@ export function getActivePlatform(pathname: string): PlatformId {
   return "study";
 }
 
+// 운영관리(/admin)·인박스(/inbox) 등은 두 플랫폼 공용 운영 영역 — 특정 제품이 아니다.
+// 스위처에서 어느 플랫폼도 활성 표시하지 않아, 강의 플랫폼에서 진입해도 학습 플랫폼으로
+// '전환된 것처럼' 보이지 않게 한다.
+export function isPlatformNeutralPath(pathname: string): boolean {
+  return (
+    pathname === "/admin" ||
+    pathname.startsWith("/admin/") ||
+    pathname === "/inbox" ||
+    pathname.startsWith("/inbox/")
+  );
+}
+
 // 강의 플랫폼 상단 네비 링크(단일 소스).
 //   도서는 강의 상품에 부속돼 판매·배송되므로(standalone 도서몰 없음), 배송 현황은
 //   주문·배송에서 확인. 별도 도서몰 메뉴는 두지 않는다.
