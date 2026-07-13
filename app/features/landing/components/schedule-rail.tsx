@@ -4,17 +4,12 @@ import { Link } from "react-router";
 
 import {
   FORMAT_LABEL,
-  fillPercent,
   ddayFrom,
-  remainingSeats,
   type LectureFormat,
   type ScheduleRow,
 } from "../labels";
 
 import { Rail } from "./rail";
-
-const SEAT_CLASS = (rem: number) =>
-  rem === 0 ? "low" : rem <= 8 ? "low" : rem <= 16 ? "mid" : "ok";
 
 export function ScheduleRail({
   schedules,
@@ -25,13 +20,12 @@ export function ScheduleRail({
 }) {
   return (
     <Rail
-      cardWidth={288}
+      cardWidth={252}
       count={schedules.length}
       ariaPrev="이전 일정"
       ariaNext="다음 일정"
     >
       {schedules.map((s) => {
-        const rem = remainingSeats(s);
         const d = ddayFrom(s.start_date, todayISO);
         return (
           <Link
@@ -70,17 +64,11 @@ export function ScheduleRail({
                 <span className="v">{FORMAT_LABEL[s.format as LectureFormat]}</span>
               </div>
             </div>
-            <div className="gauge">
-              <i style={{ width: `${fillPercent(s)}%` }} />
-            </div>
-            <div className="foot">
-              <span className={`seatn ${SEAT_CLASS(rem)}`}>
-                {s.status === "closed" || rem === 0
-                  ? "마감"
-                  : `잔여 ${rem} / ${s.capacity}석`}
-              </span>
-              {d !== null ? <span className="ddayb">D-{d}</span> : null}
-            </div>
+            {d !== null ? (
+              <div className="foot">
+                <span className="ddayb">D-{d}</span>
+              </div>
+            ) : null}
           </Link>
         );
       })}

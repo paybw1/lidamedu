@@ -71,7 +71,7 @@ export default function Landing({ loaderData }: Route.ComponentProps) {
           <Reveal className="shead">
             <div>
               <p className="eyebrow">리담소식</p>
-              <h2>공지 · 이벤트 · 합격 속보</h2>
+              <h2>공지 · 이벤트</h2>
             </div>
             <Link className="more" to="/lecture/news">
               소식 전체 →
