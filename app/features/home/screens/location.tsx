@@ -1,7 +1,6 @@
 // 찾아오시는 길 — 공개 페이지. 푸터 "찾아오시는 길" 링크 대상.
 // 카카오 약도 하나로 표시(주소·전화·오시는 길·길찾기는 약도 위젯에 포함).
 import { KakaoRoughMap } from "~/features/home/components/kakao-rough-map";
-import { AboutSectionNav } from "../components/about-section-nav";
 
 import type { Route } from "./+types/location";
 
@@ -18,7 +17,6 @@ export const meta: Route.MetaFunction = () => [
 export default function Location() {
   return (
     <>
-      <AboutSectionNav />
       <main className="mx-auto w-full max-w-3xl px-5 py-16 md:px-8 md:py-24">
         <header className="mb-10 text-center">
           <p className="text-link mb-3 font-mono text-xs font-semibold tracking-[0.2em] uppercase">

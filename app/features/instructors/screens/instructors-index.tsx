@@ -8,7 +8,6 @@ import {
   type InstructorCategory,
 } from "../labels";
 import { InstructorStyle } from "../components/instructor-theme";
-import { AboutSectionNav } from "~/features/home/components/about-section-nav";
 import { listInstructors, type InstructorCard } from "../queries.server";
 
 import type { Route } from "./+types/instructors-index";
@@ -62,8 +61,6 @@ export default function InstructorsIndex({ loaderData }: Route.ComponentProps) {
   return (
     <div className="instr">
       <InstructorStyle />
-      {/* 리담안내 섹션 공용 서브내비 — 먼저 나오고 고정(sticky). 그다음 강사진 히어로·목록. */}
-      <AboutSectionNav />
       <header className="i-hero">
         <div
           className="i-wrap"

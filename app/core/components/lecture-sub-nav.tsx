@@ -1,21 +1,23 @@
-// 마이페이지 sticky 서브내비 — 상단 드롭다운(LECTURE_MYPAGE_LINKS)과 동일한 6개.
-// 강의 레이아웃 헤더(sticky) 안에서 렌더돼 자연스럽게 함께 고정된다. 마이페이지 경로에서만 노출.
+// 강의 레이아웃 sticky 서브내비 — 리담안내/마이페이지 등 하위 링크를 헤더 안에서 노출.
+// 헤더(sticky)에 포함돼 함께 고정된다. 현재 경로가 links 중 하나에 해당할 때만 렌더.
 import { Link, useLocation } from "react-router";
 
-import { childMatchesPath, LECTURE_MYPAGE_LINKS } from "~/core/lib/platforms";
+import { childMatchesPath } from "~/core/lib/platforms";
 import { cn } from "~/core/lib/utils";
 
-export function LectureMypageSubNav() {
+export function LectureSubNav({
+  links,
+}: {
+  links: ReadonlyArray<{ label: string; to: string }>;
+}) {
   const { pathname } = useLocation();
-  const onMypage = LECTURE_MYPAGE_LINKS.some((l) =>
-    childMatchesPath(l.to, pathname),
-  );
-  if (!onMypage) return null;
+  const onSection = links.some((l) => childMatchesPath(l.to, pathname));
+  if (!onSection) return null;
   return (
     <div className="dark:border-border border-t border-black/[0.05]">
       <div className="mx-auto w-full max-w-[1200px] overflow-x-auto px-4 md:px-6">
         <div className="flex w-max items-center gap-1.5 py-2">
-          {LECTURE_MYPAGE_LINKS.map((l) => {
+          {links.map((l) => {
             const active = childMatchesPath(l.to, pathname);
             return (
               <Link

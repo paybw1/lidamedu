@@ -3,8 +3,6 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 
-import { AboutSectionNav } from "~/features/home/components/about-section-nav";
-
 import { InstructorStyle } from "../components/instructor-theme";
 
 export function meta() {
@@ -57,7 +55,6 @@ export default function InstructorRecruit() {
     <div className="instr">
       <InstructorStyle />
       <RecruitStyle />
-      <AboutSectionNav />
 
       <header className="i-hero">
         <div

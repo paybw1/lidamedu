@@ -13,8 +13,9 @@ import {
   openCommandPalette,
 } from "../components/command-palette";
 import Footer from "../components/footer";
-import { LectureMypageSubNav } from "../components/lecture-mypage-subnav";
 import { LectureNav, LectureNavMobile } from "../components/lecture-nav";
+import { LectureSubNav } from "../components/lecture-sub-nav";
+import { LECTURE_GUIDE_LINKS, LECTURE_MYPAGE_LINKS } from "../lib/platforms";
 import { PlatformSwitch } from "../components/platform-switch";
 import ThemeSwitcher from "../components/theme-switcher";
 import { CartClearOnPurchase } from "~/features/lms/components/cart-clear-on-purchase";
@@ -126,8 +127,9 @@ export default function LectureLayout({ loaderData }: Route.ComponentProps) {
         {/* 모바일 강의 네비 — 상단 바 아래 가로 스크롤 탭(자식 노드 평탄화) */}
         <LectureNavMobile isStaff={isStaff} />
 
-        {/* 마이페이지 화면에서만 — 마이페이지 하위 sticky 서브내비(헤더에 포함돼 함께 고정) */}
-        {user ? <LectureMypageSubNav /> : null}
+        {/* 리담안내/마이페이지 화면에서만 — 하위 sticky 서브내비(헤더에 포함돼 함께 고정) */}
+        <LectureSubNav links={LECTURE_GUIDE_LINKS} />
+        {user ? <LectureSubNav links={LECTURE_MYPAGE_LINKS} /> : null}
       </header>
 
       <CartClearOnPurchase />

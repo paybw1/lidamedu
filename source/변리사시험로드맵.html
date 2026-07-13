@@ -1,0 +1,766 @@
+
+<!-- Pretendard (optional) -->
+<p>&nbsp;</p>
+<style>
+    :root{
+      /* WHITE THEME */
+      --bg:#ffffff;
+      --surface:#ffffff;
+      --card:#ffffff;
+      --card2:#f8fafc;
+      --line:rgba(15,23,42,.12);
+
+      /* TEXT */
+      --text:#0f172a;
+      --muted:#64748b;
+
+      /* BRAND */
+      --brand:#d4af37;     /* 리담 골드 */
+      --brand2:#2563eb;    /* 포인트 블루 */
+      --ok:#16a34a;
+      --warn:#e11d48;
+
+      --shadow: 0 14px 40px rgba(2,6,23,.08);
+      --shadow2: 0 10px 24px rgba(2,6,23,.06);
+
+      --radius: 18px;
+      --radius2: 24px;
+      --max: 1120px;
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: Pretendard, "Noto Sans KR", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(1100px 520px at 18% -10%, rgba(37,99,235,.10), transparent 55%),
+        radial-gradient(900px 520px at 92% 8%, rgba(212,175,55,.12), transparent 60%),
+        linear-gradient(180deg, #ffffff 0%, #ffffff 60%, #ffffff 100%);
+      overflow-x:hidden;
+    }
+
+    a{ color:inherit; text-decoration:none; }
+    .wrap{ width:min(var(--max), calc(100% - 40px)); margin:0 auto; }
+
+    /* Top Nav */
+    .topbar{
+      position:sticky; top:0; z-index:50;
+      backdrop-filter: blur(10px);
+      background: rgba(255,255,255,.78);
+      border-bottom:1px solid var(--line);
+    }
+    .topbar-inner{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:14px;
+      padding:14px 0;
+    }
+    .brand{
+      display:flex; align-items:center; gap:10px; min-width:220px;
+    }
+    .logoMark{
+      width:34px; height:34px; border-radius:12px;
+      background:
+        radial-gradient(10px 10px at 30% 30%, rgba(255,255,255,.95), transparent 60%),
+        linear-gradient(135deg, rgba(212,175,55,.95), rgba(37,99,235,.85));
+      box-shadow: 0 10px 22px rgba(2,6,23,.10);
+      border:1px solid rgba(15,23,42,.10);
+    }
+    .brand .t1{ font-weight:950; letter-spacing:-.02em; }
+    .brand .t2{ font-size:12px; color:var(--muted); margin-top:2px; }
+
+    .nav{
+      display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;
+    }
+    .chip{
+      padding:9px 12px;
+      border-radius:999px;
+      background: rgba(2,6,23,.03);
+      border:1px solid rgba(15,23,42,.10);
+      color: rgba(15,23,42,.88);
+      font-weight:700;
+      font-size:13px;
+      transition:.18s ease;
+      cursor:pointer;
+      user-select:none;
+    }
+    .chip:hover{ transform: translateY(-1px); background: rgba(2,6,23,.05); }
+    .chip.active{
+      background: linear-gradient(135deg, rgba(37,99,235,.14), rgba(212,175,55,.14));
+      border-color: rgba(212,175,55,.55);
+      box-shadow: 0 10px 18px rgba(2,6,23,.08);
+    }
+
+    /* Hero */
+    header.hero{ padding:46px 0 22px; }
+    .hero-card{
+      border-radius: var(--radius2);
+      padding:34px 28px;
+      background:
+        radial-gradient(900px 360px at 12% 20%, rgba(37,99,235,.10), transparent 55%),
+        radial-gradient(760px 320px at 82% 0%, rgba(212,175,55,.10), transparent 60%),
+        linear-gradient(135deg, rgba(255,255,255,.95), rgba(248,250,252,.95));
+      border:1px solid rgba(15,23,42,.10);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      position:relative;
+    }
+    .hero-badge{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 12px; border-radius:999px;
+      background: rgba(2,6,23,.04);
+      border: 1px solid rgba(15,23,42,.10);
+      font-weight:800; font-size:13px;
+      color: rgba(15,23,42,.82);
+    }
+    .dot{
+      width:8px; height:8px; border-radius:999px;
+      background: var(--brand);
+      box-shadow: 0 0 0 6px rgba(212,175,55,.18);
+    }
+    .hero h1{
+      margin:14px 0 10px;
+      font-size: clamp(28px, 3.2vw, 42px);
+      line-height:1.15;
+      letter-spacing:-.03em;
+      font-weight: 950;
+    }
+    .hero p{
+      margin:0;
+      color: rgba(15,23,42,.78);
+      line-height:1.75;
+      font-size: 15.5px;
+      max-width: 68ch;
+    }
+    .hero-cta{
+      margin-top:18px;
+      display:flex; gap:10px; flex-wrap:wrap;
+    }
+    .btn{
+      display:inline-flex; align-items:center; gap:10px;
+      padding: 11px 14px;
+      border-radius: 12px;
+      border:1px solid rgba(15,23,42,.12);
+      background: rgba(2,6,23,.03);
+      font-weight:900;
+      transition:.18s ease;
+    }
+    .btn:hover{ transform: translateY(-1px); background: rgba(2,6,23,.05); }
+    .btn.primary{
+      background: linear-gradient(135deg, rgba(212,175,55,.22), rgba(37,99,235,.16));
+      border-color: rgba(212,175,55,.55);
+    }
+    .btn small{ font-weight:800; color: rgba(15,23,42,.66); }
+
+    /* Layout */
+    main{ padding: 14px 0 80px; }
+    section.block{
+      margin-top: 18px;
+      border-radius: var(--radius2);
+      background: #ffffff;
+      border: 1px solid rgba(15,23,42,.10);
+      box-shadow: var(--shadow2);
+      overflow:hidden;
+    }
+    .block-head{
+      padding: 22px 22px 14px;
+      border-bottom: 1px solid rgba(15,23,42,.08);
+      background: linear-gradient(180deg, rgba(2,6,23,.02), transparent);
+    }
+    .block-title{
+      display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap;
+    }
+    .block-title h2{
+      margin:0;
+      font-size: 20px;
+      letter-spacing:-.02em;
+      font-weight: 950;
+    }
+    .block-title .sub{
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .block-body{ padding: 18px 22px 22px; }
+
+    /* Cards / Grid */
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 14px;
+    }
+    .card{
+      border-radius: var(--radius);
+      background: #ffffff;
+      border:1px solid rgba(15,23,42,.10);
+      padding:16px;
+      box-shadow: 0 8px 18px rgba(2,6,23,.04);
+    }
+    .card h3{
+      margin:0 0 8px;
+      font-size: 15px;
+      font-weight: 950;
+      letter-spacing:-.01em;
+    }
+    .card p, .card li{
+      color: rgba(15,23,42,.82);
+      line-height:1.8;
+      font-size: 14px;
+    }
+    .muted{ color: var(--muted); }
+
+    .kpi{ display:flex; gap:12px; flex-wrap:wrap; }
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 10px; border-radius:999px;
+      border:1px solid rgba(15,23,42,.10);
+      background: rgba(2,6,23,.02);
+      font-weight:900; font-size:13px;
+    }
+    .pill b{ color: var(--brand2); }
+    .pill i{ font-style:normal; color: rgba(15,23,42,.78); font-weight:900; }
+
+    /* Table */
+    .table-wrap{
+      overflow:auto;
+      border-radius: 14px;
+      border:1px solid rgba(15,23,42,.10);
+      background: #ffffff;
+    }
+    table{
+      border-collapse: collapse;
+      min-width: 720px;
+      width:100%;
+    }
+    th, td{
+      padding: 12px 12px;
+      border-bottom: 1px solid rgba(15,23,42,.08);
+      text-align:left;
+      font-size: 13.5px;
+      line-height:1.55;
+      color: rgba(15,23,42,.84);
+      white-space:nowrap;
+    }
+    th{
+      position: sticky;
+      top: 0;
+      background: #f8fafc;
+      color: rgba(15,23,42,.92);
+      font-weight: 950;
+      border-bottom: 1px solid rgba(15,23,42,.10);
+    }
+    tr:hover td{ background: rgba(2,6,23,.02); }
+
+    /* Accordion */
+    .faq{ display:flex; flex-direction:column; gap:10px; }
+    .qa{
+      border-radius: 16px;
+      border:1px solid rgba(15,23,42,.10);
+      background: #ffffff;
+      overflow:hidden;
+      box-shadow: 0 8px 18px rgba(2,6,23,.04);
+    }
+    .qa button{
+      width:100%;
+      background: transparent;
+      border:0;
+      padding: 14px 14px;
+      color: rgba(15,23,42,.92);
+      display:flex; justify-content:space-between; align-items:center;
+      gap:10px;
+      cursor:pointer;
+      font-weight:950;
+      letter-spacing:-.01em;
+      text-align:left;
+    }
+    .qa button span.q{
+      display:inline-flex; align-items:center; gap:10px;
+    }
+    .tagQ{
+      width:28px;height:28px;border-radius:10px;
+      display:inline-grid; place-items:center;
+      background: rgba(37,99,235,.10);
+      border:1px solid rgba(37,99,235,.20);
+      font-size:13px;
+      font-weight:950;
+      color: rgba(37,99,235,.92);
+    }
+    .chev{
+      width:22px;height:22px;border-radius:999px;
+      display:inline-grid; place-items:center;
+      border:1px solid rgba(15,23,42,.12);
+      background: rgba(2,6,23,.02);
+      transition:.18s ease;
+      flex:0 0 auto;
+      color: rgba(15,23,42,.70);
+    }
+    .qa .a{
+      max-height:0;
+      overflow:hidden;
+      transition: max-height .22s ease;
+      border-top: 1px solid rgba(15,23,42,.08);
+    }
+    .qa .a .inner{
+      padding: 12px 14px 14px;
+      color: rgba(15,23,42,.82);
+      line-height:1.85;
+      font-size: 14px;
+    }
+    .qa.open .chev{ transform: rotate(180deg); border-color: rgba(212,175,55,.55); }
+    .qa.open .a{ max-height: 520px; }
+
+    /* Footer */
+    footer{
+      margin-top: 28px;
+      padding: 24px 0 0;
+      color: rgba(100,116,139,.95);
+      font-size: 13px;
+      text-align:center;
+    }
+    .footline{
+      margin-top: 14px;
+      border-top:1px solid rgba(15,23,42,.10);
+      padding-top: 16px;
+    }
+
+    /* Responsive */
+    @media (max-width: 760px){
+      .brand{ min-width:unset; }
+      .nav{ justify-content:flex-start; }
+      .hero-card{ padding:28px 18px; }
+      .block-body{ padding:16px; }
+      .block-head{ padding:18px 16px 12px; }
+      th, td{ padding:10px 10px; }
+    }
+
+    /* Print-friendly (optional) */
+    @media print{
+      .topbar, .hero-cta{ display:none !important; }
+      body{ background:#fff; }
+      section.block, .card, .qa{ box-shadow:none !important; }
+    }
+  </style>
+<!-- Topbar -->
+<div class="topbar" role="navigation" aria-label="수험가이드 내비게이션">
+<div class="wrap">
+<div class="topbar-inner"><a class="brand" href="#top" aria-label="상단으로">
+<div class="t1">리담변리사학원</div>
+<div class="t2">2026 변리사 시험 수험가이드</div>
+</a>
+<div id="nav" class="nav"><a class="chip" href="#schedule">시험일정</a> <a class="chip" href="#overview">시험개요</a> <a class="chip" href="#english">영어</a> <a class="chip" href="#stats">통계</a> <a class="chip" href="#strategy">공부법</a> <a class="chip" href="#faq">Q&amp;A</a></div>
+</div>
+</div>
+</div>
+<!-- Hero --><header id="top" class="hero">
+<div class="wrap">
+<div class="hero-card">
+<div class="hero-badge">2026년 제63회 변리사 시험 공고 반영</div>
+<h1>변리사 시험 로드맵</h1>
+<div class="hero-cta"><a class="btn primary" href="#schedule">바로 보기 <small>시험일정</small></a> <a class="btn" href="#strategy">바로 보기 <small>공부전략</small></a> <a class="btn" href="https://open.kakao.com/o/pb4ApLdi" target="_blank" rel="noopener">오픈카톡 참여 <small>수험정보 Q&amp;A</small></a></div>
+<div class="kpi" style="margin-top: 16px;"><span class="pill"><b>1차</b> <i>2/28(토)</i></span> <span class="pill"><b>1차 발표</b> <i>3/25(수)</i></span> <span class="pill"><b>2차</b> <i>7/31(금)~8/1(토)</i></span> <span class="pill"><b>최종 발표</b> <i>10/28(수)</i></span></div>
+</div>
+</div>
+</header><main class="wrap"><!-- 시험 일정 -->
+<section id="schedule" class="block">
+<div class="block-head">
+<div class="block-title">
+<h2>📅 2026 시험 일정</h2>
+<div class="sub">원서접수 &middot; 시험 &middot; 발표 핵심만</div>
+</div>
+</div>
+<div class="block-body">
+<div class="grid">
+<div class="card" style="grid-column: span 6;">
+<h3>1차 시험</h3>
+<ul style="margin: 0; padding-left: 18px;">
+<li><b>원서접수</b> : 1/12(월) 09:00 ~ 1/16(금) 18:00</li>
+<li><b>시험</b> : 2/28(토)</li>
+<li><b>합격자 발표</b> : 3/25(수)</li>
+</ul>
+</div>
+<div class="card" style="grid-column: span 6;">
+<h3>2차 시험</h3>
+<ul style="margin: 0; padding-left: 18px;">
+<li><b>원서접수</b> : 4/20(월) 09:00 ~ 4/24(금) 18:00</li>
+<li><b>시험</b> : 7/31(금) ~ 8/1(토)</li>
+<li><b>합격자 발표</b> : 10/28(수)</li>
+</ul>
+<p class="muted" style="margin: 10px 0 0;">※ 2차 일정: <b>토&middot;일 &rarr; 금&middot;토 시행</b></p>
+</div>
+</div>
+</div>
+</section>
+<!-- 시험 개요 -->
+<section id="overview" class="block">
+<div class="block-head">
+<div class="block-title">
+<h2>🧾 시험 개요 &amp; 합격기준</h2>
+<div class="sub">과목 구성 &middot; 문항 &middot; 합격조건</div>
+</div>
+</div>
+<div class="block-body">
+<div class="grid">
+<div class="card" style="grid-column: span 7;">
+<h3>1차 시험 (객관식 5지택일)</h3>
+<ul style="margin: 0; padding-left: 18px;">
+<li>산업재산권법(특허법/실용신안법+상표법+디자인보호법)</li>
+<li>민법개론(친족&middot;상속 제외)</li>
+<li>자연과학개론(물리/화학/생물/지구)</li>
+<li>영어(영어능력검정시험 성적 대체)</li>
+</ul>
+<div class="kpi" style="margin-top: 14px;"><span class="pill"><b>합격 조건</b> <i>각 과목 40&uarr;</i></span> <span class="pill"><b>평균</b> <i>60&uarr;</i></span> <span class="pill"><b>선발</b> <i>600명(동점 포함)</i></span></div>
+</div>
+<div class="card" style="grid-column: span 5;">
+<h3>2차 시험 (주관식 논술)</h3>
+<ul style="margin: 0; padding-left: 18px;">
+<li><b>필수</b> : 특허법 &middot; 상표법 &middot; 민사소송법</li>
+<li><b>선택</b> : 19개 중 1 (P/F)</li>
+</ul>
+<p class="muted" style="margin: 12px 0 0;">선택과목은 <b>50점 이상 PASS</b> 기준.</p>
+</div>
+</div>
+<div style="height: 14px;">&nbsp;</div>
+<div class="table-wrap" aria-label="과목별 시험시간 표">
+<table>
+<thead>
+<tr>
+<th>구분</th>
+<th>교시</th>
+<th>과목</th>
+<th>입실완료</th>
+<th>시험시간</th>
+<th>문항수</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1차</td>
+<td>1</td>
+<td>산업재산권법</td>
+<td>09:00</td>
+<td>09:30~10:40 (70분)</td>
+<td>40</td>
+</tr>
+<tr>
+<td>1차</td>
+<td>2</td>
+<td>민법개론</td>
+<td>11:00</td>
+<td>11:10~12:20 (70분)</td>
+<td>40</td>
+</tr>
+<tr>
+<td>1차</td>
+<td>3</td>
+<td>자연과학개론</td>
+<td>13:20</td>
+<td>13:40~14:40 (60분)</td>
+<td>40</td>
+</tr>
+<tr>
+<td>2차</td>
+<td>1일 1</td>
+<td>특허법</td>
+<td>09:00</td>
+<td>09:30~11:30 (120분)</td>
+<td>4</td>
+</tr>
+<tr>
+<td>2차</td>
+<td>1일 2</td>
+<td>상표법</td>
+<td>12:50</td>
+<td>13:30~15:30 (120분)</td>
+<td>4</td>
+</tr>
+<tr>
+<td>2차</td>
+<td>2일 1</td>
+<td>민사소송법</td>
+<td>09:00</td>
+<td>09:30~11:30 (120분)</td>
+<td>4</td>
+</tr>
+<tr>
+<td>2차</td>
+<td>2일 2</td>
+<td>선택과목</td>
+<td>12:50</td>
+<td>13:30~15:30 (120분)</td>
+<td>4</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p class="muted" style="margin: 12px 2px 0;">※ 신분증 미지참/전자&middot;통신기기 반입 등 주요 유의사항은 꼭 사전 확인 권장.</p>
+</div>
+</section>
+<!-- 영어 -->
+<section id="english" class="block">
+<div class="block-head">
+<div class="block-title">
+<h2>🌐 영어(대체) 기준</h2>
+<div class="sub">1차 입장권: 성적 확보는 빠를수록 유리</div>
+</div>
+</div>
+<div class="block-body">
+<div class="grid">
+<div class="card" style="grid-column: span 6;">
+<h3>기준점수(일반응시자)</h3>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>TOEIC</th>
+<th>TEPS</th>
+<th>G-TELP</th>
+<th>TOEFL(PBT)</th>
+<th>TOEFL(IBT)</th>
+<th>FLEX</th>
+<th>IELTS</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>775</td>
+<td>385</td>
+<td>77 (Level-2)</td>
+<td>560</td>
+<td>83</td>
+<td>700</td>
+<td>5</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p class="muted" style="margin: 10px 0 0;">유효 성적으로 인정되기 위해서는 정기시험 응시, Q-Net 사전등록, 진위확인 승인 <br />요건을 모두 충족해야 합니다.</p>
+</div>
+<div class="card" style="grid-column: span 6;">
+<h3>인정기간(핵심)</h3>
+<ul style="margin: 0; padding-left: 18px;">
+<li>2026년 1차 유효 성적: <b>2022.04.27 ~ 2026.01.16</b> 기간 정기시험 성적</li>
+<li class="muted">※ 성적 유효기간 만료 전 Q-Net 등록 및 승인 필요</li>
+</ul>
+<div class="card" style="margin-top: 14px;">
+<h3 style="margin-bottom: 6px;">TIP</h3>
+<p style="margin: 0;">영어는 법과목이 시작되면 사실상 시간을 내기 어렵습니다. 그래서 최대한 이른 시점에 안정적으로 확보하는 게 중요합니다.</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- 통계 -->
+<section id="stats" class="block">
+<div class="block-head">
+<div class="block-title">
+<h2>📊 통계 모음</h2>
+<div class="sub">응시/합격/경쟁률 (요약)</div>
+</div>
+</div>
+<div class="block-body">
+<div class="card">
+<h3>최근 연도 요약(1차 응시/합격/경쟁)</h3>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>연도</th>
+<th>1차 응시(대상)</th>
+<th>커트라인</th>
+<th>1차 합격</th>
+<th>응시율/합격률</th>
+<th>2차 대상</th>
+<th>최종 합격</th>
+<th>최종 경쟁률</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2026</td>
+<td>3,697 (4,236)</td>
+<td>80.00</td>
+<td>632</td>
+<td>87.27% / 17.09%</td>
+<td>10/28 발표</td>
+<td>10/28 발표</td>
+<td>10/28 발표</td>
+</tr>
+<tr>
+<td>2025</td>
+<td>3,541 (3,974)</td>
+<td>79.16</td>
+<td>661</td>
+<td>89.10% / 18.66%</td>
+<td>1,204</td>
+<td>201</td>
+<td>5.99:1</td>
+</tr>
+<tr>
+<td>2024</td>
+<td>3,071 (3,465)</td>
+<td>76.66</td>
+<td>607</td>
+<td>88.62% / 19.76%</td>
+<td>1,219</td>
+<td>200</td>
+<td>5.77:1</td>
+</tr>
+<tr>
+<td>2023</td>
+<td>3,312 (3,640)</td>
+<td>70.83</td>
+<td>614</td>
+<td>90.98% / 18.54%</td>
+<td>1,184</td>
+<td>209</td>
+<td>5.66:1</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div style="height: 14px;">&nbsp;</div>
+<div class="grid">
+<div class="card" style="grid-column: span 6;">
+<h3>포인트 해석</h3>
+<ul style="margin: 0; padding-left: 18px;">
+<li>1차는 <b>상대평가</b> + 선발(600명)이므로 &ldquo;총점 싸움&rdquo;</li>
+<li>자연과학은 <b>과락 리스크 관리</b>가 핵심</li>
+</ul>
+</div>
+<div class="card" style="grid-column: span 6;">
+<h3>필수 주의</h3>
+<ul style="margin: 0; padding-left: 18px;">
+<li><b>과락(40점 미만)</b>은 한 과목만 떠도 탈락</li>
+<li>기출은 필수지만, <b>신규문항을 통해 </b>처음 보는 문제에서의 대응력을 점검</li>
+</ul>
+</div>
+</div>
+</div>
+</section>
+<!-- 공부법 -->
+<section id="strategy" class="block">
+<div class="block-head">
+<div class="block-title">
+<h2>📚 1차 공부방법론</h2>
+<div class="sub">법과목 중심 + 자연과학 전략 운영</div>
+</div>
+</div>
+<div class="block-body">
+<div class="grid">
+<div class="card" style="grid-column: span 7;">
+<h3>핵심 원칙</h3>
+<ol style="margin: 0; padding-left: 18px;">
+<li><b>과락 방지</b>가 1순위</li>
+<li><b>법과목 고득점</b>이 합격권 진입의 기반</li>
+<li>자연과학은 &ldquo;고득점&rdquo;보다 <b>효율적 점수 확보</b></li>
+</ol>
+<div class="kpi" style="margin-top: 14px;"><span class="pill"><b>자과 목표</b> <i>65점+</i></span> <span class="pill"><b>생물+지구</b> <i>1~2개 실수</i></span> <span class="pill"><b>물리/화학</b> <i>강한 과목 7개</i></span></div>
+</div>
+<div class="card" style="grid-column: span 5;">
+<h3>과목 특징(요약)</h3>
+<ul style="margin: 0; padding-left: 18px;">
+<li><b>민법</b>: 방대/휘발성 &rarr; 회독 설계</li>
+<li><b>특허/상표</b>: 2차까지 연계가 핵심</li>
+<li><b>디자인</b>: 선택과목 연계(전략)</li>
+<li><b>자연과학</b>: 과락 가능성 유의, 난이도 부담 큼</li>
+</ul>
+</div>
+</div>
+<div style="height: 14px;">&nbsp;</div>
+<div class="card">
+<h3>추천 학습 흐름(큰 그림)</h3>
+<p style="margin: 0;">법과목은 <b>[민 &rarr; 특 &rarr; 상 &rarr; 디]</b> 흐름으로 기본을 잡고, 자연과학을 병행합니다. 진입 시기/자과 베이스/2차 병행 여부에 따라 <b>개인별 커리큘럼</b> 설계가 필요합니다.</p>
+</div>
+</div>
+</section>
+<!-- FAQ -->
+<section id="faq" class="block">
+<div class="block-head">
+<div class="block-title">
+<h2>❓ Q&amp;A</h2>
+<div class="sub">클릭하면 펼쳐집니다</div>
+</div>
+</div>
+<div class="block-body">
+<div id="faqList" class="faq">
+<div class="qa"><button type="button" aria-expanded="false"> <span class="q"><span class="tagQ">Q</span>대부분 수험생들은 준비에 어느 정도의 시간을 투자하나요?<br /></span> <span class="chev">⌄</span> </button>
+<div class="a" role="region" aria-label="답변">
+<div class="inner">수험 기간은 개인별로 차이가 있지만, 최종적으로 합격한 수험생들을 기준으로 보면 보통 3년에서 4년 정도 준비하는 경우가 가장 많습니다. 물론 1년 6개월 미만의 짧은 기간에 합격하는 경우도 있기는 하나, 전반적인 합격 비율은 낮은 편입니다. 다만 매년 이러한 단기 합격 사례가 실제로 존재한다는 점도 함께 참고하시면 좋겠습니다.</div>
+</div>
+</div>
+<div class="qa"><button type="button" aria-expanded="false"> <span class="q"><span class="tagQ">Q</span> 영어 성적은 어느 시점까지 확보하는 것이 좋을까요?</span> <span class="chev">⌄</span> </button>
+<div class="a" role="region" aria-label="답변">
+<div class="inner">영어는 보통 &ldquo;조금 있다가 준비해도 되겠지&rdquo;라고 생각하기 쉬운데, 막상 법과목이 본격적으로 시작되면 시간을 내기가 상당히 어렵습니다. 그 결과 영어 성적을 확보하지 못해 1차 시험 자체를 치르지 못하는 경우가 실제로 계속 발생하고 있습니다. 이런 점을 고려하면, 영어는 초기에 <b>우선순위를 높게</b> 두고 준비하는 것이 안전한 선택입니다.</div>
+</div>
+</div>
+<div class="qa"><button type="button" aria-expanded="false"> <span class="q"><span class="tagQ">Q</span> 온라인 강의로 학습을 시작해도 문제없나요?</span> <span class="chev">⌄</span> </button>
+<div class="a" role="region" aria-label="답변">
+<div class="inner">1차 시험은 객관식 시험이기 때문에 시간과 장소에 구애받지 않는 온라인 강의로도 충분히 준비할 수 있습니다. 다만 2차 시험은 논술형 시험이다 보니, 직접 답안을 작성해 보고 피드백을 받는 과정, 그리고 즉각적인 질의응답이 중요해 현장 강의를 선호하는 수험생들이 많은 편입니다.</div>
+</div>
+</div>
+<div class="qa"><button type="button" aria-expanded="false"> <span class="q"><span class="tagQ">Q</span>기출문제 위주로 공부하면 합격에 무리가 없을까요?</span> <span class="chev">⌄</span> </button>
+<div class="a" role="region" aria-label="답변">
+<div class="inner">기출문제는 반드시 반복해야 할 핵심 자료이지만, 계속 같은 문제를 보다 보면 이미 본 문제라는 이유로 쉽게 풀리는 경우가 많습니다. 이로 인해 실력이 충분히 올라온 것처럼 느껴질 수 있습니다. 이런 착시를 피하기 위해서는 기출문제로 전체적인 출제 방향을 정리한 뒤, 하반기에는 <b>신규 문항</b>을 통해 처음 보는 문제에서의 대응력을 점검하고, 자신의 객관적인 실력 수준을 확인하는 것이 중요합니다.</div>
+</div>
+</div>
+<div class="qa"><button type="button" aria-expanded="false"> <span class="q"><span class="tagQ">Q</span> 전공이 이공계가 아니어도 도전하는 데 문제가 없을까요?</span> <span class="chev">⌄</span> </button>
+<div class="a" role="region" aria-label="답변">
+<div class="inner">비이공계 전공자의 경우 자연과학이나 선택과목에서 부담을 느끼는 경우가 많지만, 현재 제도에서는 전공 차이가 결정적인 변수로 작용한다고 보기는 어렵습니다. 선택과목은 P/F 방식으로 최소 기준만 충족하면 되고, 자연과학도 고득점 경쟁이 아니라 필요한 점수를 효율적으로 확보하는 전략이 중요하기 때문에, 충분히 보완이 가능한 영역입니다.</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<footer>
+<div class="footline">
+<div style="font-weight: 950; color: rgba(15,23,42,.92);">리담변리사학원</div>
+<div class="muted" style="margin-top: 6px;">www.lidamedu.com &middot; 수험가이드(2026 공고 반영)</div>
+</div>
+</footer></main>
+<p>
+<script>
+    // Smooth scroll
+    document.querySelectorAll('a[href^="#"]').forEach(a=>{
+      a.addEventListener('click', e=>{
+        const id = a.getAttribute('href');
+        const el = document.querySelector(id);
+        if(!el) return;
+        e.preventDefault();
+        el.scrollIntoView({behavior:'smooth', block:'start'});
+        history.replaceState(null, '', id);
+      });
+    });
+
+    // Active nav on scroll (IntersectionObserver)
+    const chips = [...document.querySelectorAll('.chip')];
+    const sections = ['#schedule','#overview','#english','#stats','#strategy','#faq']
+      .map(s => document.querySelector(s))
+      .filter(Boolean);
+
+    const setActive = (hash)=>{
+      chips.forEach(c => c.classList.toggle('active', c.getAttribute('href') === hash));
+    };
+
+    const io = new IntersectionObserver((entries)=>{
+      const visible = entries
+        .filter(e=>e.isIntersecting)
+        .sort((a,b)=>b.intersectionRatio - a.intersectionRatio)[0];
+      if(!visible) return;
+      setActive('#' + visible.target.id);
+    }, { root:null, threshold:[0.2,0.35,0.5,0.65] });
+
+    sections.forEach(s=>io.observe(s));
+    setActive(location.hash || '#schedule');
+
+    // FAQ accordion
+    document.querySelectorAll('.qa').forEach(box=>{
+      const btn = box.querySelector('button');
+      btn.addEventListener('click', ()=>{
+        const open = box.classList.toggle('open');
+        btn.setAttribute('aria-expanded', String(open));
+      });
+    });
+  </script>
+</p>
