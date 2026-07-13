@@ -54,9 +54,9 @@ export const LECTURE_NAV_LINKS: ReadonlyArray<LectureNavItem> = [
     children: [
       { label: "인사말", to: "/about" },
       { label: "강사소개", to: "/about/instructors" },
-      { label: "학원시설", to: "/lecture/facilities" },
       { label: "시험정보", to: "/lecture/exam-info" },
       { label: "리담소식", to: "/lecture/news" },
+      { label: "학원시설", to: "/lecture/facilities" },
       { label: "찾아오시는 길", to: "/location" },
     ],
   },

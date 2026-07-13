@@ -87,6 +87,7 @@ export default function InstructorRecruit() {
               color: "var(--i-herosoft)",
               fontSize: 16,
               lineHeight: 1.7,
+              wordBreak: "keep-all",
             }}
           >
             변리사 시험의 기준을 함께 만들어갈{" "}

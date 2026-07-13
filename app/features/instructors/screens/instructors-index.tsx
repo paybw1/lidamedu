@@ -34,25 +34,39 @@ export async function loader({ request }: Route.LoaderArgs) {
   return { groups };
 }
 
+// 과목 중복 제거 — role_label("특허법 전임")에는 과목명이 다시 들어있다. 과목 배지로
+// 이미 표시하므로 역할 부분만 남긴다. 예: "특허법 전임"→"전임", "자연과학(물리) 전임"→"자연과학 전임".
+function roleTail(role: string | null, subject: string): string | null {
+  if (!role) return null;
+  const t = role
+    .split(subject)
+    .join(" ")
+    .replace(/\(\s*\)/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return t && t !== subject ? t : null;
+}
+
 function Card({ it }: { it: InstructorCard }) {
+  const role = roleTail(it.roleLabel, it.subjectLabel);
   return (
     <Link className="i-card" to={`/about/instructors/${it.slug}`}>
-      <span className="i-cmono">
+      <div className="i-photo">
         {it.photoPath ? (
-          <img src={it.photoPath} alt={it.name} />
+          <img src={it.photoPath} alt={it.name} loading="lazy" />
         ) : (
-          <>
-            <span className="fr" />
-            <span className="m">{it.monogram ?? it.name.slice(0, 1)}</span>
-          </>
+          <div className="i-phf">
+            <span>{it.monogram ?? it.name.slice(0, 1)}</span>
+          </div>
         )}
-      </span>
-      <span style={{ minWidth: 0 }}>
-        <span className="i-cnm">{it.name}</span>
-        <br />
-        <span className="i-subj">{it.subjectLabel}</span>
-        <span className="i-cr">{it.roleLabel ?? it.headline ?? ""}</span>
-      </span>
+      </div>
+      <div className="i-cbody">
+        <div className="i-cnm">{it.name}</div>
+        <div className="i-cmeta">
+          <span className="i-subj">{it.subjectLabel}</span>
+          {role ? <span className="i-role">{role}</span> : null}
+        </div>
+      </div>
     </Link>
   );
 }
