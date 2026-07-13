@@ -88,6 +88,8 @@ export interface SubscriptionPlan {
   isActive: boolean;
   /** 판매 단계(5). is_active 는 이 값의 파생(on_sale ↔ true). */
   saleStatus: SaleStatus;
+  /** 강의 카탈로그 분류(course/tpass 상품). null=미분류. */
+  lectureCategory: "round1" | "round2" | "package" | "onsite" | null;
 }
 
 export interface UserSubscription {

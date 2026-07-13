@@ -63,6 +63,10 @@ const schema = z.object({
   availableFrom: z.string().datetime().nullable(),
   displayOrder: z.coerce.number().int().min(0).max(9999),
   saleStatus: z.enum(["scheduled", "on_sale", "paused", "ended", "hidden"]),
+  // 강의 카탈로그 분류(강의 플랫폼 course/tpass 상품에만 의미). 미분류=null.
+  lectureCategory: z
+    .enum(["round1", "round2", "package", "onsite"])
+    .nullable(),
 });
 
 export async function action({ request }: Route.ActionArgs) {
@@ -94,6 +98,10 @@ export async function action({ request }: Route.ActionArgs) {
     availableFrom: toIso(fd.get("availableFrom")),
     displayOrder: fd.get("displayOrder"),
     saleStatus: fd.get("saleStatus"),
+    lectureCategory: (() => {
+      const s = String(fd.get("lectureCategory") ?? "").trim();
+      return s === "" ? null : s;
+    })(),
   });
   if (!parsed.success) {
     return data(
@@ -125,6 +133,7 @@ export async function action({ request }: Route.ActionArgs) {
       availableFrom: parsed.data.availableFrom,
       displayOrder: parsed.data.displayOrder,
       saleStatus: parsed.data.saleStatus,
+      lectureCategory: parsed.data.lectureCategory,
     },
     parsed.data.intent,
   );

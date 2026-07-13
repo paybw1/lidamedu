@@ -13,6 +13,10 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { PlanPolicyFields } from "~/features/subscriptions/components/plan-policy-fields";
 import {
+  LECTURE_CATEGORIES,
+  LECTURE_CATEGORY_LABEL,
+} from "~/features/lms/lib/lecture-category";
+import {
   Chip,
   IndexTable,
   TD,
@@ -536,6 +540,26 @@ function PlanForm({
             </div>
           )}
         </div>
+      ) : null}
+
+      {showPolicy ? (
+        <FormField label="강의 카탈로그 분류">
+          <select
+            name="lectureCategory"
+            defaultValue={plan?.lectureCategory ?? ""}
+            className="border-input bg-background h-8 w-full rounded-md border px-2 text-xs sm:w-56"
+          >
+            <option value="">미분류 (전체 탭에만 노출)</option>
+            {LECTURE_CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {LECTURE_CATEGORY_LABEL[c]}
+              </option>
+            ))}
+          </select>
+          <span className="text-muted-foreground/70 text-[10px]">
+            수강신청(/lecture/catalog) 카테고리 탭 분류입니다.
+          </span>
+        </FormField>
       ) : null}
 
       {showPolicy ? (

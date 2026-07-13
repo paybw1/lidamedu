@@ -39,7 +39,7 @@ export type {
 } from "./labels";
 
 const PLAN_COLUMNS =
-  "plan_id, code, name, description, price_krw, duration_days, features, subject_codes, product_kind, available_from, display_order, is_active, sale_status";
+  "plan_id, code, name, description, price_krw, duration_days, features, subject_codes, product_kind, available_from, display_order, is_active, sale_status, lecture_category";
 
 function rowToPlan(r: {
   plan_id: string;
@@ -55,6 +55,7 @@ function rowToPlan(r: {
   display_order: number;
   is_active: boolean;
   sale_status: string;
+  lecture_category: string | null;
 }): SubscriptionPlan {
   return {
     planId: r.plan_id,
@@ -72,6 +73,8 @@ function rowToPlan(r: {
     displayOrder: r.display_order,
     isActive: r.is_active,
     saleStatus: (r.sale_status as SubscriptionPlan["saleStatus"]) ?? "hidden",
+    lectureCategory:
+      (r.lecture_category as SubscriptionPlan["lectureCategory"]) ?? null,
   };
 }
 
@@ -125,6 +128,8 @@ export interface UpsertPlanInput {
   availableFrom: string | null;
   displayOrder: number;
   saleStatus: SubscriptionPlan["saleStatus"];
+  // 강의 카탈로그 분류(course/tpass 상품용). null=미분류.
+  lectureCategory: "round1" | "round2" | "package" | "onsite" | null;
 }
 
 // 상품 생성/수정. code 는 생성 시에만 지정(수정 시 불변 키). adminClient.
@@ -144,6 +149,7 @@ export async function upsertPlan(
     available_from: input.availableFrom,
     display_order: input.displayOrder,
     sale_status: input.saleStatus,
+    lecture_category: input.lectureCategory,
     // is_active 는 sale_status 의 파생(단일 소유자) — 기존 소비처(pricing·catalog·resolver) 무변경.
     is_active: input.saleStatus === "on_sale",
   };
