@@ -4666,6 +4666,33 @@ export type Database = {
           },
         ]
       }
+      exam_info: {
+        Row: {
+          created_at: string
+          data: Json
+          id: string
+          slug: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          id?: string
+          slug?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          id?: string
+          slug?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       exam_results: {
         Row: {
           certificate_path: string | null

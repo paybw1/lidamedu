@@ -670,6 +670,10 @@ export default [
         "/admin/landing-banners/:bannerId/edit",
         "features/landing/screens/admin-banner-edit.tsx",
       ),
+      route(
+        "/admin/exam-info",
+        "features/landing/screens/admin-exam-info.tsx",
+      ),
       route("/api/admin/landing", "features/landing/api/admin-landing.tsx"),
       // feat-13 쿠폰 관리(매출·정산).
       route("/admin/coupons", "features/coupons/screens/admin-coupons.tsx"),

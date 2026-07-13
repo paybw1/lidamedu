@@ -344,6 +344,7 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "히어로 배너", to: "/admin/landing-banners" },
       { label: "현장강의 일정", to: "/admin/lecture-schedules" },
       { label: "리담소식", to: "/admin/lecture-news" },
+      { label: "시험정보", to: "/admin/exam-info" },
     ],
   },
   {

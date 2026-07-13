@@ -1,7 +1,10 @@
-// 시험정보 — /lecture/exam-info. 공개 정적 페이지. 강의 nav "리담안내" 하위.
-//   데이터 출처: 특허청·한국산업인력공단 변리사 국가자격시험 공고(2026) 요약.
-//   정적 참고자료(연 1회 갱신) — /about·/location 과 동일한 하드코딩 패턴.
+// 시험정보 — /lecture/exam-info. 공개 페이지. 강의 nav "리담안내" 하위.
+//   콘텐츠는 exam_info.data(JSONB) 에서 로드, 행 없으면 기본값 폴백.
+//   운영자는 /admin/exam-info 에서 직접 편집. 디자인은 랜딩·리담소식과 동일한 .llx 스코프.
+import makeServerClient from "~/core/lib/supa-client.server";
+
 import { LandingStyle } from "../components/landing-style";
+import { getExamInfo } from "../queries.server";
 
 import type { Route } from "./+types/exam-info";
 
@@ -14,58 +17,27 @@ export const meta: Route.MetaFunction = () => [
   },
 ];
 
-// ── 시험 일정(2026) ──
-const SCHEDULE: { round: string; kind: string; rows: [string, string][] }[] = [
-  {
-    round: "제1차 시험",
-    kind: "객관식 5지선다",
-    rows: [
-      ["원서접수", "2026. 1. 12.(월) 09:00 ~ 1. 16.(금) 18:00"],
-      ["시험일", "2026. 2. 28.(토)"],
-      ["합격자 발표", "2026. 3. 25.(수)"],
-    ],
-  },
-  {
-    round: "제2차 시험",
-    kind: "주관식 논술",
-    rows: [
-      ["원서접수", "2026. 4. 20.(월) 09:00 ~ 4. 24.(금) 18:00"],
-      ["시험일", "2026. 7. 31.(금) ~ 8. 1.(토)"],
-      ["합격자 발표", "2026. 10. 28.(수)"],
-    ],
-  },
-];
+export async function loader({ request }: Route.LoaderArgs) {
+  const [client] = makeServerClient(request);
+  const info = await getExamInfo(client);
+  return { info };
+}
 
-// ── 1차 과목 ──
-const FIRST_SUBJECTS: [string, string][] = [
-  ["산업재산권법", "특허법·실용신안법, 상표법, 디자인보호법"],
-  ["민법개론", "친족·상속법 제외"],
-  ["자연과학개론", "물리·화학·생물·지구과학"],
-  ["영어", "공인 어학시험 성적으로 대체"],
-];
+export default function ExamInfo({ loaderData }: Route.ComponentProps) {
+  const {
+    intro,
+    schedule,
+    firstSubjects,
+    firstCriteria,
+    secondRequired,
+    secondElective,
+    secondCriteria,
+    english,
+    englishNote,
+    stats,
+    source,
+  } = loaderData.info;
 
-// ── 2차 과목 ──
-const SECOND_REQUIRED = ["특허법", "상표법", "민사소송법"];
-
-// ── 영어 대체시험 인정 점수(일반 응시자 기준) ──
-const ENGLISH: [string, string][] = [
-  ["TOEIC", "775"],
-  ["TOEFL (PBT)", "560"],
-  ["TOEFL (iBT)", "83"],
-  ["TEPS", "385"],
-  ["G-TELP", "77 (Level-2)"],
-  ["FLEX", "700"],
-  ["IELTS", "5"],
-];
-
-// ── 주요 통계(2025년 제1차) ──
-const STATS: [string, string][] = [
-  ["3,541명", "2025년 제1차 응시"],
-  ["661명", "2025년 제1차 합격"],
-  ["5.99 : 1", "2025년 최종 경쟁률"],
-];
-
-export default function ExamInfo() {
   return (
     <div className="llx">
       <LandingStyle />
@@ -78,25 +50,22 @@ export default function ExamInfo() {
             <div>
               <p className="eyebrow">Exam Info</p>
               <h2>변리사 시험 정보</h2>
-              <p>
-                산업재산권 분야 유일의 국가전문자격. 1차(객관식)·2차(논술)로
-                치러지며, 아래는 2026년 시행 기준 요약입니다.
-              </p>
+              {intro ? <p>{intro}</p> : null}
             </div>
           </div>
 
           <div className="ei-two">
-            {SCHEDULE.map((s) => (
-              <div className="ei-card" key={s.round}>
+            {schedule.map((s) => (
+              <div className="ei-card" key={s.title}>
                 <div className="ei-ch">
-                  <h3>{s.round}</h3>
+                  <h3>{s.title}</h3>
                   <span className="ei-kind">{s.kind}</span>
                 </div>
                 <div className="ei-rows">
-                  {s.rows.map(([k, v]) => (
-                    <div className="ei-row" key={k}>
-                      <span className="ei-k">{k}</span>
-                      <span className="ei-v tnum">{v}</span>
+                  {s.rows.map((r) => (
+                    <div className="ei-row" key={r.label}>
+                      <span className="ei-k">{r.label}</span>
+                      <span className="ei-v tnum">{r.value}</span>
                     </div>
                   ))}
                 </div>
@@ -124,17 +93,18 @@ export default function ExamInfo() {
                 <span className="ei-kind">4과목 · 객관식</span>
               </div>
               <div className="ei-subj">
-                {FIRST_SUBJECTS.map(([name, desc]) => (
-                  <div className="ei-subrow" key={name}>
-                    <b>{name}</b>
-                    <span>{desc}</span>
+                {firstSubjects.map((s) => (
+                  <div className="ei-subrow" key={s.name}>
+                    <b>{s.name}</b>
+                    <span>{s.desc}</span>
                   </div>
                 ))}
               </div>
-              <p className="ei-crit">
-                <b>합격</b> 매 과목 40점 이상, 전 과목 평균 60점 이상 득점자
-                중 고득점자순으로 선발예정인원(600명, 동점자 포함) 결정
-              </p>
+              {firstCriteria ? (
+                <p className="ei-crit">
+                  <b>합격</b> {firstCriteria}
+                </p>
+              ) : null}
             </div>
 
             {/* 2차 */}
@@ -146,17 +116,18 @@ export default function ExamInfo() {
               <div className="ei-subj">
                 <div className="ei-subrow">
                   <b>필수과목</b>
-                  <span>{SECOND_REQUIRED.join(", ")}</span>
+                  <span>{secondRequired}</span>
                 </div>
                 <div className="ei-subrow">
                   <b>선택과목</b>
-                  <span>19개 과목 중 1개 선택 (50점 이상 합격 · Pass)</span>
+                  <span>{secondElective}</span>
                 </div>
               </div>
-              <p className="ei-crit">
-                <b>합격</b> 필수과목 매 과목 40점 이상·평균 60점 이상, 선택과목
-                50점 이상. 필수과목 성적으로 고득점자순 선발
-              </p>
+              {secondCriteria ? (
+                <p className="ei-crit">
+                  <b>합격</b> {secondCriteria}
+                </p>
+              ) : null}
             </div>
           </div>
         </div>
@@ -177,32 +148,27 @@ export default function ExamInfo() {
           </div>
 
           <div className="ei-eng">
-            {ENGLISH.map(([name, score]) => (
-              <div className="ei-engc" key={name}>
-                <span className="ei-engn">{name}</span>
-                <span className="ei-engs tnum">{score}</span>
+            {english.map((e) => (
+              <div className="ei-engc" key={e.name}>
+                <span className="ei-engn">{e.name}</span>
+                <span className="ei-engs tnum">{e.score}</span>
               </div>
             ))}
           </div>
-          <p className="ei-note">
-            ※ 인정 성적: 2022. 4. 27. ~ 2026. 1. 16. 사이 응시하고 접수마감일까지
-            발표된 성적. 청각장애인 등 별도 기준은 공식 공고를 확인하세요.
-          </p>
+          {englishNote ? <p className="ei-note">{englishNote}</p> : null}
 
-          <div className="ei-stats">
-            {STATS.map(([n, l]) => (
-              <div className="ei-stat" key={l}>
-                <b className="tnum">{n}</b>
-                <span>{l}</span>
-              </div>
-            ))}
-          </div>
+          {stats.length ? (
+            <div className="ei-stats">
+              {stats.map((s) => (
+                <div className="ei-stat" key={s.label}>
+                  <b className="tnum">{s.value}</b>
+                  <span>{s.label}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
 
-          <p className="ei-src">
-            본 정보는 특허청·한국산업인력공단 공고를 요약한 참고자료입니다.
-            정확한 일정·기준·점수는 반드시 큐넷(Q-Net) 및 특허청 공식 공고를
-            확인하시기 바랍니다.
-          </p>
+          {source ? <p className="ei-src">{source}</p> : null}
         </div>
       </section>
     </div>

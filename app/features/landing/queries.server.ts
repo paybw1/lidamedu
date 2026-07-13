@@ -4,9 +4,43 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
+import {
+  EXAM_INFO_DEFAULT,
+  examInfoSchema,
+  parseExamInfo,
+  type ExamInfoData,
+} from "./lib/exam-info";
 import type { BannerRow, NewsRow, ScheduleRow } from "./labels";
 
 type Client = SupabaseClient<Database>;
+
+// ── 시험정보(단일 JSONB 문서) ──────────────────────────────────────────────
+// 행 없으면 기본값 폴백(정적 버전과 동일 콘텐츠) → 최초 저장 전에도 정상 노출.
+export async function getExamInfo(client: Client): Promise<ExamInfoData> {
+  const { data } = await client
+    .from("exam_info")
+    .select("data")
+    .eq("slug", "default")
+    .maybeSingle();
+  return data ? parseExamInfo(data.data) : EXAM_INFO_DEFAULT;
+}
+
+export async function upsertExamInfo(
+  client: Client,
+  raw: unknown,
+  updatedBy: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const parsed = examInfoSchema.safeParse(raw);
+  if (!parsed.success)
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "형식 오류" };
+  const { error } = await client
+    .from("exam_info")
+    .upsert(
+      { slug: "default", data: parsed.data, updated_by: updatedBy },
+      { onConflict: "slug" },
+    );
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
 
 // ── 현장강의 일정 ──────────────────────────────────────────────────────────
 // 개강일 오름차순(날짜 없으면 뒤), 그다음 display_order. 지난 개강은 제외(today 기준).

@@ -6,7 +6,7 @@ import { data, redirect } from "react-router";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 
-import { reorderRow, softDeleteRow } from "../queries.server";
+import { reorderRow, softDeleteRow, upsertExamInfo } from "../queries.server";
 
 import type { Route } from "./+types/admin-landing";
 
@@ -47,7 +47,24 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ error: "Forbidden" }, { status: 403 });
 
   const fd = await request.formData();
-  const entity = String(fd.get("entity") ?? "") as Entity;
+  const entityRaw = String(fd.get("entity") ?? "");
+
+  // 시험정보 — 단일 JSONB 문서 upsert(테이블 CRUD 와 별개 경로). data 필드에 전체 문서 JSON.
+  if (entityRaw === "exam_info") {
+    if (String(fd.get("intent") ?? "") !== "save")
+      return data({ error: "bad intent" }, { status: 400 });
+    let payload: unknown;
+    try {
+      payload = JSON.parse(String(fd.get("data") ?? "null"));
+    } catch {
+      return data({ error: "JSON 파싱 실패" }, { status: 400 });
+    }
+    const res = await upsertExamInfo(client, payload, user.id);
+    if (!res.ok) return data({ error: res.error }, { status: 400 });
+    return redirect("/admin/exam-info");
+  }
+
+  const entity = entityRaw as Entity;
   if (!(entity in TABLE)) return data({ error: "bad entity" }, { status: 400 });
   const intent = String(fd.get("intent") ?? "");
   const id = String(fd.get("id") ?? "");
