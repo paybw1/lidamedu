@@ -117,6 +117,13 @@ export function LandingStyle() {
 
 /* instructors */
 .llx .igroup{margin-bottom:24px}
+/* 강사 레일 — 좌우 화살표 버튼(양 끝 겹침, 스크롤 끝에서 자동 비활성) */
+.llx .irailwrap{position:relative}
+.llx .irail-nav{position:absolute;top:42%;transform:translateY(-50%);z-index:3;width:44px;height:44px;border-radius:50%;border:1px solid var(--line2);background:var(--lsurface);color:var(--ink);font-size:26px;line-height:1;cursor:pointer;display:grid;place-items:center;box-shadow:0 10px 26px -12px rgba(22,41,74,.5);transition:transform .15s,background .15s,color .15s,opacity .18s}
+.llx .irail-nav:hover{background:var(--navy);color:var(--hero-ink);border-color:var(--navy);transform:translateY(-50%) scale(1.06)}
+.llx .irail-nav.prev{left:-10px}
+.llx .irail-nav.next{right:-10px}
+.llx .irail-nav:disabled{opacity:0;pointer-events:none}
 .llx .ihd{display:flex;align-items:baseline;gap:12px;margin-bottom:14px;padding-bottom:9px;border-bottom:1px solid var(--line)}
 .llx .ihd .kr{font-size:17px;font-weight:900}
 .llx .ihd .en{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);font-weight:800}
@@ -200,6 +207,23 @@ export function LandingStyle() {
 .llx details.qa summary .ar{margin-left:auto;color:var(--faint);transition:transform .2s}
 .llx details.qa[open] summary .ar{transform:rotate(180deg)}
 .llx details.qa .a{font-size:14px;color:var(--soft);line-height:1.8;padding:0 0 18px 30px}
+/* faq — 분류별 접힘(support_faqs) */
+.llx details.faqcat{background:var(--lsurface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.llx details.faqcat>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:15px 18px;font-weight:900;font-size:15px}
+.llx details.faqcat>summary::-webkit-details-marker{display:none}
+.llx details.faqcat>summary .cnt{margin-left:auto;font-size:12px;color:var(--faint);font-weight:700}
+.llx details.faqcat>summary .car{color:var(--faint);transition:transform .2s}
+.llx details.faqcat[open]>summary .car{transform:rotate(180deg)}
+.llx .faqcat .qlist{border-top:1px solid var(--line);padding:2px 18px 8px}
+.llx details.qi{border-top:1px solid var(--line)}
+.llx details.qi:first-child{border-top:0}
+.llx details.qi>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:13px 0;font-weight:700;font-size:14px}
+.llx details.qi>summary::-webkit-details-marker{display:none}
+.llx details.qi>summary .q{color:var(--gilt);font-weight:900;flex-shrink:0}
+.llx details.qi>summary .qt{flex:1;min-width:0}
+.llx details.qi>summary .ar{margin-left:auto;color:var(--faint);transition:transform .2s;flex-shrink:0}
+.llx details.qi[open]>summary .ar{transform:rotate(180deg)}
+.llx details.qi .a{font-size:13.5px;color:var(--soft);line-height:1.75;padding:0 0 14px 26px;white-space:pre-wrap}
 
 /* final */
 .llx .final{background:linear-gradient(158deg,var(--navy),var(--navy2));color:var(--hero-ink);position:relative;overflow:hidden}

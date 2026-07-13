@@ -12,7 +12,6 @@ import {
   CS_STATUS_LABEL,
   type CsStatus,
 } from "../labels";
-import { listSupportFaqGroups } from "../faq.server";
 import { listInquiries, type CsInquiryRow } from "../queries.server";
 
 import type { Route } from "./+types/support-list";
@@ -27,13 +26,10 @@ export async function loader({ request }: Route.LoaderArgs) {
     data: { user },
   } = await client.auth.getUser();
   if (!user) throw data(null, { status: 401 });
-  const [rows, faqGroups] = await Promise.all([
-    listInquiries(client),
-    listSupportFaqGroups(client),
-  ]);
+  const rows = await listInquiries(client);
   const mine = rows.filter((r) => r.authorId === user.id);
   const others = rows.filter((r) => r.authorId !== user.id); // 공개 문의(비공개는 RLS 로 이미 제외)
-  return { mine, others, faqGroups };
+  return { mine, others };
 }
 
 const STATUS_VARIANT: Record<CsStatus, "default" | "secondary" | "outline"> = {
@@ -81,7 +77,7 @@ function InquiryRow({ it, mine }: { it: CsInquiryRow; mine: boolean }) {
 }
 
 export default function SupportList({ loaderData }: Route.ComponentProps) {
-  const { mine, others, faqGroups } = loaderData;
+  const { mine, others } = loaderData;
   return (
     <CohortBoardShell
       title="고객센터"
@@ -95,50 +91,7 @@ export default function SupportList({ loaderData }: Route.ComponentProps) {
         </Button>
       }
     >
-      {faqGroups.length > 0 ? (
-        <section className="mb-8">
-          <h2 className="mb-1 text-sm font-bold">자주 묻는 질문</h2>
-          <p className="text-muted-foreground mb-3 text-xs">
-            분류를 눌러 자주 묻는 질문을 먼저 확인해 보세요.
-          </p>
-          {/* 분류별로 접어 둔다 — 목록이 길어 문의 작성을 가리지 않도록 기본 접힘. */}
-          <div className="flex flex-col gap-2">
-            {faqGroups.map((g) => (
-              <details
-                key={g.category}
-                className="group/cat bg-card overflow-hidden rounded-xl border"
-              >
-                <summary className="hover:bg-muted/40 flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-bold [&::-webkit-details-marker]:hidden">
-                  <span className="min-w-0 flex-1">{g.category}</span>
-                  <span className="text-muted-foreground text-xs font-normal tabular-nums">
-                    {g.items.length}
-                  </span>
-                  <span className="text-muted-foreground shrink-0 transition-transform group-open/cat:rotate-180">
-                    ⌄
-                  </span>
-                </summary>
-                <div className="divide-border divide-y border-t">
-                  {g.items.map((f) => (
-                    <details key={f.faqId} className="group/q px-4">
-                      <summary className="flex cursor-pointer list-none items-center gap-2 py-3 text-[13px] font-medium [&::-webkit-details-marker]:hidden">
-                        <span className="text-primary font-bold">Q</span>
-                        <span className="min-w-0 flex-1">{f.question}</span>
-                        <span className="text-muted-foreground shrink-0 transition-transform group-open/q:rotate-180">
-                          ⌄
-                        </span>
-                      </summary>
-                      <p className="text-muted-foreground pb-4 pl-5 text-[13px] leading-relaxed whitespace-pre-wrap">
-                        {f.answer}
-                      </p>
-                    </details>
-                  ))}
-                </div>
-              </details>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
+      {/* 자주 묻는 질문(FAQ)은 랜딩(/lecture/home) 하단으로 이동. 여기서는 문의만. */}
       <section className="mb-6">
         <h2 className="mb-2 text-sm font-bold">내 문의</h2>
         {mine.length === 0 ? (

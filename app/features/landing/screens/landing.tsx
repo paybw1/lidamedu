@@ -3,11 +3,13 @@
 import { Link } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { listSupportFaqGroups } from "~/features/cs-inquiries/faq.server";
 import { listPasserSummaries } from "~/features/exam-results/analytics.server";
 import { EXAM_ROUND_LABEL } from "~/features/exam-results/labels";
 import { listInstructors } from "~/features/instructors/queries.server";
 
 import { HeroCarousel } from "../components/hero-carousel";
+import { InstructorRail } from "../components/instructor-rail";
 import { LandingStyle } from "../components/landing-style";
 import {
   FORMAT_LABEL,
@@ -38,27 +40,29 @@ export function meta() {
 export async function loader({ request }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);
   const todayISO = new Date().toISOString();
-  const [banners, schedules, news, instructors, passers] = await Promise.all([
-    listBanners(client),
-    listSchedules(client, { todayISO, limit: 4 }),
-    listNews(client, { limit: 5 }),
-    listInstructors(client),
-    listPasserSummaries({
-      year: null,
-      round: null,
-      limit: 3,
-      excludeSynthetic: true,
-    }).catch(() => []),
-  ]);
-  // 랜딩 강사진은 계열 구분 없이 한 줄 가로 스크롤 — 배치 순서(display_order) 그대로.
-  return { banners, schedules, news, instructors, passers, todayISO };
+  const [banners, schedules, news, instructors, passers, faqGroups] =
+    await Promise.all([
+      listBanners(client),
+      listSchedules(client, { todayISO, limit: 4 }),
+      listNews(client, { limit: 5 }),
+      listInstructors(client),
+      listPasserSummaries({
+        year: null,
+        round: null,
+        limit: 3,
+        excludeSynthetic: true,
+      }).catch(() => []),
+      listSupportFaqGroups(client).catch(() => []),
+    ]);
+  // 랜딩 강사진은 계열 구분 없이 한 줄 가로 레일(좌우 화살표) — 배치 순서(display_order) 그대로.
+  return { banners, schedules, news, instructors, passers, faqGroups, todayISO };
 }
 
 const SEAT_CLASS = (rem: number) =>
   rem === 0 ? "low" : rem <= 8 ? "low" : rem <= 16 ? "mid" : "ok";
 
 export default function Landing({ loaderData }: Route.ComponentProps) {
-  const { banners, schedules, news, instructors, passers, todayISO } =
+  const { banners, schedules, news, instructors, passers, faqGroups, todayISO } =
     loaderData;
   return (
     <div className="llx">
@@ -156,29 +160,9 @@ export default function Landing({ loaderData }: Route.ComponentProps) {
               강사진 전체 →
             </Link>
           </Reveal>
-          {/* 계열 구분 없이 한 줄 가로 스크롤 — 너무 길면 좌우로 넘긴다. */}
+          {/* 계열 구분 없이 한 줄 가로 레일 — 양 끝 화살표 버튼으로 좌우로 넘긴다. */}
           <Reveal className="igroup">
-            <div className="igrid">
-              {instructors.map((it) => (
-                <Link
-                  className="ic"
-                  to={`/about/instructors/${it.slug}`}
-                  key={it.instructorId}
-                >
-                  <span className="por">
-                    {it.photoPath ? (
-                      <img src={it.photoPath} alt={it.name} loading="lazy" />
-                    ) : (
-                      <b>{it.monogram ?? it.name.slice(0, 1)}</b>
-                    )}
-                  </span>
-                  <span className="icb">
-                    <span className="nm">{it.name}</span>
-                    <span className="role">{it.subjectLabel}</span>
-                  </span>
-                </Link>
-              ))}
-            </div>
+            <InstructorRail items={instructors} />
           </Reveal>
         </div>
       </section>
@@ -405,46 +389,54 @@ export default function Landing({ loaderData }: Route.ComponentProps) {
         </div>
       </section>
 
-      {/* FAQ */}
-      <section className="band" id="faq">
-        <div className="wrap">
-          <Reveal className="shead" style={{ justifyContent: "center", textAlign: "center" }}>
-            <div>
-              <p className="eyebrow">자주 묻는 질문</p>
-              <h2>궁금한 점을 먼저 확인하세요</h2>
+      {/* FAQ — 고객센터에서 옮겨 온 실제 FAQ(support_faqs). 분류별 접힘. */}
+      {faqGroups.length > 0 ? (
+        <section className="band tint" id="faq">
+          <div className="wrap">
+            <Reveal
+              className="shead"
+              style={{ justifyContent: "center", textAlign: "center" }}
+            >
+              <div>
+                <p className="eyebrow">자주 묻는 질문</p>
+                <h2>궁금한 점을 먼저 확인하세요</h2>
+                <p style={{ marginInline: "auto" }}>
+                  분류를 눌러 자주 묻는 질문을 확인하고, 해결되지 않으면
+                  고객센터로 문의해 주세요.
+                </p>
+              </div>
+            </Reveal>
+            <Reveal className="faq">
+              {faqGroups.map((g) => (
+                <details className="faqcat" key={g.category}>
+                  <summary>
+                    <span>{g.category}</span>
+                    <span className="cnt tnum">{g.items.length}</span>
+                    <span className="car">▾</span>
+                  </summary>
+                  <div className="qlist">
+                    {g.items.map((f) => (
+                      <details className="qi" key={f.faqId}>
+                        <summary>
+                          <span className="q">Q</span>
+                          <span className="qt">{f.question}</span>
+                          <span className="ar">▾</span>
+                        </summary>
+                        <div className="a">{f.answer}</div>
+                      </details>
+                    ))}
+                  </div>
+                </details>
+              ))}
+            </Reveal>
+            <div style={{ textAlign: "center", marginTop: 22 }}>
+              <Link className="btn ghost" to="/lecture/support">
+                고객센터 문의하기 →
+              </Link>
             </div>
-          </Reveal>
-          <Reveal className="faq">
-            {[
-              [
-                "현장강의와 영상강의는 무엇이 다른가요?",
-                "현장강의는 정해진 요일·시간에 강의실(또는 실시간)로 참여하며, 반별 게시판·과제·상담이 함께 제공됩니다. 영상강의는 기간 이용권으로 기간 내 무제한 수강할 수 있습니다.",
-              ],
-              [
-                "무료체험은 어떻게 신청하나요?",
-                "회원가입만 하면 특허법 강의와 통합 학습 자료를 15일간 무료로 이용할 수 있습니다. 별도 결제 정보는 필요하지 않습니다.",
-              ],
-              [
-                "종합반은 어떤 과목이 포함되나요?",
-                "특허법·상표법·디자인보호법·민법·민사소송법 전 과목과 자연과학, 반별 커리큘럼·과제·모의고사·1:1 상담이 포함됩니다.",
-              ],
-              [
-                "수강 취소·환불 규정이 궁금합니다.",
-                "개강 전 100% 환불, 이후에는 수강 경과에 따라 관련 법령 기준으로 환불됩니다. 자세한 규정은 고객센터에서 확인하실 수 있습니다.",
-              ],
-            ].map(([q, a], i) => (
-              <details className="qa" key={i} open={i === 0}>
-                <summary>
-                  <span className="q">Q</span>
-                  {q}
-                  <span className="ar">▾</span>
-                </summary>
-                <div className="a">{a}</div>
-              </details>
-            ))}
-          </Reveal>
-        </div>
-      </section>
+          </div>
+        </section>
+      ) : null}
 
       {/* 최종 CTA + 오시는 길 */}
       <section className="final">
