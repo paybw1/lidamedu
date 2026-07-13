@@ -269,6 +269,24 @@ function WorkQueueRow({
       hint: "👎 + 미검토",
     },
     {
+      label: "문의 대기",
+      value: counts.csInquiriesPending,
+      to: "/admin/cs-inquiries",
+      hint: "고객센터 문의 미답변(답변 대기)",
+    },
+    {
+      label: "등업 신청",
+      value: counts.cohortUpgradePending,
+      to: "/admin/cohort-requests",
+      hint: "종합반 등업 신청 승인 대기",
+    },
+    {
+      label: "커뮤니티 신고",
+      value: counts.communityReportsPending,
+      to: "/admin/community/reports",
+      hint: "미처리 신고(pending)",
+    },
+    {
       label: "미배정 점검",
       value: counts.relationGapsTotal,
       to: "/admin/relations/gaps",
@@ -301,6 +319,18 @@ function WorkQueueRow({
         value: manager.refundsPending,
         to: "/admin/orders",
         hint: "학생 환불 요청 승인 대기",
+      },
+      {
+        label: "배송 대기",
+        value: manager.shipmentsPending,
+        to: "/admin/shipments",
+        hint: "발송 전(preparing) 도서 배송",
+      },
+      {
+        label: "무통장 대기",
+        value: manager.bankTransfersPending,
+        to: "/admin/payments",
+        hint: "무통장 입금 확인 대기",
       },
     );
   }
