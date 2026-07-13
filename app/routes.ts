@@ -674,6 +674,23 @@ export default [
         "/admin/exam-info",
         "features/landing/screens/admin-exam-info.tsx",
       ),
+      route(
+        "/admin/exam-notices",
+        "features/landing/screens/admin-exam-notices.tsx",
+      ),
+      route(
+        "/admin/exam-notices/new",
+        "features/landing/screens/admin-exam-notice-edit.tsx",
+        { id: "admin-exam-notice-new" },
+      ),
+      route(
+        "/admin/exam-notices/:noticeId/edit",
+        "features/landing/screens/admin-exam-notice-edit.tsx",
+      ),
+      route(
+        "/api/admin/exam-notice",
+        "features/landing/api/admin-exam-notice.tsx",
+      ),
       route("/api/admin/landing", "features/landing/api/admin-landing.tsx"),
       // feat-13 쿠폰 관리(매출·정산).
       route("/admin/coupons", "features/coupons/screens/admin-coupons.tsx"),

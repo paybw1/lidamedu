@@ -42,6 +42,89 @@ export async function upsertExamInfo(
   return error ? { ok: false, error: error.message } : { ok: true };
 }
 
+// ── 시험 공고(첨부 게시판) ──────────────────────────────────────────────────
+export const EXAM_NOTICES_BUCKET = "exam-notices";
+
+export interface ExamNoticeFile {
+  name: string;
+  path: string;
+  size: number;
+  url: string; // 다운로드 강제 public URL
+}
+export interface ExamNoticeItem {
+  notice_id: string;
+  title: string;
+  body_md: string | null;
+  published_at: string;
+  is_pinned: boolean;
+  published: boolean;
+  files: ExamNoticeFile[];
+}
+
+// attachments(Json) → 파일 배열 + public 다운로드 URL. 형식 어긋난 항목은 건너뜀.
+function parseAttachments(client: Client, raw: unknown): ExamNoticeFile[] {
+  if (!Array.isArray(raw)) return [];
+  const out: ExamNoticeFile[] = [];
+  for (const it of raw) {
+    if (!it || typeof it !== "object") continue;
+    const a = it as Record<string, unknown>;
+    const name = typeof a.name === "string" ? a.name : null;
+    const path = typeof a.path === "string" ? a.path : null;
+    if (!name || !path) continue;
+    const size = typeof a.size === "number" ? a.size : 0;
+    const { data } = client.storage
+      .from(EXAM_NOTICES_BUCKET)
+      .getPublicUrl(path, { download: name });
+    out.push({ name, path, size, url: data.publicUrl });
+  }
+  return out;
+}
+
+export async function listExamNotices(
+  client: Client,
+  opts: { includeUnpublished?: boolean } = {},
+): Promise<ExamNoticeItem[]> {
+  let q = client
+    .from("exam_notices")
+    .select("notice_id, title, body_md, published_at, is_pinned, published, attachments")
+    .is("deleted_at", null)
+    .order("is_pinned", { ascending: false })
+    .order("published_at", { ascending: false });
+  if (!opts.includeUnpublished) q = q.eq("published", true);
+  const { data } = await q;
+  return (data ?? []).map((r) => ({
+    notice_id: r.notice_id,
+    title: r.title,
+    body_md: r.body_md,
+    published_at: r.published_at,
+    is_pinned: r.is_pinned,
+    published: r.published,
+    files: parseAttachments(client, r.attachments),
+  }));
+}
+
+export async function getExamNotice(
+  client: Client,
+  id: string,
+): Promise<ExamNoticeItem | null> {
+  const { data } = await client
+    .from("exam_notices")
+    .select("notice_id, title, body_md, published_at, is_pinned, published, attachments")
+    .eq("notice_id", id)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    notice_id: data.notice_id,
+    title: data.title,
+    body_md: data.body_md,
+    published_at: data.published_at,
+    is_pinned: data.is_pinned,
+    published: data.published,
+    files: parseAttachments(client, data.attachments),
+  };
+}
+
 // ── 현장강의 일정 ──────────────────────────────────────────────────────────
 // 개강일 오름차순(날짜 없으면 뒤), 그다음 display_order. 지난 개강은 제외(today 기준).
 export async function listSchedules(

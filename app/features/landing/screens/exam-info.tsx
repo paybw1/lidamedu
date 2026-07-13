@@ -4,7 +4,7 @@
 import makeServerClient from "~/core/lib/supa-client.server";
 
 import { LandingStyle } from "../components/landing-style";
-import { getExamInfo } from "../queries.server";
+import { getExamInfo, listExamNotices } from "../queries.server";
 
 import type { Route } from "./+types/exam-info";
 
@@ -19,8 +19,11 @@ export const meta: Route.MetaFunction = () => [
 
 export async function loader({ request }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);
-  const info = await getExamInfo(client);
-  return { info };
+  const [info, notices] = await Promise.all([
+    getExamInfo(client),
+    listExamNotices(client),
+  ]);
+  return { info, notices };
 }
 
 export default function ExamInfo({ loaderData }: Route.ComponentProps) {
@@ -37,6 +40,7 @@ export default function ExamInfo({ loaderData }: Route.ComponentProps) {
     stats,
     source,
   } = loaderData.info;
+  const { notices } = loaderData;
 
   return (
     <div className="llx">
@@ -171,6 +175,48 @@ export default function ExamInfo({ loaderData }: Route.ComponentProps) {
           {source ? <p className="ei-src">{source}</p> : null}
         </div>
       </section>
+
+      {/* 시험 공고(첨부 게시판) */}
+      {notices.length ? (
+        <section className="band tint">
+          <div className="wrap" style={{ maxWidth: 980 }}>
+            <div className="shead">
+              <div>
+                <p className="eyebrow">Notices</p>
+                <h2>시험 공고</h2>
+                <p>지식재산처·한국산업인력공단 공식 공고문입니다.</p>
+              </div>
+            </div>
+
+            <div className="ei-notices">
+              {notices.map((n) => (
+                <div className="ei-notice" key={n.notice_id}>
+                  <div className="ei-nhead">
+                    <span className="ei-nt">
+                      {n.is_pinned ? "📌 " : ""}
+                      {n.title}
+                    </span>
+                    <span className="ei-nd tnum">
+                      {n.published_at.slice(0, 10).replace(/-/g, ".")}
+                    </span>
+                  </div>
+                  {n.body_md ? <p className="ei-nbody">{n.body_md}</p> : null}
+                  {n.files.length ? (
+                    <div className="ei-files">
+                      {n.files.map((f) => (
+                        <a className="ei-file" href={f.url} key={f.path}>
+                          <span aria-hidden>⬇</span>
+                          {f.name}
+                        </a>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }
@@ -206,6 +252,16 @@ function ExamStyle() {
 .llx .ei-stat b{display:block;font-size:28px;font-weight:900;color:#fff;letter-spacing:-.03em}
 .llx .ei-stat span{font-size:12.5px;color:var(--hero-soft);margin-top:6px;display:block}
 .llx .ei-src{font-size:12px;color:var(--faint);line-height:1.7;margin-top:26px;padding-top:18px;border-top:1px solid var(--line)}
+.llx .ei-notices{display:flex;flex-direction:column;gap:12px}
+.llx .ei-notice{background:var(--lsurface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;box-shadow:var(--lshadow)}
+.llx .ei-nhead{display:flex;align-items:baseline;justify-content:space-between;gap:14px}
+.llx .ei-nt{font-size:15px;font-weight:800;color:var(--ink);line-height:1.4}
+.llx .ei-nd{font-size:12.5px;color:var(--faint);white-space:nowrap;flex-shrink:0}
+.llx .ei-nbody{font-size:13px;color:var(--soft);line-height:1.7;margin-top:8px;white-space:pre-wrap}
+.llx .ei-files{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.llx .ei-file{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:var(--blue-ink);background:var(--blue-wash);border:1px solid var(--line);border-radius:8px;padding:7px 12px;transition:transform .14s,border-color .14s}
+.llx .ei-file:hover{transform:translateY(-1px);border-color:var(--blue)}
+.llx .ei-file span{font-size:12px;color:var(--gilt)}
 @media (max-width:820px){
   .llx .ei-two{grid-template-columns:1fr}
   .llx .ei-eng{grid-template-columns:repeat(2,1fr)}

@@ -4693,6 +4693,48 @@ export type Database = {
         }
         Relationships: []
       }
+      exam_notices: {
+        Row: {
+          attachments: Json
+          body_md: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          is_pinned: boolean
+          notice_id: string
+          published: boolean
+          published_at: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          attachments?: Json
+          body_md?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          is_pinned?: boolean
+          notice_id?: string
+          published?: boolean
+          published_at?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          attachments?: Json
+          body_md?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          is_pinned?: boolean
+          notice_id?: string
+          published?: boolean
+          published_at?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       exam_results: {
         Row: {
           certificate_path: string | null
