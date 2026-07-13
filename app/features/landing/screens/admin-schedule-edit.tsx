@@ -25,11 +25,18 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const role = await getStaffRole(client, user.id);
   if (!role) throw redirect("/dashboard");
   const row = params.scheduleId ? await getSchedule(client, params.scheduleId) : null;
-  return { role, row };
+  // 연결할 수 있는 강의 상품(course·tpass) — 결제·가격 권위.
+  const { data: plans } = await client
+    .from("subscription_plans")
+    .select("code, name, price_krw, product_kind, is_active")
+    .in("product_kind", ["course", "tpass"])
+    .order("display_order", { ascending: true });
+  return { role, row, plans: plans ?? [] };
 }
 
 const IN = "h-9 text-sm";
 const SEL = "border-input bg-background h-9 rounded-md border px-2 text-sm";
+const TA = "border-input bg-background w-full rounded-md border px-3 py-2 text-sm leading-relaxed";
 
 function Row({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -44,7 +51,7 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
 }
 
 export default function AdminScheduleEdit({ loaderData }: Route.ComponentProps) {
-  const { role, row: s } = loaderData;
+  const { role, row: s, plans } = loaderData;
   return (
     <AdminShell cluster="landing" role={role} title={s ? "일정 편집" : "일정 등록"} desc="공개를 켜야 랜딩·시간표에 노출됩니다.">
       <div className="mx-auto max-w-2xl p-5 md:p-8">
@@ -101,6 +108,30 @@ export default function AdminScheduleEdit({ loaderData }: Route.ComponentProps) 
             </Row>
             <Row label="표시 순서" hint="작을수록 위">
               <Input type="number" name="display_order" defaultValue={s?.display_order ?? 0} className={IN} />
+            </Row>
+          </div>
+
+          {/* 과정(course) 판매 정보 — 상세 페이지의 결제금액·소개·목차·수강신청 */}
+          <div className="bg-muted/40 flex flex-col gap-4 rounded-lg border p-4">
+            <p className="text-muted-foreground text-[12px]">
+              상세 페이지를 수강신청 화면으로 — 연결 상품의 가격이 결제금액으로 표시되고, 장바구니·수강신청이 활성화됩니다.
+            </p>
+            <Row label="연결 강의 상품" hint="결제·가격 권위. 미연결 시 '수강신청'은 카탈로그로 이동">
+              <select name="plan_code" defaultValue={s?.plan_code ?? ""} className={SEL}>
+                <option value="">(연결 안 함)</option>
+                {plans.map((p) => (
+                  <option key={p.code} value={p.code}>
+                    {p.name} · {p.price_krw.toLocaleString("ko-KR")}원
+                    {p.is_active ? "" : " (비활성)"}
+                  </option>
+                ))}
+              </select>
+            </Row>
+            <Row label="과정소개" hint="마크다운 지원">
+              <textarea name="intro_md" rows={5} defaultValue={s?.intro_md ?? ""} className={TA} />
+            </Row>
+            <Row label="강의목차" hint="마크다운 지원(목록·표)">
+              <textarea name="curriculum_md" rows={6} defaultValue={s?.curriculum_md ?? ""} className={TA} />
             </Row>
           </div>
 

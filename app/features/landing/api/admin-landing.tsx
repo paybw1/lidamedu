@@ -99,6 +99,9 @@ export async function action({ request }: Route.ActionArgs) {
       enrolled: int(fd, "enrolled"),
       status: str(fd, "status") ?? "open",
       note: str(fd, "note"),
+      plan_code: str(fd, "plan_code"),
+      intro_md: str(fd, "intro_md"),
+      curriculum_md: str(fd, "curriculum_md"),
       display_order: int(fd, "display_order"),
       published: bool(fd, "published"),
     } satisfies Database["public"]["Tables"]["lecture_schedules"]["Insert"];

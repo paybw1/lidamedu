@@ -1,14 +1,15 @@
-// feat-12 현장강의 상세 — /lecture/schedule/:scheduleId. 공개. 일정 카드에서 진입.
+// feat-12 현장강의 상세 — /lecture/schedule/:scheduleId. 공개. 과정(course) 판매 페이지.
+//   결제금액 → 과정소개 → 강의목차 → 일정 정보. 하단 sticky 장바구니·수강신청.
 import { Link, data } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { MarkdownView } from "~/features/problems/components/markdown-view";
 
 import { LandingStyle } from "../components/landing-style";
+import { ScheduleBuyBar } from "../components/schedule-buy-bar";
 import {
   FORMAT_LABEL,
-  fillPercent,
   ddayFrom,
-  remainingSeats,
   type LectureFormat,
 } from "../labels";
 import { getSchedule } from "../queries.server";
@@ -16,9 +17,7 @@ import { getSchedule } from "../queries.server";
 import type { Route } from "./+types/schedule-detail";
 
 export function meta({ data: d }: Route.MetaArgs) {
-  return [
-    { title: `${d?.schedule?.title ?? "현장강의"} | 리담변리사학원` },
-  ];
+  return [{ title: `${d?.schedule?.title ?? "현장강의"} | 리담변리사학원` }];
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
@@ -28,7 +27,34 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const schedule = await getSchedule(client, id);
   if (!schedule || !schedule.published)
     throw data("현장강의를 찾을 수 없습니다", { status: 404 });
-  return { schedule, todayISO: new Date().toISOString() };
+
+  // 연결 상품(가격·결제 권위).
+  let plan: {
+    code: string;
+    name: string;
+    priceKrw: number;
+    buyable: boolean;
+  } | null = null;
+  if (schedule.plan_code) {
+    const { data: p } = await client
+      .from("subscription_plans")
+      .select("code, name, price_krw, is_active, sale_status")
+      .eq("code", schedule.plan_code)
+      .maybeSingle();
+    if (p)
+      plan = {
+        code: p.code,
+        name: p.name,
+        priceKrw: p.price_krw,
+        buyable: p.is_active && p.sale_status === "on_sale",
+      };
+  }
+  return {
+    schedule,
+    plan,
+    todayISO: new Date().toISOString(),
+    tossClientKey: process.env.TOSS_CLIENT_KEY ?? null,
+  };
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -39,8 +65,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default function ScheduleDetail({ loaderData }: Route.ComponentProps) {
-  const { schedule: s, todayISO } = loaderData;
-  const rem = remainingSeats(s);
+  const { schedule: s, plan, todayISO, tossClientKey } = loaderData;
   const d = ddayFrom(s.start_date, todayISO);
 
   return (
@@ -48,12 +73,16 @@ export default function ScheduleDetail({ loaderData }: Route.ComponentProps) {
       <LandingStyle />
       <DetailStyle />
 
-      <main className="wrap" style={{ maxWidth: 820, padding: "36px 24px 72px" }}>
+      <main
+        className="wrap"
+        style={{ maxWidth: 820, padding: "36px 24px 120px" }}
+      >
         <Link className="more" to="/lecture/schedule">
           ← 강의 일정으로
         </Link>
 
-        <div className="sd-card">
+        {/* 헤더: 과목·강좌명·강사 + 결제금액 */}
+        <div className="sd-head">
           <div className="sd-top">
             <span className={`sd-tag ${s.status}`}>
               {s.status === "soon" && d !== null
@@ -65,6 +94,39 @@ export default function ScheduleDetail({ loaderData }: Route.ComponentProps) {
           <h1 className="sd-title">{s.title}</h1>
           <p className="sd-tutor">{s.instructor_name}</p>
 
+          <div className="sd-price">
+            <span className="k">수강료</span>
+            {plan ? (
+              <b className="tnum">{plan.priceKrw.toLocaleString("ko-KR")}원</b>
+            ) : (
+              <b className="muted">가격 문의</b>
+            )}
+          </div>
+        </div>
+
+        {/* 과정소개 */}
+        {s.intro_md ? (
+          <section className="sd-sec">
+            <h2>과정 소개</h2>
+            <div className="sd-md">
+              <MarkdownView text={s.intro_md} trusted />
+            </div>
+          </section>
+        ) : null}
+
+        {/* 강의목차 */}
+        {s.curriculum_md ? (
+          <section className="sd-sec">
+            <h2>강의 목차</h2>
+            <div className="sd-md">
+              <MarkdownView text={s.curriculum_md} trusted />
+            </div>
+          </section>
+        ) : null}
+
+        {/* 일정 정보 */}
+        <section className="sd-sec">
+          <h2>강의 정보</h2>
           <dl className="sd-meta">
             <div>
               <dt>개강일</dt>
@@ -85,36 +147,26 @@ export default function ScheduleDetail({ loaderData }: Route.ComponentProps) {
               <dd>{FORMAT_LABEL[s.format as LectureFormat]}</dd>
             </div>
             <div>
-              <dt>정원</dt>
-              <dd className="tnum">
-                {s.status === "closed" || rem === 0
-                  ? "마감"
-                  : `잔여 ${rem} / ${s.capacity}석`}
-              </dd>
+              <dt>강사</dt>
+              <dd>{s.instructor_name}</dd>
             </div>
           </dl>
-
-          <div className="sd-gauge">
-            <i style={{ width: `${fillPercent(s)}%` }} />
-          </div>
-
           {s.note ? (
             <div className="sd-note">
               <div className="sd-note-h">안내</div>
               <p>{s.note}</p>
             </div>
           ) : null}
-
-          <div className="sd-cta">
-            <Link className="btn gilt" to="/lecture/catalog">
-              수강신청 →
-            </Link>
-            <Link className="btn ghost" to="/lecture/support">
-              문의하기
-            </Link>
-          </div>
-        </div>
+        </section>
       </main>
+
+      <ScheduleBuyBar
+        planCode={plan?.code ?? null}
+        priceKrw={plan?.priceKrw ?? null}
+        buyable={plan?.buyable ?? false}
+        tossClientKey={tossClientKey}
+        failPath={`/lecture/schedule/${s.schedule_id}?failed=1`}
+      />
     </div>
   );
 }
@@ -122,24 +174,44 @@ export default function ScheduleDetail({ loaderData }: Route.ComponentProps) {
 function DetailStyle() {
   return (
     <style>{`
-.llx .sd-card{margin-top:16px;background:var(--lsurface);border:1px solid var(--line);border-radius:18px;padding:28px;box-shadow:var(--lshadow)}
+.llx .sd-head{margin-top:16px;background:var(--lsurface);border:1px solid var(--line);border-radius:18px;padding:26px 28px;box-shadow:var(--lshadow)}
 .llx .sd-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .llx .sd-tag{font-size:12px;font-weight:800;color:#fff;padding:4px 11px;border-radius:8px}
 .llx .sd-tag.soon{background:var(--hot)}.llx .sd-tag.open{background:var(--blue)}.llx .sd-tag.waitlist{background:var(--warn)}.llx .sd-tag.closed{background:var(--faint)}
 .llx .sd-subj{font-size:13px;font-weight:800;color:var(--gilt);letter-spacing:.04em}
 .llx .sd-title{font-size:clamp(22px,3vw,30px);font-weight:900;letter-spacing:-.03em;margin:14px 0 6px;text-wrap:balance}
 .llx .sd-tutor{font-size:15px;color:var(--soft);font-weight:700}
-.llx .sd-meta{display:grid;grid-template-columns:repeat(2,1fr);gap:14px 20px;margin:22px 0 16px;border-top:1px solid var(--line);padding-top:20px}
+.llx .sd-price{display:flex;align-items:baseline;gap:10px;margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
+.llx .sd-price .k{font-size:13px;font-weight:800;color:var(--faint)}
+.llx .sd-price b{font-size:28px;font-weight:900;letter-spacing:-.03em;color:var(--ink)}
+.llx .sd-price b.muted{font-size:20px;color:var(--soft)}
+.llx .sd-sec{margin-top:30px}
+.llx .sd-sec>h2{font-size:18px;font-weight:900;letter-spacing:-.02em;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--gilt-soft);display:inline-block}
+.llx .sd-md{font-size:15px;line-height:1.8;color:var(--ink)}
+.llx .sd-md :is(h1,h2,h3){font-weight:800;margin:16px 0 8px}
+.llx .sd-md ul,.llx .sd-md ol{padding-left:20px;margin:8px 0}
+.llx .sd-md li{margin:4px 0}
+.llx .sd-md table{border-collapse:collapse;width:100%;margin:10px 0;font-size:14px}
+.llx .sd-md th,.llx .sd-md td{border:1px solid var(--line);padding:8px 10px;text-align:left}
+.llx .sd-md th{background:var(--lground);font-weight:800}
+.llx .sd-meta{display:grid;grid-template-columns:repeat(2,1fr);gap:14px 20px;background:var(--lsurface);border:1px solid var(--line);border-radius:14px;padding:20px}
 .llx .sd-meta dt{font-size:12px;font-weight:800;color:var(--faint);margin-bottom:4px}
 .llx .sd-meta dd{font-size:15px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px}
 .llx .sd-meta .dday{font-size:12px;font-weight:900;color:var(--gilt);background:var(--blue-wash);padding:2px 8px;border-radius:6px}
-.llx .sd-gauge{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin-bottom:20px}
-.llx .sd-gauge i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--gilt-2),var(--gilt))}
-.llx .sd-note{background:var(--lground);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:22px}
+.llx .sd-note{background:var(--lground);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-top:14px}
 .llx .sd-note-h{font-size:12px;font-weight:800;color:var(--gilt);margin-bottom:6px}
 .llx .sd-note p{font-size:14px;color:var(--soft);line-height:1.75;white-space:pre-wrap}
-.llx .sd-cta{display:flex;gap:10px;flex-wrap:wrap}
-@media (max-width:560px){.llx .sd-meta{grid-template-columns:1fr}}
+/* 하단 sticky 구매 바 */
+.llx .sbuy{position:sticky;bottom:0;left:0;right:0;z-index:20;background:color-mix(in srgb,var(--lsurface) 92%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--line2);box-shadow:0 -8px 24px -16px rgba(22,41,74,.5)}
+.llx .sbuy-in{max-width:820px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.llx .sbuy-price{display:flex;align-items:baseline;gap:8px;min-width:0}
+.llx .sbuy-price .w{font-size:12px;font-weight:800;color:var(--faint)}
+.llx .sbuy-price b{font-size:20px;font-weight:900;letter-spacing:-.02em;color:var(--ink)}
+.llx .sbuy-btns{display:flex;gap:8px;flex-shrink:0}
+@media (max-width:560px){
+  .llx .sd-meta{grid-template-columns:1fr}
+  .llx .sbuy-price b{font-size:17px}
+}
 `}</style>
   );
 }

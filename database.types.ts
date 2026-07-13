@@ -6445,13 +6445,16 @@ export type Database = {
         Row: {
           capacity: number
           created_at: string
+          curriculum_md: string | null
           day_label: string | null
           deleted_at: string | null
           display_order: number
           enrolled: number
           format: string
           instructor_name: string
+          intro_md: string | null
           note: string | null
+          plan_code: string | null
           published: boolean
           schedule_id: string
           start_date: string | null
@@ -6465,13 +6468,16 @@ export type Database = {
         Insert: {
           capacity?: number
           created_at?: string
+          curriculum_md?: string | null
           day_label?: string | null
           deleted_at?: string | null
           display_order?: number
           enrolled?: number
           format?: string
           instructor_name: string
+          intro_md?: string | null
           note?: string | null
+          plan_code?: string | null
           published?: boolean
           schedule_id?: string
           start_date?: string | null
@@ -6485,13 +6491,16 @@ export type Database = {
         Update: {
           capacity?: number
           created_at?: string
+          curriculum_md?: string | null
           day_label?: string | null
           deleted_at?: string | null
           display_order?: number
           enrolled?: number
           format?: string
           instructor_name?: string
+          intro_md?: string | null
           note?: string | null
+          plan_code?: string | null
           published?: boolean
           schedule_id?: string
           start_date?: string | null
