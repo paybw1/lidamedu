@@ -58,6 +58,17 @@ export const LECTURE_GUIDE_LINKS: ReadonlyArray<{ label: string; to: string }> =
   { label: "찾아오시는 길", to: "/location" },
 ];
 
+// 마이페이지 하위 — 상단 드롭다운과 마이페이지 화면 sticky 서브내비가 공유(단일 소스).
+export const LECTURE_MYPAGE_LINKS: ReadonlyArray<{ label: string; to: string }> =
+  [
+    { label: "수강현황", to: "/lecture" },
+    { label: "주문·배송", to: "/lecture/orders" },
+    { label: "증명서 발급", to: "/lecture/certificates" },
+    { label: "결제내역 조회", to: "/lecture/payments" },
+    { label: "쿠폰 관리", to: "/lecture/coupons" },
+    { label: "포인트 관리", to: "/lecture/points" },
+  ];
+
 export const LECTURE_NAV_LINKS: ReadonlyArray<LectureNavItem> = [
   {
     label: "리담안내",
@@ -68,14 +79,7 @@ export const LECTURE_NAV_LINKS: ReadonlyArray<LectureNavItem> = [
   { label: "고객센터", to: "/lecture/support" },
   {
     label: "마이페이지",
-    children: [
-      { label: "수강현황", to: "/lecture" },
-      { label: "주문·배송", to: "/lecture/orders" },
-      { label: "증명서 발급", to: "/lecture/certificates" },
-      { label: "결제내역 조회", to: "/lecture/payments" },
-      { label: "쿠폰 관리", to: "/lecture/coupons" },
-      { label: "포인트 관리", to: "/lecture/points" },
-    ],
+    children: LECTURE_MYPAGE_LINKS,
   },
 ];
 

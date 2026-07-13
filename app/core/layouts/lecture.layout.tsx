@@ -13,6 +13,7 @@ import {
   openCommandPalette,
 } from "../components/command-palette";
 import Footer from "../components/footer";
+import { LectureMypageSubNav } from "../components/lecture-mypage-subnav";
 import { LectureNav, LectureNavMobile } from "../components/lecture-nav";
 import { PlatformSwitch } from "../components/platform-switch";
 import ThemeSwitcher from "../components/theme-switcher";
@@ -124,6 +125,9 @@ export default function LectureLayout({ loaderData }: Route.ComponentProps) {
 
         {/* 모바일 강의 네비 — 상단 바 아래 가로 스크롤 탭(자식 노드 평탄화) */}
         <LectureNavMobile isStaff={isStaff} />
+
+        {/* 마이페이지 화면에서만 — 마이페이지 하위 sticky 서브내비(헤더에 포함돼 함께 고정) */}
+        {user ? <LectureMypageSubNav /> : null}
       </header>
 
       <CartClearOnPurchase />
