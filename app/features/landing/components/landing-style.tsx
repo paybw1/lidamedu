@@ -117,22 +117,19 @@ export function LandingStyle() {
 
 /* instructors */
 .llx .igroup{margin-bottom:24px}
-/* 강사 레일 — 좌우 화살표 버튼(양 끝 겹침, 스크롤 끝에서 자동 비활성) */
-.llx .irailwrap{position:relative}
-.llx .irail-nav{position:absolute;top:42%;transform:translateY(-50%);z-index:3;width:44px;height:44px;border-radius:50%;border:1px solid var(--line2);background:var(--lsurface);color:var(--ink);font-size:26px;line-height:1;cursor:pointer;display:grid;place-items:center;box-shadow:0 10px 26px -12px rgba(22,41,74,.5);transition:transform .15s,background .15s,color .15s,opacity .18s}
+/* 강사 레일 — 페이지형 캐러셀. 스크롤바 없음, 카드 잘림 없음, 화살표 항상 노출 */
+.llx .irailwrap{position:relative;padding:0 52px}
+.llx .irailview{overflow:hidden}
+.llx .irailtrack{display:flex;gap:16px;transition:transform .45s cubic-bezier(.4,0,.2,1);will-change:transform}
+.llx .irail-nav{position:absolute;top:42%;transform:translateY(-50%);z-index:3;width:44px;height:44px;border-radius:50%;border:1px solid var(--line2);background:var(--lsurface);color:var(--ink);font-size:26px;line-height:1;cursor:pointer;display:grid;place-items:center;box-shadow:0 10px 26px -12px rgba(22,41,74,.5);transition:transform .15s,background .15s,color .15s}
 .llx .irail-nav:hover{background:var(--navy);color:var(--hero-ink);border-color:var(--navy);transform:translateY(-50%) scale(1.06)}
-.llx .irail-nav.prev{left:-10px}
-.llx .irail-nav.next{right:-10px}
-.llx .irail-nav:disabled{opacity:0;pointer-events:none}
+.llx .irail-nav.prev{left:2px}
+.llx .irail-nav.next{right:2px}
 .llx .ihd{display:flex;align-items:baseline;gap:12px;margin-bottom:14px;padding-bottom:9px;border-bottom:1px solid var(--line)}
 .llx .ihd .kr{font-size:17px;font-weight:900}
 .llx .ihd .en{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);font-weight:800}
-/* 대형 인물 사진 세로 카드 + 가로 스크롤(옆으로 넘김). 금박 오버레이 프레임 제거. */
-.llx .igrid{display:flex;gap:16px;overflow-x:auto;padding:4px 2px 14px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
-.llx .igrid::-webkit-scrollbar{height:8px}
-.llx .igrid::-webkit-scrollbar-track{background:transparent}
-.llx .igrid::-webkit-scrollbar-thumb{background:var(--line2);border-radius:99px}
-.llx .ic{flex:0 0 auto;width:186px;scroll-snap-align:start;display:flex;flex-direction:column;text-decoration:none;color:inherit;background:var(--lsurface);border:1px solid var(--line);border-radius:15px;overflow:hidden;box-shadow:var(--lshadow);transition:transform .2s,border-color .2s}
+/* 대형 인물 사진 세로 카드(고정 폭 186 — 페이지 계산 기준). 금박 오버레이 프레임 제거. */
+.llx .ic{flex:0 0 186px;width:186px;display:flex;flex-direction:column;text-decoration:none;color:inherit;background:var(--lsurface);border:1px solid var(--line);border-radius:15px;overflow:hidden;box-shadow:var(--lshadow);transition:transform .2s,border-color .2s}
 .llx .ic:hover{transform:translateY(-4px);border-color:var(--line2)}
 .llx .ic .por{width:100%;aspect-ratio:4/5;position:relative;display:grid;place-items:center;overflow:hidden;background:linear-gradient(150deg,var(--navy-soft),var(--navy2))}
 .llx .ic .por b{color:rgba(238,242,251,.94);font-size:46px;font-weight:800}
@@ -244,7 +241,6 @@ export function LandingStyle() {
 @media (max-width:1000px){
   .llx .hero-in{grid-template-columns:1fr;gap:30px;padding:52px 0 64px}
   .llx .strip{grid-template-columns:repeat(2,1fr)}
-  .llx .igrid{grid-template-columns:repeat(2,1fr)}
   .llx .tiers{grid-template-columns:1fr}
   .llx .revs{grid-template-columns:1fr}
   .llx .newswrap{grid-template-columns:1fr}
@@ -254,7 +250,7 @@ export function LandingStyle() {
 @media (max-width:560px){
   .llx .wrap{padding:0 18px}
   .llx .strip{grid-template-columns:1fr}
-  .llx .igrid{grid-template-columns:1fr}
+  .llx .irailwrap{padding:0 40px}
   .llx .books{grid-template-columns:repeat(3,1fr)}
   .llx .shead{flex-direction:column;align-items:flex-start;gap:6px}
 }
