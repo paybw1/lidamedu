@@ -20,6 +20,7 @@ import {
   PanelLeftIcon,
   PencilLineIcon,
   ScaleIcon,
+  SearchIcon,
   SettingsIcon,
   TrendingUpIcon,
   UserCogIcon,
@@ -30,6 +31,8 @@ import { Link, useLocation } from "react-router";
 
 import { ROLE_LABEL, roleAtLeast, type UserRole } from "~/core/lib/roles";
 import { cn } from "~/core/lib/utils";
+import { AdminCommandPalette } from "~/features/admin/components/admin-command-palette";
+import { openAdminCommandPalette } from "~/features/admin/components/admin-palette-event";
 
 export type AdminClusterId =
   | "hub"
@@ -528,6 +531,30 @@ function AdminSidebar({
         )}
       </div>
 
+      {/* 운영자 화면 검색(⌘K) 진입 — 91개 화면을 이름으로 점프. */}
+      <button
+        type="button"
+        onClick={() => openAdminCommandPalette()}
+        title="화면 찾기 (⌘K / Ctrl+K)"
+        aria-label="운영자 화면 검색"
+        className={cn(
+          "text-sidebar-foreground/70 hover:bg-sidebar-accent/40 border-sidebar-border/70 mb-2 flex items-center gap-2 rounded-lg border transition-colors",
+          collapsed ? "mx-auto size-10 justify-center" : "px-2.5 py-1.5",
+        )}
+      >
+        <SearchIcon className="size-4 shrink-0" />
+        {!collapsed ? (
+          <>
+            <span className="text-sidebar-foreground/60 flex-1 text-left text-[12px]">
+              화면 찾기…
+            </span>
+            <kbd className="border-sidebar-border text-sidebar-foreground/50 rounded border px-1 py-0.5 font-mono text-[10px]">
+              ⌘K
+            </kbd>
+          </>
+        ) : null}
+      </button>
+
       <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto">
         {/* hub — 섹션에 속하지 않는 단독 진입점 */}
         {nav.filter((c) => !c.section).map((c) => (
@@ -696,6 +723,7 @@ export function AdminShell({
           {children}
         </main>
       </div>
+      <AdminCommandPalette role={role ?? null} />
     </div>
   );
 }

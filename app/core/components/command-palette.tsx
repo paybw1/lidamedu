@@ -82,6 +82,8 @@ export function CommandPalette() {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        // /admin 에선 운영자 화면 검색(AdminCommandPalette)이 ⌘K 를 가진다 — 양보.
+        if (window.location.pathname.startsWith("/admin")) return;
         e.preventDefault();
         setOpen((o) => !o);
       }
