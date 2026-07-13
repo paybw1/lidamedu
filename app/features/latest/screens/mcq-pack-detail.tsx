@@ -453,7 +453,7 @@ function ProblemRow({
             className="size-8 rounded-full text-rose-600 hover:text-rose-700"
             disabled={delFetcher.state !== "idle"}
             onClick={(e) => {
-              if (!confirm("이 문제를 팩에서 제거하시겠습니까?")) {
+              if (!confirm("이 문제를 문제집에서 제거하시겠습니까?")) {
                 e.preventDefault();
               }
             }}
@@ -516,12 +516,12 @@ function ReleasePanel({
     <div className="border-border bg-card mt-4 rounded-2xl border p-4 shadow-sm">
       <p className="text-sm font-bold tracking-tight">학습과목 공개</p>
       <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-        모의고사가 끝나면 이 팩의 문제를 학습과목 문제은행에 공개합니다. 공개
+        모의고사가 끝나면 이 문제집의 문제를 학습과목 문제은행에 공개합니다. 공개
         전까지 mock 문제는 학습과목 색인·맞춤 퀴즈에 노출되지 않습니다.
       </p>
       {mockProblems.length === 0 ? (
         <p className="text-muted-foreground mt-3 text-xs">
-          이 팩에 모의고사(origin=mock) 문제가 없습니다.
+          이 문제집에 모의고사(origin=mock) 문제가 없습니다.
         </p>
       ) : (
         <div className="mt-3 flex flex-wrap items-center gap-2">

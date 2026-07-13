@@ -60,7 +60,7 @@ export function ExamPapersPanel({
         </span>
       </p>
       <p className="text-muted-foreground mt-0.5 mb-3 text-xs">
-        교시는 공개된 모의고사 팩만 추가할 수 있습니다. 순서와 과락선(정답률 %)을
+        교시는 공개된 모의고사 문제집만 추가할 수 있습니다. 순서와 과락선(정답률 %)을
         지정하세요.
       </p>
       <div className="space-y-2">
@@ -191,8 +191,8 @@ function AddPaperRow({
   if (availablePacks.length === 0) {
     return (
       <p className="text-muted-foreground border-border mt-3 border-t pt-3 text-xs">
-        추가할 수 있는 공개 모의고사 팩이 없습니다 — 객관식 문제 색인에서 모의
-        팩을 만들고 공개하세요.
+        추가할 수 있는 공개 모의고사 문제집이 없습니다 — 객관식 문제 색인에서 모의
+        문제집을 만들고 공개하세요.
       </p>
     );
   }
@@ -207,10 +207,10 @@ function AddPaperRow({
       <select
         name="packId"
         required
-        aria-label="교시로 추가할 모의고사 팩"
+        aria-label="교시로 추가할 모의고사 문제집"
         className="border-input bg-background h-8 max-w-[280px] min-w-[180px] flex-1 rounded-md border px-2 text-xs"
       >
-        <option value="">교시로 추가할 모의고사 팩 …</option>
+        <option value="">교시로 추가할 모의고사 문제집 …</option>
         {availablePacks.map((p) => (
           <option key={p.packId} value={p.packId}>
             {p.subjectLabel} · {p.title}

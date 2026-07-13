@@ -136,7 +136,7 @@ export function ExamForm({
       </div>
       {mode === "create" ? (
         <p className="text-muted-foreground text-[11px]">
-          시험을 추가하면 편집 화면이 열립니다 — 교시(과목별 모의고사 팩)는 거기서
+          시험을 추가하면 편집 화면이 열립니다 — 교시(과목별 모의고사 문제집)는 거기서
           구성합니다.
         </p>
       ) : null}

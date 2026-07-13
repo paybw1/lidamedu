@@ -499,7 +499,7 @@ export async function addPackProblem(
   if (prob.review_status !== "approved") {
     return {
       ok: false,
-      error: "검증 미승인 문제는 팩에 추가할 수 없습니다.",
+      error: "검증 미승인 문제는 문제집에 추가할 수 없습니다.",
       unapproved: true,
     };
   }

@@ -125,7 +125,7 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "정답률·통계", to: "/admin/problems/stats" },
       // 학생용 라우트(/latest/mcq) — staff 진입 시 picker 노출.
       // ?kind=mock 은 가상 통합 필터 (mock_full + mock_progressive) — 한 화면.
-      { label: "모의고사 팩 관리", to: "/latest/mcq?kind=mock" },
+      { label: "모의고사 문제집 관리", to: "/latest/mcq?kind=mock" },
       { label: "통합 모의고사 (3교시)", to: "/admin/mcq-exams" },
     ],
   },

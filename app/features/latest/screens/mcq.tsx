@@ -376,7 +376,7 @@ function RegenPastExamButton() {
         onSubmit={(e) => {
           if (
             !confirm(
-              "기존 객관식 기출 문제를 (과목, 년도) 별로 자동 묶어 'YYYY년 1차 기출' 팩을 생성/갱신합니다.\n수동으로 추가한 문제는 사라질 수 있습니다.\n진행하시겠습니까?",
+              "기존 객관식 기출 문제를 (과목, 년도) 별로 자동 묶어 'YYYY년 1차 기출' 문제집을 생성/갱신합니다.\n수동으로 추가한 문제는 사라질 수 있습니다.\n진행하시겠습니까?",
             )
           ) {
             e.preventDefault();
@@ -399,7 +399,7 @@ function RegenPastExamButton() {
       </fetcher.Form>
       {result ? (
         <span className="text-xs text-emerald-600 tabular-nums">
-          {result.packsUpserted}개 팩 · {result.problemsTotal}문항
+          {result.packsUpserted}개 문제집 · {result.problemsTotal}문항
         </span>
       ) : null}
       {err ? <span className="text-xs text-rose-600">{err}</span> : null}

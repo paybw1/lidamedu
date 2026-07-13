@@ -64,7 +64,7 @@ export default function AdminMcqExamEdit({ loaderData }: Route.ComponentProps) {
       role={role}
       width={960}
       title={exam.title}
-      desc="시험 메타데이터를 수정하고 교시(과목별 모의고사 팩)를 구성합니다."
+      desc="시험 메타데이터를 수정하고 교시(과목별 모의고사 문제집)를 구성합니다."
       headerRight={
         <div className="flex items-center gap-2">
           <Button asChild size="sm" variant="outline">

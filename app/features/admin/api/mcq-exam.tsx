@@ -170,17 +170,17 @@ export async function action({ request }: Route.ActionArgs) {
     // 교시 팩은 학생이 응시할 수 있어야 하므로 공개된 모의 종류 팩만 허용.
     const pack = await getPackById(client, packId);
     if (!pack) {
-      return data({ error: "팩을 찾을 수 없습니다." }, { status: 404 });
+      return data({ error: "문제집을 찾을 수 없습니다." }, { status: 404 });
     }
     if (!isMockKind(pack.kind)) {
       return data(
-        { error: "교시는 모의고사 종류 팩만 추가할 수 있습니다." },
+        { error: "교시는 모의고사 종류 문제집만 추가할 수 있습니다." },
         { status: 400 },
       );
     }
     if (!pack.isPublished) {
       return data(
-        { error: "비공개 팩은 교시로 쓸 수 없습니다 — 먼저 팩을 공개하세요." },
+        { error: "비공개 문제집은 교시로 쓸 수 없습니다 — 먼저 문제집을 공개하세요." },
         { status: 400 },
       );
     }
