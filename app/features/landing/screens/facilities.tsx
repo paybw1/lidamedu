@@ -163,8 +163,14 @@ function FacilityStyle() {
 .llx .fc-hero-in .wrap{max-width:1080px}
 .llx .fc-hero-in h1{font-size:clamp(32px,5vw,56px);font-weight:900;letter-spacing:-.04em;margin:12px 0 10px;text-wrap:balance}
 .llx .fc-hero-sub{font-size:clamp(15px,1.6vw,18px);color:var(--hero-soft);line-height:1.6;max-width:44ch}
-.llx .fc-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-.llx .fc-card{position:relative;overflow:hidden;min-height:360px;border:1px solid var(--line);border-radius:18px;box-shadow:var(--lshadow);background:var(--navy2)}
+.llx .fc-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:18px}
+/* space.html 처럼 7/5·5/7 비대칭 폭 — 카드마다 사진 크기가 조금씩 달라 부드러운 리듬. */
+.llx .fc-card{position:relative;overflow:hidden;grid-column:span 6;border:1px solid var(--line);border-radius:18px;box-shadow:var(--lshadow);background:var(--navy2)}
+.llx .fc-card:nth-child(4n+1){grid-column:span 7}
+.llx .fc-card:nth-child(4n+2){grid-column:span 5}
+.llx .fc-card:nth-child(4n+3){grid-column:span 5}
+.llx .fc-card:nth-child(4n+4){grid-column:span 7}
+.llx .fc-card{min-height:460px}
 .llx .fc-card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .7s cubic-bezier(.2,.7,.2,1)}
 .llx .fc-card:hover img{transform:scale(1.04)}
 .llx .fc-card::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(10,20,40,.9) 100%)}
@@ -172,9 +178,10 @@ function FacilityStyle() {
 .llx .fc-no{display:inline-grid;place-items:center;width:38px;height:38px;border-radius:12px;background:rgba(201,164,78,.9);color:#1a1305;font-size:12px;font-weight:900;margin-bottom:12px}
 .llx .fc-copy h3{font-size:22px;font-weight:900;letter-spacing:-.03em;margin:0 0 8px;text-wrap:balance}
 .llx .fc-copy p{font-size:13.5px;line-height:1.65;color:rgba(255,255,255,.9);word-break:keep-all;margin:0}
-@media (max-width:760px){
-  .llx .fc-grid{grid-template-columns:1fr}
-  .llx .fc-card{min-height:300px}
+@media (max-width:640px){
+  /* 모바일: 1열로 펼치되 높이만 살짝 교차해 리듬 유지. */
+  .llx .fc-card:nth-child(n){grid-column:span 12;min-height:300px}
+  .llx .fc-card:nth-child(even){min-height:340px}
 }
 `}</style>
   );
