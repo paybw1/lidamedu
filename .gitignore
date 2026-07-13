@@ -261,3 +261,11 @@ rag-lab/dist/
 
 # Office 임시 잠금 파일
 ~$*
+
+# 세션 중 실수로 add-A 된 로컬 원본 자료(앱 코드 아님) — 추적 제외
+/source/학원소개/
+/source/강사모집.html
+/source/변리사시험로드맵.html
+/source/동영상사이트FAQ.xls
+/source/Q&A/공부방법-잔여.xlsx
+/docs/도서등록화면.pptx
