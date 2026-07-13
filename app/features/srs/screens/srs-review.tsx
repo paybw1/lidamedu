@@ -539,7 +539,9 @@ function CardArea({
           <p className="text-foreground text-[15px] leading-relaxed whitespace-pre-line">
             {item.front}
           </p>
-          {item.lawRef ? (
+          {/* 조문 카드는 lawRef 가 "code#num" raw 값(링크용)이라 표시 노이즈 → 숨김.
+              판례 카드의 관련 조문(사람이 읽는 참조)만 노출. */}
+          {item.lawRef && item.sourceType !== "article" ? (
             <p className="text-muted-foreground mt-2 font-mono text-[11px]">
               관련 조문: {item.lawRef}
             </p>

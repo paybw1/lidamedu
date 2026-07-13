@@ -35,7 +35,15 @@ function blockLearnerText(block: Block): string {
   ) {
     return "";
   }
-  return block.inline.map(inlineLearnerText).join("").trim();
+  // 참조·개정 토큰(ref_article/ref_law/amendment_note 등)을 ""로 제거하면 원문에서
+  // 그 토큰들을 구분하던 쉼표가 고아로 남는다("…한다. , , , ,"). 공백에 붙은 고아
+  // 쉼표 런을 제거하고 중복 공백을 정리한다(정상 쉼표 "A, B"는 앞에 공백이 없어 보존).
+  return block.inline
+    .map(inlineLearnerText)
+    .join("")
+    .replace(/\s+,+/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 }
 
 function walkBlocksAll(body: ArticleBody, visit: (b: Block) => void): void {

@@ -24,7 +24,9 @@ type Client = SupabaseClient<Database>;
 
 export type CardSourceType = "article" | "case";
 
-const ARTICLE_BACK_MAX = 600;
+// 조문 전문 보존 — 학생 요청(짤림 수정). 실측 site max 16,672자라 20000 은 사실상 무제한.
+//   과거 600 은 긴 절차 조문을 문장 중간에서 잘라 노이즈를 만들었다.
+const ARTICLE_BACK_MAX = 20000;
 // feat-2-023b — 요지 항목 보존. 실측 분포(특허 판례 119항목): median 350·최대 3693자,
 // >1500은 5장뿐. 한 쟁점 법리는 더 분할하면 잘리므로 4000으로 상향(현 전량 포함, 잘림 0).
 const CASE_BACK_MAX = 4000;
