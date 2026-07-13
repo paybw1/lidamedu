@@ -1,6 +1,7 @@
 // 강의 플랫폼 상단 네비 — 평면 링크 + "마이페이지" hover 드롭다운(학습 플랫폼 flyout 과 동일 UX).
 // 데스크톱=드롭다운, 모바일=자식 노드 평탄화(가로 스크롤).
 import { ChevronDownIcon } from "lucide-react";
+import { useEffect, useState } from "react";
 import { NavLink, useLocation } from "react-router";
 
 import { cn } from "~/core/lib/utils";
@@ -24,20 +25,50 @@ function Dropdown({ item }: { item: LectureNavItem }) {
   const active = (item.children ?? []).some((c) =>
     childMatchesPath(c.to, pathname),
   );
+  // JS 제어 — hover/클릭으로 열고, 항목 클릭·경로 변경 시 닫는다(CSS :hover/:focus-within 은
+  // 클릭 후 포커스가 남아 패널이 안 닫히는 문제가 있었다). 닫힘엔 페이드+슬라이드 애니메이션.
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
   return (
-    <div className="group relative flex h-full items-center">
-      <button type="button" className={itemCls(active)} aria-haspopup="menu">
+    <div
+      className="relative flex h-full items-center"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <button
+        type="button"
+        className={itemCls(active)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
         {item.label}
-        <ChevronDownIcon className="size-3.5 opacity-70 transition-transform group-hover:rotate-180" />
+        <ChevronDownIcon
+          className={cn(
+            "size-3.5 opacity-70 transition-transform duration-200",
+            open && "rotate-180",
+          )}
+        />
       </button>
-      {/* pt-2 브릿지로 트리거-패널 사이 hover 유지 */}
-      <div className="invisible absolute right-0 top-full z-50 pt-2 opacity-0 transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+      {/* pt-2 브릿지로 트리거-패널 사이 hover 유지. opacity/translate 로 열고닫힘 애니메이션. */}
+      <div
+        aria-hidden={!open}
+        className={cn(
+          "absolute right-0 top-full z-50 pt-2 transition-all duration-200 ease-out",
+          open
+            ? "translate-y-0 opacity-100"
+            : "pointer-events-none -translate-y-1 opacity-0",
+        )}
+      >
         <div className="border-border bg-popover min-w-[176px] rounded-xl border p-1.5 shadow-lg">
           {item.children!.map((c) => (
             <NavLink
               key={c.to}
               to={c.to}
               end={c.to === "/lecture"}
+              onClick={() => setOpen(false)}
               className={({ isActive }) =>
                 cn(
                   "block rounded-lg px-3 py-2 text-sm font-medium transition-colors",
