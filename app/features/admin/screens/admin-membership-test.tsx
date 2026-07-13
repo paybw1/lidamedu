@@ -7,11 +7,10 @@ import { Form, data, redirect, useNavigation } from "react-router";
 import { z } from "zod";
 
 import { Button } from "~/core/components/ui/button";
-import makeServerClient from "~/core/lib/supa-client.server";
+import { requireAdmin } from "~/core/lib/admin-guard.server";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Chip } from "~/features/admin/components/admin-ui";
-import { getStaffRole } from "~/features/laws/queries.server";
 
 import type { Route } from "./+types/admin-membership-test";
 
@@ -24,17 +23,6 @@ interface PlanOption {
   name: string;
   kind: string;
   subjectCodes: string[];
-}
-
-async function requireAdmin(request: Request) {
-  const [client] = makeServerClient(request);
-  const {
-    data: { user },
-  } = await client.auth.getUser();
-  if (!user) throw data("Unauthorized", { status: 401 });
-  const role = await getStaffRole(client, user.id);
-  if (role !== "admin") throw data("Forbidden — admin only", { status: 403 });
-  return { user, role };
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
