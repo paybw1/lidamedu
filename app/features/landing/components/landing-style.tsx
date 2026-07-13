@@ -117,12 +117,13 @@ export function LandingStyle() {
 
 /* instructors */
 .llx .igroup{margin-bottom:24px}
-/* 강사 레일 — 페이지형 캐러셀. 스크롤바 없음, 카드 잘림 없음, 화살표 항상 노출 */
-.llx .irailwrap{position:relative;padding:0 52px}
-.llx .irailview{overflow:hidden}
+/* 강사 레일 — 한 명씩 넘기는 캐러셀. 스크롤바 없음, 카드 잘림 없음, 화살표 상시 노출 */
+.llx .irailwrap{position:relative}
+.llx .irailview{overflow:hidden;margin:0 auto}
 .llx .irailtrack{display:flex;gap:16px;transition:transform .45s cubic-bezier(.4,0,.2,1);will-change:transform}
-.llx .irail-nav{position:absolute;top:42%;transform:translateY(-50%);z-index:3;width:44px;height:44px;border-radius:50%;border:1px solid var(--line2);background:var(--lsurface);color:var(--ink);font-size:26px;line-height:1;cursor:pointer;display:grid;place-items:center;box-shadow:0 10px 26px -12px rgba(22,41,74,.5);transition:transform .15s,background .15s,color .15s}
-.llx .irail-nav:hover{background:var(--navy);color:var(--hero-ink);border-color:var(--navy);transform:translateY(-50%) scale(1.06)}
+.llx .irail-nav{position:absolute;top:42%;transform:translateY(-50%);z-index:3;width:44px;height:44px;border-radius:50%;border:1px solid var(--line2);background:var(--lsurface);color:var(--ink);font-size:26px;line-height:1;cursor:pointer;display:grid;place-items:center;box-shadow:0 10px 26px -12px rgba(22,41,74,.5);transition:transform .15s,background .15s,color .15s,opacity .15s}
+.llx .irail-nav:hover:not(:disabled){background:var(--navy);color:var(--hero-ink);border-color:var(--navy);transform:translateY(-50%) scale(1.06)}
+.llx .irail-nav:disabled{opacity:.32;cursor:default}
 .llx .irail-nav.prev{left:2px}
 .llx .irail-nav.next{right:2px}
 .llx .ihd{display:flex;align-items:baseline;gap:12px;margin-bottom:14px;padding-bottom:9px;border-bottom:1px solid var(--line)}
@@ -203,24 +204,18 @@ export function LandingStyle() {
 .llx details.qa summary .q{color:var(--gilt);font-weight:900;flex-shrink:0}
 .llx details.qa summary .ar{margin-left:auto;color:var(--faint);transition:transform .2s}
 .llx details.qa[open] summary .ar{transform:rotate(180deg)}
-.llx details.qa .a{font-size:14px;color:var(--soft);line-height:1.8;padding:0 0 18px 30px}
-/* faq — 분류별 접힘(support_faqs) */
-.llx details.faqcat{background:var(--lsurface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
-.llx details.faqcat>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:15px 18px;font-weight:900;font-size:15px}
-.llx details.faqcat>summary::-webkit-details-marker{display:none}
-.llx details.faqcat>summary .cnt{margin-left:auto;font-size:12px;color:var(--faint);font-weight:700}
-.llx details.faqcat>summary .car{color:var(--faint);transition:transform .2s}
-.llx details.faqcat[open]>summary .car{transform:rotate(180deg)}
-.llx .faqcat .qlist{border-top:1px solid var(--line);padding:2px 18px 8px}
-.llx details.qi{border-top:1px solid var(--line)}
-.llx details.qi:first-child{border-top:0}
-.llx details.qi>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:13px 0;font-weight:700;font-size:14px}
-.llx details.qi>summary::-webkit-details-marker{display:none}
-.llx details.qi>summary .q{color:var(--gilt);font-weight:900;flex-shrink:0}
-.llx details.qi>summary .qt{flex:1;min-width:0}
-.llx details.qi>summary .ar{margin-left:auto;color:var(--faint);transition:transform .2s;flex-shrink:0}
-.llx details.qi[open]>summary .ar{transform:rotate(180deg)}
-.llx details.qi .a{font-size:13.5px;color:var(--soft);line-height:1.75;padding:0 0 14px 26px;white-space:pre-wrap}
+.llx details.qa summary .qt{flex:1;min-width:0}
+.llx details.qa .a{font-size:14px;color:var(--soft);line-height:1.8;padding:0 0 18px 30px;white-space:pre-wrap}
+/* faq — 분류 가로 탭(support_faqs) */
+.llx .faqhint{margin-inline:auto;white-space:nowrap}
+.llx .faqx{max-width:860px;margin:0 auto}
+.llx .faxtabs{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:18px}
+.llx .faxtab{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:999px;border:1px solid var(--line2);background:var(--lsurface);color:var(--soft);font-weight:800;font-size:13.5px;cursor:pointer;transition:border-color .15s,color .15s,background .15s,box-shadow .15s}
+.llx .faxtab:hover{border-color:var(--gilt-soft);color:var(--ink)}
+.llx .faxtab .c{font-size:11px;font-weight:800;color:var(--faint);background:var(--lground);border-radius:999px;padding:1px 7px;min-width:20px;text-align:center}
+.llx .faxtab.on{background:linear-gradient(158deg,var(--navy),var(--navy2));color:#fff;border-color:transparent;box-shadow:0 12px 24px -14px rgba(22,41,74,.6)}
+.llx .faxtab.on .c{background:rgba(255,255,255,.16);color:var(--gilt-soft)}
+.llx .faxlist{display:flex;flex-direction:column;gap:10px}
 
 /* final */
 .llx .final{background:linear-gradient(158deg,var(--navy),var(--navy2));color:var(--hero-ink);position:relative;overflow:hidden}
@@ -250,7 +245,7 @@ export function LandingStyle() {
 @media (max-width:560px){
   .llx .wrap{padding:0 18px}
   .llx .strip{grid-template-columns:1fr}
-  .llx .irailwrap{padding:0 40px}
+  .llx .faqhint{white-space:normal}
   .llx .books{grid-template-columns:repeat(3,1fr)}
   .llx .shead{flex-direction:column;align-items:flex-start;gap:6px}
 }

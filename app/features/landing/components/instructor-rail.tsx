@@ -1,6 +1,7 @@
-// 랜딩 강사진 가로 레일 — 페이지형 캐러셀(스크롤바 없음).
-//   한 페이지에 '완전히 보이는 카드'만 배치(사진 잘림 방지) → 좌우 화살표로 페이지 이동.
-//   화살표는 항상 노출(끝에서 랩어라운드). *.server 값 import 금지(빌드 함정).
+// 랜딩 강사진 가로 레일 — 한 명씩 넘기는 캐러셀(스크롤바 없음, 카드 잘림 없음).
+//   뷰 폭을 '완전히 보이는 카드 수'에 딱 맞춰 고정 → 옆 카드가 잘려 보이지 않음.
+//   좌우 화살표는 항상 노출(끝에서는 흐려짐), 클릭 시 한 카드(STRIDE)씩 이동.
+//   *.server 값 import 금지(빌드 함정).
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 
@@ -18,16 +19,18 @@ const GAP = 16; // 카드 간격
 const STRIDE = CARD_W + GAP;
 
 export function InstructorRail({ items }: { items: RailInstructor[] }) {
-  const viewRef = useRef<HTMLDivElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
   const [perPage, setPerPage] = useState(1);
-  const [page, setPage] = useState(0);
+  const [index, setIndex] = useState(0); // 왼쪽 첫 카드의 인덱스
 
   const measure = useCallback(() => {
-    const el = viewRef.current;
+    const el = wrapRef.current;
     if (!el) return;
-    // (뷰 폭 + GAP) / STRIDE 의 내림 = 잘리지 않고 들어가는 카드 수
-    setPerPage(Math.max(1, Math.floor((el.clientWidth + GAP) / STRIDE)));
-  }, []);
+    const gutter = el.clientWidth < 520 ? 44 : 56; // 화살표 여백
+    const avail = el.clientWidth - gutter * 2;
+    const fit = Math.max(1, Math.floor((avail + GAP) / STRIDE));
+    setPerPage(Math.min(fit, items.length));
+  }, [items.length]);
 
   useEffect(() => {
     measure();
@@ -35,29 +38,30 @@ export function InstructorRail({ items }: { items: RailInstructor[] }) {
     return () => window.removeEventListener("resize", measure);
   }, [measure]);
 
-  const pageCount = Math.max(1, Math.ceil(items.length / perPage));
-  // perPage 변화로 페이지 수가 줄면 현재 페이지 보정
+  const maxIndex = Math.max(0, items.length - perPage);
+  // perPage 변화로 범위를 벗어나면 보정
   useEffect(() => {
-    setPage((p) => Math.min(p, pageCount - 1));
-  }, [pageCount]);
+    setIndex((i) => Math.min(i, maxIndex));
+  }, [maxIndex]);
 
   const go = (dir: 1 | -1) =>
-    setPage((p) => (p + dir + pageCount) % pageCount);
+    setIndex((i) => Math.min(maxIndex, Math.max(0, i + dir)));
 
-  // 페이지 p 의 첫 카드 왼쪽을 뷰 좌측에 정렬 → 카드 경계에서만 멈춰 잘림 없음
-  const offset = page * perPage * STRIDE;
+  const viewW = perPage * CARD_W + (perPage - 1) * GAP; // 정확히 perPage장
+  const offset = index * STRIDE;
 
   return (
-    <div className="irailwrap">
+    <div className="irailwrap" ref={wrapRef}>
       <button
         type="button"
         className="irail-nav prev"
         aria-label="이전 강사"
         onClick={() => go(-1)}
+        disabled={index <= 0}
       >
         ‹
       </button>
-      <div className="irailview" ref={viewRef}>
+      <div className="irailview" style={{ width: viewW }}>
         <div
           className="irailtrack"
           style={{ transform: `translateX(-${offset}px)` }}
@@ -88,6 +92,7 @@ export function InstructorRail({ items }: { items: RailInstructor[] }) {
         className="irail-nav next"
         aria-label="다음 강사"
         onClick={() => go(1)}
+        disabled={index >= maxIndex}
       >
         ›
       </button>

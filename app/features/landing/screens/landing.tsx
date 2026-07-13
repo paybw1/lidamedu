@@ -8,6 +8,7 @@ import { listPasserSummaries } from "~/features/exam-results/analytics.server";
 import { EXAM_ROUND_LABEL } from "~/features/exam-results/labels";
 import { listInstructors } from "~/features/instructors/queries.server";
 
+import { FaqTabs } from "../components/faq-tabs";
 import { HeroCarousel } from "../components/hero-carousel";
 import { InstructorRail } from "../components/instructor-rail";
 import { LandingStyle } from "../components/landing-style";
@@ -389,7 +390,7 @@ export default function Landing({ loaderData }: Route.ComponentProps) {
         </div>
       </section>
 
-      {/* FAQ — 고객센터에서 옮겨 온 실제 FAQ(support_faqs). 분류별 접힘. */}
+      {/* FAQ — 고객센터에서 옮겨 온 실제 FAQ(support_faqs). 분류 가로 탭. */}
       {faqGroups.length > 0 ? (
         <section className="band tint" id="faq">
           <div className="wrap">
@@ -400,36 +401,16 @@ export default function Landing({ loaderData }: Route.ComponentProps) {
               <div>
                 <p className="eyebrow">자주 묻는 질문</p>
                 <h2>궁금한 점을 먼저 확인하세요</h2>
-                <p style={{ marginInline: "auto" }}>
-                  분류를 눌러 자주 묻는 질문을 확인하고, 해결되지 않으면
-                  고객센터로 문의해 주세요.
+                <p className="faqhint">
+                  분류를 눌러 자주 묻는 질문을 확인하고, 해결되지 않으면 고객센터로
+                  문의해 주세요.
                 </p>
               </div>
             </Reveal>
-            <Reveal className="faq">
-              {faqGroups.map((g) => (
-                <details className="faqcat" key={g.category}>
-                  <summary>
-                    <span>{g.category}</span>
-                    <span className="cnt tnum">{g.items.length}</span>
-                    <span className="car">▾</span>
-                  </summary>
-                  <div className="qlist">
-                    {g.items.map((f) => (
-                      <details className="qi" key={f.faqId}>
-                        <summary>
-                          <span className="q">Q</span>
-                          <span className="qt">{f.question}</span>
-                          <span className="ar">▾</span>
-                        </summary>
-                        <div className="a">{f.answer}</div>
-                      </details>
-                    ))}
-                  </div>
-                </details>
-              ))}
+            <Reveal>
+              <FaqTabs groups={faqGroups} />
             </Reveal>
-            <div style={{ textAlign: "center", marginTop: 22 }}>
+            <div style={{ textAlign: "center", marginTop: 24 }}>
               <Link className="btn ghost" to="/lecture/support">
                 고객센터 문의하기 →
               </Link>
