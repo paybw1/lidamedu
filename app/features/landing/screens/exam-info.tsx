@@ -1,5 +1,5 @@
 // 시험정보 — /lecture/exam-info. 공개 페이지. 강의 nav "리담안내" 하위.
-//   콘텐츠는 exam_info.data(JSONB) 에서 로드, 행 없으면 기본값 폴백.
+//   콘텐츠는 exam_info.data(JSONB) 에서 로드, 행 없으면 기본값 폴백(변리사시험로드맵 반영).
 //   운영자는 /admin/exam-info 에서 직접 편집. 디자인은 랜딩·리담소식과 동일한 .llx 스코프.
 import makeServerClient from "~/core/lib/supa-client.server";
 
@@ -13,7 +13,7 @@ export const meta: Route.MetaFunction = () => [
   {
     name: "description",
     content:
-      "변리사 시험 일정·과목·합격 기준·영어 대체시험 인정 점수 안내. 2026년 기준 요약.",
+      "변리사 시험 일정·과목·시험시간·합격 기준·영어 대체시험·연도별 통계·공부법 안내. 2026년 제63회 기준.",
   },
 ];
 
@@ -27,19 +27,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export default function ExamInfo({ loaderData }: Route.ComponentProps) {
-  const {
-    intro,
-    schedule,
-    firstSubjects,
-    firstCriteria,
-    secondRequired,
-    secondElective,
-    secondCriteria,
-    english,
-    englishNote,
-    stats,
-    source,
-  } = loaderData.info;
+  const d = loaderData.info;
   const { notices } = loaderData;
 
   return (
@@ -49,17 +37,17 @@ export default function ExamInfo({ loaderData }: Route.ComponentProps) {
 
       {/* 헤더 + 시험 일정 */}
       <section className="band">
-        <div className="wrap" style={{ maxWidth: 980 }}>
+        <div className="wrap" style={{ maxWidth: 1000 }}>
           <div className="shead">
             <div>
               <p className="eyebrow">Exam Info</p>
               <h2>변리사 시험 정보</h2>
-              {intro ? <p>{intro}</p> : null}
+              {d.intro ? <p>{d.intro}</p> : null}
             </div>
           </div>
 
           <div className="ei-two">
-            {schedule.map((s) => (
+            {d.schedule.map((s) => (
               <div className="ei-card" key={s.title}>
                 <div className="ei-ch">
                   <h3>{s.title}</h3>
@@ -76,12 +64,13 @@ export default function ExamInfo({ loaderData }: Route.ComponentProps) {
               </div>
             ))}
           </div>
+          {d.scheduleNote ? <p className="ei-note">{d.scheduleNote}</p> : null}
         </div>
       </section>
 
-      {/* 시험 과목 & 합격 기준 */}
+      {/* 시험 과목 · 합격 기준 · 시험시간표 */}
       <section className="band tint">
-        <div className="wrap" style={{ maxWidth: 980 }}>
+        <div className="wrap" style={{ maxWidth: 1000 }}>
           <div className="shead">
             <div>
               <p className="eyebrow">Subjects</p>
@@ -90,28 +79,26 @@ export default function ExamInfo({ loaderData }: Route.ComponentProps) {
           </div>
 
           <div className="ei-two">
-            {/* 1차 */}
             <div className="ei-card">
               <div className="ei-ch">
                 <h3>제1차 시험</h3>
                 <span className="ei-kind">4과목 · 객관식</span>
               </div>
               <div className="ei-subj">
-                {firstSubjects.map((s) => (
+                {d.firstSubjects.map((s) => (
                   <div className="ei-subrow" key={s.name}>
                     <b>{s.name}</b>
                     <span>{s.desc}</span>
                   </div>
                 ))}
               </div>
-              {firstCriteria ? (
+              {d.firstCriteria ? (
                 <p className="ei-crit">
-                  <b>합격</b> {firstCriteria}
+                  <b>합격</b> {d.firstCriteria}
                 </p>
               ) : null}
             </div>
 
-            {/* 2차 */}
             <div className="ei-card">
               <div className="ei-ch">
                 <h3>제2차 시험</h3>
@@ -120,26 +107,61 @@ export default function ExamInfo({ loaderData }: Route.ComponentProps) {
               <div className="ei-subj">
                 <div className="ei-subrow">
                   <b>필수과목</b>
-                  <span>{secondRequired}</span>
+                  <span>{d.secondRequired}</span>
                 </div>
                 <div className="ei-subrow">
                   <b>선택과목</b>
-                  <span>{secondElective}</span>
+                  <span>{d.secondElective}</span>
                 </div>
               </div>
-              {secondCriteria ? (
+              {d.secondCriteria ? (
                 <p className="ei-crit">
-                  <b>합격</b> {secondCriteria}
+                  <b>합격</b> {d.secondCriteria}
                 </p>
               ) : null}
             </div>
           </div>
+
+          {d.examTimes.length ? (
+            <>
+              <h3 className="ei-subhead">과목별 시험시간</h3>
+              <div className="ei-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>구분</th>
+                      <th>교시</th>
+                      <th>과목</th>
+                      <th>입실완료</th>
+                      <th>시험시간</th>
+                      <th>문항수</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {d.examTimes.map((t, i) => (
+                      <tr key={i}>
+                        <td>{t.section}</td>
+                        <td>{t.period}</td>
+                        <td className="ei-strong">{t.subject}</td>
+                        <td className="tnum">{t.entry}</td>
+                        <td className="tnum">{t.time}</td>
+                        <td className="tnum">{t.count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {d.examTimesNote ? (
+                <p className="ei-note">{d.examTimesNote}</p>
+              ) : null}
+            </>
+          ) : null}
         </div>
       </section>
 
-      {/* 영어 대체시험 + 통계 */}
+      {/* 영어 대체시험 */}
       <section className="band">
-        <div className="wrap" style={{ maxWidth: 980 }}>
+        <div className="wrap" style={{ maxWidth: 1000 }}>
           <div className="shead">
             <div>
               <p className="eyebrow">English</p>
@@ -152,34 +174,184 @@ export default function ExamInfo({ loaderData }: Route.ComponentProps) {
           </div>
 
           <div className="ei-eng">
-            {english.map((e) => (
+            {d.english.map((e) => (
               <div className="ei-engc" key={e.name}>
                 <span className="ei-engn">{e.name}</span>
                 <span className="ei-engs tnum">{e.score}</span>
               </div>
             ))}
           </div>
-          {englishNote ? <p className="ei-note">{englishNote}</p> : null}
+          {d.englishNote ? <p className="ei-note">{d.englishNote}</p> : null}
 
-          {stats.length ? (
-            <div className="ei-stats">
-              {stats.map((s) => (
-                <div className="ei-stat" key={s.label}>
-                  <b className="tnum">{s.value}</b>
-                  <span>{s.label}</span>
+          <div className="ei-two" style={{ marginTop: 18 }}>
+            {d.englishValidity ? (
+              <div className="ei-card">
+                <div className="ei-ch">
+                  <h3>인정기간</h3>
                 </div>
-              ))}
-            </div>
-          ) : null}
-
-          {source ? <p className="ei-src">{source}</p> : null}
+                <p className="ei-cardp">{d.englishValidity}</p>
+              </div>
+            ) : null}
+            {d.englishTip ? (
+              <div className="ei-card ei-tip">
+                <div className="ei-ch">
+                  <h3>TIP</h3>
+                </div>
+                <p className="ei-cardp">{d.englishTip}</p>
+              </div>
+            ) : null}
+          </div>
         </div>
       </section>
+
+      {/* 연도별 통계 */}
+      {d.yearlyStats.length ? (
+        <section className="band tint">
+          <div className="wrap" style={{ maxWidth: 1000 }}>
+            <div className="shead">
+              <div>
+                <p className="eyebrow">Statistics</p>
+                <h2>연도별 통계</h2>
+                <p>최근 응시·합격·경쟁률 요약(1차 응시(대상) · 커트라인 · 합격).</p>
+              </div>
+            </div>
+
+            <div className="ei-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>연도</th>
+                    <th>1차 응시(대상)</th>
+                    <th>커트라인</th>
+                    <th>1차 합격</th>
+                    <th>응시율 / 합격률</th>
+                    <th>2차 대상</th>
+                    <th>최종 합격</th>
+                    <th>최종 경쟁률</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {d.yearlyStats.map((y) => (
+                    <tr key={y.year}>
+                      <td className="ei-strong tnum">{y.year}</td>
+                      <td className="tnum">{y.applied}</td>
+                      <td className="tnum">{y.cut}</td>
+                      <td className="tnum">{y.passed}</td>
+                      <td className="tnum">{y.rate}</td>
+                      <td className="tnum">{y.second}</td>
+                      <td className="tnum">{y.final}</td>
+                      <td className="tnum">{y.ratio}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {d.statNotes.length ? (
+              <ul className="ei-bullets">
+                {d.statNotes.map((s, i) => (
+                  <li key={i}>{s}</li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
+
+      {/* 1차 공부방법론 */}
+      {d.studyPrinciples.length ||
+      d.subjectNotes.length ||
+      d.studyFlow ? (
+        <section className="band">
+          <div className="wrap" style={{ maxWidth: 1000 }}>
+            <div className="shead">
+              <div>
+                <p className="eyebrow">Strategy</p>
+                <h2>1차 공부방법론</h2>
+                <p>법과목 중심 + 자연과학 전략 운영.</p>
+              </div>
+            </div>
+
+            <div className="ei-two">
+              {d.studyPrinciples.length ? (
+                <div className="ei-card">
+                  <div className="ei-ch">
+                    <h3>핵심 원칙</h3>
+                  </div>
+                  <ol className="ei-ol">
+                    {d.studyPrinciples.map((p, i) => (
+                      <li key={i}>{p}</li>
+                    ))}
+                  </ol>
+                </div>
+              ) : null}
+              {d.subjectNotes.length ? (
+                <div className="ei-card">
+                  <div className="ei-ch">
+                    <h3>과목 특징</h3>
+                  </div>
+                  <div className="ei-subj">
+                    {d.subjectNotes.map((s) => (
+                      <div className="ei-subrow" key={s.name}>
+                        <b>{s.name}</b>
+                        <span>{s.desc}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+            {d.studyFlow ? (
+              <div className="ei-card" style={{ marginTop: 18 }}>
+                <div className="ei-ch">
+                  <h3>추천 학습 흐름</h3>
+                </div>
+                <p className="ei-cardp">{d.studyFlow}</p>
+              </div>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
+
+      {/* Q&A */}
+      {d.faq.length ? (
+        <section className="band tint">
+          <div className="wrap" style={{ maxWidth: 860 }}>
+            <div className="shead">
+              <div>
+                <p className="eyebrow">Q&amp;A</p>
+                <h2>자주 묻는 질문</h2>
+              </div>
+            </div>
+            <div className="ei-faq">
+              {d.faq.map((f, i) => (
+                <details className="ei-qa" key={i}>
+                  <summary>
+                    <span className="ei-q">Q</span>
+                    <span className="ei-qt">{f.q}</span>
+                    <span className="ei-ar">⌄</span>
+                  </summary>
+                  <p className="ei-a">{f.a}</p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {/* 출처 */}
+      {d.source ? (
+        <section className="band" style={{ paddingTop: 0 }}>
+          <div className="wrap" style={{ maxWidth: 1000 }}>
+            <p className="ei-src">{d.source}</p>
+          </div>
+        </section>
+      ) : null}
 
       {/* 시험 공고(첨부 게시판) */}
       {notices.length ? (
         <section className="band tint">
-          <div className="wrap" style={{ maxWidth: 980 }}>
+          <div className="wrap" style={{ maxWidth: 1000 }}>
             <div className="shead">
               <div>
                 <p className="eyebrow">Notices</p>
@@ -227,9 +399,11 @@ function ExamStyle() {
     <style>{`
 .llx .ei-two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 .llx .ei-card{background:var(--lsurface);border:1px solid var(--line);border-radius:15px;padding:22px 22px 24px;box-shadow:var(--lshadow);display:flex;flex-direction:column;gap:16px}
+.llx .ei-card.ei-tip{background:linear-gradient(160deg,var(--blue-wash),var(--lsurface))}
 .llx .ei-ch{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--line)}
 .llx .ei-ch h3{font-size:18px;font-weight:900;letter-spacing:-.02em}
 .llx .ei-kind{font-size:12px;font-weight:800;color:var(--gilt);white-space:nowrap}
+.llx .ei-cardp{font-size:13.5px;color:var(--soft);line-height:1.8}
 .llx .ei-rows{display:flex;flex-direction:column;gap:2px}
 .llx .ei-row{display:flex;gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:13.5px}
 .llx .ei-row:first-child{border-top:0}
@@ -242,16 +416,32 @@ function ExamStyle() {
 .llx .ei-subrow span{font-size:13px;color:var(--soft);line-height:1.6}
 .llx .ei-crit{font-size:12.5px;color:var(--soft);line-height:1.7;background:var(--blue-wash);border-radius:10px;padding:12px 14px;margin-top:auto}
 .llx .ei-crit b{color:var(--blue-ink);font-weight:900;margin-right:6px}
+.llx .ei-subhead{font-size:15px;font-weight:900;letter-spacing:-.02em;margin:26px 0 12px}
+.llx .ei-table{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--lsurface);box-shadow:var(--lshadow)}
+.llx .ei-table table{border-collapse:collapse;width:100%;min-width:640px}
+.llx .ei-table th,.llx .ei-table td{padding:11px 13px;text-align:left;font-size:13px;border-bottom:1px solid var(--line);white-space:nowrap;color:var(--soft)}
+.llx .ei-table th{background:var(--lground);color:var(--ink);font-weight:900;position:sticky;top:0}
+.llx .ei-table tr:last-child td{border-bottom:0}
+.llx .ei-table td.ei-strong{color:var(--ink);font-weight:800}
 .llx .ei-eng{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 .llx .ei-engc{background:var(--lsurface);border:1px solid var(--line);border-radius:12px;padding:16px 14px;display:flex;flex-direction:column;gap:6px;box-shadow:var(--lshadow)}
 .llx .ei-engn{font-size:12.5px;font-weight:800;color:var(--soft)}
 .llx .ei-engs{font-size:24px;font-weight:900;color:var(--gilt);letter-spacing:-.02em}
 .llx .ei-note{font-size:12px;color:var(--faint);line-height:1.7;margin-top:14px}
-.llx .ei-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:26px}
-.llx .ei-stat{background:linear-gradient(158deg,var(--navy),var(--navy2));border-radius:14px;padding:22px 18px;text-align:center;color:var(--hero-ink)}
-.llx .ei-stat b{display:block;font-size:28px;font-weight:900;color:#fff;letter-spacing:-.03em}
-.llx .ei-stat span{font-size:12.5px;color:var(--hero-soft);margin-top:6px;display:block}
-.llx .ei-src{font-size:12px;color:var(--faint);line-height:1.7;margin-top:26px;padding-top:18px;border-top:1px solid var(--line)}
+.llx .ei-bullets{margin:16px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:7px}
+.llx .ei-bullets li{font-size:13px;color:var(--soft);line-height:1.7}
+.llx .ei-ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:9px}
+.llx .ei-ol li{font-size:13.5px;color:var(--ink);line-height:1.6}
+.llx .ei-faq{display:flex;flex-direction:column;gap:10px}
+.llx details.ei-qa{background:var(--lsurface);border:1px solid var(--line);border-radius:12px;padding:2px 18px;box-shadow:var(--lshadow)}
+.llx details.ei-qa summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;padding:15px 0;font-weight:800;font-size:14.5px;color:var(--ink)}
+.llx details.ei-qa summary::-webkit-details-marker{display:none}
+.llx .ei-q{width:26px;height:26px;flex-shrink:0;display:grid;place-items:center;border-radius:8px;background:var(--blue-wash);color:var(--blue-ink);font-weight:900;font-size:13px}
+.llx .ei-qt{flex:1;min-width:0}
+.llx .ei-ar{margin-left:auto;color:var(--faint);transition:transform .2s;flex-shrink:0}
+.llx details.ei-qa[open] .ei-ar{transform:rotate(180deg)}
+.llx .ei-a{font-size:13.5px;color:var(--soft);line-height:1.85;padding:0 0 16px 38px;margin:0}
+.llx .ei-src{font-size:12px;color:var(--faint);line-height:1.7;padding-top:18px;border-top:1px solid var(--line)}
 .llx .ei-notices{display:flex;flex-direction:column;gap:12px}
 .llx .ei-notice{background:var(--lsurface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;box-shadow:var(--lshadow)}
 .llx .ei-nhead{display:flex;align-items:baseline;justify-content:space-between;gap:14px}
@@ -265,9 +455,6 @@ function ExamStyle() {
 @media (max-width:820px){
   .llx .ei-two{grid-template-columns:1fr}
   .llx .ei-eng{grid-template-columns:repeat(2,1fr)}
-}
-@media (max-width:520px){
-  .llx .ei-stats{grid-template-columns:1fr}
 }
 `}</style>
   );

@@ -35,8 +35,9 @@ export async function loader({ request }: Route.LoaderArgs) {
 const IN = "h-9 text-sm";
 const TA =
   "border-input bg-background w-full rounded-md border px-3 py-2 text-sm leading-relaxed";
+const DEL = "text-muted-foreground shrink-0";
 
-// 두 문자열 필드 배열 편집기(과목·영어·통계·일정행 공용).
+// 두 문자열 필드 배열 편집기(과목·영어·과목특징 공용).
 function TwoFieldList({
   items,
   keys,
@@ -73,7 +74,7 @@ function TwoFieldList({
             type="button"
             variant="ghost"
             size="sm"
-            className="text-muted-foreground shrink-0"
+            className={DEL}
             onClick={() => onChange(items.filter((_, j) => j !== i))}
           >
             삭제
@@ -94,13 +95,113 @@ function TwoFieldList({
   );
 }
 
-function Section({
-  title,
-  children,
+// N개 문자열 필드 배열 편집기(시험시간표·연도별 통계 등 표 형태).
+function MultiFieldList({
+  items,
+  columns,
+  onChange,
+  addLabel,
 }: {
-  title: string;
-  children: ReactNode;
+  items: Record<string, string>[];
+  columns: { key: string; label: string; w?: number }[];
+  onChange: (items: Record<string, string>[]) => void;
+  addLabel: string;
 }) {
+  const patch = (i: number, key: string, val: string) =>
+    onChange(items.map((it, j) => (j === i ? { ...it, [key]: val } : it)));
+  const blank = () => Object.fromEntries(columns.map((c) => [c.key, ""]));
+  return (
+    <div className="flex flex-col gap-2">
+      {items.map((it, i) => (
+        <div
+          key={i}
+          className="flex flex-wrap items-center gap-2 rounded-md border p-2"
+        >
+          {columns.map((c) => (
+            <Input
+              key={c.key}
+              value={it[c.key] ?? ""}
+              placeholder={c.label}
+              onChange={(e) => patch(i, c.key, e.target.value)}
+              className={IN}
+              style={{ width: c.w ?? 110 }}
+            />
+          ))}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className={DEL}
+            onClick={() => onChange(items.filter((_, j) => j !== i))}
+          >
+            삭제
+          </Button>
+        </div>
+      ))}
+      <div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => onChange([...items, blank()])}
+        >
+          + {addLabel}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// 단일 문자열 배열 편집기(원칙·해석 노트 등).
+function StringList({
+  items,
+  placeholder,
+  onChange,
+  addLabel,
+}: {
+  items: string[];
+  placeholder: string;
+  onChange: (items: string[]) => void;
+  addLabel: string;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      {items.map((v, i) => (
+        <div key={i} className="flex items-center gap-2">
+          <Input
+            value={v}
+            placeholder={placeholder}
+            onChange={(e) =>
+              onChange(items.map((x, j) => (j === i ? e.target.value : x)))
+            }
+            className={`${IN} flex-1`}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className={DEL}
+            onClick={() => onChange(items.filter((_, j) => j !== i))}
+          >
+            삭제
+          </Button>
+        </div>
+      ))}
+      <div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => onChange([...items, ""])}
+        >
+          + {addLabel}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-3 rounded-lg border p-4">
       <h2 className="text-sm font-semibold">{title}</h2>
@@ -117,7 +218,6 @@ export default function AdminExamInfo({ loaderData }: Route.ComponentProps) {
       ? String((fetcher.data as { error: unknown }).error)
       : null;
 
-  // 편집 상태는 React 로 관리. hidden data 로 직렬화 제출.
   const [d, setD] = useState<ExamInfoData>(info);
   const set = (patch: Partial<ExamInfoData>) =>
     setD((p: ExamInfoData) => ({ ...p, ...patch }));
@@ -184,7 +284,7 @@ export default function AdminExamInfo({ loaderData }: Route.ComponentProps) {
                   />
                   <Input
                     value={card.kind}
-                    placeholder="유형(예: 객관식 5지선다)"
+                    placeholder="유형(예: 객관식 5지택일)"
                     onChange={(e) => setCard(i, { kind: e.target.value })}
                     className={`${IN} w-48`}
                   />
@@ -192,7 +292,7 @@ export default function AdminExamInfo({ loaderData }: Route.ComponentProps) {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="text-muted-foreground shrink-0"
+                    className={DEL}
                     onClick={() =>
                       set({ schedule: d.schedule.filter((_, j) => j !== i) })
                     }
@@ -226,6 +326,12 @@ export default function AdminExamInfo({ loaderData }: Route.ComponentProps) {
               </Button>
             </div>
           </div>
+          <Label className="mt-2 text-[13px]">일정 안내(선택)</Label>
+          <Input
+            value={d.scheduleNote}
+            onChange={(e) => set({ scheduleNote: e.target.value })}
+            className={IN}
+          />
         </Section>
 
         <Section title="제1차 과목">
@@ -234,8 +340,8 @@ export default function AdminExamInfo({ loaderData }: Route.ComponentProps) {
             keys={["name", "desc"]}
             placeholders={["과목명", "설명"]}
             addLabel="과목 추가"
-            onChange={(firstSubjects) =>
-              set({ firstSubjects: firstSubjects as ExamInfoData["firstSubjects"] })
+            onChange={(v) =>
+              set({ firstSubjects: v as ExamInfoData["firstSubjects"] })
             }
           />
           <Label className="mt-2 text-[13px]">1차 합격 기준</Label>
@@ -269,15 +375,35 @@ export default function AdminExamInfo({ loaderData }: Route.ComponentProps) {
           />
         </Section>
 
-        <Section title="영어 대체시험 인정 점수">
+        <Section title="과목별 시험시간">
+          <MultiFieldList
+            items={d.examTimes}
+            columns={[
+              { key: "section", label: "구분", w: 70 },
+              { key: "period", label: "교시", w: 90 },
+              { key: "subject", label: "과목", w: 130 },
+              { key: "entry", label: "입실완료", w: 90 },
+              { key: "time", label: "시험시간", w: 170 },
+              { key: "count", label: "문항수", w: 70 },
+            ]}
+            addLabel="교시 추가"
+            onChange={(v) => set({ examTimes: v as ExamInfoData["examTimes"] })}
+          />
+          <Label className="mt-2 text-[13px]">시험시간 안내(선택)</Label>
+          <Input
+            value={d.examTimesNote}
+            onChange={(e) => set({ examTimesNote: e.target.value })}
+            className={IN}
+          />
+        </Section>
+
+        <Section title="영어 대체시험">
           <TwoFieldList
             items={d.english}
             keys={["name", "score"]}
             placeholders={["시험명(예: TOEIC)", "기준 점수(예: 775)"]}
             addLabel="시험 추가"
-            onChange={(english) =>
-              set({ english: english as ExamInfoData["english"] })
-            }
+            onChange={(v) => set({ english: v as ExamInfoData["english"] })}
           />
           <Label className="mt-2 text-[13px]">영어 안내 문구</Label>
           <textarea
@@ -286,16 +412,131 @@ export default function AdminExamInfo({ loaderData }: Route.ComponentProps) {
             onChange={(e) => set({ englishNote: e.target.value })}
             className={TA}
           />
+          <Label className="mt-1 text-[13px]">인정기간</Label>
+          <textarea
+            rows={2}
+            value={d.englishValidity}
+            onChange={(e) => set({ englishValidity: e.target.value })}
+            className={TA}
+          />
+          <Label className="mt-1 text-[13px]">TIP</Label>
+          <textarea
+            rows={2}
+            value={d.englishTip}
+            onChange={(e) => set({ englishTip: e.target.value })}
+            className={TA}
+          />
         </Section>
 
-        <Section title="주요 통계">
-          <TwoFieldList
-            items={d.stats}
-            keys={["value", "label"]}
-            placeholders={["수치(예: 3,541명)", "설명(예: 2025년 제1차 응시)"]}
-            addLabel="통계 추가"
-            onChange={(stats) => set({ stats: stats as ExamInfoData["stats"] })}
+        <Section title="연도별 통계">
+          <MultiFieldList
+            items={d.yearlyStats}
+            columns={[
+              { key: "year", label: "연도", w: 64 },
+              { key: "applied", label: "1차 응시(대상)", w: 120 },
+              { key: "cut", label: "커트라인", w: 76 },
+              { key: "passed", label: "1차 합격", w: 76 },
+              { key: "rate", label: "응시율/합격률", w: 130 },
+              { key: "second", label: "2차 대상", w: 90 },
+              { key: "final", label: "최종 합격", w: 90 },
+              { key: "ratio", label: "최종 경쟁률", w: 90 },
+            ]}
+            addLabel="연도 추가"
+            onChange={(v) =>
+              set({ yearlyStats: v as ExamInfoData["yearlyStats"] })
+            }
           />
+          <Label className="mt-2 text-[13px]">해석·주의(선택)</Label>
+          <StringList
+            items={d.statNotes}
+            placeholder="한 줄 해석"
+            addLabel="항목 추가"
+            onChange={(statNotes) => set({ statNotes })}
+          />
+        </Section>
+
+        <Section title="1차 공부방법론">
+          <Label className="text-[13px]">핵심 원칙</Label>
+          <StringList
+            items={d.studyPrinciples}
+            placeholder="원칙 한 줄"
+            addLabel="원칙 추가"
+            onChange={(studyPrinciples) => set({ studyPrinciples })}
+          />
+          <Label className="mt-2 text-[13px]">과목 특징</Label>
+          <TwoFieldList
+            items={d.subjectNotes}
+            keys={["name", "desc"]}
+            placeholders={["과목명", "특징"]}
+            addLabel="과목 추가"
+            onChange={(v) =>
+              set({ subjectNotes: v as ExamInfoData["subjectNotes"] })
+            }
+          />
+          <Label className="mt-2 text-[13px]">추천 학습 흐름</Label>
+          <textarea
+            rows={3}
+            value={d.studyFlow}
+            onChange={(e) => set({ studyFlow: e.target.value })}
+            className={TA}
+          />
+        </Section>
+
+        <Section title="자주 묻는 질문(Q&A)">
+          <div className="flex flex-col gap-3">
+            {d.faq.map((it, i) => (
+              <div key={i} className="flex flex-col gap-2 rounded-md border p-3">
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={it.q}
+                    placeholder="질문"
+                    onChange={(e) =>
+                      set({
+                        faq: d.faq.map((x, j) =>
+                          j === i ? { ...x, q: e.target.value } : x,
+                        ),
+                      })
+                    }
+                    className={`${IN} flex-1`}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className={DEL}
+                    onClick={() =>
+                      set({ faq: d.faq.filter((_, j) => j !== i) })
+                    }
+                  >
+                    삭제
+                  </Button>
+                </div>
+                <textarea
+                  rows={3}
+                  value={it.a}
+                  placeholder="답변"
+                  onChange={(e) =>
+                    set({
+                      faq: d.faq.map((x, j) =>
+                        j === i ? { ...x, a: e.target.value } : x,
+                      ),
+                    })
+                  }
+                  className={TA}
+                />
+              </div>
+            ))}
+            <div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => set({ faq: [...d.faq, { q: "", a: "" }] })}
+              >
+                + 질문 추가
+              </Button>
+            </div>
+          </div>
         </Section>
 
         <Section title="출처 안내">
