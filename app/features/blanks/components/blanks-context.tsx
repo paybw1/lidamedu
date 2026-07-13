@@ -389,6 +389,11 @@ export function BlanksRenderProvider({
   const advanceToNext = useCallback(
     (idx: number) => {
       if (anyComposingRef.current) return;
+      // ★현재 칸이 정답일 때만 이동 — 방금 포커스된 빈 칸에서 Enter(한글 IME 확정 Enter 와
+      //   이동 Enter 겹침·연타)가 그 빈 칸을 건너뛰어 "다다음" 으로 가버리는 버그 방지.
+      //   findNextBlankIdx 는 idx 다음부터 찾으므로, 빈 현재 칸에서 호출하면 현재 칸을 건너뛴다.
+      //   힌트 문구("정답을 맞히면 Enter 로 다음 빈칸 이동")대로 정답 확정 후에만 이동한다.
+      if (statesRef.current[idx]?.status !== "correct") return;
       const next = findNextBlankIdx(idx);
       if (next != null) doFocusNext(next);
     },
