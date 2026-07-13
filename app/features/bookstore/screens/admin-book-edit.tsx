@@ -11,6 +11,7 @@ import {
   BookForm,
   type BookFormData,
 } from "~/features/bookstore/components/book-form";
+import { BookPreviewManager } from "~/features/bookstore/components/book-preview-manager";
 import {
   bookRow,
   parseBookForm,
@@ -51,6 +52,11 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const { data: cats } = await adminClient
     .from("book_categories")
     .select("category_id, name")
+    .order("sort_order", { ascending: true });
+  const { data: previews } = await adminClient
+    .from("book_preview_pages")
+    .select("preview_id, image_url")
+    .eq("book_id", bookId)
     .order("sort_order", { ascending: true });
   const book: BookFormData = {
     bookId: b.book_id,
@@ -95,6 +101,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       categoryId: c.category_id,
       name: c.name,
     })),
+    previewPages: (previews ?? []).map((p) => ({
+      previewId: p.preview_id,
+      imageUrl: p.image_url,
+    })),
   };
 }
 
@@ -115,22 +125,30 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function AdminBookEdit({ loaderData, actionData }: Route.ComponentProps) {
-  const { role, book, categories } = loaderData;
+  const { role, book, categories, previewPages } = loaderData;
   const error = (actionData as { error?: string } | undefined)?.error;
   return (
     <AdminShell cluster="lms" role={role} title="도서 수정" desc={book.title}>
-      <Form method="post" encType="multipart/form-data" className="mx-auto max-w-3xl">
-        <BookForm book={book} categories={categories} />
-        {error ? <p className="mt-3 text-sm text-rose-600">{error}</p> : null}
-        <div className="mt-4 flex items-center justify-between">
-          <Button asChild variant="outline" size="sm">
-            <Link to="/admin/books">목록</Link>
-          </Button>
-          <Button type="submit">
-            <SaveIcon className="size-4" /> 저장
-          </Button>
-        </div>
-      </Form>
+      <div className="mx-auto max-w-3xl">
+        <Form method="post" encType="multipart/form-data">
+          <BookForm book={book} categories={categories} />
+          {error ? <p className="mt-3 text-sm text-rose-600">{error}</p> : null}
+          <div className="mt-4 flex items-center justify-between">
+            <Button asChild variant="outline" size="sm">
+              <Link to="/admin/books">목록</Link>
+            </Button>
+            <Button type="submit">
+              <SaveIcon className="size-4" /> 저장
+            </Button>
+          </div>
+        </Form>
+
+        {book.bookId ? (
+          <div className="mt-6">
+            <BookPreviewManager bookId={book.bookId} pages={previewPages} />
+          </div>
+        ) : null}
+      </div>
     </AdminShell>
   );
 }

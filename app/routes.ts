@@ -782,6 +782,10 @@ export default [
         "/admin/book-bundles",
         "features/bookstore/screens/admin-book-bundles.tsx",
       ),
+      route(
+        "/api/admin/book-preview",
+        "features/bookstore/api/book-preview.tsx",
+      ),
       route("/admin/shipments", "features/bookstore/screens/admin-shipments.tsx"),
       route("/me/courses", "features/lms/screens/my-courses-redirect.tsx"),
       route("/me/orders", "features/orders/screens/my-orders-redirect.tsx"),
