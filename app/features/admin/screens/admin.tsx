@@ -18,7 +18,11 @@ import {
   AdminShell,
   visibleAdminNav,
 } from "~/features/admin/components/admin-shell";
-import { Chip } from "~/features/admin/components/admin-ui";
+import {
+  Chip,
+  StatCard,
+  StatSection,
+} from "~/features/admin/components/admin-ui";
 import {
   type StaffContentStats,
   getStaffContentStats,
@@ -184,44 +188,22 @@ function BusinessKpiRow({ kpis }: { kpis: BusinessKpis }) {
     },
   ];
   return (
-    <section className="mb-6" data-testid="admin-hub-business-kpis">
-      <p className="text-muted-foreground mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
-        경영 지표 · 최근 {kpis.windowDays}일
-      </p>
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
-        {tiles.map((t) => {
-          const valueTone =
-            t.tone === "warn"
-              ? "text-amber-700 dark:text-amber-300"
-              : t.tone === "bad"
-                ? "text-rose-700 dark:text-rose-300"
-                : t.tone === "good"
-                  ? "text-emerald-700 dark:text-emerald-300"
-                  : "text-foreground";
-          return (
-            <Link
-              key={t.label}
-              to={t.to}
-              viewTransition
-              title={t.hint}
-              className="border-border bg-card hover:border-primary block rounded-xl border p-3.5 shadow-sm transition-colors"
-            >
-              <p className="text-muted-foreground font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
-                {t.label}
-              </p>
-              <p
-                className={cn(
-                  "mt-1.5 truncate text-[19px] leading-none font-extrabold tracking-tight tabular-nums",
-                  valueTone,
-                )}
-              >
-                {t.value}
-              </p>
-            </Link>
-          );
-        })}
-      </div>
-    </section>
+    <StatSection
+      label={`경영 지표 · 최근 ${kpis.windowDays}일`}
+      cols={6}
+      testid="admin-hub-business-kpis"
+    >
+      {tiles.map((t) => (
+        <StatCard
+          key={t.label}
+          label={t.label}
+          value={t.value}
+          to={t.to}
+          hint={t.hint}
+          tone={t.tone}
+        />
+      ))}
+    </StatSection>
   );
 }
 
@@ -335,49 +317,18 @@ function WorkQueueRow({
     );
   }
   return (
-    <section className="mb-6" data-testid="admin-hub-work-queue">
-      <p className="text-muted-foreground mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
-        오늘 처리할 항목
-      </p>
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:grid-cols-7">
-        {tiles.map((t) => {
-          const active = t.value > 0;
-          return (
-            <Link
-              key={t.label}
-              to={t.to}
-              viewTransition
-              title={t.hint}
-              className={cn(
-                "block rounded-xl border p-3.5 shadow-sm transition-colors",
-                active
-                  ? "border-amber-300/60 bg-amber-50/60 hover:border-amber-400 dark:border-amber-700/40 dark:bg-amber-950/30"
-                  : "border-border bg-card hover:border-primary",
-              )}
-            >
-              <p
-                className={cn(
-                  "font-mono text-[10px] font-bold tracking-[0.06em] uppercase",
-                  active
-                    ? "text-amber-700 dark:text-amber-300"
-                    : "text-muted-foreground",
-                )}
-              >
-                {t.label}
-              </p>
-              <p
-                className={cn(
-                  "mt-1.5 text-[22px] leading-none font-extrabold tracking-tight tabular-nums",
-                  active ? "text-amber-900 dark:text-amber-100" : "text-foreground",
-                )}
-              >
-                {t.value.toLocaleString("ko-KR")}
-              </p>
-            </Link>
-          );
-        })}
-      </div>
-    </section>
+    <StatSection label="오늘 처리할 항목" cols={7} testid="admin-hub-work-queue">
+      {tiles.map((t) => (
+        <StatCard
+          key={t.label}
+          label={t.label}
+          value={t.value}
+          to={t.to}
+          hint={t.hint}
+          active={t.value > 0}
+        />
+      ))}
+    </StatSection>
   );
 }
 
@@ -406,27 +357,11 @@ function ContentStatsRow({ stats }: { stats: StaffContentStats }) {
     { label: "첨삭 완료", value: stats.subjectiveReviews, hint: "주관식 검토" },
   ];
   return (
-    <section className="mb-6" data-testid="admin-hub-content-stats">
-      <p className="text-muted-foreground mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
-        내 콘텐츠 현황
-      </p>
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:grid-cols-7">
-        {tiles.map((t) => (
-          <div
-            key={t.label}
-            title={t.hint}
-            className="border-border bg-card rounded-xl border p-3.5 shadow-sm"
-          >
-            <p className="text-muted-foreground font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
-              {t.label}
-            </p>
-            <p className="text-foreground mt-1.5 text-[22px] leading-none font-extrabold tracking-tight tabular-nums">
-              {t.value.toLocaleString("ko-KR")}
-            </p>
-          </div>
-        ))}
-      </div>
-    </section>
+    <StatSection label="내 콘텐츠 현황" cols={7} testid="admin-hub-content-stats">
+      {tiles.map((t) => (
+        <StatCard key={t.label} label={t.label} value={t.value} hint={t.hint} />
+      ))}
+    </StatSection>
   );
 }
 

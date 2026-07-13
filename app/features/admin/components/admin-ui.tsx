@@ -3,6 +3,7 @@
 
 import { RefreshCwIcon, SearchIcon } from "lucide-react";
 import type { ReactNode } from "react";
+import { Link } from "react-router";
 
 import { cn } from "~/core/lib/utils";
 
@@ -68,6 +69,112 @@ export function StatusChip({
   if (["unmatched", "missing", "error", "rejected"].includes(status))
     return <Chip tone="coral">{label ?? "미배정"}</Chip>;
   return <Chip tone="neutral">{label ?? status}</Chip>;
+}
+
+/* ── StatCard / StatSection — 허브 지표·워크큐 타일 공통 ────────────────── */
+
+export type StatTone = "neutral" | "good" | "warn" | "bad";
+
+// 지표 타일 — 라벨(mono uppercase) + 큰 tabular 값. to 있으면 Link, 없으면 정적.
+// active=true 는 '처리 필요'(워크큐 값>0) 앰버 강조로 tone 을 덮어쓴다.
+export function StatCard({
+  label,
+  value,
+  to,
+  hint,
+  tone = "neutral",
+  active = false,
+}: {
+  label: string;
+  value: string | number;
+  to?: string;
+  hint?: string;
+  tone?: StatTone;
+  active?: boolean;
+}) {
+  const display =
+    typeof value === "number" ? value.toLocaleString("ko-KR") : value;
+  const cardCls = active
+    ? "border-amber-300/60 bg-amber-50/60 dark:border-amber-700/40 dark:bg-amber-950/30"
+    : "border-border bg-card";
+  const hoverCls = to
+    ? active
+      ? "hover:border-amber-400"
+      : "hover:border-primary"
+    : "";
+  const labelCls = active
+    ? "text-amber-700 dark:text-amber-300"
+    : "text-muted-foreground";
+  const valueCls = active
+    ? "text-amber-900 dark:text-amber-100"
+    : tone === "good"
+      ? "text-emerald-700 dark:text-emerald-300"
+      : tone === "warn"
+        ? "text-amber-700 dark:text-amber-300"
+        : tone === "bad"
+          ? "text-rose-700 dark:text-rose-300"
+          : "text-foreground";
+  const inner = (
+    <>
+      <p
+        className={cn(
+          "font-mono text-[10px] font-bold tracking-[0.06em] uppercase",
+          labelCls,
+        )}
+      >
+        {label}
+      </p>
+      <p
+        className={cn(
+          "mt-1.5 truncate text-[20px] leading-none font-extrabold tracking-tight tabular-nums",
+          valueCls,
+        )}
+      >
+        {display}
+      </p>
+    </>
+  );
+  const cls = cn(
+    "block rounded-xl border p-3.5 shadow-sm transition-colors",
+    cardCls,
+    hoverCls,
+  );
+  return to ? (
+    <Link to={to} viewTransition title={hint} className={cls}>
+      {inner}
+    </Link>
+  ) : (
+    <div title={hint} className={cls}>
+      {inner}
+    </div>
+  );
+}
+
+const STAT_GRID: Record<6 | 7, string> = {
+  6: "grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6",
+  7: "grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:grid-cols-7",
+};
+
+// 라벨 + StatCard 그리드 섹션.
+export function StatSection({
+  label,
+  cols = 7,
+  testid,
+  children,
+}: {
+  label: string;
+  cols?: 6 | 7;
+  testid?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="mb-6" data-testid={testid}>
+      <p className="text-muted-foreground mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+        {label}
+      </p>
+      <div className={STAT_GRID[cols]}>{children}</div>
+    </section>
+  );
 }
 
 /* ── Bar — div 기반 분포 막대 ─────────────────────────────────────────── */
