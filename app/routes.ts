@@ -298,6 +298,11 @@ export default [
       "/about/instructors",
       "features/instructors/screens/instructors-index.tsx",
     ),
+    // 강사 모집 안내 — 강사소개 하단 "신규강사 채용" 버튼 대상. :slug 보다 먼저(정적 우선).
+    route(
+      "/about/instructors/recruit",
+      "features/instructors/screens/instructor-recruit.tsx",
+    ),
     route(
       "/about/instructors/:slug",
       "features/instructors/screens/instructor-detail.tsx",

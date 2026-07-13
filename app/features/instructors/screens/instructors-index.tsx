@@ -94,6 +94,23 @@ export default function InstructorsIndex({ loaderData }: Route.ComponentProps) {
             </div>
           </section>
         ))}
+
+        {/* 신규강사 채용 CTA — 클릭 시 강사 모집 안내 페이지로 */}
+        <section
+          style={{
+            marginTop: 8,
+            textAlign: "center",
+            paddingTop: 34,
+            borderTop: "1px solid var(--i-line)",
+          }}
+        >
+          <p style={{ margin: "0 0 18px", color: "var(--i-soft)", fontSize: 15 }}>
+            리담과 함께 변리사 시험의 기준을 만들어갈 전문 강사진을 모십니다.
+          </p>
+          <Link to="/about/instructors/recruit" className="i-btn primary">
+            신규강사 채용
+          </Link>
+        </section>
       </main>
     </div>
   );
