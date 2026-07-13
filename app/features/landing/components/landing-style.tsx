@@ -122,6 +122,9 @@ export function LandingStyle() {
 /* schedule strip */
 .llx .strip{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
 .llx .sc{background:var(--lsurface);border:1px solid var(--line);border-radius:15px;padding:18px;box-shadow:var(--lshadow);display:flex;flex-direction:column;gap:11px;position:relative;overflow:hidden}
+/* 레일 안에서는 고정폭 카드(Rail cardWidth=288 과 일치) */
+.llx .irailtrack .sc{flex:0 0 288px;text-decoration:none;color:inherit;transition:transform .2s,border-color .2s}
+.llx .irailtrack .sc:hover{transform:translateY(-4px);border-color:var(--line2)}
 .llx .sc .tag{position:absolute;top:0;right:0;font-size:11px;font-weight:800;color:#fff;padding:4px 11px;border-bottom-left-radius:10px}
 .llx .sc .tag.soon{background:var(--hot)}.llx .sc .tag.open{background:var(--blue)}.llx .sc .tag.waitlist{background:var(--warn)}.llx .sc .tag.closed{background:var(--faint)}
 .llx .sc .subj{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:800;color:var(--gilt);letter-spacing:.04em}

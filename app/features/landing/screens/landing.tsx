@@ -13,16 +13,8 @@ import { FaqTabs } from "../components/faq-tabs";
 import { HeroCarousel } from "../components/hero-carousel";
 import { InstructorRail } from "../components/instructor-rail";
 import { LandingStyle } from "../components/landing-style";
-import {
-  FORMAT_LABEL,
-  NEWS_KIND_LABEL,
-  fillPercent,
-  ddayFrom,
-  remainingSeats,
-  type LectureFormat,
-  type NewsKind,
-  type ScheduleStatus,
-} from "../labels";
+import { ScheduleRail } from "../components/schedule-rail";
+import { NEWS_KIND_LABEL, type NewsKind } from "../labels";
 import { listBanners, listNews, listSchedules } from "../queries.server";
 
 import { Reveal } from "../components/reveal";
@@ -59,9 +51,6 @@ export async function loader({ request }: Route.LoaderArgs) {
   // 랜딩 강사진은 계열 구분 없이 한 줄 가로 레일(좌우 화살표) — 배치 순서(display_order) 그대로.
   return { banners, schedules, news, instructors, passers, faqGroups, todayISO };
 }
-
-const SEAT_CLASS = (rem: number) =>
-  rem === 0 ? "low" : rem <= 8 ? "low" : rem <= 16 ? "mid" : "ok";
 
 export default function Landing({ loaderData }: Route.ComponentProps) {
   const { banners, schedules, news, instructors, passers, faqGroups, todayISO } =
@@ -145,62 +134,9 @@ export default function Landing({ loaderData }: Route.ComponentProps) {
               예정된 개강 일정이 곧 공개됩니다.
             </p>
           ) : (
-            <div className="strip">
-              {schedules.map((s) => {
-                const rem = remainingSeats(s);
-                const d = ddayFrom(s.start_date, todayISO);
-                return (
-                  <Reveal as="article" className="sc" key={s.schedule_id}>
-                    <span className={`tag ${s.status}`}>
-                      {s.status === "soon" && d !== null
-                        ? `D-${d} 임박`
-                        : s.status === "open"
-                          ? "접수중"
-                          : s.status === "waitlist"
-                            ? "대기접수"
-                            : "마감"}
-                    </span>
-                    <span className="subj">◆ {s.subject_label}</span>
-                    <h3>{s.title}</h3>
-                    <div className="tutor">{s.instructor_name}</div>
-                    <div className="meta">
-                      <div>
-                        <span className="k">개강</span>
-                        <span className="v tnum">
-                          {s.start_date
-                            ? s.start_date.slice(5).replace("-", "/")
-                            : "예정"}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="k">요일</span>
-                        <span className="v">
-                          {s.day_label ?? "-"}
-                          {s.time_label ? ` ${s.time_label}` : ""}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="k">형태</span>
-                        <span className="v">
-                          {FORMAT_LABEL[s.format as LectureFormat]}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="gauge">
-                      <i style={{ width: `${fillPercent(s)}%` }} />
-                    </div>
-                    <div className="foot">
-                      <span className={`seatn ${SEAT_CLASS(rem)}`}>
-                        {s.status === "closed" || rem === 0
-                          ? "마감"
-                          : `잔여 ${rem} / ${s.capacity}석`}
-                      </span>
-                      {d !== null ? <span className="ddayb">D-{d}</span> : null}
-                    </div>
-                  </Reveal>
-                );
-              })}
-            </div>
+            <Reveal>
+              <ScheduleRail schedules={schedules} todayISO={todayISO} />
+            </Reveal>
           )}
         </div>
       </section>
