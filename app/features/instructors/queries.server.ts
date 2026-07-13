@@ -64,6 +64,10 @@ export interface InstructorBook {
   title: string;
   label: string;
 }
+export interface InstructorLink {
+  label: string;
+  url: string;
+}
 
 export interface InstructorCard {
   instructorId: string;
@@ -86,6 +90,7 @@ export interface InstructorDetail extends InstructorCard {
   education: string[];
   career: string[];
   books: InstructorBook[];
+  links: InstructorLink[];
   philosophyMd: string | null;
   bioMd: string | null;
   profileId: string | null;
@@ -95,7 +100,7 @@ const SEL_CARD =
   "instructor_id, slug, name, monogram, category, subject_label, role_label, headline, photo_path, published, display_order";
 const SEL_FULL =
   SEL_CARD +
-  ", title, subject_codes, metrics, education, career, books, philosophy_md, bio_md, profile_id";
+  ", title, subject_codes, metrics, education, career, books, links, philosophy_md, bio_md, profile_id";
 
 function asStrArray(v: unknown): string[] {
   return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
@@ -117,6 +122,13 @@ function asBooks(v: unknown): InstructorBook[] {
     .filter((b): b is Record<string, unknown> => !!b && typeof b === "object")
     .map((b) => ({ title: String(b.title ?? ""), label: String(b.label ?? "") }))
     .filter((b) => b.title);
+}
+function asLinks(v: unknown): InstructorLink[] {
+  if (!Array.isArray(v)) return [];
+  return v
+    .filter((l): l is Record<string, unknown> => !!l && typeof l === "object")
+    .map((l) => ({ label: String(l.label ?? ""), url: String(l.url ?? "") }))
+    .filter((l) => l.url);
 }
 
 type CardRow = {
@@ -198,6 +210,7 @@ function toDetail(r: CardRow & Record<string, unknown>): InstructorDetail {
     education: asStrArray(r.education),
     career: asStrArray(r.career),
     books: asBooks(r.books),
+    links: asLinks(r.links),
     philosophyMd: (r.philosophy_md as string | null) ?? null,
     bioMd: (r.bio_md as string | null) ?? null,
     profileId: (r.profile_id as string | null) ?? null,

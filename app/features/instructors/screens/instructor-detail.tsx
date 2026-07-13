@@ -209,6 +209,29 @@ export default function InstructorDetailScreen({ loaderData }: Route.ComponentPr
           </section>
         ) : null}
 
+        {/* 소통 채널 — 강사별 카페·블로그·유튜브 등 */}
+        {it.links.length > 0 ? (
+          <section className="i-sec">
+            <div className="i-sechead">
+              <h2 className="kr i-serif">소통 채널</h2>
+              <span className="en">Community</span>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+              {it.links.map((l, i) => (
+                <a
+                  key={i}
+                  href={l.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="i-btn ghost"
+                >
+                  {l.label} ↗
+                </a>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
         {/* 이 강사의 강의 */}
         {courses.length > 0 ? (
           <section className="i-sec">

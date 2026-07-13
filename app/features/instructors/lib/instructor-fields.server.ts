@@ -29,6 +29,18 @@ function parseBooks(v: FormDataEntryValue | null) {
     return { title, label };
   }).filter((b) => b.title);
 }
+// "라벨 | URL" 줄 → link. URL 은 http(s) 만 허용, 라벨 없으면 URL 을 라벨로.
+function parseLinks(v: FormDataEntryValue | null) {
+  return lines(v)
+    .map((ln) => {
+      const [a = "", b = ""] = ln.split("|").map((s) => s.trim());
+      // "라벨 | URL" 또는 "URL" 단독. http 로 시작하는 쪽을 URL 로 판별.
+      const url = /^https?:\/\//i.test(b) ? b : /^https?:\/\//i.test(a) ? a : "";
+      const label = url === b ? a : url === a ? "" : a;
+      return { label: label || url, url };
+    })
+    .filter((l) => l.url);
+}
 
 const schema = z.object({
   slug: z.string().trim().regex(/^[a-z0-9][a-z0-9-]*$/, "slug 은 영소문자·숫자·하이픈"),
@@ -73,6 +85,7 @@ export function parseInstructorForm(
     education: lines(fd.get("education")),
     career: lines(fd.get("career")),
     books: parseBooks(fd.get("books")),
+    links: parseLinks(fd.get("links")),
     philosophy_md: nz(fd.get("philosophyMd")) ?? null,
     bio_md: nz(fd.get("bioMd")) ?? null,
     display_order: v.displayOrder,

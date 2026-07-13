@@ -5996,6 +5996,7 @@ export type Database = {
           education: Json
           headline: string | null
           instructor_id: string
+          links: Json
           metrics: Json
           monogram: string | null
           name: string
@@ -6021,6 +6022,7 @@ export type Database = {
           education?: Json
           headline?: string | null
           instructor_id?: string
+          links?: Json
           metrics?: Json
           monogram?: string | null
           name: string
@@ -6046,6 +6048,7 @@ export type Database = {
           education?: Json
           headline?: string | null
           instructor_id?: string
+          links?: Json
           metrics?: Json
           monogram?: string | null
           name?: string

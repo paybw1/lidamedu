@@ -52,6 +52,7 @@ export default function AdminInstructorEdit({ loaderData }: Route.ComponentProps
     .map((m) => [m.value, m.unit, m.label].join(" | "))
     .join("\n");
   const booksText = (it?.books ?? []).map((b) => [b.title, b.label].join(" | ")).join("\n");
+  const linksText = (it?.links ?? []).map((l) => [l.label, l.url].join(" | ")).join("\n");
 
   return (
     <AdminShell
@@ -114,6 +115,10 @@ export default function AdminInstructorEdit({ loaderData }: Route.ComponentProps
 
           <Row label="저서" hint="한 줄에 하나 · '제목 | 라벨' (예: 리담특허법 | 기본서)">
             <textarea name="books" rows={4} defaultValue={booksText} className={TA} placeholder="리담특허법 | 기본서" />
+          </Row>
+
+          <Row label="소통 채널" hint="카페·블로그·유튜브 등 · 한 줄에 하나 · '라벨 | URL' (예: 네이버 카페 | https://cafe.naver.com/lidam)">
+            <textarea name="links" rows={4} defaultValue={linksText} className={TA} placeholder="네이버 카페 | https://cafe.naver.com/..." />
           </Row>
 
           <Row label="강의 철학" hint="첫 문단은 인용구로 강조, 문단은 빈 줄로 구분">
