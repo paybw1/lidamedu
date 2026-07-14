@@ -530,15 +530,27 @@ export function NavigationBar({
                 ),
               )}
 
-              {isStaff
-                ? trailingFlats.map((m) => <FlatLink key={m.to} {...m} />)
-                : null}
             </NavigationMenuList>
           </NavigationMenu>
         </div>
 
-        {/* '운영자' 이후 — 오른쪽 정렬 */}
+        {/* 우측 정렬 — 운영관리(운영자 전용)를 학생 메뉴와 분리해 도구/계정 영역에 둔다. */}
         <div className="ml-auto hidden h-full items-center gap-3 md:flex">
+          {isStaff ? (
+            <>
+              <Link
+                to="/admin"
+                className="border-border text-foreground hover:bg-accent inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[13px] font-semibold whitespace-nowrap transition-colors"
+              >
+                <span
+                  className="size-1.5 rounded-full bg-amber-500"
+                  aria-hidden
+                />
+                운영관리
+              </Link>
+              <Separator orientation="vertical" />
+            </>
+          ) : null}
           {/* 전역 검색·인박스·테마 — 검색은 인증만(팔레트는 private.layout 마운트). */}
           <Actions
             inboxUnread={inboxUnread}
