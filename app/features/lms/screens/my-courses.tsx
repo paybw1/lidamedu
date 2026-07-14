@@ -7,8 +7,9 @@ import {
   ClapperboardIcon,
   MonitorSmartphoneIcon,
   PauseCircleIcon,
+  PlayCircleIcon,
 } from "lucide-react";
-import { data, redirect, useFetcher, useNavigate } from "react-router";
+import { Link, data, redirect, useFetcher, useNavigate } from "react-router";
 import { toast } from "sonner";
 
 import { Badge } from "~/core/components/ui/badge";
@@ -61,7 +62,9 @@ export async function loader({ request }: Route.LoaderArgs) {
       .select("lesson_id, course_id")
       .in("course_id", courseIds)
       .eq("is_published", true)
-      .is("deleted_at", null);
+      .is("deleted_at", null)
+      .order("sort_order")
+      .order("lesson_no");
     for (const l of lessons ?? []) {
       const arr = lessonsByCourse.get(l.course_id) ?? [];
       arr.push(l.lesson_id);
@@ -171,6 +174,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       return {
         enrollmentId: e.enrollment_id,
         label: course ? `${course.series?.title ?? ""} ${course.edition_label}`.trim() : "강의",
+        firstLessonId: lessonIds[0] ?? null,
         startsAt: e.starts_at,
         expiresAt: e.expires_at,
         status: e.status,
@@ -348,6 +352,7 @@ function CourseCard({
   course: {
     enrollmentId: string;
     label: string;
+    firstLessonId: string | null;
     startsAt: string;
     expiresAt: string;
     status: string;
@@ -429,6 +434,14 @@ function CourseCard({
             />
           </div>
         </div>
+        {course.firstLessonId && course.status === "active" ? (
+          <Button asChild size="sm" className="w-full">
+            <Link to={`/lecture/watch/${course.firstLessonId}`}>
+              <PlayCircleIcon className="size-4" />
+              {course.completedCount > 0 ? "이어보기" : "강의 보기"}
+            </Link>
+          </Button>
+        ) : null}
         <div className="text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px]">
           <span>
             시청 {fmtHours(course.usedSeconds)} / 허용 {fmtHours(course.allowedSeconds)}

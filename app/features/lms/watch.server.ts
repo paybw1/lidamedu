@@ -125,6 +125,20 @@ export async function reportWatchInterval(input: {
   };
 }
 
+/** 이어보기 위치(초). 기록 없으면 0. (회차 뷰어 진입 시 안내·이어보기용) */
+export async function getResumePosition(
+  userId: string,
+  lessonId: string,
+): Promise<number> {
+  const { data } = await adminClient
+    .from("watch_positions")
+    .select("position_seconds")
+    .eq("user_id", userId)
+    .eq("lesson_id", lessonId)
+    .maybeSingle();
+  return data?.position_seconds ?? 0;
+}
+
 /** 잔여 시청량(초). null = 배수 미적용(무제한) 또는 enrollment 없음(맛보기). */
 export async function getRemainingSeconds(
   enrollmentId: string | null,

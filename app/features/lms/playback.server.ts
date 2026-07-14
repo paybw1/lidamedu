@@ -19,9 +19,12 @@ import {
   detectDeviceKind,
   ensureDeviceForPlayback,
 } from "~/features/lms/devices.server";
+import { buildKollusWebTokenUrl } from "~/features/lms/lib/kollus-token.server";
 import { getRemainingSeconds } from "~/features/lms/watch.server";
 
 const GRANT_TTL_MINUTES = 10;
+// 재생 URL(JWT expt) 유효기간 — 긴 강의도 끊기지 않게 구간 보고 창(6h)에 맞춘다.
+const PLAY_TOKEN_TTL_SECONDS = 6 * 3600;
 
 export type PlaybackDenyReason =
   | "login_required"
@@ -40,7 +43,9 @@ export type PlaybackJudgement =
       grantId: string;
       expiresAt: string;
       isPreview: boolean;
-      // [벤더] DRM 플레이어 임베드 파라미터는 벤더 확정 후 이 판정 결과로 서버에서 교환.
+      // Kollus 웹플레이어 임베드 URL(서버 서명). env 키·mckey 미설정이면 null(=재생 설정 대기).
+      playbackUrl: string | null;
+      durationSeconds: number; // 하트비트 구간 상한(플레이어 클라이언트용)
     }
   | { ok: false; reason: PlaybackDenyReason };
 
@@ -65,7 +70,7 @@ export async function requestPlaybackGrant(
   }
   const { data: video } = await adminClient
     .from("lesson_videos")
-    .select("video_id")
+    .select("video_id, drm_provider, drm_video_id, duration_seconds")
     .eq("lesson_id", input.lessonId)
     .eq("is_active", true)
     .maybeSingle();
@@ -168,11 +173,26 @@ export async function requestPlaybackGrant(
     .select("grant_id")
     .single();
   if (error) throw error;
+
+  // 7) Kollus 웹플레이어 재생 URL 서명 — drm_video_id(mckey) + 학생 user id(cuid).
+  //    provider 가 kollus 가 아니거나 env 키 미설정이면 null → 화면이 "재생 설정 대기" 안내.
+  //    cuid: 로그인 사용자 id, 비로그인(맛보기)은 grant_id 기반 임시 식별.
+  const playbackUrl =
+    video.drm_provider === "kollus"
+      ? buildKollusWebTokenUrl({
+          mckey: video.drm_video_id,
+          cuid: input.userId ?? `preview-${grant.grant_id}`,
+          expireSeconds: PLAY_TOKEN_TTL_SECONDS,
+        })
+      : null;
+
   return {
     ok: true,
     grantId: grant.grant_id,
     expiresAt,
     isPreview: lesson.is_preview,
+    playbackUrl,
+    durationSeconds: video.duration_seconds,
   };
 }
 
