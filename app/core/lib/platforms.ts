@@ -13,10 +13,9 @@ export interface PlatformDef {
 }
 
 export const PLATFORMS: Record<PlatformId, PlatformDef> = {
-  // 상단 스위처 라벨은 짧게(강의/학습) — 바 공간 절약.
-  study: { id: "study", label: "학습", home: "/dashboard" },
+  study: { id: "study", label: "학습 플랫폼", home: "/dashboard" },
   // 강의 플랫폼 진입 = 랜딩(/lecture/home). 수강현황(내 강의실)은 마이페이지 하위.
-  lecture: { id: "lecture", label: "강의", home: "/lecture/home" },
+  lecture: { id: "lecture", label: "강의 플랫폼", home: "/lecture/home" },
 };
 
 export const PLATFORM_ORDER: PlatformId[] = ["lecture", "study"];

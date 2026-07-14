@@ -111,12 +111,12 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
           ? "pb-[calc(1.75rem+env(safe-area-inset-bottom))]"
           : "pb-[calc(5rem+env(safe-area-inset-bottom))]",
       )}
-      // 영역 토글(AreaTabs/SectionTabs) sticky 오프셋 — md+ 기준. topbar 모드는 상단
-      //   navbar(h-14=3.5rem) 아래에 붙도록, sidebar 모드는 navbar 가 없어 0. 모바일은
-      //   SectionTabs 가 항상 top-0(navbar 가 모바일에서 hidden).
+      // 영역 토글(AreaTabs/SectionTabs) sticky 오프셋 — md+ 기준. topbar 모드는 2단
+      //   상단바(유틸 2.5rem + 메인 4rem = 6.5rem) 아래에 붙도록, sidebar 모드는 navbar
+      //   가 없어 0. 모바일은 SectionTabs 가 항상 top-0(navbar 가 모바일에서 hidden).
       style={
         {
-          "--area-sticky-top": isSidebar ? "0px" : "3.5rem",
+          "--area-sticky-top": isSidebar ? "0px" : "6.5rem",
         } as CSSProperties
       }
     >
