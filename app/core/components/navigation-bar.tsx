@@ -2,17 +2,13 @@ import {
   BellIcon,
   LogOutIcon,
   MenuIcon,
-  MonitorIcon,
-  MoonIcon,
   PanelLeftOpenIcon,
   PanelTopOpenIcon,
   SearchIcon,
-  SunIcon,
   UserIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { Theme, useTheme } from "remix-themes";
 
 import { openCommandPalette } from "./command-palette";
 import { PlatformSwitch } from "./platform-switch";
@@ -269,158 +265,6 @@ function NavModeIconButton({ isVertical }: { isVertical: boolean }) {
 // 사이드바·외부에서도 도구 그룹 재사용.
 export { Actions as RightTools };
 
-// ── 2단 상단바: 데스크톱 유틸 스트립 ──────────────────────────────────────────
-// full-width 슬림 띠 — 나 관련·전역(플랫폼 스위처·검색·테마·인박스·사이드바·운영관리·계정).
-// 아래 메인 행은 로고 + 학습 메뉴만. 모바일(인증)은 상단 바 자체가 숨겨져 미노출.
-const UTOOL_CLS =
-  "text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[13px] font-medium whitespace-nowrap transition-colors outline-none disabled:opacity-40 disabled:cursor-not-allowed";
-
-function LabeledThemeTool() {
-  const [theme, setTheme, metadata] = useTheme();
-  const Icon =
-    metadata.definedBy === "SYSTEM"
-      ? MonitorIcon
-      : theme === Theme.LIGHT
-        ? SunIcon
-        : MoonIcon;
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger className={UTOOL_CLS} title="테마">
-        <Icon className="size-4" /> 테마
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => setTheme(Theme.LIGHT)}>
-          <SunIcon className="size-4" /> 라이트
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme(Theme.DARK)}>
-          <MoonIcon className="size-4" /> 다크
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme(null)}>
-          <MonitorIcon className="size-4" /> 시스템
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-// 사이드바(상단↔사이드바 전환) — 학습 전용. NavModeIconButton 과 동일 로직의 라벨형.
-function SidebarModeTool() {
-  const [mode, setMode] = useState<"topbar" | "sidebar">("topbar");
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const stored = window.localStorage.getItem("studentNavMode");
-    if (stored === "sidebar" || stored === "topbar") setMode(stored);
-  }, []);
-  const flip = () => {
-    const next = mode === "topbar" ? "sidebar" : "topbar";
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem("studentNavMode", next);
-    if (next === "sidebar")
-      window.localStorage.setItem("studentSidebarCollapsed", "1");
-    document.cookie = `studentNavMode=${next}; path=/; max-age=${60 * 60 * 24 * 30}; samesite=lax`;
-    window.location.reload();
-  };
-  return (
-    <button
-      type="button"
-      onClick={flip}
-      className={UTOOL_CLS}
-      title={mode === "topbar" ? "사이드바로 전환" : "상단 메뉴로 전환"}
-    >
-      {mode === "topbar" ? (
-        <PanelLeftOpenIcon className="size-4" />
-      ) : (
-        <PanelTopOpenIcon className="size-4" />
-      )}
-      사이드바
-    </button>
-  );
-}
-
-function DesktopUtilityStrip({
-  name,
-  email,
-  avatarUrl,
-  loading,
-  isStaff,
-  inboxUnread,
-  inboxHref,
-}: {
-  name?: string;
-  email?: string;
-  avatarUrl?: string | null;
-  loading: boolean;
-  isStaff: boolean;
-  inboxUnread: number | null;
-  inboxHref: string | null;
-}) {
-  const vsep = <Separator orientation="vertical" className="h-4" />;
-  return (
-    <div className="hidden border-b border-black/[0.05] bg-black/[0.015] md:block dark:border-white/[0.06] dark:bg-white/[0.02]">
-      <div className="flex h-10 items-center justify-end gap-2.5 px-4 md:px-6">
-        {isStaff ? (
-          <>
-            <PlatformSwitch />
-            {vsep}
-          </>
-        ) : null}
-        {name ? (
-          <>
-            <button
-              type="button"
-              onClick={() => openCommandPalette()}
-              className={UTOOL_CLS}
-              title="검색 (⌘K / Ctrl+K)"
-            >
-              <SearchIcon className="size-4" /> 검색
-            </button>
-            <LabeledThemeTool />
-            {inboxHref ? (
-              <Link to={inboxHref} className={UTOOL_CLS} data-testid="open-inbox">
-                <span className="relative inline-flex">
-                  <BellIcon className="size-4" />
-                  {inboxUnread && inboxUnread > 0 ? (
-                    <span className="absolute -top-1.5 -right-1.5 inline-flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-rose-600 px-1 text-[9px] font-bold text-white tabular-nums">
-                      {inboxUnread > 99 ? "99+" : inboxUnread}
-                    </span>
-                  ) : null}
-                </span>
-                인박스
-              </Link>
-            ) : null}
-            <SidebarModeTool />
-            {vsep}
-          </>
-        ) : (
-          <>
-            <LabeledThemeTool />
-            {vsep}
-          </>
-        )}
-        {isStaff ? (
-          <>
-            <Link
-              to="/admin"
-              className={cn(UTOOL_CLS, "text-foreground font-semibold")}
-            >
-              <span className="size-1.5 rounded-full bg-amber-500" aria-hidden />
-              운영관리
-            </Link>
-            {vsep}
-          </>
-        ) : null}
-        {loading ? (
-          <div className="bg-muted-foreground/20 size-8 animate-pulse rounded-lg" />
-        ) : name ? (
-          <UserMenu name={name} email={email} avatarUrl={avatarUrl} />
-        ) : (
-          <AuthButtons />
-        )}
-      </div>
-    </div>
-  );
-}
-
 // 모바일 sheet 안에서 그룹 헤더 + 들여쓴 링크들.
 function MobileGroup({ label, items }: { label: string; items: SimpleLink[] }) {
   return (
@@ -622,24 +466,13 @@ export function NavigationBar({
   return (
     <nav
       className={cn(
-        "dark:bg-background/85 dark:border-border sticky top-0 z-50 w-full border-b border-black/[0.06] bg-white/80 backdrop-blur-lg backdrop-saturate-150 transition-opacity print:hidden",
+        "dark:bg-background/85 dark:border-border sticky top-0 z-50 mx-auto flex h-14 w-full items-center justify-between border-b border-black/[0.06] bg-white/80 px-4 backdrop-blur-lg backdrop-saturate-150 transition-opacity md:px-6 print:hidden",
         // 인증 사용자는 모바일에서 하단 탭바가 모든 nav·도구를 담당하므로 상단 바를
         // 숨겨 학습 콘텐츠 영역을 넓힌다. 비인증은 하단바가 없어 상단 햄버거 유지.
-        name && "hidden md:block",
+        name && "hidden md:flex",
       )}
     >
-      {/* 위: full-width 유틸 스트립(데스크톱) — 스위처·도구·운영관리·계정 */}
-      <DesktopUtilityStrip
-        name={name}
-        email={email}
-        avatarUrl={avatarUrl}
-        loading={loading}
-        isStaff={isStaff}
-        inboxUnread={inboxUnread}
-        inboxHref={inboxHref}
-      />
-      {/* 아래: 메인 행 — 로고 + 학습 메뉴 */}
-      <div className="mx-auto flex h-16 w-full max-w-[1200px] items-center gap-4 px-4 md:px-6">
+      <div className="mx-auto flex h-full w-full max-w-[1200px] items-center gap-4">
         <Link
           to="/"
           aria-label="리담변리사학원 홈 — Study Platform"
@@ -658,7 +491,10 @@ export function NavigationBar({
               md~lg 폭에서는 숨겨 로고만 유지. */}
         </Link>
 
-        {/* 데스크톱 학습 메뉴 — 로고 오른쪽. 스위처·도구·운영관리·계정은 위 유틸 바로 이동. */}
+        {/* 플랫폼 스위처 — 학습 ↔ 강의. 강의 플랫폼 오픈 전까지 staff 에게만 노출(IA 검증). */}
+        {isStaff ? <PlatformSwitch className="shrink-0" /> : null}
+
+        {/* 데스크톱 네비게이션 — 로고 바로 오른쪽, '운영자'까지 왼쪽 정렬 */}
         <div
           className={cn(
             "hidden h-full items-center md:flex",
@@ -696,6 +532,43 @@ export function NavigationBar({
 
             </NavigationMenuList>
           </NavigationMenu>
+        </div>
+
+        {/* 우측 정렬 — 운영관리(운영자 전용)를 학생 메뉴와 분리해 도구/계정 영역에 둔다. */}
+        <div className="ml-auto hidden h-full items-center gap-3 md:flex">
+          {isStaff ? (
+            <>
+              <Link
+                to="/admin"
+                className="border-border text-foreground hover:bg-accent inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[13px] font-semibold whitespace-nowrap transition-colors"
+              >
+                <span
+                  className="size-1.5 rounded-full bg-amber-500"
+                  aria-hidden
+                />
+                운영관리
+              </Link>
+              <Separator orientation="vertical" />
+            </>
+          ) : null}
+          {/* 전역 검색·인박스·테마 — 검색은 인증만(팔레트는 private.layout 마운트). */}
+          <Actions
+            inboxUnread={inboxUnread}
+            inboxHref={inboxHref}
+            showNavModeToggle={Boolean(name)}
+            showSearch={Boolean(name)}
+          />
+          <Separator orientation="vertical" />
+
+          {loading ? (
+            <div className="flex items-center">
+              <div className="bg-muted-foreground/20 size-8 animate-pulse rounded-lg" />
+            </div>
+          ) : name ? (
+            <UserMenu name={name} email={email} avatarUrl={avatarUrl} />
+          ) : (
+            <AuthButtons />
+          )}
         </div>
 
         {/* Mobile 우측 — 인증 사용자는 하단 탭바가 nav 를 담당하므로 상단엔
