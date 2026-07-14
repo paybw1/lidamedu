@@ -1,24 +1,32 @@
 // /lecture/watch/:lessonId — 강의 재생 화면(Kollus 웹플레이어).
 //   재생 판정(requestPlaybackGrant) → 성공 시 서명된 Kollus URL 을 iframe 임베드.
-//   좌: 플레이어 + 회차 정보 / 우: 같은 강의의 회차 재생목록.
+//   좌: 플레이어 + 회차 정보 + 이전/다음 이동 / 우: 진도 표시 sticky 목차.
 //   시청 구간 하트비트로 진도·이어보기·배수 원장 적재.
 import { useEffect, useRef } from "react";
 
 import {
   ArrowLeftIcon,
+  CheckIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   LockIcon,
   PlayCircleIcon,
+  PlayIcon,
 } from "lucide-react";
 import { Link, data } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
+import { cn } from "~/core/lib/utils";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import {
   PLAYBACK_DENY_MESSAGE,
   requestPlaybackGrant,
 } from "~/features/lms/playback.server";
-import { getResumePosition } from "~/features/lms/watch.server";
+import {
+  getLessonProgressForUser,
+  getResumePosition,
+} from "~/features/lms/watch.server";
 
 import type { Route } from "./+types/lecture-watch";
 
@@ -62,12 +70,30 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     .is("deleted_at", null)
     .order("sort_order")
     .order("lesson_no");
-  const lessons = (siblings ?? []).map((l) => ({
-    lessonId: l.lesson_id,
-    lessonNo: l.lesson_no,
-    title: l.title,
-    isPreview: l.is_preview,
-  }));
+  const siblingRows = siblings ?? [];
+
+  // 회차별 진도(로그인 시) — 목차 완강/진행 표시.
+  const progress = user
+    ? await getLessonProgressForUser(
+        user.id,
+        siblingRows.map((l) => l.lesson_id),
+      )
+    : new Map();
+  const lessons = siblingRows.map((l) => {
+    const p = progress.get(l.lesson_id);
+    return {
+      lessonId: l.lesson_id,
+      lessonNo: l.lesson_no,
+      title: l.title,
+      isPreview: l.is_preview,
+      completed: p?.completed ?? false,
+      ratio: p?.progressRatio ?? 0,
+      durationSeconds: p?.durationSeconds ?? 0,
+    };
+  });
+  const completedCount = lessons.filter((l) => l.completed).length;
+  const coursePct =
+    lessons.length > 0 ? Math.round((completedCount / lessons.length) * 100) : 0;
 
   // 재생 판정 + Kollus 서명 URL.
   const judgement = await requestPlaybackGrant(client, {
@@ -83,6 +109,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     lessonNo: lesson.lesson_no,
     courseLabel,
     lessons,
+    completedCount,
+    coursePct,
     currentLessonId: lessonId,
     isAuthed: Boolean(user),
   };
@@ -168,8 +196,23 @@ function useApproxWatchHeartbeat(opts: {
 function fmtClock(sec: number): string {
   const m = Math.floor(sec / 60);
   const s = Math.floor(sec % 60);
-  return `${m}분 ${String(s).padStart(2, "0")}초`;
+  return `${m}:${String(s).padStart(2, "0")}`;
 }
+function fmtDuration(sec: number): string {
+  if (sec <= 0) return "";
+  const m = Math.round(sec / 60);
+  return `${m}분`;
+}
+
+type WatchLesson = {
+  lessonId: string;
+  lessonNo: number;
+  title: string;
+  isPreview: boolean;
+  completed: boolean;
+  ratio: number;
+  durationSeconds: number;
+};
 
 export default function LectureWatch({ loaderData }: Route.ComponentProps) {
   useApproxWatchHeartbeat({
@@ -178,24 +221,45 @@ export default function LectureWatch({ loaderData }: Route.ComponentProps) {
     enabled: loaderData.ok && Boolean(loaderData.playbackUrl),
   });
 
-  const { courseLabel, lessonTitle, lessonNo, lessons, currentLessonId } =
-    loaderData;
+  const {
+    courseLabel,
+    lessonTitle,
+    lessonNo,
+    lessons,
+    completedCount,
+    coursePct,
+    currentLessonId,
+  } = loaderData;
+
+  const idx = lessons.findIndex((l) => l.lessonId === currentLessonId);
+  const prev = idx > 0 ? lessons[idx - 1] : null;
+  const next =
+    idx >= 0 && idx < lessons.length - 1 ? lessons[idx + 1] : null;
+  const curDuration =
+    lessons[idx]?.durationSeconds ||
+    (loaderData.ok ? loaderData.durationSeconds : 0);
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6 md:px-6">
-      <Link
-        to="/lecture"
-        className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm font-medium"
-      >
-        <ArrowLeftIcon className="size-4" /> 내 강의실
-      </Link>
+      <div className="flex items-center gap-2 text-sm">
+        <Link
+          to="/lecture"
+          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 font-medium"
+        >
+          <ArrowLeftIcon className="size-4" /> 내 강의실
+        </Link>
+        <span className="text-muted-foreground/40">/</span>
+        <span className="text-muted-foreground min-w-0 truncate">
+          {courseLabel}
+        </span>
+      </div>
 
-      <div className="mt-4 grid gap-6 lg:grid-cols-[1fr_320px]">
-        {/* 플레이어 + 회차 정보 */}
+      <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        {/* ── 플레이어 열 ── */}
         <div className="min-w-0">
           {loaderData.ok ? (
             loaderData.playbackUrl ? (
-              <div className="bg-black aspect-video w-full overflow-hidden rounded-xl">
+              <div className="aspect-video w-full overflow-hidden rounded-xl bg-black shadow-sm">
                 <iframe
                   src={loaderData.playbackUrl}
                   title={lessonTitle}
@@ -205,87 +269,198 @@ export default function LectureWatch({ loaderData }: Route.ComponentProps) {
                 />
               </div>
             ) : (
-              <div className="bg-muted/40 flex aspect-video w-full flex-col items-center justify-center rounded-xl border border-dashed px-6 text-center">
-                <PlayCircleIcon className="text-muted-foreground/50 size-10" />
-                <p className="mt-3 text-sm font-semibold">
-                  재생 설정 준비 중입니다
-                </p>
-                <p className="text-muted-foreground mt-1 max-w-sm text-sm">
-                  Kollus 재생 키 또는 이 회차의 영상(미디어 콘텐츠 키)이 아직
-                  설정되지 않았습니다. 설정이 완료되면 이 화면에서 바로
-                  재생됩니다.
-                </p>
-              </div>
+              <PlayerPlaceholder />
             )
           ) : (
             <DenyView reason={loaderData.reason} message={loaderData.message} />
           )}
 
+          {/* 회차 헤더 */}
           <div className="mt-4">
-            <p className="text-muted-foreground text-xs font-semibold">
+            <p className="text-muted-foreground text-xs font-semibold tracking-wide">
               {courseLabel}
             </p>
-            <h1 className="mt-1 text-lg font-bold tracking-tight text-balance">
-              {lessonNo}강 · {lessonTitle}
+            <h1 className="mt-1 text-xl font-bold tracking-tight text-balance">
+              <span className="text-primary tabular-nums">{lessonNo}강</span>{" "}
+              {lessonTitle}
             </h1>
-            {loaderData.ok && loaderData.resumeSeconds > 0 ? (
-              <p className="text-muted-foreground mt-1 text-xs">
-                지난 시청 위치: {fmtClock(loaderData.resumeSeconds)} 부근
-              </p>
-            ) : null}
+            <div className="text-muted-foreground mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+              {curDuration > 0 ? (
+                <span className="tabular-nums">{fmtDuration(curDuration)}</span>
+              ) : null}
+              {loaderData.ok && loaderData.resumeSeconds > 0 ? (
+                <span className="text-primary font-medium tabular-nums">
+                  이어보기 {fmtClock(loaderData.resumeSeconds)}
+                </span>
+              ) : null}
+            </div>
           </div>
+
+          {/* 이전/다음 회차 */}
+          {lessons.length > 1 ? (
+            <div className="mt-4 flex items-stretch gap-2">
+              <NavLessonButton lesson={prev} dir="prev" />
+              <NavLessonButton lesson={next} dir="next" />
+            </div>
+          ) : null}
         </div>
 
-        {/* 회차 재생목록 */}
-        <aside className="min-w-0">
-          <h2 className="mb-2 text-sm font-bold">강의 목차</h2>
-          {lessons.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              등록된 회차가 없습니다.
-            </p>
-          ) : (
-            <ul className="space-y-1">
-              {lessons.map((l) => {
-                const active = l.lessonId === currentLessonId;
-                return (
-                  <li key={l.lessonId}>
-                    <Link
-                      to={`/lecture/watch/${l.lessonId}`}
-                      aria-current={active ? "true" : undefined}
-                      className={
-                        active
-                          ? "bg-primary/10 border-primary/40 flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold"
-                          : "border-border/60 hover:bg-muted/50 flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"
-                      }
-                    >
-                      <span className="text-muted-foreground shrink-0 tabular-nums">
-                        {l.lessonNo}강
-                      </span>
-                      <span className="min-w-0 flex-1 truncate">{l.title}</span>
-                      {l.isPreview ? (
-                        <span className="text-primary shrink-0 text-[11px] font-semibold">
-                          맛보기
-                        </span>
-                      ) : null}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+        {/* ── 목차 열 (sticky) ── */}
+        <aside className="lg:sticky lg:top-20 lg:self-start">
+          <div className="bg-card overflow-hidden rounded-xl border">
+            <div className="border-b px-4 py-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-bold">강의 목차</h2>
+                <span className="text-muted-foreground text-xs tabular-nums">
+                  {completedCount}/{lessons.length}강 · {coursePct}%
+                </span>
+              </div>
+              <div className="bg-muted mt-2 h-1.5 overflow-hidden rounded-full">
+                <div
+                  className="bg-primary h-full rounded-full transition-all"
+                  style={{ width: `${coursePct}%` }}
+                />
+              </div>
+            </div>
+            {lessons.length === 0 ? (
+              <p className="text-muted-foreground px-4 py-6 text-sm">
+                등록된 회차가 없습니다.
+              </p>
+            ) : (
+              <ul className="max-h-[60vh] divide-y overflow-y-auto lg:max-h-[calc(100vh-12rem)]">
+                {lessons.map((l) => (
+                  <PlaylistRow
+                    key={l.lessonId}
+                    lesson={l}
+                    active={l.lessonId === currentLessonId}
+                  />
+                ))}
+              </ul>
+            )}
+          </div>
         </aside>
       </div>
     </div>
   );
 }
 
-function DenyView({
-  reason,
-  message,
+function PlaylistRow({
+  lesson,
+  active,
 }: {
-  reason: string;
-  message: string;
+  lesson: WatchLesson;
+  active: boolean;
 }) {
+  return (
+    <li>
+      <Link
+        to={`/lecture/watch/${lesson.lessonId}`}
+        aria-current={active ? "true" : undefined}
+        className={cn(
+          "flex items-center gap-3 px-4 py-2.5 text-sm transition-colors",
+          active ? "bg-primary/10" : "hover:bg-muted/50",
+        )}
+      >
+        {/* 상태 아이콘 */}
+        <span
+          className={cn(
+            "flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold tabular-nums",
+            lesson.completed
+              ? "bg-emerald-500 text-white"
+              : active
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground",
+          )}
+        >
+          {lesson.completed ? (
+            <CheckIcon className="size-3.5" />
+          ) : active ? (
+            <PlayIcon className="size-3 fill-current" />
+          ) : (
+            lesson.lessonNo
+          )}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span
+            className={cn(
+              "block truncate",
+              active ? "font-semibold" : "font-medium",
+            )}
+          >
+            {lesson.title}
+          </span>
+          <span className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
+            <span className="tabular-nums">{lesson.lessonNo}강</span>
+            {lesson.durationSeconds > 0 ? (
+              <span className="tabular-nums">
+                · {fmtDuration(lesson.durationSeconds)}
+              </span>
+            ) : null}
+            {!lesson.completed && lesson.ratio > 0 ? (
+              <span className="text-primary tabular-nums">
+                · {Math.round(lesson.ratio * 100)}%
+              </span>
+            ) : null}
+            {lesson.isPreview ? (
+              <span className="text-primary font-semibold">· 맛보기</span>
+            ) : null}
+          </span>
+        </span>
+      </Link>
+    </li>
+  );
+}
+
+function NavLessonButton({
+  lesson,
+  dir,
+}: {
+  lesson: WatchLesson | null;
+  dir: "prev" | "next";
+}) {
+  if (!lesson) {
+    return <div className="flex-1" />;
+  }
+  const isNext = dir === "next";
+  return (
+    <Link
+      to={`/lecture/watch/${lesson.lessonId}`}
+      className={cn(
+        "border-border hover:bg-muted/50 flex flex-1 items-center gap-2 rounded-lg border px-3 py-2.5 transition-colors",
+        isNext ? "flex-row-reverse text-right" : "",
+      )}
+    >
+      {isNext ? (
+        <ChevronRightIcon className="text-muted-foreground size-4 shrink-0" />
+      ) : (
+        <ChevronLeftIcon className="text-muted-foreground size-4 shrink-0" />
+      )}
+      <span className="min-w-0">
+        <span className="text-muted-foreground block text-[11px] font-medium">
+          {isNext ? "다음 회차" : "이전 회차"}
+        </span>
+        <span className="block truncate text-[13px] font-semibold">
+          {lesson.lessonNo}강 · {lesson.title}
+        </span>
+      </span>
+    </Link>
+  );
+}
+
+function PlayerPlaceholder() {
+  return (
+    <div className="bg-muted/40 flex aspect-video w-full flex-col items-center justify-center rounded-xl border border-dashed px-6 text-center">
+      <PlayCircleIcon className="text-muted-foreground/50 size-10" />
+      <p className="mt-3 text-sm font-semibold">재생 설정 준비 중입니다</p>
+      <p className="text-muted-foreground mt-1 max-w-sm text-sm">
+        Kollus 재생 키 또는 이 회차의 영상(미디어 콘텐츠 키)이 아직 설정되지
+        않았습니다. 설정이 완료되면 이 화면에서 바로 재생됩니다.
+      </p>
+    </div>
+  );
+}
+
+function DenyView({ reason, message }: { reason: string; message: string }) {
   const cta =
     reason === "login_required" ? (
       <Button asChild size="sm">
