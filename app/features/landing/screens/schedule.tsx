@@ -181,7 +181,7 @@ export default function Schedule({ loaderData }: Route.ComponentProps) {
 function CalendarStyle() {
   return (
     <style>{`
-.llx .sched-split{display:grid;grid-template-columns:1fr 400px;gap:22px;align-items:start}
+.llx .sched-split{display:grid;grid-template-columns:4fr 6fr;gap:22px;align-items:start}
 .llx .cal{background:var(--lsurface);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:var(--lshadow)}
 .llx .cal-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:14px}
 .llx .cal-title{font-size:17px;font-weight:900;min-width:118px;text-align:center}
