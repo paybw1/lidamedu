@@ -399,6 +399,32 @@ export function BlanksRenderProvider({
     },
     [findNextBlankIdx, doFocusNext],
   );
+  // Tab / Shift+Tab → 인접 빈칸으로 이동(플러시 안전 경로).
+  //   ★네이티브 Tab 은 한글 IME 조합 버퍼가 현재 칸에 확정되기 전에 포커스를 옮겨서,
+  //     이전 칸 마지막 음절이 다음 칸으로 이월된다("이전등록" 입력 후 Tab → 다음 칸에서
+  //     지우면 "록"의 잔여가 "로"로 나타남). doFocusNext 가 이동 직전 현재 input 을
+  //     blur(=IME 버퍼를 현재 칸에 flush)한 뒤 rAF 로 새 칸을 focus 하고 대상 값을
+  //     controlled(보통 빈 문자열)로 정리하므로 이월이 사라진다 — Enter/자동이동과 동일 경로.
+  //   이동했으면 true(→ 호출부에서 preventDefault), 인접 빈칸이 없으면(양 끝) false 로
+  //   네이티브 Tab 을 그대로 허용해 포커스가 빈칸 영역 밖으로 나갈 수 있게 한다.
+  const focusAdjacentBlank = useCallback(
+    (fromIdx: number, dir: 1 | -1): boolean => {
+      const list = renderOrder;
+      const pos = list.findIndex((b) => b.idx === fromIdx);
+      if (pos === -1) return false;
+      for (let i = pos + dir; i >= 0 && i < list.length; i += dir) {
+        const cand = list[i];
+        const el = inputsRef.current.get(cand.idx);
+        if (el && !el.disabled) {
+          doFocusNext(cand.idx);
+          return true;
+        }
+      }
+      return false;
+    },
+    [renderOrder, doFocusNext],
+  );
+
   // input 조합 상태 변화 통지 — 전역 조합 플래그만 갱신(Enter 이동 가드에 사용).
   const handleComposingChange = useCallback((composing: boolean) => {
     anyComposingRef.current = composing;
@@ -517,6 +543,7 @@ export function BlanksRenderProvider({
               onChange={(v, composing) => checkAnswer(h.blank.idx, v, composing)}
               onComposingChange={handleComposingChange}
               onEnter={() => advanceToNext(h.blank.idx)}
+              onTab={(shift) => focusAdjacentBlank(h.blank.idx, shift ? -1 : 1)}
               onFocusInput={() => setHintNextIdx(null)}
               registerInput={registerInput}
               voiceSupported={voice.isSupported}
@@ -540,6 +567,7 @@ export function BlanksRenderProvider({
       checkAnswer,
       handleComposingChange,
       advanceToNext,
+      focusAdjacentBlank,
       registerInput,
       voice.isSupported,
       activeVoiceIdx,
@@ -595,6 +623,7 @@ function BlankInputInline({
   onChange,
   onComposingChange,
   onEnter,
+  onTab,
   onFocusInput,
   registerInput,
   voiceSupported,
@@ -610,6 +639,8 @@ function BlankInputInline({
   onChange: (v: string, composing: boolean) => void;
   onComposingChange: (composing: boolean) => void;
   onEnter: () => void;
+  // Tab(shift=false) / Shift+Tab(shift=true) → 인접 빈칸 이동. 이동했으면 true.
+  onTab: (shift: boolean) => boolean;
   onFocusInput: () => void;
   registerInput: (idx: number, el: HTMLInputElement | null) => void;
   voiceSupported: boolean;
@@ -666,6 +697,16 @@ function BlankInputInline({
           if (e.key === "Enter") {
             e.preventDefault();
             if (!composingRef.current) onEnter();
+            return;
+          }
+          // Tab / Shift+Tab → 네이티브 포커스 이동을 가로채 flush-safe 경로로 이동.
+          //   ★조합 중 네이티브 Tab 은 IME 버퍼가 현재 칸에 확정되기 전에 포커스를 옮겨
+          //     이전 칸 마지막 글자가 다음 칸으로 이월된다. onTab(doFocusNext)이 현재 input 을
+          //     먼저 blur(=버퍼 flush)한 뒤 다음 칸으로 focus 하므로 이월이 없다.
+          //     인접 빈칸이 없으면(false) 네이티브 Tab 을 그대로 두어 영역 밖으로 나가게 한다.
+          if (e.key === "Tab" || e.keyCode === 9) {
+            const moved = onTab(e.shiftKey);
+            if (moved) e.preventDefault();
           }
         }}
         onFocus={(e) => {
