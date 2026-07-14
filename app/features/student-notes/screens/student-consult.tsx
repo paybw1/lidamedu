@@ -61,7 +61,7 @@ export default function StudentConsult({ loaderData }: Route.ComponentProps) {
   }, [highlight]);
 
   return (
-    <StudentShell width="narrow">
+    <StudentShell width="wide">
       <PageHeader
         area="manage"
         title="상담"

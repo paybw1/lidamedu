@@ -152,7 +152,7 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
     sets: blankItems.filter((b) => b.lawCode === slug),
   })).filter((g) => g.sets.length > 0);
   return (
-    <StudentShell>
+    <StudentShell width="wide">
       <header className="mb-6 flex items-start justify-between gap-3">
         <div>
           <AreaEyebrow area="manage" />

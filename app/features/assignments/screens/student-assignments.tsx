@@ -60,7 +60,7 @@ export default function StudentAssignments({
   const done = assignments.filter((a) => a.submission?.status === "completed");
 
   return (
-    <StudentShell>
+    <StudentShell width="wide">
       <header className="mb-6">
         <AreaEyebrow area="manage" />
         <h1 className="text-foreground mt-1 text-2xl font-semibold tracking-tight md:text-3xl">

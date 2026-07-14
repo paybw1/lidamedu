@@ -474,7 +474,7 @@ export default function StudyToday({ loaderData }: Route.ComponentProps) {
   const [prefsOpen, setPrefsOpen] = useState(false);
 
   return (
-    <StudentShell width="narrow">
+    <StudentShell width="wide">
       <header className="mb-6 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <AreaEyebrow area="manage" />

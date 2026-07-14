@@ -153,7 +153,7 @@ export function StudyAidsShell({
     <>
       {/* 토글 — 최상단 sticky(레이아웃 폭, 헤더 위). 4영역 동일: 토글 → 헤더 → 내용. */}
       <StudyAidsTabs active={active} counts={tabCounts} />
-      <StudentShell>
+      <StudentShell width="wide">
         <div ref={contentRef}>
           <PageHeader
             area="aids"

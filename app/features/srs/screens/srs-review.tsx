@@ -262,7 +262,7 @@ function SrsReviewInner({
         isStaff={data.mgmtNav.gradeStaff}
         features={data.mgmtNav.features}
       />
-      <StudentShell width="narrow">
+      <StudentShell width="wide">
         <PageHeader
           area="manage"
           title="오늘의 암기 카드"
