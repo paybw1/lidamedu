@@ -65,7 +65,7 @@ export default function LectureProductDetail({
   const hasBody = Boolean(product.detailImageUrl || product.detailHtml);
 
   return (
-    <div className="mx-auto w-full max-w-[860px] px-4 pt-8 pb-28 md:px-6">
+    <div className="mx-auto w-full max-w-3xl px-4 pt-8 pb-28 md:px-6">
       <Link
         to="/lecture/catalog"
         className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm font-medium"
@@ -203,7 +203,7 @@ export default function LectureProductDetail({
 
       {/* 하단 sticky 구매 바 */}
       <div className="bg-background/95 fixed inset-x-0 bottom-0 z-40 border-t backdrop-blur">
-        <div className="mx-auto flex w-full max-w-[860px] items-center justify-between gap-4 px-4 py-3 md:px-6">
+        <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-4 px-4 py-3 md:px-6">
           <div className="flex items-baseline gap-2 min-w-0">
             <span className="text-muted-foreground text-xs font-semibold">
               수강료

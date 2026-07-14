@@ -240,7 +240,7 @@ export default function LectureWatch({ loaderData }: Route.ComponentProps) {
     (loaderData.ok ? loaderData.durationSeconds : 0);
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-6 md:px-6">
+    <div className="mx-auto w-full max-w-[1200px] px-4 py-6 md:px-6">
       <div className="flex items-center gap-2 text-sm">
         <Link
           to="/lecture"

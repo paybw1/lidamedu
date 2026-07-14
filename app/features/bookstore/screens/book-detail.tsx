@@ -98,7 +98,7 @@ export default function BookDetail({ loaderData }: Route.ComponentProps) {
   };
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-10 md:px-6">
+    <div className="mx-auto w-full max-w-3xl px-4 py-10 md:px-6">
       <Link
         to="/lecture/books"
         className="text-muted-foreground hover:text-foreground text-sm"
