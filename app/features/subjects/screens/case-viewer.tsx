@@ -5,7 +5,6 @@ import type { Route } from "./+types/case-viewer";
 
 import {
   ListTreeIcon,
-  SearchIcon,
   NetworkIcon,
   PanelRightIcon,
   ScrollTextIcon,
@@ -712,9 +711,6 @@ function CaseTreeSidebarInner({
   const [topicMode, setTopicMode] = useState(
     usesTopics && Boolean(activeTopicNodeId),
   );
-  // 트리 검색 — 다른 뷰어와 동일하게 헤더 돋보기 아이콘 토글(데스크톱).
-  // 모바일 드로어는 기존처럼 검색 입력 상시 노출.
-  const [treeSearchOpen, setTreeSearchOpen] = useState(false);
   const viewToggle = (
     <CaseTreeViewToggle
       axis={axis}
@@ -732,21 +728,6 @@ function CaseTreeSidebarInner({
       {desktopHeader ? (
         <div className="border-border bg-card sticky top-0 z-10 rounded-t-xl border-b">
           <div className="flex items-center justify-between gap-2 px-3 py-2">
-            <button
-              type="button"
-              onClick={() => setTreeSearchOpen((v) => !v)}
-              aria-pressed={treeSearchOpen}
-              aria-label="트리 검색"
-              title="트리 검색"
-              className={cn(
-                "border-border inline-flex size-7 items-center justify-center rounded-md border transition-colors",
-                treeSearchOpen
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-card text-muted-foreground hover:text-link",
-              )}
-            >
-              <SearchIcon className="size-3.5" />
-            </button>
             {viewToggle}
           </div>
         </div>
@@ -768,7 +749,7 @@ function CaseTreeSidebarInner({
             systematicNodes={systematicNodes}
             caseTreeCounts={caseTreeCounts}
             active={activeFilter}
-            searchVisible={desktopHeader ? treeSearchOpen : true}
+            searchVisible={false}
             linkBase={`/subjects/${subjectSlug}`}
           />
         )}
