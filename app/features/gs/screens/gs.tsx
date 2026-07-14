@@ -37,7 +37,7 @@ import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
 import type { Route } from "./+types/gs";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "온라인 GS | 리담변리사학원" },
+  { title: "답안작성 | 리담변리사학원" },
 ];
 
 interface RoundView {
@@ -98,7 +98,7 @@ export default function OnlineGs({ loaderData }: Route.ComponentProps) {
   return (
     <MockExamShell
       category="gs"
-      title="2차 모의고사"
+      title="답안작성"
       desc={
         <>
           공개된 회차에 응시해 답안을 작성하면 강사가 채점합니다. 진행 중{" "}
@@ -108,7 +108,7 @@ export default function OnlineGs({ loaderData }: Route.ComponentProps) {
       }
       headerRight={<GuideHelpButton screenKey="gs" />}
     >
-      {/* §4 — 논점 추출 훈련 진입 카드 (가벼운 반복 학습) */}
+      {/* §4 — 논점추출 진입 카드 (가벼운 반복 학습) */}
       <Link
         to="/gs/issues"
         viewTransition
@@ -119,7 +119,7 @@ export default function OnlineGs({ loaderData }: Route.ComponentProps) {
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-link font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
-            논점 추출 훈련
+            논점추출
           </p>
           <p className="text-foreground text-base font-bold tracking-tight">
             답안 전체 말고 핵심 논점만 — 백지에서 빠르게 반복

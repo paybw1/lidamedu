@@ -27,7 +27,7 @@ import {
 import type { Route } from "./+types/gs-issues";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "논점 추출 훈련 | 리담변리사학원" },
+  { title: "논점추출 | 리담변리사학원" },
 ];
 
 // 2차(주관식) 과목만 — 민법은 1차 전용이라 논점 추출 훈련 대상 아님.
@@ -77,9 +77,9 @@ export default function GsIssuesIndex({ loaderData }: Route.ComponentProps) {
     <MockExamShell
       category="gs"
       width="feed"
-      title="논점 추출 훈련"
+      title="논점추출"
       desc="사례를 보고 핵심 논점을 백지에서 직접 적은 뒤 모범 논점과 대조합니다. 답안 전체를 쓰는 게 아니라 빠르게 반복해 보세요."
-      backLink={{ to: "/gs", label: "온라인 GS" }}
+      backLink={{ to: "/gs", label: "답안작성" }}
       headerRight={<GuideHelpButton screenKey="gs-issues" />}
     >
       {/* 과목 필터 */}

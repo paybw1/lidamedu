@@ -10,6 +10,7 @@ import {
   CalendarCheckIcon,
   HighlighterIcon,
   HomeIcon,
+  ListChecksIcon,
   NewspaperIcon,
   PenLineIcon,
   RotateCcwIcon,
@@ -109,17 +110,30 @@ export const NAV_GROUP_POOL = {
       { label: "합격자 분석", to: "/study/passer-trend", staffOnly: true },
     ],
   },
-  mock: {
-    id: "mock" as const,
-    label: "모의고사",
+  // 모의고사 = 1차(객관식)·2차(주관식) 두 그룹으로 분리 — 각 그룹이 화면 내 토글(AreaTabs)의
+  // SSOT. 상단바 드롭다운은 단일 "모의고사"로 두 그룹을 합쳐 표시(TOPBAR_DROPDOWNS), 사이드바·
+  // 하단탭은 그룹별로 갈린다. 화면 토글은 자기 라운드 그룹만 표시(mock.layout 이 경로로 분기).
+  mock1: {
+    id: "mock1" as const,
+    label: "1차 모의고사",
+    Icon: ListChecksIcon,
+    items: [
+      // 통합(여러 교시 묶음 = mcq_exams)과 진도별(과목별 mock 팩)로 구분 — 진입점 분리.
+      { label: "통합 모의고사", to: "/latest/mcq/exams" },
+      { label: "진도별 모의고사", to: "/latest/mcq?kind=mock_progressive" },
+    ],
+    area: "area_mock_exams",
+  },
+  mock2: {
+    id: "mock2" as const,
+    label: "2차 모의고사",
     Icon: PenLineIcon,
     items: [
-      // 1차 모의는 통합(여러 교시 묶음 = mcq_exams)과 진도별(과목별 mock 팩)로 구분 — 진입점 분리.
-      { label: "1차 통합 모의고사", to: "/latest/mcq/exams" },
-      { label: "1차 진도별 모의고사", to: "/latest/mcq?kind=mock_progressive" },
-      { label: "2차 모의고사 (온라인 GS)", to: "/gs" },
-      { label: "GS 논점추출", to: "/gs/issues" },
-      { label: "쟁점·목차 훈련", to: "/case-training" },
+      // 훈련 순서(논점 도출 → 목차 구성 → 답안 서술)대로 배치. 용어 통일:
+      //   논점추출(구 GS 논점추출)·목차잡기(구 쟁점·목차 훈련)·답안작성(구 온라인 GS).
+      { label: "논점추출", to: "/gs/issues" },
+      { label: "목차잡기", to: "/case-training" },
+      { label: "답안작성", to: "/gs" },
       // 모의고사 그룹 = "시험 보기·훈련"만. 내 결과/기록은 다른 곳으로 편입(라우트·CTA 유지):
       //   응시 결과(실제 시험) → 대시보드 입력 허브 + /me/exam-results 전체관리.
       //   정오문제 응시 이력 → 학습현황 약점 탭(/study/stats?tab=ox_diagnosis) + /me/ox-sessions.
@@ -154,7 +168,8 @@ export const AREA_GROUP_IDS = {
   manage: ["today", "review", "manage"],
   aids: ["aids"],
   info: ["info"],
-  mock: ["mock"],
+  mock1: ["mock1"],
+  mock2: ["mock2"],
   community: ["community"],
 } as const satisfies Record<string, ReadonlyArray<NavGroupId>>;
 
@@ -246,7 +261,13 @@ export const TOPBAR_DROPDOWNS: ReadonlyArray<{
   { label: "학습과목", subjects: true, area: "area_subjects" },
   { label: "학습노트", groupIds: AREA_GROUP_IDS.aids, area: "area_study_aids" },
   { label: "학습정보", groupIds: AREA_GROUP_IDS.info },
-  { label: "모의고사", groupIds: AREA_GROUP_IDS.mock, area: "area_mock_exams" },
+  // 상단바는 단일 "모의고사" 드롭다운에 1차·2차 두 그룹을 합쳐 표시(항목 수 유지).
+  // 1차/2차 '구분'은 사이드바(그룹별 라벨)와 화면 토글(라운드별 AreaTabs)이 전담.
+  {
+    label: "모의고사",
+    groupIds: [...AREA_GROUP_IDS.mock1, ...AREA_GROUP_IDS.mock2],
+    area: "area_mock_exams",
+  },
   { label: "커뮤니티", groupIds: AREA_GROUP_IDS.community },
 ];
 
@@ -364,7 +385,8 @@ export const MOBILE_TAB_LABELS: Partial<Record<NavGroupId, string>> = {
   aids: "지원",
   manage: "관리",
   info: "정보",
-  mock: "모의",
+  mock1: "1차 모의",
+  mock2: "2차 모의",
   community: "커뮤니티",
 };
 

@@ -104,7 +104,7 @@ export default function GsPeerReview({ loaderData }: Route.ComponentProps) {
     <MockExamShell
       category="gs"
       width="narrow"
-      backLink={{ to: "/gs", label: "온라인 GS" }}
+      backLink={{ to: "/gs", label: "답안작성" }}
       title={`동료 채점 · ${round.title}`}
       desc="익명 답안을 문항별로 채점합니다. 점수와 피드백을 모두 입력한 뒤 제출해 주세요."
       headerRight={

@@ -200,7 +200,7 @@ export default function GsTake({ loaderData }: Route.ComponentProps) {
       width="wide"
       title={round.title}
       desc="종이 답안지를 페이지별로 사진(또는 PDF)으로 업로드하고, 각 페이지가 어느 문항에 해당하는지 매핑해 주세요."
-      backLink={{ to: "/gs", label: "온라인 GS" }}
+      backLink={{ to: "/gs", label: "답안작성" }}
       headerRight={
         <div className="flex items-center gap-2.5">
           <Chip tone="primary">

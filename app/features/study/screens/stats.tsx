@@ -742,7 +742,7 @@ function TrainingCard({ t }: { t: MyIssueTrainingStats }) {
     <Surface pad={0} tone="subtle">
       <div className="px-6 pt-6 pb-3">
         <h2 className="inline-flex items-center gap-1.5 text-base font-bold tracking-tight">
-          <PencilLineIcon className="size-4" /> 손공부 — 쟁점·목차 훈련
+          <PencilLineIcon className="size-4" /> 손공부 — 목차잡기
         </h2>
         <p className="text-muted-foreground text-xs">
           발문·판례에서 쟁점을 직접 뽑고 결론·목차를 손으로 정리한 기록입니다.
@@ -757,7 +757,7 @@ function TrainingCard({ t }: { t: MyIssueTrainingStats }) {
             </p>
             <Button asChild size="sm" variant="outline">
               <Link to="/case-training" viewTransition>
-                쟁점·목차 훈련 <ArrowRightIcon className="size-3.5" />
+                목차잡기 <ArrowRightIcon className="size-3.5" />
               </Link>
             </Button>
           </div>

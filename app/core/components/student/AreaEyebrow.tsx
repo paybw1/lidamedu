@@ -9,7 +9,7 @@ import { Eyebrow } from "./Eyebrow";
 // eyebrow 로 영역을 대표하는 그룹 — 각 영역의 라벨·아이콘을 소유한 NAV_GROUP_POOL 그룹 id.
 export type AreaKey = Extract<
   NavGroupId,
-  "manage" | "aids" | "info" | "subjects" | "mock" | "community"
+  "manage" | "aids" | "info" | "subjects" | "mock1" | "mock2" | "community"
 >;
 
 export function AreaEyebrow({

@@ -14,7 +14,8 @@ import { AREA_GROUP_IDS, areaTabItems } from "~/core/lib/nav-groups";
 import { LatestShell } from "~/features/latest/components/latest-shell";
 import { MockExamShell } from "~/features/mcq-exams/components/mock-exam-shell";
 
-const MOCK_TAB_ITEMS = areaTabItems(AREA_GROUP_IDS.mock);
+// 진도별 모의(/latest/mcq?kind=mock_progressive)는 1차 모의고사 — 1차 토글(통합·진도별)을 얹는다.
+const MOCK_TAB_ITEMS = areaTabItems(AREA_GROUP_IDS.mock1);
 
 export function McqAreaShell({
   isMock,
@@ -32,7 +33,7 @@ export function McqAreaShell({
   if (!isMock) return <LatestShell category="mcq" {...props} />;
   return (
     <>
-      <AreaTabs ariaLabel="모의고사" items={MOCK_TAB_ITEMS} />
+      <AreaTabs ariaLabel="1차 모의고사" items={MOCK_TAB_ITEMS} />
       <MockExamShell category="progressive" {...props} />
     </>
   );

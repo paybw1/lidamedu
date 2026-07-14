@@ -1,4 +1,4 @@
-// 학생 — 쟁점·목차 훈련 목록 (승인된 항목만). 소스 = 판례 사실관계 | 2차 기출 발문.
+// 학생 — 목차잡기 목록 (승인된 항목만). 소스 = 판례 사실관계 | 2차 기출 발문.
 
 import { Link, data } from "react-router";
 
@@ -13,7 +13,7 @@ import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 import type { Route } from "./+types/case-training-index";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "쟁점·목차 훈련 | 리담변리사학원" },
+  { title: "목차잡기 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -38,7 +38,7 @@ export default function CaseTrainingIndex({ loaderData }: Route.ComponentProps) 
       <header className="mb-6 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-2xl font-extrabold tracking-tight">
-            쟁점·목차 훈련
+            목차잡기
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
             판례 사실관계 또는 2차 기출 발문을 읽고 백지에서 쟁점을 추출한 뒤,

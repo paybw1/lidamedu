@@ -67,7 +67,7 @@ export default function GsPeerReviewRound({
       <MockExamShell
         category="gs"
         width="wide"
-        backLink={{ to: "/gs", label: "온라인 GS" }}
+        backLink={{ to: "/gs", label: "답안작성" }}
         title={`동료 채점 라운드 · ${round.title}`}
         desc={`${subjectLabel} · 배정받은 답안을 매트릭스 형식으로 동시에 채점합니다.`}
       >
@@ -84,7 +84,7 @@ export default function GsPeerReviewRound({
     <MockExamShell
       category="gs"
       width="wide"
-      backLink={{ to: "/gs", label: "온라인 GS" }}
+      backLink={{ to: "/gs", label: "답안작성" }}
       title={`동료 채점 라운드 · ${round.title}`}
       desc={`${subjectLabel} · 배정받은 ${columns.length}건을 매트릭스 형식으로 동시에 채점합니다. 셀에 입력하면 자동 저장됩니다.`}
     >

@@ -103,7 +103,7 @@ export default function GsResult({ loaderData }: Route.ComponentProps) {
         category="gs"
         title="GS 결과"
         desc="응시 단계에 따라 점수·피드백·모범답안이 차례로 공개됩니다."
-        backLink={{ to: "/gs", label: "온라인 GS" }}
+        backLink={{ to: "/gs", label: "답안작성" }}
       >
         <StatePanel
           icon={PencilLineIcon}
@@ -157,7 +157,7 @@ export default function GsResult({ loaderData }: Route.ComponentProps) {
           {formatDateTime(submission.submittedAt)}
         </>
       }
-      backLink={{ to: "/gs", label: "온라인 GS" }}
+      backLink={{ to: "/gs", label: "답안작성" }}
     >
       {isGraded ? (
         <div className="border-border bg-card flex flex-col gap-4 rounded-2xl border p-5 sm:flex-row sm:items-center">

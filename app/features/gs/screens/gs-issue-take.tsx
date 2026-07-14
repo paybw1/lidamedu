@@ -44,8 +44,8 @@ import type { Route } from "./+types/gs-issue-take";
 export const meta: Route.MetaFunction = ({ data: d }) => [
   {
     title: d?.question?.title
-      ? `${d.question.title} — 논점 추출 | 리담변리사학원`
-      : "논점 추출 훈련 | 리담변리사학원",
+      ? `${d.question.title} — 논점추출 | 리담변리사학원`
+      : "논점추출 | 리담변리사학원",
   },
 ];
 

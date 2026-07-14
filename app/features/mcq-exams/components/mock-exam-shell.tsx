@@ -21,6 +21,7 @@ const WIDTH_CLASS: Record<"index" | "feed" | "narrow" | "wide", string> = {
 
 // 모의고사 영역 공통 셸.
 export function MockExamShell({
+  category = "progressive",
   title,
   desc,
   headerRight,
@@ -28,7 +29,7 @@ export function MockExamShell({
   width = "feed",
   children,
 }: {
-  // 호환용 — eyebrow 가 영역 고정이라 더는 사용하지 않지만 호출부 시그니처 유지.
+  // eyebrow 영역명을 라운드별로 분기: gs(논점추출·목차잡기·답안작성)=2차, 그 외(통합·진도별)=1차.
   category?: MockExamCategory;
   title: ReactNode;
   desc?: ReactNode;
@@ -57,7 +58,7 @@ export function MockExamShell({
       ) : null}
       <header className="mb-[18px] flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0 space-y-1.5">
-          <AreaEyebrow area="mock" />
+          <AreaEyebrow area={category === "gs" ? "mock2" : "mock1"} />
           <h1 className="text-[28px] font-extrabold tracking-tight">{title}</h1>
           {desc ? (
             <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed">

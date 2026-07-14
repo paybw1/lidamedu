@@ -62,7 +62,7 @@ export default function GsMySeries({ loaderData }: Route.ComponentProps) {
   return (
     <MockExamShell
       category="gs"
-      backLink={{ to: "/gs", label: "온라인 GS" }}
+      backLink={{ to: "/gs", label: "답안작성" }}
       title={`시리즈 추이 · ${series.title}`}
       desc={
         summary
