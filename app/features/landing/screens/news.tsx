@@ -25,7 +25,7 @@ export default function News({ loaderData }: Route.ComponentProps) {
     <div className="llx">
       <LandingStyle />
       <section className="band">
-        <div className="wrap" style={{ maxWidth: 860 }}>
+        <div className="wrap" style={{ maxWidth: 820 }}>
           <div className="shead">
             <div>
               <p className="eyebrow">리담소식</p>

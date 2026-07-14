@@ -123,7 +123,7 @@ export default function Facilities({ loaderData }: Route.ComponentProps) {
 
       {/* 학습 공간 */}
       <section className="band">
-        <div className="wrap" style={{ maxWidth: 1080 }}>
+        <div className="wrap" style={{ maxWidth: 1180 }}>
           <div className="shead">
             <div>
               <p className="eyebrow">Study</p>
@@ -137,7 +137,7 @@ export default function Facilities({ loaderData }: Route.ComponentProps) {
 
       {/* 편의 시설 */}
       <section className="band tint">
-        <div className="wrap" style={{ maxWidth: 1080 }}>
+        <div className="wrap" style={{ maxWidth: 1180 }}>
           <div className="shead">
             <div>
               <p className="eyebrow">Amenities</p>
@@ -160,7 +160,7 @@ function FacilityStyle() {
 .llx .fc-hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .llx .fc-hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,29,56,.15) 20%,rgba(14,29,56,.82) 100%)}
 .llx .fc-hero-in{position:relative;z-index:1;width:100%;padding:0 0 44px;color:#fff}
-.llx .fc-hero-in .wrap{max-width:1080px}
+.llx .fc-hero-in .wrap{max-width:1180px}
 .llx .fc-hero-in h1{font-size:clamp(32px,5vw,56px);font-weight:900;letter-spacing:-.04em;margin:12px 0 10px;text-wrap:balance}
 .llx .fc-hero-sub{font-size:clamp(15px,1.6vw,18px);color:var(--hero-soft);line-height:1.6;max-width:44ch}
 .llx .fc-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:18px}

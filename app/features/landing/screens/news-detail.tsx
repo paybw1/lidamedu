@@ -27,7 +27,7 @@ export default function NewsDetail({ loaderData }: Route.ComponentProps) {
     <div className="llx">
       <LandingStyle />
       <section className="band">
-        <div className="wrap" style={{ maxWidth: 780 }}>
+        <div className="wrap" style={{ maxWidth: 820 }}>
           <Link className="more" to="/lecture/news">
             ← 리담소식
           </Link>

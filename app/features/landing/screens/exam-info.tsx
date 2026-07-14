@@ -37,7 +37,7 @@ export default function ExamInfo({ loaderData }: Route.ComponentProps) {
 
       {/* 헤더 + 시험 일정 */}
       <section className="band">
-        <div className="wrap" style={{ maxWidth: 1000 }}>
+        <div className="wrap" style={{ maxWidth: 1180 }}>
           <div className="shead">
             <div>
               <p className="eyebrow">Exam Info</p>
@@ -70,7 +70,7 @@ export default function ExamInfo({ loaderData }: Route.ComponentProps) {
 
       {/* 시험 과목 · 합격 기준 · 시험시간표 */}
       <section className="band tint">
-        <div className="wrap" style={{ maxWidth: 1000 }}>
+        <div className="wrap" style={{ maxWidth: 1180 }}>
           <div className="shead">
             <div>
               <p className="eyebrow">Subjects</p>
@@ -161,7 +161,7 @@ export default function ExamInfo({ loaderData }: Route.ComponentProps) {
 
       {/* 영어 대체시험 */}
       <section className="band">
-        <div className="wrap" style={{ maxWidth: 1000 }}>
+        <div className="wrap" style={{ maxWidth: 1180 }}>
           <div className="shead">
             <div>
               <p className="eyebrow">English</p>
@@ -207,7 +207,7 @@ export default function ExamInfo({ loaderData }: Route.ComponentProps) {
       {/* 연도별 통계 */}
       {d.yearlyStats.length ? (
         <section className="band tint">
-          <div className="wrap" style={{ maxWidth: 1000 }}>
+          <div className="wrap" style={{ maxWidth: 1180 }}>
             <div className="shead">
               <div>
                 <p className="eyebrow">Statistics</p>
@@ -266,7 +266,7 @@ export default function ExamInfo({ loaderData }: Route.ComponentProps) {
       d.subjectNotes.length ||
       d.studyFlow ? (
         <section className="band">
-          <div className="wrap" style={{ maxWidth: 1000 }}>
+          <div className="wrap" style={{ maxWidth: 1180 }}>
             <div className="shead">
               <div>
                 <p className="eyebrow">Strategy</p>
@@ -348,7 +348,7 @@ export default function ExamInfo({ loaderData }: Route.ComponentProps) {
       {/* 출처 */}
       {d.source ? (
         <section className="band" style={{ paddingTop: 0 }}>
-          <div className="wrap" style={{ maxWidth: 1000 }}>
+          <div className="wrap" style={{ maxWidth: 1180 }}>
             <p className="ei-src">{d.source}</p>
           </div>
         </section>
@@ -357,7 +357,7 @@ export default function ExamInfo({ loaderData }: Route.ComponentProps) {
       {/* 시험 공고(첨부 게시판) */}
       {notices.length ? (
         <section className="band tint">
-          <div className="wrap" style={{ maxWidth: 1000 }}>
+          <div className="wrap" style={{ maxWidth: 1180 }}>
             <div className="shead">
               <div>
                 <p className="eyebrow">Notices</p>
