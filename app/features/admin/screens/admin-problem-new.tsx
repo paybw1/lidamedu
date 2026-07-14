@@ -299,7 +299,7 @@ export default function AdminProblemNew({
           <Card>
             <CardHeader>
               <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                온라인 GS 회차 등록{" "}
+                2차 모의고사 회차 등록{" "}
                 <span className="font-normal normal-case">(선택)</span>
               </p>
             </CardHeader>

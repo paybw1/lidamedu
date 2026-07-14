@@ -30,7 +30,7 @@ import {
 import type { Route } from "./+types/admin-gs-list";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "온라인 GS 관리 | 리담변리사학원" },
+  { title: "2차 모의고사 관리 | 리담변리사학원" },
 ];
 
 const STATUS_LABEL: Record<GsRoundStatus, string> = {
@@ -96,7 +96,7 @@ export default function AdminGsList({ loaderData }: Route.ComponentProps) {
     <AdminShell
       cluster="gs"
       role={role}
-      title="GS 회차 관리"
+      title="2차 모의고사 회차 관리"
       desc="2차 모의고사 회차를 만들고 문제를 등록합니다. 공개(published) 상태에서만 학생에게 노출됩니다."
       headerRight={
         <Button asChild size="sm">

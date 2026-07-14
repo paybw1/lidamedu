@@ -15,8 +15,8 @@ export const GUIDE_SCREEN_KEYS: ReadonlyArray<{ key: string; label: string }> =
     { key: "srs-cards", label: "암기 카드" },
     { key: "today", label: "오늘 할 일" },
     { key: "mcq-exams", label: "1차 통합 모의고사" },
-    { key: "gs", label: "2차 모의고사 (온라인 GS)" },
-    { key: "gs-issues", label: "GS 논점추출 훈련" },
+    { key: "gs", label: "2차 모의고사 — 답안작성" },
+    { key: "gs-issues", label: "2차 모의고사 — 논점추출" },
     { key: "case-training", label: "판례 쟁점훈련" },
     { key: "qna", label: "Q&A" },
   ];

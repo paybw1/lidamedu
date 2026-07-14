@@ -67,7 +67,7 @@ const TIERS: Tier[] = [
       "1:1 상담",
       "반별 게시판",
     ],
-    note: "2차 모의고사·온라인 GS는 별도 프로그램",
+    note: "2차 모의고사는 별도 프로그램",
     cta: "학원 상담",
     to: "/contact",
     variant: "outline",
