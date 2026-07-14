@@ -30,6 +30,7 @@ import {
   isSubjectLocked,
   subjectLockedHint,
   topbarDropdownItems,
+  topbarGroupLinks,
 } from "~/core/lib/nav-groups";
 import {
   SUBJECT_NAV_ITEMS,
@@ -520,7 +521,9 @@ export function NavigationBar({
                   <SimpleDropdown
                     key={d.label}
                     label={d.label}
-                    items={topbarDropdownItems(
+                    items={(d.groupLinks
+                      ? topbarGroupLinks
+                      : topbarDropdownItems)(
                       d.groupIds ?? [],
                       lockStaff,
                       features,
@@ -611,7 +614,9 @@ export function NavigationBar({
                       <MobileGroup
                         key={d.label}
                         label={d.label}
-                        items={topbarDropdownItems(d.groupIds ?? [], lockStaff)}
+                        items={(d.groupLinks
+                          ? topbarGroupLinks
+                          : topbarDropdownItems)(d.groupIds ?? [], lockStaff)}
                       />
                     ),
                   )}

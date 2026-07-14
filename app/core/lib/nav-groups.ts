@@ -252,6 +252,9 @@ export const TOPBAR_DROPDOWNS: ReadonlyArray<{
   groupIds?: ReadonlyArray<NavGroupId>;
   subjects?: boolean;
   area?: string;
+  // groupLinks — 그룹 items 를 펼치지 않고 그룹 1개당 링크 1개(그룹명 → 첫 항목)로 렌더.
+  //   모의고사: '모의고사 ▾' 안에 1차/2차 라운드 링크 2개만. 진입하면 화면 토글이 세부 항목 제공.
+  groupLinks?: boolean;
 }> = [
   {
     label: "학습관리",
@@ -261,18 +264,13 @@ export const TOPBAR_DROPDOWNS: ReadonlyArray<{
   { label: "학습과목", subjects: true, area: "area_subjects" },
   { label: "학습노트", groupIds: AREA_GROUP_IDS.aids, area: "area_study_aids" },
   { label: "학습정보", groupIds: AREA_GROUP_IDS.info },
-  // 모의고사는 1차·2차 두 드롭다운으로 분리 — 각 드롭다운이 자기 라운드 항목만 표시.
-  //   1차: 통합 모의고사 · 진도별 모의고사 / 2차: 논점추출 · 목차잡기 · 답안작성.
-  // 진입 후 화면 토글(라운드별 AreaTabs)도 같은 항목을 얹는다(mock.layout).
+  // 모의고사 = 단일 드롭다운. 항목은 라운드 2개(1차·2차)뿐 — groupLinks 로 그룹명 링크만.
+  //   1차 클릭 → 통합 모의 색인(통합/진도별 토글) · 2차 클릭 → 논점추출(논점추출/목차잡기/답안작성 토글).
   {
-    label: "1차 모의고사",
-    groupIds: AREA_GROUP_IDS.mock1,
+    label: "모의고사",
+    groupIds: [...AREA_GROUP_IDS.mock1, ...AREA_GROUP_IDS.mock2],
     area: "area_mock_exams",
-  },
-  {
-    label: "2차 모의고사",
-    groupIds: AREA_GROUP_IDS.mock2,
-    area: "area_mock_exams",
+    groupLinks: true,
   },
   { label: "커뮤니티", groupIds: AREA_GROUP_IDS.community },
 ];
@@ -302,6 +300,23 @@ export function topbarDropdownItems(
   return groupIds.flatMap((id) =>
     visibleItems([...NAV_GROUP_POOL[id].items], isStaff, features),
   );
+}
+
+// 그룹명 링크 — items 를 펼치지 않고 그룹 1개당 링크 1개(그룹명 → 첫 표시 항목).
+//   모의고사 드롭다운(groupLinks)이 사용: 1차 모의고사·2차 모의고사 2개만 노출하고,
+//   세부(통합/진도별, 논점추출/목차잡기/답안작성)는 진입 후 화면 토글이 제공.
+//   표시 항목이 하나도 없는 그룹은 링크 생성 안 함(권한 필터 결과 빈 그룹 방지).
+export function topbarGroupLinks(
+  groupIds: ReadonlyArray<NavGroupId>,
+  isStaff: boolean = true,
+  features?: string[],
+): NavLink[] {
+  return groupIds.flatMap((id) => {
+    const g = NAV_GROUP_POOL[id];
+    const items = visibleItems([...g.items], isStaff, features);
+    if (items.length === 0) return [];
+    return [{ label: g.label, to: items[0].to }];
+  });
 }
 
 // 화면 내 영역 토글(AreaTabs)용 항목 — 드롭다운 항목을 SectionTabItem 모양으로 변환.
