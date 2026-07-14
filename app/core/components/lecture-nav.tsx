@@ -17,7 +17,7 @@ const itemCls = (active: boolean) =>
     "inline-flex items-center gap-0.5 whitespace-nowrap rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors",
     active
       ? "bg-accent text-foreground"
-      : "text-muted-foreground hover:text-foreground hover:bg-accent/60",
+      : "text-foreground hover:bg-accent/60",
   );
 
 function Dropdown({ item }: { item: LectureNavItem }) {
@@ -74,7 +74,7 @@ function Dropdown({ item }: { item: LectureNavItem }) {
                   "block rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                   isActive
                     ? "bg-accent text-foreground"
-                    : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+                    : "text-foreground hover:bg-accent/60",
                 )
               }
             >
@@ -127,7 +127,7 @@ export function LectureNavMobile({ isStaff }: { isStaff: boolean }) {
           className={({ isActive }) =>
             cn(
               "rounded-md px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors",
-              isActive ? "bg-accent text-foreground" : "text-muted-foreground",
+              isActive ? "bg-accent text-foreground" : "text-foreground",
             )
           }
         >
@@ -140,7 +140,7 @@ export function LectureNavMobile({ isStaff }: { isStaff: boolean }) {
           className={({ isActive }) =>
             cn(
               "rounded-md px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors",
-              isActive ? "bg-accent text-foreground" : "text-muted-foreground",
+              isActive ? "bg-accent text-foreground" : "text-foreground",
             )
           }
         >
