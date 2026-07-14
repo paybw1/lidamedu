@@ -212,13 +212,18 @@ export default function LatestMcq({ loaderData }: Route.ComponentProps) {
             {/* 기출 자동 재생성은 기출(past_exam) 전용 작업 — 모의 화면에선 숨긴다.
                 (모의 화면에서 눌러도 결과 팩은 기출문제 화면에만 생겨 혼란을 줌) */}
             {!isMock ? <RegenPastExamButton /> : null}
-            <Button
-              size="sm"
-              className="h-9 rounded-full"
-              onClick={() => setShowAdd(true)}
-            >
-              <PlusIcon className="size-3.5" /> 문제집 추가
-            </Button>
+            {/* 기출(past_exam)은 '기출 자동 재생성'으로 (과목·년도)별 문제집이
+                자동 생성된다. 수동 추가 팩은 재생성 시 사라질 수 있어 혼란만 주므로
+                기출 화면에선 '문제집 추가'를 숨긴다(모의·기타에서는 유지). */}
+            {currentKind !== "past_exam" ? (
+              <Button
+                size="sm"
+                className="h-9 rounded-full"
+                onClick={() => setShowAdd(true)}
+              >
+                <PlusIcon className="size-3.5" /> 문제집 추가
+              </Button>
+            ) : null}
           </div>
         ) : undefined
       }
@@ -292,7 +297,9 @@ export default function LatestMcq({ loaderData }: Route.ComponentProps) {
             filterActive
               ? "검색어나 필터를 바꿔 다시 찾아보세요."
               : canEdit
-                ? "상단 '문제집 추가' 버튼으로 첫 문제집을 등록하세요."
+                ? currentKind === "past_exam"
+                  ? "상단 '기출 자동 재생성'으로 기출 문제집을 생성하세요."
+                  : "상단 '문제집 추가' 버튼으로 첫 문제집을 등록하세요."
                 : "기출·모의 문제집이 등록되면 이곳에 모입니다."
           }
         />
