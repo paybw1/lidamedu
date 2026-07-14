@@ -26,7 +26,6 @@ import {
   RecentRevisionsCard,
 } from "~/features/dashboard/components/dash-feed";
 import {
-  PassCriterionAnnouncementCard,
   PassPredictionCard,
   PasserBenchmarkCard,
   PasserSummariesCard,
@@ -863,17 +862,15 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
              요약+버튼까지만 (지시서 §1-A 경계 규칙). 합격선 컨설팅 액션은 아래
              WEAK SPOTS 섹션에 합쳐 노출. */}
 
-          <SectionBand eyebrow="PASS FORECAST · 합격 예측" />
-          <DashGrid>
-            {!passerGate.enabled ? (
-              // 합격자 데이터 게이트 OFF — 합격 예측은 합격자 기준이 없어 신뢰가 어렵다.
-              // 예측 카드는 숨기고 공식 합격선 안내만. 실 합격자 ≥ 임계 누적 시 자동 노출.
-              // (예측 점수·스냅샷은 runAfterResponse 로 계속 기록 → 데이터 준비되면 그대로 표시)
-              <SpanCol span={6}>
-                <PassCriterionAnnouncementCard />
-              </SpanCol>
-            ) : (
-              <>
+          {/* PASS FORECAST — 실 합격자 데이터 게이트가 켜졌을 때만(≥ 임계) 노출.
+             합격자 기준이 없으면 신뢰할 '예측'이 불가하므로 섹션 전체를 숨긴다(과거엔
+             공식 합격선 안내를 '합격 예측' 헤더 아래 대체 표시했으나, 예측이 아닌데
+             예측처럼 보여 혼란 → 숨김). 예측 점수·스냅샷은 runAfterResponse 로 계속
+             기록되므로 실 합격자가 임계에 도달하면 이 섹션이 자동으로 다시 나타난다. */}
+          {passerGate.enabled ? (
+            <>
+              <SectionBand eyebrow="PASS FORECAST · 합격 예측" />
+              <DashGrid>
                 <SpanCol span={6}>
                   <PassPredictionCard prediction={passPrediction} />
                 </SpanCol>
@@ -887,9 +884,9 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
                     <PasserSummariesCard summaries={passerSummaries} />
                   </SpanCol>
                 ) : null}
-              </>
-            )}
-          </DashGrid>
+              </DashGrid>
+            </>
+          ) : null}
 
           <SectionBand eyebrow="PROGRESS · 진도" />
           <DashGrid>
