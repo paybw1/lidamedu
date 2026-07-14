@@ -261,11 +261,17 @@ export const TOPBAR_DROPDOWNS: ReadonlyArray<{
   { label: "학습과목", subjects: true, area: "area_subjects" },
   { label: "학습노트", groupIds: AREA_GROUP_IDS.aids, area: "area_study_aids" },
   { label: "학습정보", groupIds: AREA_GROUP_IDS.info },
-  // 상단바는 단일 "모의고사" 드롭다운에 1차·2차 두 그룹을 합쳐 표시(항목 수 유지).
-  // 1차/2차 '구분'은 사이드바(그룹별 라벨)와 화면 토글(라운드별 AreaTabs)이 전담.
+  // 모의고사는 1차·2차 두 드롭다운으로 분리 — 각 드롭다운이 자기 라운드 항목만 표시.
+  //   1차: 통합 모의고사 · 진도별 모의고사 / 2차: 논점추출 · 목차잡기 · 답안작성.
+  // 진입 후 화면 토글(라운드별 AreaTabs)도 같은 항목을 얹는다(mock.layout).
   {
-    label: "모의고사",
-    groupIds: [...AREA_GROUP_IDS.mock1, ...AREA_GROUP_IDS.mock2],
+    label: "1차 모의고사",
+    groupIds: AREA_GROUP_IDS.mock1,
+    area: "area_mock_exams",
+  },
+  {
+    label: "2차 모의고사",
+    groupIds: AREA_GROUP_IDS.mock2,
     area: "area_mock_exams",
   },
   { label: "커뮤니티", groupIds: AREA_GROUP_IDS.community },
