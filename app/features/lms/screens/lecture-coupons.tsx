@@ -157,7 +157,7 @@ export default function LectureCoupons({ loaderData }: Route.ComponentProps) {
   }
   const usable = coupons.filter((c) => c.status === "available").length;
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-8 md:px-6 md:py-10">
+    <div className="mx-auto w-full max-w-3xl px-4 py-8 md:px-6 md:py-10">
       <header className="mb-6">
         <p className="text-muted-foreground inline-flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase">
           <TicketPercentIcon className="size-3.5" /> 마이페이지

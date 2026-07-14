@@ -33,7 +33,7 @@ const won = (n: number) => n.toLocaleString("ko-KR");
 export default function LecturePoints({ loaderData }: Route.ComponentProps) {
   const { balance, txns } = loaderData;
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-8 md:px-6 md:py-10">
+    <div className="mx-auto w-full max-w-3xl px-4 py-8 md:px-6 md:py-10">
       <header className="mb-5">
         <p className="text-muted-foreground inline-flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase">
           <CoinsIcon className="size-3.5" /> 마이페이지

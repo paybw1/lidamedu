@@ -304,7 +304,7 @@ function fmtHours(sec: number | null): string {
 export default function MyCourses({ loaderData }: Route.ComponentProps) {
   const { courses, devices } = loaderData;
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-5 px-4 py-8">
+    <div className="mx-auto w-full max-w-3xl space-y-5 px-4 py-8 md:px-6 md:py-10">
       <h1 className="flex items-center gap-2 text-xl font-extrabold tracking-tight">
         <ClapperboardIcon className="size-5" /> 내 강의
       </h1>
