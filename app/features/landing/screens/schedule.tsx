@@ -191,7 +191,7 @@ function CalendarStyle() {
 .llx .cal-head{margin-bottom:6px}
 .llx .cal-hd{text-align:center;font-size:12px;font-weight:800;color:var(--faint);padding:4px 0}
 .llx .cal-hd.sun{color:#c0392b}.llx .cal-hd.sat{color:var(--blue-ink)}
-.llx .cal-cell{min-height:88px;border:1px solid var(--line);border-radius:9px;padding:5px 5px 6px;display:flex;flex-direction:column;gap:3px;background:var(--lground);overflow:hidden}
+.llx .cal-cell{aspect-ratio:1/1;min-height:0;border:1px solid var(--line);border-radius:9px;padding:5px 5px 6px;display:flex;flex-direction:column;gap:3px;background:var(--lground);overflow:hidden}
 .llx .cal-cell.empty{background:transparent;border:0}
 .llx .cal-cell.today{border-color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue)}
 .llx .cal-d{font-size:12px;font-weight:800;color:var(--soft)}
@@ -225,7 +225,7 @@ function CalendarStyle() {
   .llx .sched-split{grid-template-columns:1fr}
 }
 @media (max-width:640px){
-  .llx .cal-cell{min-height:58px;padding:3px}
+  .llx .cal-cell{padding:3px}
   .llx .cal-ev{font-size:9px;padding:1px 4px}
   .llx .cal-ev .t{display:none}
 }
