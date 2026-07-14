@@ -143,7 +143,7 @@ export function CasesTab({
     }
     return m;
   }, [topicNodes]);
-  const { axis, setAxis } = useSortAxis();
+  const { axis, setAxis, forced } = useSortAxis();
   const axisLabel = axis === "systematic" ? "체계도" : "조문";
   const treeFilter = filters.tree ?? null;
   const systematicEmpty = systematicNodes.length === 0;
@@ -269,6 +269,7 @@ export function CasesTab({
       onTopicMode={setTopicMode}
       usesTopics={usesTopics}
       systematicEmpty={systematicEmpty}
+      forcedAxis={forced}
     />
   );
 

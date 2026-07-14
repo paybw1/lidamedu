@@ -2,7 +2,10 @@ import type {
   ProblemFiltersApplied,
   ProblemNodeFilter,
 } from "../../lib/loader.server";
-import type { LawSubjectMeta } from "../../lib/subjects";
+import {
+  type LawSubjectMeta,
+  subjectHasSystematicAxis,
+} from "../../lib/subjects";
 
 import {
   ArrowDownIcon,
@@ -189,10 +192,13 @@ export function ProblemsTab({
   // 체계도 트리 — 데스크톱 사이드바 / 모바일 드로어 공용 마크업.
   // 헤더는 체계도/조문 토글(문제는 체계도 고정 → 조문 비활성, 조문 뷰어와 동일 UX).
   const treePanel = (
-    <SortAxisProvider forced="systematic">
+    // 문제는 체계도 노드로 브라우징(조문 비활성). 단 민법은 체계도=조문 목차라 조문으로 고정.
+    <SortAxisProvider
+      forced={subjectHasSystematicAxis(subject.slug) ? "systematic" : "statutory"}
+    >
       <div className="border-border bg-muted/30 overflow-hidden rounded-xl border lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
         <div className="border-border bg-card sticky top-0 z-10 flex items-center justify-end rounded-t-xl border-b px-3 py-2">
-          <SortAxisToggle size="sm" disabledAxes={["statutory"]} />
+          <SortAxisToggle size="sm" />
         </div>
         <div className="p-2">
           <ProblemSystematicTree

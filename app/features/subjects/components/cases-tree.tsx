@@ -487,6 +487,7 @@ export function CaseTreeViewToggle({
   onTopicMode,
   usesTopics,
   systematicEmpty,
+  forcedAxis = null,
 }: {
   axis: SortAxis;
   onAxis: (a: SortAxis) => void;
@@ -494,6 +495,8 @@ export function CaseTreeViewToggle({
   onTopicMode: (v: boolean) => void;
   usesTopics: boolean;
   systematicEmpty: boolean;
+  // 축 고정 시(예: 민법=조문 고정) 다른 축을 비활성화한다.
+  forcedAxis?: SortAxis | null;
 }) {
   const items = [
     {
@@ -501,7 +504,8 @@ export function CaseTreeViewToggle({
       label: "체계도",
       icon: NetworkIcon,
       active: !topicMode && axis === "systematic",
-      disabled: systematicEmpty,
+      disabled:
+        systematicEmpty || (forcedAxis != null && forcedAxis !== "systematic"),
       onClick: () => {
         onTopicMode(false);
         onAxis("systematic");

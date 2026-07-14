@@ -27,6 +27,8 @@ function isSortAxis(value: unknown): value is SortAxis {
 interface SortAxisContextValue {
   axis: SortAxis;
   setAxis: (axis: SortAxis) => void;
+  // 축이 고정(forced)된 경우 그 값 — 토글이 나머지 축을 자동 비활성화하는 데 사용.
+  forced: SortAxis | null;
 }
 
 const SortAxisContext = createContext<SortAxisContextValue | null>(null);
@@ -65,7 +67,7 @@ export function SortAxisProvider({
   );
 
   return (
-    <SortAxisContext.Provider value={{ axis, setAxis }}>
+    <SortAxisContext.Provider value={{ axis, setAxis, forced: forced ?? null }}>
       {children}
     </SortAxisContext.Provider>
   );
@@ -150,14 +152,23 @@ export function SortAxisToggle({
   size?: "sm" | "default";
   disabledAxes?: SortAxis[];
 }) {
-  const { axis, setAxis } = useSortAxis();
+  const { axis, setAxis, forced } = useSortAxis();
+  // 축이 고정되면 나머지 축을 비활성 표시(민법=조문 고정 → 체계도 비활성 등).
+  const mergedDisabled = forced
+    ? Array.from(
+        new Set([
+          ...(disabledAxes ?? []),
+          ...SORT_AXIS_VALUES.filter((v) => v !== forced),
+        ]),
+      )
+    : disabledAxes;
   return (
     <AxisSegmented
       axis={axis}
       onChange={setAxis}
       className={className}
       size={size}
-      disabledAxes={disabledAxes}
+      disabledAxes={mergedDisabled}
     />
   );
 }

@@ -108,6 +108,15 @@ export const FIRST_EXAM_LAW_SLUGS = [
   "civil",
 ] as const satisfies readonly LawSubjectSlug[];
 
+/**
+ * 체계도(systematic) 축이 조문 목차와 별개로 의미 있는 과목만 true.
+ * 민법은 체계도 = 조문 목차(단원)와 사실상 동일해 축 구분이 무의미 → 좌패널 목차를
+ * 조문 축으로 고정하고 체계도 토글을 비활성화한다.
+ */
+export function subjectHasSystematicAxis(slug: string): boolean {
+  return slug !== "civil";
+}
+
 /** 2차(주관식) 법 과목 — 산업재산권법 3법 + 민사소송법. */
 export const SECOND_EXAM_LAW_SLUGS = [
   "patent",

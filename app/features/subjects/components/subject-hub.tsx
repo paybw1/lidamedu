@@ -38,6 +38,7 @@ import {
   DEFAULT_SUBJECT_TAB,
   type LawSubjectMeta,
   type SubjectTab,
+  subjectHasSystematicAxis,
   subjectTabSchema,
 } from "../lib/subjects";
 import { SortAxisProvider } from "./sort-axis";
@@ -82,8 +83,12 @@ interface SubjectHubProps {
 }
 
 export function SubjectHub(props: SubjectHubProps) {
+  // 민법은 체계도=조문 목차라 조문 축으로 고정(체계도 토글 자동 비활성).
+  const forcedAxis = subjectHasSystematicAxis(props.subject.slug)
+    ? undefined
+    : ("statutory" as const);
   return (
-    <SortAxisProvider>
+    <SortAxisProvider forced={forcedAxis}>
       <SubjectHubInner {...props} />
     </SortAxisProvider>
   );
