@@ -269,17 +269,19 @@ function CalendarStyle() {
     <style>{`
 .llx .sched-split{display:grid;grid-template-columns:45fr 55fr;gap:22px;align-items:start}
 .llx .cal{background:transparent}
-.llx .cal-nav{display:flex;align-items:center;justify-content:center;gap:18px;margin-bottom:16px}
+.llx .cal-nav{display:flex;align-items:center;justify-content:center;gap:18px;height:36px;margin-bottom:16px}
 .llx .cal-title{font-size:22px;font-weight:900;min-width:120px;text-align:center;color:var(--ink)}
 .llx .cal-arrow{width:36px;height:36px;border:1px solid var(--line2);border-radius:999px;display:grid;place-items:center;font-size:20px;color:var(--ink);background:var(--lsurface);transition:border-color .15s,background .15s}
 .llx .cal-arrow:hover{border-color:var(--blue);background:var(--blue-wash)}
 /* 한 장의 사각형 박스 안에 얇은 격자로 나뉜 날짜 칸 */
 .llx .cal-box{background:var(--lsurface);border:1px solid var(--line2);border-radius:16px;overflow:hidden;box-shadow:var(--lshadow)}
 .llx .cal-grid{display:grid;grid-template-columns:repeat(7,1fr)}
-.llx .cal-head{border-bottom:1px solid var(--line2)}
-.llx .cal-hd{text-align:center;font-size:12px;font-weight:800;letter-spacing:.02em;color:var(--soft);padding:11px 0}
+/* 요일 헤더 = 배경 띠(그 위에 날짜 그리드를 얹는 느낌) */
+.llx .cal-head{background:var(--lground);border-bottom:1px solid var(--line2)}
+.llx .cal-hd{text-align:center;font-size:12px;font-weight:800;letter-spacing:.02em;color:var(--soft);padding:10px 0}
 .llx .cal-hd.sun{color:#c0392b}.llx .cal-hd.sat{color:var(--blue-ink)}
-.llx .cal-cell{position:relative;min-height:92px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:8px 9px 20px;background:var(--lsurface);transition:background .12s;overflow:hidden}
+/* 셀 = 정사각 비율(가로폭에 세로 맞춤 → 세로로 길어지지 않음) */
+.llx .cal-cell{position:relative;aspect-ratio:1/1;min-height:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:7px 8px;background:var(--lsurface);transition:background .12s;overflow:hidden}
 .llx .cal-cell:nth-child(7n){border-right:0}
 .llx .cal-body>.cal-grid:last-child .cal-cell{border-bottom:0}
 .llx .cal-cell.today{background:var(--blue-wash)}
@@ -297,7 +299,8 @@ function CalendarStyle() {
 .llx .cal-bar.vid{background:var(--gilt)}
 .llx .cal-more{font-size:9.5px;color:var(--faint);font-weight:800;line-height:1;margin-top:1px}
 /* 우측 패널 = 형태 필터 칩 + 날짜별 카드 */
-.llx .sched-list{background:var(--lsurface);border:1px solid var(--line2);border-radius:16px;box-shadow:var(--lshadow);overflow:hidden;align-self:stretch}
+/* 우측 패널 시작점을 달력의 요일 헤더 라인과 맞춤(월 네비 높이 36 + 아래 여백 16 = 52). */
+.llx .sched-list{margin-top:52px;background:var(--lsurface);border:1px solid var(--line2);border-radius:16px;box-shadow:var(--lshadow);overflow:hidden;align-self:stretch}
 .llx .chips{display:flex;flex-wrap:wrap;gap:8px;padding:14px 16px;border-bottom:1px solid var(--line)}
 .llx .chip{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:800;color:var(--soft);background:var(--lground);border:1px solid var(--line);border-radius:999px;padding:6px 13px;cursor:pointer;transition:color .12s,border-color .12s,background .12s}
 .llx .chip:hover{border-color:var(--line2)}
@@ -334,10 +337,11 @@ function CalendarStyle() {
 .llx .scard-meta2 .seat.low{color:var(--hot)}.llx .scard-meta2 .seat.mid{color:var(--warn)}.llx .scard-meta2 .seat.ok{color:var(--ok)}
 @media (max-width:900px){
   .llx .sched-split{grid-template-columns:1fr}
+  .llx .sched-list{margin-top:0}
   .llx .sched-scroll{max-height:none}
 }
 @media (max-width:640px){
-  .llx .cal-cell{min-height:60px;padding:5px 6px 15px}
+  .llx .cal-cell{padding:5px 6px}
   .llx .cal-hd{padding:8px 0;font-size:11px}
   .llx .cal-bars{left:6px;right:6px;bottom:6px;gap:2px}
   .llx .cal-title{font-size:19px}
