@@ -10,6 +10,7 @@ export interface CalendarSchedule {
   day_label: string | null; // "월·목"
   time_label: string | null;
   status: string;
+  format: string; // offline | live | video — 달력 막대 색 구분
 }
 
 const DOW: Record<string, number> = {
@@ -65,6 +66,30 @@ export function monthMatrix(year: number, month0: number): (number | null)[][] {
   for (let d = 1; d <= days; d++) cells.push(d);
   while (cells.length % 7 !== 0) cells.push(null);
   const weeks: (number | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+  return weeks;
+}
+
+// 달력 칸 — 빈칸 없이 전월/차월 날짜까지 채운 6주(42칸) 고정 매트릭스.
+//   inMonth=false 는 앞뒤 달의 날짜(회색 표시). day 는 그 달 기준 날짜 숫자.
+export interface MatrixCell {
+  day: number;
+  inMonth: boolean;
+}
+export function monthMatrixFull(year: number, month0: number): MatrixCell[][] {
+  const firstDow = new Date(Date.UTC(year, month0, 1)).getUTCDay();
+  const days = new Date(Date.UTC(year, month0 + 1, 0)).getUTCDate();
+  const prevDays = new Date(Date.UTC(year, month0, 0)).getUTCDate();
+  const cells: MatrixCell[] = [];
+  // 앞 채우기 — 이전 달 말일들.
+  for (let i = firstDow - 1; i >= 0; i--)
+    cells.push({ day: prevDays - i, inMonth: false });
+  // 현재 달.
+  for (let d = 1; d <= days; d++) cells.push({ day: d, inMonth: true });
+  // 뒤 채우기 — 다음 달 초. 항상 6주(42칸) 고정으로 박스 높이 일정.
+  let nextDay = 1;
+  while (cells.length < 42) cells.push({ day: nextDay++, inMonth: false });
+  const weeks: MatrixCell[][] = [];
   for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
   return weeks;
 }

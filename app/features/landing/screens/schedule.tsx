@@ -7,7 +7,7 @@ import { LandingStyle } from "../components/landing-style";
 import {
   addMonth,
   monthEvents,
-  monthMatrix,
+  monthMatrixFull,
   parseYm,
   ymString,
 } from "../lib/lecture-calendar";
@@ -38,11 +38,15 @@ const SEAT_CLASS = (rem: number) =>
 
 const WD_HEAD = ["일", "월", "화", "수", "목", "금", "토"];
 
+// 강의 형태별 달력 막대 색 클래스 — 현장/실시간/영상.
+const FMT_BAR = (f: string) =>
+  f === "offline" ? "off" : f === "live" ? "live" : "vid";
+
 export default function Schedule({ loaderData }: Route.ComponentProps) {
   const { all, todayISO } = loaderData;
   const [params] = useSearchParams();
   const { year, month0 } = parseYm(params.get("ym"), todayISO);
-  const weeks = monthMatrix(year, month0);
+  const weeks = monthMatrixFull(year, month0);
   const events = monthEvents(all, year, month0);
   const prev = addMonth(year, month0, -1);
   const next = addMonth(year, month0, 1);
@@ -77,55 +81,65 @@ export default function Schedule({ loaderData }: Route.ComponentProps) {
                   ‹
                 </Link>
                 <span className="cal-title tnum">
-                  {year}년 {month0 + 1}월
+                  {year}. {month0 + 1}
                 </span>
                 <Link className="cal-arrow" to={`?ym=${ymString(next.year, next.month0)}`} aria-label="다음 달">
                   ›
                 </Link>
               </div>
 
-              <div className="cal-grid cal-head">
-                {WD_HEAD.map((w, i) => (
-                  <div key={w} className={`cal-hd${i === 0 ? " sun" : i === 6 ? " sat" : ""}`}>
-                    {w}
-                  </div>
-                ))}
-              </div>
-
-              {weeks.map((week, wi) => (
-                <div className="cal-grid" key={wi}>
-                  {week.map((d, di) => {
-                    if (d === null)
-                      return <div className="cal-cell empty" key={di} />;
-                    const ymd = `${cur}-${String(d).padStart(2, "0")}`;
-                    const evs = events.get(d) ?? [];
-                    return (
-                      <div
-                        className={`cal-cell${ymd === todayYmd ? " today" : ""}`}
-                        key={di}
-                      >
-                        <span className={`cal-d${di === 0 ? " sun" : di === 6 ? " sat" : ""}`}>
-                          {d}
-                        </span>
-                        {evs.slice(0, 3).map((s, k) => (
-                          <Link
-                            to={`/lecture/schedule/${s.schedule_id}`}
-                            className={`cal-ev${k % 2 ? " gilt" : ""}`}
-                            key={s.schedule_id}
-                            title={`${s.subject_label} ${s.title} · ${s.time_label ?? ""}`}
-                          >
-                            {s.subject_label}
-                            {s.time_label ? <span className="t"> {s.time_label}</span> : null}
-                          </Link>
-                        ))}
-                        {evs.length > 3 ? (
-                          <span className="cal-more">+{evs.length - 3}</span>
-                        ) : null}
-                      </div>
-                    );
-                  })}
+              <div className="cal-box">
+                <div className="cal-grid cal-head">
+                  {WD_HEAD.map((w, i) => (
+                    <div key={w} className={`cal-hd${i === 0 ? " sun" : i === 6 ? " sat" : ""}`}>
+                      {w}
+                    </div>
+                  ))}
                 </div>
-              ))}
+
+                <div className="cal-body">
+                  {weeks.map((week, wi) => (
+                    <div className="cal-grid" key={wi}>
+                      {week.map((c, di) => {
+                        if (!c.inMonth)
+                          return (
+                            <div className="cal-cell out" key={di}>
+                              <span className="cal-d">{c.day}</span>
+                            </div>
+                          );
+                        const ymd = `${cur}-${String(c.day).padStart(2, "0")}`;
+                        const evs = events.get(c.day) ?? [];
+                        return (
+                          <div
+                            className={`cal-cell${ymd === todayYmd ? " today" : ""}`}
+                            key={di}
+                          >
+                            <span className={`cal-d${di === 0 ? " sun" : di === 6 ? " sat" : ""}`}>
+                              {c.day}
+                            </span>
+                            {evs.length > 0 ? (
+                              <div className="cal-bars">
+                                {evs.slice(0, 3).map((s) => (
+                                  <Link
+                                    to={`/lecture/schedule/${s.schedule_id}`}
+                                    className={`cal-bar ${FMT_BAR(s.format)}`}
+                                    key={s.schedule_id}
+                                    title={`${s.subject_label} ${s.title}${s.time_label ? ` · ${s.time_label}` : ""}`}
+                                    aria-label={`${s.subject_label} ${s.title}`}
+                                  />
+                                ))}
+                                {evs.length > 3 ? (
+                                  <span className="cal-more">+{evs.length - 3}</span>
+                                ) : null}
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <aside className="sched-list">
@@ -182,27 +196,34 @@ function CalendarStyle() {
   return (
     <style>{`
 .llx .sched-split{display:grid;grid-template-columns:45fr 55fr;gap:22px;align-items:start}
-.llx .cal{background:var(--lsurface);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:var(--lshadow)}
-.llx .cal-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:14px}
-.llx .cal-title{font-size:17px;font-weight:900;min-width:118px;text-align:center}
-.llx .cal-arrow{width:34px;height:34px;border:1px solid var(--line2);border-radius:9px;display:grid;place-items:center;font-size:19px;color:var(--ink);background:var(--lground);transition:border-color .15s}
-.llx .cal-arrow:hover{border-color:var(--blue)}
-.llx .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
-.llx .cal-head{margin-bottom:10px}
-.llx .cal-hd{text-align:center;font-size:11px;font-weight:800;letter-spacing:.04em;color:var(--faint);padding:2px 0}
+.llx .cal{background:transparent}
+.llx .cal-nav{display:flex;align-items:center;justify-content:center;gap:18px;margin-bottom:16px}
+.llx .cal-title{font-size:22px;font-weight:900;min-width:120px;text-align:center;color:var(--ink)}
+.llx .cal-arrow{width:36px;height:36px;border:1px solid var(--line2);border-radius:999px;display:grid;place-items:center;font-size:20px;color:var(--ink);background:var(--lsurface);transition:border-color .15s,background .15s}
+.llx .cal-arrow:hover{border-color:var(--blue);background:var(--blue-wash)}
+/* 한 장의 사각형 박스 안에 얇은 격자로 나뉜 날짜 칸 */
+.llx .cal-box{background:var(--lsurface);border:1px solid var(--line2);border-radius:16px;overflow:hidden;box-shadow:var(--lshadow)}
+.llx .cal-grid{display:grid;grid-template-columns:repeat(7,1fr)}
+.llx .cal-head{border-bottom:1px solid var(--line2)}
+.llx .cal-hd{text-align:center;font-size:12px;font-weight:800;letter-spacing:.02em;color:var(--soft);padding:11px 0}
 .llx .cal-hd.sun{color:#c0392b}.llx .cal-hd.sat{color:var(--blue-ink)}
-.llx .cal-cell{aspect-ratio:7/8;min-height:0;border:0;border-radius:12px;padding:7px 7px 8px;display:flex;flex-direction:column;gap:4px;background:color-mix(in srgb,var(--lground) 55%,transparent);transition:background .12s}
-.llx .cal-cell.empty{background:transparent}
-.llx .cal-cell:not(.empty):hover{background:var(--lground)}
+.llx .cal-cell{position:relative;min-height:92px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:8px 9px 20px;background:var(--lsurface);transition:background .12s;overflow:hidden}
+.llx .cal-cell:nth-child(7n){border-right:0}
+.llx .cal-body>.cal-grid:last-child .cal-cell{border-bottom:0}
 .llx .cal-cell.today{background:var(--blue-wash)}
-.llx .cal-d{align-self:flex-start;font-size:12.5px;font-weight:800;color:var(--soft);line-height:1;padding:1px 1px 2px}
+.llx .cal-cell.out{background:color-mix(in srgb,var(--lground) 55%,transparent)}
+.llx .cal-d{font-size:13px;font-weight:800;color:var(--soft);line-height:1}
 .llx .cal-d.sun{color:#c0392b}.llx .cal-d.sat{color:var(--blue-ink)}
-.llx .cal-cell.today .cal-d{display:inline-grid;place-items:center;width:21px;height:21px;padding:0;border-radius:50%;background:var(--blue);color:#fff}
-.llx .cal-ev{font-size:10.5px;font-weight:700;line-height:1.3;padding:2px 7px;border-radius:6px;background:var(--blue-wash);color:var(--blue-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.llx .cal-ev.gilt{background:color-mix(in srgb,var(--gilt) 16%,transparent);color:var(--gilt)}
-.llx a.cal-ev{cursor:pointer;transition:filter .12s}
-.llx a.cal-ev:hover{filter:brightness(.94)}
-.llx .cal-more{font-size:10px;color:var(--faint);font-weight:700;padding-left:2px}
+.llx .cal-cell.out .cal-d{color:var(--faint);font-weight:700}
+.llx .cal-cell.today .cal-d{display:inline-grid;place-items:center;width:22px;height:22px;margin:-2px 0 0 -3px;border-radius:50%;background:var(--blue);color:#fff}
+/* 강의 표시 = 칸 하단 색 막대(형태별 색). */
+.llx .cal-bars{position:absolute;left:9px;right:9px;bottom:8px;display:flex;flex-direction:column;gap:3px}
+.llx .cal-bar{display:block;height:4px;border-radius:999px;background:var(--blue);transition:filter .12s,transform .12s}
+.llx a.cal-bar:hover{filter:brightness(.92);transform:scaleY(1.5)}
+.llx .cal-bar.off{background:var(--ok)}
+.llx .cal-bar.live{background:var(--blue)}
+.llx .cal-bar.vid{background:var(--gilt)}
+.llx .cal-more{font-size:9.5px;color:var(--faint);font-weight:800;line-height:1;margin-top:1px}
 /* 우측 그 달 개강 목록 */
 .llx .sched-list{background:var(--lsurface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--lshadow);overflow:hidden}
 .llx .sched-list-h{display:flex;align-items:center;gap:8px;padding:15px 18px;font-size:15px;font-weight:900;border-bottom:1px solid var(--line);background:linear-gradient(90deg,color-mix(in srgb,var(--gilt) 8%,transparent),transparent)}
@@ -226,9 +247,10 @@ function CalendarStyle() {
   .llx .sched-split{grid-template-columns:1fr}
 }
 @media (max-width:640px){
-  .llx .cal-cell{padding:3px}
-  .llx .cal-ev{font-size:9px;padding:1px 4px}
-  .llx .cal-ev .t{display:none}
+  .llx .cal-cell{min-height:60px;padding:5px 6px 15px}
+  .llx .cal-hd{padding:8px 0;font-size:11px}
+  .llx .cal-bars{left:6px;right:6px;bottom:6px;gap:2px}
+  .llx .cal-title{font-size:19px}
 }
 `}</style>
   );
