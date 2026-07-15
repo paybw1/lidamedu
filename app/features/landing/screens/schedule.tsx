@@ -1,4 +1,5 @@
 // feat-12 현장강의 일정 — /lecture/schedule. 공개. 월간 달력 + 개강일 순 카드 목록.
+import { useState } from "react";
 import { Link, useSearchParams } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
@@ -38,13 +39,35 @@ const SEAT_CLASS = (rem: number) =>
 
 const WD_HEAD = ["일", "월", "화", "수", "목", "금", "토"];
 
-// 강의 형태별 달력 막대 색 클래스 — 현장/실시간/영상.
+// 강의 형태별 색 클래스 — 현장/실시간/영상 (달력 막대·필터 칩·카드 공용).
 const FMT_BAR = (f: string) =>
   f === "offline" ? "off" : f === "live" ? "live" : "vid";
+
+// 우측 패널 형태 필터 칩 — 전체 + 3형태.
+const FMT_CHIPS: ReadonlyArray<{ key: string; label: string; cls: string }> = [
+  { key: "all", label: "전체", cls: "all" },
+  { key: "offline", label: "현장", cls: "off" },
+  { key: "live", label: "실시간", cls: "live" },
+  { key: "video", label: "영상", cls: "vid" },
+];
+
+// "YYYY-MM-DD" → "M월 D일 (요일)". 날짜 그룹 헤더용.
+const DOW_LABEL = ["일", "월", "화", "수", "목", "금", "토"];
+function dateHeading(ymd: string): string {
+  const [y, m, d] = ymd.split("-").map(Number);
+  const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  return `${m}월 ${d}일 (${DOW_LABEL[dow]})`;
+}
+
+// 썸네일 대체 모노그램 — 과목 라벨 앞 두 글자(공백 제거).
+function monogram(label: string): string {
+  return label.replace(/\s+/g, "").slice(0, 2) || "강의";
+}
 
 export default function Schedule({ loaderData }: Route.ComponentProps) {
   const { all, todayISO } = loaderData;
   const [params] = useSearchParams();
+  const [fmt, setFmt] = useState<string>("all");
   const { year, month0 } = parseYm(params.get("ym"), todayISO);
   const weeks = monthMatrixFull(year, month0);
   const events = monthEvents(all, year, month0);
@@ -54,6 +77,22 @@ export default function Schedule({ loaderData }: Route.ComponentProps) {
   const cur = ymString(year, month0);
   // 오른쪽 목록: '그 달에 개강'하는 강의 = start_date 가 표시 중인 달에 속함.
   const monthList = all.filter((s) => s.start_date?.slice(0, 7) === cur);
+  // 형태 필터(전체/현장/실시간/영상) 적용.
+  const shown =
+    fmt === "all" ? monthList : monthList.filter((s) => s.format === fmt);
+  // 개강일별 그룹(listSchedules 가 start_date 오름차순 → 그룹 순서도 오름차순 유지).
+  const dateGroups: Array<{ date: string; items: typeof shown }> = [];
+  const groupIdx = new Map<string, number>();
+  for (const s of shown) {
+    const key = s.start_date ?? "미정";
+    let idx = groupIdx.get(key);
+    if (idx === undefined) {
+      idx = dateGroups.length;
+      groupIdx.set(key, idx);
+      dateGroups.push({ date: key, items: [] });
+    }
+    dateGroups[idx].items.push(s);
+  }
 
   return (
     <div className="llx">
@@ -143,46 +182,79 @@ export default function Schedule({ loaderData }: Route.ComponentProps) {
             </div>
 
             <aside className="sched-list">
-              <div className="sched-list-h tnum">
-                {month0 + 1}월 개강 강의
-                <span className="cnt">{monthList.length}</span>
+              {/* 형태 필터 칩 */}
+              <div className="chips" role="tablist" aria-label="강의 형태 필터">
+                {FMT_CHIPS.map((c) => (
+                  <button
+                    key={c.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={fmt === c.key}
+                    className={`chip ${c.cls}${fmt === c.key ? " on" : ""}`}
+                    onClick={() => setFmt(c.key)}
+                  >
+                    <span className="chip-dot" />
+                    {c.label}
+                  </button>
+                ))}
               </div>
-              {monthList.length === 0 ? (
-                <p className="sched-empty">이 달에 개강하는 강의가 없습니다.</p>
-              ) : (
-                <ul>
-                  {monthList.map((s) => {
-                    const rem = remainingSeats(s);
-                    const d = ddayFrom(s.start_date, todayISO);
-                    return (
-                      <li key={s.schedule_id}>
-                        <Link to={`/lecture/schedule/${s.schedule_id}`} className="sli">
-                          <div className="sli-day tnum">
-                            <b>{s.start_date ? Number(s.start_date.slice(8, 10)) : "-"}</b>
-                            <span>일</span>
-                          </div>
-                          <div className="sli-main">
-                            <div className="sli-subj">
-                              ◆ {s.subject_label}
-                              {d !== null ? <span className="dday">D-{d}</span> : null}
-                            </div>
-                            <div className="sli-title">{s.title}</div>
-                            <div className="sli-meta">
-                              {s.instructor_name}
-                              {s.time_label ? ` · ${s.time_label}` : ""}
-                              {" · "}
-                              {FORMAT_LABEL[s.format as LectureFormat]}
-                            </div>
-                          </div>
-                          <span className={`sli-seat ${SEAT_CLASS(rem)}`}>
-                            {s.status === "closed" || rem === 0 ? "마감" : `잔여 ${rem}`}
-                          </span>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
+
+              <div className="sched-scroll">
+                {dateGroups.length === 0 ? (
+                  <p className="sched-empty">
+                    {month0 + 1}월에 개강하는{" "}
+                    {fmt === "all"
+                      ? "강의가"
+                      : `${FORMAT_LABEL[fmt as LectureFormat]} 강의가`}{" "}
+                    없습니다.
+                  </p>
+                ) : (
+                  dateGroups.map((g) => (
+                    <div className="dgroup" key={g.date}>
+                      <div className="dgroup-h tnum">
+                        {g.date === "미정" ? "개강일 미정" : dateHeading(g.date)}
+                      </div>
+                      {g.items.map((s) => {
+                        const rem = remainingSeats(s);
+                        const d = ddayFrom(s.start_date, todayISO);
+                        const closed = s.status === "closed" || rem === 0;
+                        return (
+                          <Link
+                            to={`/lecture/schedule/${s.schedule_id}`}
+                            className="scard"
+                            key={s.schedule_id}
+                          >
+                            <span className={`scard-thumb ${FMT_BAR(s.format)}`}>
+                              {monogram(s.subject_label)}
+                            </span>
+                            <span className="scard-main">
+                              <span className="scard-top">
+                                <span className={`scard-dot ${FMT_BAR(s.format)}`} />
+                                <span className="scard-title">{s.title}</span>
+                              </span>
+                              <span className="scard-meta">
+                                ◆ {s.subject_label} ·{" "}
+                                {FORMAT_LABEL[s.format as LectureFormat]}
+                                {s.day_label ? ` · ${s.day_label}` : ""}
+                                {s.time_label ? ` · ${s.time_label}` : ""}
+                              </span>
+                              <span className="scard-meta2">
+                                강사 : {s.instructor_name}
+                                {d !== null ? (
+                                  <span className="dday">D-{d}</span>
+                                ) : null}
+                                <span className={`seat ${closed ? "low" : SEAT_CLASS(rem)}`}>
+                                  {closed ? "마감" : `잔여 ${rem}`}
+                                </span>
+                              </span>
+                            </span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ))
+                )}
+              </div>
             </aside>
           </div>
         </div>
@@ -224,27 +296,45 @@ function CalendarStyle() {
 .llx .cal-bar.live{background:var(--blue)}
 .llx .cal-bar.vid{background:var(--gilt)}
 .llx .cal-more{font-size:9.5px;color:var(--faint);font-weight:800;line-height:1;margin-top:1px}
-/* 우측 그 달 개강 목록 */
-.llx .sched-list{background:var(--lsurface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--lshadow);overflow:hidden}
-.llx .sched-list-h{display:flex;align-items:center;gap:8px;padding:15px 18px;font-size:15px;font-weight:900;border-bottom:1px solid var(--line);background:linear-gradient(90deg,color-mix(in srgb,var(--gilt) 8%,transparent),transparent)}
-.llx .sched-list-h .cnt{margin-left:auto;font-size:12px;font-weight:800;color:#fff;background:var(--blue);border-radius:999px;padding:1px 9px}
-.llx .sched-empty{padding:34px 18px;text-align:center;color:var(--faint);font-size:13.5px}
-.llx .sched-list ul{list-style:none;margin:0;padding:0}
-.llx .sli{display:flex;align-items:center;gap:12px;padding:13px 16px;border-top:1px solid var(--line)}
-.llx .sched-list li:first-child .sli{border-top:0}
-.llx .sli:hover{background:var(--lground)}
-.llx .sli-day{flex-shrink:0;width:44px;text-align:center;line-height:1}
-.llx .sli-day b{display:block;font-size:22px;font-weight:900;color:var(--blue-ink)}
-.llx .sli-day span{font-size:10px;color:var(--faint)}
-.llx .sli-main{flex:1;min-width:0}
-.llx .sli-subj{font-size:11.5px;font-weight:800;color:var(--gilt);display:flex;align-items:center;gap:6px}
-.llx .sli-subj .dday{font-size:10px;font-weight:900;color:var(--blue-ink);background:var(--blue-wash);padding:1px 6px;border-radius:5px}
-.llx .sli-title{font-size:14.5px;font-weight:800;color:var(--ink);margin:2px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.llx .sli-meta{font-size:12px;color:var(--soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.llx .sli-seat{flex-shrink:0;font-size:12px;font-weight:800}
-.llx .sli-seat.low{color:var(--hot)}.llx .sli-seat.mid{color:var(--warn)}.llx .sli-seat.ok{color:var(--ok)}
+/* 우측 패널 = 형태 필터 칩 + 날짜별 카드 */
+.llx .sched-list{background:var(--lsurface);border:1px solid var(--line2);border-radius:16px;box-shadow:var(--lshadow);overflow:hidden;align-self:stretch}
+.llx .chips{display:flex;flex-wrap:wrap;gap:8px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.llx .chip{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:800;color:var(--soft);background:var(--lground);border:1px solid var(--line);border-radius:999px;padding:6px 13px;cursor:pointer;transition:color .12s,border-color .12s,background .12s}
+.llx .chip:hover{border-color:var(--line2)}
+.llx .chip .chip-dot{width:8px;height:8px;border-radius:50%;background:var(--soft)}
+.llx .chip.all .chip-dot{background:var(--blue)}
+.llx .chip.off .chip-dot{background:var(--ok)}
+.llx .chip.live .chip-dot{background:var(--blue)}
+.llx .chip.vid .chip-dot{background:var(--gilt)}
+.llx .chip.on{color:var(--ink);border-color:currentColor;background:var(--lsurface)}
+.llx .chip.all.on{color:var(--blue-ink)}
+.llx .chip.off.on{color:var(--ok)}
+.llx .chip.live.on{color:var(--blue-ink)}
+.llx .chip.vid.on{color:var(--gilt-soft)}
+.llx .sched-scroll{max-height:640px;overflow-y:auto;padding:6px}
+.llx .sched-empty{padding:40px 18px;text-align:center;color:var(--faint);font-size:13.5px}
+.llx .dgroup{padding:8px 8px 4px}
+.llx .dgroup-h{font-size:13px;font-weight:900;color:var(--blue-ink);padding:6px 8px 10px}
+.llx .scard{display:flex;gap:12px;padding:11px;border-radius:12px;transition:background .12s}
+.llx .scard:hover{background:var(--lground)}
+.llx .scard+.scard{margin-top:2px}
+.llx .scard-thumb{flex-shrink:0;width:54px;height:54px;border-radius:10px;display:grid;place-items:center;font-size:15px;font-weight:900;color:#fff;letter-spacing:-.02em}
+.llx .scard-thumb.off{background:linear-gradient(140deg,var(--ok),#14663a)}
+.llx .scard-thumb.live{background:linear-gradient(140deg,var(--blue),var(--blue-ink))}
+.llx .scard-thumb.vid{background:linear-gradient(140deg,var(--gilt),var(--gilt-soft))}
+.llx .scard-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.llx .scard-top{display:flex;align-items:center;gap:7px;min-width:0}
+.llx .scard-dot{flex-shrink:0;width:8px;height:8px;border-radius:50%}
+.llx .scard-dot.off{background:var(--ok)}.llx .scard-dot.live{background:var(--blue)}.llx .scard-dot.vid{background:var(--gilt)}
+.llx .scard-title{font-size:14px;font-weight:800;color:var(--ink);line-height:1.35;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.llx .scard-meta{font-size:11.5px;font-weight:700;color:var(--gilt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.llx .scard-meta2{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--soft);flex-wrap:wrap}
+.llx .scard-meta2 .dday{font-size:10px;font-weight:900;color:var(--blue-ink);background:var(--blue-wash);padding:1px 6px;border-radius:5px}
+.llx .scard-meta2 .seat{font-size:11.5px;font-weight:800}
+.llx .scard-meta2 .seat.low{color:var(--hot)}.llx .scard-meta2 .seat.mid{color:var(--warn)}.llx .scard-meta2 .seat.ok{color:var(--ok)}
 @media (max-width:900px){
   .llx .sched-split{grid-template-columns:1fr}
+  .llx .sched-scroll{max-height:none}
 }
 @media (max-width:640px){
   .llx .cal-cell{min-height:60px;padding:5px 6px 15px}
