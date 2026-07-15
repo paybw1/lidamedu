@@ -1,16 +1,18 @@
 // feat-11-002 — 에디션 상세: 회차 등록·순서·미리보기·공개, 영상 등록/교체(이력), 운영 메모.
 // 영상 교체 시 duration 이 달라지면 배수 모수 조정은 M3(adjust 이벤트)에서 — 여기선 경고만.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
   DownloadIcon,
   FileTextIcon,
+  NetworkIcon,
   PlusIcon,
   RefreshCwIcon,
   Trash2Icon,
   UploadIcon,
+  XIcon,
 } from "lucide-react";
 import { Link, data, useFetcher } from "react-router";
 import { toast } from "sonner";
@@ -22,12 +24,20 @@ import adminClient from "~/core/lib/supa-admin-client.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Chip, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
 import { hasDutyAccess } from "~/features/admin/lib/duties.server";
-import { getStaffRole } from "~/features/laws/queries.server";
+import {
+  getStaffRole,
+  getSystematicSkeleton,
+  type SystematicNode,
+} from "~/features/laws/queries.server";
 import {
   getCourseDetail,
   logEnrollmentAdminAction,
   type CourseDetail,
 } from "~/features/lms/queries.server";
+import {
+  LAW_SUBJECT_SLUGS,
+  type LawSubjectSlug,
+} from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/admin-lms-course-detail";
 
@@ -42,6 +52,33 @@ const MATERIAL_EXTS = new Set([
   "pdf", "png", "jpg", "jpeg", "webp", "gif",
   "hwp", "hwpx", "ppt", "pptx", "doc", "docx", "xls", "xlsx", "zip",
 ]);
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export interface NodeOption {
+  nodeId: string;
+  label: string;
+}
+
+// 체계도 노드 → 선택지(조상 크럼 라벨, caseOnly 제외). 문제편집기 picker 와 동일 규칙.
+function buildNodeOptions(skeleton: SystematicNode[]): NodeOption[] {
+  const labelById = new Map(skeleton.map((n) => [n.nodeId, n.displayLabel]));
+  const parentById = new Map(skeleton.map((n) => [n.nodeId, n.parentId]));
+  const crumb = (id: string): string => {
+    const parts: string[] = [];
+    let cur: string | null = id;
+    for (let guard = 0; cur && guard < 12; guard++) {
+      parts.unshift(labelById.get(cur) ?? "");
+      cur = parentById.get(cur) ?? null;
+    }
+    return parts.filter(Boolean).join(" › ");
+  };
+  // skeleton 은 트리 순서(path DFS) — 그대로 선택지 순서로 사용.
+  return skeleton
+    .filter((n) => !n.caseOnly)
+    .map((n) => ({ nodeId: n.nodeId, label: crumb(n.nodeId) }));
+}
 
 async function requireStaff(request: Request) {
   const [client] = makeServerClient(request);
@@ -61,7 +98,19 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const { client, role } = await requireStaff(request);
   const course = await getCourseDetail(client, params.courseId!);
   if (!course) throw data("Course not found", { status: 404 });
-  return { course, role };
+  // 회차↔노드 매핑 선택지 — 이 에디션 과목(subjectCode)의 체계도 노드.
+  //   법률 과목이 아니면(번들·자연과학 등) 노드 없음 → 빈 목록.
+  const nodeOptions = LAW_SUBJECT_SLUGS.includes(
+    course.subjectCode as LawSubjectSlug,
+  )
+    ? buildNodeOptions(
+        await getSystematicSkeleton(
+          client,
+          course.subjectCode as LawSubjectSlug,
+        ),
+      )
+    : [];
+  return { course, role, nodeOptions };
 }
 
 const addLessonSchema = z.object({
@@ -329,6 +378,57 @@ export async function action({ request, params }: Route.ActionArgs) {
     return data({ ok: true as const });
   }
 
+  if (intent === "set_lesson_nodes") {
+    const lessonId = String(fd.get("lessonId") ?? "");
+    if (!UUID_RE.test(lessonId)) return data({ error: "잘못된 요청" }, { status: 400 });
+    // 회차가 이 에디션 소속인지 확인(교차 코스 쓰기 차단).
+    const { data: lessonRow } = await client
+      .from("course_lessons")
+      .select("lesson_id")
+      .eq("lesson_id", lessonId)
+      .eq("course_id", courseId)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (!lessonRow) return data({ error: "회차를 찾을 수 없습니다." }, { status: 404 });
+    // 제출된 노드 중 이 에디션 과목의 노드만 채택(교차 과목 오염 방지).
+    const rawIds = [
+      ...new Set(fd.getAll("nodeId").map(String).filter((v) => UUID_RE.test(v))),
+    ];
+    let validIds: string[] = [];
+    if (rawIds.length > 0) {
+      const { data: crow } = await client
+        .from("courses")
+        .select("series:course_series!courses_series_id_fkey(subject_code)")
+        .eq("course_id", courseId)
+        .maybeSingle();
+      const subject =
+        (crow?.series as { subject_code: string } | null)?.subject_code ?? "";
+      const { data: nrows } = await client
+        .from("systematic_nodes")
+        .select("node_id")
+        .in("node_id", rawIds)
+        .eq("law_code", subject);
+      validIds = (nrows ?? []).map((n) => n.node_id);
+    }
+    // 회차 기준 재설정: 기존 링크 삭제 → 선택 노드 삽입(다대다).
+    const { error: delErr } = await client
+      .from("lesson_node_links")
+      .delete()
+      .eq("lesson_id", lessonId);
+    if (delErr) return data({ error: delErr.message }, { status: 400 });
+    if (validIds.length > 0) {
+      const { error: insErr } = await client.from("lesson_node_links").insert(
+        validIds.map((nid) => ({
+          lesson_id: lessonId,
+          node_id: nid,
+          created_by: user.id,
+        })),
+      );
+      if (insErr) return data({ error: insErr.message }, { status: 400 });
+    }
+    return data({ ok: true as const, savedCount: validIds.length });
+  }
+
   return data({ error: "Unknown intent" }, { status: 400 });
 }
 
@@ -340,7 +440,7 @@ function fmtDuration(sec: number): string {
 }
 
 export default function AdminLmsCourseDetail({ loaderData }: Route.ComponentProps) {
-  const { course, role } = loaderData;
+  const { course, role, nodeOptions } = loaderData;
   return (
     <AdminShell
       cluster="lms"
@@ -359,6 +459,7 @@ export default function AdminLmsCourseDetail({ loaderData }: Route.ComponentProp
           <LessonCard
             key={lesson.lessonId}
             lesson={lesson}
+            nodeOptions={nodeOptions}
             isFirst={i === 0}
             isLast={i === course.lessons.length - 1}
           />
@@ -492,6 +593,172 @@ function MaterialsSection({
   );
 }
 
+function LessonNodesSection({
+  lessonId,
+  nodeIds,
+  nodeOptions,
+}: {
+  lessonId: string;
+  nodeIds: string[];
+  nodeOptions: NodeOption[];
+}) {
+  const fetcher = useFetcher<{ ok?: boolean; error?: string; savedCount?: number }>();
+  // 로컬 선택 상태 — 서버 저장 전 편집 소유. 서버 nodeIds 가 바뀌면(저장 반영) 동기화.
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(nodeIds));
+  const [q, setQ] = useState("");
+  const savedKey = nodeIds.join(",");
+  useEffect(() => {
+    setSelected(new Set(nodeIds));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedKey]);
+  useEffect(() => {
+    if (fetcher.state !== "idle" || !fetcher.data) return;
+    if (fetcher.data.error) toast.error(fetcher.data.error);
+    else if (fetcher.data.ok)
+      toast.success(`단원 매핑을 저장했습니다 (${fetcher.data.savedCount ?? 0}개).`);
+  }, [fetcher.state, fetcher.data]);
+
+  const labelById = useMemo(
+    () => new Map(nodeOptions.map((o) => [o.nodeId, o.label])),
+    [nodeOptions],
+  );
+  const filtered = useMemo(() => {
+    const query = q.trim();
+    return query
+      ? nodeOptions.filter((o) => o.label.includes(query))
+      : nodeOptions;
+  }, [q, nodeOptions]);
+
+  const dirty =
+    selected.size !== nodeIds.length ||
+    [...selected].some((id) => !nodeIds.includes(id));
+  const busy = fetcher.state !== "idle";
+
+  const toggle = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const save = () => {
+    const fd = new FormData();
+    fd.set("intent", "set_lesson_nodes");
+    fd.set("lessonId", lessonId);
+    for (const id of selected) fd.append("nodeId", id);
+    fetcher.submit(fd, { method: "post" });
+  };
+
+  if (nodeOptions.length === 0) {
+    return (
+      <div className="bg-muted/20 border-border/60 mt-2 rounded-lg border p-2.5">
+        <p className="text-muted-foreground flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.06em]">
+          <NetworkIcon className="size-3" /> 단원(체계도) 매핑
+        </p>
+        <p className="text-muted-foreground/70 mt-1 text-[11px]">
+          이 과목은 체계도 노드가 없어 매핑할 수 없습니다.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-muted/20 border-border/60 mt-2 rounded-lg border p-2.5">
+      <p className="text-muted-foreground mb-1.5 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.06em]">
+        <NetworkIcon className="size-3" /> 단원(체계도) 매핑
+        <span className="text-muted-foreground/60 normal-case">
+          — 이 강을 보면 해당 단원 복습이 채워집니다
+        </span>
+      </p>
+
+      {/* 현재 선택 칩 */}
+      {selected.size > 0 ? (
+        <div className="mb-2 flex flex-wrap gap-1">
+          {[...selected].map((id) => (
+            <span
+              key={id}
+              className="border-border bg-background inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px]"
+            >
+              <span className="max-w-[280px] truncate">
+                {labelById.get(id) ?? "(다른 과목/삭제된 단원)"}
+              </span>
+              <button
+                type="button"
+                onClick={() => toggle(id)}
+                className="text-muted-foreground hover:text-rose-600"
+                title="제거"
+              >
+                <XIcon className="size-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="text-muted-foreground/70 mb-2 text-[11px]">
+          매핑된 단원이 없습니다.
+        </p>
+      )}
+
+      {/* 노드 선택 — 필터 + 체크박스 목록 */}
+      <details className="group">
+        <summary className="text-link cursor-pointer list-none text-[12px] font-medium hover:underline">
+          단원 선택/변경 ▾
+        </summary>
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="단원명으로 검색…"
+          className="border-input bg-background mt-2 h-8 w-full rounded-md border px-2 text-[12px]"
+        />
+        <div className="border-border/60 mt-1.5 max-h-56 overflow-y-auto rounded-md border">
+          {filtered.length === 0 ? (
+            <p className="text-muted-foreground/70 px-2 py-3 text-center text-[11px]">
+              검색 결과가 없습니다.
+            </p>
+          ) : (
+            filtered.map((o) => (
+              <label
+                key={o.nodeId}
+                className="hover:bg-muted/50 flex cursor-pointer items-start gap-2 px-2 py-1 text-[12px]"
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.has(o.nodeId)}
+                  onChange={() => toggle(o.nodeId)}
+                  className="mt-0.5"
+                />
+                <span>{o.label}</span>
+              </label>
+            ))
+          )}
+        </div>
+      </details>
+
+      {dirty ? (
+        <div className="mt-2 flex items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 text-[12px]"
+            onClick={save}
+            disabled={busy}
+          >
+            단원 매핑 저장
+          </Button>
+          <button
+            type="button"
+            onClick={() => setSelected(new Set(nodeIds))}
+            className="text-muted-foreground text-[12px] hover:underline"
+          >
+            되돌리기
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function AddLessonForm() {
   const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
   useEffect(() => {
@@ -523,10 +790,12 @@ function AddLessonForm() {
 
 function LessonCard({
   lesson,
+  nodeOptions,
   isFirst,
   isLast,
 }: {
   lesson: CourseDetail["lessons"][number];
+  nodeOptions: NodeOption[];
   isFirst: boolean;
   isLast: boolean;
 }) {
@@ -689,6 +958,13 @@ function LessonCard({
           </div>
         </fetcher.Form>
       ) : null}
+
+      {/* 회차↔체계도 노드 매핑 (선순환 — 강의→복습 시딩 브리지) */}
+      <LessonNodesSection
+        lessonId={lesson.lessonId}
+        nodeIds={lesson.nodeIds}
+        nodeOptions={nodeOptions}
+      />
 
       {/* 강의 자료 (배포용 첨부 — 학생은 공개된 것만 서명 URL 로 열람) */}
       <MaterialsSection lessonId={lesson.lessonId} materials={lesson.materials} />
