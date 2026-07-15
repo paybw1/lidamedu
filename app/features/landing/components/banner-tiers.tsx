@@ -2,7 +2,7 @@
 //   tier 로 나눈 배너를 각 밴드(band)로 렌더. *.server 값 import 금지(빌드 함정).
 import { Link } from "react-router";
 
-import { htmlHasScript, type BannerRow } from "../labels";
+import { fitBannerFrame, htmlHasScript, type BannerRow } from "../labels";
 
 function Block({ b }: { b: BannerRow }) {
   if (b.kind === "image" && b.image_url) {
@@ -28,6 +28,8 @@ function Block({ b }: { b: BannerRow }) {
         className="bt-block bt-htmlframe"
         title={b.headline || "배너"}
         srcDoc={b.body_html}
+        scrolling="no"
+        onLoad={(e) => fitBannerFrame(e.currentTarget)}
         sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
       />
     ) : (

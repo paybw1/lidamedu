@@ -55,6 +55,34 @@ export function htmlHasScript(html: string | null | undefined): boolean {
   return !!html && /<script[\s>]/i.test(html);
 }
 
+// 스크립트 HTML 배너 iframe 오토핏 — 내용 높이에 맞춰 iframe 높이 조정 + 스크롤바 제거.
+//   srcdoc + allow-same-origin 이라 부모에서 contentDocument 접근 가능. onLoad 에서 호출.
+//   지연 렌더(폰트·스크립트·애니메이션)에 대비해 ResizeObserver + 지연 재측정.
+export function fitBannerFrame(frame: HTMLIFrameElement): void {
+  const apply = () => {
+    const doc = frame.contentDocument;
+    if (!doc) return;
+    const de = doc.documentElement;
+    const body = doc.body;
+    // 기본 body margin(8px)이 가로 스크롤을 유발 — 제거하고 가로 넘침 숨김.
+    de.style.margin = "0";
+    de.style.overflowX = "hidden";
+    if (body) {
+      body.style.margin = "0";
+      body.style.overflowX = "hidden";
+    }
+    const h = Math.max(body ? body.scrollHeight : 0, de.scrollHeight);
+    if (h > 0) frame.style.height = `${h}px`;
+  };
+  apply();
+  const doc = frame.contentDocument;
+  if (doc && doc.body && typeof ResizeObserver !== "undefined") {
+    new ResizeObserver(apply).observe(doc.body);
+  }
+  // 로드 직후 스크립트가 렌더하는 경우를 위해 몇 차례 더 측정.
+  [150, 500, 1200].forEach((t) => setTimeout(apply, t));
+}
+
 export type BannerAccent = "gilt" | "blue" | "green";
 export const BANNER_ACCENT_LABEL: Record<BannerAccent, string> = {
   gilt: "금박",

@@ -5,6 +5,7 @@ import { Link } from "react-router";
 
 import {
   ddayFrom,
+  fitBannerFrame,
   htmlHasScript,
   remainingSeats,
   type BannerRow,
@@ -245,6 +246,8 @@ export function HeroCarousel({
                   className="slide-htmlframe"
                   title={b.headline || "배너"}
                   srcDoc={b.body_html}
+                  scrolling="no"
+                  onLoad={(e) => fitBannerFrame(e.currentTarget)}
                   sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
                 />
               ) : (

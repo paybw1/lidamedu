@@ -57,8 +57,9 @@ export function LandingStyle() {
 .llx .slide.imgslide.fit .slide-imglink{width:100%;margin:0 auto}
 .llx .slide.imgslide.fit .slide-img{height:auto;max-height:clamp(320px,40vw,500px);object-fit:contain;margin:0 auto}
 .llx .slide-html{position:relative;z-index:1;width:100%;align-self:center;color:var(--hero-ink)}
-/* 스크립트 포함 HTML 배너 — iframe 격리 실행. 슬라이드 높이를 채운다. */
-.llx .slide-htmlframe{position:relative;z-index:1;width:100%;height:clamp(320px,40vw,500px);border:0;display:block;background:transparent}
+/* 스크립트 포함 HTML 배너 — iframe 격리 실행. 초기 높이(로드 후 JS가 내용 높이로 교체),
+   스크롤바 없음(오토핏), 짧으면 세로 중앙. */
+.llx .slide-htmlframe{position:relative;z-index:1;width:100%;height:clamp(320px,40vw,500px);border:0;display:block;overflow:hidden;align-self:center;background:transparent}
 .llx .slide h1{font-size:clamp(32px,4.4vw,52px);font-weight:900;line-height:1.09;letter-spacing:-.035em;text-wrap:balance;margin:16px 0 18px}
 .llx .slide h1 .hl{color:var(--gilt-soft)}
 .llx .slide .sub{color:var(--hero-soft);font-size:clamp(15px,1.5vw,17px);max-width:34ch;line-height:1.75}
@@ -108,8 +109,8 @@ export function LandingStyle() {
 .llx .bt-imglink:hover{transform:translateY(-3px)}
 .llx .bt-img{display:block;width:100%;height:auto}
 .llx .bt-html{background:var(--lsurface);border:1px solid var(--line);padding:0}
-/* 스크립트 포함 HTML(2·3단) — iframe 격리 실행 */
-.llx .bt-htmlframe{width:100%;height:clamp(240px,26vw,360px);border:0;display:block;background:transparent}
+/* 스크립트 포함 HTML(2·3단) — iframe 격리 실행. 로드 후 JS가 내용 높이로 교체, 스크롤바 없음. */
+.llx .bt-htmlframe{width:100%;height:clamp(240px,26vw,360px);border:0;display:block;overflow:hidden;background:transparent}
 .llx .bt-card{background:linear-gradient(158deg,var(--navy),var(--navy2));color:var(--hero-ink);padding:26px 24px;display:flex;flex-direction:column;gap:10px;align-items:flex-start;position:relative;overflow:hidden}
 .llx .bt-card.blue{background:linear-gradient(158deg,#2d5ba8,#1c3f75)}
 .llx .bt-card::after{content:"";position:absolute;inset:0;background:radial-gradient(90% 90% at 92% 0,rgba(154,117,38,.26),transparent 55%);pointer-events:none}
