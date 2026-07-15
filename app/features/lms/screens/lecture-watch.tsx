@@ -264,7 +264,10 @@ export default function LectureWatch({ loaderData }: Route.ComponentProps) {
                   src={loaderData.playbackUrl}
                   title={lessonTitle}
                   className="h-full w-full border-0"
-                  allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+                  // local-network-access · loopback-network: 크롬142/엣지143 로컬 네트워크
+                  //   액세스 정책 강화로 Kollus 보안 에이전트 실행에 필요(미지정 시 "플레이어
+                  //   초기화 실패"). Kollus(카테노이드) 지원팀 안내. 사용자도 브라우저 권한 허용 필요.
+                  allow="autoplay; fullscreen; encrypted-media; picture-in-picture; local-network-access; loopback-network"
                   allowFullScreen
                 />
               </div>
