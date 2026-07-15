@@ -181,23 +181,24 @@ export default function Schedule({ loaderData }: Route.ComponentProps) {
 function CalendarStyle() {
   return (
     <style>{`
-.llx .sched-split{display:grid;grid-template-columns:4fr 6fr;gap:22px;align-items:start}
+.llx .sched-split{display:grid;grid-template-columns:45fr 55fr;gap:22px;align-items:start}
 .llx .cal{background:var(--lsurface);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:var(--lshadow)}
 .llx .cal-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:14px}
 .llx .cal-title{font-size:17px;font-weight:900;min-width:118px;text-align:center}
 .llx .cal-arrow{width:34px;height:34px;border:1px solid var(--line2);border-radius:9px;display:grid;place-items:center;font-size:19px;color:var(--ink);background:var(--lground);transition:border-color .15s}
 .llx .cal-arrow:hover{border-color:var(--blue)}
-.llx .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
-.llx .cal-head{margin-bottom:6px}
-.llx .cal-hd{text-align:center;font-size:12px;font-weight:800;color:var(--faint);padding:4px 0}
+.llx .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+.llx .cal-head{margin-bottom:10px}
+.llx .cal-hd{text-align:center;font-size:11px;font-weight:800;letter-spacing:.04em;color:var(--faint);padding:2px 0}
 .llx .cal-hd.sun{color:#c0392b}.llx .cal-hd.sat{color:var(--blue-ink)}
-.llx .cal-cell{aspect-ratio:1/1;min-height:0;border:1px solid var(--line);border-radius:9px;padding:5px 5px 6px;display:flex;flex-direction:column;gap:3px;background:var(--lground);overflow:hidden}
-.llx .cal-cell.empty{background:transparent;border:0}
-.llx .cal-cell.today{border-color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue)}
-.llx .cal-d{font-size:12px;font-weight:800;color:var(--soft)}
+.llx .cal-cell{aspect-ratio:7/8;min-height:0;border:0;border-radius:12px;padding:7px 7px 8px;display:flex;flex-direction:column;gap:4px;background:color-mix(in srgb,var(--lground) 55%,transparent);transition:background .12s}
+.llx .cal-cell.empty{background:transparent}
+.llx .cal-cell:not(.empty):hover{background:var(--lground)}
+.llx .cal-cell.today{background:var(--blue-wash)}
+.llx .cal-d{align-self:flex-start;font-size:12.5px;font-weight:800;color:var(--soft);line-height:1;padding:1px 1px 2px}
 .llx .cal-d.sun{color:#c0392b}.llx .cal-d.sat{color:var(--blue-ink)}
-.llx .cal-cell.today .cal-d{color:var(--blue-ink)}
-.llx .cal-ev{font-size:10.5px;font-weight:700;line-height:1.35;padding:2px 6px;border-radius:5px;background:var(--blue-wash);color:var(--blue-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.llx .cal-cell.today .cal-d{display:inline-grid;place-items:center;width:21px;height:21px;padding:0;border-radius:50%;background:var(--blue);color:#fff}
+.llx .cal-ev{font-size:10.5px;font-weight:700;line-height:1.3;padding:2px 7px;border-radius:6px;background:var(--blue-wash);color:var(--blue-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .llx .cal-ev.gilt{background:color-mix(in srgb,var(--gilt) 16%,transparent);color:var(--gilt)}
 .llx a.cal-ev{cursor:pointer;transition:filter .12s}
 .llx a.cal-ev:hover{filter:brightness(.94)}
