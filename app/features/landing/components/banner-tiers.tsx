@@ -2,7 +2,7 @@
 //   tier 로 나눈 배너를 각 밴드(band)로 렌더. *.server 값 import 금지(빌드 함정).
 import { Link } from "react-router";
 
-import type { BannerRow } from "../labels";
+import { htmlHasScript, type BannerRow } from "../labels";
 
 function Block({ b }: { b: BannerRow }) {
   if (b.kind === "image" && b.image_url) {
@@ -22,7 +22,15 @@ function Block({ b }: { b: BannerRow }) {
     );
   }
   if (b.kind === "html" && b.body_html) {
-    return (
+    // 스크립트 포함 시 iframe(srcdoc)으로 격리 실행, 아니면 인라인 렌더.
+    return htmlHasScript(b.body_html) ? (
+      <iframe
+        className="bt-block bt-htmlframe"
+        title={b.headline || "배너"}
+        srcDoc={b.body_html}
+        sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+      />
+    ) : (
       <div
         className="bt-block bt-html"
         // 운영자(staff) 작성 랜딩 CMS 콘텐츠 — 코드 편집과 동등한 신뢰 경계.

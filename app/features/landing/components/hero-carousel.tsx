@@ -5,6 +5,7 @@ import { Link } from "react-router";
 
 import {
   ddayFrom,
+  htmlHasScript,
   remainingSeats,
   type BannerRow,
   type ScheduleRow,
@@ -237,11 +238,22 @@ export function HeroCarousel({
             {b.kind === "image" && b.image_url ? (
               <BannerImage src={b.image_url} alt={b.headline || "배너"} href={b.cta_href} maxWidth={b.image_max_width} />
             ) : b.kind === "html" && b.body_html ? (
-              <div
-                className="slide-html"
-                // 운영자(staff)가 작성하는 랜딩 CMS 콘텐츠 — 코드 편집과 동등한 신뢰 경계.
-                dangerouslySetInnerHTML={{ __html: b.body_html }}
-              />
+              htmlHasScript(b.body_html) ? (
+                // 스크립트 포함 HTML — iframe(srcdoc)으로 격리 실행(innerHTML 은 미실행).
+                //   staff 작성 = 코드 편집과 동등한 신뢰. 슬라이드 높이를 채운다.
+                <iframe
+                  className="slide-htmlframe"
+                  title={b.headline || "배너"}
+                  srcDoc={b.body_html}
+                  sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                />
+              ) : (
+                <div
+                  className="slide-html"
+                  // 운영자(staff)가 작성하는 랜딩 CMS 콘텐츠 — 코드 편집과 동등한 신뢰 경계.
+                  dangerouslySetInnerHTML={{ __html: b.body_html }}
+                />
+              )
             ) : (
             <div className="wrap hero-in">
               <div>

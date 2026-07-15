@@ -49,6 +49,12 @@ export const BANNER_KIND_LABEL: Record<BannerKind, string> = {
   passer: "합격속보(배지)",
   custom: "일반(텍스트만)",
 };
+// HTML 배너에 <script> 가 있으면 iframe(srcdoc)으로 렌더해야 실행됨(innerHTML 은 스크립트
+//   미실행). 스크립트 없는 배너는 기존대로 인라인 렌더(페이지 스타일 상속).
+export function htmlHasScript(html: string | null | undefined): boolean {
+  return !!html && /<script[\s>]/i.test(html);
+}
+
 export type BannerAccent = "gilt" | "blue" | "green";
 export const BANNER_ACCENT_LABEL: Record<BannerAccent, string> = {
   gilt: "금박",
