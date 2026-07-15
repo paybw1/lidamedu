@@ -24,18 +24,22 @@ function Headline({ text, hl }: { text: string; hl: string | null }) {
 }
 
 // 이미지 배너 — 슬라이드 전체를 이미지로. cta_href 있으면 클릭 이동.
+//   maxWidth 지정 시: 가운데 정렬 + 원본 비율(꽉 채우지 않음). 미지정: 전체 폭 cover.
 function BannerImage({
   src,
   alt,
   href,
+  maxWidth,
 }: {
   src: string;
   alt: string;
   href: string | null;
+  maxWidth: number | null;
 }) {
-  const img = <img className="slide-img" src={src} alt={alt} />;
+  const style = maxWidth ? { maxWidth: `${maxWidth}px` } : undefined;
+  const img = <img className="slide-img" src={src} alt={alt} style={style} />;
   return href ? (
-    <Link to={href} className="slide-imglink">
+    <Link to={href} className="slide-imglink" style={style}>
       {img}
     </Link>
   ) : (
@@ -219,7 +223,9 @@ export function HeroCarousel({
           <div
             className={`slide ${b.accent}${
               b.kind === "image" && b.image_url
-                ? " imgslide"
+                ? b.image_max_width
+                  ? " imgslide fit"
+                  : " imgslide"
                 : b.kind === "html" && b.body_html
                   ? " htmlslide"
                   : ""
@@ -229,7 +235,7 @@ export function HeroCarousel({
             aria-roledescription="슬라이드"
           >
             {b.kind === "image" && b.image_url ? (
-              <BannerImage src={b.image_url} alt={b.headline || "배너"} href={b.cta_href} />
+              <BannerImage src={b.image_url} alt={b.headline || "배너"} href={b.cta_href} maxWidth={b.image_max_width} />
             ) : b.kind === "html" && b.body_html ? (
               <div
                 className="slide-html"

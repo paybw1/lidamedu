@@ -6096,6 +6096,7 @@ export type Database = {
           eyebrow: string | null
           headline: string
           highlight: string | null
+          image_max_width: number | null
           image_url: string | null
           kind: string
           published: boolean
@@ -6120,6 +6121,7 @@ export type Database = {
           eyebrow?: string | null
           headline: string
           highlight?: string | null
+          image_max_width?: number | null
           image_url?: string | null
           kind?: string
           published?: boolean
@@ -6144,6 +6146,7 @@ export type Database = {
           eyebrow?: string | null
           headline?: string
           highlight?: string | null
+          image_max_width?: number | null
           image_url?: string | null
           kind?: string
           published?: boolean

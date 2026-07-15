@@ -6,8 +6,12 @@ import type { BannerRow } from "../labels";
 
 function Block({ b }: { b: BannerRow }) {
   if (b.kind === "image" && b.image_url) {
+    // maxWidth 지정 시 가운데 정렬 + 원본 비율(꽉 채우지 않음).
+    const style = b.image_max_width
+      ? { maxWidth: `${b.image_max_width}px`, margin: "0 auto" }
+      : undefined;
     const img = (
-      <img className="bt-img" src={b.image_url} alt={b.headline || "배너"} loading="lazy" />
+      <img className="bt-img" src={b.image_url} alt={b.headline || "배너"} loading="lazy" style={style} />
     );
     return b.cta_href ? (
       <Link to={b.cta_href} className="bt-block bt-imglink">

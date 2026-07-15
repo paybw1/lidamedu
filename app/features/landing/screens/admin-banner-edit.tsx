@@ -95,7 +95,12 @@ export default function AdminBannerEdit({ loaderData }: Route.ComponentProps) {
                 <img src={b.image_url} alt="현재 배너" className="mt-1 max-h-32 rounded border object-contain" />
               ) : null}
             </Row>
-            <Row label="HTML 내용" hint="HTML 종류일 때. 작성한 HTML 그대로 렌더">
+            <Row label="이미지 최대 폭(px)" hint="비우면 전체 폭 꽉 채움. 넓어 보이면 예:960·1200 지정(가운데 정렬, 원본 비율 유지)">
+              <Input type="number" name="image_max_width" min={0} defaultValue={b?.image_max_width ?? ""} placeholder="예: 1200" className={`${IN} w-40`} />
+            </Row>
+            <Row label="HTML 내용" hint="HTML 종류일 때. 파일 업로드 또는 아래에 직접 작성">
+              <input type="file" name="html_file" accept=".html,.htm,text/html" className="text-xs" />
+              <p className="text-muted-foreground text-[11px]">파일(.html)을 올리면 그 내용이 그대로 저장됩니다. 파일을 올리면 아래 직접작성 칸보다 우선합니다.</p>
               <textarea name="body_html" rows={5} defaultValue={b?.body_html ?? ""} className={`${TA} font-mono text-xs`} placeholder='<div style="text-align:center;padding:40px">…</div>' />
             </Row>
             <p className="text-muted-foreground text-[11px]">

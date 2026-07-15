@@ -52,6 +52,10 @@ export function LandingStyle() {
 .llx .slide.imgslide,.llx .slide.htmlslide{min-height:clamp(320px,40vw,500px);display:flex}
 .llx .slide-imglink,.llx .slide-img{display:block;width:100%}
 .llx .slide-img{height:100%;object-fit:cover;position:relative;z-index:1}
+/* 이미지 최대 폭 지정(fit) — 가운데 정렬 + 원본 비율(꽉 채우지 않음) */
+.llx .slide.imgslide.fit{align-items:center;justify-content:center;padding:20px 16px}
+.llx .slide.imgslide.fit .slide-imglink{width:100%;margin:0 auto}
+.llx .slide.imgslide.fit .slide-img{height:auto;max-height:clamp(320px,40vw,500px);object-fit:contain;margin:0 auto}
 .llx .slide-html{position:relative;z-index:1;width:100%;align-self:center;color:var(--hero-ink)}
 .llx .slide h1{font-size:clamp(32px,4.4vw,52px);font-weight:900;line-height:1.09;letter-spacing:-.035em;text-wrap:balance;margin:16px 0 18px}
 .llx .slide h1 .hl{color:var(--gilt-soft)}

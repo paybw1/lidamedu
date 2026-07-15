@@ -147,13 +147,23 @@ export async function action({ request }: Route.ActionArgs) {
         .from("landing-banners")
         .getPublicUrl(path).data.publicUrl;
     }
+    // HTML 배너 — 파일 업로드 시 그 내용을 body_html 로(직접작성 칸보다 우선).
+    let bodyHtml = str(fd, "body_html");
+    const htmlFile = fd.get("html_file");
+    if (htmlFile instanceof File && htmlFile.size > 0) {
+      const text = (await htmlFile.text()).trim();
+      if (text) bodyHtml = text;
+    }
     const tierRaw = int(fd, "tier");
+    const imwRaw = int(fd, "image_max_width");
     const row = {
       kind: str(fd, "kind") ?? "promo",
       accent: str(fd, "accent") ?? "gilt",
       tier: tierRaw >= 1 && tierRaw <= 3 ? tierRaw : 1,
       image_url: imageUrl,
-      body_html: str(fd, "body_html"),
+      // 0/빈값 = 전체 폭(제약 없음). 지정 시 렌더에서 가운데 정렬 + 원본 비율.
+      image_max_width: imwRaw > 0 ? imwRaw : null,
+      body_html: bodyHtml,
       eyebrow: str(fd, "eyebrow"),
       headline: str(fd, "headline") ?? "",
       highlight: str(fd, "highlight"),
