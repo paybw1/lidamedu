@@ -224,11 +224,11 @@ export function HeroCarousel({
         {banners.map((b) => (
           <div
             className={`slide ${b.accent}${
-              b.kind === "image" && b.image_url
+              b.image_url
                 ? b.image_max_width
                   ? " imgslide fit"
                   : " imgslide"
-                : b.kind === "html" && b.body_html
+                : b.body_html
                   ? " htmlslide"
                   : ""
             }`}
@@ -236,9 +236,10 @@ export function HeroCarousel({
             role="group"
             aria-roledescription="슬라이드"
           >
-            {b.kind === "image" && b.image_url ? (
+            {/* 콘텐츠 기준 렌더 — 이미지 있으면 이미지, 없고 HTML 있으면 HTML(kind 오설정 안전) */}
+            {b.image_url ? (
               <BannerImage src={b.image_url} alt={b.headline || "배너"} href={b.cta_href} maxWidth={b.image_max_width} />
-            ) : b.kind === "html" && b.body_html ? (
+            ) : b.body_html ? (
               htmlHasScript(b.body_html) ? (
                 // 스크립트 포함 HTML — iframe(srcdoc)으로 격리 실행(innerHTML 은 미실행).
                 //   staff 작성 = 코드 편집과 동등한 신뢰. 슬라이드 높이를 채운다.

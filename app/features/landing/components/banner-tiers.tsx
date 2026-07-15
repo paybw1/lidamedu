@@ -5,7 +5,8 @@ import { Link } from "react-router";
 import { fitBannerFrame, htmlHasScript, type BannerRow } from "../labels";
 
 function Block({ b }: { b: BannerRow }) {
-  if (b.kind === "image" && b.image_url) {
+  // 콘텐츠 기준 렌더 — 이미지 있으면 이미지, 없고 HTML 있으면 HTML(kind 오설정 안전).
+  if (b.image_url) {
     // maxWidth 지정 시 가운데 정렬 + 원본 비율(꽉 채우지 않음).
     const style = b.image_max_width
       ? { maxWidth: `${b.image_max_width}px`, margin: "0 auto" }
@@ -21,7 +22,7 @@ function Block({ b }: { b: BannerRow }) {
       <div className="bt-block">{img}</div>
     );
   }
-  if (b.kind === "html" && b.body_html) {
+  if (b.body_html) {
     // 스크립트 포함 시 iframe(srcdoc)으로 격리 실행, 아니면 인라인 렌더.
     return htmlHasScript(b.body_html) ? (
       <iframe
