@@ -13,8 +13,8 @@ import {
 
 const itemCls = (active: boolean) =>
   cn(
-    // 학습 플랫폼처럼 여유 있는 간격(px-3.5) — 한 줄 유지(whitespace-nowrap).
-    "inline-flex items-center gap-0.5 whitespace-nowrap rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors",
+    // 학습 플랫폼처럼 여유 있는 간격(px-3.5)·글자크기(15px) — 한 줄 유지(whitespace-nowrap).
+    "inline-flex items-center gap-0.5 whitespace-nowrap rounded-md px-3.5 py-1.5 text-[15px] font-medium transition-colors",
     active
       ? "bg-accent text-foreground"
       : "text-foreground hover:bg-accent/60",
