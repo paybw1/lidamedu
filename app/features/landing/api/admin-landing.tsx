@@ -125,6 +125,10 @@ export async function action({ request }: Route.ActionArgs) {
     const { error } = await q;
     if (error) return data({ error: error.message }, { status: 400 });
   } else {
+    // 저장 실패 시 되돌아갈 폼 경로(조용한 실패 방지 — ?err= 로 사유 표시).
+    const backPath = id
+      ? `/admin/landing-banners/${id}/edit`
+      : "/admin/landing-banners/new";
     // 이미지 배너 — 파일 업로드 시 공개 버킷에 저장(URL 직접 입력도 허용).
     let imageUrl = str(fd, "image_url");
     const file = fd.get("image_file");
@@ -134,10 +138,14 @@ export async function action({ request }: Route.ActionArgs) {
       const { error: upErr } = await adminClient.storage
         .from("landing-banners")
         .upload(path, file, { contentType: file.type || undefined });
-      if (!upErr)
-        imageUrl = adminClient.storage
-          .from("landing-banners")
-          .getPublicUrl(path).data.publicUrl;
+      // 업로드 실패를 조용히 무시하지 않고 사유를 표시(과거: 무시돼 이미지 없이 저장됐음).
+      if (upErr)
+        return redirect(
+          `${backPath}?err=${encodeURIComponent(`이미지 업로드 실패: ${upErr.message}`)}`,
+        );
+      imageUrl = adminClient.storage
+        .from("landing-banners")
+        .getPublicUrl(path).data.publicUrl;
     }
     const tierRaw = int(fd, "tier");
     const row = {
@@ -164,7 +172,8 @@ export async function action({ request }: Route.ActionArgs) {
       ? client.from("landing_banners").update(row).eq("banner_id", id)
       : client.from("landing_banners").insert(row);
     const { error } = await q;
-    if (error) return data({ error: error.message }, { status: 400 });
+    if (error)
+      return redirect(`${backPath}?err=${encodeURIComponent(error.message)}`);
   }
   return redirect(LIST_PATH[entity]);
 }

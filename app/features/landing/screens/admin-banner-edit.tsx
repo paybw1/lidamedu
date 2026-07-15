@@ -25,7 +25,9 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const role = await getStaffRole(client, user.id);
   if (!role) throw redirect("/dashboard");
   const row = params.bannerId ? await getBanner(client, params.bannerId) : null;
-  return { role, row };
+  // 저장 실패 시 액션이 ?err= 로 되돌려보낸 메시지(조용한 실패 방지).
+  const err = new URL(request.url).searchParams.get("err");
+  return { role, row, err };
 }
 
 const IN = "h-9 text-sm";
@@ -45,13 +47,18 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
 }
 
 export default function AdminBannerEdit({ loaderData }: Route.ComponentProps) {
-  const { role, row: b } = loaderData;
+  const { role, row: b, err } = loaderData;
   return (
     <AdminShell cluster="landing" role={role} title={b ? "배너 편집" : "배너 추가"} desc="이미지/HTML 배너는 만든 그대로 노출됩니다. 단(tier)으로 히어로 아래 2·3단에 배치할 수 있습니다.">
       <div className="mx-auto max-w-2xl p-5 md:p-8">
         <Link to="/admin/landing-banners" className="text-muted-foreground hover:text-foreground mb-4 inline-block text-sm">
           ← 배너 목록
         </Link>
+        {err ? (
+          <p className="border-destructive/40 bg-destructive/10 text-destructive mb-4 rounded-md border px-3 py-2 text-sm">
+            저장 실패: {err}
+          </p>
+        ) : null}
         <Form method="post" action="/api/admin/landing" encType="multipart/form-data" className="flex flex-col gap-4">
           <input type="hidden" name="entity" value="banner" />
           <input type="hidden" name="intent" value="save" />
@@ -109,8 +116,8 @@ export default function AdminBannerEdit({ loaderData }: Route.ComponentProps) {
           <Row label="윗줄(eyebrow)" hint='"지금 진행중 · 무료체험"'>
             <Input name="eyebrow" defaultValue={b?.eyebrow ?? ""} className={IN} />
           </Row>
-          <Row label="제목(headline)">
-            <textarea name="headline" rows={2} required defaultValue={b?.headline ?? ""} className={TA} />
+          <Row label="제목(headline)" hint="이미지/HTML 배너는 비워도 됩니다">
+            <textarea name="headline" rows={2} defaultValue={b?.headline ?? ""} className={TA} />
           </Row>
           <Row label="강조 문구(highlight)" hint="제목 안에서 금박 강조할 부분(제목에 포함된 문자열)">
             <Input name="highlight" defaultValue={b?.highlight ?? ""} className={IN} />
