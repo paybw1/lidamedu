@@ -6,6 +6,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
+import {
+  attributeProblemNodes,
+  buildArticleToNodes,
+} from "~/features/subjects/lib/problem-node-attribution.server";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
 import { type MasteryStage, computeNodeMastery } from "./lib/mastery";
@@ -80,37 +84,24 @@ export async function getNodeMastery(
     }
   }
 
-  // 2) article → node (다중 매핑은 첫째만, getSessionWeakNodes 와 동일).
-  const articleIds = [...articleByProblem.values()].filter(
-    (v): v is string => !!v,
+  // 2) article → node[] (문제→노드 귀속 규칙 SSOT. 폴백 'first' = 기존 첫째-노드 동작 보존).
+  const articleToNodes = await buildArticleToNodes(
+    client,
+    [...articleByProblem.values()].filter((v): v is string => !!v),
   );
-  const nodeByArticle = new Map<string, string>();
-  for (const part of chunk(articleIds, CHUNK)) {
-    if (part.length === 0) continue;
-    const { data } = await client
-      .from("article_systematic_links")
-      .select("article_id, node_id")
-      .in("article_id", part);
-    for (const l of data ?? []) {
-      if (!nodeByArticle.has(l.article_id)) {
-        nodeByArticle.set(l.article_id, l.node_id);
-      }
-    }
-  }
 
-  // 3) 문제별 최종 노드.
+  // 3) 문제별 최종 노드(핀 우선 / 조문 첫째).
   const nodeByProblem = new Map<string, string | null>();
   for (const pid of pids) {
-    const pinned = pinnedNodeByProblem.get(pid) ?? null;
-    if (pinned) {
-      nodeByProblem.set(pid, pinned);
-      continue;
-    }
-    const articleId = articleByProblem.get(pid) ?? null;
-    nodeByProblem.set(
-      pid,
-      articleId ? (nodeByArticle.get(articleId) ?? null) : null,
+    const nodes = attributeProblemNodes(
+      {
+        primary_node_id: pinnedNodeByProblem.get(pid) ?? null,
+        primary_article_id: articleByProblem.get(pid) ?? null,
+      },
+      articleToNodes,
+      { fallbackMultiplicity: "first" },
     );
+    nodeByProblem.set(pid, nodes[0] ?? null);
   }
 
   // 4) 노드 라벨 + law_code (과목 필터).

@@ -17,6 +17,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
 import type { ProblemChoiceType } from "~/features/problems/labels";
+import {
+  attributeProblemNodes,
+  buildArticleToNodes,
+} from "~/features/subjects/lib/problem-node-attribution.server";
 
 // 표본 임계 — weak-nodes 의 MIN_ATTEMPTS_FOR_RANKING(=5) 과 일관. 추후 app_settings 조정 여지.
 export const OX_DIAGNOSIS_MIN_ATTEMPTS = 5;
@@ -575,32 +579,25 @@ export async function computeOxDiagnosis(
     })(),
   ]);
 
-  // article → node (primary_node_id 없을 때 fallback).
+  // article → node[] (문제→노드 귀속 규칙 SSOT. 폴백 'first' = 기존 첫째-노드 동작 보존).
+  //   articleIds 는 아래 조문(법전) 기준 트리 뷰에서도 재사용.
   const articleIds = [
     ...new Set(
       [...articleByProblem.values()].filter((v): v is string => !!v),
     ),
   ];
-  const nodeByArticle = new Map<string, string>();
-  for (let i = 0; i < articleIds.length; i += CHUNK) {
-    const slice = articleIds.slice(i, i + CHUNK);
-    const { data } = await client
-      .from("article_systematic_links")
-      .select("article_id, node_id")
-      .in("article_id", slice);
-    for (const l of data ?? [])
-      if (!nodeByArticle.has(l.article_id))
-        nodeByArticle.set(l.article_id, l.node_id);
-  }
+  const articleToNodes = await buildArticleToNodes(client, articleIds);
   const nodeByProblem = new Map<string, string | null>();
   for (const pid of problemIds) {
-    const pinned = pinnedNodeByProblem.get(pid) ?? null;
-    if (pinned) {
-      nodeByProblem.set(pid, pinned);
-      continue;
-    }
-    const aid = articleByProblem.get(pid) ?? null;
-    nodeByProblem.set(pid, aid ? (nodeByArticle.get(aid) ?? null) : null);
+    const nodes = attributeProblemNodes(
+      {
+        primary_node_id: pinnedNodeByProblem.get(pid) ?? null,
+        primary_article_id: articleByProblem.get(pid) ?? null,
+      },
+      articleToNodes,
+      { fallbackMultiplicity: "first" },
+    );
+    nodeByProblem.set(pid, nodes[0] ?? null);
   }
 
   // node 라벨 + 과목(deep-link 용) + 트리 메타(부모 폐쇄까지 반복 조회 — 깊이 유한).

@@ -14,6 +14,7 @@ import {
 } from "~/features/laws/queries.server";
 import { getSystematicNodeProblemSequence } from "~/features/problems/queries.server";
 import { pickProblemsFromWeakNodes } from "~/features/problems/lib/problem-selection";
+import { attributeProblemNodes } from "~/features/subjects/lib/problem-node-attribution.server";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
 export interface CohortWeakNode {
@@ -143,11 +144,10 @@ export async function buildProblemNodeAttribution(
       .eq("law_id", law.lawId)
       .is("deleted_at", null);
     for (const p of data ?? []) {
-      const nodeIds = p.primary_node_id
-        ? [p.primary_node_id]
-        : p.primary_article_id
-          ? (articleToNodes.get(p.primary_article_id) ?? [])
-          : [];
+      // 문제→노드 귀속 규칙 SSOT(핀 우선 / 조문 폴백 all). nodeLabel(이 과목 skeleton)만 유지.
+      const nodeIds = attributeProblemNodes(p, articleToNodes, {
+        fallbackMultiplicity: "all",
+      });
       problemNodes.set(
         p.problem_id,
         nodeIds.filter((nid) => nodeLabel.has(nid)),
