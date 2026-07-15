@@ -6,7 +6,7 @@
 import type { Route } from "./+types/lecture.layout";
 
 import { BellIcon, SearchIcon } from "lucide-react";
-import { Link, Outlet, data } from "react-router";
+import { Link, Outlet, data, useLocation } from "react-router";
 
 import {
   CommandPalette,
@@ -60,9 +60,16 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export default function LectureLayout({ loaderData }: Route.ComponentProps) {
   const { user, inboxUnread, inboxHref, isStaff } = loaderData;
+  // 홈(히어로 캐러셀)에서는 헤더 하단 구분선을 없애 히어로가 상단바에 붙어 보이게.
+  //   다른 강의 페이지에선 nav/본문 구분선 유지.
+  const isHome = useLocation().pathname === "/lecture/home";
   return (
     <div className="flex min-h-screen flex-col justify-between">
-      <header className="dark:bg-background/85 dark:border-border sticky top-0 z-50 border-b border-black/[0.06] bg-white/80 backdrop-blur-lg backdrop-saturate-150">
+      <header
+        className={`dark:bg-background/85 dark:border-border sticky top-0 z-50 bg-white/80 backdrop-blur-lg backdrop-saturate-150${
+          isHome ? "" : " border-b border-black/[0.06]"
+        }`}
+      >
         <div className="mx-auto flex h-16 w-full max-w-[1200px] items-center gap-2 px-4 md:px-6">
           <Link
             to="/lecture/home"
