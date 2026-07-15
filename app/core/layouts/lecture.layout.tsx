@@ -63,7 +63,7 @@ export default function LectureLayout({ loaderData }: Route.ComponentProps) {
   return (
     <div className="flex min-h-screen flex-col justify-between">
       <header className="dark:bg-background/85 dark:border-border sticky top-0 z-50 border-b border-black/[0.06] bg-white/80 backdrop-blur-lg backdrop-saturate-150">
-        <div className="mx-auto flex h-14 w-full max-w-[1200px] items-center gap-2 px-4 md:px-6">
+        <div className="mx-auto flex h-16 w-full max-w-[1200px] items-center gap-2 px-4 md:px-6">
           <Link
             to="/lecture/home"
             aria-label="리담변리사학원 — 강의 플랫폼"

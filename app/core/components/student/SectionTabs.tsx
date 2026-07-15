@@ -80,7 +80,7 @@ export function SectionTabs({
       className={cn(
         "bg-card border-border -mx-4 border-b px-4 sm:-mx-6 sm:px-6 md:-mx-8 md:px-8",
         // 모바일: 항상 top-0(인증 사용자는 상단 navbar 가 hidden). md+: navigation.layout
-        //   이 설정한 --area-sticky-top(topbar=navbar 높이 3.5rem / sidebar=0)만큼 내려
+        //   이 설정한 --area-sticky-top(topbar=navbar 높이 4rem / sidebar=0)만큼 내려
         //   navbar 아래에 고정 — navbar(sticky top-0 z-50)에 가려지지 않게.
         sticky && "sticky top-0 z-10 md:top-[var(--area-sticky-top)]",
       )}
