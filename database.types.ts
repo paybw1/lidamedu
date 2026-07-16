@@ -2063,6 +2063,91 @@ export type Database = {
         }
         Relationships: []
       }
+      case_blank_candidates: {
+        Row: {
+          after_context: string | null
+          answer: string
+          before_context: string | null
+          candidate_id: string
+          case_id: string
+          created_at: string
+          cum_offset: number | null
+          false_statement: string | null
+          item_index: number | null
+          rationale: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          source_display_no: number | null
+          source_problem_id: string | null
+          source_ref_id: string | null
+          source_ref_type: string | null
+          status: string
+          target: string
+        }
+        Insert: {
+          after_context?: string | null
+          answer: string
+          before_context?: string | null
+          candidate_id?: string
+          case_id: string
+          created_at?: string
+          cum_offset?: number | null
+          false_statement?: string | null
+          item_index?: number | null
+          rationale?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_display_no?: number | null
+          source_problem_id?: string | null
+          source_ref_id?: string | null
+          source_ref_type?: string | null
+          status?: string
+          target: string
+        }
+        Update: {
+          after_context?: string | null
+          answer?: string
+          before_context?: string | null
+          candidate_id?: string
+          case_id?: string
+          created_at?: string
+          cum_offset?: number | null
+          false_statement?: string | null
+          item_index?: number | null
+          rationale?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_display_no?: number | null
+          source_problem_id?: string | null
+          source_ref_id?: string | null
+          source_ref_type?: string | null
+          status?: string
+          target?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_blank_candidates_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "case_blank_candidates_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "case_blank_candidates_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       case_blank_sets: {
         Row: {
           blanks: Json

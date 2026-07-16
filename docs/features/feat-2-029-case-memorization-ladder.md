@@ -99,12 +99,22 @@
 4. **Phase 2는 OX 연결 있는 판례(특허 우선)부터**, 착수 시 실측 커버리지 dry-run 선행.
 5. **진행 = Phase 1+2 함께 착수**(단계별 하드스톱·검증 게이트 유지).
 
-### Stage 분해 (Phase 1+2 통합 착수)
-- **S1 (Phase 1, 데이터 0)**: case-viewer 상단 토글 — ②쟁점만 보기(요지 body 숨김/개별 공개) + ③전체 복원(식별자만·전건 숨김). 기존 `summary_items`만. ✅ 착수.
-- **S2 (Phase 2 DB)**: `case_blank_sets` 마이그레이션(특허 우선) + queries.
-- **S3 (Phase 2 렌더러)**: 판례 빈칸 fill view — 요지/판시/이유 텍스트 cloze(조문 blanks 엔진 경량 포팅, 단일 텍스트 단위 앵커).
-- **S4 (Phase 2 후보 파이프라인)**: OX X 수집 → AI 함정 키워드 도출(거짓지문 vs 요지/판시) → 후보 + 근거OX. dry-run 커버리지 먼저.
-- **S5 (Phase 2 승인 큐)**: 운영자 승인 UI(ox-article-matching 패턴) → `case_blank_sets` 기록.
+### Stage 분해 (Phase 1+2 통합 착수) — 전 단계 완료 (2026-07-17)
+- **S1 ✅** (Phase 1, 데이터 0): case-viewer 상단 토글 — ②쟁점만 보기 + ③전체 복원. ★staff 게이트(수험생 미노출).
+- **S2 ✅** (Phase 2 DB): `case_blank_sets` 스키마 + `case-queries.server.ts`(listCaseBlankSetsByCase).
+- **S3 ✅** (Phase 2 렌더러): `CaseBlankFillView` — 요지/판시/평석 단일 텍스트 cloze(cumOffset 우선/문맥 앵커, IME 보호) + 뷰어 ①빈칸 토글.
+- **S4 ✅** (Phase 2 후보 파이프라인): `scripts/cases/gen-case-blank-candidates.mjs` → `case_blank_candidates`(staff RLS). verbatim 검증·재실행 안전. **특허 327건 적재.**
+- **S5 ✅** (Phase 2 승인 큐): `/admin/blanks/cases`(admin-ox-review 큐 패턴).
+
+### S5 구현 상세 (2026-07-17)
+- **화면** `app/features/blanks/screens/admin-case-blanks.tsx` — 상태 chip(대기/승인됨/거절됨+카운트), 판례별 그룹 헤더(사건번호·뷰어 링크), 행 = 대상(요지#n/판시이유/평석) + 빈칸 문맥(정답 **인라인 수정 가능**) + 근거 기출(P-{n} 링크·거짓지문·AI rationale) + 승인/거절/되돌리기. admin nav "암기 자료 > 판례 빈칸 승인".
+- **API** `/api/blanks/case-candidate-review` — staff 게이트, op=approve|reject|revert.
+- **승인 로직** `case-candidates.server.ts` — ①승인 시점 원문 verbatim **재검증**(판례 편집 대비, 수정 정답 재앵커) → ②케이스당 `display_name='기출 유래'` 세트 find-or-create → ③같은 자리(target·항·정답) blank 중복이면 근거 OX만 병합 → ④후보에 승인 시점 값 기록(되돌리기용). **되돌리기** = 같은 blank 공유하는 다른 승인 후보 없을 때만 세트에서 제거 후 pending 복귀. 전 과정 요청 클라이언트(RLS) — adminClient 불사용.
+- **E2E** `e2e/admin/case-blank-approve.spec.ts` — 승인→세트 기록→되돌리기→원복 왕복(잔류 변경 없음), 팝업 공지 모달 dismiss 처리.
+
+### 잔여
+- 운영자 후보 검수(대기 327) → 승인 쌓이면 case-viewer staff 게이트 해제(수험생 노출) 판단.
+- Phase 3(⓪ fact stem AI+검수) · Phase 4(판례 빈칸 SRS) 후속.
 
 ---
 

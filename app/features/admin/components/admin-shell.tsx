@@ -150,6 +150,8 @@ export const ADMIN_NAV: NavCluster[] = [
     Icon: PencilLineIcon,
     screens: [
       { label: "빈칸 자료 세트", to: "/admin/blanks" },
+      // feat-2-029 S5 — 판례 빈칸 후보(OX 기출 유래) 승인 큐.
+      { label: "판례 빈칸 승인", to: "/admin/blanks/cases" },
       { label: "빈칸 정답률", to: "/admin/blanks/stats" },
       // feat-2-023 — 암기 카드(SRS v2) 조문·판례 생성.
       { label: "암기 카드 생성", to: "/admin/srs-cards" },
