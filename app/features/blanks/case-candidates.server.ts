@@ -161,7 +161,175 @@ async function fetchTargetText(
 
 const CONTEXT_LEN = 30;
 
-// 승인 — 검증(원문 verbatim) → 세트 find-or-create → blank 추가(중복은 근거 병합) → 후보 approved.
+interface AppendBlankInput {
+  caseId: string;
+  target: CaseBlankTarget;
+  itemIndex: number | null;
+  answer: string;
+  // 지정 시 그 위치를 우선 검증(운영자 드래그·후보 anchor). 아니면 indexOf.
+  cumOffset?: number | null;
+  sourceOx?: string;
+}
+
+type AppendBlankResult =
+  | { ok: true; pos: number; beforeContext: string; afterContext: string }
+  | { ok: false; error: string };
+
+// 판례 '기출 유래' 세트에 blank 추가 — 원문 verbatim 검증 → find-or-create →
+// 같은 자리(정확 일치)는 근거 병합, 부분 겹침은 거부. 승인·뷰어 직접 추가 공용 진입점.
+export async function appendBlankToAutoSet(
+  client: SupabaseClient<Database>,
+  ownerId: string,
+  input: AppendBlankInput,
+): Promise<AppendBlankResult> {
+  const { caseId, target, itemIndex } = input;
+  const answer = input.answer.trim();
+  if (!answer) return { ok: false, error: "빈칸 정답이 비어 있습니다." };
+
+  const text = await fetchTargetText(client, caseId, target, itemIndex);
+  const pos =
+    input.cumOffset != null && text.startsWith(answer, input.cumOffset)
+      ? input.cumOffset
+      : text.indexOf(answer);
+  if (pos < 0)
+    return {
+      ok: false,
+      error: `"${answer}" 가 판례 원문에 없습니다(원문 편집 또는 오타).`,
+    };
+  const beforeContext = text.slice(Math.max(0, pos - CONTEXT_LEN), pos);
+  const afterContext = text.slice(
+    pos + answer.length,
+    pos + answer.length + CONTEXT_LEN,
+  );
+
+  const { data: sets, error: setErr } = await client
+    .from("case_blank_sets")
+    .select("set_id, blanks")
+    .eq("case_id", caseId)
+    .eq("display_name", AUTO_SET_DISPLAY_NAME)
+    .order("created_at")
+    .limit(1);
+  if (setErr) return { ok: false, error: setErr.message };
+  let setId = sets?.[0]?.set_id;
+  let blanks: CaseBlankItem[] = Array.isArray(sets?.[0]?.blanks)
+    ? (sets[0].blanks as unknown as CaseBlankItem[])
+    : [];
+  if (!setId) {
+    const { data: created, error: insErr } = await client
+      .from("case_blank_sets")
+      .insert({
+        case_id: caseId,
+        owner_id: ownerId,
+        version: "v1",
+        display_name: AUTO_SET_DISPLAY_NAME,
+        importance: 1,
+        blanks: [] as never,
+      })
+      .select("set_id")
+      .single();
+    if (insErr) return { ok: false, error: insErr.message };
+    setId = created.set_id;
+    blanks = [];
+  }
+
+  // 같은 자리(target·항·정답) 정확 일치 → 근거 OX 만 병합. 부분 겹침 → 거부(렌더 충돌).
+  const dup = blanks.find(
+    (b) =>
+      b.target === target &&
+      (b.itemIndex ?? null) === itemIndex &&
+      b.answer === answer,
+  );
+  if (dup) {
+    if (
+      input.sourceOx &&
+      !(dup.sourceOx ?? "").split(", ").includes(input.sourceOx)
+    ) {
+      dup.sourceOx = dup.sourceOx
+        ? `${dup.sourceOx}, ${input.sourceOx}`
+        : input.sourceOx;
+    }
+  } else {
+    const overlapping = blanks.some(
+      (b) =>
+        b.target === target &&
+        (b.itemIndex ?? null) === itemIndex &&
+        typeof b.cumOffset === "number" &&
+        pos < b.cumOffset + b.answer.length &&
+        pos + answer.length > b.cumOffset,
+    );
+    if (overlapping)
+      return { ok: false, error: "이미 있는 빈칸과 자리가 겹칩니다." };
+    blanks.push({
+      idx: blanks.reduce((m, b) => Math.max(m, b.idx), -1) + 1,
+      target,
+      ...(itemIndex != null ? { itemIndex } : {}),
+      answer,
+      beforeContext,
+      afterContext,
+      cumOffset: pos,
+      ...(input.sourceOx ? { sourceOx: input.sourceOx } : {}),
+    });
+  }
+
+  const { error: updSetErr } = await client
+    .from("case_blank_sets")
+    .update({ blanks: blanks as never, updated_at: new Date().toISOString() })
+    .eq("set_id", setId);
+  if (updSetErr) return { ok: false, error: updSetErr.message };
+  return { ok: true, pos, beforeContext, afterContext };
+}
+
+// 뷰어 편집 — 세트에서 blank 제거. 그 blank 를 만든 승인 후보는 rejected 로 동기화(큐 정합).
+export async function removeCaseBlank(
+  client: SupabaseClient<Database>,
+  setId: string,
+  blankIdx: number,
+  reviewerId: string,
+): Promise<MutationResult> {
+  const { data: set, error: setErr } = await client
+    .from("case_blank_sets")
+    .select("set_id, case_id, blanks")
+    .eq("set_id", setId)
+    .maybeSingle();
+  if (setErr) return { ok: false, error: setErr.message };
+  if (!set) return { ok: false, error: "세트를 찾을 수 없습니다." };
+  const blanks: CaseBlankItem[] = Array.isArray(set.blanks)
+    ? (set.blanks as unknown as CaseBlankItem[])
+    : [];
+  const target = blanks.find((b) => b.idx === blankIdx);
+  if (!target) return { ok: false, error: "해당 빈칸이 없습니다." };
+
+  const { error: updErr } = await client
+    .from("case_blank_sets")
+    .update({
+      blanks: blanks.filter((b) => b.idx !== blankIdx) as never,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("set_id", setId);
+  if (updErr) return { ok: false, error: updErr.message };
+
+  // 큐 동기화 — 같은 자리 승인 후보를 rejected 로 (운영자가 뷰어에서 의도적으로 제거).
+  let candQuery = client
+    .from("case_blank_candidates")
+    .update({
+      status: "rejected",
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: reviewerId,
+    })
+    .eq("case_id", set.case_id)
+    .eq("status", "approved")
+    .eq("target", target.target)
+    .eq("answer", target.answer);
+  candQuery =
+    target.target === "summary"
+      ? candQuery.eq("item_index", target.itemIndex ?? 0)
+      : candQuery.is("item_index", null);
+  const { error: candErr } = await candQuery;
+  if (candErr) return { ok: false, error: candErr.message };
+  return { ok: true };
+}
+
+// 승인 — 검증(원문 verbatim) → 세트 추가(appendBlankToAutoSet) → 후보 approved.
 export async function approveCaseCandidate(
   client: SupabaseClient<Database>,
   candidateId: string,
@@ -180,86 +348,19 @@ export async function approveCaseCandidate(
   ) as CaseBlankTarget;
   const itemIndex = target === "summary" ? (cand.item_index ?? 0) : null;
   const answer = (editedAnswer ?? cand.answer).trim();
-  if (!answer) return { ok: false, error: "빈칸 정답이 비어 있습니다." };
 
-  // 원문 verbatim 재검증 — 후보 생성 이후 판례가 편집됐을 수 있으므로 승인 시점에 다시 확인.
-  const text = await fetchTargetText(client, cand.case_id, target, itemIndex);
-  let pos =
-    answer === cand.answer &&
-    cand.cum_offset != null &&
-    text.startsWith(answer, cand.cum_offset)
-      ? cand.cum_offset
-      : text.indexOf(answer);
-  if (pos < 0)
-    return {
-      ok: false,
-      error: `"${answer}" 가 판례 원문에 없습니다(원문 편집 또는 수정 오타).`,
-    };
-  const beforeContext = text.slice(Math.max(0, pos - CONTEXT_LEN), pos);
-  const afterContext = text.slice(pos + answer.length, pos + answer.length + CONTEXT_LEN);
-  const sourceOx =
-    cand.source_display_no != null ? `P-${cand.source_display_no}` : undefined;
-
-  // 세트 find-or-create — 케이스당 '기출 유래' 세트 1개에 누적.
-  const { data: sets, error: setErr } = await client
-    .from("case_blank_sets")
-    .select("set_id, blanks")
-    .eq("case_id", cand.case_id)
-    .eq("display_name", AUTO_SET_DISPLAY_NAME)
-    .order("created_at")
-    .limit(1);
-  if (setErr) return { ok: false, error: setErr.message };
-  let setId = sets?.[0]?.set_id;
-  let blanks: CaseBlankItem[] = Array.isArray(sets?.[0]?.blanks)
-    ? (sets[0].blanks as unknown as CaseBlankItem[])
-    : [];
-  if (!setId) {
-    const { data: created, error: insErr } = await client
-      .from("case_blank_sets")
-      .insert({
-        case_id: cand.case_id,
-        owner_id: reviewerId,
-        version: "v1",
-        display_name: AUTO_SET_DISPLAY_NAME,
-        importance: 1,
-        blanks: [] as never,
-      })
-      .select("set_id")
-      .single();
-    if (insErr) return { ok: false, error: insErr.message };
-    setId = created.set_id;
-    blanks = [];
-  }
-
-  // 같은 자리(target·항·정답) blank 가 이미 있으면 새로 뚫지 않고 근거 OX 만 병합.
-  const dup = blanks.find(
-    (b) =>
-      b.target === target &&
-      (b.itemIndex ?? null) === itemIndex &&
-      b.answer === answer,
-  );
-  if (dup) {
-    if (sourceOx && !(dup.sourceOx ?? "").split(", ").includes(sourceOx)) {
-      dup.sourceOx = dup.sourceOx ? `${dup.sourceOx}, ${sourceOx}` : sourceOx;
-    }
-  } else {
-    blanks.push({
-      idx: blanks.reduce((m, b) => Math.max(m, b.idx), -1) + 1,
-      target,
-      ...(itemIndex != null ? { itemIndex } : {}),
-      answer,
-      beforeContext,
-      afterContext,
-      cumOffset: pos,
-      ...(sourceOx ? { sourceOx } : {}),
-    });
-  }
-
-  const { error: updSetErr } = await client
-    .from("case_blank_sets")
-    .update({ blanks: blanks as never, updated_at: new Date().toISOString() })
-    .eq("set_id", setId);
-  if (updSetErr) return { ok: false, error: updSetErr.message };
+  const appended = await appendBlankToAutoSet(client, reviewerId, {
+    caseId: cand.case_id,
+    target,
+    itemIndex,
+    answer,
+    cumOffset: answer === cand.answer ? cand.cum_offset : null,
+    sourceOx:
+      cand.source_display_no != null
+        ? `P-${cand.source_display_no}`
+        : undefined,
+  });
+  if (!appended.ok) return appended;
 
   // 후보에 승인 시점의 실제 값(수정 반영)을 남긴다 — 되돌리기 시 세트에서 같은 blank 를 특정하기 위함.
   const { error: updCandErr } = await client
@@ -267,9 +368,9 @@ export async function approveCaseCandidate(
     .update({
       status: "approved",
       answer,
-      before_context: beforeContext,
-      after_context: afterContext,
-      cum_offset: pos,
+      before_context: appended.beforeContext,
+      after_context: appended.afterContext,
+      cum_offset: appended.pos,
       reviewed_at: new Date().toISOString(),
       reviewed_by: reviewerId,
     })

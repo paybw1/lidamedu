@@ -86,6 +86,15 @@ export default [
         "/case-candidate-review",
         "features/blanks/api/case-candidate-review.tsx",
       ),
+      // feat-2-029 — 판례 뷰어 빈칸 인라인 편집(드래그 추가 / × 제거).
+      route(
+        "/case-admin-add-blank",
+        "features/blanks/api/case-admin-add-blank.tsx",
+      ),
+      route(
+        "/case-admin-remove-blank",
+        "features/blanks/api/case-admin-remove-blank.tsx",
+      ),
     ]),
     ...prefix("/recitation", [
       route("/attempt", "features/recitation/api/attempt.tsx"),

@@ -112,8 +112,21 @@
 - **승인 로직** `case-candidates.server.ts` — ①승인 시점 원문 verbatim **재검증**(판례 편집 대비, 수정 정답 재앵커) → ②케이스당 `display_name='기출 유래'` 세트 find-or-create → ③같은 자리(target·항·정답) blank 중복이면 근거 OX만 병합 → ④후보에 승인 시점 값 기록(되돌리기용). **되돌리기** = 같은 blank 공유하는 다른 승인 후보 없을 때만 세트에서 제거 후 pending 복귀. 전 과정 요청 클라이언트(RLS) — adminClient 불사용.
 - **E2E** `e2e/admin/case-blank-approve.spec.ts` — 승인→세트 기록→되돌리기→원복 왕복(잔류 변경 없음), 팝업 공지 모달 dismiss 처리.
 
+### 후보 일괄 검수 (2026-07-17 수행)
+- 표본 40건 수동 검토(승인 22·거절 1) → AI 재분류(direct 87/indirect 170/bad 47, rationale 미제공=자기확증 차단) → direct 일괄 승인 → 사용자 지시로 indirect 도 일괄 승인.
+- **최종: 승인 267 · 대기 12(장문 6·겹침 6) · 거절 48** — 152개 판례에 '기출 유래' 세트.
+- 가드 3종(20자 초과·verbatim·같은 자리 겹침)은 코드로 강제. 도구 `tmp/auto-review-candidates.mjs`(gitignore).
+
+### 뷰어 인라인 편집 (2026-07-17 구현)
+- 판례 뷰어 ①빈칸에 staff 전용 **풀기↔편집 미니 토글**. 편집 모드(`case-blank-edit-view.tsx`) = 요지/판시이유/평석 전 섹션 렌더, **드래그 → "새 빈칸" 플로팅 버튼**, **빈칸 chip × 제거**.
+- 오프셋 = 세그먼트 span `data-cum` + selection offset (결정적, 동일 표현 다회 등장 안전).
+- API: `/api/blanks/case-admin-add-blank` · `/api/blanks/case-admin-remove-blank` (staff 게이트).
+- 서버 공용 진입점 `appendBlankToAutoSet`(승인·직접 추가 공용 — verbatim 검증·find-or-create·정확 일치 병합·부분 겹침 거부) / `removeCaseBlank`(**제거 시 같은 자리 승인 후보 rejected 동기화** — 큐 정합).
+- 세트 없는 판례도 편집에서 첫 빈칸 추가 시 세트 자동 생성. E2E `e2e/admin/case-blank-edit.spec.ts`.
+
 ### 잔여
-- 운영자 후보 검수(대기 327) → 승인 쌓이면 case-viewer staff 게이트 해제(수험생 노출) 판단.
+- 대기 12건(장문·겹침) UI 검수 + 뷰어 훑어보며 빈칸 다듬기(운영자, 진행 중).
+- 품질 안정되면 case-viewer staff 게이트 해제(수험생 노출) 판단.
 - Phase 3(⓪ fact stem AI+검수) · Phase 4(판례 빈칸 SRS) 후속.
 
 ---

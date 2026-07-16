@@ -29,6 +29,7 @@ import {
   CaseMemorizeView,
   type CaseMemorizeMode,
 } from "~/features/cases/components/case-memorize-view";
+import { CaseBlankEditView } from "~/features/blanks/components/case-blank-edit-view";
 import { CaseBlankFillView } from "~/features/blanks/components/case-blank-fill-view";
 import { listCaseBlankSetsByCase } from "~/features/blanks/case-queries.server";
 import {
@@ -362,10 +363,11 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
   const hasMem = memItems.length > 0;
   const caseBlankSet = caseBlankSets[0] ?? null;
   const hasCaseBlanks = !!caseBlankSet && caseBlankSet.blanks.length > 0;
-  // 표시할 토글 목록(빈칸은 세트가 있을 때만).
+  // 빈칸 편집 모드(staff) — 드래그 추가/× 제거. 토글 행 자체가 staff 게이트라 항상 노출.
+  const [blankEdit, setBlankEdit] = useState(false);
   const memToggles = [
     ["off", "원문"] as const,
-    ...(hasCaseBlanks ? [["blanks", "① 빈칸"] as const] : []),
+    ["blanks", "① 빈칸"] as const,
     ["issues", "쟁점만 보기"] as const,
     ["recall", "전체 복원"] as const,
   ];
@@ -660,14 +662,55 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                   showAskAi={false}
                 />
               ) : memMode === "blanks" ? (
-                caseBlankSet ? (
-                  <CaseBlankFillView
-                    set={caseBlankSet}
-                    summaryItems={memItems}
-                    reasoningMd={kase.reasoningMd}
-                    commentMd={kase.commentBodyMd}
-                  />
-                ) : null
+                <div className="space-y-2">
+                  {/* 풀기 ↔ 편집 미니 토글 (편집 = 드래그 추가/× 제거) */}
+                  <div className="flex items-center gap-1.5">
+                    {(
+                      [
+                        [false, "풀기"],
+                        [true, "편집"],
+                      ] as const
+                    ).map(([edit, label]) => (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={() => setBlankEdit(edit)}
+                        aria-pressed={blankEdit === edit}
+                        className={cn(
+                          "h-6 rounded-full border px-2.5 text-[11px] font-semibold transition-colors",
+                          blankEdit === edit
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "border-border text-muted-foreground hover:bg-muted",
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  {blankEdit ? (
+                    <CaseBlankEditView
+                      key={`edit:${caseBlankSet?.blanks.length ?? 0}`}
+                      caseId={kase.caseId}
+                      set={caseBlankSet}
+                      summaryItems={memItems}
+                      reasoningMd={kase.reasoningMd}
+                      commentMd={kase.commentBodyMd}
+                    />
+                  ) : hasCaseBlanks ? (
+                    <CaseBlankFillView
+                      key={`fill:${caseBlankSet!.setId}:${caseBlankSet!.blanks.length}`}
+                      set={caseBlankSet!}
+                      summaryItems={memItems}
+                      reasoningMd={kase.reasoningMd}
+                      commentMd={kase.commentBodyMd}
+                    />
+                  ) : (
+                    <div className="border-border bg-card text-muted-foreground rounded-xl border py-10 text-center text-sm shadow-sm">
+                      이 판례에는 아직 빈칸이 없습니다. 위의 “편집”에서 본문을
+                      드래그해 추가하세요.
+                    </div>
+                  )}
+                </div>
               ) : (
                 <CaseMemorizeView
                   mode={memMode}

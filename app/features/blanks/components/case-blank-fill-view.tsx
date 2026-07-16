@@ -17,14 +17,15 @@ import { normalizeAnswer } from "~/features/blanks/lib/normalize";
 import type { SummaryItem } from "~/features/cases/labels";
 
 type BlankStatus = "empty" | "correct" | "wrong";
-interface Hit {
+export interface CaseBlankHit {
   blank: CaseBlankItem;
   start: number;
   end: number;
 }
+type Hit = CaseBlankHit;
 
 // 텍스트 안에서 빈칸 위치 결정 — cumOffset 우선(substring 검증), 없으면 문맥 앵커.
-function resolveCaseHits(text: string, blanks: CaseBlankItem[]): Hit[] {
+export function resolveCaseHits(text: string, blanks: CaseBlankItem[]): Hit[] {
   const raw: Hit[] = [];
   for (const b of blanks) {
     if (!b.answer) continue;
