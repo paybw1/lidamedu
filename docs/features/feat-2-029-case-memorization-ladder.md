@@ -92,11 +92,19 @@
 
 ---
 
-## 7. 열린 결정 (착수 전 확인)
-1. **판례 빈칸 범위**: 요지(summary_items)만 cloze(권장) vs 판시사항/이유 일부까지. → 권장: **요지만**(시험 적합·구현 단순).
-2. **OX 후보 원천에 `mc_case`(사례형) 포함 여부**: 사례 의존이라 단독 진위 약함 → 기본 제외, `mc_short`/`mc_box`만. (필요 시 후속.)
-3. **⓪ fact stem 생성 방식**: AI 생성+운영자 검수(권장) vs 운영자 직접 작성. 데이터 미비 판례는 ⓪ 자동 숨김.
-4. **커버리지**: OX 연결이 있는 판례부터 Phase 2 적용(특허 우선), 없는 판례는 폴백(salience/수동). Phase 2 착수 시 실측 커버리지 dry-run 선행.
+## 7. 결정 (2026-07-16 확정)
+1. **판례 빈칸 범위 = 요지 + 판시/이유 일부** (요지만 아님). cloze 대상 텍스트 단위를 `summary_items[].body` 뿐 아니라 판시사항·이유 문단까지 확장. → `case_blank_sets.blanks[].target`(summary/holding/reasoning) + 텍스트 위치로 일반화.
+2. OX 후보 원천 = **`mc_short`/`mc_box`만**(사례형 `mc_case` 제외).
+3. **⓪ fact stem = AI 생성 + 운영자 검수.** 데이터 미비 판례는 ⓪ 자동 숨김.
+4. **Phase 2는 OX 연결 있는 판례(특허 우선)부터**, 착수 시 실측 커버리지 dry-run 선행.
+5. **진행 = Phase 1+2 함께 착수**(단계별 하드스톱·검증 게이트 유지).
+
+### Stage 분해 (Phase 1+2 통합 착수)
+- **S1 (Phase 1, 데이터 0)**: case-viewer 상단 토글 — ②쟁점만 보기(요지 body 숨김/개별 공개) + ③전체 복원(식별자만·전건 숨김). 기존 `summary_items`만. ✅ 착수.
+- **S2 (Phase 2 DB)**: `case_blank_sets` 마이그레이션(특허 우선) + queries.
+- **S3 (Phase 2 렌더러)**: 판례 빈칸 fill view — 요지/판시/이유 텍스트 cloze(조문 blanks 엔진 경량 포팅, 단일 텍스트 단위 앵커).
+- **S4 (Phase 2 후보 파이프라인)**: OX X 수집 → AI 함정 키워드 도출(거짓지문 vs 요지/판시) → 후보 + 근거OX. dry-run 커버리지 먼저.
+- **S5 (Phase 2 승인 큐)**: 운영자 승인 UI(ox-article-matching 패턴) → `case_blank_sets` 기록.
 
 ---
 

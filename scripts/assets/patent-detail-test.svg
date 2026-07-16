@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="1840" viewBox="0 0 820 1840" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif">
+  <defs>
+    <linearGradient id="hero" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#16294a"/>
+      <stop offset="1" stop-color="#26406e"/>
+    </linearGradient>
+  </defs>
+  <rect width="820" height="1840" fill="#f6f4ee"/>
+
+  <!-- HERO -->
+  <rect width="820" height="520" fill="url(#hero)"/>
+  <text x="60" y="120" fill="#d8af57" font-size="15" font-weight="700" letter-spacing="4">TEST · 상세 이미지 예시</text>
+  <text x="60" y="210" fill="#ffffff" font-size="52" font-weight="800">특허법 기본강의 2026</text>
+  <text x="60" y="262" fill="#c5cfe0" font-size="22" font-weight="600">변리사 1차·2차 대비 · 조문부터 판례까지 체계적으로</text>
+  <rect x="60" y="320" width="150" height="46" rx="23" fill="#d8af57"/>
+  <text x="135" y="350" fill="#16294a" font-size="18" font-weight="800" text-anchor="middle">임병웅 강사</text>
+  <text x="60" y="440" fill="#ffffff" font-size="30" font-weight="800">수강료 300,000원</text>
+  <text x="60" y="476" fill="#9fb0cc" font-size="16">120일 수강 · PC/모바일 시청</text>
+
+  <!-- 특징 -->
+  <text x="60" y="640" fill="#16294a" font-size="30" font-weight="800">이 강의의 특징</text>
+  <rect x="60" y="656" width="60" height="4" fill="#d8af57"/>
+  <g>
+    <rect x="60" y="690" width="700" height="96" rx="14" fill="#ffffff" stroke="#e3ddd0"/>
+    <circle cx="108" cy="738" r="20" fill="#eef2f9"/><text x="108" y="745" fill="#26406e" font-size="20" font-weight="800" text-anchor="middle">1</text>
+    <text x="150" y="730" fill="#16294a" font-size="20" font-weight="800">조문 → 판례 → 문제 3단 구성</text>
+    <text x="150" y="762" fill="#6b6f79" font-size="16">개념을 문제풀이까지 한 흐름으로 연결합니다.</text>
+  </g>
+  <g>
+    <rect x="60" y="800" width="700" height="96" rx="14" fill="#ffffff" stroke="#e3ddd0"/>
+    <circle cx="108" cy="848" r="20" fill="#eef2f9"/><text x="108" y="855" fill="#26406e" font-size="20" font-weight="800" text-anchor="middle">2</text>
+    <text x="150" y="840" fill="#16294a" font-size="20" font-weight="800">최신 개정법·기출 완전 반영</text>
+    <text x="150" y="872" fill="#6b6f79" font-size="16">2026년 시험 기준 개정 조문까지 정리합니다.</text>
+  </g>
+  <g>
+    <rect x="60" y="910" width="700" height="96" rx="14" fill="#ffffff" stroke="#e3ddd0"/>
+    <circle cx="108" cy="958" r="20" fill="#eef2f9"/><text x="108" y="965" fill="#26406e" font-size="20" font-weight="800" text-anchor="middle">3</text>
+    <text x="150" y="950" fill="#16294a" font-size="20" font-weight="800">학습 플랫폼 문제풀이 연동</text>
+    <text x="150" y="982" fill="#6b6f79" font-size="16">강의 후 조문별 OX·객관식으로 바로 복습합니다.</text>
+  </g>
+
+  <!-- 커리큘럼 -->
+  <text x="60" y="1110" fill="#16294a" font-size="30" font-weight="800">커리큘럼</text>
+  <rect x="60" y="1126" width="60" height="4" fill="#d8af57"/>
+  <g fill="#16294a" font-size="18">
+    <rect x="60" y="1160" width="700" height="56" rx="10" fill="#ffffff" stroke="#e3ddd0"/>
+    <text x="84" y="1195" font-weight="800" fill="#26406e">1강</text><text x="150" y="1195">특허제도 총설 · 특허요건 개관</text>
+    <rect x="60" y="1224" width="700" height="56" rx="10" fill="#ffffff" stroke="#e3ddd0"/>
+    <text x="84" y="1259" font-weight="800" fill="#26406e">2강</text><text x="150" y="1259">신규성 · 진보성 (제29조)</text>
+    <rect x="60" y="1288" width="700" height="56" rx="10" fill="#ffffff" stroke="#e3ddd0"/>
+    <text x="84" y="1323" font-weight="800" fill="#26406e">3강</text><text x="150" y="1323">확대된 선원 · 선출원주의</text>
+    <rect x="60" y="1352" width="700" height="56" rx="10" fill="#ffffff" stroke="#e3ddd0"/>
+    <text x="84" y="1387" font-weight="800" fill="#26406e">4강</text><text x="150" y="1387">특허출원 · 심사 절차</text>
+    <rect x="60" y="1416" width="700" height="56" rx="10" fill="#ffffff" stroke="#e3ddd0"/>
+    <text x="84" y="1451" font-weight="800" fill="#26406e">5강</text><text x="150" y="1451">특허권의 효력과 침해</text>
+  </g>
+
+  <!-- CTA -->
+  <rect x="60" y="1560" width="700" height="200" rx="18" fill="url(#hero)"/>
+  <text x="410" y="1636" fill="#ffffff" font-size="28" font-weight="800" text-anchor="middle">지금 특허법 기본기를 완성하세요</text>
+  <text x="410" y="1676" fill="#c5cfe0" font-size="17" text-anchor="middle">아래 수강신청 버튼으로 바로 시작할 수 있습니다.</text>
+  <rect x="310" y="1700" width="200" height="46" rx="23" fill="#d8af57"/>
+  <text x="410" y="1730" fill="#16294a" font-size="18" font-weight="800" text-anchor="middle">수강신청 →</text>
+
+  <text x="410" y="1800" fill="#9a9ea8" font-size="14" text-anchor="middle">※ 본 이미지는 상세 페이지 기능 확인용 테스트 예시입니다.</text>
+</svg>
