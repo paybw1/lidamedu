@@ -29,6 +29,8 @@ import {
   CaseMemorizeView,
   type CaseMemorizeMode,
 } from "~/features/cases/components/case-memorize-view";
+import { CaseBlankFillView } from "~/features/blanks/components/case-blank-fill-view";
+import { listCaseBlankSetsByCase } from "~/features/blanks/case-queries.server";
 import {
   type CaseSibling,
   findActiveCaseByDeletedId,
@@ -259,6 +261,12 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   ]);
   const pdfLocationsEnabled = staffRole !== null || pdfFlag;
 
+  // feat-2-029 — 판례 빈칸 세트. staff 전용 렌더(완성 전 표는 비어 있음 → 학생 미조회).
+  const caseBlankSets =
+    staffRole !== null
+      ? await listCaseBlankSetsByCase(client, kase.caseId)
+      : [];
+
   recordStudySession(client, user.id, {
     subject: lawCode,
     target_type: "case",
@@ -305,6 +313,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     lectureResources,
     pdfLocations,
     pdfLocationsEnabled,
+    caseBlankSets,
     siblings,
     officialPdfUrl,
   };
@@ -336,11 +345,14 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
     lectureResources,
     pdfLocations,
     pdfLocationsEnabled,
+    caseBlankSets,
     siblings,
   } = loaderData;
 
-  // feat-2-029 S1 — 판례 단계별 암기 모드(원문/쟁점만 보기/전체 복원). summary_items 있을 때만 노출.
-  const [memMode, setMemMode] = useState<"off" | CaseMemorizeMode>("off");
+  // feat-2-029 — 판례 단계별 암기 모드(원문/①빈칸/쟁점만/전체 복원). staff 전용(완성 전).
+  const [memMode, setMemMode] = useState<"off" | "blanks" | CaseMemorizeMode>(
+    "off",
+  );
   const memItems =
     kase.summaryItems.length > 0
       ? kase.summaryItems
@@ -348,6 +360,15 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
         ? [{ title: kase.summaryTitle ?? "", body: kase.summaryBodyMd }]
         : [];
   const hasMem = memItems.length > 0;
+  const caseBlankSet = caseBlankSets[0] ?? null;
+  const hasCaseBlanks = !!caseBlankSet && caseBlankSet.blanks.length > 0;
+  // 표시할 토글 목록(빈칸은 세트가 있을 때만).
+  const memToggles = [
+    ["off", "원문"] as const,
+    ...(hasCaseBlanks ? [["blanks", "① 빈칸"] as const] : []),
+    ["issues", "쟁점만 보기"] as const,
+    ["recall", "전체 복원"] as const,
+  ];
 
   // soft-deleted 진입 fallback redirect 로 도착한 경우 — 한 번만 안내 배너.
   const [searchParams] = useSearchParams();
@@ -585,14 +606,8 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
               {/* 암기 모드 토글(원문/쟁점만 보기/전체 복원) + 읽기 모드.
                   ★feat-2-029 완성 전까지 staff 전용 — 수험생 미노출(빈칸①·SRS④ 미완). */}
               <div className="mb-3 flex flex-wrap items-center gap-1.5">
-                {isStaff && hasMem
-                  ? (
-                      [
-                        ["off", "원문"],
-                        ["issues", "쟁점만 보기"],
-                        ["recall", "전체 복원"],
-                      ] as const
-                    ).map(([m, label]) => (
+                {isStaff && (hasMem || hasCaseBlanks)
+                  ? memToggles.map(([m, label]) => (
                       <button
                         key={m}
                         type="button"
@@ -644,6 +659,15 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                   officialPdfUrl={loaderData.officialPdfUrl}
                   showAskAi={false}
                 />
+              ) : memMode === "blanks" ? (
+                caseBlankSet ? (
+                  <CaseBlankFillView
+                    set={caseBlankSet}
+                    summaryItems={memItems}
+                    reasoningMd={kase.reasoningMd}
+                    commentMd={kase.commentBodyMd}
+                  />
+                ) : null
               ) : (
                 <CaseMemorizeView
                   mode={memMode}
