@@ -248,6 +248,25 @@ export function BlanksRenderProvider({
     [],
   );
 
+  // ★마우스 클릭으로 다른 빈칸으로 이동할 때의 IME 잔여 이월 차단.
+  //   Enter/Tab 은 doFocusNext 가 "이전 칸 blur → flush" 로 막지만, 네이티브 클릭엔 그 경로가
+  //   없어 Windows 한글 IME 조합 버퍼의 마지막 음절이 새로 클릭한 칸으로 이월됐다.
+  //   새 칸이 포커스되기 전(mousedown 시점)에 현재 포커스된 '다른' 빈칸을 먼저 blur 해서
+  //   버퍼를 그 칸에 확정(flush)·소진시킨다. 그 뒤 네이티브 클릭이 새 칸을 깨끗이 포커스한다.
+  const flushBeforePointerFocus = useCallback((targetIdx: number) => {
+    if (typeof document === "undefined") return;
+    const activeEl = document.activeElement as HTMLElement | null;
+    if (!activeEl) return;
+    if (activeEl === inputsRef.current.get(targetIdx)) return; // 같은 칸 재클릭 — 무시.
+    // 현재 포커스가 이 provider 의 다른 빈칸 input 일 때만 flush(무관한 엘리먼트는 건드리지 않음).
+    for (const el of inputsRef.current.values()) {
+      if (el === activeEl) {
+        if (typeof activeEl.blur === "function") activeEl.blur();
+        return;
+      }
+    }
+  }, []);
+
   // 최신 states 를 ref 로 보관 — checkAnswer/doFocusNext 가 deps 없이 현재 상태를 읽는다.
   const statesRef = useRef(states);
   statesRef.current = states;
@@ -544,6 +563,7 @@ export function BlanksRenderProvider({
               onComposingChange={handleComposingChange}
               onEnter={() => advanceToNext(h.blank.idx)}
               onTab={(shift) => focusAdjacentBlank(h.blank.idx, shift ? -1 : 1)}
+              onPointerDownFlush={() => flushBeforePointerFocus(h.blank.idx)}
               onFocusInput={() => setHintNextIdx(null)}
               registerInput={registerInput}
               voiceSupported={voice.isSupported}
@@ -568,6 +588,7 @@ export function BlanksRenderProvider({
       handleComposingChange,
       advanceToNext,
       focusAdjacentBlank,
+      flushBeforePointerFocus,
       registerInput,
       voice.isSupported,
       activeVoiceIdx,
@@ -624,6 +645,7 @@ function BlankInputInline({
   onComposingChange,
   onEnter,
   onTab,
+  onPointerDownFlush,
   onFocusInput,
   registerInput,
   voiceSupported,
@@ -641,6 +663,8 @@ function BlankInputInline({
   onEnter: () => void;
   // Tab(shift=false) / Shift+Tab(shift=true) → 인접 빈칸 이동. 이동했으면 true.
   onTab: (shift: boolean) => boolean;
+  // 마우스로 이 칸을 클릭(mousedown)해 이동할 때 — 포커스 이동 전에 이전 칸을 flush.
+  onPointerDownFlush: () => void;
   onFocusInput: () => void;
   registerInput: (idx: number, el: HTMLInputElement | null) => void;
   voiceSupported: boolean;
@@ -709,6 +733,9 @@ function BlankInputInline({
             if (moved) e.preventDefault();
           }
         }}
+        // 마우스로 이 칸을 클릭할 때 — 포커스가 옮겨오기 전(mousedown)에 이전(현재 포커스)
+        //   빈칸을 blur 해 Windows 한글 IME 조합 버퍼를 그 칸에 flush. 이월 차단.
+        onMouseDown={() => onPointerDownFlush()}
         onFocus={(e) => {
           if (e.currentTarget.value !== value) {
             e.currentTarget.value = value;
