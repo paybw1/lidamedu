@@ -272,6 +272,7 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
           <MarkdownView
             text={thread.questionMd}
             trusted={false}
+            breaks
             className="text-foreground/85 mt-3.5 text-[15px] leading-[1.85]"
           />
         )}
@@ -324,6 +325,7 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
           <MarkdownView
             text={thread.answerMd}
             trusted={false}
+            breaks
             className="text-foreground/85 text-[15px] leading-[1.85]"
           />
         </article>
@@ -544,6 +546,7 @@ function FollowUpCard({ message }: { message: QnaMessage }) {
       <MarkdownView
         text={message.bodyMd}
         trusted={false}
+        breaks
         className="text-foreground/85 text-[14px] leading-[1.8]"
       />
     </article>
