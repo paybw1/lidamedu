@@ -7,6 +7,7 @@ import {
   ListTreeIcon,
   NetworkIcon,
   PanelRightIcon,
+  PencilLineIcon,
   ScrollTextIcon,
 } from "lucide-react";
 import { Link, data, redirect, useSearchParams } from "react-router";
@@ -24,6 +25,10 @@ import {
   listMemos,
 } from "~/features/annotations/queries.server";
 import { CaseBody } from "~/features/cases/components/case-body";
+import {
+  CaseMemorizeView,
+  type CaseMemorizeMode,
+} from "~/features/cases/components/case-memorize-view";
 import {
   type CaseSibling,
   findActiveCaseByDeletedId,
@@ -334,6 +339,16 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
     siblings,
   } = loaderData;
 
+  // feat-2-029 S1 — 판례 단계별 암기 모드(원문/쟁점만 보기/전체 복원). summary_items 있을 때만 노출.
+  const [memMode, setMemMode] = useState<"off" | CaseMemorizeMode>("off");
+  const memItems =
+    kase.summaryItems.length > 0
+      ? kase.summaryItems
+      : kase.summaryBodyMd
+        ? [{ title: kase.summaryTitle ?? "", body: kase.summaryBodyMd }]
+        : [];
+  const hasMem = memItems.length > 0;
+
   // soft-deleted 진입 fallback redirect 로 도착한 경우 — 한 번만 안내 배너.
   const [searchParams] = useSearchParams();
   const {
@@ -567,15 +582,44 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                 </CardHeader>
               </Card>
 
-              {/* 읽기 모드 — 좌우 패널 접고 본문 집중(데스크톱). */}
-              <div className="mb-3 hidden justify-end lg:flex">
+              {/* 암기 모드 토글(원문/쟁점만 보기/전체 복원) + 읽기 모드 */}
+              <div className="mb-3 flex flex-wrap items-center gap-1.5">
+                {hasMem
+                  ? (
+                      [
+                        ["off", "원문"],
+                        ["issues", "쟁점만 보기"],
+                        ["recall", "전체 복원"],
+                      ] as const
+                    ).map(([m, label]) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setMemMode(m)}
+                        aria-pressed={memMode === m}
+                        className={cn(
+                          "inline-flex h-7 items-center gap-1 rounded-full border px-3 text-xs font-medium transition-colors",
+                          memMode === m
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border text-muted-foreground hover:bg-muted",
+                        )}
+                      >
+                        {m === "off" ? (
+                          <ScrollTextIcon className="size-3.5" />
+                        ) : (
+                          <PencilLineIcon className="size-3.5" />
+                        )}
+                        {label}
+                      </button>
+                    ))
+                  : null}
                 <button
                   type="button"
                   onClick={toggleReadingMode}
                   aria-pressed={readingMode}
                   title="읽기 모드 — 좌우 패널 접고 본문 집중"
                   className={cn(
-                    "inline-flex h-7 items-center gap-1 rounded-full border px-3 text-xs font-medium transition-colors",
+                    "ml-auto hidden h-7 items-center gap-1 rounded-full border px-3 text-xs font-medium transition-colors lg:inline-flex",
                     readingMode
                       ? "border-primary bg-primary text-primary-foreground"
                       : "border-border text-muted-foreground hover:bg-muted",
@@ -585,19 +629,28 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                 </button>
               </div>
 
-              {/* ── 판례 본문 (헤더 + 요지/이유/PDF/비고) — feat-3-205 공용 컴포넌트 ── */}
-              <CaseBody
-                kase={kase}
-                examProblems={examProblems}
-                references={references}
-                highlights={highlights}
-                viewerIsStaff={canEditComment}
-                canEditCase={canEditCase}
-                canEditReferences={canEditReferences}
-                prevNext={prevNext}
-                officialPdfUrl={loaderData.officialPdfUrl}
-                showAskAi={false}
-              />
+              {/* ── 판례 본문(원문) / 단계별 암기 뷰 ── */}
+              {memMode === "off" ? (
+                <CaseBody
+                  kase={kase}
+                  examProblems={examProblems}
+                  references={references}
+                  highlights={highlights}
+                  viewerIsStaff={canEditComment}
+                  canEditCase={canEditCase}
+                  canEditReferences={canEditReferences}
+                  prevNext={prevNext}
+                  officialPdfUrl={loaderData.officialPdfUrl}
+                  showAskAi={false}
+                />
+              ) : (
+                <CaseMemorizeView
+                  mode={memMode}
+                  caseNumber={kase.caseNumber}
+                  caseTitle={kase.caseTitle}
+                  items={memItems}
+                />
+              )}
             </main>
 
             {/* ── 우측 학습 패널 (데스크톱 sticky, 경계 손잡이로 접기/펼치기) ── */}
