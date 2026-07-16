@@ -262,6 +262,24 @@ export async function action({ request }: Route.ActionArgs) {
       parsed.data.bodyMd,
     );
 
+    // 후속 질문(재질의)도 담당 강사에게 알림 — 최초 질문(create)과 동일 라우팅.
+    //   그동안 reply 는 알림을 걸지 않아 재질의가 강사에게 전달되지 않았다(카톡·이메일·인박스 모두).
+    //   질문 본문은 이번 후속 질문(bodyMd)으로, 링크·제목은 스레드 기준.
+    runAfterResponse(
+      notifyNewQuestion(
+        {
+          threadId: thread.threadId,
+          targetType: thread.targetType,
+          targetId: thread.targetId,
+          subject: thread.subject,
+          title: thread.title,
+          questionMd: parsed.data.bodyMd,
+          askerName: thread.askerName,
+        },
+        user.id,
+      ),
+    );
+
     const decision = await shouldAnswerInstantly(client, adminClient, user.id);
     if (decision.ok) {
       runAfterResponse(
