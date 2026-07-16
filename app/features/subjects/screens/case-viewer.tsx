@@ -582,9 +582,10 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                 </CardHeader>
               </Card>
 
-              {/* 암기 모드 토글(원문/쟁점만 보기/전체 복원) + 읽기 모드 */}
+              {/* 암기 모드 토글(원문/쟁점만 보기/전체 복원) + 읽기 모드.
+                  ★feat-2-029 완성 전까지 staff 전용 — 수험생 미노출(빈칸①·SRS④ 미완). */}
               <div className="mb-3 flex flex-wrap items-center gap-1.5">
-                {hasMem
+                {isStaff && hasMem
                   ? (
                       [
                         ["off", "원문"],
@@ -629,8 +630,8 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                 </button>
               </div>
 
-              {/* ── 판례 본문(원문) / 단계별 암기 뷰 ── */}
-              {memMode === "off" ? (
+              {/* ── 판례 본문(원문) / 단계별 암기 뷰 ── (비-staff 는 항상 원문) */}
+              {!isStaff || memMode === "off" ? (
                 <CaseBody
                   kase={kase}
                   examProblems={examProblems}
