@@ -2063,6 +2063,64 @@ export type Database = {
         }
         Relationships: []
       }
+      case_blank_sets: {
+        Row: {
+          blanks: Json
+          case_id: string
+          created_at: string
+          display_name: string | null
+          importance: number
+          owner_id: string | null
+          set_id: string
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          blanks?: Json
+          case_id: string
+          created_at?: string
+          display_name?: string | null
+          importance?: number
+          owner_id?: string | null
+          set_id?: string
+          updated_at?: string
+          version?: string
+        }
+        Update: {
+          blanks?: Json
+          case_id?: string
+          created_at?: string
+          display_name?: string | null
+          importance?: number
+          owner_id?: string | null
+          set_id?: string
+          updated_at?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_blank_sets_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "case_blank_sets_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "case_blank_sets_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       case_conclusion_attempts: {
         Row: {
           ai_analysis: Json | null
