@@ -1,5 +1,7 @@
 // 판례 식별 메타 한 줄 — CaseBody 헤더가 없는 화면(빈칸 풀기/편집 등) 상단에
-// 원문 뷰와 동일한 정보(닉네임·법원·사건번호·유형·전합·중요도·선고일·사건명)를 노출.
+// 원문 뷰와 동일한 정보(닉네임·법원·사건번호·유형·전합·중요도·선고일)를 노출.
+// ★사건명(case_title)은 표시하지 않음 — import 데이터가 요지 제목과 중복이라 CaseBody
+// 헤더와 동일하게 제외 (사용자 결정 2026-07-17).
 import { StarIcon } from "lucide-react";
 
 import { Badge } from "~/core/components/ui/badge";
@@ -13,7 +15,6 @@ export function CaseMetaLine({
   kase: {
     court: CaseCourt;
     caseNumber: string;
-    caseTitle: string;
     nickname: string | null;
     caseType: string | null;
     isEnBanc: boolean;
@@ -73,9 +74,6 @@ export function CaseMetaLine({
           선고일 {kase.decidedAt}
         </span>
       </div>
-      {kase.caseTitle ? (
-        <p className="text-muted-foreground mt-1 text-[13px]">{kase.caseTitle}</p>
-      ) : null}
     </div>
   );
 }
