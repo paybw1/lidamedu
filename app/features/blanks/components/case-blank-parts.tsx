@@ -3,6 +3,11 @@
 // 만들어 주면, 이 컴포넌트는 문단/표/이미지 구조만 책임진다. 오프셋은 전부 원시 텍스트 기준.
 import { useMemo, type ReactNode } from "react";
 
+import {
+  endsWithInlineQuote,
+  startsWithInlineQuote,
+} from "~/features/cases/lib/case-markdown";
+
 import { splitCaseTables } from "../lib/case-tables";
 
 // 마크다운 이미지 — 원시 문법은 렌더에서 감추고 <img> 로 표시(빈칸 대상 아님).
@@ -24,18 +29,32 @@ function TextWithImages({
   MD_IMG_RE.lastIndex = 0;
   let m: RegExpExecArray | null;
   while ((m = MD_IMG_RE.exec(text)) !== null) {
-    if (m.index > cursor)
-      nodes.push(renderRange(start + cursor, start + m.index, `${keyPrefix}.t${cursor}`));
+    const before = text.slice(cursor, m.index);
+    const after = text.slice(m.index + m[0].length);
+    // 따옴표 문맥(원문 Prose 의 인라인 임베드와 동일 규칙) — 글리프성 이미지를 텍스트
+    // 흐름 안 인라인으로 넣고, 문법 주변 줄바꿈/공백은 렌더에서 삼킨다(" 줄바꿈 이미지
+    // 줄바꿈 " 방지). 오프셋 체계는 원시 텍스트 기준 그대로.
+    const inline = endsWithInlineQuote(before) && startsWithInlineQuote(after);
+    const beforeEnd = inline
+      ? m.index - (before.length - before.replace(/\s+$/, "").length)
+      : m.index;
+    if (beforeEnd > cursor)
+      nodes.push(renderRange(start + cursor, start + beforeEnd, `${keyPrefix}.t${cursor}`));
     nodes.push(
       <img
         key={`${keyPrefix}.img${m.index}`}
         src={m[1]}
         alt=""
         loading="lazy"
-        className="border-border my-2 block max-h-[420px] max-w-full rounded border object-contain"
+        className={
+          inline
+            ? "mx-0.5 inline-block max-h-[1.8em] w-auto object-contain align-middle"
+            : "border-border my-2 block max-h-[420px] max-w-full rounded border object-contain"
+        }
       />,
     );
     cursor = m.index + m[0].length;
+    if (inline) cursor += after.length - after.replace(/^\s+/, "").length;
   }
   if (cursor < text.length)
     nodes.push(renderRange(start + cursor, start + text.length, `${keyPrefix}.tail`));
