@@ -1918,8 +1918,9 @@ export async function getExamProblemsForCase(
   for (const r of data ?? []) {
     const p = r.problems;
     if (!p || p.deleted_at) continue;
-    // 객관식 1차 기출문제만.
-    if (p.origin !== "past_exam" || p.exam_round !== "first") continue;
+    // 객관식 1차 기출(변형 포함) — 변형만 연결된 연도가 칩에서 빠지지 않게.
+    if (p.origin !== "past_exam" && p.origin !== "past_exam_variant") continue;
+    if (p.exam_round !== "first") continue;
     if (!MC_FORMATS.includes(p.format)) continue;
     if (seen.has(p.problem_id)) continue;
     seen.add(p.problem_id);
@@ -1928,11 +1929,15 @@ export async function getExamProblemsForCase(
       year: p.year,
       problemNumber: p.problem_number,
       lawCode: p.laws.law_code,
+      isVariant: p.origin === "past_exam_variant",
     });
   }
-  // 연도 내림차순, 같은 연도면 번호 오름차순.
+  // 연도 내림차순 · 같은 연도면 원본 기출 우선(변형 뒤) · 번호 오름차순 —
+  // mergeFirstRoundChips 의 연도당 첫 problem dedup 이 원본을 잡게 한다.
   out.sort((a, b) => {
     if ((b.year ?? 0) !== (a.year ?? 0)) return (b.year ?? 0) - (a.year ?? 0);
+    if ((a.isVariant ? 1 : 0) !== (b.isVariant ? 1 : 0))
+      return (a.isVariant ? 1 : 0) - (b.isVariant ? 1 : 0);
     return (a.problemNumber ?? 0) - (b.problemNumber ?? 0);
   });
   return out;
@@ -1955,8 +1960,9 @@ export async function getExamProblemsByCase(
   for (const r of data ?? []) {
     const p = r.problems;
     if (!p || p.deleted_at) continue;
-    // 객관식 1차 기출문제만.
-    if (p.origin !== "past_exam" || p.exam_round !== "first") continue;
+    // 객관식 1차 기출(변형 포함) — 변형만 연결된 연도가 칩에서 빠지지 않게.
+    if (p.origin !== "past_exam" && p.origin !== "past_exam_variant") continue;
+    if (p.exam_round !== "first") continue;
     if (!MC_FORMATS.includes(p.format)) continue;
     const key = `${r.case_id}::${p.problem_id}`;
     if (seen.has(key)) continue;
@@ -1967,13 +1973,16 @@ export async function getExamProblemsByCase(
       year: p.year,
       problemNumber: p.problem_number,
       lawCode: p.laws.law_code,
+      isVariant: p.origin === "past_exam_variant",
     });
     byCase.set(r.case_id, list);
   }
-  // 칩 표시 순서 — 연도 오름차순, 같은 연도면 문항번호 오름차순.
+  // 칩 표시 순서 — 연도 오름차순 · 같은 연도면 원본 기출 우선(변형 뒤) · 문항번호 오름차순.
   for (const list of byCase.values()) {
     list.sort((a, b) => {
       if ((a.year ?? 0) !== (b.year ?? 0)) return (a.year ?? 0) - (b.year ?? 0);
+      if ((a.isVariant ? 1 : 0) !== (b.isVariant ? 1 : 0))
+        return (a.isVariant ? 1 : 0) - (b.isVariant ? 1 : 0);
       return (a.problemNumber ?? 0) - (b.problemNumber ?? 0);
     });
   }

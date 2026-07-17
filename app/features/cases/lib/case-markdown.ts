@@ -128,7 +128,7 @@ const CMP_FIRST_COL_MAX = 30; // 첫 열 라벨 최대 길이(문자). "발명�
 const CMP_LABEL_MAX = 24; // 라벨 열 판정 — 열의 최대 셀 길이가 이 이하면 라벨(짧은) 열.
 function analyzeCmpTable(
   gfm: string,
-): { labelCols: Set<number>; cols: number } | null {
+): { labelCols: Set<number>; cols: number; colMax: number[] } | null {
   const lines = gfm
     .split("\n")
     .map((l) => l.trim())
@@ -159,7 +159,27 @@ function analyzeCmpTable(
     labelCols.clear();
     labelCols.add(0);
   }
-  return { labelCols, cols };
+  return { labelCols, cols, colMax };
+}
+
+// 비교표 colgroup — table-layout: fixed 에서 열 폭 지정.
+// 라벨 열 = 최장 셀 내용 폭의 1.5배(한글 1자≈1em, 상한 22em) — "구분" 열이 답답하지 않게.
+// 값 열 = 폭 미지정 → fixed 레이아웃이 남은 폭을 균등 분배(젭슨/PBP/기능적 등 동일 폭).
+function buildCmpColgroup(
+  cols: number,
+  labelCols: Set<number>,
+  colMax: number[],
+): string {
+  const colTags: string[] = [];
+  for (let i = 0; i < cols; i++) {
+    if (labelCols.has(i)) {
+      const w = Math.min(Math.round((colMax[i] ?? 4) * 1.5 * 10) / 10, 22);
+      colTags.push(`<col style="width:${w}em">`);
+    } else {
+      colTags.push("<col>");
+    }
+  }
+  return `<colgroup>${colTags.join("")}</colgroup>`;
 }
 
 // sanitize 된 표 HTML 의 각 셀(th/td)에 열 위치별 class(lbl/val)를 부여.
@@ -191,14 +211,17 @@ export function renderTableHtml(p: string): string {
     ALLOWED_TAGS: ALLOWED_TABLE_TAGS,
     ALLOWED_ATTR: ALLOWED_TABLE_ATTR,
   });
-  // 비교표면 sanitize 이후(안전한 자체 문자열)에 class 주입 — table.cmp + 셀별 lbl/val.
+  // 비교표면 sanitize 이후(안전한 자체 문자열)에 class·colgroup 주입 —
+  // table.cmp(+fixed 레이아웃) + 셀별 lbl/val + 열 폭 colgroup.
   if (!isRawHtml) {
     const info = analyzeCmpTable(p);
     if (info) {
-      const withClass = clean.replace(
-        /<table(?![^>]*\bclass=)/i,
-        '<table class="cmp"',
-      );
+      const withClass = clean
+        .replace(/<table(?![^>]*\bclass=)/i, '<table class="cmp"')
+        .replace(
+          /(<table\b[^>]*>)/i,
+          `$1${buildCmpColgroup(info.cols, info.labelCols, info.colMax)}`,
+        );
       return annotateCmpColumns(withClass, info.labelCols);
     }
   }

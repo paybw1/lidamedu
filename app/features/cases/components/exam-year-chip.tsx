@@ -14,17 +14,19 @@ export function ExamProblemChip({
   lawCode,
   problemId,
   year,
+  isVariant,
 }: {
   lawCode: string;
   problemId: string;
   year: number | null;
+  isVariant?: boolean;
 }) {
   const label = year ? `1차 ${year}` : "1차";
   return (
     <Link
       to={`/subjects/${lawCode}/problems/${problemId}`}
       viewTransition
-      title={`${label} 기출문제로 이동`}
+      title={`${label} 기출${isVariant ? "(변형)" : ""}문제로 이동`}
     >
       <Badge
         variant="outline"
@@ -64,6 +66,7 @@ export function mergeFirstRoundChips(
           lawCode={p.lawCode}
           problemId={p.problemId}
           year={p.year}
+          isVariant={p.isVariant}
         />
       ) : (
         <ExamYearChip key={`1y-${y}`} round="first" year={y} />

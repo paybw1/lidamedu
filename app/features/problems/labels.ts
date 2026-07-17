@@ -342,4 +342,7 @@ export interface ExamProblemRef {
   year: number | null;
   problemNumber: number | null;
   lawCode: string;
+  // 변형 기출(past_exam_variant) — 그 연도 기출에서 유래한 변형 문제. 연도 칩은 동일하게
+  // 표시하되(기출 연도 사실은 참) 툴팁으로 구분. 같은 연도에 원본 기출이 있으면 그쪽 우선.
+  isVariant?: boolean;
 }
