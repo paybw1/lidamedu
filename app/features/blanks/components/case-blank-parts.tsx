@@ -37,14 +37,15 @@ export function CaseBlankParts({
         const bodyRows = part.rows.filter((r, ri) => !r.separator && (headerRow ? ri !== 0 : true));
         return (
           <div key={`tb${pi}`} className="overflow-x-auto">
-            <table className="w-full border-collapse text-[14px] leading-[1.7]">
+            {/* table-fixed — 열폭 균등(1:1:…). 편집/풀기 화면은 내용량과 무관하게 예측 가능한 폭. */}
+            <table className="w-full table-fixed border-collapse text-[14px] leading-[1.7]">
               {headerRow ? (
                 <thead>
                   <tr>
                     {headerRow.cells.map((c, ci) => (
                       <th
                         key={ci}
-                        className="border-border bg-muted/50 border px-2 py-1 text-left align-top font-semibold"
+                        className="border-border bg-muted/50 break-words border px-2 py-1 text-left align-top font-semibold"
                       >
                         {renderRange(c.start, c.start + c.text.length, `h${pi}.${ci}`)}
                       </th>
@@ -58,7 +59,7 @@ export function CaseBlankParts({
                     {r.cells.map((c, ci) => (
                       <td
                         key={ci}
-                        className="border-border border px-2 py-1 align-top"
+                        className="border-border break-words border px-2 py-1 align-top"
                       >
                         {renderRange(c.start, c.start + c.text.length, `c${pi}.${ri}.${ci}`)}
                       </td>
