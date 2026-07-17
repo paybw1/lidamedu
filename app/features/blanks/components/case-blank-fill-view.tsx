@@ -314,10 +314,10 @@ export function CaseBlankFillView({
         </div>
       </div>
 
-      {/* 요지(항목별) */}
+      {/* 요지(항목별) — 빈칸 없는 항목도 본문·이미지·표 맥락 유지 위해 함께 표시. */}
       {summaryItems.map((it, i) => {
         const bl = summaryBlanksByItem(i);
-        if (bl.length === 0) return null;
+        if (!it.body) return null;
         return (
           <section key={`s${i}`} className="space-y-2">
             <h3 className="text-link font-mono text-[11px] font-bold tracking-widest uppercase">
@@ -339,8 +339,8 @@ export function CaseBlankFillView({
         );
       })}
 
-      {/* 판시이유 */}
-      {reasoningMd && reasoningBlanks.length > 0 ? (
+      {/* 판시이유 — 빈칸 없어도 표시(풀기 중 맥락·이미지 유지). */}
+      {reasoningMd ? (
         <section className="space-y-2">
           <h3 className="text-link font-mono text-[11px] font-bold tracking-widest uppercase">판시이유</h3>
           <div className="text-foreground text-[16px] leading-[1.9]">
@@ -358,8 +358,8 @@ export function CaseBlankFillView({
         </section>
       ) : null}
 
-      {/* 평석 */}
-      {commentMd && commentBlanks.length > 0 ? (
+      {/* 평석 — 빈칸 없어도 표시(풀기 중 맥락·이미지 유지). */}
+      {commentMd ? (
         <section className="space-y-2">
           <h3 className="text-link font-mono text-[11px] font-bold tracking-widest uppercase">평석</h3>
           <div className="text-foreground text-[16px] leading-[1.9]">
