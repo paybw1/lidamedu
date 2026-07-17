@@ -124,10 +124,20 @@
 - 서버 공용 진입점 `appendBlankToAutoSet`(승인·직접 추가 공용 — verbatim 검증·find-or-create·정확 일치 병합·부분 겹침 거부) / `removeCaseBlank`(**제거 시 같은 자리 승인 후보 rejected 동기화** — 큐 정합).
 - 세트 없는 판례도 편집에서 첫 빈칸 추가 시 세트 자동 생성. E2E `e2e/admin/case-blank-edit.spec.ts`.
 
+### 조문 이식 (2026-07-17 — 상표·디자인 빈칸 작업 준비)
+판례에서 검증된 두 축을 조문에 이식:
+1. **뷰어 인라인 편집** — 조문 뷰어 '내용 빈칸'에 풀기↔편집 서브 토글(`article-blank-edit-overlay.tsx`). 드래그→새 빈칸(`admin-add-blank` 재사용, ★항상 '내' 세트 — fork 정책 유지), chip 클릭→제거. staff 는 세트 없어도 진입(첫 빈칸에서 자동 생성). **빈칸 화면 prev/next**(모드 유지: 조문 `?blankMode=1&blankEdit=1`, 판례 `?mem=blanks&blankEdit=1`) — 조문 넘기며 연속 작업.
+2. **OX 유래 후보 파이프라인** — `article_blank_candidates` + `scripts/laws/gen-article-blank-candidates.mjs`(조문 원문 verbatim, 본문=current_revision body_json 플랫텐) + 승인 큐 `/admin/blanks/article-candidates`(법령 탭, 승인=승인자 '내 세트'에 `addBlankToSet` ±80 hint, 되돌리기=`approved_set_id/blank_idx` 정확 제거).
+
+**선행 백필 2종(상표·디자인 데이터 준비, 2026-07-17 운영 적용)**:
+- `scripts/laws/backfill-ox-truth.mjs` — auto-ox 규칙(극성×정답) 굳힘, null 만. 상표 1,130·디자인 1,060 선지. (특허 선례 86c09e00 원칙)
+- `scripts/laws/backfill-ox-article-citations.mjs` — 명시 인용 결정적 매핑(civil s1 범용화, 유일 1개·타법 접두 제외). 상표 469·디자인 205 연결. 나머지 미매핑은 admin-ox-review '조문 미매칭' AI 후보 큐로(후속).
+
 ### 잔여
-- 대기 12건(장문·겹침) UI 검수 + 뷰어 훑어보며 빈칸 다듬기(운영자, 진행 중).
-- 품질 안정되면 case-viewer staff 게이트 해제(수험생 노출) 판단.
-- Phase 3(⓪ fact stem AI+검수) · Phase 4(판례 빈칸 SRS) 후속.
+- 판례: 대기 12건(장문·겹침) UI 검수 + 뷰어 다듬기 → staff 게이트 해제 판단.
+- 조문: 상표·디자인 후보 검수(`/admin/blanks/article-candidates`) → 뷰어 인라인로 보완.
+- OX 조문 미매핑 잔여분 AI 매칭 후보(civil-ox-article-suggest 범용화) — 매핑 늘면 후보 재생성으로 커버리지 확대.
+- Phase 3(⓪ fact stem) · Phase 4(판례 빈칸 SRS) 후속.
 
 ---
 

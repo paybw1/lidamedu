@@ -95,6 +95,11 @@ export default [
         "/case-admin-remove-blank",
         "features/blanks/api/case-admin-remove-blank.tsx",
       ),
+      // 조문 빈칸 후보(OX 유래) 승인/거절/되돌리기.
+      route(
+        "/article-candidate-review",
+        "features/blanks/api/article-candidate-review.tsx",
+      ),
     ]),
     ...prefix("/recitation", [
       route("/attempt", "features/recitation/api/attempt.tsx"),
@@ -1398,6 +1403,11 @@ export default [
         route("/stats", "features/blanks/screens/admin-blanks-stats.tsx"),
         // feat-2-029 S5 — 판례 빈칸 후보(OX 기출 유래) 승인 큐.
         route("/cases", "features/blanks/screens/admin-case-blanks.tsx"),
+        // 조문 빈칸 후보(OX 기출 유래) 승인 큐.
+        route(
+          "/article-candidates",
+          "features/blanks/screens/admin-article-blank-candidates.tsx",
+        ),
         route("/law/:lawCode", "features/blanks/screens/admin-blanks-all.tsx"),
         route("/:setId", "features/blanks/screens/admin-blanks-edit.tsx"),
       ]),

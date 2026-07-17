@@ -534,6 +534,91 @@ export type Database = {
           },
         ]
       }
+      article_blank_candidates: {
+        Row: {
+          after_context: string | null
+          answer: string
+          approved_blank_idx: number | null
+          approved_set_id: string | null
+          article_id: string
+          before_context: string | null
+          candidate_id: string
+          created_at: string
+          false_statement: string | null
+          law_code: string
+          rationale: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          source_display_no: number | null
+          source_problem_id: string | null
+          source_ref_id: string | null
+          source_ref_type: string | null
+          status: string
+        }
+        Insert: {
+          after_context?: string | null
+          answer: string
+          approved_blank_idx?: number | null
+          approved_set_id?: string | null
+          article_id: string
+          before_context?: string | null
+          candidate_id?: string
+          created_at?: string
+          false_statement?: string | null
+          law_code: string
+          rationale?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_display_no?: number | null
+          source_problem_id?: string | null
+          source_ref_id?: string | null
+          source_ref_type?: string | null
+          status?: string
+        }
+        Update: {
+          after_context?: string | null
+          answer?: string
+          approved_blank_idx?: number | null
+          approved_set_id?: string | null
+          article_id?: string
+          before_context?: string | null
+          candidate_id?: string
+          created_at?: string
+          false_statement?: string | null
+          law_code?: string
+          rationale?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_display_no?: number | null
+          source_problem_id?: string | null
+          source_ref_id?: string | null
+          source_ref_type?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "article_blank_candidates_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["article_id"]
+          },
+          {
+            foreignKeyName: "article_blank_candidates_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "article_blank_candidates_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       article_blank_sets: {
         Row: {
           article_id: string

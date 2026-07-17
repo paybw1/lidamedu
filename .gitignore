@@ -269,3 +269,6 @@ rag-lab/dist/
 /source/동영상사이트FAQ.xls
 /source/Q&A/공부방법-잔여.xlsx
 /docs/도서등록화면.pptx
+
+.vercel
+.env*
