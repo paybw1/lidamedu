@@ -41,6 +41,7 @@ import {
   listHighlights,
   listMemos,
 } from "~/features/annotations/queries.server";
+import { ArticleBlankEditOverlay } from "~/features/blanks/components/article-blank-edit-overlay";
 import { BlankFillView } from "~/features/blanks/components/blank-fill-view";
 import { BlankOwnerSelector } from "~/features/blanks/components/blank-owner-selector";
 import { PeriodAmbiguousPanel } from "~/features/blanks/components/period-ambiguous-panel";
@@ -275,6 +276,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   //   진입, (b) 같은 과목 due 세트 시퀀스의 "다음 세트" 내비를 매 요청 재계산(세션 없이).
   //   푼 세트는 due 에서 빠지므로 자연히 남은 세트만 순회 → 다 풀면 nextHref=null(끝).
   const blankReviewParam = reqUrl.searchParams.get("blankReview") === "1";
+  // ?blankMode=1 — 내용 빈칸 모드 유지 진입(prev/next 이동용). ?blankEdit=1 — 편집 서브모드까지 유지(staff).
+  const blankModeParam = reqUrl.searchParams.get("blankMode") === "1";
+  const blankEditParam = reqUrl.searchParams.get("blankEdit") === "1";
   let blankReviewNav: { remaining: number; nextHref: string | null } | null =
     null;
   if (blankReviewParam) {
@@ -320,7 +324,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       subject: subjectBlankParam,
       period: periodBlankParam,
       recitation: recitationParam,
-      content: blankReviewParam,
+      content: blankReviewParam || blankModeParam,
+      contentEdit: blankEditParam,
     },
     blankReviewNav,
     articles,
@@ -463,7 +468,15 @@ function ArticleViewerInner({
     initialBlankMode?.recitation ?? false,
   );
   const [editMode, setEditMode] = useState(false);
+  // 빈칸 인라인 편집(staff) — 내용 빈칸 모드 안의 풀기↔편집 서브 토글. 항상 '내' 세트 대상.
+  const [blankEditMode, setBlankEditMode] = useState(
+    initialBlankMode?.contentEdit ?? false,
+  );
   const blankAvailable = blankSet !== null && blankSet.blanks.length > 0;
+  const myBlankSet = useMemo(
+    () => blankSets.find((s) => s.ownerId === currentUserId) ?? null,
+    [blankSets, currentUserId],
+  );
   const subjectBlanks = useMemo(
     () => (body ? computeSubjectBlanks(body) : []),
     [body],
@@ -939,7 +952,8 @@ function ArticleViewerInner({
                     >
                       본문
                     </ModeButton>
-                    {blankAvailable ? (
+                    {blankAvailable || canEdit ? (
+                      // staff 는 세트가 없어도 진입 가능(인라인 편집으로 첫 빈칸 생성).
                       <ModeButton
                         active={activeMode === "cloze"}
                         onClick={() => {
@@ -957,7 +971,7 @@ function ArticleViewerInner({
                         <PencilLineIcon className="size-3" aria-hidden="true" />
                         내용 빈칸
                         <span className="text-[11px] tabular-nums opacity-70 sm:text-[10px]">
-                          {blankSet!.blanks.length}
+                          {blankSet?.blanks.length ?? 0}
                         </span>
                       </ModeButton>
                     ) : null}
@@ -1214,8 +1228,64 @@ function ArticleViewerInner({
                       titleMap={titleMap}
                       onCancel={() => setEditMode(false)}
                     />
-                  ) : blankMode && blankSet && body ? (
+                  ) : blankMode && body && (blankSet || canEdit) ? (
                     <div className="space-y-4">
+                      {/* 빈칸 모드 헤더 — staff 풀기↔편집 서브 토글 + 모드 유지 prev/next */}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {canEdit ? (
+                          <>
+                            {(
+                              [
+                                [false, "풀기"],
+                                [true, "편집"],
+                              ] as const
+                            ).map(([edit, label]) => (
+                              <button
+                                key={label}
+                                type="button"
+                                onClick={() => setBlankEditMode(edit)}
+                                aria-pressed={blankEditMode === edit}
+                                className={cn(
+                                  "h-6 rounded-full border px-2.5 text-[11px] font-semibold transition-colors",
+                                  blankEditMode === edit
+                                    ? "bg-primary text-primary-foreground border-primary"
+                                    : "border-border text-muted-foreground hover:bg-muted",
+                                )}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                            {blankEditMode &&
+                            blankSet &&
+                            blankSet.ownerId !== currentUserId ? (
+                              <span className="text-muted-foreground text-[11px]">
+                                현재 보던 자료는{" "}
+                                {blankSet.ownerName ?? "다른 강사"}의 것 —
+                                편집은 내 자료에 반영됩니다
+                              </span>
+                            ) : null}
+                          </>
+                        ) : null}
+                        {/* prev/next — 빈칸 모드(+편집 서브모드) 유지한 채 인접 조문 이동 */}
+                        <div className="ml-auto flex items-center gap-1.5">
+                          <PrevNextButton
+                            direction="prev"
+                            target={prev}
+                            subjectSlug={subject.slug}
+                            search={`?blankMode=1${
+                              canEdit && blankEditMode ? "&blankEdit=1" : ""
+                            }`}
+                          />
+                          <PrevNextButton
+                            direction="next"
+                            target={next}
+                            subjectSlug={subject.slug}
+                            search={`?blankMode=1${
+                              canEdit && blankEditMode ? "&blankEdit=1" : ""
+                            }`}
+                          />
+                        </div>
+                      </div>
                       {/* feat-2-026 Stage 2b — 빈칸 복습 러너 진행 strip(세트 간 이동) */}
                       {blankReviewNav ? (
                         <div className="border-primary/20 bg-primary/5 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border px-4 py-2.5">
@@ -1259,14 +1329,36 @@ function ArticleViewerInner({
                           </div>
                         </div>
                       ) : null}
-                      <BlankFillView
-                        key={`content:${blankSet.setId}`}
-                        setId={blankSet.setId}
-                        body={body}
-                        blanks={blankSet.blanks}
-                        titleMap={titleMap}
-                        lawCode={subject.slug}
-                      />
+                      {canEdit && blankEditMode ? (
+                        <ArticleBlankEditOverlay
+                          articleId={article.articleId}
+                          mySet={
+                            myBlankSet
+                              ? {
+                                  setId: myBlankSet.setId,
+                                  blanks: myBlankSet.blanks,
+                                }
+                              : null
+                          }
+                          body={body}
+                          titleMap={titleMap}
+                          lawCode={subject.slug}
+                        />
+                      ) : blankSet ? (
+                        <BlankFillView
+                          key={`content:${blankSet.setId}`}
+                          setId={blankSet.setId}
+                          body={body}
+                          blanks={blankSet.blanks}
+                          titleMap={titleMap}
+                          lawCode={subject.slug}
+                        />
+                      ) : (
+                        <div className="border-border bg-card text-muted-foreground rounded-xl border py-10 text-center text-sm">
+                          이 조문에는 아직 빈칸 자료가 없습니다. 위의 “편집”에서
+                          본문을 드래그해 추가하세요.
+                        </div>
+                      )}
                     </div>
                   ) : subjectBlankMode && body ? (
                     <BlankFillView
@@ -1510,6 +1602,7 @@ function PrevNextButton({
   direction,
   target,
   subjectSlug,
+  search = "",
 }: {
   direction: "prev" | "next";
   target: {
@@ -1518,6 +1611,8 @@ function PrevNextButton({
     displayLabel: string;
   } | null;
   subjectSlug: string;
+  // 모드 유지 이동용 쿼리(예: "?blankMode=1") — 빈칸 화면 prev/next 가 모드를 잃지 않게.
+  search?: string;
 }) {
   const Icon = direction === "prev" ? ChevronLeftIcon : ChevronRightIcon;
   const ariaLabel = direction === "prev" ? "이전 조문" : "다음 조문";
@@ -1539,7 +1634,7 @@ function PrevNextButton({
 
   return (
     <Link
-      to={`/subjects/${subjectSlug}/articles/${target.articleNumber}`}
+      to={`/subjects/${subjectSlug}/articles/${target.articleNumber}${search}`}
       viewTransition
       prefetch="intent"
       aria-label={`${ariaLabel}: ${target.displayLabel}`}

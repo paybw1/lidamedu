@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 import type { Route } from "./+types/case-viewer";
 
 import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
   ListTreeIcon,
   NetworkIcon,
   PanelRightIcon,
@@ -350,9 +352,12 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
     siblings,
   } = loaderData;
 
+  const [searchParams] = useSearchParams();
+
   // feat-2-029 — 판례 단계별 암기 모드(원문/①빈칸/쟁점만/전체 복원). staff 전용(완성 전).
+  // ?mem=blanks(&blankEdit=1) — prev/next 로 판례를 옮겨도 빈칸(편집) 모드 유지(staff 만).
   const [memMode, setMemMode] = useState<"off" | "blanks" | CaseMemorizeMode>(
-    "off",
+    () => (isStaff && searchParams.get("mem") === "blanks" ? "blanks" : "off"),
   );
   const memItems =
     kase.summaryItems.length > 0
@@ -364,16 +369,15 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
   const caseBlankSet = caseBlankSets[0] ?? null;
   const hasCaseBlanks = !!caseBlankSet && caseBlankSet.blanks.length > 0;
   // 빈칸 편집 모드(staff) — 드래그 추가/× 제거. 토글 행 자체가 staff 게이트라 항상 노출.
-  const [blankEdit, setBlankEdit] = useState(false);
+  const [blankEdit, setBlankEdit] = useState(
+    () => isStaff && searchParams.get("blankEdit") === "1",
+  );
   const memToggles = [
     ["off", "원문"] as const,
     ["blanks", "① 빈칸"] as const,
     ["issues", "쟁점만 보기"] as const,
     ["recall", "전체 복원"] as const,
   ];
-
-  // soft-deleted 진입 fallback redirect 로 도착한 경우 — 한 번만 안내 배너.
-  const [searchParams] = useSearchParams();
   const {
     collapsed: leftCollapsed,
     toggle: toggleLeft,
@@ -663,8 +667,8 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                 />
               ) : memMode === "blanks" ? (
                 <div className="space-y-2">
-                  {/* 풀기 ↔ 편집 미니 토글 (편집 = 드래그 추가/× 제거) */}
-                  <div className="flex items-center gap-1.5">
+                  {/* 풀기 ↔ 편집 미니 토글 (편집 = 드래그 추가/× 제거) + 모드 유지 prev/next */}
+                  <div className="flex flex-wrap items-center gap-1.5">
                     {(
                       [
                         [false, "풀기"],
@@ -686,6 +690,43 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                         {label}
                       </button>
                     ))}
+                    {prevNext ? (
+                      <div className="ml-auto flex items-center gap-1.5">
+                        {(
+                          [
+                            ["prev", prevNext.prevHref, prevNext.prevLabel] as const,
+                            ["next", prevNext.nextHref, prevNext.nextLabel] as const,
+                          ]
+                        ).map(([dir, href, label]) =>
+                          href ? (
+                            <Link
+                              key={dir}
+                              to={`${href}${href.includes("?") ? "&" : "?"}mem=blanks${blankEdit ? "&blankEdit=1" : ""}`}
+                              viewTransition
+                              className="border-border text-foreground hover:bg-muted inline-flex h-6 items-center gap-1 rounded-full border px-2.5 text-[11px] font-medium transition-colors"
+                            >
+                              {dir === "prev" ? (
+                                <ChevronLeftIcon className="size-3" />
+                              ) : null}
+                              {dir === "prev" ? "이전" : "다음"}
+                              <span className="text-muted-foreground hidden sm:inline">
+                                {label}
+                              </span>
+                              {dir === "next" ? (
+                                <ChevronRightIcon className="size-3" />
+                              ) : null}
+                            </Link>
+                          ) : (
+                            <span
+                              key={dir}
+                              className="border-border text-muted-foreground inline-flex h-6 cursor-not-allowed items-center rounded-full border px-2.5 text-[11px] opacity-40"
+                            >
+                              {dir === "prev" ? "처음" : "마지막"}
+                            </span>
+                          ),
+                        )}
+                      </div>
+                    ) : null}
                   </div>
                   {blankEdit ? (
                     <CaseBlankEditView
