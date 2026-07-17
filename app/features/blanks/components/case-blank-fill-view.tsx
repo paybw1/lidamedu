@@ -9,6 +9,7 @@ import { EyeIcon, RotateCcwIcon } from "lucide-react";
 import { Button } from "~/core/components/ui/button";
 import { cn } from "~/core/lib/utils";
 import { findBlankHits } from "~/features/blanks/components/blanks-context";
+import { CaseBlankParts } from "~/features/blanks/components/case-blank-parts";
 import type {
   CaseBlankItem,
   CaseBlankSet,
@@ -150,35 +151,38 @@ function CaseBlankText({
   register: (idx: number, el: HTMLInputElement | null) => void;
 }) {
   const hits = resolveCaseHits(text, blanks);
-  if (hits.length === 0) {
-    // 매칭 실패(개정 등) — 원문 그대로.
-    return <p className="whitespace-pre-wrap">{text}</p>;
-  }
-  const out: React.ReactNode[] = [];
-  let cursor = 0;
-  hits.forEach((h, i) => {
-    if (h.start > cursor) out.push(<span key={`t${i}`}>{text.slice(cursor, h.start)}</span>);
-    const st = states[h.blank.idx] ?? { input: "", status: "empty" as const };
-    const showRevealed = reveal && st.status !== "correct";
-    const widthCh = Math.max(5, Math.min(40, h.blank.answer.length * 2 + 2));
-    out.push(
-      <CaseBlankInput
-        key={`b${h.blank.idx}`}
-        idx={h.blank.idx}
-        value={showRevealed ? h.blank.answer : st.input}
-        status={showRevealed ? "correct" : st.status}
-        answer={h.blank.answer}
-        widthCh={widthCh}
-        onChange={(v, composing) => onChange(h.blank.idx, v, composing)}
-        onEnter={() => onEnter(h.blank.idx)}
-        onPointerFlush={() => onPointerFlush(h.blank.idx)}
-        register={register}
-      />,
-    );
-    cursor = h.end;
-  });
-  if (cursor < text.length) out.push(<span key="tail">{text.slice(cursor)}</span>);
-  return <p className="whitespace-pre-wrap leading-[1.9]">{out}</p>;
+  // 원시 구간 [from, to) → 텍스트 + 빈칸 input. 표 셀/문단 공용 (CaseBlankParts).
+  const renderRange = (from: number, to: number, key: string) => {
+    const out: React.ReactNode[] = [];
+    let cursor = from;
+    hits.forEach((h) => {
+      if (h.start < from || h.end > to) return;
+      if (h.start > cursor)
+        out.push(<span key={`${key}.t${cursor}`}>{text.slice(cursor, h.start)}</span>);
+      const st = states[h.blank.idx] ?? { input: "", status: "empty" as const };
+      const showRevealed = reveal && st.status !== "correct";
+      const widthCh = Math.max(5, Math.min(40, h.blank.answer.length * 2 + 2));
+      out.push(
+        <CaseBlankInput
+          key={`${key}.b${h.blank.idx}`}
+          idx={h.blank.idx}
+          value={showRevealed ? h.blank.answer : st.input}
+          status={showRevealed ? "correct" : st.status}
+          answer={h.blank.answer}
+          widthCh={widthCh}
+          onChange={(v, composing) => onChange(h.blank.idx, v, composing)}
+          onEnter={() => onEnter(h.blank.idx)}
+          onPointerFlush={() => onPointerFlush(h.blank.idx)}
+          register={register}
+        />,
+      );
+      cursor = h.end;
+    });
+    if (cursor < to)
+      out.push(<span key={`${key}.tail${cursor}`}>{text.slice(cursor, to)}</span>);
+    return out;
+  };
+  return <CaseBlankParts text={text} renderRange={renderRange} />;
 }
 
 export function CaseBlankFillView({

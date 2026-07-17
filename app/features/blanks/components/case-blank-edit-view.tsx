@@ -11,6 +11,7 @@ import type {
   CaseBlankSet,
   CaseBlankTarget,
 } from "~/features/blanks/case-queries.server";
+import { CaseBlankParts } from "~/features/blanks/components/case-blank-parts";
 import { resolveCaseHits } from "~/features/blanks/components/case-blank-fill-view";
 import type { SummaryItem } from "~/features/cases/labels";
 
@@ -96,6 +97,11 @@ function EditSection({
       onSelect(null);
       return;
     }
+    // 표 셀 경계를 넘는 선택(파이프·개행 포함) — 원문 렌더에 없는 문자라 빈칸 불가.
+    if (/[|\n]/.test(answer)) {
+      onSelect(null);
+      return;
+    }
     // 기존 빈칸과 겹침이면 무시(서버도 재검증).
     if (hits.some((h) => start < h.end && end > h.start)) {
       onSelect(null);
@@ -112,55 +118,59 @@ function EditSection({
     });
   }, [text, target, itemIndex, hits, onSelect]);
 
-  // 세그먼트 + 빈칸 chip 렌더.
-  const out: React.ReactNode[] = [];
-  let cursor = 0;
+  // 원시 구간 [from, to) → 세그먼트 span(data-cum) + 빈칸 chip. 표 셀/문단 공용.
   const secKey = `${target}:${itemIndex ?? 0}`;
-  hits.forEach((h, i) => {
-    if (h.start > cursor)
+  const renderRange = (from: number, to: number, key: string) => {
+    const out: React.ReactNode[] = [];
+    let cursor = from;
+    hits.forEach((h) => {
+      if (h.start < from || h.end > to) return; // 이 구간 밖(또는 걸침 — 렌더 불가)
+      if (h.start > cursor)
+        out.push(
+          <span key={`${key}.t${cursor}`} data-sec={secKey} data-cum={cursor}>
+            {text.slice(cursor, h.start)}
+          </span>,
+        );
       out.push(
-        <span key={`t${i}`} data-sec={secKey} data-cum={cursor}>
-          {text.slice(cursor, h.start)}
+        <span
+          key={`${key}.b${h.blank.idx}`}
+          className="border-primary/50 bg-primary/10 text-foreground mx-0.5 inline-flex items-center gap-0.5 rounded border-b-2 px-1 font-medium"
+          title={h.blank.sourceOx ? `근거 ${h.blank.sourceOx}` : "직접 추가"}
+        >
+          {h.blank.answer}
+          <button
+            type="button"
+            disabled={removing}
+            onClick={() => onRemove(h.blank.idx)}
+            aria-label={`빈칸 "${h.blank.answer}" 제거`}
+            className="text-muted-foreground hover:text-destructive disabled:opacity-40"
+          >
+            <XIcon className="size-3" />
+          </button>
         </span>,
       );
-    out.push(
-      <span
-        key={`b${h.blank.idx}`}
-        className="border-primary/50 bg-primary/10 text-foreground mx-0.5 inline-flex items-center gap-0.5 rounded border-b-2 px-1 font-medium"
-        title={h.blank.sourceOx ? `근거 ${h.blank.sourceOx}` : "직접 추가"}
-      >
-        {h.blank.answer}
-        <button
-          type="button"
-          disabled={removing}
-          onClick={() => onRemove(h.blank.idx)}
-          aria-label={`빈칸 "${h.blank.answer}" 제거`}
-          className="text-muted-foreground hover:text-destructive disabled:opacity-40"
-        >
-          <XIcon className="size-3" />
-        </button>
-      </span>,
-    );
-    cursor = h.end;
-  });
-  if (cursor < text.length)
-    out.push(
-      <span key="tail" data-sec={secKey} data-cum={cursor}>
-        {text.slice(cursor)}
-      </span>,
-    );
+      cursor = h.end;
+    });
+    if (cursor < to)
+      out.push(
+        <span key={`${key}.tail${cursor}`} data-sec={secKey} data-cum={cursor}>
+          {text.slice(cursor, to)}
+        </span>,
+      );
+    return out;
+  };
 
   return (
     <section className="space-y-2">
       <h3 className="text-link font-mono text-[11px] font-bold tracking-widest uppercase">
         {label}
       </h3>
-      <p
-        className="text-foreground text-[16px] leading-[1.9] whitespace-pre-wrap"
+      <div
+        className="text-foreground text-[16px] leading-[1.9]"
         onMouseUp={handleMouseUp}
       >
-        {out}
-      </p>
+        <CaseBlankParts text={text} renderRange={renderRange} />
+      </div>
     </section>
   );
 }
