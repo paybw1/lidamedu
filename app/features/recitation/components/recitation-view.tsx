@@ -69,7 +69,9 @@ export function RecitationView({ articleId, articleLabel, body }: Props) {
           block.kind === "item" ||
           block.kind === "sub"
         ) {
-          const expected = block.inline.map(inlineCumulativeText).join("");
+          const expected = cleanupExpected(
+            block.inline.map(inlineCumulativeText).join(""),
+          );
           out.push({
             blockIndex: myBi,
             label: block.label,
@@ -79,8 +81,11 @@ export function RecitationView({ articleId, articleLabel, body }: Props) {
           });
           visit(block.children, depth + 1);
         } else if (block.kind === "para") {
-          const expected = block.inline.map(inlineCumulativeText).join("");
-          if (expected.trim().length > 0) {
+          const expected = cleanupExpected(
+            block.inline.map(inlineCumulativeText).join(""),
+          );
+          // 관련조문 ref 만 나열된 para (예: 제29조 ③~④ 사이) 는 조문 원문이 아니므로 제외.
+          if (hasSubstance(expected)) {
             out.push({
               blockIndex: myBi,
               label: "본문",
@@ -390,18 +395,20 @@ function SimilarityChip({
   );
 }
 
-// inline 토큰 → 학생이 외워야 할 본문 텍스트. amendment_note (메타) 와 footnote 는 제외.
+// inline 토큰 → 학생이 외워야 할 본문 텍스트.
+// 제외: amendment_note·footnote(메타), ref_article/ref_law(관련조문 표기 — 조문 원문이 아님),
+//       subtitle·annotation(강사 강조 라벨 — 예: "(예외)". 조문 원문이 아니라 입력 대상에서 뺀다).
 function inlineCumulativeText(t: Inline): string {
-  if (t.type === "amendment_note") return "";
-  if (t.type === "footnote") return "";
-  if (t.type === "ref_article" || t.type === "ref_law") return t.raw;
-  if (
-    t.type === "text" ||
-    t.type === "underline" ||
-    t.type === "subtitle" ||
-    t.type === "annotation"
-  ) {
-    return t.text;
-  }
+  if (t.type === "text" || t.type === "underline") return t.text;
   return "";
+}
+
+// ref/라벨 토큰 제거 후 남는 구분자 꼬리(", , ")·앞뒤 공백 정리.
+function cleanupExpected(s: string): string {
+  return s.replace(/[\s,、·]+$/g, "").replace(/^\s+/, "");
+}
+
+// 실제 외울 내용이 있는지 — 구분자·구두점만 남은 block(관련조문 나열 para 등)은 암기 항목에서 제외.
+function hasSubstance(s: string): boolean {
+  return /[가-힣A-Za-z0-9]/.test(s);
 }

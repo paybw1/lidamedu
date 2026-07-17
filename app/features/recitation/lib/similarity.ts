@@ -2,14 +2,17 @@
 // 정답: 조문 본문의 cumulative inline text. 운영자가 underline/subtitle/annotation 등으로 분할해도
 // 학생 관점에선 통합된 한 흐름으로 평가.
 
+import { stripHanjaParen } from "~/features/blanks/lib/normalize";
+
 // 비교 전 normalization — 한글 본문 비교에 의미없는 차이 제거.
 //   - 모든 공백 (스페이스, tab, 개행) 제거 → 학생이 띄어쓰기 다르게 해도 무방
 //   - 마침표/쉼표/괄호/따옴표 등 구두점 제거
-//   - 한자/영문은 보존 (조문 안에 등장하면 정답의 일부)
+//   - 괄호 한자 병기 "공지(公知)" 는 통째로 제거 — 한자를 입력하지 않아도 감점 없음
+//     (그 외 본문에 직접 등장하는 한자/영문은 보존 — 정답의 일부)
 //   - amendment_note 형식 (<개정 ...>, [전문개정 ...]) 은 비교에서 제외해야 함 — 학생이 외울 필요 없음.
 //     → cumulativeText 만들 때 amendment_note 를 제외한 변형이 따로 필요.
 export function normalizeForComparison(s: string): string {
-  return s
+  return stripHanjaParen(s)
     .replace(/<[^>]*>/g, "") // <개정 2016.3.29.> 같은 메타
     .replace(/\[[^\]]*개정[^\]]*\]/g, "") // [전문개정 ...]
     .replace(/\[[^\]]*신설[^\]]*\]/g, "")
