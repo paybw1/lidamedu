@@ -27,6 +27,7 @@ import {
   listMemos,
 } from "~/features/annotations/queries.server";
 import { CaseBody } from "~/features/cases/components/case-body";
+import { CaseMetaLine } from "~/features/cases/components/case-meta-line";
 import {
   CaseMemorizeView,
   type CaseMemorizeMode,
@@ -667,6 +668,8 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                 />
               ) : memMode === "blanks" ? (
                 <div className="space-y-2">
+                  {/* 판례 식별 메타 — 원문 헤더와 동일 정보(사건번호·사건명 등) */}
+                  <CaseMetaLine kase={kase} />
                   {/* 풀기 ↔ 편집 미니 토글 (편집 = 드래그 추가/× 제거) + 모드 유지 prev/next */}
                   <div className="flex flex-wrap items-center gap-1.5">
                     {(
