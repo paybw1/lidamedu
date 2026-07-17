@@ -232,12 +232,16 @@ export async function appendBlankToAutoSet(
     blanks = [];
   }
 
-  // 같은 자리(target·항·정답) 정확 일치 → 근거 OX 만 병합. 부분 겹침 → 거부(렌더 충돌).
+  // 같은 자리(target·항·정답·★위치) 정확 일치 → 근거 OX 만 병합. 부분 겹침 → 거부(렌더 충돌).
+  // ★같은 정답이라도 위치가 다르면 별개 빈칸(같은 단어를 본문 여러 곳에 뚫는 정상 편집).
+  const posOf = (b: CaseBlankItem) =>
+    typeof b.cumOffset === "number" ? b.cumOffset : text.indexOf(b.answer);
   const dup = blanks.find(
     (b) =>
       b.target === target &&
       (b.itemIndex ?? null) === itemIndex &&
-      b.answer === answer,
+      b.answer === answer &&
+      posOf(b) === pos,
   );
   if (dup) {
     if (
@@ -439,18 +443,24 @@ export async function revertCaseCandidate(
       if (setErr) return { ok: false, error: setErr.message };
       const set = sets?.[0];
       if (set) {
-        const blanks = (
-          Array.isArray(set.blanks)
-            ? (set.blanks as unknown as CaseBlankItem[])
-            : []
-        ).filter(
+        const all = Array.isArray(set.blanks)
+          ? (set.blanks as unknown as CaseBlankItem[])
+          : [];
+        // ★같은 정답이 여러 위치에 있을 수 있으므로 후보의 cum_offset 과 일치하는 1개만 제거.
+        const matches = all.filter(
           (b) =>
-            !(
-              b.target === target &&
-              (b.itemIndex ?? null) === itemIndex &&
-              b.answer === cand.answer
-            ),
+            b.target === target &&
+            (b.itemIndex ?? null) === itemIndex &&
+            b.answer === cand.answer,
         );
+        const victim =
+          matches.find(
+            (b) =>
+              cand.cum_offset != null && b.cumOffset === cand.cum_offset,
+          ) ?? matches[0];
+        const blanks = victim
+          ? all.filter((b) => b.idx !== victim.idx)
+          : all;
         const { error: updErr } = await client
           .from("case_blank_sets")
           .update({
