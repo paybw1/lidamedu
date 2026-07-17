@@ -1,9 +1,46 @@
-// 판례 빈칸 편집/풀기 공용 — 본문을 표(파이프 마크다운) 인식해 렌더.
+// 판례 빈칸 편집/풀기 공용 — 본문을 표(파이프 마크다운)·이미지 인식해 렌더.
 // renderRange(from, to, key) 가 그 원시 구간의 노드(텍스트 세그먼트 + 빈칸 chip/input)를
-// 만들어 주면, 이 컴포넌트는 문단/표 구조만 책임진다. 오프셋은 전부 원시 텍스트 기준.
+// 만들어 주면, 이 컴포넌트는 문단/표/이미지 구조만 책임진다. 오프셋은 전부 원시 텍스트 기준.
 import { useMemo, type ReactNode } from "react";
 
 import { splitCaseTables } from "../lib/case-tables";
+
+// 마크다운 이미지 — 원시 문법은 렌더에서 감추고 <img> 로 표시(빈칸 대상 아님).
+const MD_IMG_RE = /!\[[^\]]*\]\((https?:\/\/[^)\s]+|\/[^)\s]+)(?:\s+"[^"]*")?\)/g;
+
+function TextWithImages({
+  text,
+  start,
+  keyPrefix,
+  renderRange,
+}: {
+  text: string;
+  start: number;
+  keyPrefix: string;
+  renderRange: (from: number, to: number, key: string) => ReactNode;
+}) {
+  const nodes: ReactNode[] = [];
+  let cursor = 0;
+  MD_IMG_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = MD_IMG_RE.exec(text)) !== null) {
+    if (m.index > cursor)
+      nodes.push(renderRange(start + cursor, start + m.index, `${keyPrefix}.t${cursor}`));
+    nodes.push(
+      <img
+        key={`${keyPrefix}.img${m.index}`}
+        src={m[1]}
+        alt=""
+        loading="lazy"
+        className="border-border my-2 block max-h-[420px] max-w-full rounded border object-contain"
+      />,
+    );
+    cursor = m.index + m[0].length;
+  }
+  if (cursor < text.length)
+    nodes.push(renderRange(start + cursor, start + text.length, `${keyPrefix}.tail`));
+  return <p className="whitespace-pre-wrap leading-[1.9]">{nodes}</p>;
+}
 
 export function CaseBlankParts({
   text,
@@ -16,9 +53,12 @@ export function CaseBlankParts({
 
   if (parts.length === 1 && parts[0].type === "text") {
     return (
-      <p className="whitespace-pre-wrap leading-[1.9]">
-        {renderRange(0, text.length, "all")}
-      </p>
+      <TextWithImages
+        text={text}
+        start={0}
+        keyPrefix="all"
+        renderRange={renderRange}
+      />
     );
   }
 
@@ -27,9 +67,13 @@ export function CaseBlankParts({
       {parts.map((part, pi) => {
         if (part.type === "text") {
           return (
-            <p key={`p${pi}`} className="whitespace-pre-wrap leading-[1.9]">
-              {renderRange(part.start, part.start + part.text.length, `p${pi}`)}
-            </p>
+            <TextWithImages
+              key={`p${pi}`}
+              text={part.text}
+              start={part.start}
+              keyPrefix={`p${pi}`}
+              renderRange={renderRange}
+            />
           );
         }
         const headerRow =
