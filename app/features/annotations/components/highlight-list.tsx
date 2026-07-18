@@ -23,8 +23,8 @@ const COLOR_CLASS: Record<HighlightColor, string> = {
   blue: "bg-sky-100 text-sky-900 border-sky-300",
   underline: UNDERLINE_CHIP,
   underline_thick: UNDERLINE_CHIP,
-  underline_red: UNDERLINE_CHIP,
-  underline_red_thick: UNDERLINE_CHIP,
+  underline_orange: UNDERLINE_CHIP,
+  underline_orange_thick: UNDERLINE_CHIP,
   underline_blue: UNDERLINE_CHIP,
   underline_blue_thick: UNDERLINE_CHIP,
 };
@@ -35,10 +35,10 @@ const EXCERPT_TEXT_CLASS: Partial<Record<HighlightColor, string>> = {
     "underline decoration-foreground/70 decoration-[1.5px] underline-offset-[3px]",
   underline_thick:
     "underline decoration-foreground/70 decoration-[3px] underline-offset-[3px]",
-  underline_red:
-    "underline decoration-rose-500 decoration-[1.5px] underline-offset-[3px]",
-  underline_red_thick:
-    "underline decoration-rose-500 decoration-[3px] underline-offset-[3px]",
+  underline_orange:
+    "underline decoration-amber-600 decoration-[1.5px] underline-offset-[3px]",
+  underline_orange_thick:
+    "underline decoration-amber-600 decoration-[3px] underline-offset-[3px]",
   underline_blue:
     "underline decoration-sky-500 decoration-[1.5px] underline-offset-[3px]",
   underline_blue_thick:

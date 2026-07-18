@@ -340,9 +340,9 @@ body {
   }
 
   /* feat-3-207 — "밑줄". 배경 없이 텍스트 데코레이션만.
-     2026-07-18 확장: 색 3종(기본=본문색·빨강·파랑) × 굵기 2종(보통 1.5px·굵게 3px).
-     학생: 해당 색·굵기 그대로. 강사: 약간 더 굵게(+0.5~1px). legacy
-     lidam-hl-staff-underline(교재 밑줄 변환분)은 기존 amber 강조 유지. */
+     2026-07-18 확장: 색 3종(기본=본문색·주황·파랑) × 굵기 2종(보통 1.5px·굵게 3px).
+     주황(amber-600)=교재 밑줄 변환분(staff-underline)과 동일 톤(사용자 지시 — 빨강→주황).
+     legacy lidam-hl-staff-underline 은 기존 amber 강조 유지. */
   ::highlight(lidam-hl-underline) {
     color: inherit;
     text-decoration: underline currentColor solid 1.5px;
@@ -363,16 +363,16 @@ body {
     text-decoration: underline currentColor solid 3.5px;
     text-underline-offset: 3px;
   }
-  ::highlight(lidam-hl-underline_red),
-  ::highlight(lidam-hl-staff-underline_red) {
+  ::highlight(lidam-hl-underline_orange),
+  ::highlight(lidam-hl-staff-underline_orange) {
     color: inherit;
-    text-decoration: underline rgb(225, 29, 72) solid 1.5px; /* rose-600 */
+    text-decoration: underline rgb(217, 119, 6) solid 1.5px; /* amber-600 — 교재 밑줄과 동일 */
     text-underline-offset: 2px;
   }
-  ::highlight(lidam-hl-underline_red_thick),
-  ::highlight(lidam-hl-staff-underline_red_thick) {
+  ::highlight(lidam-hl-underline_orange_thick),
+  ::highlight(lidam-hl-staff-underline_orange_thick) {
     color: inherit;
-    text-decoration: underline rgb(225, 29, 72) solid 3px; /* rose-600 */
+    text-decoration: underline rgb(217, 119, 6) solid 3px; /* amber-600 */
     text-underline-offset: 2px;
   }
   ::highlight(lidam-hl-underline_blue),
@@ -416,11 +416,11 @@ body {
     background-color: rgba(56, 189, 248, 0.46); /* sky-400 */
   }
   /* 다크 — 색 밑줄은 어두운 배경에서 잘 보이게 한 단계 밝은 톤. */
-  html.dark ::highlight(lidam-hl-underline_red),
-  html.dark ::highlight(lidam-hl-staff-underline_red),
-  html.dark ::highlight(lidam-hl-underline_red_thick),
-  html.dark ::highlight(lidam-hl-staff-underline_red_thick) {
-    text-decoration-color: rgb(251, 113, 133); /* rose-400 */
+  html.dark ::highlight(lidam-hl-underline_orange),
+  html.dark ::highlight(lidam-hl-staff-underline_orange),
+  html.dark ::highlight(lidam-hl-underline_orange_thick),
+  html.dark ::highlight(lidam-hl-staff-underline_orange_thick) {
+    text-decoration-color: rgb(245, 158, 11); /* amber-500 */
   }
   html.dark ::highlight(lidam-hl-underline_blue),
   html.dark ::highlight(lidam-hl-staff-underline_blue),

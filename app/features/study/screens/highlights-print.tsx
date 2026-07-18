@@ -29,8 +29,8 @@ const BAR: Record<HighlightColor, string> = {
   blue: "border-sky-400",
   underline: "border-neutral-400",
   underline_thick: "border-neutral-500",
-  underline_red: "border-rose-400",
-  underline_red_thick: "border-rose-500",
+  underline_orange: "border-amber-500",
+  underline_orange_thick: "border-amber-600",
   underline_blue: "border-sky-400",
   underline_blue_thick: "border-sky-500",
 };
@@ -43,9 +43,10 @@ const MARK: Record<HighlightColor, string> = {
   blue: "bg-sky-200/70",
   underline: "underline decoration-2 underline-offset-2",
   underline_thick: "underline decoration-4 underline-offset-2",
-  underline_red: "underline decoration-rose-500 decoration-2 underline-offset-2",
-  underline_red_thick:
-    "underline decoration-rose-500 decoration-4 underline-offset-2",
+  underline_orange:
+    "underline decoration-amber-600 decoration-2 underline-offset-2",
+  underline_orange_thick:
+    "underline decoration-amber-600 decoration-4 underline-offset-2",
   underline_blue: "underline decoration-sky-500 decoration-2 underline-offset-2",
   underline_blue_thick:
     "underline decoration-sky-500 decoration-4 underline-offset-2",

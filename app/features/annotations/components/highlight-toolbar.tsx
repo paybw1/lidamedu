@@ -38,10 +38,10 @@ const COLOR_BTN: Partial<Record<HighlightColor, string>> = {
 const UNDERLINE_BTN: Partial<Record<HighlightColor, string>> = {
   underline: "underline decoration-current decoration-[1.5px] underline-offset-2",
   underline_thick: "underline decoration-current decoration-[3px] underline-offset-2",
-  underline_red:
-    "underline decoration-rose-500 decoration-[1.5px] underline-offset-2",
-  underline_red_thick:
-    "underline decoration-rose-500 decoration-[3px] underline-offset-2",
+  underline_orange:
+    "underline decoration-amber-600 decoration-[1.5px] underline-offset-2",
+  underline_orange_thick:
+    "underline decoration-amber-600 decoration-[3px] underline-offset-2",
   underline_blue:
     "underline decoration-sky-500 decoration-[1.5px] underline-offset-2",
   underline_blue_thick:

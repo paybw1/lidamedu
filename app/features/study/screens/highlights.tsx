@@ -90,17 +90,17 @@ const COLOR: Record<
     bar: "border-foreground/60",
     dot: "bg-foreground/60",
   },
-  underline_red: {
-    label: "빨강 밑줄",
+  underline_orange: {
+    label: "주황 밑줄",
     box: "bg-background dark:bg-background",
-    bar: "border-rose-400",
-    dot: "bg-rose-500",
+    bar: "border-amber-500",
+    dot: "bg-amber-600",
   },
-  underline_red_thick: {
-    label: "빨강 굵은 밑줄",
+  underline_orange_thick: {
+    label: "주황 굵은 밑줄",
     box: "bg-background dark:bg-background",
-    bar: "border-rose-500",
-    dot: "bg-rose-500",
+    bar: "border-amber-600",
+    dot: "bg-amber-600",
   },
   underline_blue: {
     label: "파랑 밑줄",
@@ -222,8 +222,8 @@ export default function Highlights({ loaderData }: Route.ComponentProps) {
           value:
             counts.underline +
             counts.underline_thick +
-            counts.underline_red +
-            counts.underline_red_thick +
+            counts.underline_orange +
+            counts.underline_orange_thick +
             counts.underline_blue +
             counts.underline_blue_thick,
           dotClass: COLOR.underline.dot,

@@ -26,8 +26,8 @@ const DOT_CLASS: Record<HighlightColor, string> = {
   blue: "bg-sky-400",
   underline: "bg-foreground/60",
   underline_thick: "bg-foreground/60",
-  underline_red: "bg-rose-500",
-  underline_red_thick: "bg-rose-500",
+  underline_orange: "bg-amber-600",
+  underline_orange_thick: "bg-amber-600",
   underline_blue: "bg-sky-500",
   underline_blue_thick: "bg-sky-500",
 };
