@@ -15,6 +15,7 @@ import {
 import { AreaTabs, type SectionTabItem } from "~/core/components/student";
 import { cn } from "~/core/lib/utils";
 import {
+  COHORT_OPEN_PREPARING_SUBJECTS,
   STAFF_OPEN_PREPARING_SUBJECTS,
   STUDENT_DISABLED_SUBJECTS,
   isSubjectLocked,
@@ -83,9 +84,13 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
   // 서버 게이트(리졸버 권위): area_subjects 없음(무료회원) 차단 + 미허용 과목 차단.
   if (!isStaff) {
-    // 준비 중 과목(민법·민소) — 등급·구매 무관 학생 차단. 결제 유도가 아니므로 대시보드로.
+    // 준비 중 과목 — 등급·구매 무관 학생 차단. 단 종합반 개방 과목(민법)은
+    // grade='cohort' 일 때 통과(원장 지시 2026-07-18). 결제 유도가 아니므로 대시보드로.
     if (subjectSlug && STUDENT_DISABLED_SUBJECTS.includes(subjectSlug)) {
-      throw redirect("/dashboard");
+      const cohortOpen =
+        access.grade === "cohort" &&
+        COHORT_OPEN_PREPARING_SUBJECTS.includes(subjectSlug);
+      if (!cohortOpen) throw redirect("/dashboard");
     }
     if (!access.features.includes("area_subjects")) {
       throw redirect("/pricing?locked=area_subjects");

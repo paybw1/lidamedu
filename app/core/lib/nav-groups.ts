@@ -212,7 +212,25 @@ export const STAFF_OPEN_PREPARING_SUBJECTS: ReadonlyArray<string> = [
   "design",
   "civil",
 ];
+// 준비 중 과목 가운데 종합반(cohort) 수험생에게 여는 과목(원장 지시 2026-07-18).
+//   판정: 학생 중 subjects === 'all' 은 종합반뿐(membership 리졸버 불변식) — 별도
+//   등급 prop 없이 subjects 로 구분한다. 서버 권위는 subjects.layout(grade 직접 확인).
+export const COHORT_OPEN_PREPARING_SUBJECTS: ReadonlyArray<string> = ["civil"];
 export const PREPARING_HINT = "준비 중";
+export const COHORT_ONLY_HINT = "종합반 전용";
+
+// 학생에게 잠긴 준비 중 과목 목록 — 등급별(staff=없음, 종합반=개방 과목 제외).
+//   SRS 큐 제외 등 "목록에서 숨김" 소비처 공용.
+export function studentDisabledSubjectsFor(
+  grade: string | undefined,
+): ReadonlyArray<string> {
+  if (grade === "staff") return [];
+  if (grade === "cohort")
+    return STUDENT_DISABLED_SUBJECTS.filter(
+      (s) => !COHORT_OPEN_PREPARING_SUBJECTS.includes(s),
+    );
+  return STUDENT_DISABLED_SUBJECTS;
+}
 
 // feat-8-027 — 학습과목 내 개별 과목 잠금 판정(체험=특허법만, 자기학습=결제 과목 등).
 //   subjects='all' 또는 slug 포함 시 미잠금. staff 면제, 미산정(undefined) 시 미표시(로딩).
@@ -231,16 +249,28 @@ export function isSubjectLocked(
     if (staffPreparing === undefined || staffPreparing === "all") return false;
     return !staffPreparing.includes(slug);
   }
-  if (STUDENT_DISABLED_SUBJECTS.includes(slug)) return true;
+  if (STUDENT_DISABLED_SUBJECTS.includes(slug)) {
+    // 종합반 개방 과목 — 학생 중 subjects='all' 은 종합반뿐이라 이것으로 판정.
+    if (
+      COHORT_OPEN_PREPARING_SUBJECTS.includes(slug) &&
+      subjects === "all"
+    )
+      return false;
+    return true;
+  }
   if (subjects === undefined || subjects === "all") return false;
   return !subjects.includes(slug);
 }
 
 // 과목 비활성 사유 힌트 — 준비 중 과목은 구독과 무관하므로 문구를 구분.
 //   staff(강사)에게 잠긴 준비 중 과목은 담당 과목 미지정이 사유.
+//   종합반 개방 과목이 잠겨 보이는 학생 = 비종합반 → "종합반 전용".
 export function subjectLockedHint(slug: string, isStaff = false): string {
   if (STUDENT_DISABLED_SUBJECTS.includes(slug)) {
-    return isStaff ? "담당 과목 아님" : PREPARING_HINT;
+    if (isStaff) return "담당 과목 아님";
+    return COHORT_OPEN_PREPARING_SUBJECTS.includes(slug)
+      ? COHORT_ONLY_HINT
+      : PREPARING_HINT;
   }
   return LOCKED_HINT;
 }

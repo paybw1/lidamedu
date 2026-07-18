@@ -18,7 +18,7 @@ import { Link, redirect, useFetcher, useLocation } from "react-router";
 import { PageHeader, StudentShell, Surface } from "~/core/components/student";
 import { Button } from "~/core/components/ui/button";
 import makeServerClient from "~/core/lib/supa-client.server";
-import { STUDENT_DISABLED_SUBJECTS } from "~/core/lib/nav-groups";
+import { studentDisabledSubjectsFor } from "~/core/lib/nav-groups";
 import { GuideHelpButton } from "~/features/guide/components/guide-help-button";
 import { cn } from "~/core/lib/utils";
 import { hasMyAnalysisConsent } from "~/features/exam-results/queries.server";
@@ -111,8 +111,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     (LAW_SUBJECT_SLUGS as readonly string[]).includes(subjectParam)
       ? subjectParam
       : null;
-  // 학생에게 비활성인 준비 중 과목(상표·디자인·민법·민소법)은 SRS 에서도 숨김 — staff 는 전체.
-  const excludeSubjects = mgmtNav.gradeStaff ? [] : STUDENT_DISABLED_SUBJECTS;
+  // 학생에게 비활성인 준비 중 과목은 SRS 에서도 숨김 — staff 전체·종합반은 개방 과목(민법) 포함.
+  const excludeSubjects = studentDisabledSubjectsFor(access.grade);
   const [queue, dueByType] = await Promise.all([
     getReviewQueue(client, user.id, { sourceType, subject, excludeSubjects }),
     getDueCountsByType(client, user.id, excludeSubjects),
@@ -120,6 +120,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   return {
     myAnalysisOff: false as const,
     mgmtNav,
+    excludedSubjects: excludeSubjects,
     ...queue,
     filter: { sourceType, subject },
     cardDue: {
@@ -283,13 +284,9 @@ function SrsReviewInner({
         <ChipFilters
           filter={data.filter}
           cardDue={data.cardDue}
-          subjectSlugs={
-            data.mgmtNav.gradeStaff
-              ? LAW_SUBJECT_SLUGS
-              : LAW_SUBJECT_SLUGS.filter(
-                  (s) => !STUDENT_DISABLED_SUBJECTS.includes(s),
-                )
-          }
+          subjectSlugs={LAW_SUBJECT_SLUGS.filter(
+            (s) => !data.excludedSubjects.includes(s),
+          )}
         />
 
         {/* 카드 카운터 */}
