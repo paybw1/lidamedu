@@ -28,6 +28,11 @@ const BAR: Record<HighlightColor, string> = {
   red: "border-rose-400",
   blue: "border-sky-400",
   underline: "border-neutral-400",
+  underline_thick: "border-neutral-500",
+  underline_red: "border-rose-400",
+  underline_red_thick: "border-rose-500",
+  underline_blue: "border-sky-400",
+  underline_blue_thick: "border-sky-500",
 };
 
 // 문맥 속 하이라이트 표시 — 하이라이트 부분만 옅은 색(작은 면적이라 잉크 부담 적음).
@@ -37,6 +42,13 @@ const MARK: Record<HighlightColor, string> = {
   red: "bg-rose-200/70",
   blue: "bg-sky-200/70",
   underline: "underline decoration-2 underline-offset-2",
+  underline_thick: "underline decoration-4 underline-offset-2",
+  underline_red: "underline decoration-rose-500 decoration-2 underline-offset-2",
+  underline_red_thick:
+    "underline decoration-rose-500 decoration-4 underline-offset-2",
+  underline_blue: "underline decoration-sky-500 decoration-2 underline-offset-2",
+  underline_blue_thick:
+    "underline decoration-sky-500 decoration-4 underline-offset-2",
 };
 
 export const meta: Route.MetaFunction = () => [

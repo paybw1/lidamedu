@@ -17,6 +17,7 @@ import {
   HIGHLIGHT_COLORS,
   HIGHLIGHT_COLOR_DEFAULT_LABEL,
   highlightColorLabel,
+  isUnderlineColor,
   type HighlightColor,
 } from "../labels";
 import {
@@ -26,29 +27,39 @@ import {
 import { dispatchMemoSnippet } from "../lib/memo-selection-event";
 import { useHighlightAliases } from "../lib/use-highlight-aliases";
 
-const COLOR_BTN: Record<HighlightColor, string> = {
+const COLOR_BTN: Partial<Record<HighlightColor, string>> = {
   yellow: "bg-amber-200 hover:bg-amber-300",
   green: "bg-emerald-200 hover:bg-emerald-300",
   red: "bg-rose-200 hover:bg-rose-300",
   blue: "bg-sky-200 hover:bg-sky-300",
-  // underline 은 별도 렌더 (아이콘 버튼) 이라 여기엔 placeholder 만.
-  underline: "",
 };
+
+// 밑줄 변형 버튼 — "가" 글자에 해당 색·굵기의 밑줄 데코 미리보기.
+const UNDERLINE_BTN: Partial<Record<HighlightColor, string>> = {
+  underline: "underline decoration-current decoration-[1.5px] underline-offset-2",
+  underline_thick: "underline decoration-current decoration-[3px] underline-offset-2",
+  underline_red:
+    "underline decoration-rose-500 decoration-[1.5px] underline-offset-2",
+  underline_red_thick:
+    "underline decoration-rose-500 decoration-[3px] underline-offset-2",
+  underline_blue:
+    "underline decoration-sky-500 decoration-[1.5px] underline-offset-2",
+  underline_blue_thick:
+    "underline decoration-sky-500 decoration-[3px] underline-offset-2",
+};
+const UNDERLINE_VARIANTS = Object.keys(UNDERLINE_BTN) as HighlightColor[];
 
 // 기본 색 이름 기반 swatch title — alias 가 있으면 그 위에 prepend.
 function swatchTitle(color: HighlightColor, alias: string | undefined): string {
-  const base =
-    color === "underline"
-      ? "밑줄"
-      : `${HIGHLIGHT_COLOR_DEFAULT_LABEL[color]} 하이라이트`;
+  const base = isUnderlineColor(color)
+    ? HIGHLIGHT_COLOR_DEFAULT_LABEL[color]
+    : `${HIGHLIGHT_COLOR_DEFAULT_LABEL[color]} 하이라이트`;
   const aliasTrim = alias?.trim();
   return aliasTrim ? `${aliasTrim} · ${base}` : base;
 }
 
-// 색상 버튼 list — underline 은 별도 렌더 (아이콘 버튼) 이라 4색만 자동 매핑.
-const SWATCH_COLORS = HIGHLIGHT_COLORS.filter(
-  (c): c is Exclude<HighlightColor, "underline"> => c !== "underline",
-);
+// 배경 색상 버튼 list — 밑줄 계열은 서브메뉴에서 별도 렌더.
+const SWATCH_COLORS = HIGHLIGHT_COLORS.filter((c) => !isUnderlineColor(c));
 
 interface PendingSelection {
   text: string;
@@ -191,6 +202,8 @@ export function HighlightToolbar({
   const fetcher = useFetcher();
   const aliases = useHighlightAliases();
   const [pending, setPending] = useState<PendingSelection | null>(null);
+  // 밑줄 변형(색·굵기) 서브메뉴 — 밑줄 아이콘 클릭 시 두 번째 줄로 펼침.
+  const [ulOpen, setUlOpen] = useState(false);
   // 마지막 비-null pending 보관 — selectionchange 가 click 직전에 null 로 갱신되는 케이스 보호
   const lastPendingRef = useRef<PendingSelection | null>(null);
 
@@ -202,6 +215,7 @@ export function HighlightToolbar({
         lastPendingRef.current = info;
       } else {
         setPending(null);
+        setUlOpen(false);
       }
     };
     document.addEventListener("selectionchange", handler);
@@ -218,6 +232,7 @@ export function HighlightToolbar({
       fetcher.data.ok
     ) {
       setPending(null);
+      setUlOpen(false);
       lastPendingRef.current = null;
       window.getSelection()?.removeAllRanges();
     }
@@ -273,7 +288,7 @@ export function HighlightToolbar({
 
   // 4색 + 밑줄 1 + divider + 포스트잇 1 = 색 7개 너비. 색 4 × 28 + (밑줄·메모) 2 × 28 + divider 1 + padding ≈ 240.
   const TOOLBAR_W = 240;
-  const TOOLBAR_H = 36;
+  const TOOLBAR_H = ulOpen ? 72 : 36; // 밑줄 서브메뉴 열리면 두 줄.
   const { top, left } = placeToolbar(pending.rect, TOOLBAR_W, TOOLBAR_H);
   const submitting = fetcher.state !== "idle";
 
@@ -282,57 +297,86 @@ export function HighlightToolbar({
       role="toolbar"
       aria-label="하이라이트 색상 선택"
       data-testid="highlight-toolbar"
-      className="bg-popover text-popover-foreground fixed z-50 flex items-center gap-1 rounded-md border p-1 shadow-md"
+      className="bg-popover text-popover-foreground fixed z-50 flex flex-col gap-1 rounded-md border p-1 shadow-md"
       style={{ top, left, width: TOOLBAR_W, height: TOOLBAR_H }}
     >
-      {SWATCH_COLORS.map((c) => {
-        const t = swatchTitle(c, aliases[c]);
-        return (
-          <button
-            key={c}
-            type="button"
-            aria-label={t}
-            title={t}
-            disabled={submitting}
-            // mousedown 으로 처리 — click 전에 selection 손실 방지
-            onMouseDown={(e) => {
-              e.preventDefault();
-              handlePickColor(c);
-            }}
-            className={cn(
-              "size-7 rounded border border-black/10 transition-colors disabled:opacity-50",
-              COLOR_BTN[c],
-            )}
-          />
-        );
-      })}
-      <button
-        key="underline"
-        type="button"
-        aria-label={swatchTitle("underline", aliases.underline)}
-        title={swatchTitle("underline", aliases.underline)}
-        disabled={submitting}
-        onMouseDown={(e) => {
-          e.preventDefault();
-          handlePickColor("underline");
-        }}
-        className="hover:bg-accent text-foreground inline-flex size-7 items-center justify-center rounded border border-black/10 transition-colors disabled:opacity-50"
-      >
-        <UnderlineIcon className="size-4" />
-      </button>
-      <span className="bg-border mx-0.5 h-5 w-px" aria-hidden />
-      <button
-        type="button"
-        aria-label="이 단어로 포스트잇 추가"
-        title="이 단어로 포스트잇 추가"
-        onMouseDown={(e) => {
-          e.preventDefault();
-          handleMemo();
-        }}
-        className="hover:bg-accent inline-flex size-7 items-center justify-center rounded text-amber-600 transition-colors dark:text-amber-400"
-      >
-        <NotebookPenIcon className="size-4" />
-      </button>
+      <div className="flex items-center gap-1">
+        {SWATCH_COLORS.map((c) => {
+          const t = swatchTitle(c, aliases[c]);
+          return (
+            <button
+              key={c}
+              type="button"
+              aria-label={t}
+              title={t}
+              disabled={submitting}
+              // mousedown 으로 처리 — click 전에 selection 손실 방지
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handlePickColor(c);
+              }}
+              className={cn(
+                "size-7 rounded border border-black/10 transition-colors disabled:opacity-50",
+                COLOR_BTN[c],
+              )}
+            />
+          );
+        })}
+        <button
+          key="underline"
+          type="button"
+          aria-label="밑줄 종류 선택"
+          title="밑줄 — 색·굵기 선택"
+          aria-expanded={ulOpen}
+          disabled={submitting}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            setUlOpen((v) => !v);
+          }}
+          className={cn(
+            "hover:bg-accent text-foreground inline-flex size-7 items-center justify-center rounded border border-black/10 transition-colors disabled:opacity-50",
+            ulOpen && "bg-accent",
+          )}
+        >
+          <UnderlineIcon className="size-4" />
+        </button>
+        <span className="bg-border mx-0.5 h-5 w-px" aria-hidden />
+        <button
+          type="button"
+          aria-label="이 단어로 포스트잇 추가"
+          title="이 단어로 포스트잇 추가"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            handleMemo();
+          }}
+          className="hover:bg-accent inline-flex size-7 items-center justify-center rounded text-amber-600 transition-colors dark:text-amber-400"
+        >
+          <NotebookPenIcon className="size-4" />
+        </button>
+      </div>
+      {ulOpen ? (
+        <div className="flex items-center gap-1" data-testid="underline-variants">
+          {UNDERLINE_VARIANTS.map((c) => {
+            const t = swatchTitle(c, aliases[c]);
+            return (
+              <button
+                key={c}
+                type="button"
+                aria-label={t}
+                title={t}
+                disabled={submitting}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  handlePickColor(c);
+                }}
+                className="hover:bg-accent text-foreground inline-flex h-7 w-8 items-center justify-center rounded border border-black/10 text-[14px] leading-none transition-colors disabled:opacity-50"
+              >
+                <span className={UNDERLINE_BTN[c]}>가</span>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }

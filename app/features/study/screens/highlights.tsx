@@ -84,6 +84,36 @@ const COLOR: Record<
     bar: "border-foreground/40",
     dot: "bg-foreground/60",
   },
+  underline_thick: {
+    label: "굵은 밑줄",
+    box: "bg-background dark:bg-background",
+    bar: "border-foreground/60",
+    dot: "bg-foreground/60",
+  },
+  underline_red: {
+    label: "빨강 밑줄",
+    box: "bg-background dark:bg-background",
+    bar: "border-rose-400",
+    dot: "bg-rose-500",
+  },
+  underline_red_thick: {
+    label: "빨강 굵은 밑줄",
+    box: "bg-background dark:bg-background",
+    bar: "border-rose-500",
+    dot: "bg-rose-500",
+  },
+  underline_blue: {
+    label: "파랑 밑줄",
+    box: "bg-background dark:bg-background",
+    bar: "border-sky-400",
+    dot: "bg-sky-500",
+  },
+  underline_blue_thick: {
+    label: "파랑 굵은 밑줄",
+    box: "bg-background dark:bg-background",
+    bar: "border-sky-500",
+    dot: "bg-sky-500",
+  },
 };
 
 type TypeFilter = "article" | "case" | "problem" | "ox";
@@ -107,14 +137,10 @@ export async function loader({ request }: Route.LoaderArgs) {
     getStudyAidCounts(client, user.id),
     getHighlightColorAliases(client, user.id),
   ]);
-  const counts = {
-    total: items.length,
-    green: 0,
-    yellow: 0,
-    red: 0,
-    blue: 0,
-    underline: 0,
-  };
+  const counts = Object.fromEntries(
+    HIGHLIGHT_COLORS.map((c) => [c, 0]),
+  ) as Record<HighlightColor, number> & { total: number };
+  counts.total = items.length;
   for (const h of items) counts[h.color] += 1;
   return { items, counts, aidCounts, aliases };
 }
@@ -191,8 +217,15 @@ export default function Highlights({ loaderData }: Route.ComponentProps) {
           dotClass: COLOR.blue.dot,
         },
         {
+          // 밑줄 계열 6종 합산 — 요약 통계는 한 항목으로(세부는 색상 필터에서).
           label: labelFor("underline"),
-          value: counts.underline,
+          value:
+            counts.underline +
+            counts.underline_thick +
+            counts.underline_red +
+            counts.underline_red_thick +
+            counts.underline_blue +
+            counts.underline_blue_thick,
           dotClass: COLOR.underline.dot,
         },
       ]}

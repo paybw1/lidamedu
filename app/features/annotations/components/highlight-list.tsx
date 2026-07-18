@@ -14,18 +14,35 @@ import {
 } from "../labels";
 import { useHighlightAliases } from "../lib/use-highlight-aliases";
 
+// 밑줄 계열(underline*) — 배경 없이 발췌 자체에 underline 데코레이션.
+const UNDERLINE_CHIP = "bg-background text-foreground border-foreground/30";
 const COLOR_CLASS: Record<HighlightColor, string> = {
   green: "bg-emerald-100 text-emerald-900 border-emerald-300",
   yellow: "bg-amber-100 text-amber-900 border-amber-300",
   red: "bg-rose-100 text-rose-900 border-rose-300",
   blue: "bg-sky-100 text-sky-900 border-sky-300",
-  // 밑줄(underline) — 배경 없이 발췌 자체에 underline 데코레이션.
-  underline: "bg-background text-foreground border-foreground/30",
+  underline: UNDERLINE_CHIP,
+  underline_thick: UNDERLINE_CHIP,
+  underline_red: UNDERLINE_CHIP,
+  underline_red_thick: UNDERLINE_CHIP,
+  underline_blue: UNDERLINE_CHIP,
+  underline_blue_thick: UNDERLINE_CHIP,
 };
 
-// 발췌 텍스트에 추가로 적용할 inline 스타일 (underline 일 때만 밑줄).
+// 발췌 텍스트에 추가로 적용할 inline 스타일 (밑줄 계열 — 색·굵기 미리보기).
 const EXCERPT_TEXT_CLASS: Partial<Record<HighlightColor, string>> = {
-  underline: "underline decoration-foreground/70 decoration-[1.5px] underline-offset-[3px]",
+  underline:
+    "underline decoration-foreground/70 decoration-[1.5px] underline-offset-[3px]",
+  underline_thick:
+    "underline decoration-foreground/70 decoration-[3px] underline-offset-[3px]",
+  underline_red:
+    "underline decoration-rose-500 decoration-[1.5px] underline-offset-[3px]",
+  underline_red_thick:
+    "underline decoration-rose-500 decoration-[3px] underline-offset-[3px]",
+  underline_blue:
+    "underline decoration-sky-500 decoration-[1.5px] underline-offset-[3px]",
+  underline_blue_thick:
+    "underline decoration-sky-500 decoration-[3px] underline-offset-[3px]",
 };
 
 export function HighlightList({

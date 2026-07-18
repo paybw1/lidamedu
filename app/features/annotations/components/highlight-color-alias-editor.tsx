@@ -18,13 +18,18 @@ import {
 } from "../labels";
 import { publishHighlightAliases } from "../lib/use-highlight-aliases";
 
-// swatch dot 클래스 — 색상 시각 cue.
+// swatch dot 클래스 — 색상 시각 cue. 밑줄 계열은 색 동일·굵기만 다르니 같은 dot.
 const DOT_CLASS: Record<HighlightColor, string> = {
   yellow: "bg-amber-400",
   green: "bg-emerald-500",
   red: "bg-rose-400",
   blue: "bg-sky-400",
   underline: "bg-foreground/60",
+  underline_thick: "bg-foreground/60",
+  underline_red: "bg-rose-500",
+  underline_red_thick: "bg-rose-500",
+  underline_blue: "bg-sky-500",
+  underline_blue_thick: "bg-sky-500",
 };
 
 export function HighlightColorAliasEditor({

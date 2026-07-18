@@ -590,7 +590,10 @@ create table public.user_highlights (
   start_offset     int not null,
   end_offset       int not null,
   content_hash     text not null,            -- sha256 of selected text — 본문 변경 감지
-  color            text not null check (color in ('green','yellow','red','blue')),
+  color            text not null check (color in ('green','yellow','red','blue',
+                     -- 밑줄 계열(배경 없이 데코만): 기본색·빨강·파랑 × 보통·굵게 (2026-07-18 확장)
+                     'underline','underline_thick','underline_red','underline_red_thick',
+                     'underline_blue','underline_blue_thick')),
   label            text,                     -- '핵심','암기','의문','참고' (옵션)
   created_at       timestamptz not null default now(),
   deleted_at       timestamptz

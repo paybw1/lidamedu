@@ -56,7 +56,9 @@ export interface MemoRecord {
   isMine: boolean;
 }
 
-// 5번째 옵션 "underline" 은 배경 없이 텍스트 데코레이션(밑줄)만 — feat-3-207.
+// "underline*" 값들은 배경 없이 텍스트 데코레이션(밑줄)만 — feat-3-207.
+// 2026-07-18: 밑줄 확장 — 색 3종(기본=본문색·빨강·파랑) × 굵기 2종(보통·굵게).
+// 기존 "underline" = 기본색·보통 (하위호환, staff 변환분 포함 데이터 무수정).
 // 강사가 그으면 모든 수험생에게 노출(전체 공개), 학생이 그으면 본인만 — RLS 는 기존 정책 그대로.
 export const HIGHLIGHT_COLORS = [
   "green",
@@ -64,10 +66,22 @@ export const HIGHLIGHT_COLORS = [
   "red",
   "blue",
   "underline",
+  "underline_thick",
+  "underline_red",
+  "underline_red_thick",
+  "underline_blue",
+  "underline_blue_thick",
 ] as const;
 export type HighlightColor = (typeof HIGHLIGHT_COLORS)[number];
 
 export const highlightColorSchema = z.enum(HIGHLIGHT_COLORS);
+
+// 밑줄 계열 판별 — 배경 하이라이트(4색)와 렌더/표시가 갈리는 지점에서 사용.
+export function isUnderlineColor(c: HighlightColor): boolean {
+  return c.startsWith("underline");
+}
+
+export const UNDERLINE_COLORS = HIGHLIGHT_COLORS.filter(isUnderlineColor);
 
 export interface HighlightRecord {
   highlightId: string;
@@ -95,6 +109,11 @@ export const HIGHLIGHT_COLOR_DEFAULT_LABEL: Record<HighlightColor, string> = {
   red: "빨강",
   blue: "파랑",
   underline: "밑줄",
+  underline_thick: "굵은 밑줄",
+  underline_red: "빨강 밑줄",
+  underline_red_thick: "빨강 굵은 밑줄",
+  underline_blue: "파랑 밑줄",
+  underline_blue_thick: "파랑 굵은 밑줄",
 };
 
 // 사용자별 색상 닉네임 — feat-3-208.
