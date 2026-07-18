@@ -17,13 +17,15 @@ import type { Route } from "./+types/search";
 export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const q = url.searchParams.get("q") ?? "";
+  // 검색 범위 — title(제목·라벨) / full(본문 전체). 기본 title.
+  const scope = url.searchParams.get("scope") === "full" ? "full" : "title";
 
   const [client] = makeServerClient(request);
   const {
     data: { user },
   } = await client.auth.getUser();
 
-  const results = await runGlobalSearch(client, user?.id ?? null, q);
+  const results = await runGlobalSearch(client, user?.id ?? null, q, scope);
 
   let recentSearches: RecentSearch[] = [];
   if (user) {

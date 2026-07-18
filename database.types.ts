@@ -12891,21 +12891,21 @@ export type Database = {
       release_session: { Args: never; Returns: undefined }
       scan_exam_case_links: { Args: never; Returns: number }
       search_articles_ranked: {
-        Args: { lim?: number; q: string }
+        Args: { lim?: number; q: string; search_scope?: string }
         Returns: {
           article_id: string
           score: number
         }[]
       }
       search_cases_ranked: {
-        Args: { lim?: number; q: string }
+        Args: { lim?: number; q: string; search_scope?: string }
         Returns: {
           case_id: string
           score: number
         }[]
       }
       search_problems_ranked: {
-        Args: { lim?: number; q: string }
+        Args: { lim?: number; q: string; search_scope?: string }
         Returns: {
           problem_id: string
           score: number

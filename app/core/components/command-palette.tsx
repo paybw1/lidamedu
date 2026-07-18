@@ -74,6 +74,8 @@ export function openCommandPalette() {
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  // 검색 범위 — 제목(title) / 본문 전체(full). 세션 내 마지막 선택 유지.
+  const [scope, setScope] = useState<"title" | "full">("title");
   const fetcher = useFetcher<SearchResults>();
   const navigate = useNavigate();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -107,7 +109,9 @@ export function CommandPalette() {
     const trimmed = query.trim();
     debounceRef.current = setTimeout(
       () => {
-        fetcher.load(`/api/search?q=${encodeURIComponent(trimmed)}`);
+        fetcher.load(
+          `/api/search?q=${encodeURIComponent(trimmed)}&scope=${scope}`,
+        );
       },
       trimmed.length === 0 ? 0 : 180,
     );
@@ -116,7 +120,7 @@ export function CommandPalette() {
     };
     // fetcher 객체는 매 렌더마다 새 참조 — 의존성에서 제외.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, query]);
+  }, [open, query, scope]);
 
   // 모달 닫힐 때 입력 리셋.
   useEffect(() => {
@@ -169,6 +173,40 @@ export function CommandPalette() {
         value={query}
         onValueChange={setQuery}
       />
+      {/* 검색 범위 — 제목(빠름·정확) vs 본문 전체(요지·판시이유·평석·선지·해설까지) */}
+      <div
+        className="flex items-center gap-1.5 border-b px-3 py-1.5"
+        data-testid="search-scope-toggle"
+      >
+        <span className="text-muted-foreground text-[10.5px] font-medium">
+          검색 대상
+        </span>
+        {(
+          [
+            ["title", "제목"],
+            ["full", "본문 전체"],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={scope === value}
+            onClick={() => setScope(value)}
+            className={
+              scope === value
+                ? "bg-primary text-primary-foreground rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
+                : "text-muted-foreground hover:bg-accent rounded-full border px-2.5 py-0.5 text-[11px]"
+            }
+          >
+            {label}
+          </button>
+        ))}
+        {scope === "full" ? (
+          <span className="text-muted-foreground ml-auto hidden text-[10px] sm:inline">
+            요지·판시이유·평석·선지·해설까지 검색
+          </span>
+        ) : null}
+      </div>
       <CommandList>
         {query.trim().length === 0 ? (
           <EmptyState

@@ -107,10 +107,33 @@ function snippet(text: string | null | undefined, len = 100): string | null {
   return trimmed.length > len ? `${trimmed.slice(0, len)}…` : trimmed;
 }
 
+// 검색 범위 — title: 제목·라벨류만 / full: 본문 전체(요지·판시이유·평석·선지·해설).
+export type SearchScope = "title" | "full";
+
+// 본문 전체 검색 히트의 스니펫 — 검색어가 실제로 등장한 필드의 주변 문맥을 보여준다.
+// (요지 첫머리만 보여주면 판시이유·평석 매칭이 왜 잡혔는지 알 수 없음.)
+function matchSnippet(q: string, fields: Array<string | null | undefined>): string | null {
+  const needle = q.toLowerCase();
+  for (const f of fields) {
+    if (!f) continue;
+    const idx = f.toLowerCase().indexOf(needle);
+    if (idx < 0) continue;
+    const start = Math.max(0, idx - 40);
+    const seg = f
+      .slice(start, idx + q.length + 60)
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!seg) continue;
+    return `${start > 0 ? "…" : ""}${seg}…`;
+  }
+  return null;
+}
+
 export async function runGlobalSearch(
   client: SupabaseClient<Database>,
   userId: string | null,
   rawQuery: string,
+  scope: SearchScope = "title",
 ): Promise<SearchResults> {
   const q = rawQuery.trim().slice(0, 100);
   const empty: SearchResults = {
@@ -129,6 +152,7 @@ export async function runGlobalSearch(
     const { data: ranked } = await client.rpc("search_articles_ranked", {
       q,
       lim: GROUP_LIMIT,
+      search_scope: scope,
     });
     const ids = (ranked ?? []).map((r) => r.article_id);
     if (ids.length === 0) return [];
@@ -157,18 +181,19 @@ export async function runGlobalSearch(
     });
   }
 
-  // cases — similarity ranked.
+  // cases — similarity ranked. full 범위는 매칭 문맥 스니펫(판시이유·평석 포함).
   async function fetchCases(): Promise<SearchHit[]> {
     const { data: ranked } = await client.rpc("search_cases_ranked", {
       q,
       lim: GROUP_LIMIT,
+      search_scope: scope,
     });
     const ids = (ranked ?? []).map((r) => r.case_id);
     if (ids.length === 0) return [];
     const { data: rows } = await client
       .from("cases")
       .select(
-        "case_id, case_number, case_title, summary_title, summary_body_md, subject_laws",
+        "case_id, case_number, case_title, summary_title, summary_body_md, reasoning_md, comment_body_md, related_md, subject_laws",
       )
       .in("case_id", ids);
     const byId = new Map((rows ?? []).map((r) => [r.case_id, r] as const));
@@ -176,13 +201,22 @@ export async function runGlobalSearch(
       const r = byId.get(id);
       if (!r) return [];
       const lawCode = (r.subject_laws as string[] | null)?.[0] ?? "patent";
+      const bodySnippet =
+        scope === "full"
+          ? (matchSnippet(q, [
+              r.summary_body_md,
+              r.reasoning_md,
+              r.comment_body_md,
+              r.related_md,
+            ]) ?? snippet(r.summary_body_md))
+          : snippet(r.summary_body_md);
       return [
         {
           group: "case",
           id: r.case_id,
           primaryLabel: r.case_title ?? r.case_number,
           secondaryLabel: r.case_title ? r.case_number : r.summary_title,
-          bodySnippet: snippet(r.summary_body_md),
+          bodySnippet,
           href: `/subjects/${lawCode}/cases/${r.case_id}`,
           lawCode,
         },
@@ -228,6 +262,7 @@ export async function runGlobalSearch(
     const { data: ranked } = await client.rpc("search_problems_ranked", {
       q,
       lim: GROUP_LIMIT,
+      search_scope: scope,
     });
     const ids = (ranked ?? [])
       .map((r) => r.problem_id)
@@ -236,9 +271,33 @@ export async function runGlobalSearch(
     const { data: rows } = await client
       .from("problems")
       .select(
-        "problem_id, year, problem_number, body_md, laws!inner(law_code)",
+        "problem_id, year, problem_number, body_md, explanation_md, laws!inner(law_code)",
       )
       .in("problem_id", ids);
+    // full 범위 — 발문에 없는 매칭(선지·박스 지문)의 문맥 스니펫용으로 함께 조회.
+    const choiceTextByProblem = new Map<string, string[]>();
+    if (scope === "full") {
+      const [{ data: chs }, { data: bis }] = await Promise.all([
+        client
+          .from("problem_choices")
+          .select("problem_id, body_md, explanation_md")
+          .in("problem_id", ids)
+          .or(`body_md.ilike.${pattern},explanation_md.ilike.${pattern}`)
+          .limit(60),
+        client
+          .from("problem_box_items")
+          .select("problem_id, body_md, explanation_md")
+          .in("problem_id", ids)
+          .or(`body_md.ilike.${pattern},explanation_md.ilike.${pattern}`)
+          .limit(60),
+      ]);
+      for (const r of [...(chs ?? []), ...(bis ?? [])]) {
+        const list = choiceTextByProblem.get(r.problem_id) ?? [];
+        if (r.body_md) list.push(r.body_md);
+        if (r.explanation_md) list.push(r.explanation_md);
+        choiceTextByProblem.set(r.problem_id, list);
+      }
+    }
     const byId = new Map((rows ?? []).map((r) => [r.problem_id, r] as const));
     for (const id of ids) {
       const r = byId.get(id);
@@ -246,12 +305,20 @@ export async function runGlobalSearch(
       const yearLabel = r.year
         ? `${r.year}년${r.problem_number ? ` · ${r.problem_number}번` : ""}`
         : "문제";
+      const bodySnippet =
+        scope === "full"
+          ? (matchSnippet(q, [
+              r.body_md,
+              ...(choiceTextByProblem.get(id) ?? []),
+              r.explanation_md,
+            ]) ?? snippet(r.body_md))
+          : snippet(r.body_md);
       hits.push({
         group: "problem",
         id: r.problem_id,
         primaryLabel: yearLabel,
         secondaryLabel: null,
-        bodySnippet: snippet(r.body_md),
+        bodySnippet,
         href: `/subjects/${r.laws.law_code}/problems/${r.problem_id}`,
         lawCode: r.laws.law_code,
       });
