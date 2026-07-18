@@ -6,7 +6,7 @@
 // staff RLS 는 기존 색상들과 동일 — staff 가 그으면 모든 학생에게 노출.
 //
 // 주의: 색상 버튼 클릭 시 selection 이 사라지지 않도록 onMouseDown + preventDefault 사용.
-import { NotebookPenIcon, UnderlineIcon } from "lucide-react";
+import { ChevronDownIcon, NotebookPenIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useFetcher } from "react-router";
 
@@ -48,6 +48,8 @@ const UNDERLINE_BTN: Partial<Record<HighlightColor, string>> = {
     "underline decoration-sky-500 decoration-[3px] underline-offset-2",
 };
 const UNDERLINE_VARIANTS = Object.keys(UNDERLINE_BTN) as HighlightColor[];
+// 마지막 사용 밑줄 종류 저장 키.
+const LAST_UNDERLINE_KEY = "lidam:lastUnderlineVariant";
 
 // 기본 색 이름 기반 swatch title — alias 가 있으면 그 위에 prepend.
 function swatchTitle(color: HighlightColor, alias: string | undefined): string {
@@ -202,8 +204,27 @@ export function HighlightToolbar({
   const fetcher = useFetcher();
   const aliases = useHighlightAliases();
   const [pending, setPending] = useState<PendingSelection | null>(null);
-  // 밑줄 변형(색·굵기) 서브메뉴 — 밑줄 아이콘 클릭 시 두 번째 줄로 펼침.
+  // 밑줄 변형(색·굵기) 서브메뉴 — 화살표 클릭 시 두 번째 줄로 펼침.
   const [ulOpen, setUlOpen] = useState(false);
+  // 마지막 사용 밑줄 종류 — 밑줄 버튼 클릭 즉시 이 종류로 긋는다(매번 선택 번거로움 해소).
+  // localStorage 로 세션 간 유지.
+  const [lastUnderline, setLastUnderline] = useState<HighlightColor>(() => {
+    if (typeof window === "undefined") return "underline";
+    const saved = window.localStorage.getItem(LAST_UNDERLINE_KEY);
+    return saved && UNDERLINE_VARIANTS.includes(saved as HighlightColor)
+      ? (saved as HighlightColor)
+      : "underline";
+  });
+  const pickUnderlineVariant = (c: HighlightColor) => {
+    setLastUnderline(c);
+    try {
+      window.localStorage.setItem(LAST_UNDERLINE_KEY, c);
+    } catch {
+      /* private mode 등 — 기억만 포기 */
+    }
+    setUlOpen(false);
+    handlePickColor(c);
+  };
   // 마지막 비-null pending 보관 — selectionchange 가 click 직전에 null 로 갱신되는 케이스 보호
   const lastPendingRef = useRef<PendingSelection | null>(null);
 
@@ -322,11 +343,25 @@ export function HighlightToolbar({
             />
           );
         })}
+        {/* 밑줄 — 클릭 즉시 마지막 종류로 긋기, 옆 화살표로 종류 변경. */}
         <button
           key="underline"
           type="button"
+          aria-label={`밑줄 긋기 (${swatchTitle(lastUnderline, aliases[lastUnderline])})`}
+          title={`밑줄 긋기 — ${swatchTitle(lastUnderline, aliases[lastUnderline])}`}
+          disabled={submitting}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            handlePickColor(lastUnderline);
+          }}
+          className="hover:bg-accent text-foreground inline-flex h-7 w-8 items-center justify-center rounded border border-black/10 text-[14px] leading-none transition-colors disabled:opacity-50"
+        >
+          <span className={UNDERLINE_BTN[lastUnderline]}>가</span>
+        </button>
+        <button
+          type="button"
           aria-label="밑줄 종류 선택"
-          title="밑줄 — 색·굵기 선택"
+          title="밑줄 색·굵기 변경"
           aria-expanded={ulOpen}
           disabled={submitting}
           onMouseDown={(e) => {
@@ -334,11 +369,11 @@ export function HighlightToolbar({
             setUlOpen((v) => !v);
           }}
           className={cn(
-            "hover:bg-accent text-foreground inline-flex size-7 items-center justify-center rounded border border-black/10 transition-colors disabled:opacity-50",
+            "hover:bg-accent text-muted-foreground inline-flex h-7 w-4 items-center justify-center rounded transition-colors disabled:opacity-50",
             ulOpen && "bg-accent",
           )}
         >
-          <UnderlineIcon className="size-4" />
+          <ChevronDownIcon className="size-3" />
         </button>
         <span className="bg-border mx-0.5 h-5 w-px" aria-hidden />
         <button
@@ -367,9 +402,12 @@ export function HighlightToolbar({
                 disabled={submitting}
                 onMouseDown={(e) => {
                   e.preventDefault();
-                  handlePickColor(c);
+                  pickUnderlineVariant(c);
                 }}
-                className="hover:bg-accent text-foreground inline-flex h-7 w-8 items-center justify-center rounded border border-black/10 text-[14px] leading-none transition-colors disabled:opacity-50"
+                className={cn(
+                  "hover:bg-accent text-foreground inline-flex h-7 w-8 items-center justify-center rounded border border-black/10 text-[14px] leading-none transition-colors disabled:opacity-50",
+                  c === lastUnderline && "bg-accent",
+                )}
               >
                 <span className={UNDERLINE_BTN[c]}>가</span>
               </button>
