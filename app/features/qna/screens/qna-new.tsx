@@ -66,6 +66,10 @@ export async function loader({ request }: Route.LoaderArgs) {
   const targetIdRaw = url.searchParams.get("targetId");
   const targetId =
     targetIdRaw && /^[0-9a-f-]{36}$/i.test(targetIdRaw) ? targetIdRaw : null;
+  // 쟁점(단원) 분류 — 조문 대상일 때만 의미. 대상은 조문 유지, node_id 로만 저장.
+  const nodeIdRaw = url.searchParams.get("nodeId");
+  const nodeId =
+    nodeIdRaw && /^[0-9a-f-]{36}$/i.test(nodeIdRaw) ? nodeIdRaw : null;
 
   // 대상(조문/판례/문제) 없이 진입한 경우 — 에러 대신 안내(어떤 경로로 와도 안 깨지게).
   if (
@@ -74,6 +78,44 @@ export async function loader({ request }: Route.LoaderArgs) {
     !targetId
   ) {
     return { mode: "none" as const };
+  }
+
+  // 단원(node) 대상 진입 — 질문의 대상을 단원으로 앵커하지 않고(조문 뷰어 미노출 문제)
+  // 그 단원에 속한 조문 중 하나를 고르게 한다. 대상=조문 + 분류=단원.
+  if (targetTypeParse.data === "node") {
+    const { data: node } = await client
+      .from("systematic_nodes")
+      .select("node_id, display_label")
+      .eq("node_id", targetId)
+      .maybeSingle();
+    if (node) {
+      const { data: links } = await client
+        .from("article_systematic_links")
+        .select("articles!inner(article_id, article_number, display_label)")
+        .eq("node_id", targetId);
+      const sortKey = (num: string | null) => {
+        const m = /^(\d+)(?:의(\d+))?/.exec(num ?? "");
+        return m ? Number(m[1]) * 1000 + Number(m[2] ?? 0) : Number.MAX_SAFE_INTEGER;
+      };
+      const articles = (links ?? [])
+        .map((l) => l.articles)
+        .filter((a) => a && a.article_number)
+        .map((a) => ({
+          articleId: a.article_id,
+          label: a.display_label,
+          key: sortKey(a.article_number),
+        }))
+        .sort((a, b) => a.key - b.key)
+        .map(({ articleId, label }) => ({ articleId, label }));
+      if (articles.length > 0) {
+        return {
+          mode: "node_articles" as const,
+          node: { nodeId: node.node_id, label: node.display_label },
+          articles,
+        };
+      }
+    }
+    // 연결 조문이 없는 단원(드묾) — 기존대로 단원 대상 폼으로 진행.
   }
 
   const target = await resolveTargetDisplay(
@@ -92,6 +134,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     targetId,
     target,
     seed,
+    nodeId: targetTypeParse.data === "article" ? nodeId : null,
   };
 }
 
@@ -102,6 +145,11 @@ export default function QnaNew({ loaderData }: Route.ComponentProps) {
   if (loaderData.mode === "none") {
     return <QnaTargetPicker />;
   }
+  if (loaderData.mode === "node_articles") {
+    return (
+      <NodeArticlePicker node={loaderData.node} articles={loaderData.articles} />
+    );
+  }
   return (
     <QnaForm
       mode="content"
@@ -109,7 +157,52 @@ export default function QnaNew({ loaderData }: Route.ComponentProps) {
       targetId={loaderData.targetId}
       target={loaderData.target}
       seed={loaderData.seed}
+      nodeId={loaderData.nodeId ?? undefined}
     />
+  );
+}
+
+// 단원에서 진입한 질문 — 그 단원의 조문 중 하나를 대상으로 특정(단원은 분류로만 저장).
+function NodeArticlePicker({
+  node,
+  articles,
+}: {
+  node: { nodeId: string; label: string };
+  articles: Array<{ articleId: string; label: string }>;
+}) {
+  const navigate = useNavigate();
+  return (
+    <CommunityShell
+      category="qna"
+      title="새 질문"
+      desc="이 단원의 어느 조문에 대한 질문인가요? 질문은 선택한 조문에 연결되고, 단원 분류가 함께 저장됩니다."
+      backLink={{ to: "/qna", label: "Q&A 목록" }}
+      width="narrow"
+    >
+      <div className="border-border bg-card rounded-2xl border p-5 shadow-sm md:p-6">
+        <div className="border-border bg-muted/40 mb-4 flex flex-wrap items-center gap-2 rounded-xl border p-3">
+          <Chip tone="primary">단원</Chip>
+          <span className="text-sm font-bold tracking-tight">{node.label}</span>
+        </div>
+        <div className="flex max-h-[50vh] flex-col gap-2 overflow-y-auto">
+          {articles.map((a) => (
+            <button
+              key={a.articleId}
+              type="button"
+              onClick={() =>
+                navigate(
+                  `/qna/new?targetType=article&targetId=${a.articleId}&nodeId=${node.nodeId}`,
+                  { viewTransition: true },
+                )
+              }
+              className="border-border hover:border-primary hover:bg-primary/5 rounded-xl border px-4 py-2.5 text-left text-sm font-medium"
+            >
+              {a.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </CommunityShell>
   );
 }
 
@@ -243,10 +336,11 @@ function QnaTargetPicker() {
   const notFound =
     resolveFetcher.state === "idle" && resolveFetcher.data?.ok === false;
 
-  const goTo = (targetType: string, targetId: string) =>
-    navigate(`/qna/new?targetType=${targetType}&targetId=${targetId}`, {
-      viewTransition: true,
-    });
+  const goTo = (targetType: string, targetId: string, nodeId?: string) =>
+    navigate(
+      `/qna/new?targetType=${targetType}&targetId=${targetId}${nodeId ? `&nodeId=${nodeId}` : ""}`,
+      { viewTransition: true },
+    );
 
   // 예상 문제 선택 시 과목의 체계도 노드 로드.
   useEffect(() => {
@@ -359,11 +453,13 @@ function QnaTargetPicker() {
             >
               조문 전체에 대해 질문
             </button>
+            {/* 쟁점 선택 — 대상은 조문 유지, 쟁점은 분류(node_id)로만 저장.
+                (질문 대상을 단원으로 바꾸면 조문 뷰어 Q&A 탭에 안 보이는 문제) */}
             {articleChoice.nodes.map((n) => (
               <button
                 key={n.nodeId}
                 type="button"
-                onClick={() => goTo("node", n.nodeId)}
+                onClick={() => goTo("article", articleChoice.targetId, n.nodeId)}
                 className="border-border hover:border-primary hover:bg-primary/5 flex items-center gap-2 rounded-xl border px-4 py-2.5 text-left text-sm font-medium"
               >
                 <Chip tone="primary">쟁점</Chip>
@@ -592,12 +688,15 @@ function QnaForm({
   targetId,
   target,
   seed,
+  nodeId,
 }: {
   mode: "content" | "study_method";
   targetType: QnaTargetType;
   targetId?: string;
   target?: TargetDisplay;
   seed?: string;
+  /** 사용자가 고른 쟁점(단원) 분류 — 조문 대상일 때만. */
+  nodeId?: string;
 }) {
   const fetcher = useFetcher();
   const [title, setTitle] = useState("");
@@ -680,6 +779,9 @@ function QnaForm({
           <input type="hidden" name="targetType" value={targetType} />
           {mode === "content" && targetId ? (
             <input type="hidden" name="targetId" value={targetId} />
+          ) : null}
+          {mode === "content" && nodeId ? (
+            <input type="hidden" name="nodeId" value={nodeId} />
           ) : null}
 
           {mode === "content" ? (

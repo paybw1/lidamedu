@@ -598,6 +598,8 @@ export async function createThread(
     questionMd: string;
     /** study_method 필수. 콘텐츠 대상은 미지정 시 대상에서 도출. */
     subject?: string | null;
+    /** 사용자가 고른 쟁점(단원) — 조문이 여러 쟁점에 걸릴 때. 미지정 시 대상에서 자동 도출. */
+    nodeId?: string | null;
   },
 ): Promise<QnaThreadDetail> {
   const subject =
@@ -611,11 +613,13 @@ export async function createThread(
           )
         : (input.subject ?? null);
   // 단원 캡처 — 콘텐츠 대상만. 법과목=체계도 노드 / 과학=science_sections.
-  //   공부방법·앵커 없는 질문은 둘 다 null.
+  //   공부방법·앵커 없는 질문은 둘 다 null. 사용자가 쟁점을 직접 골랐으면(input.nodeId) 그것 우선.
   const hasAnchor = input.targetType !== "study_method" && !!input.targetId;
-  const [nodeId, scienceSectionId] = hasAnchor
+  const [autoNodeId, scienceSectionId] = hasAnchor
     ? await Promise.all([
-        resolveNodeForTarget(client, input.targetType, input.targetId!),
+        input.nodeId
+          ? Promise.resolve(input.nodeId)
+          : resolveNodeForTarget(client, input.targetType, input.targetId!),
         resolveScienceSectionForTarget(
           client,
           input.targetType,
@@ -632,7 +636,7 @@ export async function createThread(
       title: input.title,
       question_md: input.questionMd,
       subject,
-      node_id: nodeId,
+      node_id: autoNodeId,
       science_section_id: scienceSectionId,
     })
     .select(DETAIL_COLUMNS)

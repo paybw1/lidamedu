@@ -34,6 +34,9 @@ const createSchema = z.object({
   targetType: qnaTargetTypeSchema,
   // study_method 는 대상 콘텐츠가 없어 targetId 미전송. 콘텐츠 Q&A 는 필수(아래 action 에서 검사).
   targetId: z.string().uuid().optional(),
+  // 쟁점(단원) 분류 — 조문이 여러 쟁점에 걸릴 때 사용자가 고른 단원. 대상은 조문 유지,
+  // 분류(node_id)만 이 값으로. (질문의 대상을 단원으로 바꾸는 옛 방식은 폐기 — 조문 뷰어 미노출 문제)
+  nodeId: z.string().uuid().optional(),
   title: z.string().min(1).max(200),
   questionMd: z.string().min(1).max(10000),
   // 과목 분류 — study_method 필수. 콘텐츠 Q&A 는 대상에서 도출(미전송).
@@ -172,6 +175,7 @@ export async function action({ request }: Route.ActionArgs) {
       title: parsed.data.title,
       questionMd: parsed.data.questionMd,
       subject: subject ?? null,
+      nodeId: parsed.data.nodeId ?? null,
     });
 
     const notifyTask = notifyNewQuestion(
