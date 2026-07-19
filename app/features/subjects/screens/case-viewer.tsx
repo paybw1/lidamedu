@@ -356,9 +356,13 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
   const [searchParams] = useSearchParams();
 
   // feat-2-029 — 판례 단계별 암기 모드(원문/①빈칸/쟁점만/전체 복원). staff 전용(완성 전).
-  // ?mem=blanks(&blankEdit=1) — prev/next 로 판례를 옮겨도 빈칸(편집) 모드 유지(staff 만).
+  // ?mem=blanks|issues|recall(&blankEdit=1) — URL 로 모드 초기화(prev/next 유지·북마크 가능).
   const [memMode, setMemMode] = useState<"off" | "blanks" | CaseMemorizeMode>(
-    () => (isStaff && searchParams.get("mem") === "blanks" ? "blanks" : "off"),
+    () => {
+      if (!isStaff) return "off";
+      const m = searchParams.get("mem");
+      return m === "blanks" || m === "issues" || m === "recall" ? m : "off";
+    },
   );
   const memItems =
     kase.summaryItems.length > 0
@@ -761,6 +765,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                   caseNumber={kase.caseNumber}
                   caseTitle={kase.caseTitle}
                   items={memItems}
+                  blanks={caseBlankSet?.blanks ?? []}
                 />
               )}
             </main>
