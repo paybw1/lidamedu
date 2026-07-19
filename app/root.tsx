@@ -241,9 +241,10 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
 export default function App() {
   const navigation = useNavigation();
 
-  // Initialize NProgress with spinner for better UX during navigation
+  // NProgress — 상단 진행 바만 사용. 우상단 스피너는 끔(로딩 표시는 커서 progress 로,
+  // 사용자 지시 2026-07-19).
   useEffect(() => {
-    NProgress.configure({ showSpinner: true });
+    NProgress.configure({ showSpinner: false });
   }, []);
 
   // Show/hide progress bar based on navigation state
