@@ -163,11 +163,18 @@ const components: Components = {
   ),
 };
 
+// 줄 머리 "1. " 수동 번호를 마크다운 순서 목록으로 바꾸지 않게 이스케이프("1\.").
+// 렌더는 친 그대로 "1." — 목록 들여쓰기·후속 줄 말려들어감(item 연속행) 방지.
+function escapeOrderedListMarkers(text: string): string {
+  return text.replace(/^(\s*)(\d+)\.(?=\s)/gm, "$1$2\\.");
+}
+
 export function MarkdownView({
   text,
   className,
   trusted = true,
   breaks = false,
+  literalNumbering = false,
 }: {
   text: string;
   className?: string;
@@ -179,6 +186,9 @@ export function MarkdownView({
   // 문단을 나누는 콘텐츠(커뮤니티 글·합격 수기)에만 사용. HWPX 적재 본문은 우발적 \n 이 많아
   // 기본 false(문단은 \n\n 로만).
   breaks?: boolean;
+  // literalNumbering=true → "1. " 손 번호를 목록으로 만들지 않고 친 그대로 표시.
+  // 마크다운을 모르는 사용자 산문(Q&A 질문·강사 답변 등) — 의도치 않은 들여쓰기 방지.
+  literalNumbering?: boolean;
 }) {
   return (
     <div
@@ -201,7 +211,7 @@ export function MarkdownView({
         remarkRehypeOptions={{ allowDangerousHtml: trusted }}
         components={components}
       >
-        {text}
+        {literalNumbering ? escapeOrderedListMarkers(text) : text}
       </ReactMarkdown>
     </div>
   );

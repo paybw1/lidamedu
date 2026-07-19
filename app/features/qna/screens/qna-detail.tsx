@@ -273,6 +273,7 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
             text={thread.questionMd}
             trusted={false}
             breaks
+            literalNumbering
             className="text-foreground/85 mt-3.5 text-[15px] leading-[1.85]"
           />
         )}
@@ -326,6 +327,7 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
             text={thread.answerMd}
             trusted={false}
             breaks
+            literalNumbering
             className="text-foreground/85 text-[15px] leading-[1.85]"
           />
         </article>
@@ -547,6 +549,7 @@ function FollowUpCard({ message }: { message: QnaMessage }) {
         text={message.bodyMd}
         trusted={false}
         breaks
+        literalNumbering
         className="text-foreground/85 text-[14px] leading-[1.8]"
       />
     </article>
