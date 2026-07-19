@@ -300,6 +300,13 @@ body {
     @apply border-t-primary! border-l-primary!;
   }
 
+  /* 내비게이션/제출 중(root.tsx 가 html 에 .nav-busy 토글) — 커서를 로딩 커서로 바꿔
+     "클릭이 접수됐다"를 즉시 표시. 화면 전환 지연 시 중복 클릭 방지. */
+  .nav-busy,
+  .nav-busy * {
+    cursor: progress !important;
+  }
+
   /* 사용자 하이라이트 (CSS Custom Highlight Registry) — 색상별로 4개 highlight name 사용 */
   ::highlight(lidam-hl-yellow) {
     background-color: rgba(253, 230, 138, 0.7); /* amber-200 */

@@ -255,6 +255,14 @@ export default function App() {
     }
   }, [navigation.state]);
 
+  // 내비게이션/제출 중 전역 로딩 커서 — 클릭이 접수됐음을 즉시 보여줘
+  // "눌린 건가?" 하고 다시 클릭하는 문제를 줄인다(서버 loader 가 DB 를 읽는 동안).
+  useEffect(() => {
+    const busy = navigation.state !== "idle";
+    document.documentElement.classList.toggle("nav-busy", busy);
+    return () => document.documentElement.classList.remove("nav-busy");
+  }, [navigation.state]);
+
   // Handle Supabase authentication redirects
   // This is a workaround for a Supabase auth issue: https://github.com/supabase/auth/issues/1927
   // TODO: Remove this once the issue is fixed
