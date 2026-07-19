@@ -147,3 +147,8 @@
 - OX 진위 파생: `problems/lib/auto-ox.ts`(극성×정답 → O/X, mc_short/mc_box).
 - 판례 SRS 카드: `srs/lib/case-card.ts`(쟁점 front → 요지 back), `card-gen.server.ts`.
 - 조문 빈칸(재사용 원본): `blanks/` (context ±30 앵커, blanks-context 매칭/입력).
+
+
+## 쟁점만 보기 단계식 힌트 (2026-07-19, 6e5ab1b8)
+
+①빈칸→②쟁점만 보기의 인지 부하 격차 해소(원장 제안). 항목별 공개 단계: 가림 → **힌트① 키워드 칩**(그 쟁점의 빈칸 정답, 본문 등장 순) → **힌트② 빈칸 본문**(핵심어만 가린 요지, read-only) → 전체. 힌트 재료 = 기출 유래 빈칸 세트(target=summary, itemIndex별) — 추가 저장 없음. 빈칸 없는 판례/항목은 힌트 생략. `?mem=issues|recall` URL 초기화 지원. ③전체 복원(recall)에의 동일 힌트 적용은 사용자 검토 후 후속.
