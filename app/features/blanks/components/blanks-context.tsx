@@ -258,12 +258,16 @@ export function BlanksRenderProvider({
     const activeEl = document.activeElement as HTMLElement | null;
     if (!activeEl) return;
     if (activeEl === inputsRef.current.get(targetIdx)) return; // 같은 칸 재클릭 — 무시.
-    // 현재 포커스가 이 provider 의 다른 빈칸 input 일 때만 flush(무관한 엘리먼트는 건드리지 않음).
-    for (const el of inputsRef.current.values()) {
-      if (el === activeEl) {
-        if (typeof activeEl.blur === "function") activeEl.blur();
-        return;
-      }
+    // 현재 포커스가 '어떤 provider 든' 빈칸 input 이면 flush — data-lidam-blank 전역 식별.
+    //   ★같은 provider 만 보던 과거 구현은 장(chapter) 뷰어처럼 여러 조문이 한 화면일 때
+    //   제1조→제2조 교차 터치를 못 잡아 IME 마지막 글자가 이월됐다(2026-07-20 신고).
+    //   무관한 엘리먼트(검색창 등)는 여전히 건드리지 않는다.
+    if (
+      activeEl instanceof HTMLInputElement &&
+      activeEl.dataset.lidamBlank === "1" &&
+      typeof activeEl.blur === "function"
+    ) {
+      activeEl.blur();
     }
   }, []);
 
@@ -733,8 +737,11 @@ function BlankInputInline({
             if (moved) e.preventDefault();
           }
         }}
-        // 마우스로 이 칸을 클릭할 때 — 포커스가 옮겨오기 전(mousedown)에 이전(현재 포커스)
-        //   빈칸을 blur 해 Windows 한글 IME 조합 버퍼를 그 칸에 flush. 이월 차단.
+        // 마우스/터치로 이 칸을 누를 때 — 포커스가 옮겨오기 전에 이전(현재 포커스)
+        //   빈칸을 blur 해 한글 IME 조합 버퍼를 그 칸에 flush. 이월 차단.
+        //   ★onPointerDown 병행: 터치는 mousedown 합성이 늦거나 생략될 수 있어(모바일 신고
+        //   재현) 더 이른 pointerdown 시점에 먼저 flush 한다(중복 호출은 무해·멱등).
+        onPointerDown={() => onPointerDownFlush()}
         onMouseDown={() => onPointerDownFlush()}
         onFocus={(e) => {
           if (e.currentTarget.value !== value) {
@@ -767,6 +774,9 @@ function BlankInputInline({
         }}
         aria-label={`빈칸 ${idx}`}
         title={`빈칸 ${idx} (${answer.length}자)`}
+        // 전역 빈칸 식별자 — 다른 조문(provider)의 flush 가 이 input 을 알아보게 한다
+        // (장 뷰어처럼 여러 조문이 한 화면일 때 교차 이동 flush 용).
+        data-lidam-blank="1"
         autoComplete="off"
         autoCorrect="off"
         autoCapitalize="off"

@@ -74,11 +74,14 @@ test.describe.serial("조문 빈칸 — 자동이동 없음 + Enter 이동(leak 
         service_data_consent_at: new Date().toISOString(),
       })
       .eq("profile_id", userId);
-    const { data: set } = await admin
+    // 세트가 여러 개일 수 있음(운영자 빈 세트 등) — 빈칸이 있는 세트를 선택(maybeSingle 금지).
+    const { data: sets } = await admin
       .from("article_blank_sets")
       .select("set_id, blanks")
-      .eq("article_id", ARTICLE_ID)
-      .maybeSingle();
+      .eq("article_id", ARTICLE_ID);
+    const set = (sets ?? []).find(
+      (s) => Array.isArray(s.blanks) && s.blanks.length > 0,
+    );
     if (!set) throw new Error("제29조 빈칸 세트 없음");
     setId = set.set_id;
     for (const b of set.blanks as Array<{ idx: number; answer: string }>) {

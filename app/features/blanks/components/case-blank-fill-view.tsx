@@ -103,6 +103,8 @@ function CaseBlankInput({
       className={cls}
       style={{ width: `${widthCh}ch` }}
       onChange={(e) => onChange(e.target.value, composingRef.current)}
+      // 터치는 mousedown 합성이 늦거나 생략될 수 있어 pointerdown 에서 먼저 flush(멱등).
+      onPointerDown={onPointerFlush}
       onMouseDown={onPointerFlush}
       onKeyDown={(e) => {
         if (e.key === "Enter") {
