@@ -22,7 +22,6 @@ import {
 } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
-import { Textarea } from "~/core/components/ui/textarea";
 import { QnaImageTextarea } from "~/features/qna/components/qna-image-textarea";
 import { cn } from "~/core/lib/utils";
 import { Chip } from "~/features/community/components/community-ui";
@@ -437,6 +436,9 @@ function EditThreadForm({
   const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
   const revalidator = useRevalidator();
   const doneRef = useRef(false);
+  // 이미지 붙여넣기(QnaImageTextarea)는 제어 컴포넌트라 본문을 state 로 관리.
+  const [questionDraft, setQuestionDraft] = useState(thread.questionMd);
+  const [answerDraft, setAnswerDraft] = useState(thread.answerMd ?? "");
   useEffect(() => {
     if (fetcher.data?.ok && !doneRef.current) {
       doneRef.current = true;
@@ -460,23 +462,23 @@ function EditThreadForm({
       </div>
       <div>
         <label className="text-muted-foreground mb-1 block text-[11px] font-bold">질문</label>
-        <Textarea
+        <QnaImageTextarea
           name="questionMd"
-          defaultValue={thread.questionMd}
+          value={questionDraft}
+          onChange={setQuestionDraft}
           required
           rows={8}
-          className="text-[14px] leading-relaxed"
         />
       </div>
       {thread.answerMd ? (
         <div>
           <label className="text-muted-foreground mb-1 block text-[11px] font-bold">답변</label>
-          <Textarea
+          <QnaImageTextarea
             name="answerMd"
-            defaultValue={thread.answerMd}
+            value={answerDraft}
+            onChange={setAnswerDraft}
             required
             rows={10}
-            className="text-[14px] leading-relaxed"
           />
         </div>
       ) : null}
@@ -936,13 +938,12 @@ function AnswerForm({ threadId }: { threadId: string }) {
         <input type="hidden" name="intent" value="answer" />
         <input type="hidden" name="threadId" value={threadId} />
         <input type="hidden" name="qualityGrade" value={grade} />
-        <Textarea
+        <QnaImageTextarea
           name="answerMd"
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={setDraft}
           placeholder="답변을 작성하세요"
           rows={6}
-          className="text-sm leading-relaxed"
           required
         />
 
