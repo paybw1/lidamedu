@@ -1,0 +1,543 @@
+<!-- =========================================================
+     20. 강의 관리 및 과정 개설
+     콜러스 온라인 강의 서비스 핵심 기능
+     ========================================================= -->
+<div style="background: #fff; border-radius: 28px; padding: 38px; border: 1px solid #e5e7eb; box-shadow: 0 16px 40px rgba(15,23,42,.06);"><!-- HEADER -->
+<div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 30px;">
+<h2 style="margin: 0 0 10px; font-size: 28px; color: #0f172a;">강의 관리 및 과정 개설</h2>
+</div>
+<!-- 중요도 안내 -->
+<div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 28px; padding: 18px 20px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 18px;">
+<div style="display: flex; align-items: center; gap: 8px;"><span style="display: inline-block; padding: 4px 9px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 12px; font-weight: 800;"> ★★★ 필수 </span> <span style="font-size: 14px; color: #475569;">반드시 필요</span></div>
+<div style="display: flex; align-items: center; gap: 8px;"><span style="display: inline-block; padding: 4px 9px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 12px; font-weight: 800;"> ★★ 운영필수 </span> <span style="font-size: 14px; color: #475569;">필요</span></div>
+<div style="display: flex; align-items: center; gap: 8px;"><span style="display: inline-block; padding: 4px 9px; border-radius: 999px; background: #e0f2fe; color: #0369a1; font-size: 12px; font-weight: 800;"> ★ 선택 </span> <span style="font-size: 14px; color: #475569;">있으면 좋은 기능</span></div>
+</div>
+<!-- 운영 구조 -->
+<div style="padding: 26px; margin-bottom: 38px; border-radius: 22px; background: linear-gradient(135deg,#0f172a,#1e3a8a); color: #fff;"><strong style="display: block; margin-bottom: 14px; font-size: 18px;"> 강의 개설 운영 흐름 </strong>
+<div style="display: grid; grid-template-columns: repeat(auto-fit,minmax(150px,1fr)); gap: 12px;">
+<div style="padding: 16px; border-radius: 14px; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.14);">1. 콘텐츠 동기화</div>
+<div style="padding: 16px; border-radius: 14px; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.14);">2. 강의 기본정보 등록</div>
+<div style="padding: 16px; border-radius: 14px; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.14);">3. 판매정보 설정</div>
+<div style="padding: 16px; border-radius: 14px; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.14);">4. 수강정책 설정</div>
+<div style="padding: 16px; border-radius: 14px; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.14);">5. 강의목차 연결</div>
+<div style="padding: 16px; border-radius: 14px; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.14);">6. 판매 및 수강</div>
+</div>
+</div>
+<div style="margin-bottom: 40px;">
+<h3 style="margin: 0 0 18px; font-size: 22px; color: #0f172a;">관리자페이지 추가기능</h3>
+<ul style="margin: 0; padding-left: 22px; color: #334155;">
+<li style="margin-bottom: 16px;"><strong>무료 강의 수동 지급 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★★ 필수</span> </strong><br />회원에게 강의를 무료로 수동 지급합니다.<br data-start="22" data-end="25" />회원관리에서 <strong data-start="33" data-end="44">강의 아이디</strong>로 지급 또는 강의관리에서 <strong data-start="55" data-end="66">회원 아이디</strong>로 등록할 수 있습니다.</li>
+<li><strong>도서 무료배송 기준 설정 &nbsp;<span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★★ 필수</span> </strong><br />관리자 페이지에서 <strong>도서 상품의 무료배송 기준 금액</strong>을 설정할 수 있어야 합니다.<br data-start="22" data-end="25" />무료배송 조건은 <strong>도서 상품의 결제금액만 기준으로 계산</strong>하며, 강의 상품 금액은 합산하지 않습니다.<br /><br /></li>
+<li><strong>수강평&middot;교재평 관리 &nbsp;<span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />강의와 교재에는 각각 <strong>수강평(강의 후기)</strong>, ​<strong>교재평(도서 후기)</strong> 게시판을 운영할 수 있어야 합니다<br data-start="22" data-end="25" />회원은 구매한 강의 또는 교재에 대해서만 후기를 작성할 수 있으며, 관리자는 관리자 페이지에서 <br />후기의 등록, 수정, 삭제, 비공개 처리 및 베스트 후기를 관리할 수 있어야 합니다.<br /><br />
+<p class="isSelectedEnd">수강평 및 교재평에는 다음 기능이 포함되어야 합니다.</p>
+<ul data-spread="false">
+<li>강의별 수강평 게시판</li>
+<li>교재별 교재평 게시판</li>
+<li>별점(평점) 기능</li>
+<li>후기 작성, 수정, 삭제</li>
+<li>관리자 답변 등록</li>
+<li>베스트 후기 지정</li>
+<li>공개 / 비공개 처리</li>
+<li>신고 및 블라인드 처리</li>
+<li>작성일, 작성자, 조회수 표시</li>
+<li>강의 및 교재 상세페이지에 후기 목록과 평균 평점 자동 표시</li>
+<li>구매한 회원만 후기 작성 가능하도록 권한 제한</li>
+</ul>
+</li>
+</ul>
+<h3 style="margin: 0 0 18px; font-size: 22px; color: #0f172a;"><br />강의관리 메인 화면</h3>
+<ul style="margin: 0; padding-left: 22px; color: #334155;">
+<li style="margin-bottom: 16px;"><strong> 강의 목록 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />등록된 단과 강의와 패키지 강의를 조회하고 강의명, 카테고리, 강사, 판매상태, 수강생 수를 확인합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 강의 검색 및 필터 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />강의명, 강사, 카테고리, 판매상태, 공개상태 기준으로 강의를 검색합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 강의등록 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />하나의 단과 강의에 기본정보, 판매가격, 수강정책, 상세소개, 강의목차를 등록합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 패키지강의등록 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />여러 단과 강의를 하나의 상품으로 묶어 판매합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 강의복사 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />기존 강의의 기본정보, 판매정보, 수강정책, 상세소개, 목차를 복사하여 신규 연도 강의를 빠르게 생성합니다.</li>
+<li><strong> 강의 노출 순서 변경 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />메인 또는 카테고리 페이지에 표시되는 강의 순서를 직접 조정합니다.</li>
+</ul>
+</div>
+<div style="margin-bottom: 40px;">
+<h3 style="margin: 0 0 18px; font-size: 22px; color: #0f172a;">강의등록 화면 구조</h3>
+<p style="margin: 0 0 20px; color: #64748b;">강의등록 화면은 기본정보를 먼저 저장한 후 판매정보, 수강정책, 강의소개, 강의목차 탭이 활성화되는 구조로 개발합니다.</p>
+<div style="display: grid; grid-template-columns: repeat(auto-fit,minmax(160px,1fr)); gap: 10px; margin-bottom: 28px;">
+<div style="padding: 14px; border-radius: 14px; background: #0f172a; color: #fff; text-align: center; font-weight: bold;">기본정보</div>
+<div style="padding: 14px; border-radius: 14px; background: #f1f5f9; color: #334155; text-align: center; font-weight: bold;">판매정보</div>
+<div style="padding: 14px; border-radius: 14px; background: #f1f5f9; color: #334155; text-align: center; font-weight: bold;">수강정책</div>
+<div style="padding: 14px; border-radius: 14px; background: #f1f5f9; color: #334155; text-align: center; font-weight: bold;">강의소개</div>
+<div style="padding: 14px; border-radius: 14px; background: #f1f5f9; color: #334155; text-align: center; font-weight: bold;">강의목차</div>
+<div style="padding: 14px; border-radius: 14px; background: #f1f5f9; color: #334155; text-align: center; font-weight: bold;">교재&middot;자료</div>
+<div style="padding: 14px; border-radius: 14px; background: #f1f5f9; color: #334155; text-align: center; font-weight: bold;">변경이력</div>
+</div>
+<ul style="margin: 0; padding-left: 22px; color: #334155;">
+<li style="margin-bottom: 16px;"><strong> 강의 고유번호 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />기본정보 최초 저장 시 시스템에서 강의 고유번호를 자동 생성합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 강의 유형 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />현장강의, 온라인 단과, 온라인 패키지, 무료특강 중 하나를 선택합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 카테고리 설정 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />메인과 강의목록에서 표시될 대분류, 중분류, 소분류를 선택합니다.<br />예: 1차시험 &gt; 민법 &gt; 기본이론 / 2차시험 &gt; 특허법 &gt; 실전 GS.</li>
+<li style="margin-bottom: 16px;"><strong> 대표 카테고리 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />복수 카테고리에 노출되는 강의는 대표 카테고리 한 개를 지정합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 강의명 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />강의 목록, 상세페이지, 주문내역, 내 강의실에 표시될 공식 강의명을 입력합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 강의 부제목 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #e0f2fe; color: #0369a1; font-size: 11px; font-weight: 800;">★ 선택</span> </strong><br />강의의 핵심 특징을 짧게 표시합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 담당 강사 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />강사관리에서 등록된 강사를 선택합니다. 공동강의는 <strong>복수 선택할 수 있도록</strong> 합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 썸네일 이미지 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />강의 목록과 상세페이지에 표시할 대표 이미지를 등록합니다. 하나의 반응형 이미지를 사용하는 방식이면 PC&middot;모바일 이미지를 따로 등록하지 않아도 됩니다.</li>
+<li style="margin-bottom: 16px;"><strong> 강의 상태 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />판매예정, 판매중, 판매중지, 판매종료, 비공개 상태를 설정합니다.</li>
+<li><strong> 관리자 메모 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />촬영일정, 가격변경, 영상교체, 운영 참고사항을 기록합니다.</li>
+</ul>
+</div>
+<div style="margin-bottom: 40px;">
+<h3 style="margin: 0 0 18px; font-size: 22px; color: #0f172a;">판매정보 설정</h3>
+<ul style="margin: 0; padding-left: 22px; color: #334155;">
+<li style="margin-bottom: 16px;"><strong> 정가 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />할인 전 기준 가격을 입력합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 수강료 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />회원이 실제 결제하는 판매금액을 입력합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 무료수강 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />무료강의 체크 시 결제 없이 수강 신청 또는 즉시 수강권이 지급되도록 합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 판매기간 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />상품을 구매할 수 있는 판매 시작일과 판매 종료일을 설정합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 쿠폰 사용 여부 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />해당 강의에 할인쿠폰을 적용할 수 있는지 설정합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 포인트 사용 및 적립 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span></strong><br />결제 시 포인트 사용 여부와 결제 완료 후 적립률을 설정합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 과세&middot;면세 설정 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />온라인 강의와 교재 결합상품의 과세&middot;면세 구분을 주문과 정산에 반영합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 강사 정산 기준 연결 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span></strong><br />강사별 매출 배분율 또는 정산기준을 강의에 연결합니다.</li>
+<li><strong> 교재 연결 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span></strong><br />강의 상세페이지에서 구매할 필수교재 또는 선택교재를 연결합니다.</li>
+</ul>
+</div>
+<div style="margin-bottom: 40px;">
+<h3 style="margin: 0 0 18px; font-size: 22px; color: #0f172a;">수강정책 설정</h3>
+<ul style="margin: 0; padding-left: 22px; color: #334155;">
+<li style="margin-bottom: 16px;"><strong> 수강일수 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />결제일 또는 수강 시작일 기준으로 강의를 볼 수 있는 기본 수강기간을 설정합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 수강 시작 기준 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />결제 즉시 시작, 회원 직접 시작, 지정일 시작 중 하나를 선택합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 고정 종료일 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #e0f2fe; color: #0369a1; font-size: 11px; font-weight: 800;">★ 선택</span> </strong><br />프리패스나 시험일까지 제공되는 상품처럼 모든 회원의 종료일을 동일하게 설정할 때 사용합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 수강 배수 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />1.5배수, 2배수, 3배수 또는 무제한으로 설정합니다.</li>
+<li style="margin-bottom: 16px;"><strong> PC&middot;모바일 수강 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />PC와 모바일에서 모두 재생할 수 있는지 설정합니다. 대부분의 상품은 PC+모바일 허용을 기본값으로 사용합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 다운로드 허용 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />콜러스 앱을 통한 DRM 다운로드 및 오프라인 수강 허용 여부를 설정합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 유료연장 사용 여부 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />수강 종료 전후에 회원이 유료로 수강기간을 연장할 수 있는지 설정합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 연장 단위 및 가격 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />예: 1일 연장 6,000원처럼 연장일수와 금액을 설정합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 일시중지 사용 여부 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />수강생이 강의를 일정 기간 중지하고 사용한 기간만큼 종료일을 연장할 수 있도록 합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 일시중지 총 사용일수 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />전체 수강기간 동안 사용할 수 있는 최대 정지일수를 설정합니다. 예: 총 30일.</li>
+<li style="margin-bottom: 16px;"><strong> 일시중지 최대 횟수 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />전체 정지일수를 나누어 사용할 수 있는 최대 횟수를 설정합니다. 예: 최대 30일 중 3회까지 사용.</li>
+<li><strong> 일시중지 중 재생 차단 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />일시중지 기간에는 해당 수강권의 영상 재생을 차단합니다.</li>
+</ul>
+</div>
+<div style="margin-bottom: 40px;">
+<h3 style="margin: 0 0 18px; font-size: 22px; color: #0f172a;">강의소개 및 상세페이지</h3>
+<ul style="margin: 0; padding-left: 22px; color: #334155;">
+<li style="margin-bottom: 16px;"><strong>강의 미리보기(샘플영상) 재생 버튼 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span></strong><br />강의 상세페이지에 &lsquo;샘플영상 보기&rsquo; 또는 &lsquo;강의 미리보기&rsquo; 버튼을 표시합니다. 버튼을 클릭하면 관리자가 맛보기로 지정한 콜러스 영상이 DRM 플레이어로 재생되어야 하며, 비회원 또는 미구매 회원도 재생할 수 있도록 별도 권한으로 처리합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 강의 요약소개 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />강의 목록과 상세페이지 상단에 표시될 짧은 소개문구를 입력합니다.</li>
+<li style="margin-bottom: 18px; list-style: none; margin-left: -22px; padding: 22px 24px; border-radius: 18px; background: #fff1f2; border: 2px solid #fda4af; box-shadow: 0 10px 24px rgba(190,24,93,.08);"><strong style="display: block; margin-bottom: 10px; font-size: 17px; color: #9f1239;"> HTML 에디터 기능 <span style="display: inline-block; margin-left: 6px; padding: 4px 9px; border-radius: 999px; background: #be123c; color: #fff; font-size: 11px; font-weight: 800;">★★★★ 핵심필수</span> </strong>
+<p style="margin: 0 0 14px; color: #4c0519; line-height: 1.7;"><strong>일반 편집모드와 HTML 소스 편집모드를 모두 사용할 수 있어야 하며, 두 모드 간 전환 후에도 입력한 HTML과 CSS가 손상되거나 삭제되지 않아야 합니다.</strong></p>
+<div style="display: grid; grid-template-columns: repeat(auto-fit,minmax(230px,1fr)); gap: 8px 18px; color: #334155; line-height: 1.65;">✓ HTML 소스 편집<br />✓ 이미지 업로드 및 삽입<br />✓ 표 삽입<br />✓ 유튜브&middot;동영상 iframe 삽입<br />✓ 링크 삽입<br />✓ 글자 크기 및 색상 변경<br />✓ 전체화면 편집<br />✓ 미리보기<br />✓ 기존 HTML 코드 불러오기 및 재편집<br />✓ 모바일용 HTML 및 CSS 코드 보존</div>
+</li>
+<li style="margin-bottom: 16px;"><strong> PC&middot;모바일 미리보기 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />저장 전 상세페이지가 PC와 모바일에서 어떻게 표시되는지 확인합니다.</li>
+<li><strong> 임시저장 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />작성 중인 상세페이지를 공개하지 않고 저장합니다.</li>
+</ul>
+</div>
+<div style="margin-bottom: 40px;">
+<h3 style="margin: 0 0 18px; font-size: 22px; color: #0f172a;">강의 목차 및 콜러스 콘텐츠 연결</h3>
+<p style="margin: 0 0 20px; color: #64748b;">강의 기본정보가 최초 저장되면 강의목차 탭 또는 목차관리 버튼이 활성화되어야 합니다.</p>
+<ul style="margin: 0; padding-left: 22px; color: #334155;">
+<li style="margin-bottom: 16px;"><strong> 강의 저장 후 목차관리 활성화 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />강의 기본정보를 최초 저장하면 시스템은 고유 강의번호를 생성합니다. <br />생성된 강의번호를 기준으로 목차를 관리하므로, <strong data-start="521" data-end="564">최초 저장 전에는 '목차관리' 탭을 비활성화하고 저장 완료 후 활성화</strong>해야 합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 강의그룹 콘텐츠 불러오기 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />콘텐츠관리에서 생성한 강의그룹을 선택하고 해당 그룹의 콜러스 영상을 불러옵니다.</li>
+<li style="margin-bottom: 16px;"><strong> 여러 콘텐츠 일괄 추가 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span></strong><br />여러 회차의 영상을 한 번에 선택해 강의목차에 추가합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 회차명 자동입력 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />콘텐츠에 등록된 강의명을 목차명으로 자동 적용하고 필요하면 수정합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 목차 순서 변경 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />드래그 앤 드롭으로 회차의 노출 순서를 변경합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 공개&middot;비공개 설정 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />오류 또는 검수 중인 회차를 수강생 화면에서 숨깁니다.</li>
+<li style="margin-bottom: 16px;"><strong> 예약 공개 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />특정 날짜와 시간부터 회차가 자동 공개되도록 설정합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 맛보기 설정 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />특정 회차를 구매 전 무료로 재생할 수 있도록 설정합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 배수 차감 여부 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />일반 회차는 배수를 차감하고 OT&middot;무료&middot;맛보기 영상은 차감하지 않도록 설정합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 진도율 반영 여부 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />OT, 공지영상, 보충영상 등을 전체 진도율 계산에서 제외합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 회차별 강의자료 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />PDF, 강의노트, 문제지, 정오표를 회차별로 연결합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 영상 교체 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />회차명과 수강기록은 유지하면서 연결된 콜러스 콘텐츠만 수정 영상으로 교체합니다.</li>
+<li><strong> 동일 콘텐츠 재사용 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★★ 필수</span> </strong><br />동일한 콜러스 콘텐츠를 여러 강의에서 중복 업로드 없이 사용할 수 있어야 합니다.</li>
+</ul>
+</div>
+<!-- 목차 예시 -->
+<div style="margin-bottom: 40px;">
+<h3 style="margin: 0 0 18px; font-size: 22px; color: #0f172a;">목차관리 화면 예시</h3>
+<div style="overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 18px;">
+<table style="width: 100%; min-width: 1050px; border-collapse: collapse; font-size: 14px;">
+<thead>
+<tr style="background: #f8fafc; color: #334155;">
+<th style="padding: 15px; border-bottom: 1px solid #e2e8f0; text-align: center;">순서</th>
+<th style="padding: 15px; border-bottom: 1px solid #e2e8f0; text-align: left;">강명</th>
+<th style="padding: 15px; border-bottom: 1px solid #e2e8f0; text-align: left;">콘텐츠타입</th>
+<th style="padding: 15px; border-bottom: 1px solid #e2e8f0; text-align: center;">시간</th>
+<th style="padding: 15px; border-bottom: 1px solid #e2e8f0; text-align: center;">공개일</th>
+<th style="padding: 15px; border-bottom: 1px solid #e2e8f0; text-align: center;">상태</th>
+<th style="padding: 15px; border-bottom: 1px solid #e2e8f0; text-align: center;">맛보기</th>
+<th style="padding: 15px; border-bottom: 1px solid #e2e8f0; text-align: center;">배수</th>
+<th style="padding: 15px; border-bottom: 1px solid #e2e8f0; text-align: center;">관리</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9; text-align: center;">1</td>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9;">1강 특허법 총칙</td>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9;">동영상(콜러스)</td>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9; text-align: center;">72분</td>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9; text-align: center;">즉시공개</td>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9; text-align: center;">공개</td>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9; text-align: center;">사용</td>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9; text-align: center;">미차감</td>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9; text-align: center;">수정 / 교체</td>
+</tr>
+<tr>
+<td style="padding: 15px; text-align: center;">2</td>
+<td style="padding: 15px;">2강 발명의 성립성</td>
+<td style="padding: 15px;">외부링크 (유튜브)</td>
+<td style="padding: 15px; text-align: center;">68분</td>
+<td style="padding: 15px; text-align: center;">2026.08.02</td>
+<td style="padding: 15px; text-align: center;">예약</td>
+<td style="padding: 15px; text-align: center;">미사용</td>
+<td style="padding: 15px; text-align: center;">차감</td>
+<td style="padding: 15px; text-align: center;">수정 / 교체</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div style="margin-bottom: 40px;">
+<h3 style="margin: 0 0 18px; font-size: 22px; color: #0f172a;">패키지강의등록</h3>
+<ul style="margin: 0; padding-left: 22px; color: #334155;">
+<li style="margin-bottom: 16px;"><strong> 패키지 기본정보 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />패키지명, 카테고리, 썸네일, 정가, 판매가, 판매기간, 상세소개를 입력합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 포함 단과강의 선택 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />기존에 등록된 여러 단과 강의를 검색하여 패키지에 포함합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 패키지 내 강의 순서 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />내 강의실에 표시되는 단과 강의의 순서를 조정합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 패키지 수강기간 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />패키지 전체 수강일수 또는 고정 종료일을 설정합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 포함 강의 기간 적용방식 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />패키지 전체 기간을 적용할지, 각 단과 강의의 개별 기간을 적용할지 설정합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 기존 구매자 추가강의 지급 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />패키지에 신규 강의를 추가할 때 기존 구매자에게도 자동 지급할지 선택합니다.</li>
+<li><strong> 패키지 전용 혜택 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #e0f2fe; color: #0369a1; font-size: 11px; font-weight: 800;">★ 선택</span> </strong><br />무료특강, 교재, 쿠폰 또는 포인트 혜택을 연결합니다.</li>
+</ul>
+</div>
+<div style="margin-bottom: 40px;">
+<h3 style="margin: 0 0 18px; font-size: 22px; color: #0f172a;">강의복사</h3>
+<ul style="margin: 0; padding-left: 22px; color: #334155;">
+<li style="margin-bottom: 16px;"><strong> 복사 대상 선택 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />복사할 기존 단과 또는 패키지 강의를 선택합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 복사 항목 선택 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />기본정보, 판매정보, 수강정책, 상세소개, 목차, 자료, 교재 연결 중 복사할 항목을 선택합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 콜러스 콘텐츠 연결 복사 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />기존 강의에 연결된 콜러스 콘텐츠를 신규 강의에도 연결할지 선택합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 수강기록 제외 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />기존 회원의 수강권, 진도율, 재생기록, 배수기록, 주문내역은 복사하지 않습니다.</li>
+<li><strong> 비공개 상태로 생성 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />복사된 강의는 작성중 또는 비공개 상태로 생성해 검수 후 판매하도록 합니다.</li>
+</ul>
+</div>
+<div style="margin-bottom: 40px;">
+<h3 style="margin: 0 0 18px; font-size: 22px; color: #0f172a;">노출 설정</h3>
+<ul style="margin: 0; padding-left: 22px; color: #334155;">
+<li style="margin-bottom: 16px;"><strong> 메인 노출 여부 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />신규강의, 추천강의, 인기강의 등 메인 영역에 노출할지 설정합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 카테고리 노출 순서 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />동일 카테고리 안에서 강의의 노출 우선순위를 설정합니다.</li>
+<li><strong> 목록용 배지 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #e0f2fe; color: #0369a1; font-size: 11px; font-weight: 800;">★ 선택</span> </strong><br />신규, 인기, 추천, 무료, 마감 등의 표시를 강의 카드에 적용합니다.</li>
+</ul>
+</div>
+<!-- 변경 이력 -->
+<div style="margin-bottom: 40px;">
+<h3 style="margin: 0 0 18px; font-size: 22px; color: #0f172a;">강의 변경 이력</h3>
+<ul style="margin: 0; padding-left: 22px; color: #334155;">
+<li style="margin-bottom: 16px;"><strong> 기본정보 변경 이력 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />강의명, 가격, 수강기간, 판매상태 등 주요 변경 전후 값을 기록합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 목차 변경 이력 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />회차 추가, 삭제, 순서 변경, 공개상태 변경 내역을 기록합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 영상 교체 이력 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />기존 콜러스 콘텐츠 키, 교체 콘텐츠 키, 교체일과 사유를 기록합니다.</li>
+<li><strong> 관리자 작업자 기록 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />변경한 관리자, 처리일시, 처리사유를 저장합니다.</li>
+</ul>
+</div>
+<!-- 초기 제외 가능 --><!-- 최종 요구사항 -->
+<div style="padding: 28px; border-radius: 22px; background: #f8fafc; border: 1px solid #e2e8f0;"><strong style="display: block; margin-bottom: 12px; font-size: 18px; color: #0f172a;"> 개발사 전달용 핵심 요구사항 </strong>
+<p style="margin: 0; color: #475569;">강의관리에서는 온라인 단과강의, 패키지강의, 무료강의를 등록할 수 있어야 합니다.</p>
+<p style="margin: 0; color: #475569;">강의 기본정보 최초 저장 시 고유 강의번호를 생성하고 판매정보, 수강정책, 강의소개, 강의목차, 교재&middot;자료 탭을 활성화합니다.</p>
+<p style="margin: 0; color: #475569;">강의에는 카테고리, 강의명, 강사, 썸네일, 정가, 수강료, 판매기간, 과세&middot;면세 구분, 수강일수, 시작기준, 배수, PC&middot;모바일 수강,</p>
+<p style="margin: 0; color: #475569;">기기 제한, 다운로드, 유료연장, 일시중지 정책을 설정할 수 있어야 합니다.</p>
+<p style="margin: 0; color: #475569;">상세페이지에는 일반 편집모드와 HTML 소스 편집모드를 모두 지원하는 통합 HTML 에디터를 적용해야 합니다.</p>
+<p style="margin: 0; color: #475569;">HTML 소스 편집, 이미지 업로드 및 삽입, 표 삽입, 유튜브&middot;동영상 iframe 삽입, 링크 삽입, 글자 크기 및 색상 변경,</p>
+<p style="margin: 0; color: #475569;">전체화면 편집, 미리보기, 기존 HTML 코드 불러오기 및 재편집 기능이 필요하며,</p>
+<p style="margin: 0; color: #475569;">모드 전환과 저장 과정에서 모바일용 HTML 및 CSS 코드가 삭제되거나 변형되지 않고 그대로 보존되어야 합니다.</p>
+<p style="margin: 0; color: #475569;">콜러스 콘텐츠를 연결할 때 실제 영상 재생시간은 초 단위로 자동 저장하고 관리자 화면에서는 시&middot;분&middot;초 형식으로 함께 표시해야 합니다.</p>
+<p style="margin: 0; color: #475569;">강의 상세페이지에는 맛보기로 지정한 콜러스 영상을 재생하는 샘플영상 버튼을 제공하고,</p>
+<p style="margin: 0; color: #475569;">관리자 페이지에서는 수강권&middot;배수 차감 없이 영상을 검수할 수 있어야 합니다.</p>
+<p style="margin: 0; color: #475569;">강의목차에서는 콘텐츠관리의 강의그룹을 선택하여 콜러스 영상을 불러오고, 회차명, 순서, 공개일, 공개상태,</p>
+<p style="margin: 0; color: #475569;">맛보기, 배수 차감, 진도율 반영, 교안 연결을 설정할 수 있어야 합니다.</p>
+<p style="margin: 0; color: #475569;">영상 교체 시 기존 회원의 수강기록과 진도율은 유지해야 하며, 강의복사 시 회원 수강권, 주문내역, 진도율, 재생기록은 복사하지 않아야 합니다.</p>
+<p style="margin: 0; color: #475569;">가격, 수강정책, 목차, 영상교체 등 주요 변경사항은 관리자명, 처리일시, 변경 전후 값과 함께 이력으로 저장해야 합니다.</p>
+</div>
+</div>
+<p>'''</p>
+<div style="background: #fff; border-radius: 28px; padding: 38px; border: 1px solid #e5e7eb; box-shadow: 0 16px 40px rgba(15,23,42,.06);">
+<div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 30px;">
+<div>
+<h2 style="margin: 0 0 10px; font-size: 28px; color: #0f172a;">콘텐츠 관리</h2>
+<p style="margin: 0; max-width: 880px; color: #475569;">콜러스에 업로드된 동영상을 사이트 관리자 페이지로 불러오고, 강의그룹별로 분류한 후</p>
+<p style="margin: 0; max-width: 880px; color: #475569;">실제 판매 강의의 목차에 연결하는 기능입니다.</p>
+</div>
+</div>
+<!-- 중요도 안내 -->
+<div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 28px; padding: 18px 20px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 18px;">
+<div style="display: flex; align-items: center; gap: 8px;"><span style="display: inline-block; padding: 4px 9px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 12px; font-weight: 800;"> ★★★ 필수 </span> <span style="font-size: 14px; color: #475569;">반드시 개발</span></div>
+<div style="display: flex; align-items: center; gap: 8px;"><span style="display: inline-block; padding: 4px 9px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 12px; font-weight: 800;"> ★★ 운영필수 </span> <span style="font-size: 14px; color: #475569;">필요</span></div>
+<div style="display: flex; align-items: center; gap: 8px;"><span style="display: inline-block; padding: 4px 9px; border-radius: 999px; background: #e0f2fe; color: #0369a1; font-size: 12px; font-weight: 800;"> ★ 선택 </span> <span style="font-size: 14px; color: #475569;">이후 추가해도 가능</span></div>
+</div>
+<!-- 운영 흐름 -->
+<div style="padding: 26px; margin-bottom: 38px; border-radius: 22px; background: linear-gradient(135deg,#0f172a,#312e81); color: #fff;"><strong style="display: block; margin-bottom: 14px; font-size: 18px;"> 콜러스 콘텐츠 운영 흐름 </strong>
+<div style="display: grid; grid-template-columns: repeat(auto-fit,minmax(150px,1fr)); gap: 12px;">
+<div style="padding: 16px; border-radius: 14px; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.14);">1. 콜러스 업로드</div>
+<div style="padding: 16px; border-radius: 14px; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.14);">2. 콘텐츠 동기화</div>
+<div style="padding: 16px; border-radius: 14px; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.14);">3. 강의그룹 분류</div>
+<div style="padding: 16px; border-radius: 14px; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.14);">4. 회차정보 등록</div>
+<div style="padding: 16px; border-radius: 14px; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.14);">5. 강의목차 연결</div>
+<div style="padding: 16px; border-radius: 14px; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.14);">6. DRM 재생</div>
+</div>
+</div>
+<div style="margin-bottom: 40px;">
+<h3 style="margin: 0 0 18px; font-size: 22px; color: #0f172a;">콜러스 콘텐츠 동기화</h3>
+<p style="margin: 0 0 20px; color: #64748b;">콜러스 관리자에서 영상을 업로드하면 사이트 관리자 페이지의 콘텐츠 목록에서도 확인할 수 있어야 합니다.</p>
+<ul style="margin: 0; padding-left: 22px; color: #334155;">
+<li style="margin-bottom: 16px;"><strong> 콜러스 콘텐츠 API 연동 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />콜러스에 등록된 영상 목록을 관리자 페이지 콘텐츠관리 메뉴로 불러옵니다. 등록된 순서대로 보여지고 미리보기도 가능하면 좋습니다.</li>
+<li style="margin-bottom: 16px;"><strong>관리자페이지 동영상 업로드 <span style="display: inline-block; padding: 4px 9px; border-radius: 999px; background: #e0f2fe; color: #0369a1; font-size: 12px; font-weight: 800;">★ 선택</span></strong><br />사이트 관리자 페이지에서 콜러스 업로드 기능과 연동하여 동영상 파일을 콜러스 서버로 직접 업로드할 수 있어야 합니다. 관리자는 업로드할 콜러스 카테고리를 선택하고, DRM 암호화 적용 여부를 설정한 후 동영상 파일을 선택하여 업로드합니다. 업로드가 완료되면 콜러스에서 자동으로 인코딩 작업이 진행되며, 인코딩중&middot;사용가능&middot;오류 상태를 콘텐츠 목록에서 확인할 수 있어야 합니다. 관리자 페이지에서 업로드한 영상과 콜러스 관리자에서 업로드한 영상은 동일한 콘텐츠 목록에서 통합 관리되어야 합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 중복 등록 방지 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />동일한 콜러스 콘텐츠 키가 이미 등록되어 있으면 새로운 콘텐츠를 만들지 않고 기존 정보를 갱신합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 콜러스 기본정보 자동 수집 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />콘텐츠명, 콘텐츠 키, 원본 파일명, 실제 재생시간, 업로드일, 인코딩 상태를 자동으로 가져옵니다.</li>
+<li style="margin-bottom: 16px;"><strong> 인코딩 상태 확인 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />인코딩중, 사용가능, 오류, 삭제 등 콜러스 콘텐츠 상태를 관리자 목록에 표시합니다.</li>
+<li><strong> 동기화 오류 기록 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />콜러스 인증 실패, API 호출 실패, 콘텐츠 수집 실패가 발생한 시간과 오류 내용을 저장합니다.</li>
+</ul>
+</div>
+<div style="margin-bottom: 40px;">
+<h3 style="margin: 0 0 18px; font-size: 22px; color: #0f172a;">콘텐츠 목록</h3>
+<p style="margin: 0 0 20px; color: #64748b;">콜러스에서 불러온 모든 영상을 검색하고 강의그룹과 연결 상태를 확인하는 화면입니다.</p>
+<ul style="margin: 0 0 24px; padding-left: 22px; color: #334155;">
+<li style="margin-bottom: 16px;"><strong> 콘텐츠 목록 조회 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />콘텐츠명, 콘텐츠 키, 재생시간, 강의그룹, 인코딩 상태, 강의 연결 여부를 목록에서 확인합니다.</li>
+<li style="margin-bottom: 16px;"><strong>관리자 영상 확인 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span></strong><br />콘텐츠 목록과 강의 목차에 &lsquo;영상확인&rsquo; 버튼을 제공하여 관리자가 수강권이나 배수 차감 없이 해당 콜러스 영상을 즉시 재생&middot;검수할 수 있어야 합니다. 영상 제목, 재생시간, 연결 강의, 콜러스 콘텐츠 키도 함께 표시합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 콘텐츠 검색 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />콘텐츠명, 원본 파일명, 콜러스 콘텐츠 키, 강의그룹으로 영상을 검색합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 상태 필터 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />미분류, 사용가능, 인코딩중, 오류, 비활성, 사용중지 상태로 콘텐츠를 구분합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 강의 연결 여부 확인 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />해당 콘텐츠가 어떤 강의와 몇 번째 회차에 연결되어 있는지 확인합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 콘텐츠 미리보기 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />강의에 연결하기 전에 관리자 권한으로 영상이 정상 재생되는지 확인합니다.</li>
+<li><strong> 여러 콘텐츠 일괄 그룹 지정 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #e0f2fe; color: #0369a1; font-size: 11px; font-weight: 800;">★ 선택</span> </strong><br />여러 콘텐츠를 선택하여 하나의 강의그룹에 일괄 배정합니다. 콘텐츠 수가 많아지면 운영 편의성이 높아집니다.</li>
+</ul>
+<div style="overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 18px;">
+<table style="width: 100%; min-width: 1050px; border-collapse: collapse; font-size: 14px;">
+<thead>
+<tr style="background: #f8fafc; color: #334155;">
+<th style="padding: 15px; border-bottom: 1px solid #e2e8f0; text-align: center;">상태</th>
+<th style="padding: 15px; border-bottom: 1px solid #e2e8f0; text-align: left;">콘텐츠명</th>
+<th style="padding: 15px; border-bottom: 1px solid #e2e8f0; text-align: left;">콜러스 미디어컨텐츠키</th>
+<th style="padding: 15px; border-bottom: 1px solid #e2e8f0; text-align: left;">강의그룹</th>
+<th style="padding: 15px; border-bottom: 1px solid #e2e8f0; text-align: center;">재생시간</th>
+<th style="padding: 15px; border-bottom: 1px solid #e2e8f0; text-align: center;">연결 강의</th>
+<th style="padding: 15px; border-bottom: 1px solid #e2e8f0; text-align: center;">등록일</th>
+<th style="padding: 15px; border-bottom: 1px solid #e2e8f0; text-align: center;">관리</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9; text-align: center;"><span style="padding: 5px 9px; border-radius: 999px; background: #dcfce7; color: #166534; font-size: 12px; font-weight: bold;"> 사용가능 </span></td>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9;">디자인보호법 기본강의 1강</td>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9;">44d5JNwC</td>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9;">김인배 디자인보호법 기본강의</td>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9; text-align: center;">71분</td>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9; text-align: center;">1개</td>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9; text-align: center;">2026.07.12</td>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9; text-align: center;">미리보기 / 수정 / 연결현황</td>
+</tr>
+<tr>
+<td style="padding: 15px; text-align: center;"><span style="padding: 5px 9px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 12px; font-weight: bold;"> 미분류 </span></td>
+<td style="padding: 15px;">디자인보호법 기본강의 2강</td>
+<td style="padding: 15px;">i6mcJNsy</td>
+<td style="padding: 15px;">미지정</td>
+<td style="padding: 15px; text-align: center;">68분</td>
+<td style="padding: 15px; text-align: center;">0개</td>
+<td style="padding: 15px; text-align: center;">2026.07.12</td>
+<td style="padding: 15px; text-align: center;">미리보기 / 그룹지정</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div style="margin-bottom: 40px;">
+<h3 style="margin: 0 0 18px; font-size: 22px; color: #0f172a;">강의그룹 관리</h3>
+<p style="margin: 0 0 20px; color: #64748b;">콜러스에서 불러온 영상을 하나의 강의 또는 촬영 과정 단위로 묶어 관리합니다.</p>
+<ul style="margin: 0; padding-left: 22px; color: #334155;">
+<li style="margin-bottom: 16px;"><strong> 강의그룹 생성 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />예: &lsquo;김인배 디자인보호법 기본강의 리담디자인보호법 15판&rsquo;처럼 콘텐츠를 묶을 그룹을 생성합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 그룹 기본정보 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />그룹명, 연도, 시험구분, 과목, 강사, 과정유형, 교재명, 관리자 메모를 입력합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 콘텐츠 그룹 지정 및 이동 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />미분류 콘텐츠를 특정 강의그룹에 배정하거나 다른 그룹으로 이동합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 그룹 내 콘텐츠 순서 변경 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />1강, 2강, 3강 순서에 맞게 드래그 앤 드롭으로 콘텐츠를 정렬합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 그룹별 콘텐츠 수 확인 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />그룹에 포함된 전체 영상 수와 강의에 연결된 영상 수를 확인합니다.</li>
+<li><strong> 그룹 삭제 제한 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />실제 판매 강의에 연결된 콘텐츠가 있으면 그룹을 바로 삭제할 수 없도록 제한합니다.</li>
+</ul>
+</div>
+<div style="margin-bottom: 40px;">
+<h3 style="margin: 0 0 18px; font-size: 22px; color: #0f172a;">콘텐츠 상세 등록 및 수정</h3>
+<p style="margin: 0 0 20px; color: #64748b;">콜러스에서 불러온 영상에 사이트 운영에 필요한 회차명과 학습정보를 추가로 등록합니다.</p>
+<ul style="margin: 0; padding-left: 22px; color: #334155;">
+<li style="margin-bottom: 16px;"><strong> 강의그룹 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />콘텐츠가 속할 강의그룹을 선택합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 강의명 또는 회차명 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />강의 목차와 수강생 내 강의실에 표시될 이름을 입력합니다. 예: 제1강 디자인보호법 총론.</li>
+<li style="margin-bottom: 16px;"><strong> 콜러스 콘텐츠 선택 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />동기화된 콜러스 콘텐츠 목록에서 실제 연결할 영상을 선택합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 콜러스 콘텐츠 키 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />관리자가 URL을 직접 입력하지 않고 선택한 콘텐츠의 고유 키가 자동 저장되도록 합니다.</li>
+<li style="margin-bottom: 16px;"><strong>강의시간(초) 자동 입력 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span></strong><br />콜러스 콘텐츠를 선택하면 API에서 실제 영상 재생시간을 초 단위로 자동 수집하여 저장합니다. 예: 71분 25초 영상은 4,285초로 저장하며, 관리자 화면에는 &lsquo;71분 25초&rsquo;도 함께 표시합니다. 이 값은 강의 총시간, 배수 사용량, 진도율 계산에 공통으로 사용합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 학습시간 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />콜러스에서 실제 영상 재생시간을 자동으로 가져옵니다. 배수 계산과 강의 총시간 산정에 사용합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 진도율 인정 기준 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />영상의 90% 또는 95% 이상 시청 시 해당 회차를 완강 처리하도록 설정합니다. 별도의 인정시간 직접 입력 방식보다 재생비율 방식이 관리하기 쉽습니다.</li>
+<li style="margin-bottom: 16px;"><strong> 교안 파일 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />PDF, 문제지, 강의노트, 보충자료, 정오표 등을 회차별로 첨부합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 강의설명 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #e0f2fe; color: #0369a1; font-size: 11px; font-weight: 800;">★ 선택</span> </strong><br />교재 범위, 주요 내용, 학습 안내를 입력합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 관리자 메모 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />자막, 음량, 편집 오류, 영상 교체 예정 등 내부 운영 내용을 기록합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 활성 여부 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />활성 상태에서는 신규 강의에 연결할 수 있습니다. 비활성 상태에서는 기존 수강생의 재생은 유지하지만 새로운 강의에는 연결할 수 없습니다.</li>
+<li><strong> 사용 상태 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />&lsquo;사용&rsquo; 상태에서는 재생 가능하며, &lsquo;중지&rsquo; 상태에서는 기존 수강생을 포함해 해당 콘텐츠의 재생을 즉시 차단합니다.</li>
+</ul>
+</div>
+<!-- 콘텐츠 등록 화면 -->
+<div style="margin-bottom: 40px;">
+<h3 style="margin: 0 0 18px; font-size: 22px; color: #0f172a;">콘텐츠 등록 화면 구성</h3>
+<div style="border: 1px solid #e2e8f0; border-radius: 22px; overflow: hidden;">
+<div style="padding: 20px 24px; background: #0f172a; color: #fff;"><strong style="font-size: 18px;">콜러스 온라인강의 콘텐츠 등록</strong></div>
+<div style="display: grid; grid-template-columns: minmax(170px,220px) 1fr; border-bottom: 1px solid #e2e8f0;">
+<div style="padding: 18px; background: #f8fafc; font-weight: bold;">강의그룹 *</div>
+<div style="padding: 18px;">김인배 디자인보호법 기본강의 리담디자인보호법 15판</div>
+</div>
+<div style="display: grid; grid-template-columns: minmax(170px,220px) 1fr; border-bottom: 1px solid #e2e8f0;">
+<div style="padding: 18px; background: #f8fafc; font-weight: bold;">강의명 *</div>
+<div style="padding: 18px;">제1강 디자인보호법 OT</div>
+</div>
+<div style="display: grid; grid-template-columns: minmax(170px,220px) 1fr; border-bottom: 1px solid #e2e8f0;">
+<div style="padding: 18px; background: #f8fafc; font-weight: bold;">콜러스 콘텐츠 *</div>
+<div style="padding: 18px;">동기화된 콘텐츠 검색 및 선택</div>
+</div>
+<div style="display: grid; grid-template-columns: minmax(170px,220px) 1fr; border-bottom: 1px solid #e2e8f0;">
+<div style="padding: 18px; background: #f8fafc; font-weight: bold;">콘텐츠 키</div>
+<div style="padding: 18px;">콘텐츠 선택 시 자동 입력</div>
+</div>
+<div style="display: grid; grid-template-columns: minmax(170px,220px) 1fr; border-bottom: 1px solid #e2e8f0;">
+<div style="padding: 18px; background: #f8fafc; font-weight: bold;">학습시간 *</div>
+<div style="padding: 18px;">콜러스 실제 영상 재생시간 자동 입력</div>
+</div>
+<div style="display: grid; grid-template-columns: minmax(170px,220px) 1fr; border-bottom: 1px solid #e2e8f0;">
+<div style="padding: 18px; background: #f8fafc; font-weight: bold;">완강 인정 기준 *</div>
+<div style="padding: 18px;">영상 재생시간의 OO% 이상 시청</div>
+</div>
+<div style="display: grid; grid-template-columns: minmax(170px,220px) 1fr; border-bottom: 1px solid #e2e8f0;">
+<div style="padding: 18px; background: #f8fafc; font-weight: bold;">교안 파일</div>
+<div style="padding: 18px;">PDF, 문제지, 강의노트, 정오표 등 첨부</div>
+</div>
+<div style="display: grid; grid-template-columns: minmax(170px,220px) 1fr; border-bottom: 1px solid #e2e8f0;">
+<div style="padding: 18px; background: #f8fafc; font-weight: bold;">강의설명</div>
+<div style="padding: 18px;">교재 범위 및 주요 학습내용</div>
+</div>
+<div style="display: grid; grid-template-columns: minmax(170px,220px) 1fr; border-bottom: 1px solid #e2e8f0;">
+<div style="padding: 18px; background: #f8fafc; font-weight: bold;">관리자메모</div>
+<div style="padding: 18px;">자막, 음량, 편집, 영상 교체 관련 내부 메모</div>
+</div>
+<div style="display: grid; grid-template-columns: minmax(170px,220px) 1fr; border-bottom: 1px solid #e2e8f0;">
+<div style="padding: 18px; background: #f8fafc; font-weight: bold;">활성여부 *</div>
+<div style="padding: 18px;">활성 / 비활성
+<div style="margin-top: 6px; color: #64748b; font-size: 13px;">비활성 상태에서는 기존 수강은 가능하지만 신규 강의에는 연결할 수 없습니다.</div>
+</div>
+</div>
+<div style="display: grid; grid-template-columns: minmax(170px,220px) 1fr;">
+<div style="padding: 18px; background: #f8fafc; font-weight: bold;">사용상태 *</div>
+<div style="padding: 18px;">사용 / 중지
+<div style="margin-top: 6px; color: #64748b; font-size: 13px;">중지 상태에서는 기존 수강생도 해당 영상을 재생할 수 없습니다.</div>
+</div>
+</div>
+</div>
+</div>
+<div style="margin-bottom: 40px;">
+<h3 style="margin: 0 0 18px; font-size: 22px; color: #0f172a;">강의 목차 연결</h3>
+<p style="margin: 0 0 20px; color: #64748b;">콘텐츠관리에서 정리한 영상을 실제 판매 강의의 목차에 불러와 연결합니다.</p>
+<ul style="margin: 0; padding-left: 22px; color: #334155;">
+<li style="margin-bottom: 16px;"><strong> 강의그룹 기준 불러오기 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />목차관리에서 강의그룹을 선택하면 해당 그룹에 포함된 콘텐츠만 표시합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 여러 콘텐츠 일괄 선택 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span></strong><br />그룹 내 여러 영상을 한 번에 선택하여 강의 목차에 추가합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 목차명 자동 적용 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />콘텐츠에 등록된 강의명을 목차명으로 자동 적용하고 과정별로 수정할 수 있습니다.</li>
+<li style="margin-bottom: 16px;"><strong> 목차 순서 변경 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />드래그 앤 드롭으로 1강, 2강, 3강의 노출 순서를 조정합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 회차별 공개 및 예약 공개 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />회차를 즉시 공개하거나 특정 날짜와 시간부터 공개되도록 설정합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 맛보기 설정 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span></strong><br />특정 회차를 결제 전 무료로 재생할 수 있는 맛보기 영상으로 지정합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 배수 차감 여부 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />일반 강의는 배수를 차감하고 OT, 무료, 맛보기 영상은 배수 차감에서 제외합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 진도율 반영 여부 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />OT, 공지, 보충영상 등은 전체 강의 진도율 계산에서 제외할 수 있습니다.</li>
+<li style="margin-bottom: 16px;"><strong> 회차별 교안 연결 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />PDF, 강의노트, 문제지 등 수강생에게 제공할 파일을 회차별로 연결합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 영상 교체 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />회차명, 진도율, 수강기록은 유지하면서 연결된 콜러스 콘텐츠만 수정 영상으로 교체합니다.</li>
+<li><strong> 콘텐츠 재사용 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">★★★ 필수</span> </strong><br />동일한 콜러스 콘텐츠를 여러 단과 강의나 패키지 과정에서 중복 업로드 없이 사용할 수 있어야 합니다.</li>
+</ul>
+</div>
+<!-- 목차 예시 -->
+<div style="margin-bottom: 40px;">
+<h3 style="margin: 0 0 18px; font-size: 22px; color: #0f172a;">강의 목차 연결 화면 예시</h3>
+<div style="overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 18px;">
+<table style="width: 100%; min-width: 1050px; border-collapse: collapse; font-size: 14px;">
+<thead>
+<tr style="background: #f8fafc; color: #334155;">
+<th style="padding: 15px; border-bottom: 1px solid #e2e8f0; text-align: center;">순서</th>
+<th style="padding: 15px; border-bottom: 1px solid #e2e8f0; text-align: left;">회차명</th>
+<th style="padding: 15px; border-bottom: 1px solid #e2e8f0; text-align: left;">콜러스 콘텐츠</th>
+<th style="padding: 15px; border-bottom: 1px solid #e2e8f0; text-align: center;">시간</th>
+<th style="padding: 15px; border-bottom: 1px solid #e2e8f0; text-align: center;">공개일</th>
+<th style="padding: 15px; border-bottom: 1px solid #e2e8f0; text-align: center;">공개상태</th>
+<th style="padding: 15px; border-bottom: 1px solid #e2e8f0; text-align: center;">맛보기</th>
+<th style="padding: 15px; border-bottom: 1px solid #e2e8f0; text-align: center;">배수차감</th>
+<th style="padding: 15px; border-bottom: 1px solid #e2e8f0; text-align: center;">관리</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9; text-align: center;">1</td>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9;">1강 디자인보호법 OT</td>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9;">KOLLUS_DESIGN_001</td>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9; text-align: center;">71분</td>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9; text-align: center;">즉시공개</td>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9; text-align: center;">공개</td>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9; text-align: center;">사용</td>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9; text-align: center;">제외</td>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9; text-align: center;">수정 / 교체</td>
+</tr>
+<tr>
+<td style="padding: 15px; text-align: center;">2</td>
+<td style="padding: 15px;">2강 디자인의 성립요건</td>
+<td style="padding: 15px;">KOLLUS_DESIGN_002</td>
+<td style="padding: 15px; text-align: center;">68분</td>
+<td style="padding: 15px; text-align: center;">2026.08.02</td>
+<td style="padding: 15px; text-align: center;">예약</td>
+<td style="padding: 15px; text-align: center;">미사용</td>
+<td style="padding: 15px; text-align: center;">사용</td>
+<td style="padding: 15px; text-align: center;">수정 / 교체</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- 상태 기준 -->
+<div style="margin-bottom: 40px;">
+<h3 style="margin: 0 0 18px; font-size: 22px; color: #0f172a;">활성 여부와 사용 상태</h3>
+<div style="overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 18px;">
+<table style="width: 100%; min-width: 820px; border-collapse: collapse; font-size: 14px;">
+<thead>
+<tr style="background: #f8fafc; color: #334155;">
+<th style="padding: 15px; border-bottom: 1px solid #e2e8f0; text-align: left;">상태</th>
+<th style="padding: 15px; border-bottom: 1px solid #e2e8f0; text-align: center;">기존 수강생 재생</th>
+<th style="padding: 15px; border-bottom: 1px solid #e2e8f0; text-align: center;">신규 강의 연결</th>
+<th style="padding: 15px; border-bottom: 1px solid #e2e8f0; text-align: left;">적용 기준</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9;"><strong>활성 + 사용</strong></td>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9; text-align: center;">가능</td>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9; text-align: center;">가능</td>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9;">정상적으로 사용하는 콘텐츠</td>
+</tr>
+<tr>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9;"><strong>비활성 + 사용</strong></td>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9; text-align: center;">가능</td>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9; text-align: center;">불가</td>
+<td style="padding: 15px; border-bottom: 1px solid #f1f5f9;">기존 과정은 유지하되 신규 과정에는 사용하지 않음</td>
+</tr>
+<tr>
+<td style="padding: 15px;"><strong>사용중지</strong></td>
+<td style="padding: 15px; text-align: center;">불가</td>
+<td style="padding: 15px; text-align: center;">불가</td>
+<td style="padding: 15px;">영상 오류, 저작권, 잘못된 콘텐츠 연결 등으로 전체 재생 차단</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- 변경 이력 -->
+<div style="margin-bottom: 40px;">
+<h3 style="margin: 0 0 18px; font-size: 22px; color: #0f172a;">변경 및 연결 이력</h3>
+<ul style="margin: 0; padding-left: 22px; color: #334155;">
+<li style="margin-bottom: 16px;"><strong> 콘텐츠 동기화 이력 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />콜러스에서 콘텐츠를 불러온 시간과 동기화 성공&middot;실패 여부를 기록합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 강의 연결 이력 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />콘텐츠를 어느 강의의 몇 강에 연결하거나 해제했는지 기록합니다.</li>
+<li style="margin-bottom: 16px;"><strong> 영상 교체 이력 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span></strong><br />기존 콘텐츠 키, 교체 콘텐츠 키, 교체일, 교체사유를 기록합니다.</li>
+<li><strong> 상태 변경 이력 <span style="display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800;">★★ 운영필수</span> </strong><br />활성, 비활성, 사용, 중지 상태를 변경한 관리자와 처리일시를 기록합니다.</li>
+</ul>
+</div>
+<!-- 개발 제외 항목 --><!-- 핵심 요구사항 -->
+<div style="padding: 28px; border-radius: 22px; background: #f8fafc; border: 1px solid #e2e8f0;"><strong style="display: block; margin-bottom: 12px; font-size: 18px; color: #0f172a;"> 개발사 전달용 핵심 요구사항 </strong>
+<p style="margin: 0; color: #475569;">관리자가 콜러스에 동영상을 업로드한 후 사이트 관리자에서 &lsquo;콜러스 콘텐츠 불러오기&rsquo;를 실행하면</p>
+<p style="margin: 0; color: #475569;">콘텐츠명, 콘텐츠 키, 원본 파일명, 실제 재생시간, 인코딩 상태가 등록되어야 합니다.</p>
+<p style="margin: 0; color: #475569;">동일 콘텐츠 키는 중복 등록되지 않아야 하며, 불러온 콘텐츠는 강의그룹별로 분류할 수 있어야 합니다.</p>
+<p style="margin: 0; color: #475569;">콘텐츠에는 회차명, 완강 인정 기준, 교안, 관리자 메모, 활성 여부, 사용 상태를 설정할 수 있어야 합니다.</p>
+<p style="margin: 0; color: #475569;">강의관리의 목차 탭에서는 강의그룹을 선택하여 여러 콘텐츠를 목차에 연결하고, 회차 순서, 공개일,</p>
+<p style="margin: 0; color: #475569;">맛보기 여부, 배수 차감 여부, 진도율 반영 여부를 설정할 수 있어야 합니다.</p>
+<p style="margin: 0; color: #475569;"><strong>동일한 콜러스 콘텐츠는 여러 곳(강의플랫폼, 학습플랫폼)에서 재사용할 수 있어야 하며</strong>, 영상 교체 시 기존 수강기록과 진도율은 유지해야 합니다.</p>
+<p style="margin: 0; color: #475569;">콘텐츠 연결, 교체, 사용중지 및 상태 변경 내역은 관리자와 처리일시를 포함하여 이력으로 저장해야 합니다.</p>
+</div>
+</div>

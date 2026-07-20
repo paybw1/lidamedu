@@ -3811,6 +3811,83 @@ export type Database = {
           },
         ]
       }
+      content_groups: {
+        Row: {
+          book_title: string | null
+          course_type: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          exam_track: string | null
+          group_id: string
+          instructor_id: string | null
+          name: string
+          staff_memo: string | null
+          subject_code: string | null
+          updated_at: string
+          year: number | null
+        }
+        Insert: {
+          book_title?: string | null
+          course_type?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          exam_track?: string | null
+          group_id?: string
+          instructor_id?: string | null
+          name: string
+          staff_memo?: string | null
+          subject_code?: string | null
+          updated_at?: string
+          year?: number | null
+        }
+        Update: {
+          book_title?: string | null
+          course_type?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          exam_track?: string | null
+          group_id?: string
+          instructor_id?: string | null
+          name?: string
+          staff_memo?: string | null
+          subject_code?: string | null
+          updated_at?: string
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_groups_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "content_groups_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "content_groups_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "content_groups_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       coupon_grants: {
         Row: {
           coupon_id: string
@@ -7007,6 +7084,7 @@ export type Database = {
       }
       lesson_videos: {
         Row: {
+          content_id: string | null
           created_at: string
           created_by: string | null
           drm_provider: string
@@ -7018,6 +7096,7 @@ export type Database = {
           video_id: string
         }
         Insert: {
+          content_id?: string | null
           created_at?: string
           created_by?: string | null
           drm_provider: string
@@ -7029,6 +7108,7 @@ export type Database = {
           video_id?: string
         }
         Update: {
+          content_id?: string | null
           created_at?: string
           created_by?: string | null
           drm_provider?: string
@@ -7040,6 +7120,13 @@ export type Database = {
           video_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "lesson_videos_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "video_contents"
+            referencedColumns: ["content_id"]
+          },
           {
             foreignKeyName: "lesson_videos_created_by_fkey"
             columns: ["created_by"]
@@ -12022,6 +12109,88 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "public_profiles"
             referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      video_contents: {
+        Row: {
+          admin_memo: string | null
+          completion_threshold: number
+          content_id: string
+          content_key: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          drm_provider: string
+          duration_seconds: number | null
+          encoding_status: string
+          group_id: string | null
+          is_active: boolean
+          original_filename: string | null
+          synced_at: string | null
+          title: string
+          updated_at: string
+          use_status: string
+        }
+        Insert: {
+          admin_memo?: string | null
+          completion_threshold?: number
+          content_id?: string
+          content_key: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          drm_provider?: string
+          duration_seconds?: number | null
+          encoding_status?: string
+          group_id?: string | null
+          is_active?: boolean
+          original_filename?: string | null
+          synced_at?: string | null
+          title: string
+          updated_at?: string
+          use_status?: string
+        }
+        Update: {
+          admin_memo?: string | null
+          completion_threshold?: number
+          content_id?: string
+          content_key?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          drm_provider?: string
+          duration_seconds?: number | null
+          encoding_status?: string
+          group_id?: string | null
+          is_active?: boolean
+          original_filename?: string | null
+          synced_at?: string | null
+          title?: string
+          updated_at?: string
+          use_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_contents_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "video_contents_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "video_contents_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "content_groups"
+            referencedColumns: ["group_id"]
           },
         ]
       }

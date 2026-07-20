@@ -1122,7 +1122,7 @@ create table public.popup_notices (
 - **courses**: 에디션(연도판). series_id FK, edition_label/year, **is_current(시리즈당 1개 partial unique — 신판 기본 노출)**, status('draft'|'published'|'archived'), soft-delete. 전면 재촬영=새 에디션(구판 수강권·이력 보존), 소규모 수정=lesson_videos 교체.
 - **course_lessons**: 회차. unique(course_id, lesson_no), sort_order(노출 순서 분리), instructor_id(회차별, null=대표), **is_preview**(맛보기 — 배수 차감 예외 근거), is_published(기본 false).
 - **lesson_staff_memos**: 운영 메모 — **별도 테이블+staff 전용 RLS**(published 행이 공개 SELECT 라 같은 행 컬럼은 anon 이 읽을 수 있음 → 구조로 방어. 원장 단서 2026-07-08).
-- **lesson_videos**: 영상 슬롯+교체 이력(append-only). drm_provider/drm_video_id(불투명, **staff 만 SELECT** — 학생은 playback_grants 경유), duration_seconds(배수 모수), **is_active(회차당 1개 partial unique)** — 교체=기존 false+새 행.
+- **lesson_videos**: 영상 슬롯+교체 이력(append-only). drm_provider/drm_video_id(불투명, **staff 만 SELECT** — 학생은 playback_grants 경유), duration_seconds(배수 모수), **is_active(회차당 1개 partial unique)** — 교체=기존 false+새 행. **content_id FK video_contents(feat-11-006, nullable)** — 콘텐츠 라이브러리 참조(재배선 진행 중, drm_video_id/duration 은 재생 경로 보존 위해 유지).
 - **lesson_materials**: 회차 자료 PDF(storage_path, 열람은 서버 판정 후 signed URL).
 - **lesson_node_links**: 회차↔체계도 노드 다대다(약점 단원→재수강 루프. M2엔 테이블만).
 - **subscription_plans 확장**: product_kind CHECK += 'course'|'tpass'('book'은 예약), **sale_status**('scheduled'|'on_sale'|'paused'|'closed'|'hidden') — 백필: is_active=true→on_sale(6), false→hidden(3).
@@ -1135,6 +1135,11 @@ create table public.popup_notices (
 - **playback_grants**: 재생 판정 스냅+단기 토큰(수 분). user_id null=비로그인 맛보기, enrollment_id null=맛보기·무료(배수 미차감), device_id(M3 FK 승격 예정). 클라엔 grant_id 만 — drm_video_id 비노출.
 - **RLS**: 카탈로그(series/courses/lessons/materials/links/plan_*)=published 공개+staff 전량, lesson_videos·staff_memos=staff 전용, enrollments/pauses=본인+staff SELECT(쓰기 정책 없음 — 서버 adminClient 전용), grants=본인+staff SELECT(발급 서버만).
 - M3 예정: watch_events/watch_positions/watch_ledger, user_devices. M4 예정: orders/order_items, bank_transfers, books/shipments, user_coupons.
+
+### 콜러스 콘텐츠 라이브러리 (feat-11-006 Phase 1)  ✅ 적용됨 (2026-07-20)
+- **video_contents**: 콜러스 미디어 자산 라이브러리(회차와 분리 = 재사용 토대). drm_provider/**content_key(unique with provider — 동기화 upsert·중복방지)**, title/original_filename, duration_seconds(콜러스 자동 수집·동기화 전 null), encoding_status('unknown'|'encoding'|'available'|'error'|'deleted'), group_id FK content_groups(on delete set null), **completion_threshold numeric(진도율 인정 기준 90/95%, CHECK 0<x≤1, 기본 0.9)**, use_status('in_use'|'stopped'=재생 즉시 차단), is_active(false=신규 연결 불가·기존 수강 유지), synced_at, soft-delete. **staff 전용 RLS**(콘텐츠 키=학생 비노출, lesson_videos 동일).
+- **content_groups**: 강의그룹(콜러스 영상을 촬영/과정 단위로 묶음). name/year/subject_code/instructor_id/exam_track(시험구분)/course_type/book_title/staff_memo, soft-delete. staff 전용 RLS.
+- 백필: 기존 lesson_videos 를 (provider, key) distinct 로 video_contents 이관 후 content_id 링크(11 videos→4 contents, 전량 링크). ★재생 판정(playback.server)은 여전히 lesson_videos.drm_video_id 를 읽음 — 무변경. 잔여: 콜러스 동기화 job·콘텐츠관리 화면·등록 재배선(content 선택→content_id).
 
 ## LMS 시청 기록·배수 회계·기기 (feat-11-003, M3)  ✅ 적용됨 (2026-07-08)
 
