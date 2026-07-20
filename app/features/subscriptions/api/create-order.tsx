@@ -10,6 +10,7 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import { createSinglePlanOrder } from "~/features/orders/orders.server";
 import { resolveCheckoutDiscount } from "~/features/subscriptions/discounts.server";
 import {
+  cancelPendingCheckout,
   createPendingPayment,
   getPlanByCode,
 } from "~/features/subscriptions/queries.server";
@@ -55,25 +56,16 @@ export async function action({ request }: Route.ActionArgs) {
       { status: 400 },
     );
 
-  // 중복 결제 가드 — 같은 상품(+과목)의 최근(10분 내) 미완료 결제가 있으면 거부.
-  // 더블클릭·중복 호출로 pending 이 2건 생겨 둘 다 결제되는 이중청구를 서버단에서 차단.
-  const tenMinAgo = new Date(Date.now() - 10 * 60_000).toISOString();
-  let dupQuery = client
-    .from("payments")
-    .select("payment_id")
-    .eq("user_id", user.id)
-    .eq("plan_id", plan.planId)
-    .eq("status", "pending")
-    .gte("created_at", tenMinAgo);
-  dupQuery = parsed.data.subjectCode
-    ? dupQuery.eq("subject_code", parsed.data.subjectCode)
-    : dupQuery.is("subject_code", null);
-  const { data: dup } = await dupQuery.limit(1).maybeSingle();
-  if (dup)
-    return data(
-      { error: "이미 진행 중인 결제가 있습니다. 잠시 후 다시 시도해 주세요." },
-      { status: 409 },
-    );
+  // 재시도 정리 — 같은 상품(+과목)의 이전 미완료(pending) 결제를 취소 처리한 뒤 새로 만든다.
+  // 토스 결제창을 열었다 닫으면 pending 이 남는데, 예전에는 이를 "이미 진행 중인 결제"로 차단해
+  // 사용자가 10분간 재결제할 수 없었다. 이제 이전 시도를 취소(failed)하고 재시도를 허용한다.
+  // 이중청구는 confirmPayment 가 orderId 단위 멱등(완료 결제 재확인 차단)이라 방지된다.
+  await cancelPendingCheckout({
+    userId: user.id,
+    planId: plan.planId,
+    subjectCode: parsed.data.subjectCode ?? null,
+    reason: "재결제 시도 — 이전 미완료 결제 취소",
+  });
 
   // feat-8-028 — 유효 할인 계산(쿠폰 또는 자동 프로모션). 서버 권위 금액.
   const disc = await resolveCheckoutDiscount({

@@ -22,6 +22,10 @@ import { Textarea } from "~/core/components/ui/textarea";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
 import { hasPendingUpgradeRequest } from "~/features/cohorts/upgrade-requests.server";
+import {
+  cancelPendingCheckout,
+  isTossUserCancel,
+} from "~/features/subscriptions/lib/cancel-pending-checkout.client";
 import { listActiveDiscounts } from "~/features/subscriptions/discounts.server";
 import {
   type Discount,
@@ -819,7 +823,11 @@ async function startSubscriptionCheckout(
       failUrl: `${window.location.origin}/me/subscription?failed=1`,
     });
   } catch (e) {
-    alert(`결제 중 오류가 발생했습니다: ${e instanceof Error ? e.message : String(e)}`);
+    // 결제창 취소·오류 — 남은 pending 결제를 정리해 즉시 재시도 가능하게. 취소는 조용히.
+    cancelPendingCheckout(json.orderId);
+    if (!isTossUserCancel(e)) {
+      alert(`결제 중 오류가 발생했습니다: ${e instanceof Error ? e.message : String(e)}`);
+    }
   }
 }
 

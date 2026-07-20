@@ -551,6 +551,58 @@ export async function createPendingPayment(input: {
   return { ok: true, paymentId: data.payment_id };
 }
 
+/** 미완료(pending) 결제 취소 — 토스 결제창을 열었다 닫거나 재시도할 때 정리한다.
+ *  payment → failed(사유 기록), 연결 주문(미결제 상태 draft/pending_payment) → cancelled.
+ *  이후 같은 상품 재결제 시 "이미 진행 중인 결제" 중복 가드에 걸리지 않게 한다.
+ *  대상 지정: tossOrderId(그 건만) 또는 planId(+subjectCode, 상품 단위 잔여 전부).
+ *  결제창 종료는 서버가 알 수 없어 클라이언트 취소 콜백·재시도 시점에 호출된다. */
+export async function cancelPendingCheckout(input: {
+  userId: string;
+  tossOrderId?: string;
+  planId?: string;
+  subjectCode?: string | null;
+  reason?: string;
+}): Promise<{ cancelled: number }> {
+  const admin = adminClient as SupabaseClient<Database>;
+  let q = admin
+    .from("payments")
+    .select("payment_id, order_id")
+    .eq("user_id", input.userId)
+    .eq("status", "pending");
+  if (input.tossOrderId) q = q.eq("toss_order_id", input.tossOrderId);
+  if (input.planId) {
+    q = q.eq("plan_id", input.planId);
+    // 자기학습 과목별 결제는 subject_code 로 구분(전체 플랜은 null).
+    q =
+      input.subjectCode != null
+        ? q.eq("subject_code", input.subjectCode)
+        : q.is("subject_code", null);
+  }
+  const { data: rows } = await q;
+  const pend = rows ?? [];
+  if (pend.length === 0) return { cancelled: 0 };
+  const paymentIds = pend.map((r) => r.payment_id);
+  const orderIds = pend
+    .map((r) => r.order_id)
+    .filter((v): v is string => Boolean(v));
+  await admin
+    .from("payments")
+    .update({
+      status: "failed",
+      failure_reason: input.reason ?? "결제 취소(결제창 종료 또는 재시도)",
+    })
+    .in("payment_id", paymentIds);
+  if (orderIds.length > 0) {
+    // 이미 결제·입금대기(pending_deposit)로 넘어간 주문은 건드리지 않는다.
+    await admin
+      .from("orders")
+      .update({ status: "cancelled" })
+      .in("order_id", orderIds)
+      .in("status", ["draft", "pending_payment"]);
+  }
+  return { cancelled: pend.length };
+}
+
 /** feat-11 장바구니 — 주문 단위 pending 결제(단일 plan 없음 → plan_id null).
  *  지급은 confirmPayment 가 order_id 로 fulfill(구독 upsert 스킵). */
 export async function createPendingCartPayment(input: {

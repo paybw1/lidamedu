@@ -17,6 +17,10 @@ import {
 } from "~/features/lms/lib/lecture-category";
 import { PRODUCT_KIND_LABEL } from "~/features/subscriptions/labels";
 import {
+  cancelPendingCheckout,
+  isTossUserCancel,
+} from "~/features/subscriptions/lib/cancel-pending-checkout.client";
+import {
   type LectureProduct,
   listSellableLectureProducts,
 } from "~/features/lms/queries.server";
@@ -76,9 +80,13 @@ async function startLectureCheckout(
       failUrl: `${window.location.origin}/lecture/catalog?failed=1`,
     });
   } catch (e) {
-    alert(
-      `결제 중 오류가 발생했습니다: ${e instanceof Error ? e.message : String(e)}`,
-    );
+    // 결제창 취소·오류 — 남은 pending 결제 정리 후 취소는 조용히.
+    cancelPendingCheckout(json.orderId);
+    if (!isTossUserCancel(e)) {
+      alert(
+        `결제 중 오류가 발생했습니다: ${e instanceof Error ? e.message : String(e)}`,
+      );
+    }
   }
 }
 

@@ -1135,6 +1135,11 @@ export default [
         "/api/payments/create-order",
         "features/subscriptions/api/create-order.tsx",
       ),
+      // 결제창 취소 시 pending 결제 정리(재시도 허용).
+      route(
+        "/api/payments/cancel-pending",
+        "features/subscriptions/api/cancel-pending.tsx",
+      ),
       // feat-11 장바구니 — 다건(강의·도서) 주문 결제 준비.
       route(
         "/api/payments/create-cart-order",
