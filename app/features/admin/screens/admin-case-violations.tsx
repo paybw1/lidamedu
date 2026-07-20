@@ -202,7 +202,7 @@ function ViolationRow({
           </span>
         ) : null}
         <Link
-          to={`/admin/cases/edit/${v.caseId}`}
+          to={`/admin/cases/edit/${v.caseId}?returnTo=${encodeURIComponent("/admin/cases/violations")}`}
           className="text-link text-[11px] hover:underline"
         >
           개별 수정 →

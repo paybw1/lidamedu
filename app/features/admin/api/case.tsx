@@ -930,7 +930,14 @@ export async function action({ request }: Route.ActionArgs) {
     });
     // feat-9-001 RAG dirty hook — 신규 판례 청크 생성.
     runAfterResponse(reindexCases([row.case_id]));
-    throw redirect(`/admin/cases/edit/${row.case_id}`);
+    // 신규 등록 후 편집 화면으로 — 진입 시의 returnTo 를 이어받아 이후 저장 복귀 유지.
+    const createdReturnTo = fd.get("returnTo");
+    throw redirect(
+      `/admin/cases/edit/${row.case_id}` +
+        (typeof createdReturnTo === "string" && createdReturnTo
+          ? `?returnTo=${encodeURIComponent(createdReturnTo)}`
+          : ""),
+    );
   }
 
   // update

@@ -103,14 +103,35 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const role = await getStaffRole(client, user.id);
   if (!role) throw data("Forbidden", { status: 403 });
 
-  const returnTo = safeReturnTo(
-    new URL(request.url).searchParams.get("returnTo"),
-  );
+  const url = new URL(request.url);
+  const rawReturnTo = url.searchParams.get("returnTo");
+  // returnTo 미지정 진입(미배선 링크·직접 URL)은 referer 로 원래 화면 복원 시도 —
+  // 편집 화면 자신(revalidate 시 referer=자기 URL)은 제외, 화이트리스트 통과 시만 채택.
+  let returnTo: string | null =
+    rawReturnTo === null ? null : safeReturnTo(rawReturnTo);
+  if (returnTo === null) {
+    const ref = request.headers.get("referer");
+    if (ref) {
+      try {
+        const refUrl = new URL(ref);
+        const candidate = refUrl.pathname + refUrl.search;
+        if (
+          refUrl.origin === url.origin &&
+          !refUrl.pathname.startsWith("/admin/cases/edit") &&
+          safeReturnTo(candidate) === candidate
+        ) {
+          returnTo = candidate;
+        }
+      } catch {
+        // referer 파싱 실패 — 기본값 폴백
+      }
+    }
+  }
   const caseId = params.caseId ?? null;
   if (!caseId)
     return {
       kase: null,
-      returnTo,
+      returnTo: returnTo ?? "/admin/cases?law=patent",
       role,
       relatedArticles: [] as RelatedArticle[],
       systematicNodes: [] as SystematicNode[],
@@ -138,7 +159,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   ]);
   return {
     kase: row,
-    returnTo,
+    // 폴백 기본값도 해당 판례의 과목 목록으로 — patent 고정 탈피.
+    returnTo: returnTo ?? `/admin/cases?law=${firstSubject}`,
     role,
     relatedArticles,
     systematicNodes,
@@ -159,13 +181,16 @@ const COURTS: Array<keyof typeof COURT_LABELS> = [
 export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
   const {
     kase,
-    returnTo,
+    returnTo: loaderReturnTo,
     role,
     relatedArticles,
     systematicNodes,
     siblings,
     citations,
   } = loaderData;
+  // 최초 진입 시의 복귀 경로 고정 — 이후 revalidate 는 referer 가 편집 화면 자신이라
+  // returnTo 가 기본값으로 강등될 수 있어 첫 값을 유지한다.
+  const [returnTo] = useState(loaderReturnTo);
   const isNew = kase === null;
   const subjectLawsValue = (kase?.subject_laws ?? []).join(",");
   // feat-3-213 — 교재 구조 본문이 있는 판례(상표 등)는 book_sections 가 표시 SSOT.
