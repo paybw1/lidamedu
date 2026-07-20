@@ -216,8 +216,9 @@ function analyzeCmpTable(
 }
 
 // 비교표 colgroup — table-layout: fixed 에서 열 폭 지정.
-// 라벨 열 = 최장 셀 내용 폭의 1.5배(한글 1자≈1em, 상한 22em) — "구분" 열이 답답하지 않게.
-// 값 열 = 폭 미지정 → fixed 레이아웃이 남은 폭을 균등 분배(젭슨/PBP/기능적 등 동일 폭).
+// ★라벨(구분) 열 = 최소화: 내용이 1~2줄로 감기도록 좁게(최장 셀의 0.5배 + 여백, 4~9em).
+//   한글 1자≈1em, wrap 허용(CSS td.lbl white-space:normal)이라 좁아도 넘치지 않는다.
+// 값 열 = 폭 미지정 → fixed 레이아웃이 남은 폭을 균등 분배(비교 열들이 동일 폭).
 function buildCmpColgroup(
   cols: number,
   labelCols: Set<number>,
@@ -226,7 +227,8 @@ function buildCmpColgroup(
   const colTags: string[] = [];
   for (let i = 0; i < cols; i++) {
     if (labelCols.has(i)) {
-      const w = Math.min(Math.round((colMax[i] ?? 4) * 1.5 * 10) / 10, 22);
+      const raw = (colMax[i] ?? 4) * 0.6 + 2.4;
+      const w = Math.min(Math.max(Math.round(raw * 10) / 10, 4.5), 9.5);
       colTags.push(`<col style="width:${w}em">`);
     } else {
       colTags.push("<col>");

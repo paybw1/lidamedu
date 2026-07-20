@@ -471,15 +471,12 @@ body {
 .case-md-table table.colw th {
   overflow-wrap: break-word;
 }
-/* 명시 폭을 준 표에서는 라벨 열도 지정 폭을 존중해 줄바꿈(밖으로 넘치지 않게).
-   cmp 자동 라벨의 nowrap 을 colw 에서만 해제 — 폭이 곧 사용자 의도이기 때문. */
-.case-md-table table.colw td.lbl,
-.case-md-table table.colw th.lbl {
-  white-space: normal;
-}
+/* 라벨(구분) 열: 좁은 colgroup 폭 안에서 1~2줄로 줄바꿈(밖으로 넘치지 않게).
+   ★과거 nowrap → normal 로 변경(가독성 교정): 구분 열 최소화 + 값 열 균등 원칙. */
 .case-md-table table.cmp th.lbl,
 .case-md-table table.cmp td.lbl {
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 .case-md-table table.cmp th.val,
 .case-md-table table.cmp td.val {
