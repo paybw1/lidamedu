@@ -412,6 +412,46 @@ export async function listVideoContents(
   }));
 }
 
+// ── 콜러스 동기화 이력 (content_sync_logs) ──────────────────────────────────
+
+export interface SyncLogRow {
+  logId: string;
+  source: string;
+  status: string;
+  fetched: number;
+  inserted: number;
+  updated: number;
+  skipped: number;
+  errorCount: number;
+  errors: string[];
+  durationMs: number | null;
+  createdAt: string;
+}
+
+export async function listContentSyncLogs(
+  client: Client,
+  limit = 10,
+): Promise<SyncLogRow[]> {
+  const { data } = await client
+    .from("content_sync_logs")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return (data ?? []).map((r) => ({
+    logId: r.log_id,
+    source: r.source,
+    status: r.status,
+    fetched: r.fetched,
+    inserted: r.inserted,
+    updated: r.updated,
+    skipped: r.skipped,
+    errorCount: r.error_count,
+    errors: Array.isArray(r.errors) ? (r.errors as string[]) : [],
+    durationMs: r.duration_ms,
+    createdAt: r.created_at,
+  }));
+}
+
 // ── T-PASS 연결 제안 (★M1 승인 단서 3 — 에디션 발행 시) ────────────────────
 
 export interface TpassSuggestion {

@@ -20,6 +20,38 @@ export interface KollusSyncResult {
   errors: string[];
 }
 
+// 동기화 결과 → content_sync_logs 1행 기록(append-only). 실패해도 동기화 자체엔 영향 없음.
+//   status: 오류>0=partial(일부 반영) · fetched=0 & 오류>0=error · 그 외 success.
+export async function recordSyncLog(
+  result: KollusSyncResult,
+  source: "cron" | "manual",
+  triggeredBy: string | null,
+  durationMs: number | null,
+): Promise<void> {
+  const status =
+    result.errors.length === 0
+      ? "success"
+      : result.fetched === 0
+        ? "error"
+        : "partial";
+  try {
+    await adminClient.from("content_sync_logs").insert({
+      source,
+      triggered_by: triggeredBy,
+      status,
+      fetched: result.fetched,
+      inserted: result.inserted,
+      updated: result.updated,
+      skipped: result.skipped,
+      error_count: result.errors.length,
+      errors: result.errors,
+      duration_ms: durationMs,
+    });
+  } catch {
+    // 로그 기록 실패는 무시(동기화 결과는 이미 반영됨).
+  }
+}
+
 export async function syncKollusContents(
   actorId: string | null,
 ): Promise<KollusSyncResult> {

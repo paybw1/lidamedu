@@ -3888,6 +3888,66 @@ export type Database = {
           },
         ]
       }
+      content_sync_logs: {
+        Row: {
+          created_at: string
+          duration_ms: number | null
+          error_count: number
+          errors: Json
+          fetched: number
+          inserted: number
+          log_id: string
+          skipped: number
+          source: string
+          status: string
+          triggered_by: string | null
+          updated: number
+        }
+        Insert: {
+          created_at?: string
+          duration_ms?: number | null
+          error_count?: number
+          errors?: Json
+          fetched?: number
+          inserted?: number
+          log_id?: string
+          skipped?: number
+          source?: string
+          status?: string
+          triggered_by?: string | null
+          updated?: number
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number | null
+          error_count?: number
+          errors?: Json
+          fetched?: number
+          inserted?: number
+          log_id?: string
+          skipped?: number
+          source?: string
+          status?: string
+          triggered_by?: string | null
+          updated?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_sync_logs_triggered_by_fkey"
+            columns: ["triggered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "content_sync_logs_triggered_by_fkey"
+            columns: ["triggered_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       coupon_grants: {
         Row: {
           coupon_id: string

@@ -36,12 +36,17 @@ import { Chip, Field, IndexTable, TD, TR } from "~/features/admin/components/adm
 import { hasDutyAccess } from "~/features/admin/lib/duties.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { isKollusApiConfigured } from "~/features/lms/lib/kollus-content-api.server";
-import { syncKollusContents } from "~/features/lms/lib/kollus-sync.server";
+import {
+  recordSyncLog,
+  syncKollusContents,
+} from "~/features/lms/lib/kollus-sync.server";
 import { buildKollusWebTokenUrl } from "~/features/lms/lib/kollus-token.server";
 import {
   type ContentGroupRow,
+  type SyncLogRow,
   type VideoContentRow,
   listContentGroups,
+  listContentSyncLogs,
   listVideoContents,
 } from "~/features/lms/queries.server";
 
@@ -92,6 +97,22 @@ function fmtDuration(sec: number | null): string {
   return s > 0 ? `${m}분 ${s}초` : `${m}분`;
 }
 
+function fmtDateTime(iso: string): string {
+  const d = new Date(iso);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+const SYNC_STATUS: Record<
+  string,
+  { label: string; tone: "emerald" | "amber" | "coral" | "neutral" }
+> = {
+  success: { label: "성공", tone: "emerald" },
+  partial: { label: "일부 오류", tone: "amber" },
+  error: { label: "실패", tone: "coral" },
+  skipped: { label: "건너뜀", tone: "neutral" },
+};
+
 async function requireStaff(request: Request) {
   const [client] = makeServerClient(request);
   const {
@@ -114,9 +135,10 @@ export async function loader({ request }: Route.LoaderArgs) {
   const q = (url.searchParams.get("q") ?? "").trim().toLowerCase();
   const status = url.searchParams.get("status") ?? "all";
 
-  const [allContents, groups, instructorsRes] = await Promise.all([
+  const [allContents, groups, syncLogs, instructorsRes] = await Promise.all([
     listVideoContents(client),
     listContentGroups(client),
+    listContentSyncLogs(client),
     adminClient
       .from("profiles")
       .select("profile_id, name")
@@ -157,6 +179,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     contents,
     groups,
     groupCounts,
+    syncLogs,
     total: allContents.length,
     kollusConfigured: isKollusApiConfigured(),
     instructors: (instructorsRes.data ?? []).map((i) => ({
@@ -205,14 +228,20 @@ export async function action({ request }: Route.ActionArgs) {
   const intent = fd.get("intent");
 
   if (intent === "sync_kollus") {
+    const startedAt = Date.now();
     try {
       const r = await syncKollusContents(user.id);
+      await recordSyncLog(r, "manual", user.id, Date.now() - startedAt);
       return data({ ok: true as const, sync: r });
     } catch (e) {
-      return data(
-        { error: `콜러스 동기화 실패: ${e instanceof Error ? e.message : String(e)}` },
-        { status: 400 },
+      const message = e instanceof Error ? e.message : String(e);
+      await recordSyncLog(
+        { fetched: 0, inserted: 0, updated: 0, skipped: 0, errors: [message] },
+        "manual",
+        user.id,
+        Date.now() - startedAt,
       );
+      return data({ error: `콜러스 동기화 실패: ${message}` }, { status: 400 });
     }
   }
 
@@ -372,7 +401,7 @@ export async function action({ request }: Route.ActionArgs) {
 
 // ── 화면 ─────────────────────────────────────────────────────────────────
 export default function AdminLmsContents({ loaderData }: Route.ComponentProps) {
-  const { role, contents, groups, groupCounts, total, instructors, kollusConfigured } =
+  const { role, contents, groups, groupCounts, syncLogs, total, instructors, kollusConfigured } =
     loaderData;
   const [searchParams] = useSearchParams();
   const activeStatus = searchParams.get("status") ?? "all";
@@ -451,6 +480,9 @@ export default function AdminLmsContents({ loaderData }: Route.ComponentProps) {
       }
       width={1400}
     >
+      {/* 동기화 이력 */}
+      <SyncHistory logs={syncLogs} />
+
       {/* 강의그룹 */}
       <section className="mb-6">
         <div className="mb-2 flex items-center justify-between">
@@ -659,6 +691,79 @@ export default function AdminLmsContents({ loaderData }: Route.ComponentProps) {
         </DialogContent>
       </Dialog>
     </AdminShell>
+  );
+}
+
+// 동기화 이력 — 최근 실행 결과·오류를 접이식으로 노출(cron/manual 공통 기록).
+function SyncHistory({ logs }: { logs: SyncLogRow[] }) {
+  const [open, setOpen] = useState(false);
+  const latest = logs[0];
+  return (
+    <section className="border-border bg-muted/30 mb-6 rounded-lg border px-4 py-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+        <span className="font-bold">동기화 이력</span>
+        {latest ? (
+          <>
+            <Chip tone={SYNC_STATUS[latest.status]?.tone ?? "neutral"}>
+              {SYNC_STATUS[latest.status]?.label ?? latest.status}
+            </Chip>
+            <span className="text-muted-foreground">
+              최근 {fmtDateTime(latest.createdAt)}
+              {latest.source === "cron" ? " · 자동" : " · 수동"} · 신규{" "}
+              {latest.inserted} · 갱신 {latest.updated} · 건너뜀 {latest.skipped}
+              {latest.errorCount > 0 ? ` · 오류 ${latest.errorCount}` : ""}
+            </span>
+          </>
+        ) : (
+          <span className="text-muted-foreground">
+            아직 동기화 기록이 없습니다. 자동 동기화는 매일 실행됩니다.
+          </span>
+        )}
+        {logs.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="text-primary ml-auto text-xs font-semibold hover:underline"
+          >
+            {open ? "접기" : `전체 이력 (${logs.length})`}
+          </button>
+        ) : null}
+      </div>
+      {open ? (
+        <ul className="mt-3 space-y-2 border-t pt-3">
+          {logs.map((l) => (
+            <li key={l.logId} className="text-xs">
+              <div className="flex flex-wrap items-center gap-2">
+                <Chip tone={SYNC_STATUS[l.status]?.tone ?? "neutral"}>
+                  {SYNC_STATUS[l.status]?.label ?? l.status}
+                </Chip>
+                <span className="text-muted-foreground">
+                  {fmtDateTime(l.createdAt)}
+                  {l.source === "cron" ? " · 자동" : " · 수동"} · 콜러스{" "}
+                  {l.fetched}건 → 신규 {l.inserted} · 갱신 {l.updated} · 건너뜀{" "}
+                  {l.skipped}
+                  {l.durationMs != null
+                    ? ` · ${(l.durationMs / 1000).toFixed(1)}초`
+                    : ""}
+                </span>
+              </div>
+              {l.errors.length > 0 ? (
+                <ul className="mt-1 ml-4 list-disc space-y-0.5 text-rose-600">
+                  {l.errors.slice(0, 5).map((e, i) => (
+                    <li key={i} className="break-all">
+                      {e}
+                    </li>
+                  ))}
+                  {l.errors.length > 5 ? (
+                    <li>… 외 {l.errors.length - 5}건</li>
+                  ) : null}
+                </ul>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
   );
 }
 

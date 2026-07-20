@@ -1011,6 +1011,11 @@ export default [
         "/api/cron/billing-charge",
         "features/cron/api/billing-charge.tsx",
       ),
+      // feat-11-006 — 콜러스 콘텐츠 라이브러리 자동 동기화 cron.
+      route(
+        "/api/cron/kollus-content-sync",
+        "features/cron/api/kollus-content-sync.tsx",
+      ),
       route(
         "/api/student/lecture-progress",
         "features/lectures/api/progress.tsx",
