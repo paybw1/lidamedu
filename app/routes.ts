@@ -108,6 +108,7 @@ export default [
       route("/thread", "features/qna/api/thread.tsx"),
       route("/target-resolve", "features/qna/api/target-resolve.tsx"),
       route("/nodes", "features/qna/api/nodes.tsx"),
+      route("/upload-image", "features/qna/api/upload-image.tsx"),
     ]),
     // feat-3-504 — 논문 PDF signed URL (인증 사용자 누구나).
     ...prefix("/papers", [

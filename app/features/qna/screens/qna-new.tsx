@@ -9,7 +9,7 @@ import { Link, redirect, useFetcher, useNavigate } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Input } from "~/core/components/ui/input";
-import { Textarea } from "~/core/components/ui/textarea";
+import { QnaImageTextarea } from "~/features/qna/components/qna-image-textarea";
 import { Chip } from "~/features/community/components/community-ui";
 import { CommunityShell } from "~/features/community/components/community-shell";
 import { parseProblemCode } from "~/features/problems/lib/problem-code";
@@ -840,13 +840,13 @@ function QnaForm({
             <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
               내용
             </span>
-            <Textarea
+            <QnaImageTextarea
               name="questionMd"
               value={body}
-              onChange={(e) => setBody(e.target.value)}
+              onChange={setBody}
               placeholder="질문 배경과 본인이 어디까지 정리했는지, 막히는 부분을 구체적으로 적으면 더 좋은 답변을 받을 수 있습니다."
               rows={10}
-              className="text-sm leading-relaxed"
+              maxLength={10000}
               required
             />
           </label>

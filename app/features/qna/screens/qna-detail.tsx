@@ -23,6 +23,7 @@ import {
 
 import { Button } from "~/core/components/ui/button";
 import { Textarea } from "~/core/components/ui/textarea";
+import { QnaImageTextarea } from "~/features/qna/components/qna-image-textarea";
 import { cn } from "~/core/lib/utils";
 import { Chip } from "~/features/community/components/community-ui";
 import { CommunityShell } from "~/features/community/components/community-shell";
@@ -802,14 +803,13 @@ function InstructorFollowUpForm({
         <input type="hidden" name="intent" value="instructor_reply" />
         <input type="hidden" name="threadId" value={threadId} />
         <input type="hidden" name="qualityGrade" value={grade} />
-        <Textarea
+        <QnaImageTextarea
           name="bodyMd"
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={setDraft}
           placeholder="보충 설명이나 정정 내용을 입력하세요."
           rows={4}
           maxLength={10000}
-          className="text-sm leading-relaxed"
           required
         />
         {/* 질문 수준 재평가 — 정식 답변 폼과 동일 UI. 현재 평가가 기본 선택. */}
@@ -888,14 +888,13 @@ function FollowUpForm({ threadId }: { threadId: string }) {
       <fetcher.Form method="post" action="/api/qna/thread" className="mt-3">
         <input type="hidden" name="intent" value="reply" />
         <input type="hidden" name="threadId" value={threadId} />
-        <Textarea
+        <QnaImageTextarea
           name="bodyMd"
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={setDraft}
           placeholder="예: 그럼 출원공개 전에 침해가 있었던 경우는 어떻게 되나요?"
           rows={3}
           maxLength={4000}
-          className="text-sm leading-relaxed"
           required
         />
         <div className="mt-2.5 flex items-center justify-between gap-2">
