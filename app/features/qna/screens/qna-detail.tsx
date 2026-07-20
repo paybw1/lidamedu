@@ -297,7 +297,12 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
             citationHrefs={citationHrefs}
           />
         ) : (
-          <FollowUpCard key={m.messageId} message={m} />
+          <FollowUpCard
+            key={m.messageId}
+            message={m}
+            threadId={thread.threadId}
+            isStaff={isStaff}
+          />
         ),
       )}
 
@@ -349,7 +354,12 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
                   citationHrefs={citationHrefs}
                 />
               ) : (
-                <FollowUpCard key={m.messageId} message={m} />
+                <FollowUpCard
+                  key={m.messageId}
+                  message={m}
+                  threadId={thread.threadId}
+                  isStaff={isStaff}
+                />
               ),
             )
         : null}
@@ -535,8 +545,17 @@ function DeleteThreadButton({
 }
 
 // 질문자 후속 질문 / 강사 메시지 카드 — 타임라인 중간 턴.
-function FollowUpCard({ message }: { message: QnaMessage }) {
+function FollowUpCard({
+  message,
+  threadId,
+  isStaff,
+}: {
+  message: QnaMessage;
+  threadId: string;
+  isStaff: boolean;
+}) {
   const isStudent = message.role === "student";
+  const [editing, setEditing] = useState(false);
   return (
     <article
       className={cn(
@@ -555,15 +574,88 @@ function FollowUpCard({ message }: { message: QnaMessage }) {
         <span className="text-muted-foreground ml-auto text-[11px] tabular-nums">
           {new Date(message.createdAt).toLocaleString("ko-KR")}
         </span>
+        {isStaff ? (
+          <button
+            type="button"
+            onClick={() => setEditing((v) => !v)}
+            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px]"
+            title="본문 수정 (강사·관리자)"
+          >
+            <PencilIcon className="size-2.5" /> {editing ? "취소" : "수정"}
+          </button>
+        ) : null}
       </div>
-      <MarkdownView
-        text={message.bodyMd}
-        trusted={false}
-        breaks
-        literalNumbering
-        className="text-foreground/85 text-[14px] leading-[1.8]"
-      />
+      {editing ? (
+        <EditMessageForm
+          threadId={threadId}
+          messageId={message.messageId}
+          initial={message.bodyMd}
+          onDone={() => setEditing(false)}
+        />
+      ) : (
+        <MarkdownView
+          text={message.bodyMd}
+          trusted={false}
+          breaks
+          literalNumbering
+          className="text-foreground/85 text-[14px] leading-[1.8]"
+        />
+      )}
     </article>
+  );
+}
+
+// 타임라인 메시지(추가 질문·강사 추가 답변) 본문 수정 — 강사·관리자 전용(intent=edit_message).
+function EditMessageForm({
+  threadId,
+  messageId,
+  initial,
+  onDone,
+}: {
+  threadId: string;
+  messageId: string;
+  initial: string;
+  onDone: () => void;
+}) {
+  const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  const revalidator = useRevalidator();
+  const doneRef = useRef(false);
+  const [draft, setDraft] = useState(initial);
+  useEffect(() => {
+    if (fetcher.data?.ok && !doneRef.current) {
+      doneRef.current = true;
+      revalidator.revalidate();
+      onDone();
+    }
+  }, [fetcher.data, revalidator, onDone]);
+  return (
+    <fetcher.Form method="post" action="/api/qna/thread" className="space-y-2">
+      <input type="hidden" name="intent" value="edit_message" />
+      <input type="hidden" name="threadId" value={threadId} />
+      <input type="hidden" name="messageId" value={messageId} />
+      <QnaImageTextarea
+        name="bodyMd"
+        value={draft}
+        onChange={setDraft}
+        rows={6}
+        required
+      />
+      {fetcher.data?.ok === false ? (
+        <p className="text-xs text-rose-600">저장 실패: {fetcher.data.error}</p>
+      ) : null}
+      <div className="flex items-center gap-2">
+        <Button
+          type="submit"
+          size="sm"
+          disabled={fetcher.state !== "idle" || !draft.trim()}
+        >
+          {fetcher.state !== "idle" ? "저장 중…" : "저장"}
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onDone}>
+          취소
+        </Button>
+      </div>
+    </fetcher.Form>
   );
 }
 

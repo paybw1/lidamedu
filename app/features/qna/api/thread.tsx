@@ -94,6 +94,14 @@ const instructorReplySchema = z.object({
   qualityGrade: qnaQualityGradeSchema.optional(),
 });
 
+// 타임라인 메시지(추가 질문·강사 추가 답변) 본문 수정 — 강사·관리자 전용. AI 메시지 제외.
+const editMessageSchema = z.object({
+  intent: z.literal("edit_message"),
+  threadId: z.string().uuid(),
+  messageId: z.string().uuid(),
+  bodyMd: z.string().min(1).max(10000),
+});
+
 // 질문자의 AI 답변 도움됐어요 피드백 — 👍 1 / 👎 -1 / 해제 0.
 const feedbackSchema = z.object({
   intent: z.literal("feedback"),
@@ -110,6 +118,7 @@ const schema = z.discriminatedUnion("intent", [
   verdictSchema,
   replySchema,
   instructorReplySchema,
+  editMessageSchema,
   feedbackSchema,
 ]);
 
@@ -354,6 +363,29 @@ export async function action({ request }: Route.ActionArgs) {
         answererName: thread.answererName,
       }),
     );
+    return data({ ok: true }, { headers });
+  }
+
+  if (parsed.data.intent === "edit_message") {
+    // 강사·관리자 전용 — RLS(staff update)가 1차 방어지만 액션 게이트로 명시.
+    const role = await getStaffRole(client, user.id);
+    if (!role) {
+      return data({ ok: false, error: "forbidden" }, { status: 403, headers });
+    }
+    const { data: rows, error } = await client
+      .from("qna_messages")
+      .update({ body_md: parsed.data.bodyMd })
+      .eq("message_id", parsed.data.messageId)
+      .eq("thread_id", parsed.data.threadId)
+      .neq("role", "ai")
+      .is("deleted_at", null)
+      .select("message_id");
+    if (error) {
+      return data({ ok: false, error: error.message }, { status: 400, headers });
+    }
+    if (!rows?.length) {
+      return data({ ok: false, error: "not-found" }, { status: 404, headers });
+    }
     return data({ ok: true }, { headers });
   }
 
