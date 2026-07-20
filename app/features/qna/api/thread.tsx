@@ -17,6 +17,7 @@ import {
 } from "../labels";
 import { notifyNewAnswer, notifyNewQuestion } from "../notify.server";
 import {
+  addInstructorMessage,
   addStudentMessage,
   answerThread,
   closeThread,
@@ -84,6 +85,13 @@ const replySchema = z.object({
   bodyMd: z.string().min(1).max(4000),
 });
 
+// 강사 추가 답변 — 정식 답변 이후 보충 설명·정정을 타임라인에 이어붙임(staff 전용).
+const instructorReplySchema = z.object({
+  intent: z.literal("instructor_reply"),
+  threadId: z.string().uuid(),
+  bodyMd: z.string().min(1).max(10000),
+});
+
 // 질문자의 AI 답변 도움됐어요 피드백 — 👍 1 / 👎 -1 / 해제 0.
 const feedbackSchema = z.object({
   intent: z.literal("feedback"),
@@ -99,6 +107,7 @@ const schema = z.discriminatedUnion("intent", [
   editSchema,
   verdictSchema,
   replySchema,
+  instructorReplySchema,
   feedbackSchema,
 ]);
 
@@ -296,6 +305,37 @@ export async function action({ request }: Route.ActionArgs) {
       );
     }
     return data({ ok: true, aiPending: decision.ok }, { headers });
+  }
+
+  if (parsed.data.intent === "instructor_reply") {
+    // 강사·관리자 전용 — 정식 답변을 덮지 않고 추가 답변(instructor 메시지)으로 이어붙인다.
+    const role = await getStaffRole(client, user.id);
+    if (!role) {
+      return data({ ok: false, error: "forbidden" }, { status: 403, headers });
+    }
+    const thread = await getThreadDetail(client, parsed.data.threadId);
+    if (!thread) {
+      return data({ ok: false, error: "not-found" }, { status: 404, headers });
+    }
+    await addInstructorMessage(
+      client,
+      user.id,
+      thread.threadId,
+      parsed.data.bodyMd,
+    );
+    // 질문자에게 새 답변 알림(인앱+이메일) — 정식 답변과 동일 채널.
+    runAfterResponse(
+      notifyNewAnswer({
+        threadId: thread.threadId,
+        targetType: thread.targetType,
+        title: thread.title,
+        answerMd: parsed.data.bodyMd,
+        qualityGrade: thread.qualityGrade ?? "mid",
+        askerProfileId: thread.askerId,
+        answererName: thread.answererName,
+      }),
+    );
+    return data({ ok: true }, { headers });
   }
 
   if (parsed.data.intent === "feedback") {

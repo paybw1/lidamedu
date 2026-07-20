@@ -362,6 +362,11 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
         </div>
       ) : null}
 
+      {/* 강사 추가 답변 — 정식 답변 이후 보충 설명·정정(타임라인에 이어붙음, 종료 후에도 가능). */}
+      {isStaff && thread.answerMd && !editing ? (
+        <InstructorFollowUpForm threadId={thread.threadId} />
+      ) : null}
+
       {/* 질문자 후속 질문(멀티턴) — 종료 전까지. AI 가 대화 맥락을 이어받아 재응답. */}
       {isAsker && thread.status !== "closed" ? (
         <FollowUpForm threadId={thread.threadId} />
@@ -761,6 +766,52 @@ function CitationList({
           );
         })}
       </ul>
+    </div>
+  );
+}
+
+// 강사 추가 답변 입력 — 정식 답변(answerMd)을 덮지 않고 타임라인에 instructor 메시지로
+// 이어붙인다(보충 설명·정정). 질문자에게 새 답변 알림 발송.
+function InstructorFollowUpForm({ threadId }: { threadId: string }) {
+  const fetcher = useFetcher<{ ok?: boolean }>();
+  const [draft, setDraft] = useState("");
+  const isSubmitting = fetcher.state !== "idle";
+
+  useEffect(() => {
+    if (fetcher.state === "idle" && fetcher.data?.ok) setDraft("");
+  }, [fetcher.state, fetcher.data]);
+
+  return (
+    <div className="border-border bg-card mb-3.5 rounded-2xl border p-4 shadow-sm md:p-5">
+      <p className="text-sm font-bold tracking-tight">추가 답변 (강사)</p>
+      <p className="text-muted-foreground mt-1 text-xs">
+        정식 답변을 수정하지 않고 보충 설명·정정을 이어붙입니다. 질문자에게 알림이
+        발송됩니다.
+      </p>
+      <fetcher.Form method="post" action="/api/qna/thread" className="mt-3">
+        <input type="hidden" name="intent" value="instructor_reply" />
+        <input type="hidden" name="threadId" value={threadId} />
+        <Textarea
+          name="bodyMd"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="보충 설명이나 정정 내용을 입력하세요."
+          rows={4}
+          maxLength={10000}
+          className="text-sm leading-relaxed"
+          required
+        />
+        <div className="mt-2.5 flex justify-end">
+          <Button
+            type="submit"
+            size="sm"
+            className="rounded-full"
+            disabled={isSubmitting || !draft.trim()}
+          >
+            {isSubmitting ? "등록 중…" : "추가 답변 등록"}
+          </Button>
+        </div>
+      </fetcher.Form>
     </div>
   );
 }

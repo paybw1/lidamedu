@@ -471,6 +471,23 @@ export async function addStudentMessage(
   if (error) throw error;
 }
 
+// 강사 추가 답변 — 정식 답변(answer_md) 이후 타임라인에 instructor 메시지로 이어붙인다.
+//   정식 답변을 덮어쓰지 않고 보충 설명·정정을 쌓는 용도.
+export async function addInstructorMessage(
+  client: SupabaseClient<Database>,
+  userId: string,
+  threadId: string,
+  bodyMd: string,
+): Promise<void> {
+  const { error } = await client.from("qna_messages").insert({
+    thread_id: threadId,
+    role: "instructor",
+    author_id: userId,
+    body_md: bodyMd,
+  });
+  if (error) throw error;
+}
+
 export async function getThreadDetail(
   client: SupabaseClient<Database>,
   threadId: string,
