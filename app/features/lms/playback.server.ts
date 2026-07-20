@@ -15,6 +15,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
+import { getStaffRole } from "~/features/laws/queries.server";
 import {
   detectDeviceKind,
   ensureDeviceForPlayback,
@@ -79,8 +80,17 @@ export async function requestPlaybackGrant(
   let enrollmentId: string | null = null;
   let deviceId: string | null = null;
 
+  // 운영 스태프(강사·매니저·원장) 여부 — 검수·모니터링 목적으로 수강권·배수·기기
+  // 게이트를 면제한다(강의 자료 다운로드 material-download 와 동일 기준). enrollment_id 는
+  // null 로 남겨 하트비트가 watch_ledger 차감을 스킵한다(맛보기와 동일 경로).
+  const isStaff = input.userId
+    ? (await getStaffRole(client, input.userId)) !== null
+    : false;
+
   if (lesson.is_preview) {
     // 맛보기 — 비로그인 허용, 수강권·배수 검사 없음(차감 예외의 근거).
+  } else if (isStaff) {
+    // 운영 스태프 — 로그인만 확인(위에서 userId 확정), 수강권·배수·기기 게이트 면제.
   } else {
     // 2) 로그인
     if (!input.userId) return { ok: false, reason: "login_required" };
