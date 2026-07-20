@@ -200,10 +200,133 @@ function annotateCmpColumns(html: string, labelCols: Set<number>): string {
   );
 }
 
+// ── 셀 병합 마커 ─────────────────────────────────────────────
+// 파이프 표 셀에 "<"(왼쪽 칸과 병합) / "^"(위 칸과 병합)만 넣으면 렌더에서
+// colspan/rowspan 으로 합쳐진다. 마커 셀 자체는 렌더되지 않는다 — 원시 텍스트
+// 오프셋 체계(빈칸·하이라이트)는 변하지 않는다. 전 판례 전수 감사로 단독
+// "<"/"^" 셀 기존 데이터 0건 확인(2026-07-20).
+export const MERGE_LEFT = "<";
+export const MERGE_UP = "^";
+
+export interface CaseCellSpan {
+  skip: boolean; // 마커 셀 — 렌더하지 않음(이웃 셀에 흡수됨)
+  colSpan: number;
+  rowSpan: number;
+}
+
+// rows: 렌더 순서(헤더 포함, 구분행 제외)의 셀 그리드. 정규 그리드(행별 열 수 일정) 가정.
+// rowspan 은 같은 열 인덱스 기준으로 위로, colspan 은 같은 행에서 왼쪽으로 병합.
+// 주의: thead↔tbody 경계를 넘는 rowspan 은 브라우저가 무시하므로 헤더 바로 아래
+// 행에는 "^" 를 쓰지 않는다(운영 규약).
+export function computeCaseCellSpans(
+  rows: { text: string }[][],
+): CaseCellSpan[][] {
+  const spans = rows.map((r) =>
+    r.map(() => ({ skip: false, colSpan: 1, rowSpan: 1 })),
+  );
+  for (let ri = 0; ri < rows.length; ri++) {
+    for (let ci = 0; ci < rows[ri].length; ci++) {
+      const t = rows[ri][ci].text;
+      if (t === MERGE_LEFT) {
+        let cj = ci - 1;
+        while (cj >= 0 && rows[ri][cj].text === MERGE_LEFT) cj--;
+        if (cj >= 0 && rows[ri][cj].text !== MERGE_UP) {
+          spans[ri][ci].skip = true;
+          spans[ri][cj].colSpan++;
+        }
+      } else if (t === MERGE_UP) {
+        let rk = ri - 1;
+        while (rk >= 0 && rows[rk][ci]?.text === MERGE_UP) rk--;
+        if (rk >= 0 && rows[rk][ci] && rows[rk][ci].text !== MERGE_LEFT) {
+          spans[ri][ci].skip = true;
+          spans[rk][ci].rowSpan++;
+        }
+      }
+    }
+  }
+  return spans;
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+// 병합 마커가 있는 GFM 표 → colspan/rowspan 포함 HTML. marked 는 셀 병합을 못
+// 만들므로 직접 조립(셀 내용은 escape — 병합 표 셀은 평문 가정). 비교표(cmp)
+// 판정·colgroup·lbl/val class 는 기존 규칙 그대로 적용.
+function renderMergedTableHtml(p: string): string | null {
+  const lines = p
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.startsWith("|"));
+  if (lines.length < 2) return null;
+  const rowsRaw = lines.map((l) =>
+    l
+      .replace(/^\|/, "")
+      .replace(/\|\s*$/, "")
+      .split("|")
+      .map((c) => c.trim()),
+  );
+  const isSep = (cells: string[]) =>
+    cells.length > 0 && cells.every((c) => /^:?-{3,}:?$/.test(c));
+  let header: string[] | null = null;
+  let body: string[][];
+  if (rowsRaw.length >= 2 && isSep(rowsRaw[1])) {
+    header = rowsRaw[0];
+    body = rowsRaw.slice(2).filter((r) => !isSep(r));
+  } else {
+    body = rowsRaw.filter((r) => !isSep(r));
+  }
+  const grid = [...(header ? [header] : []), ...body];
+  if (
+    !grid.some((r) => r.some((c) => c === MERGE_LEFT || c === MERGE_UP))
+  )
+    return null;
+  const spans = computeCaseCellSpans(grid.map((r) => r.map((text) => ({ text }))));
+  const cmpInfo = analyzeCmpTable(p);
+  const renderRow = (cells: string[], gi: number, tag: "th" | "td") => {
+    let out = "<tr>";
+    cells.forEach((c, ci) => {
+      const sp = spans[gi][ci];
+      if (sp.skip) return;
+      const cls = cmpInfo ? (cmpInfo.labelCols.has(ci) ? "lbl" : "val") : null;
+      const attrs =
+        (sp.colSpan > 1 ? ` colspan="${sp.colSpan}"` : "") +
+        (sp.rowSpan > 1 ? ` rowspan="${sp.rowSpan}"` : "") +
+        (cls ? ` class="${cls}"` : "");
+      out += `<${tag}${attrs}>${escapeHtml(c)}</${tag}>`;
+    });
+    return out + "</tr>";
+  };
+  const bodyOffset = header ? 1 : 0;
+  const html =
+    (cmpInfo ? '<table class="cmp">' : "<table>") +
+    (cmpInfo
+      ? buildCmpColgroup(cmpInfo.cols, cmpInfo.labelCols, cmpInfo.colMax)
+      : "") +
+    (header ? `<thead>${renderRow(header, 0, "th")}</thead>` : "") +
+    "<tbody>" +
+    body.map((r, i) => renderRow(r, bodyOffset + i, "td")).join("") +
+    "</tbody></table>";
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ALLOWED_TABLE_TAGS,
+    ALLOWED_ATTR: [...ALLOWED_TABLE_ATTR, "class", "style"],
+  });
+}
+
 export function renderTableHtml(p: string): string {
   // raw HTML `<table>` 입력은 marked 거치지 않고 그대로 sanitize.
   // (marked 의 inline-html 통과 동작에 의존하지 않고 명시적으로 처리.)
   const isRawHtml = p.trimStart().toLowerCase().startsWith("<table");
+  if (!isRawHtml) {
+    // 병합 마커("<"/"^") 표는 직접 조립 — marked GFM 은 셀 병합 불가.
+    const merged = renderMergedTableHtml(p);
+    if (merged) return merged;
+  }
   const html = isRawHtml
     ? p
     : (marked.parse(p, { async: false, gfm: true }) as string);

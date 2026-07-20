@@ -4,6 +4,7 @@
 import { useMemo, type ReactNode } from "react";
 
 import {
+  computeCaseCellSpans,
   endsWithInlineQuote,
   startsWithInlineQuote,
 } from "~/features/cases/lib/case-markdown";
@@ -98,6 +99,11 @@ export function CaseBlankParts({
         const headerRow =
           part.rows.length > 1 && part.rows[1].separator ? part.rows[0] : null;
         const bodyRows = part.rows.filter((r, ri) => !r.separator && (headerRow ? ri !== 0 : true));
+        // 병합 마커("<" 왼쪽 병합 / "^" 위 병합) — 마커 셀은 렌더하지 않고 이웃 셀의
+        // colSpan/rowSpan 으로 흡수. 원시 오프셋 체계는 그대로(마커 문자는 선택 불가일 뿐).
+        const grid = [...(headerRow ? [headerRow] : []), ...bodyRows];
+        const spans = computeCaseCellSpans(grid.map((r) => r.cells));
+        const bodyOffset = headerRow ? 1 : 0;
         return (
           <div key={`tb${pi}`} className="overflow-x-auto">
             {/* table-fixed — 열폭 균등(1:1:…). 편집/풀기 화면은 내용량과 무관하게 예측 가능한 폭. */}
@@ -105,28 +111,40 @@ export function CaseBlankParts({
               {headerRow ? (
                 <thead>
                   <tr>
-                    {headerRow.cells.map((c, ci) => (
-                      <th
-                        key={ci}
-                        className="border-border bg-muted/50 break-words border px-2 py-1 text-left align-top font-semibold"
-                      >
-                        {renderRange(c.start, c.start + c.text.length, `h${pi}.${ci}`)}
-                      </th>
-                    ))}
+                    {headerRow.cells.map((c, ci) => {
+                      const sp = spans[0][ci];
+                      if (sp.skip) return null;
+                      return (
+                        <th
+                          key={ci}
+                          colSpan={sp.colSpan > 1 ? sp.colSpan : undefined}
+                          rowSpan={sp.rowSpan > 1 ? sp.rowSpan : undefined}
+                          className="border-border bg-muted/50 break-words border px-2 py-1 text-left align-top font-semibold"
+                        >
+                          {renderRange(c.start, c.start + c.text.length, `h${pi}.${ci}`)}
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
               ) : null}
               <tbody>
                 {bodyRows.map((r, ri) => (
                   <tr key={ri}>
-                    {r.cells.map((c, ci) => (
-                      <td
-                        key={ci}
-                        className="border-border break-words border px-2 py-1 align-top"
-                      >
-                        {renderRange(c.start, c.start + c.text.length, `c${pi}.${ri}.${ci}`)}
-                      </td>
-                    ))}
+                    {r.cells.map((c, ci) => {
+                      const sp = spans[bodyOffset + ri][ci];
+                      if (sp.skip) return null;
+                      return (
+                        <td
+                          key={ci}
+                          colSpan={sp.colSpan > 1 ? sp.colSpan : undefined}
+                          rowSpan={sp.rowSpan > 1 ? sp.rowSpan : undefined}
+                          className="border-border break-words border px-2 py-1 align-top"
+                        >
+                          {renderRange(c.start, c.start + c.text.length, `c${pi}.${ri}.${ci}`)}
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>
