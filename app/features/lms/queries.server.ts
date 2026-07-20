@@ -261,6 +261,124 @@ export async function getCourseTotalDuration(courseId: string): Promise<number> 
   return total;
 }
 
+// ── 콘텐츠 라이브러리 (feat-11-006) ─────────────────────────────────────────
+// 콜러스 미디어 자산(video_contents)을 강의그룹(content_groups)으로 분류하고
+// 회차(lesson_videos.content_id)에 연결. 콘텐츠 키=학생 비노출 → staff RLS.
+
+export interface ContentGroupRow {
+  groupId: string;
+  name: string;
+  year: number | null;
+  subjectCode: string | null;
+  instructorId: string | null;
+  instructorName: string | null;
+  examTrack: string | null;
+  courseType: string | null;
+  bookTitle: string | null;
+  staffMemo: string | null;
+}
+
+export async function listContentGroups(
+  client: Client,
+): Promise<ContentGroupRow[]> {
+  const { data } = await client
+    .from("content_groups")
+    .select(
+      "group_id, name, year, subject_code, instructor_id, exam_track, course_type, book_title, staff_memo, instructor:profiles!content_groups_instructor_id_fkey(name)",
+    )
+    .is("deleted_at", null)
+    .order("year", { ascending: false, nullsFirst: false })
+    .order("name");
+  return (data ?? []).map((g) => ({
+    groupId: g.group_id,
+    name: g.name,
+    year: g.year,
+    subjectCode: g.subject_code,
+    instructorId: g.instructor_id,
+    instructorName: (g.instructor as { name: string | null } | null)?.name ?? null,
+    examTrack: g.exam_track,
+    courseType: g.course_type,
+    bookTitle: g.book_title,
+    staffMemo: g.staff_memo,
+  }));
+}
+
+export interface VideoContentRow {
+  contentId: string;
+  drmProvider: string;
+  contentKey: string;
+  title: string;
+  originalFilename: string | null;
+  durationSeconds: number | null;
+  encodingStatus: string;
+  groupId: string | null;
+  groupName: string | null;
+  completionThreshold: number;
+  useStatus: string;
+  isActive: boolean;
+  adminMemo: string | null;
+  syncedAt: string | null;
+  createdAt: string;
+  connections: Array<{ lessonId: string; label: string; isActive: boolean }>;
+}
+
+export async function listVideoContents(
+  client: Client,
+): Promise<VideoContentRow[]> {
+  const { data } = await client
+    .from("video_contents")
+    .select("*, group:content_groups(name)")
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false });
+
+  // 연결 회차(어느 강의 몇 강) — content_id 로 lesson_videos 역참조.
+  const { data: links } = await client
+    .from("lesson_videos")
+    .select(
+      "content_id, is_active, course_lessons(lesson_id, lesson_no, courses(edition_label, course_series(title)))",
+    )
+    .not("content_id", "is", null);
+
+  const byContent = new Map<string, VideoContentRow["connections"]>();
+  for (const lv of links ?? []) {
+    if (!lv.content_id) continue;
+    const cl = lv.course_lessons as {
+      lesson_id: string;
+      lesson_no: number;
+      courses: {
+        edition_label: string;
+        course_series: { title: string } | null;
+      } | null;
+    } | null;
+    if (!cl) continue;
+    const seriesTitle = cl.courses?.course_series?.title ?? "강의";
+    const edition = cl.courses?.edition_label ?? "";
+    const label = `${seriesTitle} ${edition}`.trim() + ` · ${cl.lesson_no}강`;
+    const arr = byContent.get(lv.content_id) ?? [];
+    arr.push({ lessonId: cl.lesson_id, label, isActive: lv.is_active });
+    byContent.set(lv.content_id, arr);
+  }
+
+  return (data ?? []).map((c) => ({
+    contentId: c.content_id,
+    drmProvider: c.drm_provider,
+    contentKey: c.content_key,
+    title: c.title,
+    originalFilename: c.original_filename,
+    durationSeconds: c.duration_seconds,
+    encodingStatus: c.encoding_status,
+    groupId: c.group_id,
+    groupName: (c.group as { name: string } | null)?.name ?? null,
+    completionThreshold: Number(c.completion_threshold),
+    useStatus: c.use_status,
+    isActive: c.is_active,
+    adminMemo: c.admin_memo,
+    syncedAt: c.synced_at,
+    createdAt: c.created_at,
+    connections: byContent.get(c.content_id) ?? [],
+  }));
+}
+
 // ── T-PASS 연결 제안 (★M1 승인 단서 3 — 에디션 발행 시) ────────────────────
 
 export interface TpassSuggestion {

@@ -189,6 +189,7 @@ export const ADMIN_NAV: NavCluster[] = [
     Icon: ClapperboardIcon,
     screens: [
       { label: "강의 시리즈·에디션", to: "/admin/lms/courses" },
+      { label: "콘텐츠 라이브러리", to: "/admin/lms/contents" },
       { label: "영상 수강권", to: "/admin/lms/enrollments" },
       { label: "기기 관리", to: "/admin/lms/devices" },
       // feat-11-004 4c — 도서몰.

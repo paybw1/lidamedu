@@ -793,6 +793,11 @@ export default [
         "/admin/lms/courses/:courseId",
         "features/lms/screens/admin-lms-course-detail.tsx",
       ),
+      // feat-11-006 — 콜러스 콘텐츠 라이브러리·강의그룹.
+      route(
+        "/admin/lms/contents",
+        "features/lms/screens/admin-lms-contents.tsx",
+      ),
       route(
         "/admin/lms/enrollments",
         "features/lms/screens/admin-lms-enrollments.tsx",
