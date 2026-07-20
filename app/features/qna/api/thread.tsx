@@ -86,10 +86,12 @@ const replySchema = z.object({
 });
 
 // 강사 추가 답변 — 정식 답변 이후 보충 설명·정정을 타임라인에 이어붙임(staff 전용).
+// qualityGrade 동봉 시 스레드의 질문 수준 평가를 갱신(추가 답변 시 재평가 허용).
 const instructorReplySchema = z.object({
   intent: z.literal("instructor_reply"),
   threadId: z.string().uuid(),
   bodyMd: z.string().min(1).max(10000),
+  qualityGrade: qnaQualityGradeSchema.optional(),
 });
 
 // 질문자의 AI 답변 도움됐어요 피드백 — 👍 1 / 👎 -1 / 해제 0.
@@ -323,6 +325,23 @@ export async function action({ request }: Route.ActionArgs) {
       thread.threadId,
       parsed.data.bodyMd,
     );
+    // 질문 수준 재평가(선택) — 추가 답변과 함께 갱신. staff RLS 가 방어.
+    const grade = parsed.data.qualityGrade ?? thread.qualityGrade ?? "mid";
+    if (
+      parsed.data.qualityGrade &&
+      parsed.data.qualityGrade !== thread.qualityGrade
+    ) {
+      const { error: gradeErr } = await client
+        .from("qna_threads")
+        .update({ quality_grade: parsed.data.qualityGrade })
+        .eq("thread_id", thread.threadId);
+      if (gradeErr) {
+        return data(
+          { ok: false, error: gradeErr.message },
+          { status: 400, headers },
+        );
+      }
+    }
     // 질문자에게 새 답변 알림(인앱+이메일) — 정식 답변과 동일 채널.
     runAfterResponse(
       notifyNewAnswer({
@@ -330,7 +349,7 @@ export async function action({ request }: Route.ActionArgs) {
         targetType: thread.targetType,
         title: thread.title,
         answerMd: parsed.data.bodyMd,
-        qualityGrade: thread.qualityGrade ?? "mid",
+        qualityGrade: grade,
         askerProfileId: thread.askerId,
         answererName: thread.answererName,
       }),

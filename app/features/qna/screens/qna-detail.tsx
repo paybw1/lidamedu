@@ -364,7 +364,10 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
 
       {/* 강사 추가 답변 — 정식 답변 이후 보충 설명·정정(타임라인에 이어붙음, 종료 후에도 가능). */}
       {isStaff && thread.answerMd && !editing ? (
-        <InstructorFollowUpForm threadId={thread.threadId} />
+        <InstructorFollowUpForm
+          threadId={thread.threadId}
+          initialGrade={thread.qualityGrade}
+        />
       ) : null}
 
       {/* 질문자 후속 질문(멀티턴) — 종료 전까지. AI 가 대화 맥락을 이어받아 재응답. */}
@@ -771,10 +774,17 @@ function CitationList({
 }
 
 // 강사 추가 답변 입력 — 정식 답변(answerMd)을 덮지 않고 타임라인에 instructor 메시지로
-// 이어붙인다(보충 설명·정정). 질문자에게 새 답변 알림 발송.
-function InstructorFollowUpForm({ threadId }: { threadId: string }) {
+// 이어붙인다(보충 설명·정정). 질문 수준 재평가 동봉 가능. 질문자에게 새 답변 알림 발송.
+function InstructorFollowUpForm({
+  threadId,
+  initialGrade,
+}: {
+  threadId: string;
+  initialGrade: QnaQualityGrade | null;
+}) {
   const fetcher = useFetcher<{ ok?: boolean }>();
   const [draft, setDraft] = useState("");
+  const [grade, setGrade] = useState<QnaQualityGrade>(initialGrade ?? "mid");
   const isSubmitting = fetcher.state !== "idle";
 
   useEffect(() => {
@@ -791,6 +801,7 @@ function InstructorFollowUpForm({ threadId }: { threadId: string }) {
       <fetcher.Form method="post" action="/api/qna/thread" className="mt-3">
         <input type="hidden" name="intent" value="instructor_reply" />
         <input type="hidden" name="threadId" value={threadId} />
+        <input type="hidden" name="qualityGrade" value={grade} />
         <Textarea
           name="bodyMd"
           value={draft}
@@ -801,6 +812,27 @@ function InstructorFollowUpForm({ threadId }: { threadId: string }) {
           className="text-sm leading-relaxed"
           required
         />
+        {/* 질문 수준 재평가 — 정식 답변 폼과 동일 UI. 현재 평가가 기본 선택. */}
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          <span className="text-muted-foreground mr-1 text-xs">
+            질문 수준 평가
+          </span>
+          {QNA_QUALITY_GRADES.map((g) => (
+            <button
+              key={g}
+              type="button"
+              onClick={() => setGrade(g)}
+              className={cn(
+                "h-[22px] rounded-full px-2.5 text-[11px] font-semibold transition-colors",
+                grade === g
+                  ? "bg-amber-500 text-white"
+                  : "bg-muted text-foreground/80 hover:bg-muted/70",
+              )}
+            >
+              {QNA_QUALITY_LABEL[g]}
+            </button>
+          ))}
+        </div>
         <div className="mt-2.5 flex justify-end">
           <Button
             type="submit"
