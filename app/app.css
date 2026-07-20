@@ -471,6 +471,12 @@ body {
 .case-md-table table.colw th {
   overflow-wrap: break-word;
 }
+/* 명시 폭을 준 표에서는 라벨 열도 지정 폭을 존중해 줄바꿈(밖으로 넘치지 않게).
+   cmp 자동 라벨의 nowrap 을 colw 에서만 해제 — 폭이 곧 사용자 의도이기 때문. */
+.case-md-table table.colw td.lbl,
+.case-md-table table.colw th.lbl {
+  white-space: normal;
+}
 .case-md-table table.cmp th.lbl,
 .case-md-table table.cmp td.lbl {
   white-space: nowrap;
