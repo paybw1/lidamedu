@@ -83,8 +83,20 @@ const upsertSchema = z.object({
       }),
     )
     .max(50),
-  exam1stYears: z.array(z.number().int().min(1990).max(2099)),
-  exam2ndYears: z.array(z.number().int().min(1990).max(2099)),
+  exam1stYears: z.array(
+    z
+      .number()
+      .int()
+      .min(1990, "기출 연도는 1990~2099 사이 4자리로 입력하세요")
+      .max(2099, "기출 연도는 1990~2099 사이 4자리로 입력하세요"),
+  ),
+  exam2ndYears: z.array(
+    z
+      .number()
+      .int()
+      .min(1990, "기출 연도는 1990~2099 사이 4자리로 입력하세요")
+      .max(2099, "기출 연도는 1990~2099 사이 4자리로 입력하세요"),
+  ),
 });
 
 // feat-3-213 — 판례집 구조화 본문(book_sections) 편집. 폼에 bookSections 필드가 있을 때만

@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { Form, Link, data, useFetcher, useRevalidator } from "react-router";
+import { Link, data, useFetcher, useRevalidator } from "react-router";
 import { toast } from "sonner";
 
 import { reflowNumbering } from "~/features/cases/lib/reflow-numbering";
@@ -191,6 +191,15 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
   // 최초 진입 시의 복귀 경로 고정 — 이후 revalidate 는 referer 가 편집 화면 자신이라
   // returnTo 가 기본값으로 강등될 수 있어 첫 값을 유지한다.
   const [returnTo] = useState(loaderReturnTo);
+  // 저장은 fetcher 제출 — 검증 실패 등 오류 응답이 와도 편집 화면에 머물며 토스트로
+  // 사유를 보여준다(navigation Form 은 오류 시 /api/admin/case 로 이동해 좌초).
+  // 성공(redirect) 시에는 fetcher 가 returnTo 로 페이지를 이동시킨다.
+  const saveFetcher = useFetcher<{ error?: string }>();
+  const saveError =
+    saveFetcher.state === "idle" ? saveFetcher.data?.error : undefined;
+  useEffect(() => {
+    if (saveError) toast.error(`저장 실패: ${saveError}`);
+  }, [saveError]);
   const isNew = kase === null;
   const subjectLawsValue = (kase?.subject_laws ?? []).join(",");
   // feat-3-213 — 교재 구조 본문이 있는 판례(상표 등)는 book_sections 가 표시 SSOT.
@@ -250,7 +259,11 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
         ← 판례 매핑 관리
       </Link>
 
-      <Form method="post" action="/api/admin/case" className="space-y-4">
+      <saveFetcher.Form
+        method="post"
+        action="/api/admin/case"
+        className="space-y-4"
+      >
         <input
           type="hidden"
           name="intent"
@@ -633,11 +646,21 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
           ) : (
             <span />
           )}
-          <Button type="submit" size="sm">
-            <SaveIcon className="size-3.5" /> {isNew ? "등록" : "변경 저장"}
+          <Button type="submit" size="sm" disabled={saveFetcher.state !== "idle"}>
+            <SaveIcon className="size-3.5" />{" "}
+            {saveFetcher.state !== "idle"
+              ? "저장 중…"
+              : isNew
+                ? "등록"
+                : "변경 저장"}
           </Button>
         </div>
-      </Form>
+        {saveError ? (
+          <p className="text-right text-xs text-rose-600">
+            저장 실패: {saveError}
+          </p>
+        ) : null}
+      </saveFetcher.Form>
 
       {!isNew ? (
         <>
