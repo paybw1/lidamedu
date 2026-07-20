@@ -489,3 +489,40 @@ body {
 .case-md-table tbody tr:nth-child(odd) td {
   background-color: color-mix(in oklch, var(--muted) 25%, transparent);
 }
+
+/* feat-11-006 Phase 3 — 강의 상세 HTML(운영자 작성 마케팅 본문) 반응형 보정.
+   에디터 미리보기·비주얼 편집·수강신청 상세 렌더가 공유. 임의 HTML/CSS 는 보존하되,
+   이미지·표가 컨테이너를 넘지 않도록 최소한의 안전 규칙만 강제한다. */
+.lecture-detail-html {
+  word-break: break-word;
+  line-height: 1.6;
+}
+.lecture-detail-html img {
+  max-width: 100%;
+  height: auto;
+}
+.lecture-detail-html iframe,
+.lecture-detail-html video {
+  max-width: 100%;
+}
+.lecture-detail-html table {
+  max-width: 100%;
+}
+.lecture-detail-html h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 1rem 0 0.5rem;
+}
+.lecture-detail-html h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0.75rem 0 0.4rem;
+}
+.lecture-detail-html ul {
+  list-style: disc;
+  padding-left: 1.4rem;
+}
+.lecture-detail-html a {
+  color: var(--link);
+  text-decoration: underline;
+}

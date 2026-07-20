@@ -834,6 +834,8 @@ export default [
         "/api/lms/material/:materialId",
         "features/lms/api/material-download.tsx",
       ),
+      // feat-11-006 Phase 3 — HTML 에디터 이미지 업로드(staff 전용).
+      route("/api/lms/editor-image", "features/lms/api/editor-image.tsx"),
       // 관리자 관리 — 운영 업무별 알림 담당자 지정 (admin 전용).
       route(
         "/admin/staff-duties",

@@ -11,6 +11,7 @@ import { Input } from "~/core/components/ui/input";
 import { roleAtLeast } from "~/core/lib/roles";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
+import { HtmlEditor } from "~/features/lms/components/html-editor";
 import { PlanPolicyFields } from "~/features/subscriptions/components/plan-policy-fields";
 import {
   LECTURE_CATEGORIES,
@@ -625,12 +626,10 @@ function PlanForm({
             </div>
           ) : detailKind === "html" ? (
             <FormField label="HTML 본문">
-              <textarea
+              <HtmlEditor
                 name="detailHtml"
-                rows={8}
                 defaultValue={plan?.detailHtml ?? ""}
-                placeholder="<section>...</section>"
-                className="border-input bg-background w-full rounded-md border px-2 py-1 font-mono text-[11px]"
+                uploadUrl="/api/lms/editor-image"
               />
             </FormField>
           ) : null}
