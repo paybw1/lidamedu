@@ -106,8 +106,16 @@ export function CaseBlankParts({
         const bodyOffset = headerRow ? 1 : 0;
         return (
           <div key={`tb${pi}`} className="overflow-x-auto">
-            {/* table-fixed — 열폭 균등(1:1:…). 편집/풀기 화면은 내용량과 무관하게 예측 가능한 폭. */}
+            {/* table-fixed — 열폭 균등(1:1:…). 편집/풀기 화면은 내용량과 무관하게 예측 가능한 폭.
+                colw 디렉티브가 있으면 colgroup 으로 명시 폭을 준다(미지정 열은 남은 폭 분배). */}
             <table className="w-full table-fixed border-collapse text-[14px] leading-[1.7]">
+              {part.colWidths ? (
+                <colgroup>
+                  {part.colWidths.map((w, ci) => (
+                    <col key={ci} style={w ? { width: w } : undefined} />
+                  ))}
+                </colgroup>
+              ) : null}
               {headerRow ? (
                 <thead>
                   <tr>

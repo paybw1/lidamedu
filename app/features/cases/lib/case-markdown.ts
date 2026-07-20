@@ -61,12 +61,65 @@ export function startsWithInlineQuote(s: string): boolean {
   return INLINE_QUOTE_CHARS.has(t.charAt(0));
 }
 
+// ── 열 폭 지정(colw 디렉티브) ──────────────────────────────────
+// 표 블록 첫 줄의 `<!--colw:25%,,30em-->` 로 열별 폭을 지정한다(빈 값=auto).
+// 파이프 행 바깥(주석)이라 marked·병합 마커("<"/"^")·빈칸/하이라이트 오프셋 체계와
+// 완전히 무관하며, 디렉티브 없는 기존 표는 100% 그대로다. 값은 엄격 검증
+// (숫자+%/em/px/rem)해 colgroup style 주입이 안전하다(XSS 불가).
+const COLW_DIRECTIVE_RE = /^[^\S\n]*<!--\s*colw:([^>]*?)-->[^\S\n]*\r?\n/i;
+const COLW_VALUE_RE = /^\d{1,3}(?:\.\d+)?(?:%|em|px|rem)$/;
+
+/** 한 열의 폭 입력값을 검증 — 유효하면 정규화 문자열, 아니면 null(=auto). */
+export function normalizeColWidth(v: string): string | null {
+  const t = v.trim();
+  return t !== "" && COLW_VALUE_RE.test(t) ? t : null;
+}
+
+/** 표 원문에서 colw 디렉티브를 떼어내 폭 배열 + 나머지 본문을 반환. */
+export function extractColWidths(p: string): {
+  widths: (string | null)[] | null;
+  body: string;
+} {
+  const m = p.match(COLW_DIRECTIVE_RE);
+  if (!m) return { widths: null, body: p };
+  const widths = m[1].split(",").map((s) => normalizeColWidth(s));
+  return {
+    widths: widths.some((w) => w !== null) ? widths : null,
+    body: p.slice(m[0].length),
+  };
+}
+
+/** 폭 배열 → colw 디렉티브 한 줄(모두 auto면 null). */
+export function buildColWidthDirective(
+  widths: (string | null)[],
+): string | null {
+  if (!widths.some((w) => w !== null)) return null;
+  return `<!--colw:${widths.map((w) => w ?? "").join(",")}-->`;
+}
+
+// 렌더된 표 HTML 에 명시 폭 colgroup 을 주입(자동 cmp colgroup override) + colw 클래스
+// (table-layout:fixed). 폭은 이미 검증된 토큰만 담기므로 sanitize 이후 주입해도 안전.
+function applyExplicitColgroup(html: string, widths: (string | null)[]): string {
+  const cols = widths
+    .map((w) => (w ? `<col style="width:${w}">` : "<col>"))
+    .join("");
+  const colgroup = `<colgroup>${cols}</colgroup>`;
+  const stripped = html.replace(/<colgroup>[\s\S]*?<\/colgroup>/i, "");
+  return stripped.replace(/<table\b([^>]*)>/i, (_m, attrs: string) => {
+    const withClass = /\bclass="/.test(attrs)
+      ? attrs.replace(/class="([^"]*)"/i, (_mm, c: string) => `class="${c} colw"`)
+      : `${attrs} class="colw"`;
+    return `<table${withClass}>${colgroup}`;
+  });
+}
+
 // 표 paragraph 인지 — GFM 표 또는 raw HTML `<table>` 시작.
 // HTML 표는 colspan/rowspan 표현 가능. hwpx 등 외부 자료에서 변환된 본문에
 // 사용된다(renderTableHtml 이 sanitize 후 그대로 렌더).
 export function isMarkdownTableParagraph(p: string): boolean {
-  if (p.trimStart().toLowerCase().startsWith("<table")) return true;
-  const lines = p.split("\n");
+  const body = extractColWidths(p).body;
+  if (body.trimStart().toLowerCase().startsWith("<table")) return true;
+  const lines = body.split("\n");
   if (lines.length < 2) return false;
   const head = lines[0].trim();
   const sep = lines[1].trim();
@@ -319,25 +372,30 @@ function renderMergedTableHtml(p: string): string | null {
 }
 
 export function renderTableHtml(p: string): string {
+  // colw 디렉티브(열 폭)를 먼저 떼어내 본문만 렌더 — marked·병합·cmp 판정은 body 로.
+  const { widths, body } = extractColWidths(p);
+  const withWidths = (html: string): string =>
+    widths ? applyExplicitColgroup(html, widths) : html;
+
   // raw HTML `<table>` 입력은 marked 거치지 않고 그대로 sanitize.
-  // (marked 의 inline-html 통과 동작에 의존하지 않고 명시적으로 처리.)
-  const isRawHtml = p.trimStart().toLowerCase().startsWith("<table");
+  const isRawHtml = body.trimStart().toLowerCase().startsWith("<table");
   if (!isRawHtml) {
     // 병합 마커("<"/"^") 표는 직접 조립 — marked GFM 은 셀 병합 불가.
-    const merged = renderMergedTableHtml(p);
-    if (merged) return merged;
+    const merged = renderMergedTableHtml(body);
+    if (merged) return withWidths(merged);
   }
   const html = isRawHtml
-    ? p
-    : (marked.parse(p, { async: false, gfm: true }) as string);
+    ? body
+    : (marked.parse(body, { async: false, gfm: true }) as string);
   const clean = DOMPurify.sanitize(html, {
     ALLOWED_TAGS: ALLOWED_TABLE_TAGS,
     ALLOWED_ATTR: ALLOWED_TABLE_ATTR,
   });
   // 비교표면 sanitize 이후(안전한 자체 문자열)에 class·colgroup 주입 —
-  // table.cmp(+fixed 레이아웃) + 셀별 lbl/val + 열 폭 colgroup.
+  // table.cmp(+fixed 레이아웃) + 셀별 lbl/val + 열 폭 colgroup. 명시 폭이 있으면
+  // withWidths 가 자동 colgroup 을 override 한다.
   if (!isRawHtml) {
-    const info = analyzeCmpTable(p);
+    const info = analyzeCmpTable(body);
     if (info) {
       const withClass = clean
         .replace(/<table(?![^>]*\bclass=)/i, '<table class="cmp"')
@@ -345,10 +403,10 @@ export function renderTableHtml(p: string): string {
           /(<table\b[^>]*>)/i,
           `$1${buildCmpColgroup(info.cols, info.labelCols, info.colMax)}`,
         );
-      return annotateCmpColumns(withClass, info.labelCols);
+      return withWidths(annotateCmpColumns(withClass, info.labelCols));
     }
   }
-  return clean;
+  return withWidths(clean);
 }
 
 // 사용자 작성용 표 템플릿 — "표 삽입" 버튼이 cursor 위치에 삽입할 markdown 원문.

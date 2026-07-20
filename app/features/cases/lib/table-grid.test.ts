@@ -167,3 +167,48 @@ describe("findTableBlocks / replaceTableBlock", () => {
     expect(findTableBlocks("문단만 있음\n\n또 문단")).toEqual([]);
   });
 });
+
+describe("열 폭(colw 디렉티브)", () => {
+  const WIDE = [
+    "<!--colw:25%,,30em-->",
+    "| 구분 | A | B |",
+    "| --- | --- | --- |",
+    "| 가 | 나 | 다 |",
+  ].join("\n");
+
+  it("colw 디렉티브를 파싱해 colWidths 로 담는다", () => {
+    const g = parseTableGrid(WIDE);
+    expect(g!.colWidths).toEqual(["25%", null, "30em"]);
+    expect(g!.rows[0]).toEqual(["구분", "A", "B"]); // 디렉티브는 그리드에 안 섞임
+  });
+
+  it("colWidths 를 다시 직렬화하면 디렉티브가 복원된다(round-trip)", () => {
+    const g = parseTableGrid(WIDE)!;
+    const out = serializeTableGrid(g);
+    expect(out.startsWith("<!--colw:25%,,30em-->\n")).toBe(true);
+    expect(parseTableGrid(out)!.colWidths).toEqual(["25%", null, "30em"]);
+  });
+
+  it("폭이 없으면 디렉티브를 넣지 않는다(기존 표와 동일 원문)", () => {
+    const g = parseTableGrid("| a | b |\n| --- | --- |\n| c | d |")!;
+    expect(g.colWidths).toBeUndefined();
+    expect(serializeTableGrid(g).startsWith("|")).toBe(true);
+  });
+
+  it("잘못된 폭 값은 무시(auto)한다", () => {
+    const g = parseTableGrid("<!--colw:abc,50%-->\n| a | b |\n| --- | --- |\n| c | d |")!;
+    expect(g.colWidths).toEqual([null, "50%"]);
+  });
+
+  it("열 삭제 시 해당 열 폭도 함께 제거된다", () => {
+    const g = parseTableGrid(WIDE)!;
+    const g2 = removeColumn(g, 0); // 25% 열 삭제
+    expect(g2.colWidths).toEqual([null, "30em"]);
+  });
+
+  it("셀 편집·행 추가로 colWidths 가 유실되지 않는다", () => {
+    const g = parseTableGrid(WIDE)!;
+    expect(addRow(g, 1).colWidths).toEqual(["25%", null, "30em"]);
+    expect(toggleMergeLeft(g, 1, 1).colWidths).toEqual(["25%", null, "30em"]);
+  });
+});

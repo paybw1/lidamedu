@@ -462,6 +462,15 @@ body {
 .case-md-table table.cmp {
   table-layout: fixed;
 }
+/* 명시 열 폭(colw 디렉티브 → renderTableHtml 주입): table-layout:fixed 에서
+   colgroup <col style="width:…"> 이 실제 폭을 결정. 폭 미지정 열은 남은 폭을 분배. */
+.case-md-table table.colw {
+  table-layout: fixed;
+}
+.case-md-table table.colw td,
+.case-md-table table.colw th {
+  overflow-wrap: break-word;
+}
 .case-md-table table.cmp th.lbl,
 .case-md-table table.cmp td.lbl {
   white-space: nowrap;

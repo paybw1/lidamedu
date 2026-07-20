@@ -6,7 +6,11 @@
 // 기존 판례 표 마크다운과 100% 호환이라 기존 데이터가 그대로 열리고, 저장해도 형식
 // 불변이다. 오프셋 체계(빈칸·하이라이트)는 표 바깥 텍스트에만 걸리므로 무관.
 
-import { isMarkdownTableParagraph } from "./case-markdown";
+import {
+  buildColWidthDirective,
+  extractColWidths,
+  isMarkdownTableParagraph,
+} from "./case-markdown";
 
 export const MERGE_LEFT = "<";
 export const MERGE_UP = "^";
@@ -14,6 +18,20 @@ export const MERGE_UP = "^";
 export interface TableGrid {
   // rows[0] = 헤더 행. 각 셀은 평문 또는 병합 마커("<"/"^").
   rows: string[][];
+  // 열별 폭(길이 = 열 수). 각 값은 "25%"/"30em"/… 또는 null(=auto). 전부 null 이면
+  // 직렬화 시 디렉티브를 생략해 기존 표와 동일한 원문이 된다.
+  colWidths?: (string | null)[];
+}
+
+// colWidths 를 열 수에 맞춰 정규화(부족분 null pad, 초과분 잘라냄).
+function alignWidths(
+  widths: (string | null)[] | null | undefined,
+  cols: number,
+): (string | null)[] | undefined {
+  if (!widths || !widths.some((w) => w != null)) return undefined;
+  const out: (string | null)[] = [];
+  for (let i = 0; i < cols; i++) out.push(widths[i] ?? null);
+  return out.some((w) => w != null) ? out : undefined;
 }
 
 const SEPARATOR_CELL_RE = /^:?-{2,}:?$/;
@@ -50,7 +68,8 @@ export function parseTableGrid(md: string): TableGrid | null {
     while (copy.length < cols) copy.push("");
     return copy;
   });
-  return { rows: norm };
+  const colWidths = alignWidths(extractColWidths(md).widths, cols);
+  return colWidths ? { rows: norm, colWidths } : { rows: norm };
 }
 
 // 셀 텍스트를 파이프 표 셀로 안전 이스케이프 — `|`(구분자)·줄바꿈 제거.
@@ -70,12 +89,32 @@ export function serializeTableGrid(grid: TableGrid): string {
     return copy.slice(0, cols);
   };
   const out: string[] = [];
+  const directive = buildColWidthDirective(
+    alignWidths(grid.colWidths, cols) ?? [],
+  );
+  if (directive) out.push(directive);
   out.push(`| ${pad(rows[0]).join(" | ")} |`);
   out.push(`| ${Array(cols).fill("---").join(" | ")} |`);
   for (let i = 1; i < rows.length; i++) {
     out.push(`| ${pad(rows[i]).join(" | ")} |`);
   }
   return out.join("\n");
+}
+
+// 열별 폭 설정(새 그리드 반환). width=null 이면 auto(해제).
+export function setColWidth(
+  grid: TableGrid,
+  col: number,
+  width: string | null,
+): TableGrid {
+  const cols = colCount(grid);
+  const widths = [...(grid.colWidths ?? Array(cols).fill(null))];
+  while (widths.length < cols) widths.push(null);
+  widths[col] = width;
+  const aligned = alignWidths(widths, cols);
+  return aligned
+    ? { rows: grid.rows, colWidths: aligned }
+    : { rows: grid.rows };
 }
 
 function cloneRows(rows: string[][]): string[][] {
@@ -88,19 +127,24 @@ function colCount(grid: TableGrid): number {
 
 // ── 행/열 조작 (모두 새 그리드 반환) ──────────────────────────
 
+// 행 조작은 열 수를 바꾸지 않으므로 colWidths 를 그대로 보존한다.
+function withRows(grid: TableGrid, rows: string[][]): TableGrid {
+  return grid.colWidths ? { rows, colWidths: grid.colWidths } : { rows };
+}
+
 export function addRow(grid: TableGrid, at: number): TableGrid {
   const cols = colCount(grid);
   const rows = cloneRows(grid.rows);
   const idx = Math.max(0, Math.min(at, rows.length));
   rows.splice(idx, 0, Array(cols).fill(""));
-  return { rows };
+  return withRows(grid, rows);
 }
 
 export function removeRow(grid: TableGrid, at: number): TableGrid {
   if (grid.rows.length <= 1) return grid; // 최소 1행(헤더) 유지
   const rows = cloneRows(grid.rows);
   rows.splice(at, 1);
-  return { rows };
+  return withRows(grid, rows);
 }
 
 export function addColumn(grid: TableGrid, at: number): TableGrid {
@@ -112,7 +156,11 @@ export function addColumn(grid: TableGrid, at: number): TableGrid {
     copy.splice(idx, 0, "");
     return copy;
   });
-  return { rows };
+  if (!grid.colWidths) return { rows };
+  const widths = [...grid.colWidths];
+  while (widths.length < cols) widths.push(null);
+  widths.splice(idx, 0, null);
+  return { rows, colWidths: widths };
 }
 
 export function removeColumn(grid: TableGrid, at: number): TableGrid {
@@ -122,7 +170,12 @@ export function removeColumn(grid: TableGrid, at: number): TableGrid {
     if (at < copy.length) copy.splice(at, 1);
     return copy;
   });
-  return { rows };
+  if (!grid.colWidths) return { rows };
+  const widths = [...grid.colWidths];
+  if (at < widths.length) widths.splice(at, 1);
+  return alignWidths(widths, colCount({ rows }))
+    ? { rows, colWidths: widths }
+    : { rows };
 }
 
 // ── 셀 병합 토글 ──────────────────────────────────────────────
@@ -137,14 +190,14 @@ export function toggleMergeLeft(
   if (c <= 0) return grid;
   const rows = cloneRows(grid.rows);
   rows[r][c] = rows[r][c] === MERGE_LEFT ? "" : MERGE_LEFT;
-  return { rows };
+  return withRows(grid, rows);
 }
 
 export function toggleMergeUp(grid: TableGrid, r: number, c: number): TableGrid {
   if (r <= 0) return grid;
   const rows = cloneRows(grid.rows);
   rows[r][c] = rows[r][c] === MERGE_UP ? "" : MERGE_UP;
-  return { rows };
+  return withRows(grid, rows);
 }
 
 export function isMergeMarker(text: string): boolean {

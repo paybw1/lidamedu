@@ -19,11 +19,23 @@ export interface CaseTableRow {
 export interface CaseTablePart {
   type: "table";
   rows: CaseTableRow[];
+  colWidths?: (string | null)[]; // 열별 폭(colw 디렉티브) — null=auto
 }
 export type CasePart = CaseTextPart | CaseTablePart;
 
 const TABLE_LINE_RE = /^\s*\|/;
 const SEPARATOR_CELL_RE = /^:?-{2,}:?$/;
+// 표 바로 위 열 폭 디렉티브(case-markdown.ts SSOT 와 동일 규약). 렌더되지 않는 줄.
+const COLW_LINE_RE = /^\s*<!--\s*colw:([^>]*?)-->\s*$/i;
+const COLW_VALUE_RE = /^\d{1,3}(?:\.\d+)?(?:%|em|px|rem)$/;
+function parseColwLine(raw: string): (string | null)[] | null {
+  const m = raw.match(COLW_LINE_RE);
+  if (!m) return null;
+  const widths = m[1]
+    .split(",")
+    .map((s) => (COLW_VALUE_RE.test(s.trim()) ? s.trim() : null));
+  return widths.some((w) => w !== null) ? widths : null;
+}
 
 function parseRow(raw: string, lineStart: number): CaseTableCell[] {
   const cells: CaseTableCell[] = [];
@@ -77,7 +89,9 @@ export function splitCaseTables(text: string): CasePart[] {
       li = lj;
       continue; // 단독 파이프 라인은 표로 안 봄
     }
-    flushText(lines[li].start);
+    // 표 바로 위 colw 디렉티브 줄이 있으면 그 줄까지 텍스트에서 제외(렌더 안 함).
+    const colWidths = li > 0 ? parseColwLine(lines[li - 1].raw) : null;
+    flushText(colWidths ? lines[li - 1].start : lines[li].start);
     const rows: CaseTableRow[] = [];
     for (let k = li; k < lj; k++) {
       const cells = parseRow(lines[k].raw, lines[k].start);
@@ -85,7 +99,7 @@ export function splitCaseTables(text: string): CasePart[] {
         cells.length > 0 && cells.every((c) => SEPARATOR_CELL_RE.test(c.text));
       rows.push({ cells, separator });
     }
-    parts.push({ type: "table", rows });
+    parts.push(colWidths ? { type: "table", rows, colWidths } : { type: "table", rows });
     const lastLine = lines[lj - 1];
     textFrom = Math.min(text.length, lastLine.start + lastLine.raw.length + 1);
     li = lj;

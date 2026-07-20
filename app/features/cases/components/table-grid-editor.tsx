@@ -9,11 +9,14 @@ import {
   ArrowUpToLineIcon,
   Trash2Icon,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "~/core/components/ui/button";
 import { cn } from "~/core/lib/utils";
-import { renderTableHtml } from "~/features/cases/lib/case-markdown";
+import {
+  normalizeColWidth,
+  renderTableHtml,
+} from "~/features/cases/lib/case-markdown";
 import {
   addColumn,
   addRow,
@@ -24,6 +27,7 @@ import {
   removeColumn,
   removeRow,
   serializeTableGrid,
+  setColWidth,
   type TableGrid,
   toggleMergeLeft,
   toggleMergeUp,
@@ -48,6 +52,14 @@ export function TableGridEditor({
   const [sel, setSel] = useState<{ r: number; c: number } | null>(null);
   const cols = colCount(grid);
 
+  // 선택된 열의 폭 입력(부분 입력 "25" → "25%" 도중 값이 지워지지 않도록 draft 로 보관).
+  const [widthDraft, setWidthDraft] = useState("");
+  useEffect(() => {
+    setWidthDraft(sel ? (grid.colWidths?.[sel.c] ?? "") : "");
+    // 선택 열이 바뀔 때만 draft 를 그리드 값으로 재동기화.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sel?.c]);
+
   const previewHtml = useMemo(
     () => renderTableHtml(serializeTableGrid(grid)),
     [grid],
@@ -58,7 +70,7 @@ export function TableGridEditor({
       const rows = g.rows.map((row) => [...row]);
       while (rows[r].length < cols) rows[r].push("");
       rows[r][c] = text;
-      return { rows };
+      return g.colWidths ? { rows, colWidths: g.colWidths } : { rows };
     });
 
   const selCellText =
@@ -141,6 +153,30 @@ export function TableGridEditor({
           onClick={() => sel && setGrid((g) => toggleMergeUp(g, sel.r, sel.c))}
           label={selIsMergeUp ? "↑ 병합 해제" : "↑ 위와 병합"}
         />
+        <span className="bg-border mx-1 h-4 w-px" />
+        <label
+          className={cn(
+            "flex items-center gap-1 text-[11px]",
+            sel === null && "opacity-40",
+          )}
+        >
+          <span className="text-muted-foreground">
+            열 폭{sel ? ` (${sel.c + 1}열)` : ""}
+          </span>
+          <input
+            type="text"
+            value={widthDraft}
+            disabled={sel === null}
+            placeholder="자동"
+            onChange={(e) => {
+              const v = e.target.value;
+              setWidthDraft(v);
+              if (sel)
+                setGrid((g) => setColWidth(g, sel.c, normalizeColWidth(v)));
+            }}
+            className="border-border bg-background h-6 w-16 rounded border px-1.5 text-center outline-none"
+          />
+        </label>
       </div>
 
       {/* 그리드 */}
@@ -190,7 +226,9 @@ export function TableGridEditor({
       </div>
       <p className="text-muted-foreground text-[11px]">
         셀을 클릭해 선택한 뒤 위 버튼으로 행·열을 넣거나 셀을 병합합니다. 첫 행은
-        제목 행입니다.
+        제목 행입니다. <b>열 폭</b>은 선택한 열에 <code>25%</code>·<code>30em</code>
+        처럼 입력하고, 비우면 자동입니다(폭을 지정하면 나머지 열은 남은 폭을
+        나눠 갖습니다).
       </p>
 
       {/* 미리보기 */}
