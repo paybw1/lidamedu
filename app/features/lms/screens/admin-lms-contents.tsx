@@ -3,12 +3,19 @@
 //   콘텐츠 키=학생 비노출 → staff RLS. 동기화 job(S2)·등록 재배선(S4)은 후속.
 import { useEffect, useState } from "react";
 
-import { FolderIcon, PlayIcon, PlusIcon, SearchIcon } from "lucide-react";
+import {
+  FolderIcon,
+  PlayIcon,
+  PlusIcon,
+  RefreshCwIcon,
+  SearchIcon,
+} from "lucide-react";
 import { Form, data, useFetcher, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { z } from "zod";
 
 import { Button } from "~/core/components/ui/button";
+import { cn } from "~/core/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -28,6 +35,8 @@ import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Chip, Field, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
 import { hasDutyAccess } from "~/features/admin/lib/duties.server";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { isKollusApiConfigured } from "~/features/lms/lib/kollus-content-api.server";
+import { syncKollusContents } from "~/features/lms/lib/kollus-sync.server";
 import { buildKollusWebTokenUrl } from "~/features/lms/lib/kollus-token.server";
 import {
   type ContentGroupRow,
@@ -149,6 +158,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     groups,
     groupCounts,
     total: allContents.length,
+    kollusConfigured: isKollusApiConfigured(),
     instructors: (instructorsRes.data ?? []).map((i) => ({
       profileId: i.profile_id,
       name: i.name ?? "(이름 없음)",
@@ -193,6 +203,18 @@ export async function action({ request }: Route.ActionArgs) {
   const { client, user } = await requireStaff(request);
   const fd = await request.formData();
   const intent = fd.get("intent");
+
+  if (intent === "sync_kollus") {
+    try {
+      const r = await syncKollusContents(user.id);
+      return data({ ok: true as const, sync: r });
+    } catch (e) {
+      return data(
+        { error: `콜러스 동기화 실패: ${e instanceof Error ? e.message : String(e)}` },
+        { status: 400 },
+      );
+    }
+  }
 
   if (intent === "save_content") {
     const parsed = contentSchema.safeParse({
@@ -350,9 +372,36 @@ export async function action({ request }: Route.ActionArgs) {
 
 // ── 화면 ─────────────────────────────────────────────────────────────────
 export default function AdminLmsContents({ loaderData }: Route.ComponentProps) {
-  const { role, contents, groups, groupCounts, total, instructors } = loaderData;
+  const { role, contents, groups, groupCounts, total, instructors, kollusConfigured } =
+    loaderData;
   const [searchParams] = useSearchParams();
   const activeStatus = searchParams.get("status") ?? "all";
+
+  const syncFetcher = useFetcher<{
+    ok?: boolean;
+    error?: string;
+    sync?: {
+      fetched: number;
+      inserted: number;
+      updated: number;
+      skipped: number;
+      errors: string[];
+    };
+  }>();
+  const syncing = syncFetcher.state !== "idle";
+  useEffect(() => {
+    if (syncFetcher.state === "idle" && syncFetcher.data) {
+      const d = syncFetcher.data;
+      if (d.error) toast.error(d.error);
+      else if (d.sync) {
+        const s = d.sync;
+        toast.success(
+          `동기화 완료 — 신규 ${s.inserted} · 갱신 ${s.updated} · 건너뜀 ${s.skipped} (콜러스 ${s.fetched}건)` +
+            (s.errors.length ? ` · 오류 ${s.errors.length}` : ""),
+        );
+      }
+    }
+  }, [syncFetcher.state, syncFetcher.data]);
 
   const [editContent, setEditContent] = useState<VideoContentRow | "new" | null>(
     null,
@@ -377,9 +426,28 @@ export default function AdminLmsContents({ loaderData }: Route.ComponentProps) {
       title="콘텐츠 라이브러리"
       desc="콜러스 영상을 강의그룹으로 분류하고 회차에 연결합니다. 동기화·등록 재배선은 후속 단계."
       headerRight={
-        <Button size="sm" onClick={() => setEditContent("new")}>
-          <PlusIcon className="size-4" /> 콘텐츠 등록
-        </Button>
+        <div className="flex items-center gap-2">
+          <syncFetcher.Form method="post">
+            <input type="hidden" name="intent" value="sync_kollus" />
+            <Button
+              type="submit"
+              size="sm"
+              variant="outline"
+              disabled={!kollusConfigured || syncing}
+              title={
+                kollusConfigured
+                  ? "콜러스 라이브러리에서 콘텐츠를 불러옵니다"
+                  : "KOLLUS_API_TOKEN 미설정 — 환경변수 등록 후 사용 가능"
+              }
+            >
+              <RefreshCwIcon className={cn("size-4", syncing && "animate-spin")} />
+              {syncing ? "동기화 중…" : "콜러스 동기화"}
+            </Button>
+          </syncFetcher.Form>
+          <Button size="sm" onClick={() => setEditContent("new")}>
+            <PlusIcon className="size-4" /> 콘텐츠 등록
+          </Button>
+        </div>
       }
       width={1400}
     >
