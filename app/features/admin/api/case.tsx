@@ -180,6 +180,16 @@ function safeReturnTo(raw: unknown): string {
   return "/admin/cases?law=patent";
 }
 
+// GET(브라우저 직접 접근 등) — POST 전용 리소스 라우트라 loader 가 없으면 React Router 가
+// 500(Unexpected Server Error)을 던진다. 안내와 함께 405 로 정중히 거절.
+// (★data() 는 리소스 라우트 GET 에서 status 미전파 — Response.json 사용)
+export async function loader() {
+  return Response.json(
+    { error: "POST 전용 API 입니다. 판례 수정 화면(/admin/cases)에서 사용됩니다." },
+    { status: 405, headers: { Allow: "POST" } },
+  );
+}
+
 export async function action({ request }: Route.ActionArgs) {
   if (request.method !== "POST") {
     return data({ error: "Method not allowed" }, { status: 405 });

@@ -164,3 +164,6 @@ export async function action({ request }: Route.ActionArgs) {
   if (error) return data({ error: error.message }, { status: 400 });
   return redirect(`${LIST}/${created.notice_id}/edit`);
 }
+
+// GET(브라우저 직접 접근) — loader 부재 시 React Router 500. POST 전용 안내(405).
+export { postOnlyLoader as loader } from "~/core/lib/api-post-only";
