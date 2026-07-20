@@ -4133,6 +4133,142 @@ export type Database = {
         }
         Relationships: []
       }
+      course_audit_logs: {
+        Row: {
+          action: string
+          actor_id: string | null
+          course_id: string
+          created_at: string
+          detail: Json | null
+          log_id: string
+          summary: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          course_id: string
+          created_at?: string
+          detail?: Json | null
+          log_id?: string
+          summary?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          course_id?: string
+          created_at?: string
+          detail?: Json | null
+          log_id?: string
+          summary?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_audit_logs_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "course_audit_logs_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "course_audit_logs_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["course_id"]
+          },
+        ]
+      }
+      course_categories: {
+        Row: {
+          category_id: string
+          created_at: string
+          is_active: boolean
+          name: string
+          parent_id: string | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          category_id?: string
+          created_at?: string
+          is_active?: boolean
+          name: string
+          parent_id?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          is_active?: boolean
+          name?: string
+          parent_id?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "course_categories"
+            referencedColumns: ["category_id"]
+          },
+        ]
+      }
+      course_instructors: {
+        Row: {
+          course_id: string
+          created_at: string
+          instructor_id: string
+          role: string | null
+          sort_order: number
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          instructor_id: string
+          role?: string | null
+          sort_order?: number
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          instructor_id?: string
+          role?: string | null
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_instructors_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["course_id"]
+          },
+          {
+            foreignKeyName: "course_instructors_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "course_instructors_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       course_lessons: {
         Row: {
           course_id: string
@@ -4241,45 +4377,67 @@ export type Database = {
       }
       courses: {
         Row: {
+          admin_memo: string | null
+          category_id: string | null
           course_id: string
+          course_type: string | null
           created_at: string
           deleted_at: string | null
           description: string | null
           edition_label: string
           edition_year: number
           is_current: boolean
+          is_visible: boolean
+          public_no: number | null
           series_id: string
           status: string
           thumbnail_path: string | null
           updated_at: string
         }
         Insert: {
+          admin_memo?: string | null
+          category_id?: string | null
           course_id?: string
+          course_type?: string | null
           created_at?: string
           deleted_at?: string | null
           description?: string | null
           edition_label: string
           edition_year: number
           is_current?: boolean
+          is_visible?: boolean
+          public_no?: number | null
           series_id: string
           status?: string
           thumbnail_path?: string | null
           updated_at?: string
         }
         Update: {
+          admin_memo?: string | null
+          category_id?: string | null
           course_id?: string
+          course_type?: string | null
           created_at?: string
           deleted_at?: string | null
           description?: string | null
           edition_label?: string
           edition_year?: number
           is_current?: boolean
+          is_visible?: boolean
+          public_no?: number | null
           series_id?: string
           status?: string
           thumbnail_path?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "courses_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "course_categories"
+            referencedColumns: ["category_id"]
+          },
           {
             foreignKeyName: "courses_series_id_fkey"
             columns: ["series_id"]

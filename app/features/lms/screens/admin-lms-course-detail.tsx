@@ -31,11 +31,20 @@ import {
 } from "~/features/laws/queries.server";
 import {
   getCourseDetail,
+  listCourseAuditLogs,
+  listCourseCategories,
   listPickableContents,
+  logCourseAudit,
   logEnrollmentAdminAction,
+  type CourseAuditRow,
+  type CourseCategoryRow,
   type CourseDetail,
   type PickableContent,
 } from "~/features/lms/queries.server";
+import {
+  LECTURE_TYPE_LABEL,
+  LECTURE_TYPES,
+} from "~/features/lms/lib/lecture-type";
 import {
   LAW_SUBJECT_SLUGS,
   type LawSubjectSlug,
@@ -112,8 +121,21 @@ export async function loader({ request, params }: Route.LoaderArgs) {
         ),
       )
     : [];
-  const contents = await listPickableContents(client);
-  return { course, role, nodeOptions, contents };
+  const [contents, categories, auditLogs, instructorsRes] = await Promise.all([
+    listPickableContents(client),
+    listCourseCategories(client),
+    listCourseAuditLogs(client, params.courseId!),
+    adminClient
+      .from("profiles")
+      .select("profile_id, name")
+      .in("role", ["instructor", "admin"])
+      .order("name"),
+  ]);
+  const allInstructors = (instructorsRes.data ?? []).map((i) => ({
+    profileId: i.profile_id,
+    name: i.name ?? "(이름 없음)",
+  }));
+  return { course, role, nodeOptions, contents, categories, auditLogs, allInstructors };
 }
 
 const addLessonSchema = z.object({
@@ -124,6 +146,12 @@ const setVideoSchema = z.object({
   lessonId: z.string().uuid(),
   contentId: z.string().uuid(), // 콘텐츠 라이브러리에서 선택 — 키·재생시간은 콘텐츠에서 파생
   replacedReason: z.string().trim().max(300).optional(),
+});
+const saveBasicSchema = z.object({
+  courseType: z.string().trim().nullable(),
+  categoryId: z.string().uuid().nullable(),
+  adminMemo: z.string().trim().max(2000).nullable(),
+  isVisible: z.boolean(),
 });
 
 export async function action({ request, params }: Route.ActionArgs) {
@@ -248,6 +276,12 @@ export async function action({ request, params }: Route.ActionArgs) {
       created_by: user.id,
     });
     if (error) return data({ error: error.message }, { status: 400 });
+    await logCourseAudit(client, {
+      courseId,
+      actorId: user.id,
+      action: prev ? "video_replace" : "video_set",
+      summary: prev ? "영상 교체" : "영상 연결",
+    });
     // ★설계 §4.5 — duration 변경 시 배수 모수(스냅샷)는 자동 재계산하지 않고,
     //   영향 수강권 수·diff 를 응답해 관리자에게 조정 적용을 제안한다.
     const diffSeconds = prev
@@ -443,6 +477,93 @@ export async function action({ request, params }: Route.ActionArgs) {
     return data({ ok: true as const, savedCount: validIds.length });
   }
 
+  if (intent === "save_basic") {
+    const emptyNull = (v: FormDataEntryValue | null) => {
+      const s = typeof v === "string" ? v.trim() : "";
+      return s === "" ? null : s;
+    };
+    const parsed = saveBasicSchema.safeParse({
+      courseType: emptyNull(fd.get("courseType")),
+      categoryId: emptyNull(fd.get("categoryId")),
+      adminMemo: emptyNull(fd.get("adminMemo")),
+      isVisible: fd.get("isVisible") === "on",
+    });
+    if (!parsed.success)
+      return data({ error: "입력을 확인해 주세요." }, { status: 400 });
+    const p = parsed.data;
+    const { error } = await client
+      .from("courses")
+      .update({
+        course_type: p.courseType,
+        category_id: p.categoryId,
+        admin_memo: p.adminMemo,
+        is_visible: p.isVisible,
+      })
+      .eq("course_id", courseId);
+    if (error) return data({ error: error.message }, { status: 400 });
+    await logCourseAudit(client, {
+      courseId,
+      actorId: user.id,
+      action: "update_basic",
+      summary: `기본정보 수정 · 노출 ${p.isVisible ? "ON" : "OFF"}`,
+    });
+    return data({ ok: true as const });
+  }
+
+  if (intent === "add_instructor") {
+    const instructorId = z.string().uuid().safeParse(fd.get("instructorId"));
+    if (!instructorId.success)
+      return data({ error: "강사를 선택해 주세요." }, { status: 400 });
+    const role = String(fd.get("role") ?? "").trim() || null;
+    // 정렬 순서 = 현재 max + 1
+    const { data: rows } = await client
+      .from("course_instructors")
+      .select("sort_order")
+      .eq("course_id", courseId)
+      .order("sort_order", { ascending: false })
+      .limit(1);
+    const nextOrder = (rows?.[0]?.sort_order ?? -1) + 1;
+    const { error } = await client.from("course_instructors").insert({
+      course_id: courseId,
+      instructor_id: instructorId.data,
+      role,
+      sort_order: nextOrder,
+    });
+    if (error)
+      return data(
+        {
+          error: error.code === "23505" ? "이미 담당 강사입니다." : error.message,
+        },
+        { status: 400 },
+      );
+    await logCourseAudit(client, {
+      courseId,
+      actorId: user.id,
+      action: "add_instructor",
+      summary: "담당 강사 추가",
+    });
+    return data({ ok: true as const });
+  }
+
+  if (intent === "remove_instructor") {
+    const instructorId = z.string().uuid().safeParse(fd.get("instructorId"));
+    if (!instructorId.success)
+      return data({ error: "잘못된 요청" }, { status: 400 });
+    const { error } = await client
+      .from("course_instructors")
+      .delete()
+      .eq("course_id", courseId)
+      .eq("instructor_id", instructorId.data);
+    if (error) return data({ error: error.message }, { status: 400 });
+    await logCourseAudit(client, {
+      courseId,
+      actorId: user.id,
+      action: "remove_instructor",
+      summary: "담당 강사 제거",
+    });
+    return data({ ok: true as const });
+  }
+
   return data({ error: "Unknown intent" }, { status: 400 });
 }
 
@@ -453,8 +574,17 @@ function fmtDuration(sec: number): string {
   return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}` : `${m}:${String(s).padStart(2, "0")}`;
 }
 
+const TABS = [
+  { key: "basic", label: "기본정보" },
+  { key: "lessons", label: "강의목차" },
+  { key: "audit", label: "변경이력" },
+] as const;
+type TabKey = (typeof TABS)[number]["key"];
+
 export default function AdminLmsCourseDetail({ loaderData }: Route.ComponentProps) {
-  const { course, role, nodeOptions, contents } = loaderData;
+  const { course, role, nodeOptions, contents, categories, auditLogs, allInstructors } =
+    loaderData;
+  const [tab, setTab] = useState<TabKey>("basic");
   return (
     <AdminShell
       cluster="lms"
@@ -462,31 +592,314 @@ export default function AdminLmsCourseDetail({ loaderData }: Route.ComponentProp
       title={`${course.seriesTitle} — ${course.editionLabel}`}
       desc="회차와 영상을 관리합니다. 영상 교체는 회차를 유지한 채 수정본으로 바꾸는 것이고, 강 구성이 바뀌는 전면 개편은 시리즈에서 새 에디션을 발행하세요."
       headerRight={
-        <Link to="/admin/lms/courses" className="text-link text-[12px] font-semibold hover:underline">
-          ← 시리즈 목록
-        </Link>
+        <div className="flex items-center gap-2">
+          {course.publicNo != null ? (
+            <Chip tone="neutral">강의 C-{course.publicNo}</Chip>
+          ) : null}
+          <Link to="/admin/lms/courses" className="text-link text-[12px] font-semibold hover:underline">
+            ← 시리즈 목록
+          </Link>
+        </div>
       }
     >
-      <AddLessonForm />
-      <div className="mt-4 space-y-3">
-        {course.lessons.map((lesson, i) => (
-          <LessonCard
-            key={lesson.lessonId}
-            lesson={lesson}
-            nodeOptions={nodeOptions}
-            contents={contents}
-            isFirst={i === 0}
-            isLast={i === course.lessons.length - 1}
-          />
+      {/* 탭 */}
+      <div className="border-border mb-4 flex gap-1 border-b">
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setTab(t.key)}
+            className={
+              "-mb-px border-b-2 px-3.5 py-2 text-sm font-semibold transition-colors " +
+              (tab === t.key
+                ? "border-primary text-foreground"
+                : "text-muted-foreground hover:text-foreground border-transparent")
+            }
+          >
+            {t.label}
+            {t.key === "audit" && auditLogs.length > 0 ? (
+              <span className="text-muted-foreground ml-1 text-xs">
+                {auditLogs.length}
+              </span>
+            ) : null}
+          </button>
         ))}
-        {course.lessons.length === 0 ? (
-          <p className="text-muted-foreground rounded-xl border border-dashed px-4 py-10 text-center text-sm">
-            회차가 없습니다. 위에서 1강부터 추가하세요.
-          </p>
-        ) : null}
       </div>
+
+      {tab === "basic" ? (
+        <BasicInfoTab
+          course={course}
+          categories={categories}
+          allInstructors={allInstructors}
+        />
+      ) : null}
+
+      {tab === "lessons" ? (
+        <>
+          <AddLessonForm />
+          <div className="mt-4 space-y-3">
+            {course.lessons.map((lesson, i) => (
+              <LessonCard
+                key={lesson.lessonId}
+                lesson={lesson}
+                nodeOptions={nodeOptions}
+                contents={contents}
+                isFirst={i === 0}
+                isLast={i === course.lessons.length - 1}
+              />
+            ))}
+            {course.lessons.length === 0 ? (
+              <p className="text-muted-foreground rounded-xl border border-dashed px-4 py-10 text-center text-sm">
+                회차가 없습니다. 위에서 1강부터 추가하세요.
+              </p>
+            ) : null}
+          </div>
+        </>
+      ) : null}
+
+      {tab === "audit" ? <AuditTab logs={auditLogs} /> : null}
     </AdminShell>
   );
+}
+
+const AUDIT_ACTION_LABEL: Record<string, string> = {
+  update_basic: "기본정보 수정",
+  add_instructor: "강사 추가",
+  remove_instructor: "강사 제거",
+  video_replace: "영상 교체",
+  video_set: "영상 연결",
+  clone: "강의 복사 생성",
+};
+
+function BasicInfoTab({
+  course,
+  categories,
+  allInstructors,
+}: {
+  course: CourseDetail;
+  categories: CourseCategoryRow[];
+  allInstructors: Array<{ profileId: string; name: string }>;
+}) {
+  const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  useEffect(() => {
+    if (fetcher.state !== "idle" || !fetcher.data) return;
+    if (fetcher.data.error) toast.error(fetcher.data.error);
+    else if (fetcher.data.ok) toast.success("기본정보를 저장했습니다.");
+  }, [fetcher.state, fetcher.data]);
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <fetcher.Form
+        method="post"
+        className="border-border bg-card space-y-3 rounded-xl border p-4 shadow-sm"
+      >
+        <input type="hidden" name="intent" value="save_basic" />
+        <h3 className="text-sm font-bold">강의 기본정보</h3>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-muted-foreground text-[11px] font-semibold">강의 유형</span>
+            <select
+              name="courseType"
+              defaultValue={course.courseType ?? ""}
+              className="border-input bg-background h-9 rounded-lg border px-2 text-sm"
+            >
+              <option value="">(미지정)</option>
+              {LECTURE_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {LECTURE_TYPE_LABEL[t]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-muted-foreground text-[11px] font-semibold">카테고리</span>
+            <select
+              name="categoryId"
+              defaultValue={course.categoryId ?? ""}
+              className="border-input bg-background h-9 rounded-lg border px-2 text-sm"
+            >
+              <option value="">(미분류)</option>
+              {categories
+                .filter((c) => c.isActive || c.categoryId === course.categoryId)
+                .map((c) => (
+                  <option key={c.categoryId} value={c.categoryId}>
+                    {c.path}
+                    {!c.isActive ? " (비활성)" : ""}
+                  </option>
+                ))}
+            </select>
+          </label>
+        </div>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-muted-foreground text-[11px] font-semibold">관리자 메모</span>
+          <textarea
+            name="adminMemo"
+            defaultValue={course.adminMemo ?? ""}
+            rows={3}
+            maxLength={2000}
+            className="border-input bg-background rounded-lg border px-3 py-2 text-sm"
+          />
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            name="isVisible"
+            defaultChecked={course.isVisible}
+            className="size-4"
+          />
+          목록·카탈로그 노출 (끄면 운영자에게만 보임 — 발행 상태와 별개)
+        </label>
+        <div className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 border-t pt-2 text-xs">
+          <span>시리즈 · {course.seriesTitle}</span>
+          <span>에디션 · {course.editionLabel} ({course.editionYear})</span>
+          <span>고유번호 · {course.publicNo != null ? `C-${course.publicNo}` : "—"}</span>
+          <Link
+            to="/admin/plans"
+            className="text-link font-semibold hover:underline"
+          >
+            판매정보·수강정책 관리 →
+          </Link>
+        </div>
+        <div className="flex justify-end">
+          <Button type="submit" size="sm" disabled={fetcher.state !== "idle"}>
+            저장
+          </Button>
+        </div>
+      </fetcher.Form>
+
+      <InstructorsManager
+        instructors={course.instructors}
+        allInstructors={allInstructors}
+      />
+    </div>
+  );
+}
+
+function InstructorsManager({
+  instructors,
+  allInstructors,
+}: {
+  instructors: CourseDetail["instructors"];
+  allInstructors: Array<{ profileId: string; name: string }>;
+}) {
+  const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  const formRef = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    if (fetcher.state !== "idle" || !fetcher.data) return;
+    if (fetcher.data.error) toast.error(fetcher.data.error);
+    else if (fetcher.data.ok) formRef.current?.reset();
+  }, [fetcher.state, fetcher.data]);
+
+  const assigned = new Set(instructors.map((i) => i.instructorId));
+  const available = allInstructors.filter((i) => !assigned.has(i.profileId));
+  const busy = fetcher.state !== "idle";
+  const remove = (instructorId: string, name: string) => {
+    if (!window.confirm(`담당 강사 "${name}"을(를) 제거할까요?`)) return;
+    const fd = new FormData();
+    fd.set("intent", "remove_instructor");
+    fd.set("instructorId", instructorId);
+    fetcher.submit(fd, { method: "post" });
+  };
+
+  return (
+    <div className="border-border bg-card space-y-3 rounded-xl border p-4 shadow-sm">
+      <h3 className="text-sm font-bold">담당 강사 (복수 지정)</h3>
+      {instructors.length === 0 ? (
+        <p className="text-muted-foreground text-[12px]">
+          지정된 담당 강사가 없습니다. 아래에서 추가하세요.
+        </p>
+      ) : (
+        <ul className="space-y-1.5">
+          {instructors.map((i) => (
+            <li
+              key={i.instructorId}
+              className="border-border/60 bg-background flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"
+            >
+              <span className="font-medium">{i.name}</span>
+              {i.role ? <Chip tone="outline">{i.role}</Chip> : null}
+              <button
+                type="button"
+                onClick={() => remove(i.instructorId, i.name)}
+                disabled={busy}
+                className="text-muted-foreground hover:text-rose-600 ml-auto p-1 disabled:opacity-40"
+                title="제거"
+              >
+                <Trash2Icon className="size-3.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {available.length > 0 ? (
+        <fetcher.Form
+          ref={formRef}
+          method="post"
+          className="flex flex-wrap items-end gap-2 border-t pt-3"
+        >
+          <input type="hidden" name="intent" value="add_instructor" />
+          <label className="flex min-w-[140px] flex-1 flex-col gap-1">
+            <span className="text-muted-foreground text-[10px] font-semibold">강사</span>
+            <select
+              name="instructorId"
+              required
+              className="border-input bg-background h-8 rounded-md border px-2 text-[12px]"
+            >
+              {available.map((i) => (
+                <option key={i.profileId} value={i.profileId}>
+                  {i.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-muted-foreground text-[10px] font-semibold">역할(선택)</span>
+            <input
+              name="role"
+              maxLength={30}
+              placeholder="대표/공동 등"
+              className="border-input bg-background h-8 w-28 rounded-md border px-2 text-[12px]"
+            />
+          </label>
+          <Button type="submit" size="sm" variant="outline" className="h-8 text-[12px]" disabled={busy}>
+            <PlusIcon className="size-3" /> 강사 추가
+          </Button>
+        </fetcher.Form>
+      ) : (
+        <p className="text-muted-foreground/70 border-t pt-3 text-[11px]">
+          추가할 수 있는 강사가 없습니다(모두 지정됨).
+        </p>
+      )}
+    </div>
+  );
+}
+
+function AuditTab({ logs }: { logs: CourseAuditRow[] }) {
+  if (logs.length === 0) {
+    return (
+      <p className="text-muted-foreground rounded-xl border border-dashed px-4 py-10 text-center text-sm">
+        변경 이력이 없습니다.
+      </p>
+    );
+  }
+  return (
+    <ul className="border-border bg-card divide-border divide-y rounded-xl border shadow-sm">
+      {logs.map((l) => (
+        <li key={l.logId} className="flex flex-wrap items-center gap-2 px-4 py-2.5 text-sm">
+          <Chip tone="neutral">{AUDIT_ACTION_LABEL[l.action] ?? l.action}</Chip>
+          <span>{l.summary ?? ""}</span>
+          <span className="text-muted-foreground ml-auto text-xs">
+            {l.actorName ?? "?"} · {fmtDateTime(l.createdAt)}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function fmtDateTime(iso: string): string {
+  const d = new Date(iso);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
 function MaterialsSection({

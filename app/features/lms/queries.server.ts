@@ -29,6 +29,10 @@ export interface SeriesWithEditions {
     status: "draft" | "published" | "archived";
     lessonCount: number;
     totalDurationSeconds: number;
+    publicNo: number | null;
+    courseType: string | null;
+    categoryName: string | null;
+    isVisible: boolean;
   }>;
 }
 
@@ -70,7 +74,9 @@ export async function listSeriesWithEditions(
   if (error) throw error;
   const { data: courses, error: cErr } = await client
     .from("courses")
-    .select("course_id, series_id, edition_label, edition_year, is_current, status")
+    .select(
+      "course_id, series_id, edition_label, edition_year, is_current, status, public_no, course_type, is_visible, category:course_categories!courses_category_id_fkey(name)",
+    )
     .is("deleted_at", null)
     .order("edition_year", { ascending: false });
   if (cErr) throw cErr;
@@ -124,11 +130,22 @@ export async function listSeriesWithEditions(
         status: c.status as "draft" | "published" | "archived",
         lessonCount: lessonAgg.get(c.course_id)?.count ?? 0,
         totalDurationSeconds: lessonAgg.get(c.course_id)?.duration ?? 0,
+        publicNo: c.public_no,
+        courseType: c.course_type,
+        categoryName: (c.category as { name: string } | null)?.name ?? null,
+        isVisible: c.is_visible,
       })),
   }));
 }
 
 // ── 에디션 상세 (회차·영상·자료·메모) ──────────────────────────────────────
+
+export interface CourseInstructorRow {
+  instructorId: string;
+  name: string;
+  role: string | null;
+  sortOrder: number;
+}
 
 export interface CourseDetail {
   courseId: string;
@@ -139,6 +156,13 @@ export interface CourseDetail {
   editionYear: number;
   isCurrent: boolean;
   status: "draft" | "published" | "archived";
+  // feat-11-006 Phase 2 — 강의 등록 기본정보(신규 컬럼).
+  courseType: string | null;
+  categoryId: string | null;
+  adminMemo: string | null;
+  isVisible: boolean;
+  publicNo: number | null;
+  instructors: CourseInstructorRow[];
   lessons: Array<{
     lessonId: string;
     lessonNo: number;
@@ -167,13 +191,24 @@ export async function getCourseDetail(
   const { data: course, error } = await client
     .from("courses")
     .select(
-      "course_id, series_id, edition_label, edition_year, is_current, status, series:course_series!courses_series_id_fkey(title, subject_code)",
+      "course_id, series_id, edition_label, edition_year, is_current, status, course_type, category_id, admin_memo, is_visible, public_no, series:course_series!courses_series_id_fkey(title, subject_code)",
     )
     .eq("course_id", courseId)
     .is("deleted_at", null)
     .maybeSingle();
   if (error) throw error;
   if (!course) return null;
+  const { data: instructorRows } = await client
+    .from("course_instructors")
+    .select("instructor_id, role, sort_order, profiles!course_instructors_instructor_id_fkey(name)")
+    .eq("course_id", courseId)
+    .order("sort_order");
+  const instructors: CourseInstructorRow[] = (instructorRows ?? []).map((r) => ({
+    instructorId: r.instructor_id,
+    name: (r.profiles as { name: string | null } | null)?.name ?? "(이름 없음)",
+    role: r.role,
+    sortOrder: r.sort_order,
+  }));
   const { data: lessons, error: lErr } = await client
     .from("course_lessons")
     .select("lesson_id, lesson_no, title, sort_order, is_preview, is_published")
@@ -210,6 +245,12 @@ export async function getCourseDetail(
     editionYear: course.edition_year,
     isCurrent: course.is_current,
     status: course.status as CourseDetail["status"],
+    courseType: course.course_type,
+    categoryId: course.category_id,
+    adminMemo: course.admin_memo,
+    isVisible: course.is_visible,
+    publicNo: course.public_no,
+    instructors,
     lessons: (lessons ?? []).map((l) => {
       const vids = (videosRes.data ?? []).filter((v) => v.lesson_id === l.lesson_id);
       const active = vids.find((v) => v.is_active) ?? null;
@@ -240,6 +281,109 @@ export async function getCourseDetail(
       };
     }),
   };
+}
+
+// ── 강의 카테고리(대/중/소 taxonomy) ────────────────────────────────────────
+
+export interface CourseCategoryRow {
+  categoryId: string;
+  parentId: string | null;
+  name: string;
+  sortOrder: number;
+  isActive: boolean;
+  /** 조상 라벨 경로("자격증 › 변리사 › 특허법"). 선택지·배지용. */
+  path: string;
+  depth: number;
+}
+
+export async function listCourseCategories(
+  client: Client,
+): Promise<CourseCategoryRow[]> {
+  const { data } = await client
+    .from("course_categories")
+    .select("category_id, parent_id, name, sort_order, is_active")
+    .order("sort_order")
+    .order("name");
+  const rows = data ?? [];
+  const byId = new Map(rows.map((r) => [r.category_id, r]));
+  const pathOf = (id: string): { path: string; depth: number } => {
+    const parts: string[] = [];
+    let cur: string | null = id;
+    let depth = 0;
+    for (let guard = 0; cur && guard < 6; guard++) {
+      const row = byId.get(cur);
+      if (!row) break;
+      parts.unshift(row.name);
+      cur = row.parent_id;
+      depth++;
+    }
+    return { path: parts.join(" › "), depth: Math.max(0, depth - 1) };
+  };
+  // 트리 순서(대→중→소)로 정렬: 부모 경로 문자열 기준.
+  return rows
+    .map((r) => {
+      const { path, depth } = pathOf(r.category_id);
+      return {
+        categoryId: r.category_id,
+        parentId: r.parent_id,
+        name: r.name,
+        sortOrder: r.sort_order,
+        isActive: r.is_active,
+        path,
+        depth,
+      };
+    })
+    .sort((a, b) => a.path.localeCompare(b.path));
+}
+
+// ── 강의 변경 이력(audit) ────────────────────────────────────────────────────
+
+export interface CourseAuditRow {
+  logId: string;
+  action: string;
+  summary: string | null;
+  actorName: string | null;
+  createdAt: string;
+}
+
+export async function listCourseAuditLogs(
+  client: Client,
+  courseId: string,
+  limit = 50,
+): Promise<CourseAuditRow[]> {
+  const { data } = await client
+    .from("course_audit_logs")
+    .select("log_id, action, summary, created_at, profiles!course_audit_logs_actor_id_fkey(name)")
+    .eq("course_id", courseId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return (data ?? []).map((r) => ({
+    logId: r.log_id,
+    action: r.action,
+    summary: r.summary,
+    actorName: (r.profiles as { name: string | null } | null)?.name ?? null,
+    createdAt: r.created_at,
+  }));
+}
+
+/** 강의 변경 이력 1행 기록. RLS(staff insert) 통과하는 요청 client 로 호출. */
+export async function logCourseAudit(
+  client: Client,
+  input: {
+    courseId: string;
+    actorId: string;
+    action: string;
+    summary?: string | null;
+    detail?: Record<string, unknown> | null;
+  },
+): Promise<void> {
+  await client.from("course_audit_logs").insert({
+    course_id: input.courseId,
+    actor_id: input.actorId,
+    action: input.action,
+    summary: input.summary ?? null,
+    detail: (input.detail ?? null) as never,
+  });
 }
 
 /** course 의 active 영상 총 재생시간 — 지급 시 배수 모수 스냅샷. */
