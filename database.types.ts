@@ -9212,6 +9212,7 @@ export type Database = {
           created_by: string | null
           deleted_at: string | null
           display_no: number
+          exam_number: number | null
           exam_round: Database["public"]["Enums"]["problem_exam_round"]
           exam_round_no: number | null
           examined_at: string | null
@@ -9261,6 +9262,7 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           display_no?: number
+          exam_number?: number | null
           exam_round: Database["public"]["Enums"]["problem_exam_round"]
           exam_round_no?: number | null
           examined_at?: string | null
@@ -9314,6 +9316,7 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           display_no?: number
+          exam_number?: number | null
           exam_round?: Database["public"]["Enums"]["problem_exam_round"]
           exam_round_no?: number | null
           examined_at?: string | null

@@ -175,18 +175,26 @@ export async function resolveProblemTarget(
 
   let query = client
     .from("problems")
-    .select("problem_id, year, problem_number, origin")
+    .select("problem_id, year, problem_number, exam_number, origin")
     .eq("law_id", law.lawId)
-    .eq("origin", args.origin)
-    .eq("problem_number", args.problemNumber)
     .is("deleted_at", null);
 
   if (args.origin === "expected") {
+    // 예상문제: 실제 시험번호가 없으므로 노드 내 순번(problem_number)+체계도 노드로 특정.
     if (!args.primaryNodeId) return null;
-    query = query.eq("primary_node_id", args.primaryNodeId);
+    query = query
+      .eq("origin", "expected")
+      .eq("problem_number", args.problemNumber)
+      .eq("primary_node_id", args.primaryNodeId);
   } else {
+    // 기출/기출변형: 입력 번호 = 실제 시험번호(exam_number). problem_number(노드 순번)와 별개 축.
+    //   시험번호는 연도 내 유일하므로 기출/변형 구분 없이 (연도+시험번호)로 특정.
     if (args.year == null) return null;
-    query = query.eq("year", args.year).eq("exam_round", "first");
+    query = query
+      .in("origin", ["past_exam", "past_exam_variant"])
+      .eq("year", args.year)
+      .eq("exam_number", args.problemNumber)
+      .eq("exam_round", "first");
   }
 
   const { data, error } = await query.limit(1);
@@ -199,7 +207,7 @@ export async function resolveProblemTarget(
     label: problemDisplayLabel({
       shortLabel: law.shortLabel,
       year: row.year,
-      problemNumber: row.problem_number,
+      problemNumber: row.exam_number ?? row.problem_number,
       origin: row.origin,
     }),
     href: problemHref(lawCode, row.problem_id),
@@ -214,7 +222,7 @@ export async function resolveProblemByDisplayNo(
   const { data, error } = await client
     .from("problems")
     .select(
-      "problem_id, display_no, year, problem_number, origin, laws!inner(law_code)",
+      "problem_id, display_no, year, problem_number, exam_number, origin, laws!inner(law_code)",
     )
     .eq("display_no", displayNo)
     .is("deleted_at", null)
@@ -224,10 +232,12 @@ export async function resolveProblemByDisplayNo(
   const lawCode = asLawSubject(data.laws.law_code);
   if (!lawCode) return null;
   const law = await getLawByCode(client, lawCode);
+  const isPast =
+    data.origin === "past_exam" || data.origin === "past_exam_variant";
   const base = problemDisplayLabel({
     shortLabel: law?.shortLabel ?? "",
     year: data.year,
-    problemNumber: data.problem_number,
+    problemNumber: isPast ? (data.exam_number ?? data.problem_number) : data.problem_number,
     origin: data.origin,
   });
   return {

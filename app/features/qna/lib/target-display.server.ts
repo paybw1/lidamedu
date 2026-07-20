@@ -191,7 +191,7 @@ export async function resolveTargetDisplay(
     const { data, error } = await client
       .from("problems")
       .select(
-        "problem_id, display_no, year, problem_number, origin, primary_node_id, laws ( law_code, short_label )",
+        "problem_id, display_no, year, problem_number, exam_number, origin, primary_node_id, laws ( law_code, short_label )",
       )
       .eq("problem_id", targetId)
       .is("deleted_at", null)
@@ -206,7 +206,11 @@ export async function resolveTargetDisplay(
       isPast && data.year
         ? `${data.year}년 ${ORIGIN_LABEL[data.origin]}`
         : ORIGIN_LABEL[data.origin];
-    const num = data.problem_number != null ? `${data.problem_number}번` : "";
+    // 기출/변형은 실제 시험번호(exam_number) 표기, 나머지는 노드 순번(problem_number).
+    const displayNum = isPast
+      ? (data.exam_number ?? data.problem_number)
+      : data.problem_number;
+    const num = displayNum != null ? `${displayNum}번` : "";
     const sub = [num, formatProblemCode(data.display_no)]
       .filter(Boolean)
       .join(" · ");
@@ -220,7 +224,7 @@ export async function resolveTargetDisplay(
       label: problemDisplayLabel({
         shortLabel,
         year: data.year,
-        problemNumber: data.problem_number,
+        problemNumber: displayNum,
         origin: data.origin,
       }),
       href: problemHref(data.laws?.law_code ?? null, data.problem_id),

@@ -1,0 +1,1686 @@
+{
+ "2010": [
+  {
+   "row": 1,
+   "examNo": 7,
+   "topic": "기일, 기간 및 추후보완"
+  },
+  {
+   "row": 2,
+   "examNo": 4,
+   "topic": "진보성"
+  },
+  {
+   "row": 3,
+   "examNo": 6,
+   "topic": "선출원주의"
+  },
+  {
+   "row": 4,
+   "examNo": 7,
+   "topic": "선출원주의"
+  },
+  {
+   "row": 5,
+   "examNo": 5,
+   "topic": "실체보정"
+  },
+  {
+   "row": 6,
+   "examNo": 2,
+   "topic": "변경출원"
+  },
+  {
+   "row": 7,
+   "examNo": 7,
+   "topic": "국내우선권주장출원"
+  },
+  {
+   "row": 8,
+   "examNo": 2,
+   "topic": "우선심사제도"
+  },
+  {
+   "row": 9,
+   "examNo": 3,
+   "topic": "출원공개제도"
+  },
+  {
+   "row": 10,
+   "examNo": 3,
+   "topic": "존속기간과 연장제도"
+  },
+  {
+   "row": 11,
+   "examNo": 4,
+   "topic": "보호범위"
+  },
+  {
+   "row": 12,
+   "examNo": 9,
+   "topic": "침해에 대한 조치"
+  },
+  {
+   "row": 13,
+   "examNo": 10,
+   "topic": "침해에 대한 조치"
+  },
+  {
+   "row": 14,
+   "examNo": 8,
+   "topic": "법정실시권"
+  },
+  {
+   "row": 15,
+   "examNo": 4,
+   "topic": "강제실시권"
+  },
+  {
+   "row": 16,
+   "examNo": 2,
+   "topic": "심판의 청구"
+  },
+  {
+   "row": 17,
+   "examNo": 3,
+   "topic": "심판의 청구"
+  },
+  {
+   "row": 18,
+   "examNo": 4,
+   "topic": "심판의 청구"
+  },
+  {
+   "row": 19,
+   "examNo": 2,
+   "topic": "실용신안법"
+  }
+ ],
+ "2011": [
+  {
+   "row": 1,
+   "examNo": 8,
+   "topic": "기일, 기간 및 추후보완"
+  },
+  {
+   "row": 2,
+   "examNo": 3,
+   "topic": "절차의 정지"
+  },
+  {
+   "row": 3,
+   "examNo": 1,
+   "topic": "특허출원에 필요한 서류"
+  },
+  {
+   "row": 4,
+   "examNo": 11,
+   "topic": "명세서의 기재방법"
+  },
+  {
+   "row": 5,
+   "examNo": 2,
+   "topic": "정당한 권리자의 보호"
+  },
+  {
+   "row": 6,
+   "examNo": 6,
+   "topic": "실체보정"
+  },
+  {
+   "row": 7,
+   "examNo": 5,
+   "topic": "조약우선권주장출원"
+  },
+  {
+   "row": 8,
+   "examNo": 8,
+   "topic": "국내우선권주장출원"
+  },
+  {
+   "row": 9,
+   "examNo": 3,
+   "topic": "심사청구제도"
+  },
+  {
+   "row": 10,
+   "examNo": 4,
+   "topic": "존속기간과 연장제도"
+  },
+  {
+   "row": 11,
+   "examNo": 3,
+   "topic": "특허권의 효력내용"
+  },
+  {
+   "row": 12,
+   "examNo": 4,
+   "topic": "침해의 종류"
+  },
+  {
+   "row": 13,
+   "examNo": 1,
+   "topic": "거절결정불복심판"
+  },
+  {
+   "row": 14,
+   "examNo": 2,
+   "topic": "권리범위확인심판"
+  },
+  {
+   "row": 15,
+   "examNo": 3,
+   "topic": "정정심판"
+  },
+  {
+   "row": 16,
+   "examNo": 7,
+   "topic": "국제특허출원에 관한 특례"
+  },
+  {
+   "row": 17,
+   "examNo": 3,
+   "topic": "실용신안법"
+  }
+ ],
+ "2012": [
+  {
+   "row": 1,
+   "examNo": 8,
+   "topic": "신규성"
+  },
+  {
+   "row": 2,
+   "examNo": 9,
+   "topic": "신규성"
+  },
+  {
+   "row": 3,
+   "examNo": 8,
+   "topic": "선출원주의"
+  },
+  {
+   "row": 4,
+   "examNo": 3,
+   "topic": "특허를 받을 수 있는 권리"
+  },
+  {
+   "row": 5,
+   "examNo": 8,
+   "topic": "직무발명"
+  },
+  {
+   "row": 6,
+   "examNo": 12,
+   "topic": "명세서의 기재방법"
+  },
+  {
+   "row": 7,
+   "examNo": 7,
+   "topic": "실체보정"
+  },
+  {
+   "row": 8,
+   "examNo": 4,
+   "topic": "분할출원"
+  },
+  {
+   "row": 9,
+   "examNo": 2,
+   "topic": "심사의 진행"
+  },
+  {
+   "row": 10,
+   "examNo": 11,
+   "topic": "침해에 대한 조치"
+  },
+  {
+   "row": 11,
+   "examNo": 4,
+   "topic": "실시권 일반"
+  },
+  {
+   "row": 12,
+   "examNo": 4,
+   "topic": "특허권의 소멸"
+  },
+  {
+   "row": 13,
+   "examNo": 5,
+   "topic": "심판의 청구"
+  },
+  {
+   "row": 14,
+   "examNo": 3,
+   "topic": "권리범위확인심판"
+  },
+  {
+   "row": 15,
+   "examNo": 3,
+   "topic": "통상실시권허락심판"
+  },
+  {
+   "row": 16,
+   "examNo": 2,
+   "topic": "정정청구"
+  },
+  {
+   "row": 17,
+   "examNo": 6,
+   "topic": "특허소송"
+  },
+  {
+   "row": 18,
+   "examNo": 7,
+   "topic": "특허소송"
+  },
+  {
+   "row": 19,
+   "examNo": 8,
+   "topic": "국제특허출원에 관한 특례"
+  },
+  {
+   "row": 20,
+   "examNo": 4,
+   "topic": "실용신안법"
+  }
+ ],
+ "2013": [
+  {
+   "row": 1,
+   "examNo": 5,
+   "topic": "진보성"
+  },
+  {
+   "row": 2,
+   "examNo": 6,
+   "topic": "진보성"
+  },
+  {
+   "row": 3,
+   "examNo": 13,
+   "topic": "명세서의 기재방법"
+  },
+  {
+   "row": 4,
+   "examNo": 4,
+   "topic": "공지예외적용주장출원"
+  },
+  {
+   "row": 5,
+   "examNo": 8,
+   "topic": "실체보정"
+  },
+  {
+   "row": 6,
+   "examNo": 5,
+   "topic": "분할출원"
+  },
+  {
+   "row": 7,
+   "examNo": 3,
+   "topic": "특허료의 납부"
+  },
+  {
+   "row": 8,
+   "examNo": 5,
+   "topic": "존속기간과 연장제도"
+  },
+  {
+   "row": 9,
+   "examNo": 5,
+   "topic": "보호범위"
+  },
+  {
+   "row": 10,
+   "examNo": 6,
+   "topic": "보호범위"
+  },
+  {
+   "row": 11,
+   "examNo": 5,
+   "topic": "강제실시권"
+  },
+  {
+   "row": 12,
+   "examNo": 4,
+   "topic": "권리범위확인심판"
+  },
+  {
+   "row": 13,
+   "examNo": 5,
+   "topic": "권리범위확인심판"
+  },
+  {
+   "row": 14,
+   "examNo": 4,
+   "topic": "정정심판"
+  },
+  {
+   "row": 15,
+   "examNo": 8,
+   "topic": "특허소송"
+  },
+  {
+   "row": 16,
+   "examNo": 10,
+   "topic": "조약"
+  },
+  {
+   "row": 17,
+   "examNo": 5,
+   "topic": "국제출원절차"
+  },
+  {
+   "row": 18,
+   "examNo": 3,
+   "topic": "국제조사, 국제공개 및 국제예비심사"
+  },
+  {
+   "row": 19,
+   "examNo": 9,
+   "topic": "국제특허출원에 관한 특례"
+  },
+  {
+   "row": 20,
+   "examNo": 5,
+   "topic": "실용신안법"
+  }
+ ],
+ "2014": [
+  {
+   "row": 1,
+   "examNo": 4,
+   "topic": "대리인"
+  },
+  {
+   "row": 2,
+   "examNo": 10,
+   "topic": "신규성"
+  },
+  {
+   "row": 3,
+   "examNo": 7,
+   "topic": "진보성"
+  },
+  {
+   "row": 4,
+   "examNo": 9,
+   "topic": "선출원주의"
+  },
+  {
+   "row": 5,
+   "examNo": 10,
+   "topic": "선출원주의"
+  },
+  {
+   "row": 6,
+   "examNo": 14,
+   "topic": "명세서의 기재방법"
+  },
+  {
+   "row": 7,
+   "examNo": 5,
+   "topic": "공지예외적용주장출원"
+  },
+  {
+   "row": 8,
+   "examNo": 9,
+   "topic": "실체보정"
+  },
+  {
+   "row": 9,
+   "examNo": 9,
+   "topic": "국내우선권주장출원"
+  },
+  {
+   "row": 10,
+   "examNo": 2,
+   "topic": "특허여부결정에 의한 종료"
+  },
+  {
+   "row": 11,
+   "examNo": 4,
+   "topic": "출원공개제도"
+  },
+  {
+   "row": 12,
+   "examNo": 6,
+   "topic": "존속기간과 연장제도"
+  },
+  {
+   "row": 13,
+   "examNo": 12,
+   "topic": "침해에 대한 조치"
+  },
+  {
+   "row": 14,
+   "examNo": 5,
+   "topic": "실시권 일반"
+  },
+  {
+   "row": 15,
+   "examNo": 6,
+   "topic": "강제실시권"
+  },
+  {
+   "row": 16,
+   "examNo": 2,
+   "topic": "심판의 당사자"
+  },
+  {
+   "row": 17,
+   "examNo": 6,
+   "topic": "권리범위확인심판"
+  },
+  {
+   "row": 18,
+   "examNo": 5,
+   "topic": "정정심판"
+  },
+  {
+   "row": 19,
+   "examNo": 6,
+   "topic": "국제출원절차"
+  },
+  {
+   "row": 20,
+   "examNo": 6,
+   "topic": "실용신안법"
+  }
+ ],
+ "2015": [
+  {
+   "row": 1,
+   "examNo": 2,
+   "topic": "발명"
+  },
+  {
+   "row": 2,
+   "examNo": 1,
+   "topic": "복수당사자대표"
+  },
+  {
+   "row": 3,
+   "examNo": 11,
+   "topic": "신규성"
+  },
+  {
+   "row": 4,
+   "examNo": 8,
+   "topic": "진보성"
+  },
+  {
+   "row": 5,
+   "examNo": 9,
+   "topic": "진보성"
+  },
+  {
+   "row": 6,
+   "examNo": 11,
+   "topic": "선출원주의"
+  },
+  {
+   "row": 7,
+   "examNo": 3,
+   "topic": "출원인"
+  },
+  {
+   "row": 8,
+   "examNo": 6,
+   "topic": "공지예외적용주장출원"
+  },
+  {
+   "row": 9,
+   "examNo": 3,
+   "topic": "정당한 권리자의 보호"
+  },
+  {
+   "row": 10,
+   "examNo": 5,
+   "topic": "출원공개제도"
+  },
+  {
+   "row": 11,
+   "examNo": 7,
+   "topic": "존속기간과 연장제도"
+  },
+  {
+   "row": 12,
+   "examNo": 13,
+   "topic": "침해에 대한 조치"
+  },
+  {
+   "row": 13,
+   "examNo": 6,
+   "topic": "실시권 일반"
+  },
+  {
+   "row": 14,
+   "examNo": 7,
+   "topic": "권리범위확인심판"
+  },
+  {
+   "row": 15,
+   "examNo": 8,
+   "topic": "권리범위확인심판"
+  },
+  {
+   "row": 16,
+   "examNo": 6,
+   "topic": "정정심판"
+  },
+  {
+   "row": 17,
+   "examNo": 7,
+   "topic": "정정심판"
+  },
+  {
+   "row": 18,
+   "examNo": 9,
+   "topic": "특허소송"
+  },
+  {
+   "row": 19,
+   "examNo": 10,
+   "topic": "국제특허출원에 관한 특례"
+  },
+  {
+   "row": 20,
+   "examNo": 7,
+   "topic": "실용신안법"
+  }
+ ],
+ "2016": [
+  {
+   "row": 1,
+   "examNo": 3,
+   "topic": "발명"
+  },
+  {
+   "row": 2,
+   "examNo": 4,
+   "topic": "산업상 이용가능성"
+  },
+  {
+   "row": 3,
+   "examNo": 10,
+   "topic": "진보성"
+  },
+  {
+   "row": 4,
+   "examNo": 2,
+   "topic": "특허출원에 필요한 서류"
+  },
+  {
+   "row": 5,
+   "examNo": 15,
+   "topic": "명세서의 기재방법"
+  },
+  {
+   "row": 6,
+   "examNo": 16,
+   "topic": "명세서의 기재방법"
+  },
+  {
+   "row": 7,
+   "examNo": 4,
+   "topic": "정당한 권리자의 보호"
+  },
+  {
+   "row": 8,
+   "examNo": 10,
+   "topic": "실체보정"
+  },
+  {
+   "row": 9,
+   "examNo": 4,
+   "topic": "특허권의 효력내용"
+  },
+  {
+   "row": 10,
+   "examNo": 5,
+   "topic": "침해의 종류"
+  },
+  {
+   "row": 11,
+   "examNo": 14,
+   "topic": "침해에 대한 조치"
+  },
+  {
+   "row": 12,
+   "examNo": 15,
+   "topic": "침해에 대한 조치"
+  },
+  {
+   "row": 13,
+   "examNo": 1,
+   "topic": "벌칙"
+  },
+  {
+   "row": 14,
+   "examNo": 4,
+   "topic": "심결에 의한 종료"
+  },
+  {
+   "row": 15,
+   "examNo": 9,
+   "topic": "권리범위확인심판"
+  },
+  {
+   "row": 16,
+   "examNo": 3,
+   "topic": "정정청구"
+  },
+  {
+   "row": 17,
+   "examNo": 10,
+   "topic": "특허소송"
+  },
+  {
+   "row": 18,
+   "examNo": 11,
+   "topic": "국제특허출원에 관한 특례"
+  }
+ ],
+ "2017": [
+  {
+   "row": 1,
+   "examNo": 4,
+   "topic": "발명"
+  },
+  {
+   "row": 2,
+   "examNo": 1,
+   "topic": "보칙"
+  },
+  {
+   "row": 3,
+   "examNo": 12,
+   "topic": "선출원주의"
+  },
+  {
+   "row": 4,
+   "examNo": 13,
+   "topic": "선출원주의"
+  },
+  {
+   "row": 5,
+   "examNo": 4,
+   "topic": "특허를 받을 수 있는 권리"
+  },
+  {
+   "row": 6,
+   "examNo": 11,
+   "topic": "실체보정"
+  },
+  {
+   "row": 7,
+   "examNo": 2,
+   "topic": "조약우선권주장출원"
+  },
+  {
+   "row": 8,
+   "examNo": 10,
+   "topic": "국내우선권주장출원"
+  },
+  {
+   "row": 9,
+   "examNo": 3,
+   "topic": "심사의 진행"
+  },
+  {
+   "row": 10,
+   "examNo": 4,
+   "topic": "이용저촉발명"
+  },
+  {
+   "row": 11,
+   "examNo": 6,
+   "topic": "침해의 종류"
+  },
+  {
+   "row": 12,
+   "examNo": 16,
+   "topic": "침해에 대한 조치"
+  },
+  {
+   "row": 13,
+   "examNo": 7,
+   "topic": "실시권 일반"
+  },
+  {
+   "row": 14,
+   "examNo": 7,
+   "topic": "강제실시권"
+  },
+  {
+   "row": 15,
+   "examNo": 5,
+   "topic": "심결에 의한 종료"
+  },
+  {
+   "row": 16,
+   "examNo": 10,
+   "topic": "권리범위확인심판"
+  },
+  {
+   "row": 17,
+   "examNo": 8,
+   "topic": "정정심판"
+  },
+  {
+   "row": 18,
+   "examNo": 11,
+   "topic": "특허소송"
+  },
+  {
+   "row": 19,
+   "examNo": 12,
+   "topic": "국제특허출원에 관한 특례"
+  },
+  {
+   "row": 20,
+   "examNo": 8,
+   "topic": "실용신안법"
+  }
+ ],
+ "2018": [
+  {
+   "row": 1,
+   "examNo": 5,
+   "topic": "발명"
+  },
+  {
+   "row": 2,
+   "examNo": 6,
+   "topic": "발명"
+  },
+  {
+   "row": 3,
+   "examNo": 9,
+   "topic": "기일, 기간 및 추후보완"
+  },
+  {
+   "row": 4,
+   "examNo": 2,
+   "topic": "보칙"
+  },
+  {
+   "row": 5,
+   "examNo": 11,
+   "topic": "진보성"
+  },
+  {
+   "row": 6,
+   "examNo": 4,
+   "topic": "출원인"
+  },
+  {
+   "row": 7,
+   "examNo": 5,
+   "topic": "특허를 받을 수 있는 권리"
+  },
+  {
+   "row": 8,
+   "examNo": 7,
+   "topic": "공지예외적용주장출원"
+  },
+  {
+   "row": 9,
+   "examNo": 3,
+   "topic": "특허여부결정에 의한 종료"
+  },
+  {
+   "row": 10,
+   "examNo": 4,
+   "topic": "특허료의 납부"
+  },
+  {
+   "row": 11,
+   "examNo": 8,
+   "topic": "존속기간과 연장제도"
+  },
+  {
+   "row": 12,
+   "examNo": 7,
+   "topic": "침해의 종류"
+  },
+  {
+   "row": 13,
+   "examNo": 2,
+   "topic": "벌칙"
+  },
+  {
+   "row": 14,
+   "examNo": 8,
+   "topic": "강제실시권"
+  },
+  {
+   "row": 15,
+   "examNo": 2,
+   "topic": "특허무효심판"
+  },
+  {
+   "row": 16,
+   "examNo": 11,
+   "topic": "권리범위확인심판"
+  },
+  {
+   "row": 17,
+   "examNo": 1,
+   "topic": "특허취소신청"
+  },
+  {
+   "row": 18,
+   "examNo": 12,
+   "topic": "특허소송"
+  },
+  {
+   "row": 19,
+   "examNo": 18,
+   "topic": "국제조사, 국제공개 및 국제예비심사"
+  },
+  {
+   "row": 20,
+   "examNo": 9,
+   "topic": "실용신안법"
+  }
+ ],
+ "2019": [
+  {
+   "row": 1,
+   "examNo": 1,
+   "topic": "특허에 관한 절차 일반"
+  },
+  {
+   "row": 2,
+   "examNo": 2,
+   "topic": "특허에 관한 절차 일반"
+  },
+  {
+   "row": 3,
+   "examNo": 12,
+   "topic": "진보성"
+  },
+  {
+   "row": 4,
+   "examNo": 6,
+   "topic": "특허를 받을 수 있는 권리"
+  },
+  {
+   "row": 5,
+   "examNo": 17,
+   "topic": "명세서의 기재방법"
+  },
+  {
+   "row": 6,
+   "examNo": 5,
+   "topic": "정당한 권리자의 보호"
+  },
+  {
+   "row": 7,
+   "examNo": 4,
+   "topic": "심사청구제도"
+  },
+  {
+   "row": 8,
+   "examNo": 4,
+   "topic": "특허여부결정에 의한 종료"
+  },
+  {
+   "row": 9,
+   "examNo": 9,
+   "topic": "존속기간과 연장제도"
+  },
+  {
+   "row": 10,
+   "examNo": 7,
+   "topic": "보호범위"
+  },
+  {
+   "row": 11,
+   "examNo": 17,
+   "topic": "침해에 대한 조치"
+  },
+  {
+   "row": 12,
+   "examNo": 18,
+   "topic": "침해에 대한 조치"
+  },
+  {
+   "row": 13,
+   "examNo": 6,
+   "topic": "특허권의 이전 및 공유"
+  },
+  {
+   "row": 14,
+   "examNo": 6,
+   "topic": "심결에 의한 종료"
+  },
+  {
+   "row": 15,
+   "examNo": 12,
+   "topic": "권리범위확인심판"
+  },
+  {
+   "row": 16,
+   "examNo": 1,
+   "topic": "정정무효심판"
+  },
+  {
+   "row": 17,
+   "examNo": 13,
+   "topic": "특허소송"
+  },
+  {
+   "row": 18,
+   "examNo": 10,
+   "topic": "실용신안법"
+  }
+ ],
+ "2020": [
+  {
+   "row": 1,
+   "examNo": 7,
+   "topic": "발명"
+  },
+  {
+   "row": 2,
+   "examNo": 8,
+   "topic": "발명"
+  },
+  {
+   "row": 3,
+   "examNo": 13,
+   "topic": "진보성"
+  },
+  {
+   "row": 4,
+   "examNo": 12,
+   "topic": "실체보정"
+  },
+  {
+   "row": 5,
+   "examNo": 6,
+   "topic": "분할출원"
+  },
+  {
+   "row": 6,
+   "examNo": 4,
+   "topic": "심사의 진행"
+  },
+  {
+   "row": 7,
+   "examNo": 5,
+   "topic": "특허권의 효력내용"
+  },
+  {
+   "row": 8,
+   "examNo": 8,
+   "topic": "침해의 종류"
+  },
+  {
+   "row": 9,
+   "examNo": 19,
+   "topic": "침해에 대한 조치"
+  },
+  {
+   "row": 10,
+   "examNo": 20,
+   "topic": "침해에 대한 조치"
+  },
+  {
+   "row": 11,
+   "examNo": 21,
+   "topic": "침해에 대한 조치"
+  },
+  {
+   "row": 12,
+   "examNo": 22,
+   "topic": "침해에 대한 조치"
+  },
+  {
+   "row": 13,
+   "examNo": 7,
+   "topic": "특허권의 이전 및 공유"
+  },
+  {
+   "row": 14,
+   "examNo": 3,
+   "topic": "특허무효심판"
+  },
+  {
+   "row": 15,
+   "examNo": 13,
+   "topic": "권리범위확인심판"
+  },
+  {
+   "row": 16,
+   "examNo": 14,
+   "topic": "특허소송"
+  },
+  {
+   "row": 17,
+   "examNo": 15,
+   "topic": "특허소송"
+  },
+  {
+   "row": 18,
+   "examNo": 7,
+   "topic": "국제출원절차"
+  },
+  {
+   "row": 19,
+   "examNo": 13,
+   "topic": "국제특허출원에 관한 특례"
+  },
+  {
+   "row": 20,
+   "examNo": 11,
+   "topic": "실용신안법"
+  }
+ ],
+ "2021": [
+  {
+   "row": 1,
+   "examNo": 9,
+   "topic": "발명"
+  },
+  {
+   "row": 2,
+   "examNo": 5,
+   "topic": "산업상 이용가능성"
+  },
+  {
+   "row": 3,
+   "examNo": 12,
+   "topic": "신규성"
+  },
+  {
+   "row": 4,
+   "examNo": 14,
+   "topic": "진보성"
+  },
+  {
+   "row": 5,
+   "examNo": 3,
+   "topic": "특허출원에 필요한 서류"
+  },
+  {
+   "row": 6,
+   "examNo": 8,
+   "topic": "공지예외적용주장출원"
+  },
+  {
+   "row": 7,
+   "examNo": 13,
+   "topic": "실체보정"
+  },
+  {
+   "row": 8,
+   "examNo": 10,
+   "topic": "존속기간과 연장제도"
+  },
+  {
+   "row": 9,
+   "examNo": 6,
+   "topic": "특허권의 효력내용"
+  },
+  {
+   "row": 10,
+   "examNo": 5,
+   "topic": "이용저촉발명"
+  },
+  {
+   "row": 11,
+   "examNo": 9,
+   "topic": "침해의 종류"
+  },
+  {
+   "row": 12,
+   "examNo": 22,
+   "topic": "침해에 대한 조치"
+  },
+  {
+   "row": 13,
+   "examNo": 3,
+   "topic": "벌칙"
+  },
+  {
+   "row": 14,
+   "examNo": 4,
+   "topic": "특허무효심판"
+  },
+  {
+   "row": 15,
+   "examNo": 9,
+   "topic": "정정심판"
+  },
+  {
+   "row": 16,
+   "examNo": 10,
+   "topic": "정정심판"
+  },
+  {
+   "row": 17,
+   "examNo": 8,
+   "topic": "국제출원절차"
+  },
+  {
+   "row": 18,
+   "examNo": 14,
+   "topic": "국제특허출원에 관한 특례"
+  },
+  {
+   "row": 19,
+   "examNo": 12,
+   "topic": "실용신안법"
+  }
+ ],
+ "2022": [
+  {
+   "row": 1,
+   "examNo": 3,
+   "topic": "특허에 관한 절차 일반"
+  },
+  {
+   "row": 2,
+   "examNo": 15,
+   "topic": "진보성"
+  },
+  {
+   "row": 3,
+   "examNo": 7,
+   "topic": "특허를 받을 수 있는 권리"
+  },
+  {
+   "row": 4,
+   "examNo": 9,
+   "topic": "공지예외적용주장출원"
+  },
+  {
+   "row": 5,
+   "examNo": 7,
+   "topic": "분할출원"
+  },
+  {
+   "row": 6,
+   "examNo": 3,
+   "topic": "변경출원"
+  },
+  {
+   "row": 7,
+   "examNo": 11,
+   "topic": "국내우선권주장출원"
+  },
+  {
+   "row": 8,
+   "examNo": 5,
+   "topic": "심사청구제도"
+  },
+  {
+   "row": 9,
+   "examNo": 5,
+   "topic": "특허여부결정에 의한 종료"
+  },
+  {
+   "row": 10,
+   "examNo": 4,
+   "topic": "벌칙"
+  },
+  {
+   "row": 11,
+   "examNo": 8,
+   "topic": "특허권의 이전 및 공유"
+  },
+  {
+   "row": 12,
+   "examNo": 5,
+   "topic": "특허권의 소멸"
+  },
+  {
+   "row": 13,
+   "examNo": 3,
+   "topic": "본안심리"
+  },
+  {
+   "row": 14,
+   "examNo": 7,
+   "topic": "심결에 의한 종료"
+  },
+  {
+   "row": 15,
+   "examNo": 2,
+   "topic": "특허취소신청"
+  },
+  {
+   "row": 16,
+   "examNo": 1,
+   "topic": "재심"
+  },
+  {
+   "row": 17,
+   "examNo": 16,
+   "topic": "특허소송"
+  },
+  {
+   "row": 18,
+   "examNo": 17,
+   "topic": "특허소송"
+  },
+  {
+   "row": 19,
+   "examNo": 15,
+   "topic": "국제특허출원에 관한 특례"
+  },
+  {
+   "row": 20,
+   "examNo": 13,
+   "topic": "실용신안법"
+  }
+ ],
+ "2023": [
+  {
+   "row": 1,
+   "examNo": 10,
+   "topic": "기일, 기간 및 추후보완"
+  },
+  {
+   "row": 2,
+   "examNo": 6,
+   "topic": "산업상 이용가능성"
+  },
+  {
+   "row": 3,
+   "examNo": 13,
+   "topic": "신규성"
+  },
+  {
+   "row": 4,
+   "examNo": 16,
+   "topic": "진보성"
+  },
+  {
+   "row": 5,
+   "examNo": 17,
+   "topic": "진보성"
+  },
+  {
+   "row": 6,
+   "examNo": 8,
+   "topic": "특허를 받을 수 있는 권리"
+  },
+  {
+   "row": 7,
+   "examNo": 10,
+   "topic": "공지예외적용주장출원"
+  },
+  {
+   "row": 8,
+   "examNo": 1,
+   "topic": "분리출원"
+  },
+  {
+   "row": 9,
+   "examNo": 12,
+   "topic": "국내우선권주장출원"
+  },
+  {
+   "row": 10,
+   "examNo": 6,
+   "topic": "출원공개제도"
+  },
+  {
+   "row": 11,
+   "examNo": 5,
+   "topic": "특허료의 납부"
+  },
+  {
+   "row": 12,
+   "examNo": 11,
+   "topic": "존속기간과 연장제도"
+  },
+  {
+   "row": 13,
+   "examNo": 23,
+   "topic": "침해에 대한 조치"
+  },
+  {
+   "row": 14,
+   "examNo": 10,
+   "topic": "강제실시권"
+  },
+  {
+   "row": 15,
+   "examNo": 5,
+   "topic": "특허무효심판"
+  },
+  {
+   "row": 16,
+   "examNo": 4,
+   "topic": "정정청구"
+  },
+  {
+   "row": 17,
+   "examNo": 18,
+   "topic": "특허소송"
+  },
+  {
+   "row": 18,
+   "examNo": 19,
+   "topic": "특허소송"
+  },
+  {
+   "row": 19,
+   "examNo": 14,
+   "topic": "실용신안법"
+  },
+  {
+   "row": 20,
+   "examNo": 15,
+   "topic": "실용신안법"
+  }
+ ],
+ "2024": [
+  {
+   "row": 1,
+   "examNo": 4,
+   "topic": "특허에 관한 절차 일반"
+  },
+  {
+   "row": 2,
+   "examNo": 14,
+   "topic": "신규성"
+  },
+  {
+   "row": 3,
+   "examNo": 18,
+   "topic": "진보성"
+  },
+  {
+   "row": 4,
+   "examNo": 9,
+   "topic": "특허를 받을 수 있는 권리"
+  },
+  {
+   "row": 5,
+   "examNo": 6,
+   "topic": "정당한 권리자의 보호"
+  },
+  {
+   "row": 6,
+   "examNo": 14,
+   "topic": "실체보정"
+  },
+  {
+   "row": 7,
+   "examNo": 5,
+   "topic": "심사의 진행"
+  },
+  {
+   "row": 8,
+   "examNo": 6,
+   "topic": "특허료의 납부"
+  },
+  {
+   "row": 9,
+   "examNo": 5,
+   "topic": "벌칙"
+  },
+  {
+   "row": 10,
+   "examNo": 6,
+   "topic": "특허권의 소멸"
+  },
+  {
+   "row": 11,
+   "examNo": 3,
+   "topic": "취하에 의한 종료"
+  },
+  {
+   "row": 12,
+   "examNo": 11,
+   "topic": "정정심판"
+  },
+  {
+   "row": 13,
+   "examNo": 3,
+   "topic": "특허취소신청"
+  },
+  {
+   "row": 14,
+   "examNo": 2,
+   "topic": "재심"
+  },
+  {
+   "row": 15,
+   "examNo": 20,
+   "topic": "특허소송"
+  },
+  {
+   "row": 16,
+   "examNo": 21,
+   "topic": "특허소송"
+  },
+  {
+   "row": 17,
+   "examNo": 22,
+   "topic": "특허소송"
+  },
+  {
+   "row": 18,
+   "examNo": 11,
+   "topic": "조약"
+  },
+  {
+   "row": 19,
+   "examNo": 16,
+   "topic": "국제특허출원에 관한 특례"
+  }
+ ],
+ "2025": [
+  {
+   "row": 1,
+   "examNo": 5,
+   "topic": "대리인"
+  },
+  {
+   "row": 2,
+   "examNo": 11,
+   "topic": "기일, 기간 및 추후보완"
+  },
+  {
+   "row": 3,
+   "examNo": 15,
+   "topic": "신규성"
+  },
+  {
+   "row": 4,
+   "examNo": 19,
+   "topic": "진보성"
+  },
+  {
+   "row": 5,
+   "examNo": 14,
+   "topic": "선출원주의"
+  },
+  {
+   "row": 6,
+   "examNo": 19,
+   "topic": "명세서의 기재방법"
+  },
+  {
+   "row": 7,
+   "examNo": 11,
+   "topic": "공지예외적용주장출원"
+  },
+  {
+   "row": 8,
+   "examNo": 13,
+   "topic": "국내우선권주장출원"
+  },
+  {
+   "row": 9,
+   "examNo": 14,
+   "topic": "국내우선권주장출원"
+  },
+  {
+   "row": 10,
+   "examNo": 1,
+   "topic": "정보제공제도"
+  },
+  {
+   "row": 11,
+   "examNo": 7,
+   "topic": "출원공개제도"
+  },
+  {
+   "row": 12,
+   "examNo": 12,
+   "topic": "존속기간과 연장제도"
+  },
+  {
+   "row": 13,
+   "examNo": 24,
+   "topic": "침해에 대한 조치"
+  },
+  {
+   "row": 14,
+   "examNo": 6,
+   "topic": "벌칙"
+  },
+  {
+   "row": 15,
+   "examNo": 14,
+   "topic": "권리범위확인심판"
+  },
+  {
+   "row": 16,
+   "examNo": 3,
+   "topic": "재심"
+  },
+  {
+   "row": 17,
+   "examNo": 23,
+   "topic": "특허소송"
+  },
+  {
+   "row": 18,
+   "examNo": 24,
+   "topic": "특허소송"
+  },
+  {
+   "row": 19,
+   "examNo": 17,
+   "topic": "국제특허출원에 관한 특례"
+  },
+  {
+   "row": 20,
+   "examNo": 16,
+   "topic": "실용신안법"
+  }
+ ],
+ "2026": [
+  {
+   "row": 1,
+   "examNo": 1,
+   "topic": "대리인"
+  },
+  {
+   "row": 2,
+   "examNo": 2,
+   "topic": "절차의 정지"
+  },
+  {
+   "row": 3,
+   "examNo": 6,
+   "topic": "진보성"
+  },
+  {
+   "row": 4,
+   "examNo": 3,
+   "topic": "확대된 선출원"
+  },
+  {
+   "row": 5,
+   "examNo": 4,
+   "topic": "명세서의 기재방법"
+  },
+  {
+   "row": 6,
+   "examNo": 7,
+   "topic": "분할출원"
+  },
+  {
+   "row": 7,
+   "examNo": 5,
+   "topic": "국내우선권주장출원"
+  },
+  {
+   "row": 8,
+   "examNo": 9,
+   "topic": "보상금청구권"
+  },
+  {
+   "row": 9,
+   "examNo": 8,
+   "topic": "특허료의 납부"
+  },
+  {
+   "row": 10,
+   "examNo": 10,
+   "topic": "법정실시권"
+  },
+  {
+   "row": 11,
+   "examNo": 11,
+   "topic": "실시권 일반"
+  },
+  {
+   "row": 12,
+   "examNo": 20,
+   "topic": "침해의 종류"
+  },
+  {
+   "row": 13,
+   "examNo": 12,
+   "topic": "침해에 대한 조치"
+  },
+  {
+   "row": 14,
+   "examNo": 14,
+   "topic": "특허무효심판"
+  },
+  {
+   "row": 15,
+   "examNo": 15,
+   "topic": "권리범위확인심판"
+  },
+  {
+   "row": 16,
+   "examNo": 13,
+   "topic": "특허취소신청"
+  },
+  {
+   "row": 17,
+   "examNo": 16,
+   "topic": "특허소송"
+  },
+  {
+   "row": 18,
+   "examNo": 17,
+   "topic": "특허소송"
+  },
+  {
+   "row": 19,
+   "examNo": 18,
+   "topic": "국제출원절차"
+  },
+  {
+   "row": 20,
+   "examNo": 19,
+   "topic": "실용신안법"
+  }
+ ]
+}
