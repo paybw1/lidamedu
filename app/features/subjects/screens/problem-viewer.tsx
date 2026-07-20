@@ -65,6 +65,7 @@ import {
 import {
   deriveBoxItemOxTruth,
   deriveDisplayChoiceOx,
+  stripLeadingOxMark,
 } from "~/features/problems/lib/auto-ox";
 import {
   type AdjacentProblem,
@@ -1554,7 +1555,11 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                                           </span>
                                           {bi.explanationMd ? (
                                             <span className="text-muted-foreground ml-2">
-                                              {bi.explanationMd}
+                                              {truth
+                                                ? stripLeadingOxMark(
+                                                    bi.explanationMd,
+                                                  )
+                                                : bi.explanationMd}
                                             </span>
                                           ) : null}
                                         </p>
@@ -1618,7 +1623,11 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                                       </span>
                                       {c.explanationMd ? (
                                         <span className="text-muted-foreground ml-2">
-                                          {c.explanationMd}
+                                          {label
+                                            ? stripLeadingOxMark(
+                                                c.explanationMd,
+                                              )
+                                            : c.explanationMd}
                                         </span>
                                       ) : null}
                                     </p>

@@ -31,6 +31,7 @@ import {
 import {
   deriveBoxItemOxTruth,
   deriveDisplayChoiceOx,
+  stripLeadingOxMark,
 } from "~/features/problems/lib/auto-ox";
 import { getProblemDetailsByIds } from "~/features/problems/queries.server";
 import {
@@ -726,7 +727,9 @@ function ExplanationBlock({ problem }: { problem: ProblemDetail }) {
                   <span className="font-semibold">{truth ?? "—"}</span>
                   {bi.explanationMd ? (
                     <span className="text-muted-foreground ml-2">
-                      {bi.explanationMd}
+                      {truth
+                        ? stripLeadingOxMark(bi.explanationMd)
+                        : bi.explanationMd}
                     </span>
                   ) : null}
                 </p>
@@ -769,7 +772,9 @@ function ExplanationBlock({ problem }: { problem: ProblemDetail }) {
               <span className="font-semibold">{label || "—"}</span>
               {c.explanationMd ? (
                 <span className="text-muted-foreground ml-2">
-                  {c.explanationMd}
+                  {label
+                    ? stripLeadingOxMark(c.explanationMd)
+                    : c.explanationMd}
                 </span>
               ) : null}
             </p>

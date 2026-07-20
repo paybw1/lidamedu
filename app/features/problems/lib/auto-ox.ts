@@ -66,6 +66,14 @@ export function deriveDisplayChoiceOx(args: {
   return applyPolarity(args.polarity, args.isCorrect);
 }
 
+// 해설 원문 앞머리 "○, " / "×, " 진위 표기 제거 — 화면에는 O/X 배지·정답 표시가
+// 별도로 붙어 이중 표기가 되므로 표시 직전에만 벗겨낸다(원문 데이터는 보존).
+const LEADING_OX_MARK_RE = /^\s*[○◯〇×✕]\s*[,，.、:：]?\s*/;
+
+export function stripLeadingOxMark(text: string): string {
+  return text.replace(LEADING_OX_MARK_RE, "");
+}
+
 export function deriveBoxItemOxTruth(args: {
   polarity: ProblemPolarity | null;
   format: ProblemFormat;

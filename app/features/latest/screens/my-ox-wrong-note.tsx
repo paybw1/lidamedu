@@ -20,6 +20,7 @@ import { Button } from "~/core/components/ui/button";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 import type { OxQuestionItem, OxTruth } from "~/features/problems/labels";
+import { stripLeadingOxMark } from "~/features/problems/lib/auto-ox";
 import {
   type OxWrongItem,
   listMyOxWrongNoteItems,
@@ -472,7 +473,7 @@ function QuestionCard({
             <details className="bg-muted/40 mt-1 rounded-lg border p-2.5 text-xs">
               <summary className="cursor-pointer font-semibold">해설</summary>
               <p className="text-foreground/80 mt-2 leading-relaxed whitespace-pre-wrap">
-                {item.explanationMd}
+                {stripLeadingOxMark(item.explanationMd)}
               </p>
             </details>
           )}

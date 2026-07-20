@@ -22,6 +22,7 @@ import { cn } from "~/core/lib/utils";
 import { BookmarkStars } from "~/features/annotations/components/bookmark-stars";
 import { CommentsPanel } from "~/features/comments/components/comments-panel";
 import { ORIGIN_LABEL, type ProblemOrigin } from "~/features/problems/labels";
+import { stripLeadingOxMark } from "~/features/problems/lib/auto-ox";
 import { stripLeadingMarker } from "~/features/problems/lib/ox-dedup";
 import type {
   OxQuestionItem,
@@ -625,7 +626,7 @@ function OxPanelCard({
           </p>
           {item.explanationMd ? (
             <p className="text-muted-foreground text-xs leading-relaxed">
-              {item.explanationMd}
+              {stripLeadingOxMark(item.explanationMd)}
             </p>
           ) : (
             <p className="text-muted-foreground text-xs italic">

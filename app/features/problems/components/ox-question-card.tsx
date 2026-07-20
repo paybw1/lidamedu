@@ -6,6 +6,7 @@ import { CircleIcon, XCircleIcon } from "lucide-react";
 import { Badge } from "~/core/components/ui/badge";
 import { cn } from "~/core/lib/utils";
 import type { OxQuestionItem, OxTruth } from "~/features/problems/labels";
+import { stripLeadingOxMark } from "~/features/problems/lib/auto-ox";
 
 export type Answer = OxTruth | null;
 
@@ -99,7 +100,7 @@ export function QuestionCard({
             <details className="bg-muted/40 mt-1 rounded-lg border p-2.5 text-xs">
               <summary className="cursor-pointer font-semibold">해설</summary>
               <p className="text-foreground/80 mt-2 leading-relaxed whitespace-pre-wrap">
-                {item.explanationMd}
+                {stripLeadingOxMark(item.explanationMd)}
               </p>
             </details>
           )}
