@@ -206,7 +206,7 @@ export interface LessonProgress {
   completed: boolean;
 }
 
-const COMPLETE_THRESHOLD = 0.9; // 완강 판정 — 회차 90% 이상 시청(정책 상수)
+const COMPLETE_THRESHOLD = 0.9; // 완강 판정 기본값 — 콘텐츠에 completion_threshold 없을 때
 
 export async function getLessonProgressForUser(
   userId: string,
@@ -214,15 +214,23 @@ export async function getLessonProgressForUser(
 ): Promise<Map<string, LessonProgress>> {
   const out = new Map<string, LessonProgress>();
   if (lessonIds.length === 0) return out;
-  // active 영상 길이
+  // active 영상 길이 + 완강 인정 기준(콘텐츠별 — feat-11-006. content_id 없으면 기본값)
   const durByLesson = new Map<string, number>();
+  const thresholdByLesson = new Map<string, number>();
   for (let i = 0; i < lessonIds.length; i += 150) {
     const { data: vids } = await adminClient
       .from("lesson_videos")
-      .select("lesson_id, duration_seconds")
+      .select("lesson_id, duration_seconds, content:video_contents(completion_threshold)")
       .in("lesson_id", lessonIds.slice(i, i + 150))
       .eq("is_active", true);
-    for (const v of vids ?? []) durByLesson.set(v.lesson_id, v.duration_seconds);
+    for (const v of vids ?? []) {
+      durByLesson.set(v.lesson_id, v.duration_seconds);
+      const content = v.content as { completion_threshold: number } | null;
+      thresholdByLesson.set(
+        v.lesson_id,
+        content ? Number(content.completion_threshold) : COMPLETE_THRESHOLD,
+      );
+    }
   }
   // 구간 수집 → union 병합
   const intervals = new Map<string, Array<[number, number]>>();
@@ -256,12 +264,13 @@ export async function getLessonProgressForUser(
     }
     if (curTo > curFrom) watched += curTo - curFrom;
     const ratio = duration > 0 ? Math.min(1, watched / duration) : 0;
+    const threshold = thresholdByLesson.get(lessonId) ?? COMPLETE_THRESHOLD;
     out.set(lessonId, {
       lessonId,
       watchedSeconds: watched,
       durationSeconds: duration,
       progressRatio: ratio,
-      completed: ratio >= COMPLETE_THRESHOLD,
+      completed: ratio >= threshold,
     });
   }
   return out;

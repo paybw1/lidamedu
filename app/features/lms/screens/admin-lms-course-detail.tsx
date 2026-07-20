@@ -31,8 +31,10 @@ import {
 } from "~/features/laws/queries.server";
 import {
   getCourseDetail,
+  listPickableContents,
   logEnrollmentAdminAction,
   type CourseDetail,
+  type PickableContent,
 } from "~/features/lms/queries.server";
 import {
   LAW_SUBJECT_SLUGS,
@@ -110,7 +112,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
         ),
       )
     : [];
-  return { course, role, nodeOptions };
+  const contents = await listPickableContents(client);
+  return { course, role, nodeOptions, contents };
 }
 
 const addLessonSchema = z.object({
@@ -119,9 +122,7 @@ const addLessonSchema = z.object({
 });
 const setVideoSchema = z.object({
   lessonId: z.string().uuid(),
-  drmProvider: z.string().trim().min(1).max(40),
-  drmVideoId: z.string().trim().min(1).max(300),
-  durationSeconds: z.coerce.number().int().min(1),
+  contentId: z.string().uuid(), // 콘텐츠 라이브러리에서 선택 — 키·재생시간은 콘텐츠에서 파생
   replacedReason: z.string().trim().max(300).optional(),
 });
 
@@ -206,12 +207,23 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (intent === "set_video") {
     const parsed = setVideoSchema.safeParse({
       lessonId: fd.get("lessonId"),
-      drmProvider: fd.get("drmProvider"),
-      drmVideoId: fd.get("drmVideoId"),
-      durationSeconds: fd.get("durationSeconds"),
+      contentId: fd.get("contentId"),
       replacedReason: fd.get("replacedReason") || undefined,
     });
-    if (!parsed.success) return data({ error: "영상 정보(ID·재생시간)를 확인해 주세요." }, { status: 400 });
+    if (!parsed.success) return data({ error: "연결할 콘텐츠를 선택해 주세요." }, { status: 400 });
+    // 콘텐츠 라이브러리에서 키·재생시간·공급자를 가져온다(수동 입력 폐지 — 단일 소스).
+    const { data: content } = await client
+      .from("video_contents")
+      .select("content_key, drm_provider, duration_seconds")
+      .eq("content_id", parsed.data.contentId)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (!content) return data({ error: "콘텐츠를 찾을 수 없습니다." }, { status: 404 });
+    if (!content.duration_seconds || content.duration_seconds < 1)
+      return data(
+        { error: "이 콘텐츠는 재생시간이 확정되지 않았습니다. 콘텐츠 라이브러리에서 콜러스 동기화 후 다시 시도하세요." },
+        { status: 400 },
+      );
     // 교체 = 기존 active false + 새 행 (원자화)
     const { data: prev } = await client
       .from("lesson_videos")
@@ -226,18 +238,20 @@ export async function action({ request, params }: Route.ActionArgs) {
         .eq("video_id", prev.video_id);
       if (error) return data({ error: error.message }, { status: 400 });
     }
+    // content_id 로 라이브러리를 참조하고, 재생 경로 호환을 위해 키·재생시간을 denormalize.
     const { error } = await client.from("lesson_videos").insert({
       lesson_id: parsed.data.lessonId,
-      drm_provider: parsed.data.drmProvider,
-      drm_video_id: parsed.data.drmVideoId,
-      duration_seconds: parsed.data.durationSeconds,
+      content_id: parsed.data.contentId,
+      drm_provider: content.drm_provider,
+      drm_video_id: content.content_key,
+      duration_seconds: content.duration_seconds,
       created_by: user.id,
     });
     if (error) return data({ error: error.message }, { status: 400 });
     // ★설계 §4.5 — duration 변경 시 배수 모수(스냅샷)는 자동 재계산하지 않고,
     //   영향 수강권 수·diff 를 응답해 관리자에게 조정 적용을 제안한다.
     const diffSeconds = prev
-      ? parsed.data.durationSeconds - prev.duration_seconds
+      ? content.duration_seconds - prev.duration_seconds
       : 0;
     let affectedCount = 0;
     if (diffSeconds !== 0) {
@@ -440,7 +454,7 @@ function fmtDuration(sec: number): string {
 }
 
 export default function AdminLmsCourseDetail({ loaderData }: Route.ComponentProps) {
-  const { course, role, nodeOptions } = loaderData;
+  const { course, role, nodeOptions, contents } = loaderData;
   return (
     <AdminShell
       cluster="lms"
@@ -460,6 +474,7 @@ export default function AdminLmsCourseDetail({ loaderData }: Route.ComponentProp
             key={lesson.lessonId}
             lesson={lesson}
             nodeOptions={nodeOptions}
+            contents={contents}
             isFirst={i === 0}
             isLast={i === course.lessons.length - 1}
           />
@@ -791,11 +806,13 @@ function AddLessonForm() {
 function LessonCard({
   lesson,
   nodeOptions,
+  contents,
   isFirst,
   isLast,
 }: {
   lesson: CourseDetail["lessons"][number];
   nodeOptions: NodeOption[];
+  contents: PickableContent[];
   isFirst: boolean;
   isLast: boolean;
 }) {
@@ -888,29 +905,30 @@ function LessonCard({
         </div>
       </div>
 
-      {/* 영상 등록/교체 */}
+      {/* 영상 등록/교체 — 콘텐츠 라이브러리에서 선택(키·재생시간 자동) */}
       <fetcher.Form method="post" className="bg-muted/20 border-border/60 flex flex-wrap items-end gap-2 rounded-lg border p-2.5">
         <input type="hidden" name="intent" value="set_video" />
         <input type="hidden" name="lessonId" value={lesson.lessonId} />
-        <label className="flex flex-col gap-1">
-          <span className="text-muted-foreground text-[10px] font-semibold">DRM 공급자</span>
-          <select name="drmProvider" defaultValue={lesson.activeVideo?.drmProvider ?? "kollus"}
-            className="border-input bg-background h-8 rounded-md border px-2 text-[12px]">
-            <option value="kollus">콜러스</option>
-            <option value="starplayer">스타플레이어</option>
-          </select>
-        </label>
-        <label className="flex min-w-[220px] flex-1 flex-col gap-1">
-          <span className="text-muted-foreground text-[10px] font-semibold">영상 ID (외부 콘텐츠 키)</span>
-          <input name="drmVideoId" required maxLength={300}
-            defaultValue={lesson.activeVideo?.drmVideoId ?? ""}
-            className="border-input bg-background h-8 rounded-md border px-2 font-mono text-[12px]" />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-muted-foreground text-[10px] font-semibold">재생시간(초)</span>
-          <input name="durationSeconds" type="number" required min={1}
-            defaultValue={lesson.activeVideo?.durationSeconds ?? ""}
-            className="border-input bg-background h-8 w-24 rounded-md border px-2 text-[12px] tabular-nums" />
+        <label className="flex min-w-[280px] flex-1 flex-col gap-1">
+          <span className="text-muted-foreground text-[10px] font-semibold">콘텐츠 (라이브러리)</span>
+          {contents.length === 0 ? (
+            <span className="text-muted-foreground py-1.5 text-[12px]">
+              등록된 콘텐츠가 없습니다 — <Link to="/admin/lms/contents" className="text-link font-semibold hover:underline">콘텐츠 라이브러리</Link>에서 콜러스 동기화 또는 콘텐츠를 먼저 등록하세요.
+            </span>
+          ) : (
+            <select name="contentId" required defaultValue={lesson.activeVideo?.contentId ?? ""}
+              className="border-input bg-background h-8 rounded-md border px-2 text-[12px]">
+              <option value="" disabled>콘텐츠 선택…</option>
+              {contents.map((c) => (
+                <option key={c.contentId} value={c.contentId}>
+                  {c.title}
+                  {c.durationSeconds ? ` · ${fmtDuration(c.durationSeconds)}` : " · 재생시간 미확정"}
+                  {c.groupName ? ` · ${c.groupName}` : ""}
+                  {c.encodingStatus !== "available" ? ` · [${c.encodingStatus}]` : ""}
+                </option>
+              ))}
+            </select>
+          )}
         </label>
         {lesson.activeVideo ? (
           <label className="flex min-w-[160px] flex-col gap-1">
@@ -919,7 +937,7 @@ function LessonCard({
               className="border-input bg-background h-8 rounded-md border px-2 text-[12px]" />
           </label>
         ) : null}
-        <Button type="submit" size="sm" variant="outline" className="h-8 text-[12px]" disabled={fetcher.state !== "idle"}>
+        <Button type="submit" size="sm" variant="outline" className="h-8 text-[12px]" disabled={contents.length === 0 || fetcher.state !== "idle"}>
           <RefreshCwIcon className="size-3" /> {lesson.activeVideo ? "영상 교체" : "영상 등록"}
         </Button>
       </fetcher.Form>

@@ -152,6 +152,7 @@ export interface CourseDetail {
       drmProvider: string;
       drmVideoId: string;
       durationSeconds: number;
+      contentId: string | null;
     } | null;
     replacedCount: number;
     materials: Array<{ materialId: string; title: string; isPublished: boolean }>;
@@ -184,7 +185,7 @@ export async function getCourseDetail(
   const lessonIds = (lessons ?? []).map((l) => l.lesson_id);
   const [videosRes, materialsRes, memosRes, linksRes] = await Promise.all([
     lessonIds.length
-      ? client.from("lesson_videos").select("video_id, lesson_id, drm_provider, drm_video_id, duration_seconds, is_active").in("lesson_id", lessonIds)
+      ? client.from("lesson_videos").select("video_id, lesson_id, drm_provider, drm_video_id, duration_seconds, is_active, content_id").in("lesson_id", lessonIds)
       : Promise.resolve({ data: [], error: null }),
     lessonIds.length
       ? client.from("lesson_materials").select("material_id, lesson_id, title, is_published").in("lesson_id", lessonIds).order("sort_order")
@@ -226,6 +227,7 @@ export async function getCourseDetail(
               drmProvider: active.drm_provider,
               drmVideoId: active.drm_video_id,
               durationSeconds: active.duration_seconds,
+              contentId: active.content_id,
             }
           : null,
         replacedCount: vids.filter((v) => !v.is_active).length,
@@ -300,6 +302,37 @@ export async function listContentGroups(
     courseType: g.course_type,
     bookTitle: g.book_title,
     staffMemo: g.staff_memo,
+  }));
+}
+
+// 회차 영상 등록 picker — 연결 가능한(활성) 라이브러리 콘텐츠. staff RLS.
+export interface PickableContent {
+  contentId: string;
+  title: string;
+  contentKey: string;
+  durationSeconds: number | null;
+  encodingStatus: string;
+  groupName: string | null;
+}
+
+export async function listPickableContents(
+  client: Client,
+): Promise<PickableContent[]> {
+  const { data } = await client
+    .from("video_contents")
+    .select(
+      "content_id, title, content_key, duration_seconds, encoding_status, group:content_groups(name)",
+    )
+    .is("deleted_at", null)
+    .eq("is_active", true)
+    .order("created_at", { ascending: false });
+  return (data ?? []).map((c) => ({
+    contentId: c.content_id,
+    title: c.title,
+    contentKey: c.content_key,
+    durationSeconds: c.duration_seconds,
+    encodingStatus: c.encoding_status,
+    groupName: (c.group as { name: string } | null)?.name ?? null,
   }));
 }
 
