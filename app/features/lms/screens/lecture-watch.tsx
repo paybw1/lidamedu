@@ -10,8 +10,10 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   LockIcon,
+  MaximizeIcon,
   PlayCircleIcon,
   PlayIcon,
+  XIcon,
 } from "lucide-react";
 import { Link, data } from "react-router";
 
@@ -19,6 +21,12 @@ import { Button } from "~/core/components/ui/button";
 import { cn } from "~/core/lib/utils";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
+import {
+  PLAYER_SIZES,
+  PLAYER_SIZE_LABEL,
+  type PlayerSize,
+  usePlayerSize,
+} from "~/features/lms/lib/use-player-size";
 import {
   PLAYBACK_DENY_MESSAGE,
   requestPlaybackGrant,
@@ -220,6 +228,25 @@ export default function LectureWatch({ loaderData }: Route.ComponentProps) {
     durationSeconds: loaderData.ok ? loaderData.durationSeconds : 0,
     enabled: loaderData.ok && Boolean(loaderData.playbackUrl),
   });
+  const { size, setSize, isFullscreen, toggleFullscreen, playerRef } =
+    usePlayerSize();
+  const theater = size === "max"; // 최대 = 집중(별도 화면) 오버레이
+  const showSidebar = size === "standard";
+
+  // 집중(별도 화면) 모드: 배경 페이지 스크롤 잠금 + ESC 이탈.
+  useEffect(() => {
+    if (!theater) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !document.fullscreenElement) setSize("standard");
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [theater, setSize]);
 
   const {
     courseLabel,
@@ -254,22 +281,129 @@ export default function LectureWatch({ loaderData }: Route.ComponentProps) {
         </span>
       </div>
 
-      <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div
+        className={cn(
+          "mt-4 gap-6",
+          showSidebar
+            ? "grid lg:grid-cols-[minmax(0,1fr)_340px]"
+            : "block",
+        )}
+      >
         {/* ── 플레이어 열 ── */}
         <div className="min-w-0">
           {loaderData.ok ? (
             loaderData.playbackUrl ? (
-              <div className="aspect-video w-full overflow-hidden rounded-xl bg-black shadow-sm">
-                <iframe
-                  src={loaderData.playbackUrl}
-                  title={lessonTitle}
-                  className="h-full w-full border-0"
-                  // local-network-access · loopback-network: 크롬142/엣지143 로컬 네트워크
-                  //   액세스 정책 강화로 Kollus 보안 에이전트 실행에 필요(미지정 시 "플레이어
-                  //   초기화 실패"). Kollus(카테노이드) 지원팀 안내. 사용자도 브라우저 권한 허용 필요.
-                  allow="autoplay; fullscreen; encrypted-media; picture-in-picture; local-network-access; loopback-network"
-                  allowFullScreen
-                />
+              <div>
+                {/* 화면 크기 툴바(집중 모드 아닐 때, 데스크톱 전용) */}
+                {!theater ? (
+                  <div className="mb-2 hidden items-center justify-end gap-2 lg:flex">
+                    <span className="text-muted-foreground text-xs font-medium">
+                      화면 크기
+                    </span>
+                    <PlayerSizeSegments
+                      size={size}
+                      onSize={setSize}
+                      tone="light"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={toggleFullscreen}
+                      className="h-8 gap-1.5"
+                    >
+                      <MaximizeIcon className="size-3.5" /> 전체화면
+                    </Button>
+                  </div>
+                ) : null}
+
+                {/* 크기 래퍼 — 집중 모드에선 고정 오버레이(별도 화면).
+                    ★iframe DOM 노드는 어느 크기에서도 재마운트되지 않아 재생 위치·
+                    하트비트가 유지된다(부모 className/style 만 변경). */}
+                <div
+                  className={
+                    theater
+                      ? "fixed inset-0 z-[60] flex flex-col bg-black"
+                      : "w-full"
+                  }
+                >
+                  {/* 집중 모드 헤더(오버레이일 때만) */}
+                  <div
+                    className={cn(
+                      "shrink-0 items-center justify-between gap-3 px-4 py-2",
+                      theater ? "flex" : "hidden",
+                    )}
+                  >
+                    <span className="min-w-0 truncate text-sm font-semibold text-white">
+                      {lessonNo}강 · {lessonTitle}
+                    </span>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <PlayerSizeSegments
+                        size={size}
+                        onSize={setSize}
+                        tone="dark"
+                      />
+                      <button
+                        type="button"
+                        onClick={toggleFullscreen}
+                        className="inline-flex items-center gap-1 rounded-md border border-white/20 px-2.5 py-1.5 text-xs font-semibold text-white/90 hover:bg-white/10"
+                      >
+                        <MaximizeIcon className="size-3.5" /> 전체화면
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSize("standard")}
+                        aria-label="집중 모드 닫기"
+                        className="inline-flex items-center gap-1 rounded-md border border-white/20 px-2.5 py-1.5 text-xs font-semibold text-white/90 hover:bg-white/10"
+                      >
+                        <XIcon className="size-3.5" /> 닫기
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 중앙 정렬 + (집중 모드) 높이 클램프 */}
+                  <div
+                    className={
+                      theater
+                        ? "flex min-h-0 flex-1 items-center justify-center px-3 pb-3"
+                        : ""
+                    }
+                  >
+                    <div
+                      className="w-full"
+                      style={
+                        theater
+                          ? {
+                              maxWidth:
+                                "min(100%, calc((100vh - 4rem) * 16 / 9))",
+                            }
+                          : undefined
+                      }
+                    >
+                      <div
+                        ref={playerRef}
+                        className={cn(
+                          "relative overflow-hidden bg-black",
+                          isFullscreen
+                            ? "flex h-full w-full items-center justify-center"
+                            : "aspect-video w-full",
+                          !theater && "rounded-xl shadow-sm",
+                        )}
+                      >
+                        <iframe
+                          src={loaderData.playbackUrl}
+                          title={lessonTitle}
+                          className="h-full w-full border-0"
+                          // local-network-access · loopback-network: 크롬142/엣지143 로컬 네트워크
+                          //   액세스 정책 강화로 Kollus 보안 에이전트 실행에 필요(미지정 시 "플레이어
+                          //   초기화 실패"). Kollus(카테노이드) 지원팀 안내. 사용자도 브라우저 권한 허용 필요.
+                          allow="autoplay; fullscreen; encrypted-media; picture-in-picture; local-network-access; loopback-network"
+                          allowFullScreen
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             ) : (
               <PlayerPlaceholder />
@@ -308,8 +442,13 @@ export default function LectureWatch({ loaderData }: Route.ComponentProps) {
           ) : null}
         </div>
 
-        {/* ── 목차 열 (sticky) ── */}
-        <aside className="lg:sticky lg:top-20 lg:self-start">
+        {/* ── 목차 열 (sticky) — 확대/집중 모드에선 숨김 ── */}
+        <aside
+          className={cn(
+            "lg:self-start",
+            showSidebar ? "lg:sticky lg:top-20" : "hidden",
+          )}
+        >
           <div className="bg-card overflow-hidden rounded-xl border">
             <div className="border-b px-4 py-3">
               <div className="flex items-center justify-between">
@@ -343,6 +482,50 @@ export default function LectureWatch({ loaderData }: Route.ComponentProps) {
           </div>
         </aside>
       </div>
+    </div>
+  );
+}
+
+// 화면 크기 세그먼트(기본/확대/최대). tone: light=본문 툴바 / dark=집중 오버레이 헤더.
+function PlayerSizeSegments({
+  size,
+  onSize,
+  tone,
+}: {
+  size: PlayerSize;
+  onSize: (s: PlayerSize) => void;
+  tone: "light" | "dark";
+}) {
+  return (
+    <div
+      className={cn(
+        "inline-flex overflow-hidden rounded-lg border",
+        tone === "dark" ? "border-white/20" : "border-border",
+      )}
+      role="group"
+      aria-label="영상 화면 크기"
+    >
+      {PLAYER_SIZES.map((s) => {
+        const active = size === s;
+        return (
+          <button
+            key={s}
+            type="button"
+            onClick={() => onSize(s)}
+            aria-pressed={active}
+            className={cn(
+              "px-3 py-1.5 text-xs font-semibold transition-colors",
+              active
+                ? "bg-primary text-primary-foreground"
+                : tone === "dark"
+                  ? "bg-transparent text-white/80 hover:bg-white/10"
+                  : "bg-background text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {PLAYER_SIZE_LABEL[s]}
+          </button>
+        );
+      })}
     </div>
   );
 }
