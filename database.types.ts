@@ -4333,6 +4333,124 @@ export type Database = {
           },
         ]
       }
+      course_review_reports: {
+        Row: {
+          created_at: string
+          reason: string | null
+          report_id: string
+          reporter_id: string
+          review_id: string
+        }
+        Insert: {
+          created_at?: string
+          reason?: string | null
+          report_id?: string
+          reporter_id: string
+          review_id: string
+        }
+        Update: {
+          created_at?: string
+          reason?: string | null
+          report_id?: string
+          reporter_id?: string
+          review_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_review_reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "course_review_reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "course_review_reports_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "course_reviews"
+            referencedColumns: ["review_id"]
+          },
+        ]
+      }
+      course_reviews: {
+        Row: {
+          admin_reply: string | null
+          admin_reply_at: string | null
+          author_id: string
+          blind_reason: string | null
+          body: string
+          created_at: string
+          deleted_at: string | null
+          is_best: boolean
+          is_blinded: boolean
+          is_public: boolean
+          rating: number
+          report_count: number
+          review_id: string
+          target_id: string
+          target_type: string
+          updated_at: string
+        }
+        Insert: {
+          admin_reply?: string | null
+          admin_reply_at?: string | null
+          author_id: string
+          blind_reason?: string | null
+          body?: string
+          created_at?: string
+          deleted_at?: string | null
+          is_best?: boolean
+          is_blinded?: boolean
+          is_public?: boolean
+          rating: number
+          report_count?: number
+          review_id?: string
+          target_id: string
+          target_type: string
+          updated_at?: string
+        }
+        Update: {
+          admin_reply?: string | null
+          admin_reply_at?: string | null
+          author_id?: string
+          blind_reason?: string | null
+          body?: string
+          created_at?: string
+          deleted_at?: string | null
+          is_best?: boolean
+          is_blinded?: boolean
+          is_public?: boolean
+          rating?: number
+          report_count?: number
+          review_id?: string
+          target_id?: string
+          target_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_reviews_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "course_reviews_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       course_series: {
         Row: {
           created_at: string

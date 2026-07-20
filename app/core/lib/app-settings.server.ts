@@ -7,6 +7,9 @@ import type { Database, Json } from "database.types";
 // 최근 판례(/latest/cases) 노출 기간 — 롤링 개월 수. 0 = 기간 제한 없음.
 export const LATEST_CASES_RECENCY_MONTHS_KEY = "latest_cases_recency_months";
 
+// 도서 무료배송 임계(원). 도서 결제금액 합계가 이 값 이상이면 배송비 면제. 0 = 미적용.
+export const FREE_SHIPPING_THRESHOLD_KEY = "free_shipping_threshold_krw";
+
 /** app_settings 한 키의 값. 없으면 null. */
 export async function getAppSetting(
   client: SupabaseClient<Database>,
@@ -46,6 +49,16 @@ export async function getLatestCasesRecencyMonths(
   client: SupabaseClient<Database>,
 ): Promise<number> {
   const raw = await getAppSetting(client, LATEST_CASES_RECENCY_MONTHS_KEY);
+  return typeof raw === "number" && Number.isFinite(raw) && raw > 0
+    ? Math.floor(raw)
+    : 0;
+}
+
+/** 도서 무료배송 임계(원). 미설정·비정상값은 0(미적용). */
+export async function getFreeShippingThresholdKrw(
+  client: SupabaseClient<Database>,
+): Promise<number> {
+  const raw = await getAppSetting(client, FREE_SHIPPING_THRESHOLD_KEY);
   return typeof raw === "number" && Number.isFinite(raw) && raw > 0
     ? Math.floor(raw)
     : 0;

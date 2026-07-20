@@ -3,6 +3,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
+import { getFreeShippingThresholdKrw } from "~/core/lib/app-settings.server";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import type { CartLineForCoupon } from "~/features/coupons/labels";
 import { getPlanByCode } from "~/features/subscriptions/queries.server";
@@ -34,6 +35,7 @@ export async function resolveCartItems(
   const couponLines: CartLineForCoupon[] = [];
   const names: string[] = [];
   let shippingFeeKrw = 0;
+  let bookGoodsKrw = 0; // 도서(단품·세트) 결제금액 합 — 무료배송 임계 판정 기준.
 
   for (const it of rawItems) {
     if (it.kind === "plan") {
@@ -80,6 +82,7 @@ export async function resolveCartItems(
       }
       if (book.shipping_fee_type === "prepaid")
         shippingFeeKrw += book.shipping_fee_krw ?? 0;
+      bookGoodsKrw += book.price_krw * it.quantity;
       items.push({
         itemType: "book",
         bookId: book.book_id,
@@ -134,8 +137,15 @@ export async function resolveCartItems(
         });
       });
       couponLines.push({ kind: "bundle", amountKrw: bundle.price_krw });
+      bookGoodsKrw += bundle.price_krw;
       names.push(`[세트] ${bundle.title}`);
     }
+  }
+
+  // 도서 무료배송 임계 — 도서 결제금액 합이 임계 이상이면 배송비 면제.
+  if (shippingFeeKrw > 0) {
+    const threshold = await getFreeShippingThresholdKrw(client);
+    if (threshold > 0 && bookGoodsKrw >= threshold) shippingFeeKrw = 0;
   }
 
   return { ok: true, items, couponLines, names, shippingFeeKrw };

@@ -28,6 +28,12 @@ import {
   getBookDetail,
   getWishlistBookIds,
 } from "~/features/bookstore/queries.server";
+import { ReviewsSection } from "~/features/lms/components/reviews-section";
+import {
+  getMyReview,
+  isPurchaser,
+  listPublicReviews,
+} from "~/features/lms/reviews.server";
 
 import { BookCover } from "./bookstore-catalog";
 
@@ -70,6 +76,11 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       .limit(1);
     owned = (oi ?? []).length > 0;
   }
+  const [{ reviews, summary }, myReview, canWrite] = await Promise.all([
+    listPublicReviews(client, "book", bookId),
+    user ? getMyReview(client, user.id, "book", bookId) : Promise.resolve(null),
+    user ? isPurchaser(client, user.id, "book", bookId) : Promise.resolve(false),
+  ]);
   return {
     book,
     isAuthed: Boolean(user),
@@ -77,12 +88,26 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     restockRequested,
     owned,
     tossClientKey: process.env.TOSS_CLIENT_KEY ?? null,
+    reviews,
+    summary,
+    myReview,
+    canWrite,
   };
 }
 
 export default function BookDetail({ loaderData }: Route.ComponentProps) {
-  const { book, isAuthed, wishlisted, restockRequested, owned, tossClientKey } =
-    loaderData;
+  const {
+    book,
+    isAuthed,
+    wishlisted,
+    restockRequested,
+    owned,
+    tossClientKey,
+    reviews,
+    summary,
+    myReview,
+    canWrite,
+  } = loaderData;
   const { addBook, has } = useCart();
   const [qty, setQty] = useState(1);
   const inCart = has(`book:${book.bookId}`);
@@ -288,6 +313,18 @@ export default function BookDetail({ loaderData }: Route.ComponentProps) {
           </ul>
         </section>
       ) : null}
+
+      {/* 교재평 */}
+      <ReviewsSection
+        targetType="book"
+        targetId={book.bookId}
+        reviews={reviews}
+        summary={summary}
+        myReview={myReview}
+        canWrite={canWrite}
+        isLoggedIn={isAuthed}
+        title="교재평"
+      />
     </div>
   );
 }

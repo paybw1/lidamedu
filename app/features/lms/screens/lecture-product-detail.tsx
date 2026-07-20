@@ -18,7 +18,13 @@ import { useCart } from "~/features/lms/lib/cart";
 import {
   LECTURE_CATEGORY_LABEL,
 } from "~/features/lms/lib/lecture-category";
+import { ReviewsSection } from "~/features/lms/components/reviews-section";
 import { listSellableLectureProducts } from "~/features/lms/queries.server";
+import {
+  getMyReview,
+  isPurchaser,
+  listPublicReviews,
+} from "~/features/lms/reviews.server";
 import { PRODUCT_KIND_LABEL } from "~/features/subscriptions/labels";
 
 import type { Route } from "./+types/lecture-product-detail";
@@ -37,17 +43,27 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const products = await listSellableLectureProducts(client, user?.id ?? null);
   const product = products.find((p) => p.code === params.productCode);
   if (!product) throw data("강의를 찾을 수 없습니다", { status: 404 });
+  const [{ reviews, summary }, myReview, canWrite] = await Promise.all([
+    listPublicReviews(client, "plan", product.planId),
+    user ? getMyReview(client, user.id, "plan", product.planId) : Promise.resolve(null),
+    user ? isPurchaser(client, user.id, "plan", product.planId) : Promise.resolve(false),
+  ]);
   return {
     product,
     isAuthed: Boolean(user),
     tossClientKey: process.env.TOSS_CLIENT_KEY ?? null,
+    reviews,
+    summary,
+    myReview,
+    canWrite,
   };
 }
 
 export default function LectureProductDetail({
   loaderData,
 }: Route.ComponentProps) {
-  const { product, isAuthed, tossClientKey } = loaderData;
+  const { product, isAuthed, tossClientKey, reviews, summary, myReview, canWrite } =
+    loaderData;
   const { addPlan, addBook, has } = useCart();
   const isTpass = product.productKind === "tpass";
   const inCart = has(`plan:${product.code}`);
@@ -200,6 +216,18 @@ export default function LectureProductDetail({
           </ul>
         </section>
       ) : null}
+
+      {/* 수강평 */}
+      <ReviewsSection
+        targetType="plan"
+        targetId={product.planId}
+        reviews={reviews}
+        summary={summary}
+        myReview={myReview}
+        canWrite={canWrite}
+        isLoggedIn={isAuthed}
+        title="수강평"
+      />
 
       {/* 하단 sticky 구매 바 */}
       <div className="bg-background/95 fixed inset-x-0 bottom-0 z-40 border-t backdrop-blur">

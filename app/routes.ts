@@ -799,6 +799,10 @@ export default [
         "features/lms/screens/admin-lms-contents.tsx",
       ),
       route(
+        "/admin/lms/reviews",
+        "features/lms/screens/admin-lms-reviews.tsx",
+      ),
+      route(
         "/admin/lms/enrollments",
         "features/lms/screens/admin-lms-enrollments.tsx",
       ),
@@ -836,6 +840,8 @@ export default [
       ),
       // feat-11-006 Phase 3 — HTML 에디터 이미지 업로드(staff 전용).
       route("/api/lms/editor-image", "features/lms/api/editor-image.tsx"),
+      // feat-11-006 Phase 4 — 수강평/교재평 학생 뮤테이션.
+      route("/api/lms/review", "features/lms/api/review.tsx"),
       // 관리자 관리 — 운영 업무별 알림 담당자 지정 (admin 전용).
       route(
         "/admin/staff-duties",

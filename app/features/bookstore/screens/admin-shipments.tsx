@@ -6,9 +6,15 @@ import { Form, data, useFetcher } from "react-router";
 import { toast } from "sonner";
 
 import { Button } from "~/core/components/ui/button";
+import {
+  FREE_SHIPPING_THRESHOLD_KEY,
+  getFreeShippingThresholdKrw,
+  setAppSetting,
+} from "~/core/lib/app-settings.server";
 import { roleAtLeast } from "~/core/lib/roles";
 import makeServerClient from "~/core/lib/supa-client.server";
 import adminClient from "~/core/lib/supa-admin-client.server";
+import { Input } from "~/core/components/ui/input";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Chip, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
 import { hasDutyAccess } from "~/features/admin/lib/duties.server";
@@ -44,11 +50,12 @@ async function requireManager(request: Request) {
   if (!(await hasDutyAccess("lms_orders_admin", user.id, role))) {
     throw data("Forbidden — 관리자 관리에서 접근 권한을 배정받아야 합니다.", { status: 403 });
   }
-  return { user, role };
+  return { client, user, role };
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const { role } = await requireManager(request);
+  const { client, role } = await requireManager(request);
+  const freeShippingThreshold = await getFreeShippingThresholdKrw(client);
   const url = new URL(request.url);
   const status = url.searchParams.get("status") ?? "";
   let q = adminClient
@@ -64,6 +71,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   return {
     role,
     status,
+    freeShippingThreshold,
     rows: (rows ?? []).map((s) => {
       const item = s.item as {
         quantity: number;
@@ -90,8 +98,22 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  await requireManager(request);
+  const { client, user } = await requireManager(request);
   const fd = await request.formData();
+
+  if (fd.get("intent") === "set_free_shipping") {
+    const raw = Math.trunc(Number(fd.get("threshold") ?? 0));
+    const value = Number.isFinite(raw) && raw > 0 ? raw : 0;
+    const res = await setAppSetting(
+      client,
+      FREE_SHIPPING_THRESHOLD_KEY,
+      value,
+      user.id,
+    );
+    if (!res.ok) return data({ error: res.error }, { status: 400 });
+    return data({ ok: true as const });
+  }
+
   const shipmentId = String(fd.get("shipmentId") ?? "");
   const status = String(fd.get("status") ?? "");
   const courier = String(fd.get("courier") ?? "").trim() || null;
@@ -106,7 +128,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function AdminShipments({ loaderData }: Route.ComponentProps) {
-  const { rows, status, role } = loaderData;
+  const { rows, status, role, freeShippingThreshold } = loaderData;
   return (
     <AdminShell
       cluster="lms"
@@ -119,6 +141,7 @@ export default function AdminShipments({ loaderData }: Route.ComponentProps) {
         </Chip>
       }
     >
+      <FreeShippingSetting threshold={freeShippingThreshold} />
       <Form method="get" className="mb-3 flex items-center gap-2">
         <select name="status" defaultValue={status} className="border-input bg-background h-9 rounded-lg border px-2 text-sm">
           <option value="">전체 상태</option>
@@ -150,6 +173,46 @@ export default function AdminShipments({ loaderData }: Route.ComponentProps) {
         </IndexTable>
       )}
     </AdminShell>
+  );
+}
+
+function FreeShippingSetting({ threshold }: { threshold: number }) {
+  const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  useEffect(() => {
+    if (fetcher.state !== "idle" || !fetcher.data) return;
+    if (fetcher.data.error) toast.error(fetcher.data.error);
+    else if (fetcher.data.ok) toast.success("무료배송 기준을 저장했습니다.");
+  }, [fetcher.state, fetcher.data]);
+  return (
+    <fetcher.Form
+      method="post"
+      className="border-border bg-muted/20 mb-3 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2.5 text-sm"
+    >
+      <input type="hidden" name="intent" value="set_free_shipping" />
+      <span className="font-semibold">도서 무료배송 기준</span>
+      <span className="text-muted-foreground text-xs">
+        도서 결제금액 합이 이 금액 이상이면 배송비 면제 (0 = 미적용)
+      </span>
+      <Input
+        name="threshold"
+        type="number"
+        min={0}
+        step={1000}
+        defaultValue={threshold}
+        className="h-8 w-32"
+      />
+      <span className="text-muted-foreground text-xs">원</span>
+      <Button type="submit" size="sm" variant="outline" className="h-8" disabled={fetcher.state !== "idle"}>
+        저장
+      </Button>
+      {threshold > 0 ? (
+        <Chip tone="emerald">
+          현재 {threshold.toLocaleString("ko-KR")}원 이상 무료배송
+        </Chip>
+      ) : (
+        <Chip tone="outline">미적용</Chip>
+      )}
+    </fetcher.Form>
   );
 }
 
