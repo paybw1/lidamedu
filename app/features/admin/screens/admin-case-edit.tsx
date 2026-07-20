@@ -24,7 +24,13 @@ import {
   MARKDOWN_TABLE_TEMPLATE,
   clipboardToMarkdownTable,
 } from "~/features/cases/lib/case-markdown";
+import {
+  findTableBlocks,
+  replaceTableBlock,
+  type TableBlock,
+} from "~/features/cases/lib/table-grid";
 import { Prose } from "~/features/cases/components/case-body";
+import { TableGridEditor } from "~/features/cases/components/table-grid-editor";
 
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
@@ -1736,7 +1742,29 @@ function ReflowableTextarea({
     defaultValue ?? "",
   );
   const [pasteUploading, setPasteUploading] = useState(false);
+  // 표 시각 편집 — 진입 시점의 본문 스냅샷(source)과 대상 표 블록을 잡아두고, 적용 시
+  // 그 스냅샷에서 해당 표 블록만 교체(편집 중엔 textarea 를 만지지 않아 오프셋 안정).
+  const [tableEditing, setTableEditing] = useState<{
+    block: TableBlock;
+    source: string;
+  } | null>(null);
   const previewText = isControlled ? (value ?? "") : uncontrolledMirror;
+
+  // 본문 전체를 교체(표 편집 적용) — controlled/uncontrolled 양경로 지원.
+  function setWholeValue(next: string) {
+    if (isControlled) {
+      onChange?.(next);
+    } else if (ref.current) {
+      ref.current.value = next;
+      setUncontrolledMirror(next);
+    }
+  }
+
+  // 미리보기에 렌더되는 편집 가능한 표 목록(순서=Prose 표시 순서).
+  const editableTables = useMemo(
+    () => findTableBlocks(previewText).filter((b) => b.editable),
+    [previewText],
+  );
 
   // cursor 위치(또는 selection 끝)에 텍스트를 삽입하고 cursor 를 삽입 직후로 이동.
   // pos 가 주어지면 그 위치를 기준(async upload 후 호출), 없으면 현재 selection.
@@ -1955,7 +1983,42 @@ function ReflowableTextarea({
         {previewOn ? (
           <div className="border-border bg-muted/20 max-h-[400px] overflow-y-auto rounded-md border p-3">
             {previewText.trim() ? (
-              <Prose text={previewText} />
+              <>
+                <Prose text={previewText} />
+                {editableTables.length > 0 ? (
+                  <div className="border-border mt-3 flex flex-wrap items-center gap-1.5 border-t pt-2">
+                    <span className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
+                      표 편집
+                    </span>
+                    {editableTables.map((b) => {
+                      const firstCell =
+                        b.markdown
+                          .split("\n")[0]
+                          ?.replace(/^\|/, "")
+                          .split("|")[0]
+                          ?.trim() ?? "";
+                      return (
+                        <button
+                          key={b.ordinal}
+                          type="button"
+                          onClick={() =>
+                            setTableEditing({ block: b, source: previewText })
+                          }
+                          className="hover:bg-accent inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px]"
+                          title="이 표를 그리드로 편집"
+                        >
+                          ✎ 표 {b.ordinal + 1}
+                          {firstCell ? (
+                            <span className="text-muted-foreground max-w-[8rem] truncate">
+                              · {firstCell}
+                            </span>
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </>
             ) : (
               <p className="text-muted-foreground text-xs italic">
                 미리보기 — 본문을 입력하면 여기에 실시간 표시됩니다 (이미지 표
@@ -1965,6 +2028,21 @@ function ReflowableTextarea({
           </div>
         ) : null}
       </div>
+      {tableEditing ? (
+        <div className="mt-2">
+          <TableGridEditor
+            initialMarkdown={tableEditing.block.markdown}
+            onApply={(md) => {
+              setWholeValue(
+                replaceTableBlock(tableEditing.source, tableEditing.block, md),
+              );
+              setTableEditing(null);
+              toast.success(`${fieldLabel} 표가 수정됐습니다 — 저장을 눌러 반영하세요.`);
+            }}
+            onCancel={() => setTableEditing(null)}
+          />
+        </div>
+      ) : null}
     </>
   );
 }
