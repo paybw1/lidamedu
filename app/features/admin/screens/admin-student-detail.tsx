@@ -76,10 +76,14 @@ import {
 } from "~/features/admin/queries/student-activity.server";
 import {
   getMemberProfile,
+  listMemberCoupons,
+  listMemberOrders,
   listUserAccessLogs,
   listUserBookDownloads,
   type AccessLogRow,
   type DownloadRow,
+  type MemberCoupons,
+  type MemberOrder,
   type MemberProfile,
 } from "~/features/admin/queries/member-crm.server";
 import { isPasswordLoginEnabled } from "~/features/auth/settings.server";
@@ -296,17 +300,33 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   // ── feat-7-046 회원 CRM — 회원정보/이력 데이터 ──
   // 회원정보(신원·연락처·로그인 계정)는 instructor 도 조회 가능(로더가 조회 권한 통과).
   // 접속 로그·다운로드는 IP 등 민감 정보라 manager+ 만.
-  const [memberProfile, accessLogs, bookDownloads, passwordLoginEnabled] =
-    await Promise.all([
-      getMemberProfile(params.profileId),
-      roleAtLeast(role, "manager")
-        ? listUserAccessLogs(params.profileId, 40)
-        : Promise.resolve([] as AccessLogRow[]),
-      roleAtLeast(role, "manager")
-        ? listUserBookDownloads(params.profileId, 40)
-        : Promise.resolve([] as DownloadRow[]),
-      isPasswordLoginEnabled(client),
-    ]);
+  const [
+    memberProfile,
+    accessLogs,
+    bookDownloads,
+    passwordLoginEnabled,
+    memberOrders,
+    memberCoupons,
+  ] = await Promise.all([
+    getMemberProfile(params.profileId),
+    roleAtLeast(role, "manager")
+      ? listUserAccessLogs(params.profileId, 40)
+      : Promise.resolve([] as AccessLogRow[]),
+    roleAtLeast(role, "manager")
+      ? listUserBookDownloads(params.profileId, 40)
+      : Promise.resolve([] as DownloadRow[]),
+    isPasswordLoginEnabled(client),
+    roleAtLeast(role, "manager")
+      ? listMemberOrders(params.profileId)
+      : Promise.resolve([] as MemberOrder[]),
+    roleAtLeast(role, "manager")
+      ? listMemberCoupons(params.profileId)
+      : Promise.resolve({
+          subscription: [],
+          lectureGrants: [],
+          lectureRedemptions: [],
+        } as MemberCoupons),
+  ]);
   const memberHeader = {
     memberNo: memberProfile?.memberNo ?? null,
     phoneE164: memberProfile?.phoneE164 ?? null,
@@ -326,6 +346,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     accessLogs,
     bookDownloads,
     recentStudyDays,
+    memberOrders,
+    memberCoupons,
     cohortComparisons,
     notes,
     csActions,
@@ -372,6 +394,8 @@ export default function AdminStudentDetail({
     accessLogs,
     bookDownloads,
     recentStudyDays,
+    memberOrders,
+    memberCoupons,
     cohortComparisons,
     notes,
     csActions,
@@ -407,7 +431,7 @@ export default function AdminStudentDetail({
   // Stage 0 (feat-7-046) — CRM 탭. #activity/#watch-history → 활동·결제,
   // #notes/#cs-history → 상담·메모 로 딥링크 보존(기존 /admin/users 링크 앵커).
   const [tab, setTab] = useState<
-    "study" | "info" | "history" | "memo" | "activity"
+    "study" | "info" | "history" | "orders" | "coupons" | "memo" | "activity"
   >("study");
   useEffect(() => {
     const h = window.location.hash.replace("#", "");
@@ -535,6 +559,8 @@ export default function AdminStudentDetail({
           {isAdmin ? (
             <TabsTrigger value="history">회원이력</TabsTrigger>
           ) : null}
+          {isAdmin ? <TabsTrigger value="orders">주문</TabsTrigger> : null}
+          {isAdmin ? <TabsTrigger value="coupons">쿠폰</TabsTrigger> : null}
           <TabsTrigger value="memo">상담·메모</TabsTrigger>
           {isAdmin ? (
             <TabsTrigger value="activity">활동·결제</TabsTrigger>
@@ -814,6 +840,18 @@ export default function AdminStudentDetail({
               bookDownloads={bookDownloads}
               accessLogs={accessLogs}
             />
+          </TabsContent>
+        ) : null}
+
+        {isAdmin ? (
+          <TabsContent value="orders" className="mt-3">
+            <MemberOrdersTab orders={memberOrders} />
+          </TabsContent>
+        ) : null}
+
+        {isAdmin ? (
+          <TabsContent value="coupons" className="mt-3">
+            <MemberCouponsTab coupons={memberCoupons} />
           </TabsContent>
         ) : null}
 
@@ -1268,6 +1306,278 @@ function MemberHistoryTab({
                 ))}
               </TableBody>
             </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ── feat-7-046 주문 탭 ────────────────────────────────────────────────────
+const ORDER_STATUS_LABEL: Record<string, string> = {
+  pending_payment: "결제 대기",
+  pending_deposit: "입금 대기",
+  paid: "결제 완료",
+  partially_refunded: "부분 환불",
+  refunded: "환불 완료",
+  cancelled: "취소",
+  failed: "실패",
+  draft: "임시",
+};
+const ORDER_STATUS_TONE: Record<string, string> = {
+  paid: "text-emerald-600 dark:text-emerald-400",
+  refunded: "text-rose-600 dark:text-rose-400",
+  partially_refunded: "text-amber-600 dark:text-amber-400",
+};
+const REFUND_STATUS_LABEL: Record<string, string> = {
+  pending: "환불 요청",
+  approved: "환불 승인",
+  rejected: "환불 거절",
+};
+
+function MemberOrdersTab({ orders }: { orders: MemberOrder[] }) {
+  if (orders.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-10">
+          <HistEmpty text="주문 내역이 없습니다." />
+        </CardContent>
+      </Card>
+    );
+  }
+  return (
+    <div className="space-y-3">
+      {orders.map((o) => (
+        <Card key={o.orderId}>
+          <CardHeader className="flex flex-row items-start justify-between gap-2 pb-2">
+            <div>
+              <p className="text-sm font-semibold">
+                주문 {o.orderNo}
+                <span
+                  className={cn(
+                    "ml-2 text-xs font-bold",
+                    ORDER_STATUS_TONE[o.status] ?? "text-foreground",
+                  )}
+                >
+                  {ORDER_STATUS_LABEL[o.status] ?? o.status}
+                </span>
+              </p>
+              <p className="text-muted-foreground text-xs tabular-nums">
+                {o.createdAt.slice(0, 10)} · {o.paymentMethod ?? "-"}
+              </p>
+            </div>
+            <p className="shrink-0 text-sm font-bold tabular-nums">
+              ₩{o.totalKrw.toLocaleString("ko-KR")}
+            </p>
+          </CardHeader>
+          <Separator />
+          <CardContent className="p-0">
+            <ul className="divide-y">
+              {o.items.map((it) => (
+                <li
+                  key={it.orderItemId}
+                  className="flex items-center justify-between gap-2 px-4 py-2 text-sm"
+                >
+                  <span className="min-w-0">
+                    <span className="font-medium">{it.label}</span>
+                    <span className="text-muted-foreground text-xs">
+                      {" · "}
+                      {it.itemType === "book" ? "도서" : "강의"}
+                      {it.quantity > 1 ? ` ×${it.quantity}` : ""}
+                    </span>
+                    {it.refundedAt ? (
+                      <span className="ml-1">
+                        <Chip tone="outline">환불됨</Chip>
+                      </span>
+                    ) : null}
+                    {it.refundStatus ? (
+                      <span className="ml-1 text-xs text-amber-600 dark:text-amber-400">
+                        {REFUND_STATUS_LABEL[it.refundStatus] ?? it.refundStatus}
+                      </span>
+                    ) : null}
+                    {it.shipment ? (
+                      <span className="text-muted-foreground ml-1 text-xs">
+                        · 배송 {it.shipment.status}
+                        {it.shipment.trackingNo
+                          ? ` (${it.shipment.trackingNo})`
+                          : ""}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
+                    ₩{it.unitPriceKrw.toLocaleString("ko-KR")}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// ── feat-7-046 쿠폰 탭 ────────────────────────────────────────────────────
+function CouponChip({
+  status,
+}: {
+  status: "available" | "used" | "expired" | "revoked";
+}) {
+  const map = {
+    available: {
+      label: "보유",
+      cls: "border-emerald-500 text-emerald-700 dark:text-emerald-300",
+    },
+    used: { label: "사용", cls: "text-muted-foreground" },
+    expired: { label: "만료", cls: "text-muted-foreground" },
+    revoked: { label: "회수", cls: "text-rose-600 dark:text-rose-400" },
+  }[status];
+  return (
+    <span
+      className={cn(
+        "rounded border px-1.5 py-0.5 text-[10px] font-semibold",
+        map.cls,
+      )}
+    >
+      {map.label}
+    </span>
+  );
+}
+
+function MemberCouponsTab({ coupons }: { coupons: MemberCoupons }) {
+  const now = Date.now();
+  const fmtDt = (s: string | null) => (s ? s.slice(0, 10) : "—");
+  const subStatus = (
+    c: MemberCoupons["subscription"][number],
+  ): "available" | "used" | "expired" =>
+    c.usedAt
+      ? "used"
+      : c.expiresAt && new Date(c.expiresAt).getTime() < now
+        ? "expired"
+        : "available";
+  const grantStatus = (
+    g: MemberCoupons["lectureGrants"][number],
+  ): "available" | "revoked" | "expired" =>
+    g.revokedAt
+      ? "revoked"
+      : g.expiresAt && new Date(g.expiresAt).getTime() < now
+        ? "expired"
+        : "available";
+
+  const empty =
+    coupons.subscription.length === 0 &&
+    coupons.lectureGrants.length === 0 &&
+    coupons.lectureRedemptions.length === 0;
+  if (empty) {
+    return (
+      <Card>
+        <CardContent className="py-10">
+          <HistEmpty text="쿠폰 내역이 없습니다." />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="pb-2">
+          <p className="text-sm font-semibold">구독 쿠폰</p>
+          <p className="text-muted-foreground text-xs">
+            수강권·구독 할인 (user_coupons)
+          </p>
+        </CardHeader>
+        <Separator />
+        <CardContent className="p-0">
+          {coupons.subscription.length === 0 ? (
+            <HistEmpty text="구독 쿠폰이 없습니다." />
+          ) : (
+            <ul className="divide-y">
+              {coupons.subscription.map((c) => (
+                <li
+                  key={c.id}
+                  className="flex items-center justify-between gap-2 px-4 py-2 text-sm"
+                >
+                  <span className="min-w-0">
+                    <span className="font-medium">{c.name}</span>
+                    <span className="text-muted-foreground text-xs">
+                      {" "}
+                      {c.valueLabel}
+                      {c.code ? ` · ${c.code}` : ""}
+                    </span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2">
+                    <span className="text-muted-foreground text-xs tabular-nums">
+                      {c.usedAt
+                        ? `사용 ${fmtDt(c.usedAt)}`
+                        : `만료 ${fmtDt(c.expiresAt)}`}
+                    </span>
+                    <CouponChip status={subStatus(c)} />
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <p className="text-sm font-semibold">강의 쿠폰</p>
+          <p className="text-muted-foreground text-xs">
+            강의몰 장바구니 쿠폰 (발급·사용)
+          </p>
+        </CardHeader>
+        <Separator />
+        <CardContent className="p-0">
+          {coupons.lectureGrants.length === 0 &&
+          coupons.lectureRedemptions.length === 0 ? (
+            <HistEmpty text="강의 쿠폰이 없습니다." />
+          ) : (
+            <ul className="divide-y">
+              {coupons.lectureGrants.map((g) => (
+                <li
+                  key={g.id}
+                  className="flex items-center justify-between gap-2 px-4 py-2 text-sm"
+                >
+                  <span className="min-w-0">
+                    <span className="font-medium">{g.name}</span>
+                    <span className="text-muted-foreground text-xs">
+                      {" "}
+                      {g.valueLabel}
+                      {g.code ? ` · ${g.code}` : ""}
+                    </span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2">
+                    <span className="text-muted-foreground text-xs tabular-nums">
+                      발급 {fmtDt(g.grantedAt)}
+                    </span>
+                    <CouponChip status={grantStatus(g)} />
+                  </span>
+                </li>
+              ))}
+              {coupons.lectureRedemptions.map((r, i) => (
+                <li
+                  key={`r${i}`}
+                  className="flex items-center justify-between gap-2 px-4 py-2 text-sm"
+                >
+                  <span className="min-w-0">
+                    <span className="font-medium">{r.name}</span>
+                    <span className="text-muted-foreground text-xs">
+                      {" "}
+                      −₩{r.discountKrw.toLocaleString("ko-KR")}
+                      {r.code ? ` · ${r.code}` : ""}
+                    </span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2">
+                    <span className="text-muted-foreground text-xs tabular-nums">
+                      사용 {fmtDt(r.redeemedAt)}
+                    </span>
+                    <CouponChip status="used" />
+                  </span>
+                </li>
+              ))}
+            </ul>
           )}
         </CardContent>
       </Card>

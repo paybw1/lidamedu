@@ -6,6 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
+import { getMyRefundRequestMap } from "~/features/orders/refund-requests.server";
 
 // ── 회원정보 (프로필 기재사항 + 로그인 계정) ──────────────────────────────
 export interface MemberProfile {
@@ -167,4 +168,214 @@ export async function updateMemberProfile(
     .eq("profile_id", profileId);
   if (error) return { ok: false, error: error.message };
   return { ok: true };
+}
+
+// ── 주문 (강의 plan + 도서 book 통합, feat-11-004) ─────────────────────────
+// my-orders.tsx 로더와 동일 형상 — 단, adminClient 로 대상 회원 스코프.
+export interface MemberOrderItem {
+  orderItemId: string;
+  label: string;
+  itemType: string;
+  quantity: number;
+  unitPriceKrw: number;
+  refundedAt: string | null;
+  shipment: {
+    status: string;
+    courier: string | null;
+    trackingNo: string | null;
+  } | null;
+  refundStatus: string | null;
+}
+export interface MemberOrder {
+  orderId: string;
+  orderNo: string;
+  status: string;
+  totalKrw: number;
+  paymentMethod: string | null;
+  createdAt: string;
+  items: MemberOrderItem[];
+}
+
+export async function listMemberOrders(
+  profileId: string,
+): Promise<MemberOrder[]> {
+  const { data: orders } = await adminClient
+    .from("orders")
+    .select("order_id, status, total_krw, payment_method, created_at")
+    .eq("user_id", profileId)
+    .order("created_at", { ascending: false })
+    .limit(100);
+  const orderIds = (orders ?? []).map((o) => o.order_id);
+  if (orderIds.length === 0) return [];
+
+  const itemsByOrder = new Map<string, MemberOrderItem[]>();
+  const { data: items } = await adminClient
+    .from("order_items")
+    .select(
+      "order_item_id, order_id, item_type, quantity, unit_price_krw, refunded_at, plan:subscription_plans!order_items_plan_id_fkey(name), book:books!order_items_book_fk(title), shipment:shipments!shipments_order_item_id_fkey(status, courier, tracking_no)",
+    )
+    .in("order_id", orderIds);
+  for (const it of items ?? []) {
+    const plan = it.plan as { name: string } | null;
+    const book = it.book as { title: string } | null;
+    const shipmentRaw = it.shipment as
+      | { status: string; courier: string | null; tracking_no: string | null }
+      | Array<{
+          status: string;
+          courier: string | null;
+          tracking_no: string | null;
+        }>
+      | null;
+    const shipment = Array.isArray(shipmentRaw)
+      ? (shipmentRaw[0] ?? null)
+      : shipmentRaw;
+    const arr = itemsByOrder.get(it.order_id) ?? [];
+    arr.push({
+      orderItemId: it.order_item_id,
+      label: plan?.name ?? book?.title ?? "(항목)",
+      itemType: it.item_type,
+      quantity: it.quantity,
+      unitPriceKrw: it.unit_price_krw,
+      refundedAt: it.refunded_at,
+      shipment: shipment
+        ? {
+            status: shipment.status,
+            courier: shipment.courier,
+            trackingNo: shipment.tracking_no,
+          }
+        : null,
+      refundStatus: null,
+    });
+    itemsByOrder.set(it.order_id, arr);
+  }
+
+  const allItemIds = [...itemsByOrder.values()]
+    .flat()
+    .map((it) => it.orderItemId);
+  const refundMap = await getMyRefundRequestMap(
+    adminClient,
+    profileId,
+    allItemIds,
+  );
+
+  return (orders ?? []).map((o) => ({
+    orderId: o.order_id,
+    orderNo: o.order_id.slice(0, 8).toUpperCase(),
+    status: o.status,
+    totalKrw: o.total_krw,
+    paymentMethod: o.payment_method,
+    createdAt: o.created_at,
+    items: (itemsByOrder.get(o.order_id) ?? []).map((it) => ({
+      ...it,
+      refundStatus: refundMap.get(it.orderItemId) ?? null,
+    })),
+  }));
+}
+
+// ── 쿠폰 (구독 System A: user_coupons / 강의 System B: coupon_grants·redemptions) ──
+function fmtDiscount(type: string, value: number): string {
+  return type === "percent"
+    ? `${value}%`
+    : `₩${value.toLocaleString("ko-KR")}`;
+}
+
+export interface MemberCoupons {
+  subscription: Array<{
+    id: string;
+    name: string;
+    code: string | null;
+    valueLabel: string;
+    issuedAt: string;
+    expiresAt: string | null;
+    usedAt: string | null;
+  }>;
+  lectureGrants: Array<{
+    id: string;
+    name: string;
+    code: string;
+    valueLabel: string;
+    grantedAt: string;
+    expiresAt: string | null;
+    revokedAt: string | null;
+  }>;
+  lectureRedemptions: Array<{
+    name: string;
+    code: string;
+    discountKrw: number;
+    redeemedAt: string;
+  }>;
+}
+
+export async function listMemberCoupons(
+  profileId: string,
+): Promise<MemberCoupons> {
+  const [subRes, grantRes, redRes] = await Promise.all([
+    adminClient
+      .from("user_coupons")
+      .select(
+        "user_coupon_id, issued_at, expires_at, used_at, discount:discounts!user_coupons_discount_id_fkey(name, code, kind, value)",
+      )
+      .eq("user_id", profileId)
+      .order("issued_at", { ascending: false }),
+    adminClient
+      .from("coupon_grants")
+      .select(
+        "grant_id, granted_at, expires_at, revoked_at, coupons(name, code, discount_type, discount_value)",
+      )
+      .eq("user_id", profileId)
+      .order("granted_at", { ascending: false }),
+    adminClient
+      .from("coupon_redemptions")
+      .select("redeemed_at, discount_krw, coupons(name, code)")
+      .eq("user_id", profileId)
+      .order("redeemed_at", { ascending: false }),
+  ]);
+
+  const subscription = (subRes.data ?? []).map((c) => {
+    const d = c.discount as {
+      name: string;
+      code: string | null;
+      kind: string;
+      value: number;
+    } | null;
+    return {
+      id: c.user_coupon_id,
+      name: d?.name ?? "쿠폰",
+      code: d?.code ?? null,
+      valueLabel: d ? fmtDiscount(d.kind, d.value) : "",
+      issuedAt: c.issued_at,
+      expiresAt: c.expires_at,
+      usedAt: c.used_at,
+    };
+  });
+
+  const lectureGrants = (grantRes.data ?? []).map((g) => {
+    const c = g.coupons as {
+      name: string;
+      code: string;
+      discount_type: string;
+      discount_value: number;
+    } | null;
+    return {
+      id: g.grant_id,
+      name: c?.name ?? "쿠폰",
+      code: c?.code ?? "",
+      valueLabel: c ? fmtDiscount(c.discount_type, c.discount_value) : "",
+      grantedAt: g.granted_at,
+      expiresAt: g.expires_at,
+      revokedAt: g.revoked_at,
+    };
+  });
+
+  const lectureRedemptions = (redRes.data ?? []).map((r) => {
+    const c = r.coupons as { name: string; code: string } | null;
+    return {
+      name: c?.name ?? "쿠폰",
+      code: c?.code ?? "",
+      discountKrw: r.discount_krw,
+      redeemedAt: r.redeemed_at,
+    };
+  });
+
+  return { subscription, lectureGrants, lectureRedemptions };
 }
