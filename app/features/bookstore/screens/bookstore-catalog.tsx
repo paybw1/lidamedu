@@ -163,7 +163,9 @@ export function BookCover({
         alt={title}
         loading="lazy"
         className={className}
-        style={{ objectFit: "cover" }}
+        // 세로형 표지(대부분 1500×2000=3:4)는 프레임을 꽉 채우고, 가로형 표지는 잘리지 않고
+        // 전체가 보이도록 contain. cover 로 두면 가로형 표지가 3:4 프레임에서 중앙만 크게 잘린다.
+        style={{ objectFit: "contain" }}
       />
     );
   }
