@@ -286,7 +286,18 @@ function UserRow({
           )}
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="font-medium">{user.name || "—"}</span>
+              {/* feat-7-046 — 회원명 클릭 → 회원 CRM(수강생 상세). 수험생만 CRM 대상. */}
+              {user.role === "student" ? (
+                <Link
+                  to={`/admin/students/${user.profileId}`}
+                  className="hover:text-link font-medium hover:underline"
+                  title={`${user.name || "이 회원"} 회원 CRM 열기`}
+                >
+                  {user.name || "—"}
+                </Link>
+              ) : (
+                <span className="font-medium">{user.name || "—"}</span>
+              )}
               {loginId ? (
                 <span className="text-muted-foreground text-[11px]">({loginId})</span>
               ) : null}

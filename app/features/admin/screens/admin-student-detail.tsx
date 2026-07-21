@@ -18,6 +18,7 @@ import {
   MessageSquareIcon,
   MinusIcon,
   PencilIcon,
+  PhoneIcon,
   PinIcon,
   PlusIcon,
   Trash2Icon,
@@ -35,6 +36,12 @@ import { Button } from "~/core/components/ui/button";
 import { Badge } from "~/core/components/ui/badge";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Separator } from "~/core/components/ui/separator";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "~/core/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -270,8 +277,34 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       ])
     : [[], [], { qna: [], inquiries: [], posts: [], bugReports: [] }];
 
+  // ── Stage 0 (feat-7-046) 회원 CRM 헤더 — 신원·연락처·최근 접속 ──
+  // instructor 도 볼 수 있는 기본 신원 정보(로더는 이미 조회 권한을 통과함).
+  const [memberProfileRes, lastAccessRes] = await Promise.all([
+    adminClient
+      .from("profiles")
+      .select("member_no, phone_e164, nickname, avatar_url")
+      .eq("profile_id", params.profileId)
+      .maybeSingle(),
+    adminClient
+      .from("user_access_logs")
+      .select("created_at")
+      .eq("user_id", params.profileId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+  const memberHeader = {
+    memberNo: memberProfileRes.data?.member_no ?? null,
+    phoneE164: memberProfileRes.data?.phone_e164 ?? null,
+    nickname: memberProfileRes.data?.nickname ?? null,
+    avatarUrl: memberProfileRes.data?.avatar_url ?? null,
+    lastAccessAt: lastAccessRes.data?.created_at ?? null,
+    cohortNames: cohortComparisons.map((c) => c.cohortName),
+  };
+
   return {
     student,
+    memberHeader,
     cohortComparisons,
     notes,
     csActions,
@@ -312,6 +345,7 @@ export default function AdminStudentDetail({
 }: Route.ComponentProps) {
   const {
     student,
+    memberHeader,
     cohortComparisons,
     notes,
     csActions,
@@ -344,6 +378,16 @@ export default function AdminStudentDetail({
         ? "강사"
         : "수험생";
 
+  // Stage 0 (feat-7-046) — CRM 탭. #activity/#watch-history → 활동·결제,
+  // #notes/#cs-history → 상담·메모 로 딥링크 보존(기존 /admin/users 링크 앵커).
+  const [tab, setTab] = useState<"study" | "memo" | "activity">("study");
+  useEffect(() => {
+    const h = window.location.hash.replace("#", "");
+    if ((h === "activity" || h === "watch-history") && isAdmin)
+      setTab("activity");
+    else if (h === "notes" || h === "cs-history") setTab("memo");
+  }, [isAdmin]);
+
   return (
     <AdminShell
       cluster="students"
@@ -359,15 +403,24 @@ export default function AdminStudentDetail({
         </Link>
       }
     >
-      {/* ── 요약 카드 — 아바타 + 신원 + 핵심 지표 ── */}
+      {/* ── 회원 헤더 (항상 표시) — 신원·연락처·소속·가입/최근접속 + 핵심 지표 ── */}
       <Card className="mb-4">
-        <CardContent className="flex flex-wrap items-center gap-x-6 gap-y-4 px-5 py-5">
-          <div className="flex min-w-0 items-center gap-4">
-            <span className="bg-primary text-primary-foreground inline-flex size-14 shrink-0 items-center justify-center rounded-full text-xl font-extrabold">
-              {(student.name || "?").trim().charAt(0) || "?"}
-            </span>
+        <CardContent className="flex flex-wrap items-start gap-x-6 gap-y-4 px-5 py-5">
+          <div className="flex min-w-0 items-start gap-4">
+            {memberHeader.avatarUrl ? (
+              <img
+                src={memberHeader.avatarUrl}
+                alt=""
+                referrerPolicy="no-referrer"
+                className="size-14 shrink-0 rounded-full object-cover"
+              />
+            ) : (
+              <span className="bg-primary text-primary-foreground inline-flex size-14 shrink-0 items-center justify-center rounded-full text-xl font-extrabold">
+                {(student.name || "?").trim().charAt(0) || "?"}
+              </span>
+            )}
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h2 className="truncate text-xl font-extrabold tracking-tight">
                   {student.name || "(이름 없음)"}
                 </h2>
@@ -375,13 +428,45 @@ export default function AdminStudentDetail({
                   <UserIcon className="size-3" />
                   {roleLabel}
                 </Chip>
+                {memberHeader.memberNo != null ? (
+                  <Chip tone="solid">회원 {memberHeader.memberNo}</Chip>
+                ) : null}
               </div>
-              {student.email ? (
-                <p className="text-muted-foreground mt-1 inline-flex items-center gap-1 text-sm">
-                  <MailIcon className="size-3.5" />
-                  {student.email}
-                </p>
-              ) : null}
+              <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                {student.email ? (
+                  <span className="inline-flex items-center gap-1">
+                    <MailIcon className="size-3.5" />
+                    {student.email}
+                  </span>
+                ) : null}
+                {memberHeader.phoneE164 ? (
+                  <span className="inline-flex items-center gap-1 tabular-nums">
+                    <PhoneIcon className="size-3.5" />
+                    {memberHeader.phoneE164}
+                  </span>
+                ) : null}
+                {memberHeader.nickname &&
+                memberHeader.nickname !== student.name ? (
+                  <span className="text-xs">({memberHeader.nickname})</span>
+                ) : null}
+              </div>
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                {memberHeader.cohortNames.length > 0 ? (
+                  <span className="inline-flex items-center gap-1">
+                    <Chip tone="violet">종합반</Chip>
+                    <span className="text-muted-foreground text-xs">
+                      {memberHeader.cohortNames.join(", ")}
+                    </span>
+                  </span>
+                ) : null}
+                <span className="text-muted-foreground text-[11px] tabular-nums">
+                  가입 {student.joinedAt.slice(0, 10)}
+                  {" · 최근접속 "}
+                  {memberHeader.lastAccessAt
+                    ? memberHeader.lastAccessAt.slice(0, 10)
+                    : "기록 없음"}
+                </span>
+              </div>
             </div>
           </div>
           <div className="ml-auto flex flex-wrap gap-x-6 gap-y-3">
@@ -415,7 +500,17 @@ export default function AdminStudentDetail({
         </CardContent>
       </Card>
 
-      {cohortComparisons.length > 0 ? (
+      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+        <TabsList>
+          <TabsTrigger value="study">학습현황</TabsTrigger>
+          <TabsTrigger value="memo">상담·메모</TabsTrigger>
+          {isAdmin ? (
+            <TabsTrigger value="activity">활동·결제</TabsTrigger>
+          ) : null}
+        </TabsList>
+
+        <TabsContent value="study" className="mt-3">
+          {cohortComparisons.length > 0 ? (
         <div className="mb-6 space-y-3">
           {cohortComparisons.map((c) => (
             <CohortComparisonCard
@@ -493,45 +588,6 @@ export default function AdminStudentDetail({
           audience="staff"
         />
       </div>
-
-      <div className="mb-6">
-        <NotesSection
-          studentId={student.profileId}
-          notes={notes}
-          currentUserId={currentUserId}
-          isAdmin={isAdmin}
-        />
-      </div>
-
-      {isAdmin ? (
-        <div className="mb-6">
-          <CsHistorySection studentId={student.profileId} actions={csActions} />
-        </div>
-      ) : null}
-
-      {isAdmin && watchHistory.length > 0 ? (
-        <div className="mb-6">
-          <WatchHistorySection courses={watchHistory} />
-        </div>
-      ) : null}
-
-      {isAdmin ? (
-        <div className="mb-6">
-          <ActivitySection activity={activity} />
-        </div>
-      ) : null}
-
-      {/* feat-7-014 — manager+ 만 노출. loader 가 비 manager 면 빈 배열 반환. */}
-      {isAdmin && plans.length > 0 ? (
-        <div className="mb-6">
-          <AdminSubscriptionPanel
-            userId={student.profileId}
-            subscriptions={subscriptions}
-            payments={payments}
-            plans={plans}
-          />
-        </div>
-      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
         <div className="space-y-4">
@@ -702,6 +758,51 @@ export default function AdminStudentDetail({
           </CardContent>
         </Card>
       </div>
+        </TabsContent>
+
+        <TabsContent value="memo" className="mt-3">
+          <div className="mb-6">
+            <NotesSection
+              studentId={student.profileId}
+              notes={notes}
+              currentUserId={currentUserId}
+              isAdmin={isAdmin}
+            />
+          </div>
+          {isAdmin ? (
+            <div className="mb-6">
+              <CsHistorySection
+                studentId={student.profileId}
+                actions={csActions}
+              />
+            </div>
+          ) : null}
+        </TabsContent>
+
+        {isAdmin ? (
+          <TabsContent value="activity" className="mt-3">
+            {watchHistory.length > 0 ? (
+              <div className="mb-6">
+                <WatchHistorySection courses={watchHistory} />
+              </div>
+            ) : null}
+            <div className="mb-6">
+              <ActivitySection activity={activity} />
+            </div>
+            {/* feat-7-014 — manager+ 만 노출. loader 가 비 manager 면 빈 배열 반환. */}
+            {plans.length > 0 ? (
+              <div className="mb-6">
+                <AdminSubscriptionPanel
+                  userId={student.profileId}
+                  subscriptions={subscriptions}
+                  payments={payments}
+                  plans={plans}
+                />
+              </div>
+            ) : null}
+          </TabsContent>
+        ) : null}
+      </Tabs>
     </AdminShell>
   );
 }
