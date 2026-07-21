@@ -1,7 +1,8 @@
 // feat-2-029 S3 — 판례 빈칸(①) 렌더러. 판례 텍스트(요지 항목/판시이유/평석)는 단일 문자열이라
 //   조문의 block-walk 없이 cumOffset(직접) 또는 문맥 앵커(findBlankHits)로 위치를 잡는다.
 //   IME 보호(조합 가드·클릭 flush·컨트롤드 값)는 자체 내장 — 조문 blanks-context 를 건드리지 않는다.
-//   승인된 빈칸(case_blank_sets)이 있을 때만 마운트(S4/S5 적재 후 활성). staff 전용(호출부 게이트).
+//   승인된 빈칸(case_blank_sets)이 있을 때만 마운트. 특허법 판례는 수험생 공개(2026-07-21),
+//   그 외 과목·편집은 staff 전용(호출부 case-viewer 게이트).
 import { useCallback, useRef, useState } from "react";
 
 import { EyeIcon, RotateCcwIcon } from "lucide-react";

@@ -265,9 +265,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   ]);
   const pdfLocationsEnabled = staffRole !== null || pdfFlag;
 
-  // feat-2-029 — 판례 빈칸 세트. staff 전용 렌더(완성 전 표는 비어 있음 → 학생 미조회).
+  // feat-2-029 — 판례 빈칸 세트. staff 는 항상, 학생은 특허법 판례만(승인 데이터=특허 전용,
+  //   2026-07-21 수험생 공개 결정). 다른 과목은 데이터 없어 빈 배열.
   const caseBlankSets =
-    staffRole !== null
+    staffRole !== null || lawCode === "patent"
       ? await listCaseBlankSetsByCase(client, kase.caseId)
       : [];
 
@@ -355,11 +356,14 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
 
   const [searchParams] = useSearchParams();
 
-  // feat-2-029 — 판례 단계별 암기 모드(원문/①빈칸/쟁점만/전체 복원). staff 전용(완성 전).
+  // feat-2-029 — 판례 단계별 암기 모드(원문/빈 칸/쟁점만/전체 복원).
+  //   ★2026-07-21 수험생 공개(특허법 판례). staff 는 전 과목. 편집(빈칸 추가/제거)은 staff 전용 유지.
+  const caseMemForStudents = subject.slug === "patent";
+  const memEnabled = isStaff || caseMemForStudents;
   // ?mem=blanks|issues|recall(&blankEdit=1) — URL 로 모드 초기화(prev/next 유지·북마크 가능).
   const [memMode, setMemMode] = useState<"off" | "blanks" | CaseMemorizeMode>(
     () => {
-      if (!isStaff) return "off";
+      if (!memEnabled) return "off";
       const m = searchParams.get("mem");
       return m === "blanks" || m === "issues" || m === "recall" ? m : "off";
     },
@@ -614,10 +618,10 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                 </CardHeader>
               </Card>
 
-              {/* 암기 모드 토글(원문/쟁점만 보기/전체 복원) + 읽기 모드.
-                  ★feat-2-029 완성 전까지 staff 전용 — 수험생 미노출(빈칸①·SRS④ 미완). */}
+              {/* 암기 모드 토글(원문/빈 칸/쟁점만 보기/전체 복원) + 읽기 모드.
+                  ★수험생 공개(특허법 판례, 2026-07-21). 편집 서브토글은 staff 전용 유지. */}
               <div className="mb-3 flex flex-wrap items-center gap-1.5">
-                {isStaff && (hasMem || hasCaseBlanks)
+                {memEnabled && (hasMem || hasCaseBlanks)
                   ? memToggles.map(([m, label]) => (
                       <button
                         key={m}
@@ -656,8 +660,8 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                 </button>
               </div>
 
-              {/* ── 판례 본문(원문) / 단계별 암기 뷰 ── (비-staff 는 항상 원문) */}
-              {!isStaff || memMode === "off" ? (
+              {/* ── 판례 본문(원문) / 단계별 암기 뷰 ── (암기 미개방 과목/학생은 항상 원문) */}
+              {!memEnabled || memMode === "off" ? (
                 <CaseBody
                   kase={kase}
                   examProblems={examProblems}
@@ -676,27 +680,30 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                   <CaseMetaLine kase={kase} />
                   {/* 풀기 ↔ 편집 미니 토글 (편집 = 드래그 추가/× 제거) + 모드 유지 prev/next */}
                   <div className="flex flex-wrap items-center gap-1.5">
-                    {(
-                      [
-                        [false, "풀기"],
-                        [true, "편집"],
-                      ] as const
-                    ).map(([edit, label]) => (
-                      <button
-                        key={label}
-                        type="button"
-                        onClick={() => setBlankEdit(edit)}
-                        aria-pressed={blankEdit === edit}
-                        className={cn(
-                          "h-6 rounded-full border px-2.5 text-[11px] font-semibold transition-colors",
-                          blankEdit === edit
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "border-border text-muted-foreground hover:bg-muted",
-                        )}
-                      >
-                        {label}
-                      </button>
-                    ))}
+                    {/* 풀기↔편집 서브토글 — 편집(빈칸 추가/제거)은 staff 전용. 학생은 풀기만. */}
+                    {isStaff
+                      ? (
+                          [
+                            [false, "풀기"],
+                            [true, "편집"],
+                          ] as const
+                        ).map(([edit, label]) => (
+                          <button
+                            key={label}
+                            type="button"
+                            onClick={() => setBlankEdit(edit)}
+                            aria-pressed={blankEdit === edit}
+                            className={cn(
+                              "h-6 rounded-full border px-2.5 text-[11px] font-semibold transition-colors",
+                              blankEdit === edit
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "border-border text-muted-foreground hover:bg-muted",
+                            )}
+                          >
+                            {label}
+                          </button>
+                        ))
+                      : null}
                     {prevNext ? (
                       <div className="ml-auto flex items-center gap-1.5">
                         {(
@@ -754,8 +761,9 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                     />
                   ) : (
                     <div className="border-border bg-card text-muted-foreground rounded-xl border py-10 text-center text-sm shadow-sm">
-                      이 판례에는 아직 빈칸이 없습니다. 위의 “편집”에서 본문을
-                      드래그해 추가하세요.
+                      {isStaff
+                        ? "이 판례에는 아직 빈칸이 없습니다. 위의 “편집”에서 본문을 드래그해 추가하세요."
+                        : "이 판례에는 아직 빈 칸 자료가 준비되지 않았습니다. 쟁점만 보기·전체 복원으로 학습해 보세요."}
                     </div>
                   )}
                 </div>
