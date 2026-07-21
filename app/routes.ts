@@ -1048,6 +1048,10 @@ export default [
       route("/api/admin/student-note", "features/admin/api/student-note.tsx"),
       route("/api/admin/cs-memo", "features/admin/api/cs-memo.tsx"),
       route(
+        "/api/admin/member-profile",
+        "features/admin/api/member-profile.tsx",
+      ),
+      route(
         "/api/admin/problem-review",
         "features/admin/api/problem-review.tsx",
       ),

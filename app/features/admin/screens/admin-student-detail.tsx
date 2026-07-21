@@ -28,7 +28,13 @@ import {
   UsersIcon,
   XIcon,
 } from "lucide-react";
-import { Fragment, useEffect, useRef, useState } from "react";
+import {
+  Fragment,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { Link, data, useFetcher, useLocation, useNavigate } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
@@ -68,6 +74,15 @@ import {
   getStudentActivity,
   type StudentActivity,
 } from "~/features/admin/queries/student-activity.server";
+import {
+  getMemberProfile,
+  listUserAccessLogs,
+  listUserBookDownloads,
+  type AccessLogRow,
+  type DownloadRow,
+  type MemberProfile,
+} from "~/features/admin/queries/member-crm.server";
+import { isPasswordLoginEnabled } from "~/features/auth/settings.server";
 import { CS_CATEGORY_LABEL } from "~/features/cs-inquiries/labels";
 import {
   isFirstExamSubject,
@@ -78,6 +93,7 @@ import adminClient from "~/core/lib/supa-admin-client.server";
 import {
   getDailyStudyStats,
   getUserPassPredictionTrend,
+  type DailyStudyDay,
   type PassPredictionSnapshotItem,
 } from "~/features/study/queries.server";
 import {
@@ -277,34 +293,39 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       ])
     : [[], [], { qna: [], inquiries: [], posts: [], bugReports: [] }];
 
-  // ── Stage 0 (feat-7-046) 회원 CRM 헤더 — 신원·연락처·최근 접속 ──
-  // instructor 도 볼 수 있는 기본 신원 정보(로더는 이미 조회 권한을 통과함).
-  const [memberProfileRes, lastAccessRes] = await Promise.all([
-    adminClient
-      .from("profiles")
-      .select("member_no, phone_e164, nickname, avatar_url")
-      .eq("profile_id", params.profileId)
-      .maybeSingle(),
-    adminClient
-      .from("user_access_logs")
-      .select("created_at")
-      .eq("user_id", params.profileId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-  ]);
+  // ── feat-7-046 회원 CRM — 회원정보/이력 데이터 ──
+  // 회원정보(신원·연락처·로그인 계정)는 instructor 도 조회 가능(로더가 조회 권한 통과).
+  // 접속 로그·다운로드는 IP 등 민감 정보라 manager+ 만.
+  const [memberProfile, accessLogs, bookDownloads, passwordLoginEnabled] =
+    await Promise.all([
+      getMemberProfile(params.profileId),
+      roleAtLeast(role, "manager")
+        ? listUserAccessLogs(params.profileId, 40)
+        : Promise.resolve([] as AccessLogRow[]),
+      roleAtLeast(role, "manager")
+        ? listUserBookDownloads(params.profileId, 40)
+        : Promise.resolve([] as DownloadRow[]),
+      isPasswordLoginEnabled(client),
+    ]);
   const memberHeader = {
-    memberNo: memberProfileRes.data?.member_no ?? null,
-    phoneE164: memberProfileRes.data?.phone_e164 ?? null,
-    nickname: memberProfileRes.data?.nickname ?? null,
-    avatarUrl: memberProfileRes.data?.avatar_url ?? null,
-    lastAccessAt: lastAccessRes.data?.created_at ?? null,
+    memberNo: memberProfile?.memberNo ?? null,
+    phoneE164: memberProfile?.phoneE164 ?? null,
+    nickname: memberProfile?.nickname ?? null,
+    avatarUrl: memberProfile?.avatarUrl ?? null,
+    lastAccessAt: memberProfile?.lastSignInAt ?? null,
     cohortNames: cohortComparisons.map((c) => c.cohortName),
   };
+  // 회원이력 · 과정학습 — 최근 14일 일별 공부(활동 없는 날 포함, 컴포넌트에서 필터).
+  const recentStudyDays = studyDaily.days.slice(-14);
 
   return {
     student,
     memberHeader,
+    memberProfile,
+    passwordLoginEnabled,
+    accessLogs,
+    bookDownloads,
+    recentStudyDays,
     cohortComparisons,
     notes,
     csActions,
@@ -346,6 +367,11 @@ export default function AdminStudentDetail({
   const {
     student,
     memberHeader,
+    memberProfile,
+    passwordLoginEnabled,
+    accessLogs,
+    bookDownloads,
+    recentStudyDays,
     cohortComparisons,
     notes,
     csActions,
@@ -380,11 +406,13 @@ export default function AdminStudentDetail({
 
   // Stage 0 (feat-7-046) — CRM 탭. #activity/#watch-history → 활동·결제,
   // #notes/#cs-history → 상담·메모 로 딥링크 보존(기존 /admin/users 링크 앵커).
-  const [tab, setTab] = useState<"study" | "memo" | "activity">("study");
+  const [tab, setTab] = useState<
+    "study" | "info" | "history" | "memo" | "activity"
+  >("study");
   useEffect(() => {
     const h = window.location.hash.replace("#", "");
-    if ((h === "activity" || h === "watch-history") && isAdmin)
-      setTab("activity");
+    if (h === "watch-history" && isAdmin) setTab("history");
+    else if (h === "activity" && isAdmin) setTab("activity");
     else if (h === "notes" || h === "cs-history") setTab("memo");
   }, [isAdmin]);
 
@@ -501,8 +529,12 @@ export default function AdminStudentDetail({
       </Card>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="study">학습현황</TabsTrigger>
+          <TabsTrigger value="info">회원정보</TabsTrigger>
+          {isAdmin ? (
+            <TabsTrigger value="history">회원이력</TabsTrigger>
+          ) : null}
           <TabsTrigger value="memo">상담·메모</TabsTrigger>
           {isAdmin ? (
             <TabsTrigger value="activity">활동·결제</TabsTrigger>
@@ -760,6 +792,31 @@ export default function AdminStudentDetail({
       </div>
         </TabsContent>
 
+        <TabsContent value="info" className="mt-3">
+          {memberProfile ? (
+            <MemberInfoTab
+              profile={memberProfile}
+              passwordLoginEnabled={passwordLoginEnabled}
+              canEdit={isAdmin}
+            />
+          ) : (
+            <p className="text-muted-foreground p-6 text-center text-sm">
+              회원 정보를 불러올 수 없습니다.
+            </p>
+          )}
+        </TabsContent>
+
+        {isAdmin ? (
+          <TabsContent value="history" className="mt-3">
+            <MemberHistoryTab
+              recentStudyDays={recentStudyDays}
+              watchHistory={watchHistory}
+              bookDownloads={bookDownloads}
+              accessLogs={accessLogs}
+            />
+          </TabsContent>
+        ) : null}
+
         <TabsContent value="memo" className="mt-3">
           <div className="mb-6">
             <NotesSection
@@ -781,11 +838,6 @@ export default function AdminStudentDetail({
 
         {isAdmin ? (
           <TabsContent value="activity" className="mt-3">
-            {watchHistory.length > 0 ? (
-              <div className="mb-6">
-                <WatchHistorySection courses={watchHistory} />
-              </div>
-            ) : null}
             <div className="mb-6">
               <ActivitySection activity={activity} />
             </div>
@@ -829,6 +881,396 @@ function SummaryStat({
       >
         {value}
       </p>
+    </div>
+  );
+}
+
+// ── feat-7-046 회원정보 탭 ────────────────────────────────────────────────
+function InfoRow({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="flex items-start gap-3 py-1.5">
+      <span className="text-muted-foreground w-24 shrink-0 text-xs font-semibold">
+        {label}
+      </span>
+      <span className="min-w-0 flex-1 text-sm break-words">{value}</span>
+    </div>
+  );
+}
+
+function EditField({
+  name,
+  label,
+  defaultValue,
+  required,
+}: {
+  name: string;
+  label: string;
+  defaultValue: string;
+  required?: boolean;
+}) {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-muted-foreground text-[11px] font-semibold">
+        {label}
+      </span>
+      <input
+        name={name}
+        defaultValue={defaultValue}
+        required={required}
+        className="border-input bg-background focus:border-primary h-9 rounded-md border px-3 text-sm outline-none"
+      />
+    </label>
+  );
+}
+
+function MemberInfoTab({
+  profile,
+  passwordLoginEnabled,
+  canEdit,
+}: {
+  profile: MemberProfile;
+  passwordLoginEnabled: boolean;
+  canEdit: boolean;
+}) {
+  const fetcher = useFetcher<{ ok?: true; error?: string }>();
+  const saving = fetcher.state !== "idle";
+  const saved = !!(fetcher.data && "ok" in fetcher.data && fetcher.data.ok);
+  const err =
+    fetcher.data && "error" in fetcher.data ? fetcher.data.error : null;
+
+  const examLabel = profile.nextExamYear
+    ? `${profile.nextExamYear}년 ${
+        profile.nextExamRound === "second"
+          ? "2차"
+          : profile.nextExamRound === "first"
+            ? "1차"
+            : "-"
+      }`
+    : "미설정";
+  const dateOnly = (s: string | null) => (s ? s.slice(0, 10) : "—");
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <Card>
+        <CardHeader>
+          <p className="text-sm font-semibold">회원 기재사항</p>
+          <p className="text-muted-foreground text-xs">
+            가입 시 입력한 신원·연락 정보
+          </p>
+        </CardHeader>
+        <Separator />
+        <CardContent className="divide-y py-2">
+          <InfoRow label="이름" value={profile.name || "—"} />
+          <InfoRow label="닉네임" value={profile.nickname || "—"} />
+          <InfoRow
+            label="회원번호"
+            value={profile.memberNo != null ? String(profile.memberNo) : "—"}
+          />
+          <InfoRow label="휴대전화" value={profile.phoneE164 || "—"} />
+          <InfoRow label="주소" value={profile.address || "—"} />
+          <InfoRow label="시험 차수" value={examLabel} />
+          <InfoRow
+            label="마케팅 수신"
+            value={profile.marketingConsent ? "동의" : "미동의"}
+          />
+          <InfoRow
+            label="알림 채널"
+            value={
+              profile.notifyChannels.length
+                ? profile.notifyChannels.join(", ")
+                : "—"
+            }
+          />
+          <InfoRow label="가입일" value={dateOnly(profile.createdAt)} />
+          <InfoRow label="온보딩" value={dateOnly(profile.onboardedAt)} />
+          <InfoRow label="이용 승인" value={dateOnly(profile.accessApprovedAt)} />
+          <InfoRow label="체험 만료" value={dateOnly(profile.trialEndsAt)} />
+        </CardContent>
+      </Card>
+
+      <div className="space-y-4">
+        <Card>
+          <CardHeader>
+            <p className="text-sm font-semibold">로그인 계정</p>
+          </CardHeader>
+          <Separator />
+          <CardContent className="divide-y py-2">
+            <InfoRow
+              label="이메일"
+              value={
+                profile.email ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    {profile.email}
+                    <Chip tone="outline">
+                      {profile.emailConfirmedAt ? "인증" : "미인증"}
+                    </Chip>
+                  </span>
+                ) : (
+                  "—"
+                )
+              }
+            />
+            <InfoRow
+              label="로그인 수단"
+              value={
+                profile.providers.length
+                  ? profile.providers
+                      .map((p) => (p === "kakao" ? "카카오" : p))
+                      .join(", ")
+                  : "—"
+              }
+            />
+            <InfoRow
+              label="ID/PW 로그인"
+              value={
+                passwordLoginEnabled ? (
+                  <span className="text-emerald-600 dark:text-emerald-400">
+                    활성
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">
+                    비활성 (카카오 전용)
+                  </span>
+                )
+              }
+            />
+            <InfoRow
+              label="최근 로그인"
+              value={dateOnly(profile.lastSignInAt)}
+            />
+          </CardContent>
+          <Separator />
+          <CardContent className="py-3">
+            {passwordLoginEnabled ? (
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                이메일·비밀번호 로그인이 활성화되어 있습니다. 비밀번호 재설정
+                기능은 다음 단계에서 제공됩니다.
+              </p>
+            ) : (
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                현재 <b>카카오 단일 로그인</b>이라 비밀번호가 없습니다.{" "}
+                <code className="bg-muted rounded px-1">/admin/auth</code> 에서
+                이메일·비밀번호 로그인을 켜면 비밀번호 재설정을 제공합니다.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {canEdit ? (
+          <Card>
+            <CardHeader>
+              <p className="text-sm font-semibold">정보 수정</p>
+              <p className="text-muted-foreground text-xs">
+                연락·신원 정정용. 역할·이용승인·수강권은 별도 화면에서 관리.
+              </p>
+            </CardHeader>
+            <Separator />
+            <CardContent className="py-4">
+              <fetcher.Form
+                method="post"
+                action="/api/admin/member-profile"
+                className="space-y-3"
+              >
+                <input
+                  type="hidden"
+                  name="profileId"
+                  value={profile.profileId}
+                />
+                <EditField
+                  name="name"
+                  label="이름"
+                  defaultValue={profile.name}
+                  required
+                />
+                <EditField
+                  name="nickname"
+                  label="닉네임"
+                  defaultValue={profile.nickname ?? ""}
+                />
+                <EditField
+                  name="phoneE164"
+                  label="휴대전화"
+                  defaultValue={profile.phoneE164 ?? ""}
+                />
+                <EditField
+                  name="address"
+                  label="주소"
+                  defaultValue={profile.address ?? ""}
+                />
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    name="marketingConsent"
+                    value="1"
+                    defaultChecked={profile.marketingConsent}
+                    className="size-4"
+                  />
+                  마케팅 수신 동의
+                </label>
+                {err ? <p className="text-rose-600 text-xs">{err}</p> : null}
+                {saved ? (
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                    저장되었습니다.
+                  </p>
+                ) : null}
+                <Button type="submit" size="sm" disabled={saving}>
+                  {saving ? "저장 중…" : "저장"}
+                </Button>
+              </fetcher.Form>
+            </CardContent>
+          </Card>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+// ── feat-7-046 회원이력 탭 ────────────────────────────────────────────────
+function HistEmpty({ text }: { text: string }) {
+  return (
+    <p className="text-muted-foreground py-6 text-center text-sm">{text}</p>
+  );
+}
+
+function MemberHistoryTab({
+  recentStudyDays,
+  watchHistory,
+  bookDownloads,
+  accessLogs,
+}: {
+  recentStudyDays: DailyStudyDay[];
+  watchHistory: UserWatchCourse[];
+  bookDownloads: DownloadRow[];
+  accessLogs: AccessLogRow[];
+}) {
+  const activeDays = recentStudyDays.filter(
+    (d) => d.timeMs > 0 || d.attemptCount > 0,
+  );
+  const fmtMin = (ms: number) => `${Math.round(ms / 60000)}분`;
+  const fmtDt = (s: string) => s.slice(0, 16).replace("T", " ");
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <p className="text-sm font-semibold">과정 학습 (최근 14일)</p>
+        </CardHeader>
+        <Separator />
+        <CardContent className="p-0">
+          {activeDays.length === 0 ? (
+            <HistEmpty text="최근 학습 기록이 없습니다." />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>날짜</TableHead>
+                  <TableHead className="text-right">공부 시간</TableHead>
+                  <TableHead className="text-right">문제 풀이</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[...activeDays].reverse().map((d) => (
+                  <TableRow key={d.date}>
+                    <TableCell className="text-sm tabular-nums">
+                      {d.date}
+                    </TableCell>
+                    <TableCell className="text-right text-xs tabular-nums">
+                      {fmtMin(d.timeMs)}
+                    </TableCell>
+                    <TableCell className="text-right text-xs tabular-nums">
+                      {d.attemptCount > 0
+                        ? `${d.correctCount}/${d.attemptCount}`
+                        : "—"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {watchHistory.length > 0 ? (
+        <WatchHistorySection courses={watchHistory} />
+      ) : (
+        <Card>
+          <CardHeader>
+            <p className="text-sm font-semibold">영상 시청</p>
+          </CardHeader>
+          <Separator />
+          <CardContent className="p-0">
+            <HistEmpty text="영상 시청 기록이 없습니다." />
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <p className="text-sm font-semibold">도서 다운로드</p>
+        </CardHeader>
+        <Separator />
+        <CardContent className="p-0">
+          {bookDownloads.length === 0 ? (
+            <HistEmpty text="다운로드 기록이 없습니다." />
+          ) : (
+            <ul className="divide-y">
+              {bookDownloads.map((d, i) => (
+                <li
+                  key={i}
+                  className="flex items-center justify-between gap-2 px-4 py-2 text-sm"
+                >
+                  <span className="min-w-0 truncate">{d.label}</span>
+                  <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
+                    {fmtDt(d.at)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <p className="text-sm font-semibold">접속 기록</p>
+          <p className="text-muted-foreground text-xs">최근 40건</p>
+        </CardHeader>
+        <Separator />
+        <CardContent className="p-0">
+          {accessLogs.length === 0 ? (
+            <HistEmpty text="접속 기록이 없습니다." />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>일시</TableHead>
+                  <TableHead>종류</TableHead>
+                  <TableHead>기기·브라우저</TableHead>
+                  <TableHead>IP</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {accessLogs.map((l, i) => (
+                  <TableRow key={i}>
+                    <TableCell className="text-xs tabular-nums">
+                      {fmtDt(l.createdAt)}
+                    </TableCell>
+                    <TableCell className="text-xs">{l.kind}</TableCell>
+                    <TableCell className="text-muted-foreground text-xs">
+                      {[l.device, l.browser].filter(Boolean).join(" · ") ||
+                        l.client ||
+                        "—"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-xs tabular-nums">
+                      {l.ip ?? "—"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
