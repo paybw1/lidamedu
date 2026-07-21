@@ -212,11 +212,18 @@ function NodeArticlePicker({
 const PICKER_KINDS = [
   { key: "article", label: "조문" },
   { key: "case", label: "판례" },
-  { key: "problem_code", label: "문제번호" },
   { key: "problem", label: "문제" },
   { key: "study_method", label: "공부방법" },
 ] as const;
 type PickerKind = (typeof PICKER_KINDS)[number]["key"];
+
+// 문제를 특정하는 3가지 방법 — 어느 것이든 같은 문제를 가리킨다.
+const PROBLEM_METHODS = [
+  { key: "systematic", label: "체계번호", hint: "체계도 단원 + 그 안의 번호" },
+  { key: "exam", label: "기출번호", hint: "기출 연도 + 시험 문항번호" },
+  { key: "code", label: "문제번호", hint: "문제 화면의 고유번호 P-0000" },
+] as const;
+type ProblemMethod = (typeof PROBLEM_METHODS)[number]["key"];
 
 // 조문/판례/문제 대상은 법률과목만.
 const LAW_SUBJECT_OPTIONS = [
@@ -227,13 +234,19 @@ const LAW_SUBJECT_OPTIONS = [
   "civil-procedure",
 ] as const;
 
-// 문제 출처 — 기출/기출변형/예상.
+// 문제 출처 — 기출/기출변형/예상. ★예상은 특허법에만 존재(다른 과목은 기출/변형만).
 const PROBLEM_ORIGIN_OPTIONS = [
   { key: "past_exam", label: "기출" },
   { key: "past_exam_variant", label: "기출변형" },
   { key: "expected", label: "예상" },
 ] as const;
 type ProblemOriginKey = (typeof PROBLEM_ORIGIN_OPTIONS)[number]["key"];
+// 과목별 출처 옵션 — 예상은 특허만.
+function originOptionsFor(subject: string) {
+  return subject === "patent"
+    ? PROBLEM_ORIGIN_OPTIONS
+    : PROBLEM_ORIGIN_OPTIONS.filter((o) => o.key !== "expected");
+}
 
 interface NodeOpt {
   nodeId: string;
@@ -319,8 +332,10 @@ function QnaTargetPicker() {
   const [subject, setSubject] = useState<string>("patent");
   const [articleNumber, setArticleNumber] = useState("");
   const [caseNumber, setCaseNumber] = useState("");
+  const [problemMethod, setProblemMethod] = useState<ProblemMethod>("systematic");
   const [origin, setOrigin] = useState<ProblemOriginKey>("past_exam");
   const [year, setYear] = useState("");
+  const [examNumber, setExamNumber] = useState("");
   const [problemNumber, setProblemNumber] = useState("");
   const [problemCode, setProblemCode] = useState("");
   const [primaryNodeId, setPrimaryNodeId] = useState("");
@@ -332,7 +347,8 @@ function QnaTargetPicker() {
   } | null>(null);
 
   const resolving = resolveFetcher.state !== "idle";
-  const isExpected = kind === "problem" && origin === "expected";
+  // 체계번호 방법이면 체계도 노드가 필요 → 과목 노드 로드.
+  const needsNodes = kind === "problem" && problemMethod === "systematic";
   const notFound =
     resolveFetcher.state === "idle" && resolveFetcher.data?.ok === false;
 
@@ -342,14 +358,20 @@ function QnaTargetPicker() {
       { viewTransition: true },
     );
 
-  // 예상 문제 선택 시 과목의 체계도 노드 로드.
+  // 체계번호 방법일 때 과목의 체계도 노드 로드.
   useEffect(() => {
-    if (isExpected && subject) {
+    if (needsNodes && subject) {
       nodesFetcher.load(`/api/qna/nodes?subject=${subject}`);
       setPrimaryNodeId("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isExpected, subject]);
+  }, [needsNodes, subject]);
+
+  // 과목이 특허가 아니면 '예상' 출처 불가 → 기출로 되돌림.
+  useEffect(() => {
+    if (subject !== "patent" && origin === "expected") setOrigin("past_exam");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subject]);
 
   // 해석 결과 → 조문이 여러 쟁점에 걸리면 쟁점 선택 단계, 아니면 바로 이동.
   useEffect(() => {
@@ -372,13 +394,13 @@ function QnaTargetPicker() {
       ? Boolean(subject && articleNumber.trim())
       : kind === "case"
         ? Boolean(caseNumber.trim())
-        : kind === "problem_code"
-          ? parseProblemCode(problemCode) !== null
-          : kind === "problem"
-            ? isExpected
-              ? Boolean(subject && primaryNodeId && problemNumber.trim())
-              : Boolean(subject && year.trim() && problemNumber.trim())
-            : true;
+        : kind === "problem"
+          ? problemMethod === "code"
+            ? parseProblemCode(problemCode) !== null
+            : problemMethod === "exam"
+              ? Boolean(subject && year.trim() && examNumber.trim())
+              : Boolean(subject && primaryNodeId && problemNumber.trim())
+          : true;
 
   const onSubmit = () => {
     if (kind === "study_method") {
@@ -393,18 +415,24 @@ function QnaTargetPicker() {
     } else if (kind === "case") {
       p.set("type", "case");
       p.set("caseNumber", caseNumber.trim());
-    } else if (kind === "problem_code") {
+    } else if (problemMethod === "code") {
       const n = parseProblemCode(problemCode);
       if (!n) return;
       p.set("type", "problem_code");
       p.set("displayNo", String(n));
+    } else if (problemMethod === "exam") {
+      p.set("type", "problem");
+      p.set("by", "exam");
+      p.set("subject", subject);
+      p.set("year", year.trim());
+      p.set("examNumber", examNumber.trim());
     } else {
       p.set("type", "problem");
+      p.set("by", "systematic");
       p.set("subject", subject);
       p.set("origin", origin);
+      p.set("primaryNodeId", primaryNodeId);
       p.set("problemNumber", problemNumber.trim());
-      if (isExpected) p.set("primaryNodeId", primaryNodeId);
-      else p.set("year", year.trim());
     }
     resolveFetcher.load(`/api/qna/target-resolve?${p.toString()}`);
   };
@@ -547,96 +575,136 @@ function QnaTargetPicker() {
           </label>
         ) : null}
 
-        {kind === "problem_code" ? (
-          <label className="block">
-            <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
-              문제번호
-            </span>
-            <Input
-              value={problemCode}
-              onChange={(e) => setProblemCode(e.target.value)}
-              placeholder="예: P-10342 (문제 화면의 번호)"
-            />
-            <span className="text-muted-foreground mt-1 block text-[11px]">
-              문제 화면 상단의 <strong>P-번호</strong>를 입력하면 그 문제로 바로
-              특정됩니다.
-            </span>
-          </label>
-        ) : null}
-
         {kind === "problem" ? (
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              {subjectSelect}
+            {/* 특정 방법 — 체계번호 / 기출번호 / 문제번호(P) 중 택1 */}
+            <div>
+              <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+                특정 방법
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {PROBLEM_METHODS.map((m) => (
+                  <button
+                    key={m.key}
+                    type="button"
+                    onClick={() => setProblemMethod(m.key)}
+                    title={m.hint}
+                    className={
+                      problemMethod === m.key
+                        ? "bg-primary text-primary-foreground rounded-full px-3.5 py-1.5 text-sm font-semibold"
+                        : "border-border text-muted-foreground hover:text-foreground rounded-full border px-3.5 py-1.5 text-sm"
+                    }
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+              <span className="text-muted-foreground mt-1.5 block text-[11px]">
+                {PROBLEM_METHODS.find((m) => m.key === problemMethod)?.hint}
+              </span>
+            </div>
+
+            {/* 문제번호(P-코드) — 과목 불필요, 고유 식별 */}
+            {problemMethod === "code" ? (
               <label className="block">
                 <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
-                  출처
+                  문제 고유번호
                 </span>
-                <select
-                  value={origin}
-                  onChange={(e) => setOrigin(e.target.value as ProblemOriginKey)}
-                  className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
-                >
-                  {PROBLEM_ORIGIN_OPTIONS.map((o) => (
-                    <option key={o.key} value={o.key}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
+                <Input
+                  value={problemCode}
+                  onChange={(e) => setProblemCode(e.target.value)}
+                  placeholder="예: P-10342 (문제 화면의 번호)"
+                />
+                <span className="text-muted-foreground mt-1 block text-[11px]">
+                  문제 화면 상단의 <strong>P-번호</strong>를 입력하면 그 문제로 바로
+                  특정됩니다.
+                </span>
               </label>
-            </div>
-            {/* 객관식은 모두 1차라 차수 없음. 기출/변형=년도+번호, 예상=체계도+번호. */}
-            {isExpected ? (
-              <div className="grid grid-cols-3 gap-3">
-                <label className="col-span-2 block">
-                  <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
-                    체계도(단원)
-                  </span>
-                  <NodeCombobox
-                    nodes={subjectNodes}
-                    value={primaryNodeId}
-                    onChange={setPrimaryNodeId}
-                    loading={nodesFetcher.state !== "idle"}
-                  />
-                </label>
+            ) : null}
+
+            {/* 기출번호 — 과목 + 연도 + 시험 문항번호 */}
+            {problemMethod === "exam" ? (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="col-span-2">{subjectSelect}</div>
                 <label className="block">
                   <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
-                    번호
-                  </span>
-                  <Input
-                    value={problemNumber}
-                    onChange={(e) => setProblemNumber(e.target.value)}
-                    placeholder="5"
-                    inputMode="numeric"
-                  />
-                </label>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-3">
-                <label className="block">
-                  <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
-                    연도
+                    기출 연도
                   </span>
                   <Input
                     value={year}
                     onChange={(e) => setYear(e.target.value)}
-                    placeholder="2020"
+                    placeholder="2024"
                     inputMode="numeric"
                   />
                 </label>
                 <label className="block">
                   <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
-                    번호
+                    기출번호
                   </span>
                   <Input
-                    value={problemNumber}
-                    onChange={(e) => setProblemNumber(e.target.value)}
-                    placeholder="5"
+                    value={examNumber}
+                    onChange={(e) => setExamNumber(e.target.value)}
+                    placeholder="7"
                     inputMode="numeric"
                   />
                 </label>
               </div>
-            )}
+            ) : null}
+
+            {/* 체계번호 — 과목 + 출처 + 체계도 노드 + 노드 내 번호 */}
+            {problemMethod === "systematic" ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  {subjectSelect}
+                  <label className="block">
+                    <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+                      출처
+                    </span>
+                    <select
+                      value={origin}
+                      onChange={(e) =>
+                        setOrigin(e.target.value as ProblemOriginKey)
+                      }
+                      className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+                    >
+                      {originOptionsFor(subject).map((o) => (
+                        <option key={o.key} value={o.key}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <label className="col-span-2 block">
+                    <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+                      체계도(단원)
+                    </span>
+                    <NodeCombobox
+                      nodes={subjectNodes}
+                      value={primaryNodeId}
+                      onChange={setPrimaryNodeId}
+                      loading={nodesFetcher.state !== "idle"}
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+                      체계번호
+                    </span>
+                    <Input
+                      value={problemNumber}
+                      onChange={(e) => setProblemNumber(e.target.value)}
+                      placeholder="5"
+                      inputMode="numeric"
+                    />
+                  </label>
+                </div>
+                <span className="text-muted-foreground block text-[11px]">
+                  왼쪽 체계도 패널에서 단원을 고르고, 그 단원 안에서의 문제 번호를
+                  입력하세요.
+                </span>
+              </div>
+            ) : null}
           </div>
         ) : null}
 

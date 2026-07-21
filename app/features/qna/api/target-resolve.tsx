@@ -15,7 +15,8 @@ import {
 
 import type { Route } from "./+types/target-resolve";
 
-const paramSchema = z.discriminatedUnion("type", [
+// 문제는 by(exam/systematic) 로 갈리므로 type 단일 discriminator 로는 부족 → z.union 사용.
+const paramSchema = z.union([
   z.object({
     type: z.literal("article"),
     subject: z.string().min(1),
@@ -33,14 +34,22 @@ const paramSchema = z.discriminatedUnion("type", [
     type: z.literal("problem_code"),
     displayNo: z.coerce.number().int().min(1),
   }),
+  // 문제 — 기출번호(연도+시험번호) 로 특정.
   z.object({
     type: z.literal("problem"),
+    by: z.literal("exam"),
+    subject: z.string().min(1),
+    year: z.coerce.number().int().min(1900).max(2100),
+    examNumber: z.coerce.number().int().min(1).max(200),
+  }),
+  // 문제 — 체계번호(출처+체계도 노드+노드 내 순번) 로 특정.
+  z.object({
+    type: z.literal("problem"),
+    by: z.literal("systematic"),
     subject: z.string().min(1),
     origin: z.enum(["past_exam", "past_exam_variant", "expected", "mock"]),
+    primaryNodeId: z.string().uuid(),
     problemNumber: z.coerce.number().int().min(1).max(200),
-    // 기출/변형=년도, 예상=체계도 노드(둘 중 하나). resolver 가 origin 별로 강제.
-    year: z.coerce.number().int().min(1900).max(2100).optional(),
-    primaryNodeId: z.string().uuid().optional(),
   }),
 ]);
 
@@ -74,13 +83,20 @@ export async function loader({ request }: Route.LoaderArgs) {
           ? await resolveCaseTarget(client, parsed.data.caseNumber)
           : parsed.data.type === "problem_code"
           ? await resolveProblemByDisplayNo(client, parsed.data.displayNo)
-          : await resolveProblemTarget(client, {
-              subject: parsed.data.subject,
-              origin: parsed.data.origin,
-              problemNumber: parsed.data.problemNumber,
-              year: parsed.data.year,
-              primaryNodeId: parsed.data.primaryNodeId,
-            });
+          : parsed.data.by === "exam"
+            ? await resolveProblemTarget(client, {
+                subject: parsed.data.subject,
+                by: "exam",
+                year: parsed.data.year,
+                examNumber: parsed.data.examNumber,
+              })
+            : await resolveProblemTarget(client, {
+                subject: parsed.data.subject,
+                by: "systematic",
+                origin: parsed.data.origin,
+                primaryNodeId: parsed.data.primaryNodeId,
+                problemNumber: parsed.data.problemNumber,
+              });
 
   if (!resolved) {
     return data({ ok: false as const, error: "not-found" });

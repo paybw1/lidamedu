@@ -157,15 +157,22 @@ export async function resolveCaseTarget(
   };
 }
 
-// 문제 대상 — 객관식은 모두 1차. 기출/변형=년도+번호, 예상=체계도(노드)+번호(year 없음).
+// 문제 대상 — 3가지 식별 방법 중 하나로 특정(어느 것이든 같은 problem 을 가리킴):
+//   by="exam"       기출번호: 과목 + 연도 + 기출 시험번호(exam_number, 기출/변형 공통·연도 내 유일)
+//   by="systematic" 체계번호: 과목 + 출처 + 체계도 노드 + 노드 내 순번(problem_number)
+//   (P-코드=문제 고유번호는 resolveProblemByDisplayNo 로 별도 처리)
 export async function resolveProblemTarget(
   client: SupabaseClient<Database>,
   args: {
     subject: string;
-    origin: Database["public"]["Enums"]["problem_origin"];
-    problemNumber: number;
-    year?: number;
+    by: "exam" | "systematic";
+    // by="systematic" — 출처(기출/변형/예상)·체계도 노드·노드 내 순번.
+    origin?: Database["public"]["Enums"]["problem_origin"];
     primaryNodeId?: string;
+    problemNumber?: number;
+    // by="exam" — 연도·기출 시험번호.
+    year?: number;
+    examNumber?: number;
   },
 ): Promise<ResolvedTarget | null> {
   const lawCode = asLawSubject(args.subject);
@@ -179,22 +186,23 @@ export async function resolveProblemTarget(
     .eq("law_id", law.lawId)
     .is("deleted_at", null);
 
-  if (args.origin === "expected") {
-    // 예상문제: 실제 시험번호가 없으므로 노드 내 순번(problem_number)+체계도 노드로 특정.
-    if (!args.primaryNodeId) return null;
-    query = query
-      .eq("origin", "expected")
-      .eq("problem_number", args.problemNumber)
-      .eq("primary_node_id", args.primaryNodeId);
-  } else {
-    // 기출/기출변형: 입력 번호 = 실제 시험번호(exam_number). problem_number(노드 순번)와 별개 축.
-    //   시험번호는 연도 내 유일하므로 기출/변형 구분 없이 (연도+시험번호)로 특정.
-    if (args.year == null) return null;
+  if (args.by === "exam") {
+    // 기출번호: 연도 + 시험번호. 시험번호는 연도 내 유일 → 기출/변형 구분 없이 특정.
+    if (args.year == null || args.examNumber == null) return null;
     query = query
       .in("origin", ["past_exam", "past_exam_variant"])
       .eq("year", args.year)
-      .eq("exam_number", args.problemNumber)
+      .eq("exam_number", args.examNumber)
       .eq("exam_round", "first");
+  } else {
+    // 체계번호: 출처 + 체계도 노드 + 노드 내 순번. 노드 순번은 출처별로 1부터 매겨지므로
+    //   (origin, node, problem_number) 로 특정. 기출/변형/예상 모두 이 방법으로 가능.
+    if (!args.origin || !args.primaryNodeId || args.problemNumber == null)
+      return null;
+    query = query
+      .eq("origin", args.origin)
+      .eq("primary_node_id", args.primaryNodeId)
+      .eq("problem_number", args.problemNumber);
   }
 
   const { data, error } = await query.limit(1);
