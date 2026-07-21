@@ -10,6 +10,7 @@ import {
   MicOffIcon,
   RotateCcwIcon,
   SaveIcon,
+  ScrollIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFetcher } from "react-router";
@@ -18,7 +19,12 @@ import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { useVoiceRecognition } from "~/core/hooks/use-voice-recognition";
 import { cn } from "~/core/lib/utils";
-import type { ArticleBody, Block, Inline } from "~/features/laws/lib/article-body";
+import type {
+  ArticleBody,
+  Block,
+  Inline,
+  SubArticleEntry,
+} from "~/features/laws/lib/article-body";
 
 import {
   RECITATION_PASS_THRESHOLD,
@@ -34,6 +40,20 @@ interface RecitationBlock {
   depth: number;
 }
 
+// "함께 공부할 조문"(시행령·시행규칙 등 위임 조문) — 암기 대상이 아니라 참고용으로 본문을 그대로
+// 보여 주는 섹션. 학생이 어떤 조문을 함께 봐야 하는지(예: 시행령 제6조) 내용까지 확인할 수 있게 한다.
+interface RefSection {
+  key: string;
+  source: string;
+  preface: Block[] | null;
+  articles: SubArticleEntry[];
+}
+
+// 암기 화면의 순서 있는 항목 — 외울 항/호/목(recite) 과 참고 조문 카드(ref) 가 본문 순서대로 섞인다.
+type RecitationItem =
+  | { type: "recite"; block: RecitationBlock }
+  | { type: "ref"; ref: RefSection };
+
 interface Props {
   articleId: string;
   articleLabel: string;
@@ -48,18 +68,35 @@ export function RecitationView({ articleId, articleLabel, body }: Props) {
   const [resetKey, setResetKey] = useState(0);
   const textareaRefs = useRef<Map<number, HTMLTextAreaElement>>(new Map());
 
-  // walkBlocks pre-order 와 정합되는 bi(block_index) 를 계산하면서 학생이 외울 block 만 추출.
+  // walkBlocks pre-order 와 정합되는 bi(block_index) 를 계산하면서 본문 순서대로 항목을 추출.
   // 추출 대상:
-  //   - clause / item / sub: 법조문의 일반 구조 (조-항-호-목)
-  //   - para: 항/호/목이 없는 단순 조문 (예: 제1조 목적) — body 가 para 로만 구성된 경우
+  //   - clause / item / sub: 법조문의 일반 구조 (조-항-호-목) → 외울 항목(recite)
+  //   - para: 항/호/목이 없는 단순 조문 (예: 제1조 목적) → 외울 항목(recite)
+  //   - sub_article_group("함께 공부할 조문", 시행령·시행규칙 등) → 참고 카드(ref). 내용을 그대로
+  //     보여 주기만 하고 암기 입력창으로 흩뿌리지 않는다. 학생이 그 조문이 뭔지 알 수 있어야 하기 때문.
   // 제외:
   //   - amendment_note 만 포함된 para (메타) → expectedText 가 빈 문자열이라 skip
-  //   - header_refs / title_marker / sub_article_group: 외울 대상 아님 (단 sub_article_group 안의
-  //     preface / sub-article 의 clause 등은 재귀로 진입)
-  // bi 는 walkBlocks 와 정합되도록 모든 block 마다 증가.
-  const recitationBlocks = useMemo<RecitationBlock[]>(() => {
-    const out: RecitationBlock[] = [];
+  //   - header_refs / title_marker: 외울 대상 아님
+  // bi 는 walkBlocks 와 정합되도록 모든 block 마다 증가 (sub_article 내부 block 도 bi-only 로 소진).
+  const items = useMemo<RecitationItem[]>(() => {
+    const out: RecitationItem[] = [];
     let bi = 0;
+    // walkBlocks 와 동일하게 bi 만 증가시키는 count-only 순회 (참고 조문 내부용).
+    const countOnly = (blocks: Block[]) => {
+      for (const block of blocks) {
+        bi++;
+        if (
+          block.kind === "clause" ||
+          block.kind === "item" ||
+          block.kind === "sub"
+        ) {
+          countOnly(block.children);
+        } else if (block.kind === "sub_article_group") {
+          if (block.preface) countOnly(block.preface);
+          for (const sa of block.articles) countOnly(sa.blocks);
+        }
+      }
+    };
     const visit = (blocks: Block[], depth: number) => {
       for (const block of blocks) {
         const myBi = bi;
@@ -73,11 +110,14 @@ export function RecitationView({ articleId, articleLabel, body }: Props) {
             block.inline.map(inlineCumulativeText).join(""),
           );
           out.push({
-            blockIndex: myBi,
-            label: block.label,
-            subtitle: block.subtitle ?? null,
-            expectedText: expected,
-            depth,
+            type: "recite",
+            block: {
+              blockIndex: myBi,
+              label: block.label,
+              subtitle: block.subtitle ?? null,
+              expectedText: expected,
+              depth,
+            },
           });
           visit(block.children, depth + 1);
         } else if (block.kind === "para") {
@@ -87,19 +127,30 @@ export function RecitationView({ articleId, articleLabel, body }: Props) {
           // 관련조문 ref 만 나열된 para (예: 제29조 ③~④ 사이) 는 조문 원문이 아니므로 제외.
           if (hasSubstance(expected)) {
             out.push({
-              blockIndex: myBi,
-              label: "본문",
-              subtitle: null,
-              expectedText: expected,
-              depth,
+              type: "recite",
+              block: {
+                blockIndex: myBi,
+                label: "본문",
+                subtitle: null,
+                expectedText: expected,
+                depth,
+              },
             });
           }
           // para 는 children 없음.
         } else if (block.kind === "sub_article_group") {
-          if (block.preface) visit(block.preface, depth);
-          for (const sa of block.articles) {
-            visit(sa.blocks, depth);
-          }
+          out.push({
+            type: "ref",
+            ref: {
+              key: `ref-${myBi}`,
+              source: block.source,
+              preface: block.preface ?? null,
+              articles: block.articles,
+            },
+          });
+          // 참고 조문 내부는 암기 입력창으로 만들지 않되, bi 정합을 위해 소진한다.
+          if (block.preface) countOnly(block.preface);
+          for (const sa of block.articles) countOnly(sa.blocks);
         }
         // header_refs / title_marker — bi 만 증가, push 안 함.
       }
@@ -107,6 +158,12 @@ export function RecitationView({ articleId, articleLabel, body }: Props) {
     visit(body.blocks, 0);
     return out;
   }, [body]);
+
+  const recitationBlocks = useMemo<RecitationBlock[]>(
+    () =>
+      items.flatMap((it) => (it.type === "recite" ? [it.block] : [])),
+    [items],
+  );
 
   const setInputAt = useCallback((blockIndex: number, value: string) => {
     setInputs((prev) => ({ ...prev, [blockIndex]: value }));
@@ -277,7 +334,11 @@ export function RecitationView({ articleId, articleLabel, body }: Props) {
             이 조문에는 암기 가능한 항/호/목이 없습니다.
           </p>
         ) : null}
-        {recitationBlocks.map((rb) => {
+        {items.map((it) => {
+          if (it.type === "ref") {
+            return <RefSectionCard key={it.ref.key} section={it.ref} />;
+          }
+          const rb = it.block;
           const sim = similarities[rb.blockIndex] ?? 0;
           const complete = isRecitationComplete(sim);
           const input = inputs[rb.blockIndex] ?? "";
@@ -365,6 +426,110 @@ export function RecitationView({ articleId, articleLabel, body }: Props) {
       <span className="sr-only">{articleLabel}</span>
     </div>
   );
+}
+
+// "함께 공부할 조문"(시행령·시행규칙 등) 참고 카드 — 암기 대상이 아니라 내용을 그대로 보여 준다.
+// 본문 뷰어의 초록 박스와 동일한 정체성(색·라벨)을 유지해 학생이 같은 자료임을 인지하게 한다.
+function RefSectionCard({ section }: { section: RefSection }) {
+  return (
+    <aside className="relative rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 dark:border-emerald-700/40 dark:bg-emerald-950/10">
+      <div className="mb-2.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-2.5 py-0.5 text-[10.5px] font-extrabold tracking-[0.06em] text-white uppercase dark:bg-emerald-600">
+        <ScrollIcon className="size-2.5" /> 함께 공부할 조문 · {section.source}
+      </div>
+      {section.preface && section.preface.length > 0 ? (
+        <div className="mb-2 rounded-md border border-amber-200/60 bg-amber-50 px-3 py-2 text-[12.5px] leading-relaxed dark:border-amber-700/40 dark:bg-amber-900/20">
+          <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wide uppercase">
+            코멘트
+          </p>
+          <RefBlocks blocks={section.preface} />
+        </div>
+      ) : null}
+      <div className="space-y-2.5">
+        {section.articles.map((sa, i) => (
+          <div key={i} className="space-y-1">
+            <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
+              제{sa.number}조{sa.branch ? `의${sa.branch}` : ""} ({sa.title})
+            </p>
+            <div className="space-y-1 text-[13.5px] leading-relaxed text-emerald-950/90 dark:text-emerald-50/90">
+              <RefBlocks blocks={sa.blocks} />
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="mt-2.5 text-[11px] text-emerald-700/80 dark:text-emerald-300/70">
+        * 참고용으로 함께 표시되는 조문입니다 (암기 채점 대상 아님).
+      </p>
+    </aside>
+  );
+}
+
+// 참고 조문 본문을 읽기 전용으로 렌더 — 조/항/호/목 라벨 + 텍스트. 입력창 없음.
+function RefBlocks({
+  blocks,
+  depth = 0,
+}: {
+  blocks: Block[];
+  depth?: number;
+}) {
+  return (
+    <>
+      {blocks.map((b, i) => {
+        if (b.kind === "clause" || b.kind === "item" || b.kind === "sub") {
+          const text = refInlineText(b.inline);
+          return (
+            <div key={i} style={{ paddingLeft: `${depth * 12}px` }}>
+              <p>
+                <span className="mr-1 font-semibold text-emerald-800 dark:text-emerald-200">
+                  {b.label}
+                </span>
+                {b.subtitle ? (
+                  <span className="mr-1 font-semibold">({b.subtitle})</span>
+                ) : null}
+                {text}
+              </p>
+              {b.children.length > 0 ? (
+                <RefBlocks blocks={b.children} depth={depth + 1} />
+              ) : null}
+            </div>
+          );
+        }
+        if (b.kind === "para") {
+          const text = refInlineText(b.inline);
+          if (!text.trim()) return null;
+          return (
+            <p key={i} style={{ paddingLeft: `${depth * 12}px` }}>
+              {text}
+            </p>
+          );
+        }
+        // header_refs / title_marker / 중첩 sub_article_group 은 참고 카드에서 생략.
+        return null;
+      })}
+    </>
+  );
+}
+
+// 참고 조문 표시용 리터럴 텍스트 — 조문 원문 그대로. 강조 라벨·참조도 원문 글자를 보존하고,
+// 개정 메타(amendment_note)·각주(footnote)는 잡음이라 제외.
+function refInlineText(inline: Inline[]): string {
+  return inline
+    .map((t) => {
+      switch (t.type) {
+        case "text":
+        case "underline":
+        case "subtitle":
+        case "annotation":
+        case "ordinance_ref":
+          return t.text;
+        case "ref_article":
+        case "ref_law":
+          return t.raw;
+        case "amendment_note":
+        case "footnote":
+          return "";
+      }
+    })
+    .join("");
 }
 
 function SimilarityChip({
