@@ -545,3 +545,67 @@ export async function unmarkLessonComplete(input: {
   if (error) return { ok: false, error: error.message };
   return { ok: true };
 }
+
+// ── 포인트 (적립금 ledger — point_transactions) ────────────────────────────
+export interface PointTxn {
+  txnId: string;
+  delta: number;
+  reason: string | null;
+  balanceAfter: number | null;
+  createdAt: string;
+}
+export interface MemberPoints {
+  balance: number;
+  transactions: PointTxn[];
+}
+
+export async function getMemberPoints(
+  profileId: string,
+): Promise<MemberPoints> {
+  const { data } = await adminClient
+    .from("point_transactions")
+    .select("txn_id, delta, reason, balance_after, created_at")
+    .eq("user_id", profileId)
+    .order("created_at", { ascending: false })
+    .limit(300);
+  const rows = data ?? [];
+  const balance = rows.reduce((s, t) => s + t.delta, 0);
+  return {
+    balance,
+    transactions: rows.map((t) => ({
+      txnId: t.txn_id,
+      delta: t.delta,
+      reason: t.reason,
+      balanceAfter: t.balance_after,
+      createdAt: t.created_at,
+    })),
+  };
+}
+
+// 원장 수동 조정 — delta(+적립/−차감) 1건 insert. balance_after 는 조정 후 잔액으로 채운다.
+export async function adjustMemberPoints(input: {
+  userId: string;
+  delta: number;
+  reason: string;
+}): Promise<{ ok: true; newBalance: number } | { ok: false; error: string }> {
+  if (!Number.isInteger(input.delta) || input.delta === 0) {
+    return { ok: false, error: "증감 포인트를 입력하세요." };
+  }
+  const { data } = await adminClient
+    .from("point_transactions")
+    .select("delta")
+    .eq("user_id", input.userId);
+  const current = (data ?? []).reduce((s, t) => s + t.delta, 0);
+  const newBalance = current + input.delta;
+  if (newBalance < 0) {
+    return { ok: false, error: "잔액이 음수가 될 수 없습니다." };
+  }
+  const { error } = await adminClient.from("point_transactions").insert({
+    user_id: input.userId,
+    delta: input.delta,
+    reason: input.reason,
+    balance_after: newBalance,
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, newBalance };
+}

@@ -76,6 +76,7 @@ import {
 } from "~/features/admin/queries/student-activity.server";
 import {
   getMemberEnrollments,
+  getMemberPoints,
   getMemberProfile,
   listMemberCoupons,
   listMemberOrders,
@@ -86,6 +87,7 @@ import {
   type MemberCoupons,
   type MemberEnrollmentCourse,
   type MemberOrder,
+  type MemberPoints,
   type MemberProfile,
 } from "~/features/admin/queries/member-crm.server";
 import { isPasswordLoginEnabled } from "~/features/auth/settings.server";
@@ -310,6 +312,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     memberOrders,
     memberCoupons,
     memberEnrollments,
+    memberPoints,
   ] = await Promise.all([
     getMemberProfile(params.profileId),
     roleAtLeast(role, "manager")
@@ -332,6 +335,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     roleAtLeast(role, "manager")
       ? getMemberEnrollments(params.profileId)
       : Promise.resolve([] as MemberEnrollmentCourse[]),
+    roleAtLeast(role, "manager")
+      ? getMemberPoints(params.profileId)
+      : Promise.resolve({ balance: 0, transactions: [] } as MemberPoints),
   ]);
   const memberHeader = {
     memberNo: memberProfile?.memberNo ?? null,
@@ -355,6 +361,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     memberOrders,
     memberCoupons,
     memberEnrollments,
+    memberPoints,
     cohortComparisons,
     notes,
     csActions,
@@ -404,6 +411,7 @@ export default function AdminStudentDetail({
     memberOrders,
     memberCoupons,
     memberEnrollments,
+    memberPoints,
     cohortComparisons,
     notes,
     csActions,
@@ -445,6 +453,7 @@ export default function AdminStudentDetail({
     | "history"
     | "orders"
     | "coupons"
+    | "points"
     | "memo"
     | "activity"
   >("study");
@@ -579,6 +588,7 @@ export default function AdminStudentDetail({
           ) : null}
           {isAdmin ? <TabsTrigger value="orders">주문</TabsTrigger> : null}
           {isAdmin ? <TabsTrigger value="coupons">쿠폰</TabsTrigger> : null}
+          {isAdmin ? <TabsTrigger value="points">포인트</TabsTrigger> : null}
           <TabsTrigger value="memo">상담·메모</TabsTrigger>
           {isAdmin ? (
             <TabsTrigger value="activity">활동·결제</TabsTrigger>
@@ -879,6 +889,15 @@ export default function AdminStudentDetail({
         {isAdmin ? (
           <TabsContent value="coupons" className="mt-3">
             <MemberCouponsTab coupons={memberCoupons} />
+          </TabsContent>
+        ) : null}
+
+        {isAdmin ? (
+          <TabsContent value="points" className="mt-3">
+            <MemberPointsTab
+              userId={student.profileId}
+              points={memberPoints}
+            />
           </TabsContent>
         ) : null}
 
@@ -1739,6 +1758,152 @@ function MemberEnrollmentsTab({
           </CardContent>
         </Card>
       ))}
+    </div>
+  );
+}
+
+// ── feat-7-046 포인트 탭 (적립금 잔액·이력 + 원장 수동 조정) ──────────────
+function MemberPointsTab({
+  userId,
+  points,
+}: {
+  userId: string;
+  points: MemberPoints;
+}) {
+  const fetcher = useFetcher<{ ok?: true; error?: string }>();
+  const busy = fetcher.state !== "idle";
+  const err =
+    fetcher.data && "error" in fetcher.data ? fetcher.data.error : null;
+  const saved = !!(fetcher.data && "ok" in fetcher.data && fetcher.data.ok);
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardContent className="flex items-center justify-between gap-4 py-5">
+          <div>
+            <p className="text-muted-foreground text-[11px] font-semibold tracking-wide uppercase">
+              보유 포인트
+            </p>
+            <p className="mt-1 text-2xl font-extrabold tabular-nums">
+              {points.balance.toLocaleString("ko-KR")}
+              <span className="ml-1 text-base font-bold">P</span>
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <p className="text-sm font-semibold">포인트 조정</p>
+          <p className="text-muted-foreground text-xs">
+            적립(+) / 차감(−) 1건을 기록합니다. 사유 필수 · 감사 로그 남음.
+          </p>
+        </CardHeader>
+        <Separator />
+        <CardContent className="py-4">
+          <fetcher.Form
+            method="post"
+            action="/api/admin/member-points"
+            className="flex flex-wrap items-end gap-2"
+          >
+            <input type="hidden" name="userId" value={userId} />
+            <label className="flex flex-col gap-1">
+              <span className="text-muted-foreground text-[11px] font-semibold">
+                구분
+              </span>
+              <select
+                name="direction"
+                defaultValue="earn"
+                className="border-input bg-background h-9 rounded-md border px-2 text-sm outline-none"
+              >
+                <option value="earn">적립 (+)</option>
+                <option value="spend">차감 (−)</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-muted-foreground text-[11px] font-semibold">
+                포인트
+              </span>
+              <input
+                name="amount"
+                type="number"
+                min={1}
+                required
+                className="border-input bg-background h-9 w-28 rounded-md border px-3 text-sm tabular-nums outline-none"
+              />
+            </label>
+            <label className="flex flex-1 flex-col gap-1">
+              <span className="text-muted-foreground text-[11px] font-semibold">
+                사유
+              </span>
+              <input
+                name="reason"
+                required
+                placeholder="예: 이벤트 적립 / 오류 보정"
+                className="border-input bg-background h-9 min-w-[160px] rounded-md border px-3 text-sm outline-none"
+              />
+            </label>
+            <Button type="submit" size="sm" disabled={busy} className="h-9">
+              {busy ? "처리 중…" : "적용"}
+            </Button>
+          </fetcher.Form>
+          {err ? <p className="text-rose-600 mt-2 text-xs">{err}</p> : null}
+          {saved ? (
+            <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-400">
+              조정되었습니다.
+            </p>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <p className="text-sm font-semibold">포인트 내역</p>
+        </CardHeader>
+        <Separator />
+        <CardContent className="p-0">
+          {points.transactions.length === 0 ? (
+            <HistEmpty text="포인트 내역이 없습니다." />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>일시</TableHead>
+                  <TableHead>내역</TableHead>
+                  <TableHead className="text-right">증감</TableHead>
+                  <TableHead className="text-right">잔액</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {points.transactions.map((t) => (
+                  <TableRow key={t.txnId}>
+                    <TableCell className="text-xs tabular-nums">
+                      {t.createdAt.slice(0, 10)}
+                    </TableCell>
+                    <TableCell className="text-sm">{t.reason ?? "—"}</TableCell>
+                    <TableCell
+                      className={cn(
+                        "text-right text-xs font-semibold tabular-nums",
+                        t.delta >= 0
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-rose-600 dark:text-rose-400",
+                      )}
+                    >
+                      {t.delta >= 0 ? "+" : ""}
+                      {t.delta.toLocaleString("ko-KR")}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-right text-xs tabular-nums">
+                      {t.balanceAfter != null
+                        ? t.balanceAfter.toLocaleString("ko-KR")
+                        : "—"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
