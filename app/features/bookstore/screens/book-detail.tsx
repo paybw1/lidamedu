@@ -132,13 +132,25 @@ export default function BookDetail({ loaderData }: Route.ComponentProps) {
       </Link>
 
       <div className="mt-4 grid gap-8 md:grid-cols-[280px_1fr]">
-        <div className="bg-muted mx-auto aspect-[3/4] w-full max-w-[280px] overflow-hidden rounded-xl border">
-          <BookCover
-            coverPath={book.coverPath}
-            title={book.title}
-            className="size-full"
-          />
-        </div>
+        {book.coverPath ? (
+          // 표지는 원본 비율 그대로 — 가로가 긴 책은 넓게, 세로가 긴 책은 길게. 고정 3:4 프레임에
+          // 가두면 가로형 표지가 레터박스(빈 배경)로 작아 보이므로 natural aspect 로 렌더한다.
+          <div className="bg-muted mx-auto w-full max-w-[280px] self-start overflow-hidden rounded-xl border">
+            <img
+              src={book.coverPath}
+              alt={book.title}
+              className="h-auto w-full object-contain"
+            />
+          </div>
+        ) : (
+          <div className="bg-muted mx-auto aspect-[3/4] w-full max-w-[280px] overflow-hidden rounded-xl border">
+            <BookCover
+              coverPath={null}
+              title={book.title}
+              className="size-full"
+            />
+          </div>
+        )}
 
         <div className="flex flex-col">
           <div className="flex items-start justify-between gap-2">
