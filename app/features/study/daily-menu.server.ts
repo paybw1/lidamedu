@@ -219,8 +219,15 @@ async function pickWeakArticle(
   }
 
   // 미열람 + importance 높은 순.
+  //   ★article_number 가 없는 헤더성 조문(예: "실용신안법" 표제 노드)은 /articles/{번호}
+  //   URL 을 만들 수 없어 404 가 된다 → 후보에서 제외(2026-07-21 신고).
   const candidates = (problems ?? [])
-    .filter((p) => p.articles && !visited.has(p.articles.article_id))
+    .filter(
+      (p) =>
+        p.articles &&
+        p.articles.article_number != null &&
+        !visited.has(p.articles.article_id),
+    )
     .map((p) => ({
       articleId: p.articles!.article_id,
       articleNumber: p.articles!.article_number,

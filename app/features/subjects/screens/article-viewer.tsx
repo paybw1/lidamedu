@@ -500,9 +500,12 @@ function ArticleViewerInner({
       subject.slug,
     ],
   );
-  const periodBlankAvailable =
-    periodResult.blanks.length > 0 || periodResult.ambiguous.length > 0;
   const canEdit = staffRole !== null;
+  // 모호 케이스(ambiguous)는 운영자 검토용 — 학생에겐 확정 빈칸만 노출한다. 확정 빈칸이 0개인데
+  //   모호만 있으면 학생에겐 '기간 빈칸' 모드 자체를 숨긴다(채울 게 없음).
+  const periodBlankAvailable =
+    periodResult.blanks.length > 0 ||
+    (canEdit && periodResult.ambiguous.length > 0);
   // 빈칸 자료 편집 진입 — 자기 owner 의 set 이 있으면 거기, 없으면 새로 만들고 그 편집 화면으로
   // server action 이 알아서 redirect 처리.
   const blankSetFetcher = useFetcher();
@@ -1016,7 +1019,7 @@ function ArticleViewerInner({
                         기간 빈칸
                         <span className="text-[11px] tabular-nums opacity-70 sm:text-[10px]">
                           {periodResult.blanks.length}
-                          {periodResult.ambiguous.length > 0
+                          {canEdit && periodResult.ambiguous.length > 0
                             ? `+${periodResult.ambiguous.length}?`
                             : ""}
                         </span>
@@ -1387,7 +1390,9 @@ function ArticleViewerInner({
                         titleMap={titleMap}
                         lawCode={subject.slug}
                       />
-                      <PeriodAmbiguousPanel cases={periodResult.ambiguous} />
+                      {canEdit ? (
+                        <PeriodAmbiguousPanel cases={periodResult.ambiguous} />
+                      ) : null}
                     </div>
                   ) : recitationMode && body ? (
                     <RecitationView

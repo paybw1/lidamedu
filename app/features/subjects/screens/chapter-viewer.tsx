@@ -654,7 +654,8 @@ function Inner({
             </CardHeader>
           </Card>
 
-          {periodBlankMode && periodAmbiguousAll.length > 0 ? (
+          {/* 모호 케이스 검토 패널 — 운영자 전용(학생 비노출). */}
+          {canEditComment && periodBlankMode && periodAmbiguousAll.length > 0 ? (
             <PeriodAmbiguousPanel cases={periodAmbiguousAll} />
           ) : null}
 

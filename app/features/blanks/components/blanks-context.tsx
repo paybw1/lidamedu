@@ -13,6 +13,7 @@ import {
   type ReactNode,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -269,6 +270,30 @@ export function BlanksRenderProvider({
     ) {
       activeEl.blur();
     }
+  }, []);
+
+  // ★빈칸 '밖' 요소로의 IME 이월 차단 — 오류 신고 위젯·메모·검색창 등 빈칸이 아닌 곳을 클릭할 때.
+  //   flushBeforePointerFocus 는 '다른 빈칸' 클릭만 잡는다. 전역 capture pointerdown 으로 조합 중인
+  //   빈칸(포커스+data-lidam-blank)을, 클릭 대상이 그 빈칸 자신이 아니면 먼저 blur→조합 버퍼를 그
+  //   칸에 확정(flush). Windows 한글 IME 마지막 음절이 새 입력창(예: 오류 신고 textarea)으로
+  //   이월되던 문제(2026-07-21 신고) 해소. 조합 중일 때만 개입해 일반 클릭 동작엔 영향 없음.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const onDocPointerDown = (e: PointerEvent) => {
+      if (!anyComposingRef.current) return;
+      const activeEl = document.activeElement;
+      if (
+        activeEl instanceof HTMLInputElement &&
+        activeEl.dataset.lidamBlank === "1" &&
+        e.target !== activeEl &&
+        typeof activeEl.blur === "function"
+      ) {
+        activeEl.blur();
+      }
+    };
+    document.addEventListener("pointerdown", onDocPointerDown, true);
+    return () =>
+      document.removeEventListener("pointerdown", onDocPointerDown, true);
   }, []);
 
   // 최신 states 를 ref 로 보관 — checkAnswer/doFocusNext 가 deps 없이 현재 상태를 읽는다.
