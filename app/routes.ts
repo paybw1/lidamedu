@@ -1498,6 +1498,11 @@ export default [
         route("/ai-gen", "features/admin/screens/admin-ai-problem-gen.tsx"),
         route("/ox", "features/problems/screens/admin-ox-review.tsx"),
         route("/stats", "features/admin/screens/admin-problem-stats.tsx"),
+        // 기출 시험번호(exam_number) 매칭 — /:problemId 보다 먼저(정적 우선).
+        route(
+          "/exam-number",
+          "features/problems/screens/admin-exam-number.tsx",
+        ),
         route(
           "/system/:nodeId",
           "features/problems/screens/admin-problems-system-edit.tsx",

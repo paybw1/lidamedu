@@ -59,6 +59,7 @@ import {
   isOxEligible,
   ORIGIN_LABEL,
   POLARITY_LABEL,
+  problemDisplayNumber,
   SCOPE_LABEL,
   SUBJECTIVE_KIND_LABEL,
 } from "~/features/problems/labels";
@@ -462,6 +463,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
             problemId: p.problemId,
             year: p.year,
             problemNumber: p.problemNumber,
+            examNumber: p.examNumber ?? null,
             origin: p.origin,
           }
         : null;
@@ -1092,9 +1094,14 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                     >
                       {problem.year}년
                       {problem.examRoundNo ? ` ${problem.examRoundNo}회` : ""}
-                      {problem.problemNumber
-                        ? ` · 문제 ${problem.problemNumber}번`
-                        : ""}
+                      {(() => {
+                        const n = problemDisplayNumber(
+                          problem.origin,
+                          problem.examNumber,
+                          problem.problemNumber,
+                        );
+                        return n != null ? ` · 문제 ${n}번` : "";
+                      })()}
                     </span>
                   ) : null}
                   {/* 운영자 — 문제·해설 수정 (staff 전용). case-viewer 의 헤더
@@ -2534,9 +2541,12 @@ function ProblemPrevNextButton({
       </button>
     );
   }
+  const num =
+    problemDisplayNumber(target.origin, target.examNumber, target.problemNumber) ??
+    "?";
   const label = target.year
-    ? `${target.year}년 #${target.problemNumber ?? "?"}`
-    : `#${target.problemNumber ?? "?"}`;
+    ? `${target.year}년 #${num}`
+    : `#${num}`;
   return (
     <Link
       to={`/subjects/${subjectSlug}/problems/${target.problemId}${query}`}

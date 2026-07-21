@@ -101,7 +101,7 @@ export async function listProblemsBySubject(
     let query = client
       .from("problems")
       .select(
-        "problem_id, display_no, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, importance, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, articles!primary_article_id(article_number, display_label, path)",
+        "problem_id, display_no, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, exam_number, body_md, importance, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, articles!primary_article_id(article_number, display_label, path)",
       )
       .eq("law_id", law.law_id)
       .is("deleted_at", null);
@@ -245,6 +245,7 @@ export async function listProblemsBySubject(
       year: row.year,
       examRoundNo: row.exam_round_no,
       problemNumber: row.problem_number,
+      examNumber: row.exam_number,
       displayNo: row.display_no,
       overallNo: null,
       bodyMd: row.body_md,
@@ -2156,7 +2157,7 @@ export async function getProblemById(
   const { data: problem, error } = await client
     .from("problems")
     .select(
-      "problem_id, display_no, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, importance, primary_article_id, law_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, articles!primary_article_id(article_number, display_label)",
+      "problem_id, display_no, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, exam_number, body_md, importance, primary_article_id, law_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, articles!primary_article_id(article_number, display_label)",
     )
     .eq("problem_id", problemId)
     .is("deleted_at", null)
@@ -2195,6 +2196,7 @@ export async function getProblemById(
     year: problem.year,
     examRoundNo: problem.exam_round_no,
     problemNumber: problem.problem_number,
+    examNumber: problem.exam_number,
     bodyMd: problem.body_md,
     importance: problem.importance ?? 0,
     primaryArticleId: problem.primary_article_id,
@@ -3020,6 +3022,7 @@ export interface AdjacentProblem {
   problemId: string;
   year: number | null;
   problemNumber: number | null;
+  examNumber: number | null;
   origin: Database["public"]["Enums"]["problem_origin"];
 }
 export async function getAdjacentProblems(
@@ -3033,12 +3036,17 @@ export async function getAdjacentProblems(
     .is("deleted_at", null)
     .maybeSingle();
   if (!cur || !cur.law_id) return { prev: null, next: null };
+  // 기출/변형은 실제 시험번호(exam_number)로, 그 외는 노드 순번(problem_number)으로 인접 계산.
+  //   연도 내에서 exam_number 우선(nulls last) → problem_number 타이브레이커. 이렇게 하면
+  //   기출 7번의 prev=6번·next=8번(시험번호 순)이 되고, problem_number(노드 순번) 스왑으로
+  //   인접이 어긋나던 문제가 해소된다.
   const { data: rows } = await client
     .from("problems")
-    .select("problem_id, year, problem_number, origin")
+    .select("problem_id, year, problem_number, exam_number, origin")
     .eq("law_id", cur.law_id)
     .is("deleted_at", null)
     .order("year", { ascending: false, nullsFirst: false })
+    .order("exam_number", { ascending: true, nullsFirst: false })
     .order("problem_number", { ascending: true, nullsFirst: false });
   if (!rows) return { prev: null, next: null };
   const idx = rows.findIndex((r) => r.problem_id === problemId);
@@ -3051,6 +3059,7 @@ export async function getAdjacentProblems(
           problemId: r.problem_id,
           year: r.year,
           problemNumber: r.problem_number,
+          examNumber: r.exam_number,
           origin: r.origin,
         }
       : null;

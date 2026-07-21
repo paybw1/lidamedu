@@ -205,6 +205,18 @@ export const ORIGIN_HAS_ROUND: Record<ProblemOrigin, boolean> = {
   ai_draft: false,
 };
 
+// 화면 표시·인접(prev/next) 번호 SSOT. 기출/변형은 실제 시험 문항번호(examNumber)를,
+//   그 외(예상·모의·초안)는 노드 순번(problemNumber)을 쓴다. examNumber 미매칭이면
+//   problemNumber 로 폴백(과거 데이터 안전). Q&A 타겟 라벨과 동일 규칙.
+export function problemDisplayNumber(
+  origin: ProblemOrigin,
+  examNumber: number | null | undefined,
+  problemNumber: number | null,
+): number | null {
+  const isPast = origin === "past_exam" || origin === "past_exam_variant";
+  return isPast ? (examNumber ?? problemNumber) : problemNumber;
+}
+
 export interface ProblemListItem {
   problemId: string;
   examRound: ProblemExamRound;
@@ -215,6 +227,9 @@ export interface ProblemListItem {
   year: number | null;
   examRoundNo: number | null;
   problemNumber: number | null;
+  // 실제 시험 문항번호(기출/변형만). problemNumber(노드 순번)와 별개 축 — 표시·정렬은
+  //   기출이면 이 값을 우선(problemDisplayNumber). 미설정(미매칭)이면 null.
+  examNumber?: number | null;
   // 전역 고유 표시번호(불변, "P-{n}"). listProblemsBySubject 에서 채움(그 외 미설정 가능).
   displayNo?: number | null;
   // 체계도 전체 순번(노드 트리 순 → 노드 내 기본순). 학습과목 허브 로더에서만 채움(그 외 미설정).

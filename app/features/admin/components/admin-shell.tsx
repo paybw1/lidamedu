@@ -134,6 +134,7 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "기출 해설 검수", to: "/admin/problems/explanations" },
       { label: "지문 텍스트 검수", to: "/admin/problems/text-conversion" },
       { label: "문제 직접 만들기", to: "/admin/problems/new" },
+      { label: "기출 시험번호 매칭", to: "/admin/problems/exam-number" },
       { label: "전체 문제 보기", to: "/admin/problems" },
       { label: "정오문제 검수", to: "/admin/problems/ox" },
       { label: "정답률·통계", to: "/admin/problems/stats" },
