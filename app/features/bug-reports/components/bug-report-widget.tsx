@@ -59,7 +59,12 @@ export function BugReportWidget() {
         <BugIcon className="size-4" /> 오류 신고
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        <DialogContent
+          // ★한글 IME 이월 차단: 빈칸 조합 중 이 창을 열면 자동 포커스된 textarea 로
+          //   조합 마지막 음절이 이월(특히 iOS Safari). 자동 포커스를 막아 조합이 편집 가능한
+          //   대상에 착지하지 못하게 한다 — 사용자가 직접 입력창을 탭할 때는 이미 조합이 끝나 있다.
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>오류 신고</DialogTitle>
             <DialogDescription>

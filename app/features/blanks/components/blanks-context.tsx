@@ -703,6 +703,12 @@ function BlankInputInline({
   // 한글 IME 조합 진행 여부 — 조합 중엔 DOM 값 강제 동기화·판정 변형을 전부
   // 건너뛴다(조합 파괴 = 첫 글자 소실 버그). ref 라 리렌더 없음.
   const composingRef = useRef(false);
+  // ★캐리오버(이월) 조합 감지 — 이 칸에서 compositionstart 가 일어났는지. 포커스 시 false 로
+  //   리셋하고 compositionstart 에서 true. 만약 compositionstart 없이 compositionend 가
+  //   오면(다른 칸/입력창에서 시작된 조합이 이 칸으로 이월돼 끝난 것), 그 값은 사용자가 이 칸에
+  //   친 게 아니므로 무시한다. Windows blur-flush 가 안 통하는 iOS Safari 이월의 방어선.
+  const sawCompositionStartRef = useRef(false);
+  const focusAtRef = useRef(0);
   const cls = cn(
     "mx-0.5 inline-block rounded border-b-2 px-1 align-baseline focus:outline-none",
     status === "correct" || status === "revealed"
@@ -772,6 +778,9 @@ function BlankInputInline({
           if (e.currentTarget.value !== value) {
             e.currentTarget.value = value;
           }
+          // 새 포커스 시작 — 아직 이 칸에서 조합을 시작하지 않았음. 이월 조합 감지 기준점.
+          sawCompositionStartRef.current = false;
+          focusAtRef.current = Date.now();
           onFocusInput();
         }}
         onCompositionStart={(e) => {
@@ -780,12 +789,26 @@ function BlankInputInline({
             e.currentTarget.value = value;
           }
           composingRef.current = true;
+          sawCompositionStartRef.current = true; // 이 칸에서 정상적으로 조합 시작함
           onComposingChange(true); // 전역 조합 플래그 ON → 이 사이 focus 이동 금지
         }}
         onCompositionEnd={(e) => {
+          const wasComposingHere = composingRef.current;
           composingRef.current = false;
           // 전역 조합 플래그 OFF — 이후 Enter 이동 가드(advanceToNext)가 통과되게 한다.
           onComposingChange(false);
+          // ★이월 조합 방어: 이 칸에서 compositionstart 없이(다른 칸/입력창에서 시작된 조합이
+          //   포커스 이동으로 이월) 조합이 끝났다면, 그 값은 사용자가 이 칸에 친 게 아니다.
+          //   포커스 직후(600ms 내)에만 이월로 간주 — 값 되돌리고 판정하지 않는다.
+          //   정상 조합(compositionstart→end)이나 한참 뒤 입력엔 영향 없음.
+          if (
+            !sawCompositionStartRef.current &&
+            !wasComposingHere &&
+            Date.now() - focusAtRef.current < 600
+          ) {
+            if (e.currentTarget.value !== value) e.currentTarget.value = value;
+            return;
+          }
           // 조합 확정값으로 최종 판정(조합 중엔 상태 반영만 했음). 정답이어도 자동이동은
           // 하지 않으므로 조합 잔여가 다음 칸으로 이월되지 않는다.
           onChange(e.currentTarget.value, false);
