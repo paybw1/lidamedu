@@ -75,6 +75,7 @@ import {
   type StudentActivity,
 } from "~/features/admin/queries/student-activity.server";
 import {
+  getMemberEnrollments,
   getMemberProfile,
   listMemberCoupons,
   listMemberOrders,
@@ -83,6 +84,7 @@ import {
   type AccessLogRow,
   type DownloadRow,
   type MemberCoupons,
+  type MemberEnrollmentCourse,
   type MemberOrder,
   type MemberProfile,
 } from "~/features/admin/queries/member-crm.server";
@@ -307,6 +309,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     passwordLoginEnabled,
     memberOrders,
     memberCoupons,
+    memberEnrollments,
   ] = await Promise.all([
     getMemberProfile(params.profileId),
     roleAtLeast(role, "manager")
@@ -326,6 +329,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
           lectureGrants: [],
           lectureRedemptions: [],
         } as MemberCoupons),
+    roleAtLeast(role, "manager")
+      ? getMemberEnrollments(params.profileId)
+      : Promise.resolve([] as MemberEnrollmentCourse[]),
   ]);
   const memberHeader = {
     memberNo: memberProfile?.memberNo ?? null,
@@ -348,6 +354,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     recentStudyDays,
     memberOrders,
     memberCoupons,
+    memberEnrollments,
     cohortComparisons,
     notes,
     csActions,
@@ -396,6 +403,7 @@ export default function AdminStudentDetail({
     recentStudyDays,
     memberOrders,
     memberCoupons,
+    memberEnrollments,
     cohortComparisons,
     notes,
     csActions,
@@ -431,7 +439,14 @@ export default function AdminStudentDetail({
   // Stage 0 (feat-7-046) — CRM 탭. #activity/#watch-history → 활동·결제,
   // #notes/#cs-history → 상담·메모 로 딥링크 보존(기존 /admin/users 링크 앵커).
   const [tab, setTab] = useState<
-    "study" | "info" | "history" | "orders" | "coupons" | "memo" | "activity"
+    | "study"
+    | "enroll"
+    | "info"
+    | "history"
+    | "orders"
+    | "coupons"
+    | "memo"
+    | "activity"
   >("study");
   useEffect(() => {
     const h = window.location.hash.replace("#", "");
@@ -555,6 +570,9 @@ export default function AdminStudentDetail({
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
         <TabsList className="flex-wrap">
           <TabsTrigger value="study">학습현황</TabsTrigger>
+          {isAdmin ? (
+            <TabsTrigger value="enroll">수강정보</TabsTrigger>
+          ) : null}
           <TabsTrigger value="info">회원정보</TabsTrigger>
           {isAdmin ? (
             <TabsTrigger value="history">회원이력</TabsTrigger>
@@ -817,6 +835,15 @@ export default function AdminStudentDetail({
         </Card>
       </div>
         </TabsContent>
+
+        {isAdmin ? (
+          <TabsContent value="enroll" className="mt-3">
+            <MemberEnrollmentsTab
+              userId={student.profileId}
+              courses={memberEnrollments}
+            />
+          </TabsContent>
+        ) : null}
 
         <TabsContent value="info" className="mt-3">
           {memberProfile ? (
@@ -1581,6 +1608,137 @@ function MemberCouponsTab({ coupons }: { coupons: MemberCoupons }) {
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+// ── feat-7-046 수강정보 탭 (진도율 + 개별완료처리) ────────────────────────
+const ENROLL_STATUS_LABEL: Record<string, string> = {
+  active: "수강중",
+  expired: "만료",
+  revoked: "회수",
+};
+
+function LessonCompleteToggle({
+  userId,
+  lessonId,
+  manualComplete,
+}: {
+  userId: string;
+  lessonId: string;
+  manualComplete: boolean;
+}) {
+  const fetcher = useFetcher<{ ok?: true; error?: string }>();
+  const busy = fetcher.state !== "idle";
+  return (
+    <fetcher.Form
+      method="post"
+      action="/api/admin/lesson-completion"
+      className="inline"
+    >
+      <input type="hidden" name="userId" value={userId} />
+      <input type="hidden" name="lessonId" value={lessonId} />
+      <input
+        type="hidden"
+        name="intent"
+        value={manualComplete ? "uncomplete" : "complete"}
+      />
+      <Button
+        type="submit"
+        size="sm"
+        variant={manualComplete ? "outline" : "default"}
+        disabled={busy}
+        className="h-6 px-2 text-[11px]"
+      >
+        {busy ? "…" : manualComplete ? "완료 취소" : "완료 처리"}
+      </Button>
+    </fetcher.Form>
+  );
+}
+
+function MemberEnrollmentsTab({
+  userId,
+  courses,
+}: {
+  userId: string;
+  courses: MemberEnrollmentCourse[];
+}) {
+  if (courses.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-10">
+          <HistEmpty text="수강 중인 과정이 없습니다." />
+        </CardContent>
+      </Card>
+    );
+  }
+  return (
+    <div className="space-y-4">
+      {courses.map((c) => (
+        <Card key={c.enrollmentId}>
+          <CardHeader className="pb-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-semibold">{c.courseLabel}</p>
+              <span className="flex items-center gap-2">
+                <Chip tone={c.revokedAt ? "outline" : "solid"}>
+                  {c.revokedAt
+                    ? "회수"
+                    : (ENROLL_STATUS_LABEL[c.status] ?? c.status)}
+                </Chip>
+                <span className="text-muted-foreground text-xs tabular-nums">
+                  ~{c.expiresAt.slice(0, 10)}
+                </span>
+              </span>
+            </div>
+            <div className="mt-1.5 flex items-center gap-2">
+              <div className="bg-muted h-1.5 flex-1 overflow-hidden rounded-full">
+                <div
+                  className="bg-primary h-full rounded-full"
+                  style={{ width: `${c.progressPct}%` }}
+                />
+              </div>
+              <span className="text-muted-foreground shrink-0 text-xs font-semibold tabular-nums">
+                {c.completedCount}/{c.totalCount} · {c.progressPct}%
+              </span>
+            </div>
+          </CardHeader>
+          <Separator />
+          <CardContent className="p-0">
+            {c.lessons.length === 0 ? (
+              <HistEmpty text="등록된 회차가 없습니다." />
+            ) : (
+              <ul className="divide-y">
+                {c.lessons.map((l) => (
+                  <li
+                    key={l.lessonId}
+                    className="flex items-center gap-2 px-4 py-2 text-sm"
+                  >
+                    <span className="text-muted-foreground w-8 shrink-0 text-xs tabular-nums">
+                      {l.lessonNo}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate">{l.title}</span>
+                    <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
+                      {Math.round(l.progressRatio * 100)}%
+                    </span>
+                    {l.manualComplete ? (
+                      <Chip tone="outline">수동완료</Chip>
+                    ) : l.completed ? (
+                      <Chip tone="solid">완강</Chip>
+                    ) : null}
+                    {l.manualComplete || !l.completed ? (
+                      <LessonCompleteToggle
+                        userId={userId}
+                        lessonId={l.lessonId}
+                        manualComplete={l.manualComplete}
+                      />
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 }

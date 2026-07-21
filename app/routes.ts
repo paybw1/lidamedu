@@ -1052,6 +1052,10 @@ export default [
         "features/admin/api/member-profile.tsx",
       ),
       route(
+        "/api/admin/lesson-completion",
+        "features/admin/api/lesson-completion.tsx",
+      ),
+      route(
         "/api/admin/problem-review",
         "features/admin/api/problem-review.tsx",
       ),

@@ -247,6 +247,17 @@ export async function getLessonProgressForUser(
       intervals.set(e.lesson_id, arr);
     }
   }
+
+  // feat-7-046 — 관리자 수동 완료 override(lesson_completions). 완료를 '추가'만 한다.
+  const manualComplete = new Set<string>();
+  for (let i = 0; i < lessonIds.length; i += 150) {
+    const { data: mc } = await adminClient
+      .from("lesson_completions")
+      .select("lesson_id")
+      .eq("user_id", userId)
+      .in("lesson_id", lessonIds.slice(i, i + 150));
+    for (const r of mc ?? []) manualComplete.add(r.lesson_id);
+  }
   for (const lessonId of lessonIds) {
     const duration = durByLesson.get(lessonId) ?? 0;
     const arr = (intervals.get(lessonId) ?? []).sort((a, b) => a[0] - b[0]);
@@ -270,7 +281,7 @@ export async function getLessonProgressForUser(
       watchedSeconds: watched,
       durationSeconds: duration,
       progressRatio: ratio,
-      completed: ratio >= threshold,
+      completed: ratio >= threshold || manualComplete.has(lessonId),
     });
   }
   return out;

@@ -7,6 +7,7 @@ import type { Database } from "database.types";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
 import { getMyRefundRequestMap } from "~/features/orders/refund-requests.server";
+import { getLessonProgressForUser } from "~/features/lms/watch.server";
 
 // ── 회원정보 (프로필 기재사항 + 로그인 계정) ──────────────────────────────
 export interface MemberProfile {
@@ -378,4 +379,169 @@ export async function listMemberCoupons(
   });
 
   return { subscription, lectureGrants, lectureRedemptions };
+}
+
+// ── 수강정보 (수강 과정 + 회차별 진도 + 개별완료처리) ─────────────────────
+export interface MemberEnrollmentLesson {
+  lessonId: string;
+  lessonNo: number;
+  title: string;
+  watchedSeconds: number;
+  durationSeconds: number;
+  progressRatio: number;
+  completed: boolean; // 시청 파생 완강 OR 수동 완료
+  manualComplete: boolean; // lesson_completions override 존재
+}
+export interface MemberEnrollmentCourse {
+  enrollmentId: string;
+  courseId: string;
+  courseLabel: string;
+  status: string;
+  startsAt: string;
+  expiresAt: string;
+  revokedAt: string | null;
+  lessons: MemberEnrollmentLesson[];
+  completedCount: number;
+  totalCount: number;
+  progressPct: number;
+}
+
+export async function getMemberEnrollments(
+  profileId: string,
+): Promise<MemberEnrollmentCourse[]> {
+  const { data: enrolls } = await adminClient
+    .from("enrollments")
+    .select(
+      "enrollment_id, course_id, status, starts_at, expires_at, revoked_at, created_at",
+    )
+    .eq("user_id", profileId)
+    .order("created_at", { ascending: false });
+  const rows = enrolls ?? [];
+  if (rows.length === 0) return [];
+
+  // 강의당 대표 enrollment 1개(비취소 우선, 최신 먼저 순회).
+  const byCourse = new Map<string, (typeof rows)[number]>();
+  for (const e of rows) {
+    const prev = byCourse.get(e.course_id);
+    if (!prev) {
+      byCourse.set(e.course_id, e);
+    } else if (prev.revoked_at && !e.revoked_at) {
+      byCourse.set(e.course_id, e);
+    }
+  }
+  const courseIds = [...byCourse.keys()];
+
+  const { data: courses } = await adminClient
+    .from("courses")
+    .select(
+      "course_id, edition_label, series:course_series!courses_series_id_fkey(title)",
+    )
+    .in("course_id", courseIds);
+  const courseLabel = new Map<string, string>();
+  for (const c of courses ?? []) {
+    const title = (c.series as { title: string } | null)?.title ?? "";
+    courseLabel.set(
+      c.course_id,
+      `${title} ${c.edition_label}`.trim() || c.course_id,
+    );
+  }
+
+  const { data: lessons } = await adminClient
+    .from("course_lessons")
+    .select("lesson_id, course_id, lesson_no, title")
+    .in("course_id", courseIds)
+    .is("deleted_at", null)
+    .order("sort_order")
+    .order("lesson_no");
+  const lessonRows = lessons ?? [];
+  const lessonIds = lessonRows.map((l) => l.lesson_id);
+
+  const progress = lessonIds.length
+    ? await getLessonProgressForUser(profileId, lessonIds)
+    : new Map();
+
+  // 어느 회차가 수동 완료인지(배지·토글 표시용).
+  const manual = new Set<string>();
+  for (let i = 0; i < lessonIds.length; i += 150) {
+    const { data: mc } = await adminClient
+      .from("lesson_completions")
+      .select("lesson_id")
+      .eq("user_id", profileId)
+      .in("lesson_id", lessonIds.slice(i, i + 150));
+    for (const r of mc ?? []) manual.add(r.lesson_id);
+  }
+
+  const lessonsByCourse = new Map<string, MemberEnrollmentLesson[]>();
+  for (const l of lessonRows) {
+    const p = progress.get(l.lesson_id);
+    const arr = lessonsByCourse.get(l.course_id) ?? [];
+    arr.push({
+      lessonId: l.lesson_id,
+      lessonNo: l.lesson_no,
+      title: l.title,
+      watchedSeconds: p?.watchedSeconds ?? 0,
+      durationSeconds: p?.durationSeconds ?? 0,
+      progressRatio: p?.progressRatio ?? 0,
+      completed: p?.completed ?? manual.has(l.lesson_id),
+      manualComplete: manual.has(l.lesson_id),
+    });
+    lessonsByCourse.set(l.course_id, arr);
+  }
+
+  const out: MemberEnrollmentCourse[] = [];
+  for (const cid of courseIds) {
+    const e = byCourse.get(cid);
+    if (!e) continue;
+    const ls = lessonsByCourse.get(cid) ?? [];
+    const completedCount = ls.filter((x) => x.completed).length;
+    out.push({
+      enrollmentId: e.enrollment_id,
+      courseId: cid,
+      courseLabel: courseLabel.get(cid) ?? cid,
+      status: e.status,
+      startsAt: e.starts_at,
+      expiresAt: e.expires_at,
+      revokedAt: e.revoked_at,
+      lessons: ls,
+      completedCount,
+      totalCount: ls.length,
+      progressPct: ls.length
+        ? Math.round((completedCount / ls.length) * 100)
+        : 0,
+    });
+  }
+  return out;
+}
+
+export async function markLessonComplete(input: {
+  userId: string;
+  lessonId: string;
+  completedBy: string;
+  note?: string | null;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await adminClient.from("lesson_completions").upsert(
+    {
+      lesson_id: input.lessonId,
+      user_id: input.userId,
+      completed_by: input.completedBy,
+      completed_at: new Date().toISOString(),
+      note: input.note ?? null,
+    },
+    { onConflict: "lesson_id,user_id" },
+  );
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+export async function unmarkLessonComplete(input: {
+  userId: string;
+  lessonId: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await adminClient
+    .from("lesson_completions")
+    .delete()
+    .eq("user_id", input.userId)
+    .eq("lesson_id", input.lessonId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
 }
