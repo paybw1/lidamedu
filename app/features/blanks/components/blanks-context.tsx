@@ -28,6 +28,20 @@ import type { BlankItem } from "~/features/blanks/queries.server";
 import { computeBlockBlankHits, walkBlocks } from "../lib/blank-layout";
 import { normalizeAnswer } from "../lib/normalize";
 
+// ★iOS Safari 한글 IME 이월 방어 — 전 provider(여러 조문 한 화면=장 뷰어) 공유 모듈 상태.
+//   조합 중인 빈칸을 떠날 때(탭·flush) 이 시각을 찍는다. 직후(창) 안에 '다른' 빈칸에서
+//   시작되는 조합은 iOS 가 이전 칸의 잔여 음절을 새 칸으로 이월(재조합)시킨 것으로 간주해
+//   그 조합 결과를 버린다. iOS 는 blur 로 조합 버퍼가 flush 되지 않아(Windows 와 다름) 이
+//   윈도우 방식으로 잡는다. window(브라우저)에서만 Date.now 사용(SSR 무관).
+let blankCarryoverUntil = 0;
+const BLANK_CARRYOVER_MS = 250;
+function markBlankCarryover(): void {
+  if (typeof Date !== "undefined") blankCarryoverUntil = Date.now() + BLANK_CARRYOVER_MS;
+}
+function isBlankCarryoverActive(): boolean {
+  return typeof Date !== "undefined" && Date.now() < blankCarryoverUntil;
+}
+
 export interface ResolveTextOptions {
   // block + offsetInBlock 가 모두 주어지면 사전 계산된 block hits 를 사용.
   // 없으면 legacy per-token matching.
@@ -288,6 +302,9 @@ export function BlanksRenderProvider({
         e.target !== activeEl &&
         typeof activeEl.blur === "function"
       ) {
+        // 조합 중 다른 곳을 탭 — Windows 는 blur 로 flush, iOS 는 flush 안 돼 잔여가 이월된다.
+        //   이월 방어 윈도우를 열어(전 provider 공유) 새 빈칸의 즉시 재조합을 버리게 한다.
+        markBlankCarryover();
         activeEl.blur();
       }
     };
@@ -709,6 +726,9 @@ function BlankInputInline({
   //   친 게 아니므로 무시한다. Windows blur-flush 가 안 통하는 iOS Safari 이월의 방어선.
   const sawCompositionStartRef = useRef(false);
   const focusAtRef = useRef(0);
+  // ★iOS 이월 조합 — 이 칸에서 시작됐지만 실은 직전 칸의 잔여가 이월된 조합(carryover 윈도우 내
+  //   compositionstart). true 면 이 조합의 입력·종료값을 이 칸에 반영하지 않고 버린다.
+  const residualRef = useRef(false);
   const cls = cn(
     "mx-0.5 inline-block rounded border-b-2 px-1 align-baseline focus:outline-none",
     status === "correct" || status === "revealed"
@@ -750,7 +770,14 @@ function BlankInputInline({
         //   이 살아 있어야 하기 때문. 재입력은 checkAnswer 의 correct 가드가 무시하므로 잠금 유지.
         //   정답 모두 보기(revealed) 만 실제 disabled.
         disabled={status === "revealed"}
-        onChange={(e) => onChange(e.target.value, composingRef.current)}
+        onChange={(e) => {
+          // 이월 조합의 입력은 이 칸에 반영하지 않고 값 복원(잔여 음절 차단).
+          if (residualRef.current) {
+            if (e.target.value !== value) e.target.value = value;
+            return;
+          }
+          onChange(e.target.value, composingRef.current);
+        }}
         onKeyDown={(e) => {
           // Enter → 다음 빈칸 이동(조합 중이면 조합 확정만 하고 이동은 상위 가드가 무시).
           if (e.key === "Enter") {
@@ -780,31 +807,37 @@ function BlankInputInline({
           }
           // 새 포커스 시작 — 아직 이 칸에서 조합을 시작하지 않았음. 이월 조합 감지 기준점.
           sawCompositionStartRef.current = false;
+          residualRef.current = false;
           focusAtRef.current = Date.now();
           onFocusInput();
         }}
         onCompositionStart={(e) => {
+          // ★iOS 이월: 직전 조합 칸을 떠난 직후(carryover 윈도우) 이 칸에서 조합이 '시작'되면
+          //   그건 사용자가 새로 친 게 아니라 이전 칸 잔여 음절의 재조합 → 이월로 표시해 버린다.
+          residualRef.current = isBlankCarryoverActive();
           // 조합 시작 직전 — 아직 삽입 전이라 autofill leak 정리는 안전.
           if (e.currentTarget.value !== value) {
             e.currentTarget.value = value;
           }
           composingRef.current = true;
-          sawCompositionStartRef.current = true; // 이 칸에서 정상적으로 조합 시작함
+          sawCompositionStartRef.current = true; // 이 칸에서 조합 시작함(이월 여부는 residualRef)
           onComposingChange(true); // 전역 조합 플래그 ON → 이 사이 focus 이동 금지
         }}
         onCompositionEnd={(e) => {
           const wasComposingHere = composingRef.current;
+          const wasResidual = residualRef.current;
           composingRef.current = false;
+          residualRef.current = false;
           // 전역 조합 플래그 OFF — 이후 Enter 이동 가드(advanceToNext)가 통과되게 한다.
           onComposingChange(false);
-          // ★이월 조합 방어: 이 칸에서 compositionstart 없이(다른 칸/입력창에서 시작된 조합이
-          //   포커스 이동으로 이월) 조합이 끝났다면, 그 값은 사용자가 이 칸에 친 게 아니다.
-          //   포커스 직후(600ms 내)에만 이월로 간주 — 값 되돌리고 판정하지 않는다.
-          //   정상 조합(compositionstart→end)이나 한참 뒤 입력엔 영향 없음.
+          // ★이월 조합 방어 ①: carryover 윈도우 내 시작된 조합(residual) — 그 결과는 버린다.
+          //   ★② compositionstart 없이(다른 칸에서 이월돼) 끝난 조합 — 포커스 직후(600ms)만 이월로.
+          //   둘 중 하나면 값 되돌리고 판정하지 않는다. 정상 조합·지연 입력엔 영향 없음.
           if (
-            !sawCompositionStartRef.current &&
-            !wasComposingHere &&
-            Date.now() - focusAtRef.current < 600
+            wasResidual ||
+            (!sawCompositionStartRef.current &&
+              !wasComposingHere &&
+              Date.now() - focusAtRef.current < 600)
           ) {
             if (e.currentTarget.value !== value) e.currentTarget.value = value;
             return;
