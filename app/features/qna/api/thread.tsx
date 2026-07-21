@@ -24,9 +24,11 @@ import {
   createThread,
   getThreadDetail,
   listThreadMessages,
+  retargetThread,
   setAiVerdict,
   softDeleteThread,
 } from "../queries.server";
+import { resolveProblemByDisplayNo } from "../lib/target-resolve.server";
 
 import type { Route } from "./+types/thread";
 
@@ -109,6 +111,17 @@ const feedbackSchema = z.object({
   feedback: z.coerce.number().int().min(-1).max(1),
 });
 
+// 대상 재지정 — 잘못 매칭된 질문을 문제 고유번호(P-코드=display_no)로 다른 문제에 다시 연결(staff).
+//   입력은 "P-5978" / "5978" 모두 허용 — 숫자만 추출.
+const retargetSchema = z.object({
+  intent: z.literal("retarget"),
+  threadId: z.string().uuid(),
+  displayNo: z.preprocess(
+    (v) => Number(String(v ?? "").replace(/[^0-9]/g, "")),
+    z.number().int().min(1),
+  ),
+});
+
 const schema = z.discriminatedUnion("intent", [
   createSchema,
   answerSchema,
@@ -120,6 +133,7 @@ const schema = z.discriminatedUnion("intent", [
   instructorReplySchema,
   editMessageSchema,
   feedbackSchema,
+  retargetSchema,
 ]);
 
 // 멀티턴 이력 — 최초 질문 + 타임라인(후속=user, AI/강사=assistant) + 강사 정식답변.
@@ -399,6 +413,35 @@ export async function action({ request }: Route.ActionArgs) {
       return data({ ok: false, error: error.message }, { status: 400, headers });
     }
     return data({ ok: true }, { headers });
+  }
+
+  if (parsed.data.intent === "retarget") {
+    // 강사·관리자 전용 — 잘못 매칭된 질문을 문제 고유번호(P-코드)로 다른 문제에 재연결.
+    const role = await getStaffRole(client, user.id);
+    if (!role) {
+      return data({ ok: false, error: "forbidden" }, { status: 403, headers });
+    }
+    const resolved = await resolveProblemByDisplayNo(
+      client,
+      parsed.data.displayNo,
+    );
+    if (!resolved) {
+      return data(
+        { ok: false, error: "problem-not-found" },
+        { status: 404, headers },
+      );
+    }
+    const r = await retargetThread(client, parsed.data.threadId, {
+      targetType: "problem",
+      targetId: resolved.targetId,
+    });
+    if (!r.ok) {
+      return data(
+        { ok: false, error: r.error ?? "update-failed" },
+        { status: 400, headers },
+      );
+    }
+    return data({ ok: true, label: resolved.label }, { headers });
   }
 
   if (parsed.data.intent === "edit") {

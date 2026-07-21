@@ -504,7 +504,7 @@ export async function getThreadDetail(
 }
 
 // 콘텐츠 대상(조문/판례/문제)의 과목(law_code) 도출 — 과목 분류 필터용.
-async function resolveSubjectForTarget(
+export async function resolveSubjectForTarget(
   client: SupabaseClient<Database>,
   targetType: QnaTargetType,
   targetId: string,
@@ -587,6 +587,37 @@ export async function resolveNodeForTarget(
     );
   }
   return null;
+}
+
+// 기존 Q&A 스레드의 대상(target)을 다른 콘텐츠로 재지정 — 잘못 매칭된 질문 교정용(staff).
+//   대상 변경 시 과목(subject)·단원(node_id)을 새 대상 기준으로 다시 도출해 함께 갱신한다.
+export async function retargetThread(
+  client: SupabaseClient<Database>,
+  threadId: string,
+  args: { targetType: QnaTargetType; targetId: string },
+): Promise<{ ok: boolean; error?: string }> {
+  const subject = await resolveSubjectForTarget(
+    client,
+    args.targetType,
+    args.targetId,
+  );
+  const nodeId = await resolveNodeForTarget(
+    client,
+    args.targetType,
+    args.targetId,
+  );
+  const { error } = await client
+    .from("qna_threads")
+    .update({
+      target_type: args.targetType,
+      target_id: args.targetId,
+      subject,
+      node_id: nodeId,
+    })
+    .eq("thread_id", threadId)
+    .is("deleted_at", null);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
 }
 
 // 과학 문제 대상의 과학 단원(science_sections) 도출 — node_id 와 대칭(과학 축).

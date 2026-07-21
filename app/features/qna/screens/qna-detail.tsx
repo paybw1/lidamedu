@@ -174,6 +174,7 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
   const isWaiting = thread.status === "open";
   // 강사·관리자 — 질문·답변 본문 인라인 수정 모드.
   const [editing, setEditing] = useState(false);
+  const [retargeting, setRetargeting] = useState(false);
 
   return (
     <CommunityShell
@@ -211,6 +212,19 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
               >
                 <PencilIcon className="size-3" /> {editing ? "수정 취소" : "수정"}
               </Button>
+              {thread.targetType === "problem" || thread.targetType === "study_method" ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setRetargeting((v) => !v)}
+                  className="text-muted-foreground hover:text-foreground h-6 gap-1 px-2 text-[11px]"
+                  title="이 질문이 가리키는 문제를 P-번호로 다시 지정 (강사·관리자)"
+                >
+                  <PencilIcon className="size-3" />{" "}
+                  {retargeting ? "대상 변경 취소" : "대상 변경"}
+                </Button>
+              ) : null}
               <DeleteThreadButton
                 threadId={thread.threadId}
                 afterHref={
@@ -266,6 +280,13 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
             {new Date(thread.createdAt).toLocaleString("ko-KR")}
           </span>
         </div>
+        {retargeting ? (
+          <RetargetForm
+            threadId={thread.threadId}
+            currentLabel={target?.label ?? null}
+            onDone={() => setRetargeting(false)}
+          />
+        ) : null}
         {editing ? (
           <EditThreadForm thread={thread} onDone={() => setEditing(false)} />
         ) : (
@@ -503,6 +524,75 @@ function EditThreadForm({
           취소
         </Button>
       </div>
+    </fetcher.Form>
+  );
+}
+
+// 대상 재지정 폼 — 잘못 매칭된 질문을 문제 고유번호(P-코드)로 다른 문제에 다시 연결(staff).
+//   문제 화면 상단의 P-번호를 입력하면 그 문제로 대상이 교체된다(과목·단원도 새 문제 기준 갱신).
+function RetargetForm({
+  threadId,
+  currentLabel,
+  onDone,
+}: {
+  threadId: string;
+  currentLabel: string | null;
+  onDone: () => void;
+}) {
+  const fetcher = useFetcher<{ ok?: boolean; error?: string; label?: string }>();
+  const revalidator = useRevalidator();
+  const doneRef = useRef(false);
+  useEffect(() => {
+    if (fetcher.data?.ok && !doneRef.current) {
+      doneRef.current = true;
+      revalidator.revalidate();
+      onDone();
+    }
+  }, [fetcher.data, revalidator, onDone]);
+  const errorMsg =
+    fetcher.data?.ok === false
+      ? fetcher.data.error === "problem-not-found"
+        ? "그 P-번호의 문제를 찾을 수 없습니다."
+        : `변경 실패: ${fetcher.data.error}`
+      : null;
+  return (
+    <fetcher.Form
+      method="post"
+      action="/api/qna/thread"
+      className="border-border bg-muted/30 mt-3.5 rounded-xl border p-3.5"
+    >
+      <input type="hidden" name="intent" value="retarget" />
+      <input type="hidden" name="threadId" value={threadId} />
+      <p className="mb-2 text-[12px] font-semibold">대상 문제 변경</p>
+      {currentLabel ? (
+        <p className="text-muted-foreground mb-2 text-[11px]">
+          현재 대상: <span className="font-medium">{currentLabel}</span>
+        </p>
+      ) : null}
+      <label className="text-muted-foreground mb-1 block text-[11px] font-bold">
+        새 대상의 문제 고유번호 (P-번호)
+      </label>
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          name="displayNo"
+          required
+          inputMode="numeric"
+          placeholder="예: P-5978 또는 5978"
+          pattern="[Pp\-\s]*\d+"
+          className="border-input bg-background h-9 w-48 rounded-md border px-3 text-sm"
+        />
+        <Button type="submit" size="sm" disabled={fetcher.state !== "idle"}>
+          {fetcher.state !== "idle" ? "변경 중…" : "대상 변경"}
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onDone}>
+          취소
+        </Button>
+      </div>
+      <p className="text-muted-foreground mt-1.5 text-[11px]">
+        문제 화면 상단의 <strong>P-번호</strong>를 입력하세요. 과목·단원도 새 문제
+        기준으로 자동 갱신됩니다.
+      </p>
+      {errorMsg ? <p className="mt-1.5 text-xs text-rose-600">{errorMsg}</p> : null}
     </fetcher.Form>
   );
 }
