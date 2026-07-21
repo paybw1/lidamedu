@@ -379,7 +379,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
   );
   const memToggles = [
     ["off", "원문"] as const,
-    ["blanks", "① 빈칸"] as const,
+    ["blanks", "빈 칸"] as const,
     ["issues", "쟁점만 보기"] as const,
     ["recall", "전체 복원"] as const,
   ];
