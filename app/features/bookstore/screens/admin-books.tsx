@@ -1,7 +1,13 @@
 // feat-11-004 4c — 도서 관리: 등록·판매상태·재고 입고(원장)·강의 상품 연결. staff.
 
 import { useEffect } from "react";
-import { BookOpenIcon, PlusIcon } from "lucide-react";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  BookOpenIcon,
+  PlusIcon,
+  Trash2Icon,
+} from "lucide-react";
 import { Link, data, useFetcher } from "react-router";
 import { toast } from "sonner";
 
@@ -55,9 +61,10 @@ export async function loader({ request }: Route.LoaderArgs) {
     client
       .from("books")
       .select(
-        "book_id, title, author, publisher, price_krw, sale_status, isbn, description, cover_path, track_stock",
+        "book_id, title, author, publisher, price_krw, sale_status, isbn, description, cover_path, track_stock, sort_order",
       )
       .is("deleted_at", null)
+      .order("sort_order", { ascending: true })
       .order("created_at", { ascending: false }),
     adminClient.from("v_book_stock").select("book_id, stock"),
     adminClient.from("plan_book_links").select("plan_id, book_id, requirement"),
@@ -125,6 +132,50 @@ export async function action({ request }: Route.ActionArgs) {
       .from("book_categories")
       .delete()
       .eq("category_id", categoryId);
+    if (error) return data({ error: error.message }, { status: 400 });
+    return data({ ok: true as const });
+  }
+
+  if (intent === "move_book") {
+    // 진열 순서 이동 — 인접 도서와 sort_order 교환(동률 대비 전체 재부여 후 swap).
+    const bookId = String(fd.get("bookId") ?? "");
+    const dir = String(fd.get("dir") ?? "");
+    if (!bookId || (dir !== "up" && dir !== "down"))
+      return data({ error: "잘못된 요청" }, { status: 400 });
+    const { data: list } = await client
+      .from("books")
+      .select("book_id")
+      .is("deleted_at", null)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: false });
+    const rows = list ?? [];
+    const idx = rows.findIndex((r) => r.book_id === bookId);
+    const swapIdx = dir === "up" ? idx - 1 : idx + 1;
+    if (idx < 0 || swapIdx < 0 || swapIdx >= rows.length)
+      return data({ ok: true as const }); // 경계 — 무시
+    // 전체를 10 간격으로 재부여한 뒤 두 위치 교환.
+    const reordered = rows.map((r, i) => ({ ...r, order: (i + 1) * 10 }));
+    const tmp = reordered[idx].order;
+    reordered[idx].order = reordered[swapIdx].order;
+    reordered[swapIdx].order = tmp;
+    for (const r of reordered) {
+      const { error } = await client
+        .from("books")
+        .update({ sort_order: r.order })
+        .eq("book_id", r.book_id);
+      if (error) return data({ error: error.message }, { status: 400 });
+    }
+    return data({ ok: true as const });
+  }
+
+  if (intent === "delete_book") {
+    // 소프트 삭제 — 주문 이력·환불 보존을 위해 deleted_at 만 설정(목록·카탈로그 비노출).
+    const bookId = String(fd.get("bookId") ?? "");
+    if (!bookId) return data({ error: "잘못된 요청" }, { status: 400 });
+    const { error } = await client
+      .from("books")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("book_id", bookId);
     if (error) return data({ error: error.message }, { status: 400 });
     return data({ ok: true as const });
   }
@@ -268,8 +319,9 @@ export default function AdminBooks({ loaderData }: Route.ComponentProps) {
           </p>
         ) : (
           <IndexTable
-            minWidth={900}
+            minWidth={960}
             headers={[
+              { label: "순서", align: "center", width: "3.5rem" },
               { label: "도서" },
               { label: "판매가", align: "right", width: "6.5rem" },
               { label: "재고", align: "right", width: "4.5rem" },
@@ -279,8 +331,14 @@ export default function AdminBooks({ loaderData }: Route.ComponentProps) {
               { label: "미리보기", width: "13rem" },
             ]}
           >
-            {books.map((b) => (
-              <BookRow key={b.bookId} book={b} plans={plans} />
+            {books.map((b, i) => (
+              <BookRow
+                key={b.bookId}
+                book={b}
+                plans={plans}
+                isFirst={i === 0}
+                isLast={i === books.length - 1}
+              />
             ))}
           </IndexTable>
         )}
@@ -330,6 +388,8 @@ function CategoryManager({
 function BookRow({
   book,
   plans,
+  isFirst,
+  isLast,
 }: {
   book: {
     bookId: string;
@@ -347,6 +407,8 @@ function BookRow({
     previews: Array<{ previewId: string; imageUrl: string }>;
   };
   plans: Array<{ planId: string; name: string }>;
+  isFirst: boolean;
+  isLast: boolean;
 }) {
   const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
   useEffect(() => {
@@ -354,8 +416,50 @@ function BookRow({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetcher.state, fetcher.data]);
   const planName = (id: string) => plans.find((p) => p.planId === id)?.name ?? id.slice(0, 8);
+  const move = (dir: "up" | "down") => {
+    const f = new FormData();
+    f.set("intent", "move_book");
+    f.set("bookId", book.bookId);
+    f.set("dir", dir);
+    fetcher.submit(f, { method: "post" });
+  };
+  const del = () => {
+    if (
+      !window.confirm(
+        `《${book.title}》 도서를 삭제할까요?\n목록·판매에서 즉시 사라집니다. (주문 이력은 보존)`,
+      )
+    )
+      return;
+    const f = new FormData();
+    f.set("intent", "delete_book");
+    f.set("bookId", book.bookId);
+    fetcher.submit(f, { method: "post" });
+  };
+  const busy = fetcher.state !== "idle";
   return (
     <TR>
+      <TD align="center">
+        <div className="flex flex-col items-center gap-0.5">
+          <button
+            type="button"
+            onClick={() => move("up")}
+            disabled={isFirst || busy}
+            aria-label="위로"
+            className="text-muted-foreground hover:text-foreground disabled:opacity-25"
+          >
+            <ArrowUpIcon className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => move("down")}
+            disabled={isLast || busy}
+            aria-label="아래로"
+            className="text-muted-foreground hover:text-foreground disabled:opacity-25"
+          >
+            <ArrowDownIcon className="size-3.5" />
+          </button>
+        </div>
+      </TD>
       <TD>
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
@@ -370,6 +474,15 @@ function BookRow({
           >
             수정
           </Link>
+          <button
+            type="button"
+            onClick={del}
+            disabled={busy}
+            title="도서 삭제"
+            className="text-muted-foreground hover:text-rose-600 h-6 shrink-0 px-1 leading-6 disabled:opacity-40"
+          >
+            <Trash2Icon className="size-3.5" />
+          </button>
         </div>
       </TD>
       <TD align="right" mono>₩{book.priceKrw.toLocaleString("ko-KR")}</TD>

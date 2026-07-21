@@ -8,7 +8,12 @@ import adminClient from "~/core/lib/supa-admin-client.server";
 
 type Client = SupabaseClient<Database>;
 
-export type BookSort = "new" | "price_asc" | "price_desc" | "title";
+export type BookSort =
+  | "recommended"
+  | "new"
+  | "price_asc"
+  | "price_desc"
+  | "title";
 
 /** 사용자가 찜한 도서 id 집합(카드 하트 초기 상태용). 비로그인 시 빈 Set. */
 export async function getWishlistBookIds(
@@ -114,8 +119,14 @@ export async function listBookstoreBooks(
     case "title":
       query = query.order("title", { ascending: true });
       break;
-    default:
+    case "new":
       query = query.order("created_at", { ascending: false });
+      break;
+    default:
+      // 기본 진열순 — 운영자 지정 순서(sort_order) 우선, 동률은 최신 등록순.
+      query = query
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: false });
   }
   const { data, error } = await query.limit(200);
   if (error) throw error;

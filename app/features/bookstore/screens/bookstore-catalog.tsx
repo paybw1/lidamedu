@@ -30,6 +30,7 @@ export function meta() {
 }
 
 const SORTS: Array<{ value: BookSort; label: string }> = [
+  { value: "recommended", label: "기본 진열순" },
   { value: "new", label: "신간순" },
   { value: "price_asc", label: "가격 낮은순" },
   { value: "price_desc", label: "가격 높은순" },
@@ -45,7 +46,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   const q = url.searchParams.get("q") ?? "";
   const sortParam = url.searchParams.get("sort") as BookSort | null;
   const sort: BookSort =
-    sortParam && SORTS.some((s) => s.value === sortParam) ? sortParam : "new";
+    sortParam && SORTS.some((s) => s.value === sortParam)
+      ? sortParam
+      : "recommended";
   const [books, wishlist, bundles] = await Promise.all([
     listBookstoreBooks(client, { q, sort }),
     getWishlistBookIds(client, user?.id ?? null),

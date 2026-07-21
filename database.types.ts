@@ -1968,6 +1968,7 @@ export type Database = {
           shipping_fee_type: string
           short_info: string | null
           short_intro: string | null
+          sort_order: number
           tax_free: boolean
           title: string
           toc: string | null
@@ -2008,6 +2009,7 @@ export type Database = {
           shipping_fee_type?: string
           short_info?: string | null
           short_intro?: string | null
+          sort_order?: number
           tax_free?: boolean
           title: string
           toc?: string | null
@@ -2048,6 +2050,7 @@ export type Database = {
           shipping_fee_type?: string
           short_info?: string | null
           short_intro?: string | null
+          sort_order?: number
           tax_free?: boolean
           title?: string
           toc?: string | null
