@@ -296,11 +296,6 @@ export async function action({ request }: Route.ActionArgs) {
   return data({ error: "Unknown intent" }, { status: 400 });
 }
 
-function fmtHours(sec: number | null): string {
-  if (sec == null) return "무제한";
-  return `${Math.round((sec / 3600) * 10) / 10}시간`;
-}
-
 export default function MyCourses({ loaderData }: Route.ComponentProps) {
   const { courses, devices } = loaderData;
   return (
@@ -434,23 +429,15 @@ function CourseCard({
             />
           </div>
         </div>
-        {course.firstLessonId && course.status === "active" ? (
+        {course.status === "active" ? (
           <Button asChild size="sm" className="w-full">
-            <Link to={`/lecture/watch/${course.firstLessonId}`}>
+            <Link to={`/lecture/room/${course.enrollmentId}`}>
               <PlayCircleIcon className="size-4" />
-              {course.completedCount > 0 ? "이어보기" : "강의 보기"}
+              강의실 입장
             </Link>
           </Button>
         ) : null}
         <div className="text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px]">
-          <span>
-            시청 {fmtHours(course.usedSeconds)} / 허용 {fmtHours(course.allowedSeconds)}
-          </span>
-          {course.remainingSeconds != null ? (
-            <span className={course.remainingSeconds <= 0 ? "font-semibold text-rose-600 dark:text-rose-400" : ""}>
-              잔여 {fmtHours(Math.max(0, course.remainingSeconds))}
-            </span>
-          ) : null}
           {course.pause && course.status === "active" ? (
             <button
               type="button"

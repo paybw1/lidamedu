@@ -4282,6 +4282,7 @@ export type Database = {
           is_published: boolean
           lesson_id: string
           lesson_no: number
+          max_plays: number
           sort_order: number
           title: string
           updated_at: string
@@ -4295,6 +4296,7 @@ export type Database = {
           is_published?: boolean
           lesson_id?: string
           lesson_no: number
+          max_plays?: number
           sort_order?: number
           title: string
           updated_at?: string
@@ -4308,6 +4310,7 @@ export type Database = {
           is_published?: boolean
           lesson_id?: string
           lesson_no?: number
+          max_plays?: number
           sort_order?: number
           title?: string
           updated_at?: string
@@ -8949,6 +8952,7 @@ export type Database = {
       playback_grants: {
         Row: {
           client_ip: unknown
+          counts_as_play: boolean
           device_id: string | null
           enrollment_id: string | null
           expires_at: string
@@ -8961,6 +8965,7 @@ export type Database = {
         }
         Insert: {
           client_ip?: unknown
+          counts_as_play?: boolean
           device_id?: string | null
           enrollment_id?: string | null
           expires_at: string
@@ -8973,6 +8978,7 @@ export type Database = {
         }
         Update: {
           client_ip?: unknown
+          counts_as_play?: boolean
           device_id?: string | null
           enrollment_id?: string | null
           expires_at?: string

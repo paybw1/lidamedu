@@ -272,6 +272,8 @@ export default [
   layout("core/layouts/lecture.layout.tsx", [
     // 내 강의실(수강현황) — 구 /me/courses 를 여기로 이관(아래 redirect 유지).
     route("/lecture", "features/lms/screens/my-courses.tsx"),
+    // 강의실(회차 선택) — 수강권 단위 입장 → 회차 고르기.
+    route("/lecture/room/:enrollmentId", "features/lms/screens/lecture-room.tsx"),
     // 강의 재생(Kollus 웹플레이어) — 회차 단위.
     route("/lecture/watch/:lessonId", "features/lms/screens/lecture-watch.tsx"),
     route("/lecture/catalog", "features/lms/screens/lecture-catalog.tsx"),

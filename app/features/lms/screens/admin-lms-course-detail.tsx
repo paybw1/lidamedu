@@ -196,6 +196,20 @@ export async function action({ request, params }: Route.ActionArgs) {
     return data({ ok: true as const });
   }
 
+  if (intent === "set_lesson_max_plays") {
+    const lessonId = String(fd.get("lessonId") ?? "");
+    const maxPlays = Math.trunc(Number(fd.get("maxPlays") ?? NaN));
+    if (!lessonId || !Number.isFinite(maxPlays) || maxPlays < 1 || maxPlays > 99) {
+      return data({ error: "재생 횟수는 1~99 사이로 입력해 주세요." }, { status: 400 });
+    }
+    const { error } = await client
+      .from("course_lessons")
+      .update({ max_plays: maxPlays })
+      .eq("lesson_id", lessonId);
+    if (error) return data({ error: error.message }, { status: 400 });
+    return data({ ok: true as const });
+  }
+
   if (intent === "move_lesson") {
     // 노출 순서 교환 — 인접 회차와 sort_order swap
     const lessonId = String(fd.get("lessonId") ?? "");
@@ -1315,6 +1329,25 @@ function LessonCard({
             className="border-border hover:bg-muted/50 h-6 rounded-md border px-2 text-[11px] font-medium">
             {lesson.isPublished ? "비공개로" : "공개로"}
           </button>
+          <fetcher.Form method="post" className="flex items-center gap-1">
+            <input type="hidden" name="intent" value="set_lesson_max_plays" />
+            <input type="hidden" name="lessonId" value={lesson.lessonId} />
+            <span className="text-muted-foreground text-[11px]">재생</span>
+            <input
+              type="number"
+              name="maxPlays"
+              min={1}
+              max={99}
+              defaultValue={lesson.maxPlays}
+              className="border-input bg-background h-6 w-12 rounded-md border px-1.5 text-center text-[11px] tabular-nums"
+              title="회차별 재생 가능 횟수"
+            />
+            <span className="text-muted-foreground text-[11px]">회</span>
+            <button type="submit"
+              className="border-border hover:bg-muted/50 h-6 rounded-md border px-1.5 text-[11px] font-medium">
+              저장
+            </button>
+          </fetcher.Form>
         </div>
       </div>
 

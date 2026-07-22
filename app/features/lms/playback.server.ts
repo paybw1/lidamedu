@@ -8,8 +8,13 @@
 //     코드 배포 없이 Vercel 환경변수 `ENFORCE_DEVICE=true` 로 즉시 켠다.
 //     (fingerprint 없이 켜도 ensureDeviceForPlayback 이 통과 처리하므로 안전하나 실효 없음
 //     — 반드시 플레이어 fingerprint 배선 후 켤 것.)
-const ENFORCE_MULTIPLIER = true;
+// ★시간(배수) 제한 폐지(2026-07-22) — 회차별 재생 "횟수" 제한(course_lessons.max_plays)으로 대체.
+//   watch_ledger/used_seconds 추적은 통계용으로 남기되, 재생 차단은 하지 않는다.
+const ENFORCE_MULTIPLIER = false;
 const ENFORCE_DEVICE = process.env.ENFORCE_DEVICE === "true";
+// 재생 "1회" 정의 — 같은 회차의 직전 재생과 이 간격 이상 떨어져 시작하면 새 재생 세션(1회 차감).
+//   그 안의 재개·새로고침·이어보기는 같은 세션으로 무차감(재생 토큰 수명과 정합).
+const PLAY_SESSION_GAP_MS = 6 * 3600 * 1000;
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
@@ -35,7 +40,8 @@ export type PlaybackDenyReason =
   | "lesson_blocked"
   | "not_published"
   | "no_video"
-  | "multiplier_exhausted" // M3
+  | "multiplier_exhausted" // (폐지) 시간 제한 — 잔존 호환용
+  | "play_limit_exhausted" // 회차별 재생 횟수 소진
   | "device_not_registered"; // M3
 
 export type PlaybackJudgement =
@@ -63,7 +69,7 @@ export async function requestPlaybackGrant(
   // 1) 회차·영상 확인 (adminClient — drm 필드는 학생 RLS 로 안 보임)
   const { data: lesson } = await adminClient
     .from("course_lessons")
-    .select("lesson_id, course_id, is_preview, is_published, deleted_at")
+    .select("lesson_id, course_id, is_preview, is_published, deleted_at, max_plays")
     .eq("lesson_id", input.lessonId)
     .maybeSingle();
   if (!lesson || lesson.deleted_at || !lesson.is_published) {
@@ -79,6 +85,8 @@ export async function requestPlaybackGrant(
 
   let enrollmentId: string | null = null;
   let deviceId: string | null = null;
+  // 이 재생이 새 세션(1회 차감) 인지 — 학생 정규 재생일 때만 true 가능(맛보기·스태프 무차감).
+  let countsAsPlay = false;
 
   // 운영 스태프(강사·매니저·원장) 여부 — 검수·모니터링 목적으로 수강권·배수·기기
   // 게이트를 면제한다(강의 자료 다운로드 material-download 와 동일 기준). enrollment_id 는
@@ -128,7 +136,29 @@ export async function requestPlaybackGrant(
     }
     enrollmentId = usable.enrollment_id;
 
-    // 4) 배수 — watch_ledger 잔여(파생 뷰). 잔여 null=배수 미적용(무제한).
+    // 4) 재생 횟수 — 회차별 max_plays. "1회" = 새 재생 세션(직전 재생과 gap 이상).
+    //   같은 세션 내 재개/새로고침은 무차감. 소진 후 새 세션 시작만 차단.
+    {
+      const maxPlays = lesson.max_plays ?? 2;
+      const { data: prior } = await adminClient
+        .from("playback_grants")
+        .select("granted_at, counts_as_play")
+        .eq("user_id", input.userId)
+        .eq("lesson_id", input.lessonId)
+        .order("granted_at", { ascending: false })
+        .limit(500);
+      const playsUsed = (prior ?? []).filter((g) => g.counts_as_play).length;
+      const lastAt = prior?.[0]?.granted_at
+        ? Date.parse(prior[0].granted_at)
+        : null;
+      const isNewSession =
+        lastAt == null || now - lastAt > PLAY_SESSION_GAP_MS;
+      if (isNewSession && playsUsed >= maxPlays) {
+        return { ok: false, reason: "play_limit_exhausted" };
+      }
+      countsAsPlay = isNewSession;
+    }
+    // (배수/시간 제한 폐지 — ENFORCE_MULTIPLIER=false)
     if (ENFORCE_MULTIPLIER) {
       const remaining = await getRemainingSeconds(enrollmentId);
       if (remaining != null && remaining <= 0) {
@@ -179,6 +209,7 @@ export async function requestPlaybackGrant(
       expires_at: expiresAt,
       client_ip: input.clientIp ?? null,
       user_agent: input.userAgent?.slice(0, 500) ?? null,
+      counts_as_play: countsAsPlay,
     })
     .select("grant_id")
     .single();
@@ -215,5 +246,6 @@ export const PLAYBACK_DENY_MESSAGE: Record<PlaybackDenyReason, string> = {
   not_published: "준비 중인 강의입니다.",
   no_video: "영상이 아직 등록되지 않았습니다.",
   multiplier_exhausted: "시청 가능 시간을 모두 사용했습니다.",
+  play_limit_exhausted: "이 회차의 재생 가능 횟수를 모두 사용했습니다.",
   device_not_registered: "등록되지 않은 기기입니다. 기기 관리에서 등록해 주세요.",
 };
