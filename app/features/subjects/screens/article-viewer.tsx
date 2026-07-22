@@ -113,6 +113,7 @@ import { getSubjectAxisCounts } from "~/features/subjects/lib/loader.server";
 import {
   LAW_SUBJECTS,
   lawSubjectSlugSchema,
+  subjectHasSystematicAxis,
 } from "~/features/subjects/lib/subjects";
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => {
@@ -373,8 +374,12 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 }
 
 export default function ArticleViewer({ loaderData }: Route.ComponentProps) {
+  // 민법은 체계도=조문 목차라 조문 축으로 고정(체계도 트리·토글 숨김). SubjectHub 과 동일 정책.
+  const forcedAxis = subjectHasSystematicAxis(loaderData.subject.slug)
+    ? undefined
+    : ("statutory" as const);
   return (
-    <SortAxisProvider>
+    <SortAxisProvider forced={forcedAxis}>
       <ArticleViewerInner loaderData={loaderData} />
     </SortAxisProvider>
   );
@@ -425,8 +430,11 @@ function ArticleViewerInner({
     pdfLocationsEnabled,
   } = loaderData;
   const { axis } = useSortAxis();
+  // 민법은 체계도 축이 조문 목차와 동일 → 축 토글·체계도 트리 숨김(조문 트리만).
+  const hasSystematicAxis = subjectHasSystematicAxis(subject.slug);
   const systematicEmpty = systematicNodes.length === 0;
-  const renderSystematic = axis === "systematic" && !systematicEmpty;
+  const renderSystematic =
+    hasSystematicAxis && axis === "systematic" && !systematicEmpty;
 
   const titleMap = useMemo(() => {
     const m = new Map<string, string>();
@@ -633,10 +641,18 @@ function ArticleViewerInner({
                 {/* 헤더(스크롤해도 상단 고정): [축 언더라인 탭] → [체계도/조문]. */}
                 <div className="border-border bg-card sticky top-0 z-10 rounded-t-xl border-b">
                   <div className="flex items-center justify-between gap-2 px-3 py-2">
-                    <SortAxisToggle
-                      size="sm"
-                      disabledAxes={systematicEmpty ? ["systematic"] : undefined}
-                    />
+                    {hasSystematicAxis ? (
+                      <SortAxisToggle
+                        size="sm"
+                        disabledAxes={
+                          systematicEmpty ? ["systematic"] : undefined
+                        }
+                      />
+                    ) : (
+                      <span className="text-muted-foreground text-[11px] font-medium">
+                        조문 목차
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="px-1.5 py-2">
@@ -710,14 +726,16 @@ function ArticleViewerInner({
                   <SheetTitle>목차</SheetTitle>
                 </SheetHeader>
                 <div className="space-y-3 px-3 pb-4">
-                  <div className="flex justify-end">
-                    <SortAxisToggle
-                      size="sm"
-                      disabledAxes={
-                        systematicEmpty ? ["systematic"] : undefined
-                      }
-                    />
-                  </div>
+                  {hasSystematicAxis ? (
+                    <div className="flex justify-end">
+                      <SortAxisToggle
+                        size="sm"
+                        disabledAxes={
+                          systematicEmpty ? ["systematic"] : undefined
+                        }
+                      />
+                    </div>
+                  ) : null}
                   {renderSystematic ? (
                     <SystematicTree
                       searchVisible={false}

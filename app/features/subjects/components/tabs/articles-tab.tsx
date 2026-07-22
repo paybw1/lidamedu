@@ -1,4 +1,5 @@
 import type { LawSubjectMeta } from "../../lib/subjects";
+import { subjectHasSystematicAxis } from "../../lib/subjects";
 import type { NodeProgressByArticle } from "../node-progress-gauge";
 
 import type { ArticleAnnotationCounts } from "~/features/annotations/queries.server";
@@ -68,8 +69,11 @@ export function ArticlesTab({
 }) {
   const { axis } = useSortAxis();
   const articleCount = articles.filter((a) => a.level === "article").length;
+  // 민법은 체계도 축이 조문 목차와 동일 → 축 토글·체계도 트리 숨김(조문 트리만).
+  const hasSystematicAxis = subjectHasSystematicAxis(subject.slug);
   const systematicEmpty = systematicNodes.length === 0;
-  const renderSystematic = axis === "systematic" && !systematicEmpty;
+  const renderSystematic =
+    hasSystematicAxis && axis === "systematic" && !systematicEmpty;
 
   // 트리 필터(중요도/즐겨찾기)가 켜지면 가운데 본문 영역을 매칭 조문 정독으로 전환.
   const [treeFilter, setTreeFilter] = useState({ importance: 0, bookmark: 0 });
@@ -82,11 +86,22 @@ export function ArticlesTab({
   const treePanel = (
     <div className="border-border bg-muted/30 overflow-hidden rounded-xl border lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
       {/* Outline header */}
-      <div className="border-border bg-card sticky top-0 z-10 flex items-center justify-end rounded-t-xl border-b px-3 py-2">
-        <SortAxisToggle
-          size="sm"
-          disabledAxes={systematicEmpty ? ["systematic"] : undefined}
-        />
+      <div className="border-border bg-card sticky top-0 z-10 flex items-center justify-between gap-2 rounded-t-xl border-b px-3 py-2">
+        {hasSystematicAxis ? (
+          <span className="text-muted-foreground text-[11px] font-medium">
+            목차
+          </span>
+        ) : (
+          <span className="text-muted-foreground text-[11px] font-medium">
+            조문 목차
+          </span>
+        )}
+        {hasSystematicAxis ? (
+          <SortAxisToggle
+            size="sm"
+            disabledAxes={systematicEmpty ? ["systematic"] : undefined}
+          />
+        ) : null}
       </div>
       <div className="p-2">
         {renderSystematic ? (
