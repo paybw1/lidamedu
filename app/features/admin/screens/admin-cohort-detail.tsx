@@ -56,7 +56,7 @@ import {
 import { getStaffRole } from "~/features/laws/queries.server";
 import { roleAtLeast } from "~/core/lib/roles";
 import { AdminShell } from "~/features/admin/components/admin-shell";
-import { Chip } from "~/features/admin/components/admin-ui";
+import { Chip, MemberLink } from "~/features/admin/components/admin-ui";
 
 import type { Route } from "./+types/admin-cohort-detail";
 
@@ -417,7 +417,10 @@ function SearchResultRow({
       <UserIcon className="text-muted-foreground size-3.5 shrink-0" />
       <div className="min-w-0 flex-1">
         <p className="truncate text-xs font-medium">
-          {student.name || "(이름 없음)"}{" "}
+          <MemberLink
+            profileId={student.profileId}
+            name={student.name || "(이름 없음)"}
+          />{" "}
           <span className="text-muted-foreground text-[10px]">
             · {ROLE_LABEL[student.role]}
           </span>

@@ -4,7 +4,7 @@ import { Link, data, redirect } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { AdminShell } from "~/features/admin/components/admin-shell";
-import { Chip } from "~/features/admin/components/admin-ui";
+import { Chip, MemberLink } from "~/features/admin/components/admin-ui";
 import makeServerClient from "~/core/lib/supa-client.server";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import { getStaffRole } from "~/features/laws/queries.server";
@@ -137,7 +137,10 @@ export default function AdminCsInquiries({ loaderData }: Route.ComponentProps) {
                       </span>
                     </span>
                     <span className="text-muted-foreground mt-0.5 flex items-center gap-2 text-[11px]">
-                      <span>{it.authorName}</span>
+                      <MemberLink
+                        profileId={it.authorId}
+                        name={it.authorName}
+                      />
                       <span>·</span>
                       <span>{CS_CATEGORY_LABEL[it.category]}</span>
                       <span>·</span>

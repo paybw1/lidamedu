@@ -9,6 +9,7 @@ import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { roleAtLeast } from "~/core/lib/roles";
 import { AdminShell } from "~/features/admin/components/admin-shell";
+import { MemberLink } from "~/features/admin/components/admin-ui";
 import {
   ATTENDANCE_STATUSES,
   ATTENDANCE_STATUS_LABEL,
@@ -202,9 +203,11 @@ export default function AdminAttendanceCheck({
                   r.status === null && "opacity-60",
                 )}
               >
-                <span className="w-28 truncate text-[13px] font-medium">
-                  {st.name}
-                </span>
+                <MemberLink
+                  profileId={st.profileId}
+                  name={st.name}
+                  className="w-28 truncate text-[13px] font-medium"
+                />
                 <div className="flex gap-1">
                   {ATTENDANCE_STATUSES.map((s) => {
                     const active = r.status === s;
