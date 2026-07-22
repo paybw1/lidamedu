@@ -43,7 +43,7 @@ import {
   listMemos,
 } from "~/features/annotations/queries.server";
 import { ArticleBlankEditOverlay } from "~/features/blanks/components/article-blank-edit-overlay";
-import { BlankFillView } from "~/features/blanks/components/blank-fill-view";
+import { BlankFill } from "~/features/blanks/components/blank-fill-dispatch";
 import { BlankOwnerSelector } from "~/features/blanks/components/blank-owner-selector";
 import { PeriodAmbiguousPanel } from "~/features/blanks/components/period-ambiguous-panel";
 import { computePeriodBlanks } from "~/features/blanks/lib/period-blanks";
@@ -282,6 +282,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   // ?blankMode=1 — 내용 빈칸 모드 유지 진입(prev/next 이동용). ?blankEdit=1 — 편집 서브모드까지 유지(staff).
   const blankModeParam = reqUrl.searchParams.get("blankMode") === "1";
   const blankEditParam = reqUrl.searchParams.get("blankEdit") === "1";
+  // feat-4-A-130b — 빈칸 V2(단일 contenteditable) 프로토타입 게이트. iOS IME 이월 실험용.
+  const blankV2Param = reqUrl.searchParams.get("blankv2") === "1";
   let blankReviewNav: { remaining: number; nextHref: string | null } | null =
     null;
   if (blankReviewParam) {
@@ -346,6 +348,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       contentEdit: blankEditParam,
     },
     blankReviewNav,
+    blankV2: blankV2Param,
     filterScope,
     filterScopeParams: filterScope ? { imp: filterImp, bm: filterBm } : null,
     articles,
@@ -416,6 +419,7 @@ function ArticleViewerInner({
     blankSets,
     blankSet,
     blankReviewNav,
+    blankV2,
     filterScope,
     filterScopeParams,
     staffRole,
@@ -1412,8 +1416,9 @@ function ArticleViewerInner({
                           lawCode={subject.slug}
                         />
                       ) : blankSet ? (
-                        <BlankFillView
+                        <BlankFill
                           key={`content:${blankSet.setId}`}
+                          v2={blankV2}
                           setId={blankSet.setId}
                           body={body}
                           blanks={blankSet.blanks}
@@ -1428,8 +1433,9 @@ function ArticleViewerInner({
                       )}
                     </div>
                   ) : subjectBlankMode && body ? (
-                    <BlankFillView
+                    <BlankFill
                       key={`subject:${article.articleId}`}
+                      v2={blankV2}
                       setId={null}
                       autoMeta={{
                         articleId: article.articleId,
@@ -1442,8 +1448,9 @@ function ArticleViewerInner({
                     />
                   ) : periodBlankMode && body ? (
                     <div className="space-y-3">
-                      <BlankFillView
+                      <BlankFill
                         key={`period:${article.articleId}`}
+                        v2={blankV2}
                         setId={null}
                         autoMeta={{
                           articleId: article.articleId,

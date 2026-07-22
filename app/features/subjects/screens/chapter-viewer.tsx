@@ -38,7 +38,7 @@ import {
   listHighlightsByArticleIds,
   listMemosByArticleIds,
 } from "~/features/annotations/queries.server";
-import { BlankFillView } from "~/features/blanks/components/blank-fill-view";
+import { BlankFill } from "~/features/blanks/components/blank-fill-dispatch";
 import { BlankOwnerPageSelector } from "~/features/blanks/components/blank-owner-page-selector";
 import { PeriodAmbiguousPanel } from "~/features/blanks/components/period-ambiguous-panel";
 import {
@@ -258,6 +258,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   return {
     subject: LAW_SUBJECTS[lawCode],
     axisCounts,
+    // feat-4-A-130b — 빈칸 V2(단일 contenteditable) 프로토타입 게이트.
+    blankV2: new URL(request.url).searchParams.get("blankv2") === "1",
     lawId: law.lawId,
     chapter,
     apparatusSkipped,
@@ -303,6 +305,7 @@ function Inner({
 }) {
   const {
     subject,
+    blankV2,
     lawId,
     chapter,
     apparatusSkipped,
@@ -755,7 +758,8 @@ function Inner({
                     {/* 본문 열 */}
                     <div className="lg:border-border px-6 py-5 lg:border-r">
                       {blankMode && blankSet && body ? (
-                        <BlankFillView
+                        <BlankFill
+                          v2={blankV2}
                           setId={blankSet.setId}
                           body={body}
                           blanks={blankSet.blanks}
@@ -763,7 +767,8 @@ function Inner({
                           lawCode={subject.slug}
                         />
                       ) : subjectBlankMode && body ? (
-                        <BlankFillView
+                        <BlankFill
+                          v2={blankV2}
                           setId={null}
                           autoMeta={{
                             articleId: a.articleId,
@@ -775,7 +780,8 @@ function Inner({
                           lawCode={subject.slug}
                         />
                       ) : periodBlankMode && body ? (
-                        <BlankFillView
+                        <BlankFill
+                          v2={blankV2}
                           setId={null}
                           autoMeta={{
                             articleId: a.articleId,
