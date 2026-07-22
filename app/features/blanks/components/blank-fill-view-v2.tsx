@@ -5,6 +5,9 @@
 //   빈칸만 편집 가능 구역. 칸 이동 = 한 요소 안 캐럿 이동(blur/focus 없음) → 넘어갈 다른
 //   요소가 없어 이월이 구조적으로 불가능.
 //
+//   ★단일 host 는 유지하되, 캐럿이 고정 텍스트로 새지 않게 selectionchange 로 빈칸 안으로만
+//   가둔다(문장 전체 배회·고정 텍스트 편집 방지). 색상은 클래스 충돌을 피해 인라인 스타일로.
+//
 // P1 범위: 단일 조문 + 순수 텍스트 블록. 리치 토큰(관련조문 링크·표)은 평문으로 렌더(P2에서 보강).
 // DOM은 명령형으로 빌드해 React 재조정이 편집 중 DOM을 덮어쓰지 않게 한다(uncontrolled).
 
@@ -26,6 +29,13 @@ import { normalizeAnswer } from "../lib/normalize";
 import type { AutoBlankMeta } from "./blanks-context";
 
 const ZWSP = "​";
+const SLOT_CLASS = "blank-slot-v2";
+
+const COLORS = {
+  neutral: { border: "#94a3b8", bg: "transparent", fg: "" },
+  correct: { border: "#10b981", bg: "rgba(16,185,129,0.14)", fg: "#047857" },
+  wrong: { border: "#f43f5e", bg: "rgba(244,63,94,0.12)", fg: "#be123c" },
+} as const;
 
 type Seg =
   | { t: "text"; s: string }
@@ -51,7 +61,7 @@ function buildLines(body: ArticleBody, blanks: BlankItem[]): Line[] {
     const hits = (blockHits.get(block) ?? [])
       .slice()
       .sort((a, b) => a.start - b.start);
-    if (text.length === 0 && hits.length === 0) return; // header_refs 등 빈 블록 skip
+    if (text.length === 0 && hits.length === 0) return; // 빈 블록 skip
     const label =
       block.kind === "clause" || block.kind === "item" || block.kind === "sub"
         ? block.label
@@ -61,7 +71,7 @@ function buildLines(body: ArticleBody, blanks: BlankItem[]): Line[] {
     for (const h of hits) {
       const start = Math.max(0, Math.min(text.length, h.start));
       const end = Math.max(0, Math.min(text.length, h.end));
-      if (h.start < 0) continue; // 이전 블록에서 시작한 hit — skip
+      if (h.start < 0) continue;
       if (start > cursor) segs.push({ t: "text", s: text.slice(cursor, start) });
       const bi = blankByIdx.get(h.blank.idx);
       segs.push({
@@ -79,8 +89,14 @@ function buildLines(body: ArticleBody, blanks: BlankItem[]): Line[] {
   return lines;
 }
 
-const SLOT_BASE =
-  "blank-slot-v2 inline-block min-w-[3ch] rounded border-b-2 border-muted-foreground/40 bg-muted/30 px-1 text-center align-baseline outline-none focus:border-primary";
+function isInSlot(node: Node | null, root: Node): HTMLElement | null {
+  let n: Node | null = node;
+  while (n && n !== root) {
+    if (n instanceof HTMLElement && n.classList.contains(SLOT_CLASS)) return n;
+    n = n.parentNode;
+  }
+  return null;
+}
 
 export function BlankFillViewV2({
   setId,
@@ -93,7 +109,6 @@ export function BlankFillViewV2({
   autoMeta?: AutoBlankMeta;
   body: ArticleBody;
   blanks: BlankItem[];
-  // titleMap 은 V2 평문 렌더에서 미사용(P2 리치 렌더에서 도입).
   titleMap?: unknown;
   lawCode: LawSubjectSlug;
 }) {
@@ -103,10 +118,10 @@ export function BlankFillViewV2({
   const fetcher = useFetcher();
   const fetcherRef = useRef(fetcher);
   fetcherRef.current = fetcher;
-  // 사용자가 입력한 값(idx→값) — reveal 토글 복원용.
   const valuesRef = useRef<Map<number, string>>(new Map());
-  // 이미 정답 저장(attempt)한 idx — 중복 submit 방지.
   const savedRef = useRef<Set<number>>(new Set());
+  // 한글 IME 조합 중 — 조합 중엔 캐럿 스냅·값 덮어쓰기 금지(조합 파괴 방지).
+  const composingRef = useRef(false);
 
   const lines = useMemo(() => buildLines(body, blanks), [body, blanks]);
   const totalBlanks = blanks.length;
@@ -115,6 +130,13 @@ export function BlankFillViewV2({
 
   const readSlot = (slot: HTMLElement): string =>
     (slot.textContent ?? "").split(ZWSP).join("");
+
+  const setSlotColor = (slot: HTMLElement, s: keyof typeof COLORS) => {
+    // 인라인 스타일 — Tailwind 클래스 순서 충돌 없이 확실히 반영.
+    slot.style.borderBottomColor = COLORS[s].border;
+    slot.style.backgroundColor = COLORS[s].bg;
+    slot.style.color = COLORS[s].fg;
+  };
 
   const saveAttempt = (slot: HTMLElement, idx: number, input: string) => {
     if (savedRef.current.has(idx)) return;
@@ -146,54 +168,40 @@ export function BlankFillViewV2({
     }
   };
 
-  // 슬롯 판정 + 색상 반영(직접 class 조작 — React 재렌더 없이). save=true 면 정답 시 attempt 저장.
   const judgeSlot = (slot: HTMLElement, save: boolean) => {
     const idx = Number(slot.dataset.blankIdx);
     const answer = slot.dataset.answer ?? "";
     const val = readSlot(slot);
     valuesRef.current.set(idx, val);
-    slot.classList.remove(
-      "border-emerald-500",
-      "bg-emerald-50",
-      "border-rose-500",
-      "bg-rose-50",
-    );
-    if (val.length === 0) return;
+    if (val.length === 0) {
+      setSlotColor(slot, "neutral");
+      return;
+    }
     const correct = normalizeAnswer(val) === normalizeAnswer(answer);
     if (correct) {
-      slot.classList.add("border-emerald-500", "bg-emerald-50");
+      setSlotColor(slot, "correct");
       if (save) saveAttempt(slot, idx, val);
     } else {
-      slot.classList.add("border-rose-500", "bg-rose-50");
+      setSlotColor(slot, "wrong");
     }
   };
 
   const slotFromSelection = (): HTMLElement | null => {
-    if (typeof window === "undefined") return null;
+    const root = editorRef.current;
+    if (!root || typeof window === "undefined") return null;
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0) return null;
-    let node: Node | null = sel.anchorNode;
-    while (node && node !== editorRef.current) {
-      if (
-        node instanceof HTMLElement &&
-        node.classList.contains("blank-slot-v2")
-      ) {
-        return node;
-      }
-      node = node.parentNode;
-    }
-    return null;
+    return isInSlot(sel.anchorNode, root);
   };
 
   const caretToEnd = (slot: HTMLElement) => {
     if (typeof window === "undefined") return;
-    // 캐럿 소유자는 컨테이너(단일 편집 host) — 슬롯 자체는 편집 host 가 아니다.
     editorRef.current?.focus();
     const sel = window.getSelection();
     if (!sel) return;
     const range = document.createRange();
     range.selectNodeContents(slot);
-    range.collapse(false); // 끝으로
+    range.collapse(false);
     sel.removeAllRanges();
     sel.addRange(range);
   };
@@ -207,7 +215,8 @@ export function BlankFillViewV2({
     savedRef.current = new Set();
     for (const line of lines) {
       const lineEl = document.createElement("div");
-      lineEl.className = "blank-line-v2 leading-8";
+      lineEl.className = "blank-line-v2";
+      lineEl.style.lineHeight = "2.1";
       if (line.label) {
         const lab = document.createElement("span");
         lab.contentEditable = "false";
@@ -223,15 +232,23 @@ export function BlankFillViewV2({
           lineEl.appendChild(s);
         } else {
           const b = document.createElement("span");
-          // ★개별 contenteditable 를 주지 않는다(주면 요소별 편집 host 가 되어 이월 재발).
-          //   컨테이너가 편집 host, 고정 텍스트만 false → 편집 가능한 '구멍'은 슬롯뿐.
-          b.className = SLOT_BASE;
+          // ★개별 contenteditable 안 줌(주면 요소별 편집 host=이월 재발). 컨테이너가 host,
+          //   고정 텍스트만 false → 편집 가능 구멍은 슬롯뿐. 캐럿 가두기로 슬롯 밖 편집 차단.
+          b.className = SLOT_CLASS;
           b.dataset.blankIdx = String(seg.idx);
           b.dataset.answer = seg.answer;
           if (seg.blockIndex != null)
             b.dataset.blockIndex = String(seg.blockIndex);
           if (seg.cumOffset != null) b.dataset.cumOffset = String(seg.cumOffset);
+          b.style.display = "inline-block";
           b.style.minWidth = `${Math.max(3, Math.min(30, (seg.answer.length || 2) * 1.6))}ch`;
+          b.style.margin = "0 2px";
+          b.style.padding = "0 4px";
+          b.style.textAlign = "center";
+          b.style.borderBottom = "2px solid";
+          b.style.borderRadius = "3px";
+          b.style.borderBottomColor = COLORS.neutral.border;
+          b.style.outline = "none";
           b.textContent = ZWSP; // 캐럿 안착용 zero-width space
           lineEl.appendChild(b);
         }
@@ -240,58 +257,83 @@ export function BlankFillViewV2({
     }
   }, [lines, resetKey]);
 
+  // ── 캐럿 가두기 — 선택이 슬롯 밖(고정 텍스트)에 놓이면 인접 슬롯으로 스냅 ────
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const onSelChange = () => {
+      const root = editorRef.current;
+      if (!root || composingRef.current) return;
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0 || !sel.isCollapsed) return;
+      const anchor = sel.anchorNode;
+      if (!anchor || !root.contains(anchor)) return; // 이 에디터 밖 — 무시
+      if (isInSlot(anchor, root)) return; // 이미 슬롯 안 — OK
+      // 슬롯 밖(고정 텍스트/컨테이너) — anchor 이후 첫 슬롯, 없으면 마지막 슬롯으로.
+      const slots = Array.from(
+        root.querySelectorAll<HTMLElement>(`.${SLOT_CLASS}`),
+      );
+      if (slots.length === 0) return;
+      const after = slots.find(
+        (s) =>
+          (anchor.compareDocumentPosition(s) &
+            Node.DOCUMENT_POSITION_FOLLOWING) !==
+          0,
+      );
+      caretToEnd(after ?? slots[slots.length - 1]);
+    };
+    document.addEventListener("selectionchange", onSelChange);
+    return () => document.removeEventListener("selectionchange", onSelChange);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── reveal 토글 — 슬롯 텍스트 직접 갱신(정답 채움/복원) ─────────────
   useEffect(() => {
     const root = editorRef.current;
     if (!root) return;
-    const slots = root.querySelectorAll<HTMLElement>(".blank-slot-v2");
+    const slots = root.querySelectorAll<HTMLElement>(`.${SLOT_CLASS}`);
     slots.forEach((slot) => {
       const idx = Number(slot.dataset.blankIdx);
       const answer = slot.dataset.answer ?? "";
-      slot.classList.remove(
-        "border-emerald-500",
-        "bg-emerald-50",
-        "border-rose-500",
-        "bg-rose-50",
-        "text-emerald-700",
-      );
       if (reveal) {
         slot.textContent = answer.length > 0 ? answer : ZWSP;
-        slot.classList.add("border-emerald-500", "bg-emerald-50", "text-emerald-700");
+        setSlotColor(slot, "correct");
       } else {
         const v = valuesRef.current.get(idx) ?? "";
         slot.textContent = v.length > 0 ? v : ZWSP;
         judgeSlot(slot, false);
       }
     });
-    // reveal 은 사용자 버튼(조합 중 아님)이라 DOM 직접 갱신 안전.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reveal]);
 
   // ── 편집 이벤트 (컨테이너 위임) ─────────────────────────────────────
+  const onBeforeInput = (e: React.FormEvent<HTMLDivElement>) => {
+    // 슬롯 밖 편집(고정 텍스트 수정) 차단.
+    if (!slotFromSelection()) e.preventDefault();
+  };
   const onInput = (e: React.FormEvent<HTMLDivElement>) => {
     const slot = slotFromSelection();
     if (!slot) return;
-    // 조합 중이면 판정만(값 되돌림·DOM 덮어쓰기 금지), 저장은 조합 종료 후.
     const composing = (e.nativeEvent as InputEvent).isComposing === true;
     judgeSlot(slot, !composing);
   };
+  const onCompositionStart = () => {
+    composingRef.current = true;
+  };
   const onCompositionEnd = () => {
+    composingRef.current = false;
     const slot = slotFromSelection();
     if (slot) judgeSlot(slot, true);
   };
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== "Enter" && e.key !== "Tab") return;
-    // Enter/Tab = 다음 빈칸으로 캐럿 이동(같은 컨테이너 안 — blur/focus 없음).
     const root = editorRef.current;
     if (!root) return;
     const cur = slotFromSelection();
-    const slots = Array.from(
-      root.querySelectorAll<HTMLElement>(".blank-slot-v2"),
-    );
+    const slots = Array.from(root.querySelectorAll<HTMLElement>(`.${SLOT_CLASS}`));
     const i = cur ? slots.indexOf(cur) : -1;
     const dir = e.key === "Tab" && e.shiftKey ? -1 : 1;
-    const next = slots[i + dir];
+    const next = i < 0 ? slots[0] : slots[i + dir];
     if (next) {
       e.preventDefault();
       caretToEnd(next);
@@ -351,10 +393,12 @@ export function BlankFillViewV2({
         autoCapitalize="off"
         data-gramm="false"
         lang="ko"
+        onBeforeInput={onBeforeInput}
         onInput={onInput}
+        onCompositionStart={onCompositionStart}
         onCompositionEnd={onCompositionEnd}
         onKeyDown={onKeyDown}
-        className="border-border bg-card focus-within:border-primary rounded-xl border p-4 text-[15px] leading-8 whitespace-pre-wrap outline-none"
+        className="border-border bg-card focus-within:border-primary rounded-xl border p-4 text-[15px] whitespace-pre-wrap outline-none"
       />
     </div>
   );
