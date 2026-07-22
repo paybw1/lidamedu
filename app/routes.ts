@@ -54,6 +54,7 @@ export default [
     route("/srs/review", "features/srs/api/review.tsx"),
     route("/srs/stats", "features/srs/api/stats.tsx"),
     route("/srs/export", "features/srs/api/export.tsx"),
+    route("/srs/settings", "features/srs/api/settings.tsx"),
     route("/community/report", "features/community/api/report.tsx"),
     route(
       "/community/report-resolve",

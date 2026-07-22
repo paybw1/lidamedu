@@ -47,11 +47,17 @@ export function kstDateToUtcIso(yyyymmdd: string): string {
 export interface SrsSettings {
   newPerDay: number;
   maxReviewsPerDay: number;
+  /** 강사 지정 중요도 하한(0=전체, 1/2/3=★ 이상). 학생이 설정. */
+  importanceMin: number;
+  /** 본인 즐겨찾기(조문·판례)한 카드만. 학생이 설정. */
+  bookmarkedOnly: boolean;
 }
 
 const DEFAULT_SETTINGS: SrsSettings = {
   newPerDay: 20,
   maxReviewsPerDay: 200,
+  importanceMin: 0,
+  bookmarkedOnly: false,
 };
 
 export async function getUserSettings(
@@ -60,14 +66,38 @@ export async function getUserSettings(
 ): Promise<SrsSettings> {
   const { data } = await client
     .from("srs_user_settings")
-    .select("new_per_day, max_reviews_per_day")
+    .select(
+      "new_per_day, max_reviews_per_day, importance_min, bookmarked_only",
+    )
     .eq("user_id", userId)
     .maybeSingle();
   if (!data) return DEFAULT_SETTINGS;
   return {
     newPerDay: data.new_per_day,
     maxReviewsPerDay: data.max_reviews_per_day,
+    importanceMin: data.importance_min ?? 0,
+    bookmarkedOnly: data.bookmarked_only ?? false,
   };
+}
+
+/** 학생 암기카드 필터 설정 저장(중요도 하한 + 즐겨찾기만). upsert. */
+export async function updateUserFilterSettings(
+  client: SupabaseClient<Database>,
+  userId: string,
+  input: { importanceMin: number; bookmarkedOnly: boolean },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const importanceMin = Math.max(0, Math.min(3, Math.floor(input.importanceMin)));
+  const { error } = await client.from("srs_user_settings").upsert(
+    {
+      user_id: userId,
+      importance_min: importanceMin,
+      bookmarked_only: input.bookmarkedOnly,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" },
+  );
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
 }
 
 /* ── 큐 ─────────────────────────────────────────────────────────────── */
@@ -137,17 +167,43 @@ export async function getReviewQueue(
   const sourceType = opts.sourceType ?? null;
   const subject = opts.subject ?? null;
   const excludeSubjects = opts.excludeSubjects ?? [];
+  const importanceMin = settings.importanceMin;
+
+  // 학생 필터 — 즐겨찾기만. 본인 북마크(조문·판례) source_id 집합. .in() URL 초과를 피해
+  // JS Set 으로 후필터(현실적 북마크 수는 소량, 카드 풀도 과목당 수십~수백).
+  let bookmarkSet: Set<string> | null = null;
+  if (settings.bookmarkedOnly) {
+    const { data: bms } = await client
+      .from("user_bookmarks")
+      .select("target_id")
+      .eq("user_id", userId)
+      .in("target_type", ["article", "case"])
+      .is("deleted_at", null);
+    bookmarkSet = new Set((bms ?? []).map((b) => b.target_id));
+    if (bookmarkSet.size === 0) {
+      // 즐겨찾기가 없으면 노출 카드 없음.
+      return {
+        today,
+        items: [],
+        dueCount: 0,
+        newCount: 0,
+        newIntroducedToday: 0,
+        settings,
+      };
+    }
+  }
 
   // 1) due 항목 (review/relearning/learning) — due_date <= today. 종류·과목 필터(임베디드).
   //    ★ limit 전에 필터해야 정확(필터 후 상한 적용).
   let dueQ = client
     .from("srs_review_states")
     .select(
-      "item_id, due_date, state, interval_days, repetitions, ease_factor, srs_items!inner(item_id, subject, topic, type, front, back, law_ref, source_type, source_id, deleted_at)",
+      "item_id, due_date, state, interval_days, repetitions, ease_factor, srs_items!inner(item_id, subject, topic, type, front, back, law_ref, source_type, source_id, importance, deleted_at)",
     )
     .eq("user_id", userId)
     .lte("due_date", today)
-    .is("srs_items.deleted_at", null);
+    .is("srs_items.deleted_at", null)
+    .gte("srs_items.importance", importanceMin);
   if (sourceType) dueQ = dueQ.eq("srs_items.source_type", sourceType);
   if (subject) dueQ = dueQ.eq("srs_items.subject", subject);
   if (excludeSubjects.length > 0)
@@ -158,6 +214,9 @@ export async function getReviewQueue(
 
   const due: QueueItem[] = (dueRows ?? [])
     .filter((r) => r.srs_items.deleted_at === null)
+    .filter(
+      (r) => !bookmarkSet || bookmarkSet.has(r.srs_items.source_id ?? ""),
+    )
     .map((r) => ({
       itemId: r.item_id,
       kind: "due" as const,
@@ -207,28 +266,30 @@ export async function getReviewQueue(
       .select("item_id")
       .eq("user_id", userId);
     const seenSet = new Set((seen ?? []).map((r) => r.item_id));
-    const fetchLimit = newPickCount + seenSet.size + 50;
+    // 즐겨찾기 후필터가 있으면 풀 전체를 받아 걸러야 부족분이 안 생김(풀은 과목당 소량).
+    const fetchLimit = bookmarkSet
+      ? 5000
+      : newPickCount + seenSet.size + 50;
+    const keep = (it: QueueItem) =>
+      !seenSet.has(it.itemId) &&
+      (!bookmarkSet || bookmarkSet.has(it.sourceId ?? ""));
 
     if (sourceType) {
       const cands = await fetchNewCandidates(client, {
         sourceType,
         subject,
         excludeSubjects,
+        importanceMin,
         limit: fetchLimit,
       });
-      newItems = cands
-        .filter((it) => !seenSet.has(it.itemId))
-        .slice(0, newPickCount);
+      newItems = cands.filter(keep).slice(0, newPickCount);
     } else {
       const [arts, cases] = await Promise.all([
-        fetchNewCandidates(client, { sourceType: "article", subject, excludeSubjects, limit: fetchLimit }),
-        fetchNewCandidates(client, { sourceType: "case", subject, excludeSubjects, limit: fetchLimit }),
+        fetchNewCandidates(client, { sourceType: "article", subject, excludeSubjects, importanceMin, limit: fetchLimit }),
+        fetchNewCandidates(client, { sourceType: "case", subject, excludeSubjects, importanceMin, limit: fetchLimit }),
       ]);
       newItems = interleaveGroups(
-        [
-          arts.filter((it) => !seenSet.has(it.itemId)),
-          cases.filter((it) => !seenSet.has(it.itemId)),
-        ],
+        [arts.filter(keep), cases.filter(keep)],
         newPickCount,
       );
     }
@@ -254,6 +315,7 @@ async function fetchNewCandidates(
     sourceType: SrsSourceKind;
     subject: string | null;
     excludeSubjects?: readonly string[];
+    importanceMin?: number;
     limit: number;
   },
 ): Promise<QueueItem[]> {
@@ -262,6 +324,8 @@ async function fetchNewCandidates(
     .select("item_id, subject, topic, type, front, back, law_ref, source_type, source_id")
     .is("deleted_at", null)
     .eq("source_type", opts.sourceType);
+  if (opts.importanceMin && opts.importanceMin > 0)
+    q = q.gte("importance", opts.importanceMin);
   if (opts.subject) q = q.eq("subject", opts.subject);
   if (opts.excludeSubjects && opts.excludeSubjects.length > 0)
     q = q.not("subject", "in", inList(opts.excludeSubjects));

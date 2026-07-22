@@ -10651,6 +10651,7 @@ export type Database = {
           created_by: string | null
           deleted_at: string | null
           front: string
+          importance: number
           item_id: string
           law_ref: string | null
           source: string | null
@@ -10666,6 +10667,7 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           front: string
+          importance?: number
           item_id?: string
           law_ref?: string | null
           source?: string | null
@@ -10681,6 +10683,7 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           front?: string
+          importance?: number
           item_id?: string
           law_ref?: string | null
           source?: string | null
@@ -10823,21 +10826,27 @@ export type Database = {
       }
       srs_user_settings: {
         Row: {
+          bookmarked_only: boolean
           created_at: string
+          importance_min: number
           max_reviews_per_day: number
           new_per_day: number
           updated_at: string
           user_id: string
         }
         Insert: {
+          bookmarked_only?: boolean
           created_at?: string
+          importance_min?: number
           max_reviews_per_day?: number
           new_per_day?: number
           updated_at?: string
           user_id: string
         }
         Update: {
+          bookmarked_only?: boolean
           created_at?: string
+          importance_min?: number
           max_reviews_per_day?: number
           new_per_day?: number
           updated_at?: string

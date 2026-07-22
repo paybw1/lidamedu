@@ -47,6 +47,8 @@ interface CardRow {
   front: string;
   back: string;
   law_ref: string | null;
+  /** 강사 지정 중요도(원본 조문/판례에서 비정규화) — 학생 필터용. */
+  importance: number;
   /** 안정 멱등 키 — article:{id} / case:{id}#{idx}. */
   source: string;
   source_type: CardSourceType;
@@ -57,6 +59,7 @@ interface ExistingCard {
   itemId: string;
   front: string;
   back: string;
+  importance: number;
 }
 
 interface CardGenPlan {
@@ -129,7 +132,7 @@ async function planArticleCards(
   const ids = candidates.map((a) => a.article_id);
   const { data: existRows } = await client
     .from("srs_items")
-    .select("item_id, source_id, front, back")
+    .select("item_id, source_id, front, back, importance")
     .eq("source_type", "article")
     .in("source_id", ids);
   const existing = new Map<string, ExistingCard>();
@@ -139,6 +142,7 @@ async function planArticleCards(
         itemId: r.item_id,
         front: r.front,
         back: r.back,
+        importance: r.importance,
       });
 
   // 본문 일괄 조회(전체 후보 — 신규·기존 모두 합성).
@@ -171,6 +175,7 @@ async function planArticleCards(
       back,
       law_ref:
         a.article_number != null ? `${params.subject}#${a.article_number}` : null,
+      importance: a.importance ?? 0,
       source: `article:${a.article_id}`,
       source_type: "article" as const,
       source_id: a.article_id,
@@ -221,7 +226,7 @@ async function planCaseCards(
   const caseIds = candidates.map((c) => c.case_id);
   const { data: existRows } = await client
     .from("srs_items")
-    .select("item_id, source, front, back")
+    .select("item_id, source, front, back, importance")
     .eq("source_type", "case")
     .in("source_id", caseIds);
   const existing = new Map<string, ExistingCard>();
@@ -231,6 +236,7 @@ async function planCaseCards(
         itemId: r.item_id,
         front: r.front,
         back: r.back,
+        importance: r.importance,
       });
 
   const rows: CardRow[] = [];
@@ -270,6 +276,7 @@ async function planCaseCards(
         front: composeCaseFront(citation, u.topic),
         back,
         law_ref: null,
+        importance: c.importance ?? 0,
         source: u.key,
         source_type: "case" as const,
         source_id: c.case_id,
@@ -288,7 +295,9 @@ function planCards(client: Client, params: CardGenParams): Promise<CardGenPlan> 
 }
 
 function isChanged(ex: ExistingCard, r: CardRow): boolean {
-  return ex.front !== r.front || ex.back !== r.back;
+  return (
+    ex.front !== r.front || ex.back !== r.back || ex.importance !== r.importance
+  );
 }
 
 /** dry-run — 신규/갱신 수 + 잘림 점검 + before→after 샘플(미적용). */
@@ -361,7 +370,13 @@ export async function generateCards(
       if (!ex || !isChanged(ex, r)) continue;
       const { error } = await client
         .from("srs_items")
-        .update({ front: r.front, back: r.back, topic: r.topic, law_ref: r.law_ref })
+        .update({
+          front: r.front,
+          back: r.back,
+          topic: r.topic,
+          law_ref: r.law_ref,
+          importance: r.importance,
+        })
         .eq("item_id", ex.itemId);
       if (error) throw error;
       updated += 1;

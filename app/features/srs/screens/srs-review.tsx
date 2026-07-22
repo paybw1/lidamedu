@@ -289,6 +289,11 @@ function SrsReviewInner({
           )}
         />
 
+        <CardFilterSettings
+          importanceMin={settings.importanceMin}
+          bookmarkedOnly={settings.bookmarkedOnly}
+        />
+
         {/* 카드 카운터 */}
         <div className="mb-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
           <Counter label="오늘 암기" value={dueCount} tone="rose" />
@@ -444,6 +449,58 @@ function ChipFilters({
           </FilterChip>
         ))}
       </div>
+    </div>
+  );
+}
+
+// feat-2-023c — 학생 암기카드 구성(중요도 하한 + 즐겨찾기만). 변경 즉시 저장 → 큐 재조회.
+function CardFilterSettings({
+  importanceMin,
+  bookmarkedOnly,
+}: {
+  importanceMin: number;
+  bookmarkedOnly: boolean;
+}) {
+  const fetcher = useFetcher();
+  const [imp, setImp] = useState(importanceMin);
+  const [fav, setFav] = useState(bookmarkedOnly);
+  const save = (nextImp: number, nextFav: boolean) => {
+    setImp(nextImp);
+    setFav(nextFav);
+    const fd = new FormData();
+    fd.set("importanceMin", String(nextImp));
+    fd.set("bookmarkedOnly", nextFav ? "1" : "0");
+    fetcher.submit(fd, { method: "post", action: "/srs/settings" });
+  };
+  return (
+    <div className="border-border bg-muted/30 mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-dashed px-3 py-2 text-xs">
+      <span className="text-muted-foreground font-semibold">카드 구성</span>
+      <label className="flex items-center gap-1.5">
+        <span className="text-muted-foreground">중요도</span>
+        <select
+          value={String(imp)}
+          onChange={(e) => save(Number(e.currentTarget.value), fav)}
+          className="border-input bg-background h-7 rounded border px-1.5 text-xs"
+          aria-label="중요도 하한"
+        >
+          <option value="0">전체</option>
+          <option value="1">★ 이상</option>
+          <option value="2">★★ 이상</option>
+          <option value="3">★★★ 만</option>
+        </select>
+      </label>
+      <label className="flex cursor-pointer items-center gap-1.5">
+        <input
+          type="checkbox"
+          checked={fav}
+          onChange={(e) => save(imp, e.currentTarget.checked)}
+          className="size-3.5"
+        />
+        <span>즐겨찾기만</span>
+      </label>
+      {fetcher.state !== "idle" ? (
+        <span className="text-muted-foreground">적용 중…</span>
+      ) : null}
     </div>
   );
 }
