@@ -12,9 +12,11 @@
 //   watch_ledger/used_seconds 추적은 통계용으로 남기되, 재생 차단은 하지 않는다.
 const ENFORCE_MULTIPLIER = false;
 const ENFORCE_DEVICE = process.env.ENFORCE_DEVICE === "true";
-// 재생 "1회" 정의 — 같은 회차의 직전 재생과 이 간격 이상 떨어져 시작하면 새 재생 세션(1회 차감).
-//   그 안의 재개·새로고침·이어보기는 같은 세션으로 무차감(재생 토큰 수명과 정합).
-const PLAY_SESSION_GAP_MS = 6 * 3600 * 1000;
+// 재생 "1회" 정의 = **하루 단위(KST 달력일)**. 같은 회차를 같은 날에 여러 번 봐도 1회,
+//   다른 날에 재생하면 새 1회 차감. (하루 안의 재개·새로고침·이어보기는 무차감)
+function kstDateStr(ms: number): string {
+  return new Date(ms + 9 * 3600_000).toISOString().slice(0, 10);
+}
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
@@ -148,11 +150,11 @@ export async function requestPlaybackGrant(
         .order("granted_at", { ascending: false })
         .limit(500);
       const playsUsed = (prior ?? []).filter((g) => g.counts_as_play).length;
-      const lastAt = prior?.[0]?.granted_at
-        ? Date.parse(prior[0].granted_at)
+      // 하루 단위 — 직전 재생이 오늘(KST)이면 같은 날 재생이라 무차감, 다른 날/최초면 새 1회.
+      const lastKst = prior?.[0]?.granted_at
+        ? kstDateStr(Date.parse(prior[0].granted_at))
         : null;
-      const isNewSession =
-        lastAt == null || now - lastAt > PLAY_SESSION_GAP_MS;
+      const isNewSession = lastKst == null || lastKst < kstDateStr(now);
       if (isNewSession && playsUsed >= maxPlays) {
         return { ok: false, reason: "play_limit_exhausted" };
       }

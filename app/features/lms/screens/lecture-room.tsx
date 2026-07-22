@@ -93,7 +93,8 @@ export default function LectureRoom({ loaderData }: Route.ComponentProps) {
         </Link>
         <h1 className="text-xl font-extrabold tracking-tight">{courseLabel}</h1>
         <p className="text-muted-foreground text-[13px]">
-          수강할 회차를 선택하세요. 회차마다 정해진 횟수만큼 재생할 수 있습니다.
+          수강할 회차를 선택하세요. 회차마다 정해진 횟수만큼 재생할 수 있으며, 재생 횟수는{" "}
+          <strong>하루 1회</strong> 기준으로 차감됩니다(같은 날 여러 번 봐도 1회).
         </p>
       </div>
 
