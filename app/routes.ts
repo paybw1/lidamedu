@@ -1554,6 +1554,8 @@ export default [
     ]),
     // feat-8-026 — 학습 데이터 활용 필수 동의 게이트(자체 인증, private.layout 밖 = 루프 회피).
     route("/consent", "features/onboarding/screens/consent.tsx"),
+    // feat-8-030 — 가입 후 필수정보 입력 게이트(자체 인증, private.layout 밖 = 루프 회피).
+    route("/onboarding/profile", "features/onboarding/screens/profile.tsx"),
     // 서비스 접근 승인 대기(자체 인증, private.layout 밖 = 루프 회피).
     route("/pending-approval", "features/onboarding/screens/pending-approval.tsx"),
   ]),

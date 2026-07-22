@@ -2,6 +2,7 @@ import { Outlet, data, redirect } from "react-router";
 
 import { requireAccessApproval } from "~/core/lib/require-approval.server";
 import { requireServiceDataConsent } from "~/core/lib/require-consent.server";
+import { requireProfileInfo } from "~/core/lib/require-profile.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 
 import type { Route } from "./+types/dashboard.layout";
@@ -19,6 +20,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   await requireAccessApproval(client, user, request, headers);
   // feat-8-026 — 학습 데이터 활용 미동의 학생은 /consent 로.
   await requireServiceDataConsent(client, user, request, headers);
+  // feat-8-030 — 필수정보 미입력 학생은 /onboarding/profile 로(마지막 게이트).
+  await requireProfileInfo(client, user, request, headers);
   return data(null, { headers });
 }
 

@@ -9943,6 +9943,7 @@ export type Database = {
           onboarded_at: string | null
           phone_e164: string | null
           pool_consent_at: string | null
+          profile_completed_at: string | null
           profile_id: string
           recommendation_prefs: Json
           role: Database["public"]["Enums"]["user_role"]
@@ -9975,6 +9976,7 @@ export type Database = {
           onboarded_at?: string | null
           phone_e164?: string | null
           pool_consent_at?: string | null
+          profile_completed_at?: string | null
           profile_id: string
           recommendation_prefs?: Json
           role?: Database["public"]["Enums"]["user_role"]
@@ -10007,6 +10009,7 @@ export type Database = {
           onboarded_at?: string | null
           phone_e164?: string | null
           pool_consent_at?: string | null
+          profile_completed_at?: string | null
           profile_id?: string
           recommendation_prefs?: Json
           role?: Database["public"]["Enums"]["user_role"]
