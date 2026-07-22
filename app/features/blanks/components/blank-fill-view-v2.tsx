@@ -13,7 +13,6 @@
 
 import { EyeIcon, RotateCcwIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useFetcher } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import type { ArticleBody } from "~/features/laws/lib/article-body";
@@ -115,9 +114,6 @@ export function BlankFillViewV2({
   const [reveal, setReveal] = useState(false);
   const [resetKey, setResetKey] = useState(0);
   const editorRef = useRef<HTMLDivElement>(null);
-  const fetcher = useFetcher();
-  const fetcherRef = useRef(fetcher);
-  fetcherRef.current = fetcher;
   const valuesRef = useRef<Map<number, string>>(new Map());
   const savedRef = useRef<Set<number>>(new Set());
   // 한글 IME 조합 중 — 조합 중엔 캐럿 스냅·값 덮어쓰기 금지(조합 파괴 방지).
@@ -138,34 +134,34 @@ export function BlankFillViewV2({
     slot.style.color = COLORS[s].fg;
   };
 
+  // ★attempt 저장은 RR fetcher 가 아니라 순수 fetch(fire-and-forget) 로 보낸다 —
+  //   fetcher.submit 은 로더 revalidation 을 유발해 편집 중 contenteditable 이 React
+  //   재렌더에 휘말려(캐럿 튐·문장 훼손) 버린다. fetch 는 재검증을 안 일으켜 편집영역 무영향.
   const saveAttempt = (slot: HTMLElement, idx: number, input: string) => {
     if (savedRef.current.has(idx)) return;
     savedRef.current.add(idx);
     const fd = new FormData();
+    let action: string | null = null;
     if (setId) {
       fd.set("setId", setId);
       fd.set("blankIdx", String(idx));
       fd.set("userInput", input);
-      fetcherRef.current.submit(fd, {
-        method: "post",
-        action: "/api/blanks/attempt",
-      });
-      return;
+      action = "/api/blanks/attempt";
+    } else {
+      const bi = slot.dataset.blockIndex;
+      const co = slot.dataset.cumOffset;
+      if (autoMeta && bi != null && co != null) {
+        fd.set("articleId", autoMeta.articleId);
+        fd.set("blankType", autoMeta.blankType);
+        fd.set("blockIndex", bi);
+        fd.set("cumOffset", co);
+        fd.set("answer", slot.dataset.answer ?? "");
+        fd.set("userInput", input);
+        action = "/api/blanks/auto-attempt";
+      }
     }
-    const bi = slot.dataset.blockIndex;
-    const co = slot.dataset.cumOffset;
-    if (autoMeta && bi != null && co != null) {
-      fd.set("articleId", autoMeta.articleId);
-      fd.set("blankType", autoMeta.blankType);
-      fd.set("blockIndex", bi);
-      fd.set("cumOffset", co);
-      fd.set("answer", slot.dataset.answer ?? "");
-      fd.set("userInput", input);
-      fetcherRef.current.submit(fd, {
-        method: "post",
-        action: "/api/blanks/auto-attempt",
-      });
-    }
+    if (!action) return;
+    void fetch(action, { method: "POST", body: fd }).catch(() => {});
   };
 
   const judgeSlot = (slot: HTMLElement, save: boolean) => {
