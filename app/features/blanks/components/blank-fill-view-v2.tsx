@@ -192,7 +192,9 @@ export function BlankFillViewV2({
 
   const caretToEnd = (slot: HTMLElement) => {
     if (typeof window === "undefined") return;
-    editorRef.current?.focus();
+    // ★대상 빈칸이 속한 편집영역에 포커스 — 다른 조문(에디터)으로 넘어가는 이동도 지원.
+    const host = slot.closest('[contenteditable="true"]');
+    if (host instanceof HTMLElement) host.focus();
     const sel = window.getSelection();
     if (!sel) return;
     const range = document.createRange();
@@ -327,10 +329,12 @@ export function BlankFillViewV2({
   };
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== "Enter" && e.key !== "Tab") return;
-    const root = editorRef.current;
-    if (!root) return;
     const cur = slotFromSelection();
-    const slots = Array.from(root.querySelectorAll<HTMLElement>(`.${SLOT_CLASS}`));
+    // ★문서 전체 빈칸을 읽기 순서로 — 한 조문의 마지막 칸에서 Tab/Enter 면 다음 조문
+    //   첫 빈칸으로 넘어간다(장 뷰어 다중 조문). 단일 조문이면 자기 빈칸만 나온다.
+    const slots = Array.from(
+      document.querySelectorAll<HTMLElement>(`.${SLOT_CLASS}`),
+    );
     const i = cur ? slots.indexOf(cur) : -1;
     const dir = e.key === "Tab" && e.shiftKey ? -1 : 1;
     const next = i < 0 ? slots[0] : slots[i + dir];
