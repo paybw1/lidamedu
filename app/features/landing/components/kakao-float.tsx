@@ -45,14 +45,13 @@ export function KakaoFloat() {
         style={{
           display: "inline-flex",
           alignItems: "center",
-          gap: "8px",
+          justifyContent: "center",
+          width: "52px",
           height: "52px",
-          padding: "0 18px 0 14px",
           borderRadius: "9999px",
+          border: "1px solid rgba(0,0,0,0.06)",
           background: "#FEE500",
           color: "#191600",
-          fontSize: "14px",
-          fontWeight: 700,
           textDecoration: "none",
           boxShadow: "0 6px 20px rgba(0,0,0,0.18)",
         }}
@@ -63,7 +62,6 @@ export function KakaoFloat() {
             fill="#191600"
           />
         </svg>
-        카톡 문의
       </a>
 
       <button
