@@ -4,13 +4,15 @@
 //   user_metadata 로 매핑한다. 추가 동의항목(실명 name·phone_number·shipping_address)은
 //   user_metadata 에 실리지 않으므로, OAuth 교환 직후 받은 provider_token(카카오 액세스 토큰)으로
 //   `/v2/user/me` 를 직접 호출해 값을 가져와 profiles 에 채운다.
+//   (2026-07-22 실측 검증: provider_token 수신·HTTP 200·name/phone_number 반환 확인.
+//    shipping_addresses 는 카카오 계정에 저장된 배송지가 있을 때만 옴.)
 //
-// 정책: 이미 채워진 필드는 보존(재로그인마다 덮어쓰지 않음). 세 항목이 모두 확보되면
-//   profile_completed_at 을 설정해 온보딩 게이트(필수정보 입력)를 자동 통과. 비치명적 —
-//   토큰 없음·API 실패·필드 부재 시 조용히 no-op 하고, 온보딩 게이트가 안전망으로 남는다.
+// 정책: 이미 채워진 필드는 보존(덮어쓰지 않음). **전화번호가 비어 있을 때만** 카카오를 조회한다
+//   — 전화가 확보되면 이후 로그인에선 스킵(불필요한 API 호출 방지). 기존 회원(전화 없음)도 다음
+//   로그인에 채워진다. 세 항목이 모두 확보되면 profile_completed_at 설정(온보딩 게이트 자동 통과).
+//   비치명적 — 토큰 없음·API 실패·필드 부재 시 조용히 no-op, 온보딩 게이트가 안전망.
 
 import adminClient from "~/core/lib/supa-admin-client.server";
-import { isStaffRole } from "~/core/lib/roles";
 import { normalizePhoneToE164 } from "~/features/onboarding/lib/profile-info";
 
 interface KakaoShippingAddress {
@@ -28,55 +30,22 @@ interface KakaoMe {
 const KAKAO_ME_URL = "https://kapi.kakao.com/v2/user/me";
 const FETCH_TIMEOUT_MS = 3500;
 
-// ★임시 진단 — 값(PII) 없이 실행 경로/불리언만 기록. 확인 후 이 함수와 호출·테이블 제거.
-async function dbg(
-  userId: string,
-  row: {
-    provider_token_present?: boolean;
-    http_status?: number | null;
-    has_kakao_account?: boolean;
-    has_name?: boolean;
-    has_phone?: boolean;
-    has_shipping?: boolean;
-    shipping_count?: number;
-    note: string;
-  },
-): Promise<void> {
-  try {
-    await adminClient.from("kakao_sync_debug").insert({ user_id: userId, ...row });
-  } catch {
-    /* 무시 */
-  }
-}
-
 export async function syncKakaoProfileFromToken(
   userId: string,
   providerToken: string | null | undefined,
 ): Promise<void> {
-  if (!providerToken) {
-    await dbg(userId, { provider_token_present: false, note: "no_provider_token" });
-    return;
-  }
+  if (!providerToken) return;
   try {
-    // 이미 완료됐거나 프로필 없음 → 스킵(첫 가입·미완료 사용자에게만 시도).
-    // ★단 staff 는 completed 여도 항상 재동기화(빈 필드만 채움) — 검증·gap 보완용.
     const { data: profile } = await adminClient
       .from("profiles")
-      .select("name, phone_e164, address, profile_completed_at, role")
+      .select("name, phone_e164, address, profile_completed_at")
       .eq("profile_id", userId)
       .maybeSingle();
-    if (!profile) {
-      await dbg(userId, { provider_token_present: true, note: "no_profile" });
-      return;
-    }
-    if (profile.profile_completed_at && !isStaffRole(profile.role)) {
-      await dbg(userId, { provider_token_present: true, note: "skip_completed" });
-      return;
-    }
+    // 전화번호가 이미 있으면 스킵 — 채울 게 없고 매 로그인 카카오 호출을 피한다.
+    if (!profile || profile.phone_e164) return;
 
     // 카카오 사용자 정보 — provider_token(Bearer)으로 조회. 타임아웃으로 로그인 지연 방지.
     let me: KakaoMe | null = null;
-    let httpStatus: number | null = null;
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
     try {
@@ -84,30 +53,12 @@ export async function syncKakaoProfileFromToken(
         headers: { Authorization: `Bearer ${providerToken}` },
         signal: ctrl.signal,
       });
-      httpStatus = resp.status;
-      if (!resp.ok) {
-        await dbg(userId, {
-          provider_token_present: true,
-          http_status: httpStatus,
-          note: "kakao_http_error",
-        });
-        return;
-      }
+      if (!resp.ok) return;
       me = (await resp.json()) as KakaoMe;
     } finally {
       clearTimeout(timer);
     }
     const acc = me?.kakao_account;
-    await dbg(userId, {
-      provider_token_present: true,
-      http_status: httpStatus,
-      has_kakao_account: !!acc,
-      has_name: !!acc?.name,
-      has_phone: !!acc?.phone_number,
-      has_shipping: !!(acc?.shipping_addresses && acc.shipping_addresses.length > 0),
-      shipping_count: acc?.shipping_addresses?.length ?? 0,
-      note: "fetched",
-    });
     if (!acc) return;
 
     const patch: { name?: string; phone_e164?: string; address?: string } = {};
@@ -116,8 +67,8 @@ export async function syncKakaoProfileFromToken(
     const kakaoName = acc.name?.trim();
     if (kakaoName && !profile.name?.trim()) patch.name = kakaoName;
 
-    // 전화번호 — E164 정규화("+82 10-1234-5678" → +8210XXXXXXXX), 기존 비어 있을 때만.
-    if (!profile.phone_e164 && acc.phone_number) {
+    // 전화번호 — E164 정규화("+82 10-1234-5678" → +8210XXXXXXXX). 위 가드로 항상 비어 있음.
+    if (acc.phone_number) {
       const e164 = normalizePhoneToE164(acc.phone_number);
       if (e164 && e164 !== "invalid") patch.phone_e164 = e164;
     }
@@ -144,7 +95,7 @@ export async function syncKakaoProfileFromToken(
       address?: string;
       profile_completed_at?: string;
     } = { ...patch };
-    if (finalName && finalPhone && finalAddr) {
+    if (finalName && finalPhone && finalAddr && !profile.profile_completed_at) {
       update.profile_completed_at = new Date().toISOString();
     }
     if (Object.keys(update).length === 0) return;

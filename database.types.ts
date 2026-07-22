@@ -6727,48 +6727,6 @@ export type Database = {
           },
         ]
       }
-      kakao_sync_debug: {
-        Row: {
-          at: string | null
-          has_kakao_account: boolean | null
-          has_name: boolean | null
-          has_phone: boolean | null
-          has_shipping: boolean | null
-          http_status: number | null
-          id: number
-          note: string | null
-          provider_token_present: boolean | null
-          shipping_count: number | null
-          user_id: string | null
-        }
-        Insert: {
-          at?: string | null
-          has_kakao_account?: boolean | null
-          has_name?: boolean | null
-          has_phone?: boolean | null
-          has_shipping?: boolean | null
-          http_status?: number | null
-          id?: never
-          note?: string | null
-          provider_token_present?: boolean | null
-          shipping_count?: number | null
-          user_id?: string | null
-        }
-        Update: {
-          at?: string | null
-          has_kakao_account?: boolean | null
-          has_name?: boolean | null
-          has_phone?: boolean | null
-          has_shipping?: boolean | null
-          http_status?: number | null
-          id?: never
-          note?: string | null
-          provider_token_present?: boolean | null
-          shipping_count?: number | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       landing_banners: {
         Row: {
           accent: string
