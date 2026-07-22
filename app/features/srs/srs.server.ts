@@ -47,17 +47,17 @@ export function kstDateToUtcIso(yyyymmdd: string): string {
 export interface SrsSettings {
   newPerDay: number;
   maxReviewsPerDay: number;
-  /** 강사 지정 중요도 하한(0=전체, 1/2/3=★ 이상). 학생이 설정. */
+  /** 강사 지정 중요도 하한(0=사용 안 함, 1/2/3=★ 이상). 학생이 설정. */
   importanceMin: number;
-  /** 본인 즐겨찾기(조문·판례)한 카드만. 학생이 설정. */
-  bookmarkedOnly: boolean;
+  /** 본인 즐겨찾기 별 하한(0=사용 안 함, 1~5=★ 이상). 학생이 설정. */
+  bookmarkMin: number;
 }
 
 const DEFAULT_SETTINGS: SrsSettings = {
   newPerDay: 20,
   maxReviewsPerDay: 200,
   importanceMin: 0,
-  bookmarkedOnly: false,
+  bookmarkMin: 0,
 };
 
 export async function getUserSettings(
@@ -66,9 +66,7 @@ export async function getUserSettings(
 ): Promise<SrsSettings> {
   const { data } = await client
     .from("srs_user_settings")
-    .select(
-      "new_per_day, max_reviews_per_day, importance_min, bookmarked_only",
-    )
+    .select("new_per_day, max_reviews_per_day, importance_min, bookmark_min")
     .eq("user_id", userId)
     .maybeSingle();
   if (!data) return DEFAULT_SETTINGS;
@@ -76,22 +74,23 @@ export async function getUserSettings(
     newPerDay: data.new_per_day,
     maxReviewsPerDay: data.max_reviews_per_day,
     importanceMin: data.importance_min ?? 0,
-    bookmarkedOnly: data.bookmarked_only ?? false,
+    bookmarkMin: data.bookmark_min ?? 0,
   };
 }
 
-/** 학생 암기카드 필터 설정 저장(중요도 하한 + 즐겨찾기만). upsert. */
+/** 학생 암기카드 필터 설정 저장(중요도 하한 + 즐겨찾기 별 하한). upsert. */
 export async function updateUserFilterSettings(
   client: SupabaseClient<Database>,
   userId: string,
-  input: { importanceMin: number; bookmarkedOnly: boolean },
+  input: { importanceMin: number; bookmarkMin: number },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const importanceMin = Math.max(0, Math.min(3, Math.floor(input.importanceMin)));
+  const bookmarkMin = Math.max(0, Math.min(5, Math.floor(input.bookmarkMin)));
   const { error } = await client.from("srs_user_settings").upsert(
     {
       user_id: userId,
       importance_min: importanceMin,
-      bookmarked_only: input.bookmarkedOnly,
+      bookmark_min: bookmarkMin,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "user_id" },
@@ -169,15 +168,16 @@ export async function getReviewQueue(
   const excludeSubjects = opts.excludeSubjects ?? [];
   const importanceMin = settings.importanceMin;
 
-  // 학생 필터 — 즐겨찾기만. 본인 북마크(조문·판례) source_id 집합. .in() URL 초과를 피해
-  // JS Set 으로 후필터(현실적 북마크 수는 소량, 카드 풀도 과목당 수십~수백).
+  // 학생 필터 — 즐겨찾기 별 하한. 본인 북마크(조문·판례) 중 star_level>=하한인 source_id 집합.
+  // .in() URL 초과를 피해 JS Set 으로 후필터(현실적 북마크 수는 소량, 카드 풀도 과목당 수십~수백).
   let bookmarkSet: Set<string> | null = null;
-  if (settings.bookmarkedOnly) {
+  if (settings.bookmarkMin > 0) {
     const { data: bms } = await client
       .from("user_bookmarks")
       .select("target_id")
       .eq("user_id", userId)
       .in("target_type", ["article", "case"])
+      .gte("star_level", settings.bookmarkMin)
       .is("deleted_at", null);
     bookmarkSet = new Set((bms ?? []).map((b) => b.target_id));
     if (bookmarkSet.size === 0) {

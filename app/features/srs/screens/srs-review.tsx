@@ -147,10 +147,10 @@ export async function action({ request }: Route.ActionArgs) {
   if (!user) return data({ ok: false as const }, { status: 401 });
   const fd = await request.formData();
   const importanceMin = Number(fd.get("importanceMin") ?? 0);
-  const bookmarkedOnly = fd.get("bookmarkedOnly") === "1";
+  const bookmarkMin = Number(fd.get("bookmarkMin") ?? 0);
   await updateUserFilterSettings(client, user.id, {
     importanceMin: Number.isFinite(importanceMin) ? importanceMin : 0,
-    bookmarkedOnly,
+    bookmarkMin: Number.isFinite(bookmarkMin) ? bookmarkMin : 0,
   });
   return data({ ok: true as const });
 }
@@ -310,7 +310,7 @@ function SrsReviewInner({
 
         <CardFilterSettings
           importanceMin={settings.importanceMin}
-          bookmarkedOnly={settings.bookmarkedOnly}
+          bookmarkMin={settings.bookmarkMin}
         />
 
         {/* 카드 카운터 */}
@@ -472,23 +472,25 @@ function ChipFilters({
   );
 }
 
-// feat-2-023c — 학생 암기카드 구성(중요도 하한 + 즐겨찾기만). 변경 즉시 저장 → 큐 재조회.
+// feat-2-023c — 학생 암기카드 구성. 중요도(강사 ★)·즐겨찾기(내 ★) 각각 독립적으로
+// 수준 선택(둘 다 '사용 안 함' 가능). 둘 다 켜면 두 조건 모두 만족하는 카드만(AND).
+// 변경 즉시 저장 → 큐 재조회.
 function CardFilterSettings({
   importanceMin,
-  bookmarkedOnly,
+  bookmarkMin,
 }: {
   importanceMin: number;
-  bookmarkedOnly: boolean;
+  bookmarkMin: number;
 }) {
   const fetcher = useFetcher();
   const [imp, setImp] = useState(importanceMin);
-  const [fav, setFav] = useState(bookmarkedOnly);
-  const save = (nextImp: number, nextFav: boolean) => {
+  const [fav, setFav] = useState(bookmarkMin);
+  const save = (nextImp: number, nextFav: number) => {
     setImp(nextImp);
     setFav(nextFav);
     const fd = new FormData();
     fd.set("importanceMin", String(nextImp));
-    fd.set("bookmarkedOnly", nextFav ? "1" : "0");
+    fd.set("bookmarkMin", String(nextFav));
     // 현재 /srs 페이지 action 으로 저장(별도 라우트 404 방지) → 로더 재검증.
     fetcher.submit(fd, { method: "post" });
   };
@@ -496,28 +498,40 @@ function CardFilterSettings({
     <div className="border-border bg-muted/30 mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-dashed px-3 py-2 text-xs">
       <span className="text-muted-foreground font-semibold">카드 구성</span>
       <label className="flex items-center gap-1.5">
-        <span className="text-muted-foreground">중요도</span>
+        <span className="text-muted-foreground">강사 중요도</span>
         <select
           value={String(imp)}
           onChange={(e) => save(Number(e.currentTarget.value), fav)}
           className="border-input bg-background h-7 rounded border px-1.5 text-xs"
-          aria-label="중요도 하한"
+          aria-label="강사 중요도 하한"
         >
-          <option value="0">전체</option>
+          <option value="0">사용 안 함</option>
           <option value="1">★ 이상</option>
           <option value="2">★★ 이상</option>
-          <option value="3">★★★ 만</option>
+          <option value="3">★★★</option>
         </select>
       </label>
-      <label className="flex cursor-pointer items-center gap-1.5">
-        <input
-          type="checkbox"
-          checked={fav}
-          onChange={(e) => save(imp, e.currentTarget.checked)}
-          className="size-3.5"
-        />
-        <span>즐겨찾기만</span>
+      <label className="flex items-center gap-1.5">
+        <span className="text-muted-foreground">내 즐겨찾기</span>
+        <select
+          value={String(fav)}
+          onChange={(e) => save(imp, Number(e.currentTarget.value))}
+          className="border-input bg-background h-7 rounded border px-1.5 text-xs"
+          aria-label="즐겨찾기 별 하한"
+        >
+          <option value="0">사용 안 함</option>
+          <option value="1">★ 이상</option>
+          <option value="2">★★ 이상</option>
+          <option value="3">★★★ 이상</option>
+          <option value="4">★★★★ 이상</option>
+          <option value="5">★★★★★</option>
+        </select>
       </label>
+      {imp > 0 && fav > 0 ? (
+        <span className="text-muted-foreground text-[11px]">
+          · 두 조건 모두 만족
+        </span>
+      ) : null}
       {fetcher.state !== "idle" ? (
         <span className="text-muted-foreground">적용 중…</span>
       ) : null}

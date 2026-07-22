@@ -10826,7 +10826,7 @@ export type Database = {
       }
       srs_user_settings: {
         Row: {
-          bookmarked_only: boolean
+          bookmark_min: number
           created_at: string
           importance_min: number
           max_reviews_per_day: number
@@ -10835,7 +10835,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          bookmarked_only?: boolean
+          bookmark_min?: number
           created_at?: string
           importance_min?: number
           max_reviews_per_day?: number
@@ -10844,7 +10844,7 @@ export type Database = {
           user_id: string
         }
         Update: {
-          bookmarked_only?: boolean
+          bookmark_min?: number
           created_at?: string
           importance_min?: number
           max_reviews_per_day?: number
