@@ -13,7 +13,7 @@ import {
   SparklesIcon,
 } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { Link, redirect, useFetcher, useLocation } from "react-router";
+import { Link, data, redirect, useFetcher, useLocation } from "react-router";
 
 import { PageHeader, StudentShell, Surface } from "~/core/components/student";
 import { Button } from "~/core/components/ui/button";
@@ -26,6 +26,7 @@ import {
   getDueCountsByType,
   getReviewQueue,
   isKindBacklogged,
+  updateUserFilterSettings,
 } from "~/features/srs/srs.server";
 import { MyAnalysisOffNotice } from "~/features/study/components/my-analysis-off-notice";
 import { StudyMgmtTabs } from "~/features/study/components/study-mgmt-tabs";
@@ -134,6 +135,24 @@ export async function loader({ request }: Route.LoaderArgs) {
       },
     },
   };
+}
+
+// feat-2-023c — 카드 구성(중요도 하한 + 즐겨찾기만) 저장. 현재 페이지 action 이라
+// 별도 리소스 라우트 없이 항상 매칭(리로드/배포 시 라우트 누락 404 방지).
+export async function action({ request }: Route.ActionArgs) {
+  const [client] = makeServerClient(request);
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  if (!user) return data({ ok: false as const }, { status: 401 });
+  const fd = await request.formData();
+  const importanceMin = Number(fd.get("importanceMin") ?? 0);
+  const bookmarkedOnly = fd.get("bookmarkedOnly") === "1";
+  await updateUserFilterSettings(client, user.id, {
+    importanceMin: Number.isFinite(importanceMin) ? importanceMin : 0,
+    bookmarkedOnly,
+  });
+  return data({ ok: true as const });
 }
 
 type Grade = 0 | 3 | 4 | 5;
@@ -470,7 +489,8 @@ function CardFilterSettings({
     const fd = new FormData();
     fd.set("importanceMin", String(nextImp));
     fd.set("bookmarkedOnly", nextFav ? "1" : "0");
-    fetcher.submit(fd, { method: "post", action: "/srs/settings" });
+    // 현재 /srs 페이지 action 으로 저장(별도 라우트 404 방지) → 로더 재검증.
+    fetcher.submit(fd, { method: "post" });
   };
   return (
     <div className="border-border bg-muted/30 mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-dashed px-3 py-2 text-xs">
