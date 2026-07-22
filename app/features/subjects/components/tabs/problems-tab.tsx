@@ -190,15 +190,26 @@ export function ProblemsTab({
       : null;
 
   // 체계도 트리 — 데스크톱 사이드바 / 모바일 드로어 공용 마크업.
-  // 헤더는 체계도/조문 토글(문제는 체계도 고정 → 조문 비활성, 조문 뷰어와 동일 UX).
+  // 민법처럼 체계도=조문 목차인 과목은 축 토글을 숨기고 "조문 목차" 라벨만(조문 탭과 동일 UX).
+  //   그 외(특허 등)는 체계도/조문 토글(문제는 체계도 고정 → 조문 비활성).
+  const hasSystematicAxis = subjectHasSystematicAxis(subject.slug);
   const treePanel = (
     // 문제는 체계도 노드로 브라우징(조문 비활성). 단 민법은 체계도=조문 목차라 조문으로 고정.
-    <SortAxisProvider
-      forced={subjectHasSystematicAxis(subject.slug) ? "systematic" : "statutory"}
-    >
+    <SortAxisProvider forced={hasSystematicAxis ? "systematic" : "statutory"}>
       <div className="border-border bg-muted/30 overflow-hidden rounded-xl border lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
-        <div className="border-border bg-card sticky top-0 z-10 flex items-center justify-end rounded-t-xl border-b px-3 py-2">
-          <SortAxisToggle size="sm" />
+        <div
+          className={cn(
+            "border-border bg-card sticky top-0 z-10 flex items-center rounded-t-xl border-b px-3 py-2",
+            hasSystematicAxis ? "justify-end" : "justify-start",
+          )}
+        >
+          {hasSystematicAxis ? (
+            <SortAxisToggle size="sm" />
+          ) : (
+            <span className="text-muted-foreground text-[11px] font-medium">
+              조문 목차
+            </span>
+          )}
         </div>
         <div className="p-2">
           <ProblemSystematicTree

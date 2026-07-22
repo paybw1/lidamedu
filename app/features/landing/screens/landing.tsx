@@ -13,6 +13,7 @@ import { BannerTiers } from "../components/banner-tiers";
 import { FaqTabs } from "../components/faq-tabs";
 import { HeroCarousel } from "../components/hero-carousel";
 import { InstructorRail } from "../components/instructor-rail";
+import { KakaoFloat } from "../components/kakao-float";
 import { LandingStyle } from "../components/landing-style";
 import { ScheduleRail } from "../components/schedule-rail";
 import { newsKindChipClass, newsKindLabel } from "../labels";
@@ -420,6 +421,8 @@ export default function Landing({ loaderData }: Route.ComponentProps) {
           </Reveal>
         </div>
       </section>
+
+      <KakaoFloat />
     </div>
   );
 }

@@ -98,7 +98,9 @@ export const LECTURE_NAV_LINKS: ReadonlyArray<LectureNavItem> = [
 
 // 드롭다운 활성 판별 — 자식 경로 중 하나와 현재 경로 일치.
 // "/lecture" 는 형제(수강신청·도서 등)가 /lecture/* 라 정확일치만.
+// "/about"(인사말)도 형제 "/about/instructors"(강사소개)를 삼키지 않도록 정확일치만 —
+//   접두 매칭이면 강사소개 페이지에서 인사말이 함께 활성화된다.
 export function childMatchesPath(to: string, pathname: string): boolean {
-  if (to === "/lecture") return pathname === "/lecture";
+  if (to === "/lecture" || to === "/about") return pathname === to;
   return pathname === to || pathname.startsWith(to + "/");
 }
