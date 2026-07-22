@@ -392,9 +392,6 @@ function PlanCard({
               <option value="second">2차</option>
             </select>
           </div>
-          <p className="text-muted-foreground bg-muted/40 col-span-2 rounded px-2 py-1 text-[10px]">
-            ℹ️ 1차 자연과학은 물리·화학·생물·지구과학 4과목 모두 필수입니다.
-          </p>
           <div className="col-span-2 flex justify-end">
             <Button size="sm" type="submit" disabled={fetcher.state !== "idle"}>
               저장
