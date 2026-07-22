@@ -607,7 +607,6 @@ export function BlankFillViewV2({
     <div className="space-y-4">
       <div className="bg-muted/40 flex flex-wrap items-center gap-3 rounded-md border border-dashed px-3 py-2 text-xs">
         <span className="font-medium">총 빈칸 {totalBlanks}개</span>
-        <span className="text-primary font-semibold">실험 렌더(v2)</span>
         <span className="text-muted-foreground">
           정답을 맞히면 초록색 · <kbd className="rounded border px-1">Enter</kbd>{" "}
           / <kbd className="rounded border px-1">Tab</kbd> 로 다음 빈칸

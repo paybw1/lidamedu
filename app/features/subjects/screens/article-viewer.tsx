@@ -282,8 +282,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   // ?blankMode=1 — 내용 빈칸 모드 유지 진입(prev/next 이동용). ?blankEdit=1 — 편집 서브모드까지 유지(staff).
   const blankModeParam = reqUrl.searchParams.get("blankMode") === "1";
   const blankEditParam = reqUrl.searchParams.get("blankEdit") === "1";
-  // feat-4-A-130b — 빈칸 V2(단일 contenteditable) 프로토타입 게이트. iOS IME 이월 실험용.
-  const blankV2Param = reqUrl.searchParams.get("blankv2") === "1";
+  // feat-4-A-130b — 빈칸 V2(단일 contenteditable) 정식 전환(2026-07-22). 이제 기본값이며,
+  //   ?blankv1=1 이면 구 모델(input)로 롤백. iOS IME 이월 근본 해결(단일 host + 도착 후 clear).
+  const legacyBlankParam = reqUrl.searchParams.get("blankv1") === "1";
   let blankReviewNav: { remaining: number; nextHref: string | null } | null =
     null;
   if (blankReviewParam) {
@@ -348,7 +349,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       contentEdit: blankEditParam,
     },
     blankReviewNav,
-    blankV2: blankV2Param,
+    blankV2: !legacyBlankParam,
     filterScope,
     filterScopeParams: filterScope ? { imp: filterImp, bm: filterBm } : null,
     articles,

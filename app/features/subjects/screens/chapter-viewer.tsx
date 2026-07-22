@@ -258,8 +258,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   return {
     subject: LAW_SUBJECTS[lawCode],
     axisCounts,
-    // feat-4-A-130b — 빈칸 V2(단일 contenteditable) 프로토타입 게이트.
-    blankV2: new URL(request.url).searchParams.get("blankv2") === "1",
+    // feat-4-A-130b — 빈칸 V2(단일 contenteditable) 정식 전환(기본값). ?blankv1=1 이면 구 모델 롤백.
+    blankV2: new URL(request.url).searchParams.get("blankv1") !== "1",
     lawId: law.lawId,
     chapter,
     apparatusSkipped,

@@ -43,7 +43,9 @@ async function dismissPopupNotice(page: Page): Promise<void> {
 
 // 클로즈(내용 빈칸) 모드 진입 후 렌더된 빈칸 input 들의 idx 를 DOM 순서대로 반환.
 async function enterClozeMode(page: Page): Promise<number[]> {
-  await page.goto(`/subjects/patent/articles/29?blank=${setId}`);
+  // ★빈칸 V2(단일 contenteditable) 정식 전환 후, 이 스펙은 구 모델(input) 대상이므로
+  //   ?blankv1=1 롤백 경로로 검증한다(구 모델 회귀 방지). V2 전용 E2E 는 별도 추가 예정.
+  await page.goto(`/subjects/patent/articles/29?blank=${setId}&blankv1=1`);
   await dismissPopupNotice(page);
   await page.getByRole("button", { name: /내용 빈칸/ }).first().click();
   // 콜드 컴파일 대비 넉넉한 타임아웃.
