@@ -28,7 +28,9 @@ CRM 작업 = **탭 재편 + 회원명 진입 배선 + 빠진 탭 채우기**.
 - **Stage 2 — 주문 + 쿠폰** 탭: `my-orders`/`lecture-coupons` 로더 재사용(adminClient 스코프) + 강의쿠폰 회원별 select 신설.
 - **Stage 3 — 수강정보 + 개별완료처리**: 회원별 수강목록+진도율 + **완료 override 테이블(`lesson_completions`) 신설** → 관리자 수동 완료.
 - **Stage 4 — 포인트** 탭: 원장 수동 +/- 적립 조정(staff-only INSERT) + 잔액/이력.
-- **Stage 5 — 발송** 탭: (A) 인앱 알림 이력(즉시) → (B, 선택) 전송 로그 테이블 + 발송 지점 계측(교차 인프라, 별도 승인).
+- **Stage 5 — 발송** 탭 ✅: (A) 인앱 알림 이력(user_notifications) + (B) 전송 로그 인프라(message_send_logs) 모두 완료(2026-07-22). sendLoggedEmail 래퍼로 이메일 7곳 이관 + sendKakaoAlimtalk 계측, recipientId 귀속. 로깅은 발송을 안 깸(fire-and-forget).
+
+**전 단계(0~5) 완료·배포.** 최종 탭: 학습현황·수강정보·회원정보·회원이력·주문·쿠폰·포인트·발송·상담·메모·활동·결제.
 
 ## 결정 (승인됨 2026-07-21)
 1. 발송: 우선 인앱 알림 이력(A), 실제 전송 로그(B)는 별도 승인.
