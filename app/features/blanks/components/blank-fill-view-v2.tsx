@@ -560,11 +560,55 @@ export function BlankFillViewV2({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reveal]);
 
+  // ── 삭제 경계 가드 (네이티브 beforeinput) ───────────────────────────
+  //   ★React 의 onBeforeInput 은 삭제 inputType 에 신뢰성이 낮아(삽입 위주 폴리필) 네이티브
+  //   리스너로 직접 처리. 삽입·삭제 모두 "선택 양끝이 같은 슬롯 안" 이 아니면 차단해
+  //   삭제가 슬롯 경계를 넘어 앞/뒤 고정 텍스트(본문)를 지우지 못하게 한다.
+  useEffect(() => {
+    const root = editorRef.current;
+    if (!root || typeof window === "undefined") return;
+    // 슬롯 시작~캐럿 사이 문자 수(ZWSP 포함) — 다중 텍스트노드에도 안전.
+    const caretOffsetInSlot = (slot: HTMLElement, range: Range): number => {
+      const pre = document.createRange();
+      pre.selectNodeContents(slot);
+      pre.setEnd(range.startContainer, range.startOffset);
+      return pre.toString().length;
+    };
+    const handler = (e: InputEvent) => {
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) {
+        e.preventDefault();
+        return;
+      }
+      const range = sel.getRangeAt(0);
+      const startSlot = isInSlot(range.startContainer, root);
+      const endSlot = isInSlot(range.endContainer, root);
+      // 선택 양끝이 같은 슬롯 안이 아니면(고정 텍스트/컨테이너/두 슬롯 걸침) 모든 편집 차단.
+      if (!startSlot || startSlot !== endSlot) {
+        e.preventDefault();
+        return;
+      }
+      const it = (e.inputType || "").toLowerCase();
+      // 삭제는 슬롯 안에서만 — 선행 ZWSP 앵커(idx 0)는 지우지 않고, 슬롯 끝을 넘지 않는다.
+      if (it.startsWith("delete") && sel.isCollapsed && !composingRef.current) {
+        const off = caretOffsetInSlot(startSlot, range);
+        const rawLen = (startSlot.textContent ?? "").length;
+        if (it.includes("backward") && off <= 1) {
+          e.preventDefault();
+          return;
+        }
+        if (it.includes("forward") && off >= rawLen) {
+          e.preventDefault();
+          return;
+        }
+      }
+    };
+    root.addEventListener("beforeinput", handler);
+    return () => root.removeEventListener("beforeinput", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── 편집 이벤트 (컨테이너 위임) ─────────────────────────────────────
-  const onBeforeInput = (e: React.FormEvent<HTMLDivElement>) => {
-    // 슬롯 밖 편집(고정 텍스트 수정) 차단.
-    if (!slotFromSelection()) e.preventDefault();
-  };
   const onInput = (e: React.FormEvent<HTMLDivElement>) => {
     const slot = slotFromSelection();
     if (!slot) return;
@@ -653,7 +697,6 @@ export function BlankFillViewV2({
         autoCapitalize="off"
         data-gramm="false"
         lang="ko"
-        onBeforeInput={onBeforeInput}
         onInput={onInput}
         onCompositionStart={onCompositionStart}
         onCompositionEnd={onCompositionEnd}
