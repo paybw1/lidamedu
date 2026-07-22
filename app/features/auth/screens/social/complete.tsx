@@ -19,6 +19,7 @@ import { z } from "zod";
 import { claimSession } from "~/core/lib/single-session.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { recordLoginAccess } from "~/features/auth/lib/access-log.server";
+import { syncKakaoProfileFromToken } from "~/features/auth/lib/kakao-profile.server";
 
 /**
  * Meta function for the social authentication complete page
@@ -98,7 +99,10 @@ export async function loader({ request }: Route.LoaderArgs) {
   const [client, headers] = makeServerClient(request);
   
   // Exchange the OAuth code for a session
-  const { error } = await client.auth.exchangeCodeForSession(validData.code);
+  const { data: exchanged, error } =
+    await client.auth.exchangeCodeForSession(validData.code);
+  // 카카오 액세스 토큰 — 승인 동의항목(이름·전화·배송지) 직접 조회에 사용(교환 직후에만 존재).
+  const providerToken = exchanged?.session?.provider_token ?? null;
 
   // Return error if session exchange fails
   if (error) {
@@ -115,6 +119,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   } = await client.auth.getUser();
   if (user) {
     await claimSession(client, request, headers);
+    // 카카오 승인 동의항목(이름·전화·배송지)을 profiles 에 자동 채움 — 확보되면 온보딩
+    // 게이트 자동 통과. 토큰 없음·미완료 시 no-op(비치명적, 게이트가 안전망).
+    await syncKakaoProfileFromToken(user.id, providerToken);
     // 접속 이력 기록 (/admin/access-logs) — 실패해도 로그인 진행.
     await recordLoginAccess(user.id, request);
     // feat-000-016 2단계 — 이전 기기 세션(refresh 토큰) 폐기(심층 방어). scope:"others"는
