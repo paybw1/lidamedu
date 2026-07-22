@@ -10,6 +10,7 @@
 //   토큰 없음·API 실패·필드 부재 시 조용히 no-op 하고, 온보딩 게이트가 안전망으로 남는다.
 
 import adminClient from "~/core/lib/supa-admin-client.server";
+import { isStaffRole } from "~/core/lib/roles";
 import { normalizePhoneToE164 } from "~/features/onboarding/lib/profile-info";
 
 interface KakaoShippingAddress {
@@ -27,22 +28,55 @@ interface KakaoMe {
 const KAKAO_ME_URL = "https://kapi.kakao.com/v2/user/me";
 const FETCH_TIMEOUT_MS = 3500;
 
+// ★임시 진단 — 값(PII) 없이 실행 경로/불리언만 기록. 확인 후 이 함수와 호출·테이블 제거.
+async function dbg(
+  userId: string,
+  row: {
+    provider_token_present?: boolean;
+    http_status?: number | null;
+    has_kakao_account?: boolean;
+    has_name?: boolean;
+    has_phone?: boolean;
+    has_shipping?: boolean;
+    shipping_count?: number;
+    note: string;
+  },
+): Promise<void> {
+  try {
+    await adminClient.from("kakao_sync_debug").insert({ user_id: userId, ...row });
+  } catch {
+    /* 무시 */
+  }
+}
+
 export async function syncKakaoProfileFromToken(
   userId: string,
   providerToken: string | null | undefined,
 ): Promise<void> {
-  if (!providerToken) return;
+  if (!providerToken) {
+    await dbg(userId, { provider_token_present: false, note: "no_provider_token" });
+    return;
+  }
   try {
     // 이미 완료됐거나 프로필 없음 → 스킵(첫 가입·미완료 사용자에게만 시도).
+    // ★단 staff 는 completed 여도 항상 재동기화(빈 필드만 채움) — 검증·gap 보완용.
     const { data: profile } = await adminClient
       .from("profiles")
-      .select("name, phone_e164, address, profile_completed_at")
+      .select("name, phone_e164, address, profile_completed_at, role")
       .eq("profile_id", userId)
       .maybeSingle();
-    if (!profile || profile.profile_completed_at) return;
+    if (!profile) {
+      await dbg(userId, { provider_token_present: true, note: "no_profile" });
+      return;
+    }
+    if (profile.profile_completed_at && !isStaffRole(profile.role)) {
+      await dbg(userId, { provider_token_present: true, note: "skip_completed" });
+      return;
+    }
 
     // 카카오 사용자 정보 — provider_token(Bearer)으로 조회. 타임아웃으로 로그인 지연 방지.
     let me: KakaoMe | null = null;
+    let httpStatus: number | null = null;
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
     try {
@@ -50,12 +84,30 @@ export async function syncKakaoProfileFromToken(
         headers: { Authorization: `Bearer ${providerToken}` },
         signal: ctrl.signal,
       });
-      if (!resp.ok) return;
+      httpStatus = resp.status;
+      if (!resp.ok) {
+        await dbg(userId, {
+          provider_token_present: true,
+          http_status: httpStatus,
+          note: "kakao_http_error",
+        });
+        return;
+      }
       me = (await resp.json()) as KakaoMe;
     } finally {
       clearTimeout(timer);
     }
     const acc = me?.kakao_account;
+    await dbg(userId, {
+      provider_token_present: true,
+      http_status: httpStatus,
+      has_kakao_account: !!acc,
+      has_name: !!acc?.name,
+      has_phone: !!acc?.phone_number,
+      has_shipping: !!(acc?.shipping_addresses && acc.shipping_addresses.length > 0),
+      shipping_count: acc?.shipping_addresses?.length ?? 0,
+      note: "fetched",
+    });
     if (!acc) return;
 
     const patch: { name?: string; phone_e164?: string; address?: string } = {};
