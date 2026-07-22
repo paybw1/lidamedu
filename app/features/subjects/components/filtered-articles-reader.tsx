@@ -115,7 +115,7 @@ export function FilteredArticlesReader({
               </h3>
               <Button asChild size="sm" variant="ghost" className="h-7 gap-1 text-xs">
                 <Link
-                  to={`/subjects/${lawCode}/articles/${a.articleNumber ?? ""}`}
+                  to={`/subjects/${lawCode}/articles/${a.articleNumber ?? ""}?imp=${importanceMin}&bm=${bookmarkMin}`}
                   viewTransition
                   prefetch="intent"
                 >

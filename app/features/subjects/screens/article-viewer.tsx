@@ -1,6 +1,7 @@
 import type { Route } from "./+types/article-viewer";
 
 import {
+  BookOpenIcon,
   BrainIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -68,6 +69,7 @@ import {
   getArticleByNumber,
   getArticleByNumberAt,
   getArticleSkeleton,
+  getFilteredArticleRefs,
   getLawByCode,
   getStaffRole,
   getSystematicSkeleton,
@@ -298,6 +300,21 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     };
   }
 
+  // 필터 정독 스코프(?imp=중요도&bm=즐겨찾기) — 허브 필터에서 진입 시 prev/next 를
+  //   전체 조문이 아니라 필터 매칭 조문 집합으로 한정. 파라미터 없으면 null(전체 순회).
+  const impParam = Number(reqUrl.searchParams.get("imp") ?? "0");
+  const bmParam = Number(reqUrl.searchParams.get("bm") ?? "0");
+  const filterImp = Number.isInteger(impParam) && impParam >= 1 && impParam <= 3 ? impParam : 0;
+  const filterBm = Number.isInteger(bmParam) && bmParam >= 1 && bmParam <= 5 ? bmParam : 0;
+  const filterScope =
+    filterImp > 0 || filterBm > 0
+      ? await getFilteredArticleRefs(client, lawCode, {
+          importanceMin: filterImp,
+          bookmarkMin: filterBm,
+          userId: user.id,
+        })
+      : null;
+
   // 진도 기록 (loader 안에서 1번 fire-and-forget; 실패해도 화면은 계속)
   recordStudySession(client, user.id, {
     subject: lawCode,
@@ -328,6 +345,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       contentEdit: blankEditParam,
     },
     blankReviewNav,
+    filterScope,
+    filterScopeParams: filterScope ? { imp: filterImp, bm: filterBm } : null,
     articles,
     systematicNodes,
     relatedCases,
@@ -392,6 +411,8 @@ function ArticleViewerInner({
     blankSets,
     blankSet,
     blankReviewNav,
+    filterScope,
+    filterScopeParams,
     staffRole,
     isAdmin,
     currentUserId,
@@ -419,9 +440,21 @@ function ArticleViewerInner({
     return m;
   }, [articles]);
 
-  // prev / next 조문 (article level only, 자연 순서)
-  // 삭제된 조문도 포함 — 구특허법 코멘트 박스를 학습할 수 있도록
+  // prev / next 조문 — 필터 정독 스코프(?imp/&bm)로 진입했으면 그 매칭 집합만 순회,
+  //   아니면 전체 조문 자연 순서. 삭제된 조문도 포함(구특허법 코멘트 박스 학습).
   const { prev, next } = useMemo(() => {
+    // 필터 스코프 우선 — 현재 조문이 스코프 안에 있을 때만 적용.
+    if (filterScope && filterScope.length > 0) {
+      const idx = filterScope.findIndex(
+        (a) => a.articleId === article.articleId,
+      );
+      if (idx >= 0) {
+        return {
+          prev: idx > 0 ? filterScope[idx - 1] : null,
+          next: idx < filterScope.length - 1 ? filterScope[idx + 1] : null,
+        };
+      }
+    }
     const onlyArticles = articles
       .filter((a) => a.level === "article" && a.articleNumber)
       .slice()
@@ -436,7 +469,12 @@ function ArticleViewerInner({
           ? onlyArticles[idx + 1]
           : null,
     };
-  }, [articles, article.articleId]);
+  }, [articles, article.articleId, filterScope]);
+
+  // prev/next 이동 시 필터 스코프를 유지할 쿼리(?imp=&bm=).
+  const filterSearch = filterScopeParams
+    ? `?imp=${filterScopeParams.imp}&bm=${filterScopeParams.bm}`
+    : "";
 
   const [subtitlesOnly, setSubtitlesOnly] = useState(false);
   const {
@@ -776,15 +814,23 @@ function ArticleViewerInner({
                     모바일: prev/next 위 · 제목 아래(full-width) / sm↑: 제목 좌 · prev/next 우 */}
                 {/* Prev/Next — 상단 우측. 제목이 전체 폭을 쓰도록 위로 분리. */}
                 <div className="mb-3 flex items-center justify-between gap-2 sm:justify-end">
+                  {filterScope && filterScope.length > 0 ? (
+                    <span className="text-muted-foreground mr-auto inline-flex items-center gap-1 rounded-full border border-dashed px-2.5 py-1 text-xs">
+                      <BookOpenIcon className="size-3" />
+                      필터 정독 {Math.max(0, filterScope.findIndex((a) => a.articleId === article.articleId)) + 1}/{filterScope.length}
+                    </span>
+                  ) : null}
                   <PrevNextButton
                     direction="prev"
                     target={prev}
                     subjectSlug={subject.slug}
+                    search={filterSearch}
                   />
                   <PrevNextButton
                     direction="next"
                     target={next}
                     subjectSlug={subject.slug}
+                    search={filterSearch}
                   />
                 </div>
 

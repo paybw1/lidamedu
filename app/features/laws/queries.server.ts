@@ -924,6 +924,66 @@ export async function getArticlesByTreeFilter(
   };
 }
 
+export interface FilteredArticleRef {
+  articleId: string;
+  articleNumber: string | null;
+  displayLabel: string;
+}
+
+// 필터 정독 스코프의 조문 목록(본문 제외) — 조문 뷰어 prev/next 를 필터셋으로 한정하려
+// 전체 매칭 조문을 자연순으로 반환. getArticlesByTreeFilter 와 같은 AND 의미론이되
+// 본문(article_revisions)은 조회하지 않아 가볍다.
+export async function getFilteredArticleRefs(
+  client: SupabaseClient<Database>,
+  lawCode: string,
+  opts: { importanceMin: number; bookmarkMin: number; userId: string },
+): Promise<FilteredArticleRef[]> {
+  if (opts.importanceMin <= 0 && opts.bookmarkMin <= 0) return [];
+  const { data: law } = await client
+    .from("laws")
+    .select("law_id")
+    .eq("law_code", lawCode)
+    .maybeSingle();
+  if (!law) return [];
+
+  let q = client
+    .from("articles")
+    .select("article_id, article_number, display_label, importance")
+    .eq("law_id", law.law_id)
+    .eq("level", "article")
+    .is("deleted_at", null);
+  if (opts.importanceMin > 0) q = q.gte("importance", opts.importanceMin);
+  const { data: rows, error } = await q;
+  if (error) throw error;
+  let matched = rows ?? [];
+
+  if (opts.bookmarkMin > 0) {
+    const { data: bms, error: bmErr } = await client
+      .from("user_bookmarks")
+      .select("target_id, star_level")
+      .eq("user_id", opts.userId)
+      .eq("target_type", "article")
+      .gte("star_level", opts.bookmarkMin)
+      .is("deleted_at", null);
+    if (bmErr) throw bmErr;
+    const bmSet = new Set((bms ?? []).map((b) => b.target_id));
+    matched = matched.filter((a) => bmSet.has(a.article_id));
+  }
+
+  matched.sort((x, y) => {
+    const xn = naturalKey(x.article_number);
+    const yn = naturalKey(y.article_number);
+    if (xn[0] !== yn[0]) return xn[0] - yn[0];
+    return xn[1] - yn[1];
+  });
+
+  return matched.map((a) => ({
+    articleId: a.article_id,
+    articleNumber: a.article_number,
+    displayLabel: a.display_label,
+  }));
+}
+
 export interface RevisionHistoryEntry {
   revisionId: string;
   // draft 상태에서는 NULL.
