@@ -19,10 +19,12 @@ import type { ArticleBody } from "~/features/laws/lib/article-body";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 import type { BlankItem } from "~/features/blanks/queries.server";
 
+import type { Block, Inline } from "~/features/laws/lib/article-body";
+
 import {
   blockCumulativeText,
   computeBlockBlankHits,
-  walkBlocks,
+  inlineTokenContent,
 } from "../lib/blank-layout";
 import { normalizeAnswer } from "../lib/normalize";
 import type { AutoBlankMeta } from "./blanks-context";
@@ -41,13 +43,80 @@ const COLORS = {
 //   딸려보낸다(within-article 단일 host 는 이월 없음). 막기 어려우니 **도착 후 지운다**:
 //   마지막으로 입력된 슬롯의 값(carried)을 기억했다가, 다른 에디터의 새 슬롯에 캐럿이
 //   진입하면 짧은 창(window) 을 열고, 그 창 안에 그 슬롯이 carried 텍스트를 머금으면 제거.
+// 인라인 토큰 종류별 비편집 스타일(article-body 렌더 정책과 대략 일치). 관련조문=점선 밑줄
+//   primary, 강사 라벨(annotation)=앰버, 소제목=파랑, 시행령=앰버, 개정주기=회색 작게.
+function applyTokStyle(
+  el: HTMLElement,
+  kind: "text" | "underline" | "subtitle" | "annotation" | "ordinance" | "amendment" | "ref",
+): void {
+  switch (kind) {
+    case "underline":
+      el.style.textDecoration = "underline";
+      break;
+    case "subtitle":
+      el.style.color = "#2563eb";
+      el.style.fontWeight = "600";
+      break;
+    case "annotation":
+      el.style.backgroundColor = "rgba(245,158,11,0.18)";
+      el.style.color = "#92400e";
+      el.style.borderRadius = "3px";
+      el.style.padding = "0 2px";
+      el.style.fontSize = "0.92em";
+      break;
+    case "ordinance":
+      el.style.color = "#b45309";
+      break;
+    case "amendment":
+      el.style.color = "#94a3b8";
+      el.style.fontSize = "0.85em";
+      break;
+    case "ref":
+      el.style.color = "var(--primary, #4f46e5)";
+      el.style.textDecoration = "underline dotted";
+      el.style.textUnderlineOffset = "2px";
+      break;
+    default:
+      break;
+  }
+}
+
 const CROSS_CLEAR_MS = 1500;
 let crossPrev: { editor: HTMLElement; value: string } | null = null;
 let crossClear: { slot: HTMLElement; carried: string; until: number } | null =
   null;
 
+// 인라인 토큰 종류 → 세그먼트 kind(스타일 결정).
+type TokKind =
+  | "text"
+  | "underline"
+  | "subtitle"
+  | "annotation"
+  | "ordinance"
+  | "amendment"
+  | "ref";
+function tokKind(t: Inline): TokKind {
+  switch (t.type) {
+    case "underline":
+      return "underline";
+    case "subtitle":
+      return "subtitle";
+    case "annotation":
+      return "annotation";
+    case "ordinance_ref":
+      return "ordinance";
+    case "amendment_note":
+      return "amendment";
+    case "ref_article":
+    case "ref_law":
+      return "ref";
+    default:
+      return "text";
+  }
+}
+
 type Seg =
-  | { t: "text"; s: string }
+  | { t: "tok"; kind: TokKind; s: string }
   | {
       t: "blank";
       idx: number;
@@ -56,45 +125,135 @@ type Seg =
       cumOffset?: number;
     };
 interface Line {
+  depth: number;
   label: string;
+  subtitle: string | null;
+  // 특수 라인(비편집 컨텍스트) — 있으면 heading/box 로 렌더.
+  heading?: string;
+  context?: string;
   segs: Seg[];
 }
 
-// body + blanks → 렌더 순서의 라인(블록) + 세그먼트. 빈칸은 blockHit offset 자리에 삽입.
+// 한 블록의 inline 을 리치 세그먼트로 — 토큰 종류별 스타일 유지 + 빈칸 자리(문자단위, 크로스토큰 안전).
+function buildInlineSegs(
+  block: Block,
+  hits: { blank: BlankItem; start: number; end: number }[],
+  blankByIdx: Map<number, BlankItem>,
+): Seg[] {
+  if (
+    block.kind !== "clause" &&
+    block.kind !== "item" &&
+    block.kind !== "sub" &&
+    block.kind !== "para"
+  ) {
+    return [];
+  }
+  const text = blockCumulativeText(block);
+  if (text.length === 0) return [];
+  // 문자별 토큰 종류.
+  const typeAt: TokKind[] = new Array(text.length).fill("text");
+  {
+    let pos = 0;
+    for (const tok of block.inline) {
+      const c = inlineTokenContent(tok);
+      const k = tokKind(tok);
+      for (let i = 0; i < c.length && pos + i < text.length; i++) {
+        typeAt[pos + i] = k;
+      }
+      pos += c.length;
+    }
+  }
+  // 빈칸 hit — 시작 위치 map + 덮인 구간.
+  const hitStart = new Map<number, { blank: BlankItem; end: number }>();
+  for (const h of hits) {
+    if (h.start < 0) continue;
+    const s = Math.max(0, Math.min(text.length, h.start));
+    const e = Math.max(0, Math.min(text.length, h.end));
+    if (!hitStart.has(s)) hitStart.set(s, { blank: h.blank, end: e });
+  }
+  const segs: Seg[] = [];
+  let pos = 0;
+  while (pos < text.length) {
+    const hit = hitStart.get(pos);
+    if (hit) {
+      const bi = blankByIdx.get(hit.blank.idx);
+      segs.push({
+        t: "blank",
+        idx: hit.blank.idx,
+        answer: hit.blank.answer,
+        blockIndex: bi?.blockIndex ?? undefined,
+        cumOffset: bi?.cumOffset ?? undefined,
+      });
+      pos = Math.max(pos + 1, hit.end);
+      continue;
+    }
+    const kind = typeAt[pos];
+    let j = pos;
+    while (j < text.length && !hitStart.has(j) && typeAt[j] === kind) j++;
+    const s = text.slice(pos, j);
+    if (s) segs.push({ t: "tok", kind, s });
+    pos = j;
+  }
+  return segs;
+}
+
+// body + blanks → 리치 라인. 블록 계층(라벨/소제목/들여쓰기) + 시행령 박스 컨텍스트 보존.
 function buildLines(body: ArticleBody, blanks: BlankItem[]): Line[] {
   const blockHits = computeBlockBlankHits(body, blanks);
   const blankByIdx = new Map(blanks.map((b) => [b.idx, b]));
   const lines: Line[] = [];
-  walkBlocks(body, (block) => {
-    const text = blockCumulativeText(block);
-    const hits = (blockHits.get(block) ?? [])
-      .slice()
-      .sort((a, b) => a.start - b.start);
-    if (text.length === 0 && hits.length === 0) return; // 빈 블록 skip
+  const visit = (block: Block, depth: number) => {
+    if (block.kind === "title_marker") {
+      lines.push({ depth, label: "", subtitle: null, heading: block.text, segs: [] });
+      return;
+    }
+    if (block.kind === "header_refs") {
+      const s = block.refs.map(inlineTokenContent).join(" ").trim();
+      if (s) lines.push({ depth, label: "", subtitle: null, context: s, segs: [] });
+      return;
+    }
+    if (block.kind === "sub_article_group") {
+      lines.push({
+        depth,
+        label: "",
+        subtitle: null,
+        heading: `함께 공부할 조문 · ${block.source}`,
+        segs: [],
+      });
+      for (const b of block.preface ?? []) visit(b, depth + 1);
+      for (const sa of block.articles) {
+        lines.push({
+          depth: depth + 1,
+          label: "",
+          subtitle: null,
+          context: `제${sa.number}조${sa.branch ? `의${sa.branch}` : ""} (${sa.title})`,
+          segs: [],
+        });
+        for (const b of sa.blocks) visit(b, depth + 1);
+      }
+      return;
+    }
     const label =
       block.kind === "clause" || block.kind === "item" || block.kind === "sub"
         ? block.label
         : "";
-    const segs: Seg[] = [];
-    let cursor = 0;
-    for (const h of hits) {
-      const start = Math.max(0, Math.min(text.length, h.start));
-      const end = Math.max(0, Math.min(text.length, h.end));
-      if (h.start < 0) continue;
-      if (start > cursor) segs.push({ t: "text", s: text.slice(cursor, start) });
-      const bi = blankByIdx.get(h.blank.idx);
-      segs.push({
-        t: "blank",
-        idx: h.blank.idx,
-        answer: h.blank.answer,
-        blockIndex: bi?.blockIndex ?? undefined,
-        cumOffset: bi?.cumOffset ?? undefined,
-      });
-      cursor = Math.max(cursor, end);
+    const subtitle =
+      (block.kind === "clause" ||
+        block.kind === "item" ||
+        block.kind === "sub") &&
+      block.subtitle
+        ? block.subtitle
+        : null;
+    const hits = (blockHits.get(block) ?? []).slice().sort((a, b) => a.start - b.start);
+    const segs = buildInlineSegs(block, hits, blankByIdx);
+    if (segs.length > 0 || label || subtitle) {
+      lines.push({ depth, label, subtitle, segs });
     }
-    if (cursor < text.length) segs.push({ t: "text", s: text.slice(cursor) });
-    lines.push({ label, segs });
-  });
+    if (block.kind === "clause" || block.kind === "item" || block.kind === "sub") {
+      for (const c of block.children) visit(c, depth + 1);
+    }
+  };
+  for (const b of body.blocks) visit(b, 0);
   return lines;
 }
 
@@ -263,18 +422,51 @@ export function BlankFillViewV2({
       const lineEl = document.createElement("div");
       lineEl.className = "blank-line-v2";
       lineEl.style.lineHeight = "2.1";
+      if (line.depth > 0) lineEl.style.paddingLeft = `${line.depth * 1.1}rem`;
+
+      // 특수 라인 — 비편집 heading/컨텍스트 박스(시행령 그룹·소제목표제·관련조문).
+      if (line.heading) {
+        lineEl.style.marginTop = "0.4rem";
+        const h = document.createElement("span");
+        h.contentEditable = "false";
+        h.textContent = line.heading;
+        h.style.fontWeight = "700";
+        lineEl.appendChild(h);
+        root.appendChild(lineEl);
+        continue;
+      }
+      if (line.context) {
+        const c = document.createElement("span");
+        c.contentEditable = "false";
+        c.textContent = line.context;
+        c.style.color = "#64748b";
+        c.style.fontSize = "0.9em";
+        lineEl.appendChild(c);
+        root.appendChild(lineEl);
+        continue;
+      }
+
       if (line.label) {
         const lab = document.createElement("span");
         lab.contentEditable = "false";
-        lab.className = "mr-1 font-semibold";
-        lab.textContent = line.label;
+        lab.textContent = line.label + " ";
+        lab.style.fontWeight = "600";
         lineEl.appendChild(lab);
       }
+      if (line.subtitle) {
+        const st = document.createElement("span");
+        st.contentEditable = "false";
+        st.textContent = `(${line.subtitle}) `;
+        st.style.color = "#2563eb";
+        st.style.fontWeight = "600";
+        lineEl.appendChild(st);
+      }
       for (const seg of line.segs) {
-        if (seg.t === "text") {
+        if (seg.t === "tok") {
           const s = document.createElement("span");
           s.contentEditable = "false";
           s.textContent = seg.s;
+          applyTokStyle(s, seg.kind);
           lineEl.appendChild(s);
         } else {
           const b = document.createElement("span");
