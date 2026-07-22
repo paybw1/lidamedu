@@ -4,7 +4,7 @@
 import { render } from "@react-email/render";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
-import resendClient from "~/core/lib/resend-client.server";
+import { sendLoggedEmail } from "~/core/lib/message-log.server";
 import GsPeerAssignmentEmail from "../../../transactional-emails/emails/gs-peer-assignment";
 
 import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
@@ -88,7 +88,7 @@ export async function notifyPeerAssignments(
       const firstRoundId = list[0].roundId;
       const round = roundById.get(firstRoundId);
       if (!round) continue;
-      tasks.push(sendEmail(profile.email, round, list.length));
+      tasks.push(sendEmail(profile.email, round, list.length, profile.profileId));
     }
     await Promise.allSettled(tasks);
   } catch (err) {
@@ -100,6 +100,7 @@ async function sendEmail(
   to: string,
   round: RoundContext,
   assignedCount: number,
+  recipientId: string,
 ): Promise<void> {
   try {
     const subjectMeta = LAW_SUBJECTS[round.subject as keyof typeof LAW_SUBJECTS];
@@ -120,13 +121,16 @@ async function sendEmail(
         deadline,
       }),
     );
-    await resendClient.emails.send({
-      from: FROM_EMAIL,
-      replyTo: REPLY_TO_EMAIL,
-      to,
-      subject: `[리담변리사학원] 동료 채점 ${assignedCount}건 배정 — ${round.title}`,
-      html,
-    });
+    await sendLoggedEmail(
+      {
+        from: FROM_EMAIL,
+        replyTo: REPLY_TO_EMAIL,
+        to,
+        subject: `[리담변리사학원] 동료 채점 ${assignedCount}건 배정 — ${round.title}`,
+        html,
+      },
+      { recipientId, kind: "gs_peer_assignment" },
+    );
   } catch (err) {
     console.error(`[gs:notify] email send failed (${to}):`, err);
   }

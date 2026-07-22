@@ -14,7 +14,7 @@ import { render } from "@react-email/render";
 import { data } from "react-router";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
-import resendClient from "~/core/lib/resend-client.server";
+import { sendLoggedEmail } from "~/core/lib/message-log.server";
 import { createUserNotifications } from "~/features/notifications/queries.server";
 
 import ExamResultReminder from "../../../../transactional-emails/emails/exam-result-reminder";
@@ -76,13 +76,16 @@ async function sendReminderEmail(input: {
         examRoundLabel: roundLabel,
       }),
     );
-    const res = await resendClient.emails.send({
-      from: FROM_EMAIL,
-      replyTo: REPLY_TO_EMAIL,
-      to: email,
-      subject: `[리담변리사학원] ${input.examYear}년 ${roundLabel} 시험 결과를 입력해 주세요`,
-      html,
-    });
+    const res = await sendLoggedEmail(
+      {
+        from: FROM_EMAIL,
+        replyTo: REPLY_TO_EMAIL,
+        to: email,
+        subject: `[리담변리사학원] ${input.examYear}년 ${roundLabel} 시험 결과를 입력해 주세요`,
+        html,
+      },
+      { recipientId: input.userId, kind: "exam_result_reminder" },
+    );
     if (res.error) return { status: "failed", reason: res.error.message };
     return { status: "ok" };
   } catch (e) {

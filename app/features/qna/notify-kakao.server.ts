@@ -17,6 +17,8 @@
 // KakaoNotConfigured 를 throw 하고, notify.server.ts 디스패처가 이를 silent catch 하여
 // 다른 채널(이메일) 발송에는 영향을 주지 않는다 (활성화 전 정상 동작).
 
+import { recordMessageSend } from "~/core/lib/message-log.server";
+
 export class KakaoNotConfigured extends Error {
   constructor(missing: string[]) {
     super(`카카오 알림톡 미설정: ${missing.join(", ")}`);
@@ -78,6 +80,8 @@ function readConfig(): KakaoConfig | KakaoNotConfigured {
 
 export interface KakaoSendInput {
   to: string; // E.164 (예: +821012345678)
+  // feat-7-046 발송 로그 귀속용(선택). 없으면 번호만 기록.
+  recipientId?: string | null;
   template: KakaoTemplateKey;
   // 승인된 템플릿의 #{변수명} 자리에 들어갈 값. 키는 평문(예: title)으로 전달하고
   // provider adapter 가 #{...} 로 감싼다.
@@ -225,6 +229,7 @@ async function sendViaSolapi(
 // 발송 실패 시 Error 를 throw — 디스패처(notify.server.ts)가 채널별로 격리 처리.
 export async function sendKakaoAlimtalk(input: KakaoSendInput): Promise<void> {
   const cfg = readConfig();
+  // 미설정은 발송 시도 아님 — 로그하지 않고 throw(호출부가 조용히 무시).
   if (cfg instanceof KakaoNotConfigured) throw cfg;
 
   if (cfg.provider !== "solapi") {
@@ -232,5 +237,30 @@ export async function sendKakaoAlimtalk(input: KakaoSendInput): Promise<void> {
       `[kakao] provider '${cfg.provider}' 미구현 — 현재 solapi 만 지원합니다.`,
     );
   }
-  await sendViaSolapi(cfg, input);
+  // feat-7-046(B) — 실제 발송 시도만 로그(성공/실패). 로깅은 발송을 깨지 않는다.
+  try {
+    await sendViaSolapi(cfg, input);
+    void recordMessageSend({
+      channel: "kakao",
+      provider: "solapi",
+      recipientId: input.recipientId ?? null,
+      toAddress: input.to,
+      kind: input.template,
+      subject: null,
+      status: "sent",
+      error: null,
+    });
+  } catch (e) {
+    void recordMessageSend({
+      channel: "kakao",
+      provider: "solapi",
+      recipientId: input.recipientId ?? null,
+      toAddress: input.to,
+      kind: input.template,
+      subject: null,
+      status: "failed",
+      error: e instanceof Error ? e.message : String(e),
+    });
+    throw e; // 호출부의 채널별 격리(try/catch)·SMS 폴백 로직 보존.
+  }
 }

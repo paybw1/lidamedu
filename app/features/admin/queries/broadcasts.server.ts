@@ -4,7 +4,7 @@
 // 접근·집계는 전부 adminClient(service_role) — 호출부(manager+ loader/action)에서 게이트.
 
 import adminClient from "~/core/lib/supa-admin-client.server";
-import resendClient from "~/core/lib/resend-client.server";
+import { sendLoggedEmail } from "~/core/lib/message-log.server";
 import {
   type BroadcastChannel,
   type BroadcastSegmentKey,
@@ -205,18 +205,17 @@ export async function sendBroadcastEmails(
       email = null;
     }
     if (!email) continue;
-    try {
-      const res = await resendClient.emails.send({
+    const res = await sendLoggedEmail(
+      {
         from: FROM_EMAIL,
         replyTo: REPLY_TO_EMAIL,
         to: email,
         subject: `[리담변리사학원] ${title}`,
         html,
-      });
-      if (!res.error) sent += 1;
-    } catch {
-      // best-effort — 개별 실패 무시.
-    }
+      },
+      { recipientId: p.profile_id, kind: "broadcast" },
+    );
+    if (!res.error) sent += 1;
   }
   await adminClient
     .from("broadcasts")

@@ -79,16 +79,20 @@ import {
   getMemberPoints,
   getMemberProfile,
   listMemberCoupons,
+  listMemberNotifications,
   listMemberOrders,
+  listMemberSends,
   listUserAccessLogs,
   listUserBookDownloads,
   type AccessLogRow,
   type DownloadRow,
   type MemberCoupons,
   type MemberEnrollmentCourse,
+  type MemberNotificationRow,
   type MemberOrder,
   type MemberPoints,
   type MemberProfile,
+  type MemberSendRow,
 } from "~/features/admin/queries/member-crm.server";
 import { isPasswordLoginEnabled } from "~/features/auth/settings.server";
 import { CS_CATEGORY_LABEL } from "~/features/cs-inquiries/labels";
@@ -313,6 +317,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     memberCoupons,
     memberEnrollments,
     memberPoints,
+    memberSends,
+    memberNotifications,
   ] = await Promise.all([
     getMemberProfile(params.profileId),
     roleAtLeast(role, "manager")
@@ -338,6 +344,12 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     roleAtLeast(role, "manager")
       ? getMemberPoints(params.profileId)
       : Promise.resolve({ balance: 0, transactions: [] } as MemberPoints),
+    roleAtLeast(role, "manager")
+      ? listMemberSends(params.profileId)
+      : Promise.resolve([] as MemberSendRow[]),
+    roleAtLeast(role, "manager")
+      ? listMemberNotifications(params.profileId)
+      : Promise.resolve([] as MemberNotificationRow[]),
   ]);
   const memberHeader = {
     memberNo: memberProfile?.memberNo ?? null,
@@ -362,6 +374,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     memberCoupons,
     memberEnrollments,
     memberPoints,
+    memberSends,
+    memberNotifications,
     cohortComparisons,
     notes,
     csActions,
@@ -412,6 +426,8 @@ export default function AdminStudentDetail({
     memberCoupons,
     memberEnrollments,
     memberPoints,
+    memberSends,
+    memberNotifications,
     cohortComparisons,
     notes,
     csActions,
@@ -454,6 +470,7 @@ export default function AdminStudentDetail({
     | "orders"
     | "coupons"
     | "points"
+    | "sends"
     | "memo"
     | "activity"
   >("study");
@@ -589,6 +606,7 @@ export default function AdminStudentDetail({
           {isAdmin ? <TabsTrigger value="orders">주문</TabsTrigger> : null}
           {isAdmin ? <TabsTrigger value="coupons">쿠폰</TabsTrigger> : null}
           {isAdmin ? <TabsTrigger value="points">포인트</TabsTrigger> : null}
+          {isAdmin ? <TabsTrigger value="sends">발송</TabsTrigger> : null}
           <TabsTrigger value="memo">상담·메모</TabsTrigger>
           {isAdmin ? (
             <TabsTrigger value="activity">활동·결제</TabsTrigger>
@@ -897,6 +915,15 @@ export default function AdminStudentDetail({
             <MemberPointsTab
               userId={student.profileId}
               points={memberPoints}
+            />
+          </TabsContent>
+        ) : null}
+
+        {isAdmin ? (
+          <TabsContent value="sends" className="mt-3">
+            <MemberSendsTab
+              sends={memberSends}
+              notifications={memberNotifications}
             />
           </TabsContent>
         ) : null}
@@ -1901,6 +1928,128 @@ function MemberPointsTab({
                 ))}
               </TableBody>
             </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ── feat-7-046 발송 탭 (전송 로그 + 인앱 알림) ────────────────────────────
+const SEND_CHANNEL_LABEL: Record<string, string> = {
+  email: "메일",
+  kakao: "알림톡",
+  sms: "SMS",
+};
+
+function MemberSendsTab({
+  sends,
+  notifications,
+}: {
+  sends: MemberSendRow[];
+  notifications: MemberNotificationRow[];
+}) {
+  const fmtDt = (s: string) => s.slice(0, 16).replace("T", " ");
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader className="pb-2">
+          <p className="text-sm font-semibold">전송 이력 (메일·알림톡)</p>
+          <p className="text-muted-foreground text-xs">
+            실제 발송 기록 — 발송 로그 도입 이후분만 표시됩니다.
+          </p>
+        </CardHeader>
+        <Separator />
+        <CardContent className="p-0">
+          {sends.length === 0 ? (
+            <HistEmpty text="전송 이력이 없습니다." />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>일시</TableHead>
+                  <TableHead>채널</TableHead>
+                  <TableHead>내용</TableHead>
+                  <TableHead>상태</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sends.map((s) => (
+                  <TableRow key={s.logId}>
+                    <TableCell className="text-xs tabular-nums">
+                      {fmtDt(s.createdAt)}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {SEND_CHANNEL_LABEL[s.channel] ?? s.channel}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      <span className="block max-w-[22rem] truncate">
+                        {s.subject ?? s.kind ?? "—"}
+                      </span>
+                      {s.toAddress ? (
+                        <span className="text-muted-foreground block max-w-[22rem] truncate text-[10px]">
+                          {s.toAddress}
+                        </span>
+                      ) : null}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {s.status === "sent" ? (
+                        <span className="text-emerald-600 dark:text-emerald-400">
+                          발송
+                        </span>
+                      ) : (
+                        <span
+                          className="text-rose-600 dark:text-rose-400"
+                          title={s.error ?? undefined}
+                        >
+                          실패
+                        </span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <p className="text-sm font-semibold">인앱 알림</p>
+          <p className="text-muted-foreground text-xs">
+            대시보드 알림함에 전달된 알림 카드
+          </p>
+        </CardHeader>
+        <Separator />
+        <CardContent className="p-0">
+          {notifications.length === 0 ? (
+            <HistEmpty text="인앱 알림이 없습니다." />
+          ) : (
+            <ul className="divide-y">
+              {notifications.map((n) => (
+                <li key={n.notificationId} className="px-4 py-2.5 text-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="min-w-0 truncate font-medium">
+                      {n.title}
+                    </span>
+                    <span className="text-muted-foreground flex shrink-0 items-center gap-2 text-xs tabular-nums">
+                      {n.readAt ? (
+                        <Chip tone="outline">읽음</Chip>
+                      ) : (
+                        <Chip tone="solid">안읽음</Chip>
+                      )}
+                      {fmtDt(n.createdAt)}
+                    </span>
+                  </div>
+                  {n.body ? (
+                    <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs">
+                      {n.body}
+                    </p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
           )}
         </CardContent>
       </Card>

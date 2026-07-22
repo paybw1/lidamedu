@@ -609,3 +609,71 @@ export async function adjustMemberPoints(input: {
   if (error) return { ok: false, error: error.message };
   return { ok: true, newBalance };
 }
+
+// ── 발송 (전송 로그 message_send_logs + 인앱 알림 user_notifications) ────────
+export interface MemberSendRow {
+  logId: string;
+  channel: string;
+  provider: string;
+  kind: string | null;
+  toAddress: string | null;
+  subject: string | null;
+  status: string;
+  error: string | null;
+  createdAt: string;
+}
+export interface MemberNotificationRow {
+  notificationId: string;
+  kind: string;
+  title: string;
+  body: string | null;
+  href: string;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export async function listMemberSends(
+  profileId: string,
+  limit = 60,
+): Promise<MemberSendRow[]> {
+  const { data } = await adminClient
+    .from("message_send_logs")
+    .select(
+      "log_id, channel, provider, kind, to_address, subject, status, error, created_at",
+    )
+    .eq("recipient_id", profileId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return (data ?? []).map((r) => ({
+    logId: r.log_id,
+    channel: r.channel,
+    provider: r.provider,
+    kind: r.kind,
+    toAddress: r.to_address,
+    subject: r.subject,
+    status: r.status,
+    error: r.error,
+    createdAt: r.created_at,
+  }));
+}
+
+export async function listMemberNotifications(
+  profileId: string,
+  limit = 60,
+): Promise<MemberNotificationRow[]> {
+  const { data } = await adminClient
+    .from("user_notifications")
+    .select("notification_id, kind, title, body, href, read_at, created_at")
+    .eq("recipient_id", profileId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return (data ?? []).map((r) => ({
+    notificationId: r.notification_id,
+    kind: r.kind,
+    title: r.title,
+    body: r.body,
+    href: r.href,
+    readAt: r.read_at,
+    createdAt: r.created_at,
+  }));
+}

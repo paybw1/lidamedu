@@ -7805,6 +7805,63 @@ export type Database = {
           },
         ]
       }
+      message_send_logs: {
+        Row: {
+          channel: string
+          created_at: string
+          error: string | null
+          kind: string | null
+          log_id: string
+          meta: Json | null
+          provider: string
+          recipient_id: string | null
+          status: string
+          subject: string | null
+          to_address: string | null
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          error?: string | null
+          kind?: string | null
+          log_id?: string
+          meta?: Json | null
+          provider: string
+          recipient_id?: string | null
+          status: string
+          subject?: string | null
+          to_address?: string | null
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          error?: string | null
+          kind?: string | null
+          log_id?: string
+          meta?: Json | null
+          provider?: string
+          recipient_id?: string | null
+          status?: string
+          subject?: string | null
+          to_address?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_send_logs_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "message_send_logs_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       offline_test_questions: {
         Row: {
           blank_set_id: string | null

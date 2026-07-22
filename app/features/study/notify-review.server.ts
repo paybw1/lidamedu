@@ -6,7 +6,7 @@
 import { render } from "@react-email/render";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
-import resendClient from "~/core/lib/resend-client.server";
+import { sendLoggedEmail } from "~/core/lib/message-log.server";
 import { getDutyRecipientIds } from "~/features/admin/lib/duties.server";
 import { createStaffNotifications } from "~/features/notifications/queries.server";
 import {
@@ -93,20 +93,16 @@ async function dispatch(
   if (recipient.channels.includes("email") && recipient.email) {
     tasks.push(
       (async () => {
-        try {
-          await resendClient.emails.send({
+        await sendLoggedEmail(
+          {
             from: FROM_EMAIL,
             replyTo: REPLY_TO_EMAIL,
             to: recipient.email!,
             subject: email.subject,
             html: email.html,
-          });
-        } catch (err) {
-          console.error(
-            `[review:notify] email failed (profile=${recipient.profileId}):`,
-            err,
-          );
-        }
+          },
+          { recipientId: recipient.profileId, kind: kakao.template },
+        );
       })(),
     );
   }
@@ -116,6 +112,7 @@ async function dispatch(
         try {
           await sendKakaoAlimtalk({
             to: recipient.phoneE164!,
+            recipientId: recipient.profileId,
             template: kakao.template,
             variables: kakao.variables,
             fallbackText: kakao.fallbackText,
