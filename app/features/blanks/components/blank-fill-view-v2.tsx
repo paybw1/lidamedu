@@ -36,6 +36,16 @@ const COLORS = {
   wrong: { border: "#f43f5e", bg: "rgba(244,63,94,0.12)", fg: "#be123c" },
 } as const;
 
+// ★조문(에디터) 경계 이월 방어 — 전 에디터 공유 모듈 상태.
+//   iOS 는 조문 A 에서 조합 중이던 텍스트를 조문 B 로 넘어가는 순간(host 변경) 그대로
+//   딸려보낸다(within-article 단일 host 는 이월 없음). 막기 어려우니 **도착 후 지운다**:
+//   마지막으로 입력된 슬롯의 값(carried)을 기억했다가, 다른 에디터의 새 슬롯에 캐럿이
+//   진입하면 짧은 창(window) 을 열고, 그 창 안에 그 슬롯이 carried 텍스트를 머금으면 제거.
+const CROSS_CLEAR_MS = 1500;
+let crossPrev: { editor: HTMLElement; value: string } | null = null;
+let crossClear: { slot: HTMLElement; carried: string; until: number } | null =
+  null;
+
 type Seg =
   | { t: "text"; s: string }
   | {
@@ -164,11 +174,49 @@ export function BlankFillViewV2({
     void fetch(action, { method: "POST", body: fd }).catch(() => {});
   };
 
+  const setCaretEnd = (slot: HTMLElement) => {
+    if (typeof window === "undefined") return;
+    const sel = window.getSelection();
+    if (!sel) return;
+    const range = document.createRange();
+    range.selectNodeContents(slot);
+    range.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  };
+
+  // 조문 경계 이월 방어 — 이 슬롯이 방금 이월 창(crossClear) 대상이면, 딸려온 carried
+  //   텍스트를 제거하고 판정. 처리했으면 true. (조합 종료 후 호출 — 마크드 텍스트 아님)
+  const stripCarryIfGuarded = (slot: HTMLElement): boolean => {
+    if (
+      !crossClear ||
+      slot !== crossClear.slot ||
+      typeof Date === "undefined" ||
+      Date.now() >= crossClear.until
+    ) {
+      return false;
+    }
+    const carried = crossClear.carried;
+    crossClear = null; // 한 번만 개입
+    if (!carried) return false;
+    const val = readSlot(slot);
+    if (!val.includes(carried)) return false;
+    const cleaned = val.split(carried).join("");
+    slot.textContent = cleaned.length ? cleaned : ZWSP;
+    setCaretEnd(slot);
+    judgeSlot(slot, false);
+    return true;
+  };
+
   const judgeSlot = (slot: HTMLElement, save: boolean) => {
     const idx = Number(slot.dataset.blankIdx);
     const answer = slot.dataset.answer ?? "";
     const val = readSlot(slot);
     valuesRef.current.set(idx, val);
+    // 마지막으로 입력된 슬롯 값 기억(다음 조문 이월 감지용).
+    if (val.length > 0 && editorRef.current) {
+      crossPrev = { editor: editorRef.current, value: val };
+    }
     if (val.length === 0) {
       setSlotColor(slot, "neutral");
       return;
@@ -269,7 +317,19 @@ export function BlankFillViewV2({
       if (!sel || sel.rangeCount === 0 || !sel.isCollapsed) return;
       const anchor = sel.anchorNode;
       if (!anchor || !root.contains(anchor)) return; // 이 에디터 밖 — 무시
-      if (isInSlot(anchor, root)) return; // 이미 슬롯 안 — OK
+      const inSlot = isInSlot(anchor, root);
+      if (inSlot) {
+        // ★다른 조문(에디터)에서 이 에디터의 슬롯으로 캐럿이 진입 = 조문 경계 넘음.
+        //   직전 입력 슬롯 값(carried)을 이월 방어 창으로 등록 → 딸려온 텍스트를 도착 후 제거.
+        if (crossPrev && crossPrev.editor !== root && crossPrev.value) {
+          crossClear = {
+            slot: inSlot,
+            carried: crossPrev.value,
+            until: Date.now() + CROSS_CLEAR_MS,
+          };
+        }
+        return; // 이미 슬롯 안 — 스냅 불필요
+      }
       // 슬롯 밖(고정 텍스트/컨테이너) — anchor 이후 첫 슬롯, 없으면 마지막 슬롯으로.
       const slots = Array.from(
         root.querySelectorAll<HTMLElement>(`.${SLOT_CLASS}`),
@@ -317,6 +377,8 @@ export function BlankFillViewV2({
     const slot = slotFromSelection();
     if (!slot) return;
     const composing = (e.nativeEvent as InputEvent).isComposing === true;
+    // 조합이 아닌 이월(붙여넣기식 삽입 등)도 도착 후 제거.
+    if (!composing && stripCarryIfGuarded(slot)) return;
     judgeSlot(slot, !composing);
   };
   const onCompositionStart = () => {
@@ -325,7 +387,10 @@ export function BlankFillViewV2({
   const onCompositionEnd = () => {
     composingRef.current = false;
     const slot = slotFromSelection();
-    if (slot) judgeSlot(slot, true);
+    if (!slot) return;
+    // ★조문 경계 이월 = 딸려온 조합이 이 슬롯에서 끝남 → carried 텍스트 제거 후 종료.
+    if (stripCarryIfGuarded(slot)) return;
+    judgeSlot(slot, true);
   };
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== "Enter" && e.key !== "Tab") return;
