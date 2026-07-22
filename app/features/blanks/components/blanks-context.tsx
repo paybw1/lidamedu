@@ -34,9 +34,29 @@ import { normalizeAnswer } from "../lib/normalize";
 //   그 조합 결과를 버린다. iOS 는 blur 로 조합 버퍼가 flush 되지 않아(Windows 와 다름) 이
 //   윈도우 방식으로 잡는다. window(브라우저)에서만 Date.now 사용(SSR 무관).
 let blankCarryoverUntil = 0;
-const BLANK_CARRYOVER_MS = 250;
+// ★터치(iOS/iPad)는 blur 로 IME flush 가 안 돼 잔여 음절 재조합이 데스크톱보다 늦게 시작될 수
+//   있다 → 이월 감지 윈도우를 넓혀야 새는 걸 막는다. 데스크톱은 좁게 유지(빠른 사용자의 '진짜'
+//   새 조합을 이월로 오폐기하지 않도록). iPadOS 는 데스크톱 Safari UA 라 pointer:coarse/터치로 감지.
+const BLANK_CARRYOVER_MS_DESKTOP = 250;
+const BLANK_CARRYOVER_MS_TOUCH = 500;
+let coarsePointerCached: boolean | null = null;
+function isCoarsePointer(): boolean {
+  if (coarsePointerCached !== null) return coarsePointerCached;
+  if (typeof window === "undefined") return false; // SSR — 캐시하지 않음.
+  const coarse =
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(pointer: coarse)").matches;
+  const touch =
+    typeof navigator !== "undefined" && (navigator.maxTouchPoints ?? 0) > 0;
+  coarsePointerCached = coarse || touch;
+  return coarsePointerCached;
+}
 function markBlankCarryover(): void {
-  if (typeof Date !== "undefined") blankCarryoverUntil = Date.now() + BLANK_CARRYOVER_MS;
+  if (typeof Date === "undefined") return;
+  const ms = isCoarsePointer()
+    ? BLANK_CARRYOVER_MS_TOUCH
+    : BLANK_CARRYOVER_MS_DESKTOP;
+  blankCarryoverUntil = Date.now() + ms;
 }
 function isBlankCarryoverActive(): boolean {
   return typeof Date !== "undefined" && Date.now() < blankCarryoverUntil;
