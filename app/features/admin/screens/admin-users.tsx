@@ -3,7 +3,6 @@
 // 역할 변경: 인라인 select → 위험 동작(코랄) + confirm.
 
 import {
-  BugIcon,
   CheckCircle2Icon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -302,26 +301,7 @@ function UserRow({
               ) : null}
               {isCurrentUser ? <Chip tone="outline">본인</Chip> : null}
               {/* 학습현황 칩 제거(feat-7-046) — 회원명 클릭이 CRM(학습현황 탭 포함)으로 이동. */}
-              {/* 오류신고 — 이 회원이 낸 신고 건수. 미처리 있으면 코랄 강조. 클릭 → 활동 내역. */}
-              {user.bugReportCount > 0 ? (
-                <Link
-                  to={`/admin/students/${user.profileId}#activity`}
-                  className={
-                    "inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[11px] font-semibold " +
-                    (user.bugOpenCount > 0
-                      ? "text-rose-600 hover:bg-rose-500/10 dark:text-rose-400"
-                      : "text-muted-foreground hover:bg-muted")
-                  }
-                  title={`오류신고 ${user.bugReportCount}건${user.bugOpenCount > 0 ? ` (미처리 ${user.bugOpenCount})` : ""}`}
-                >
-                  <BugIcon className="size-3" /> 오류신고 {user.bugReportCount}
-                  {user.bugOpenCount > 0 ? (
-                    <span className="ml-0.5 rounded-full bg-rose-600 px-1 text-[9px] leading-tight text-white dark:bg-rose-500">
-                      {user.bugOpenCount}
-                    </span>
-                  ) : null}
-                </Link>
-              ) : null}
+              {/* 오류신고 배지 제거 — 회원 CRM(수강생 상세 활동 내역)에서 확인. */}
             </div>
             {/* 이메일은 별도 컬럼 대신 이름 아래 줄 — 가로 폭 절약. */}
             <span className="text-muted-foreground flex items-center gap-1 truncate text-[11px]">
