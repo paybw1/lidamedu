@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Textarea } from "~/core/components/ui/textarea";
+import { MemberLink } from "~/features/admin/components/admin-ui";
 import { roleAtLeast } from "~/core/lib/roles";
 import makeServerClient from "~/core/lib/supa-client.server";
 import adminClient from "~/core/lib/supa-admin-client.server";
@@ -108,9 +109,11 @@ export default function AdminCohortRequests({
                   key={r.requestId}
                   className="border-border bg-card flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-xs"
                 >
-                  <span className="font-semibold">
-                    {r.userName ?? "(이름 없음)"}
-                  </span>
+                  <MemberLink
+                    profileId={r.userId}
+                    name={r.userName ?? "(이름 없음)"}
+                    className="font-semibold"
+                  />
                   <span className="text-muted-foreground">
                     회원번호 {r.memberNo ?? "-"}
                   </span>
@@ -165,7 +168,11 @@ function PendingRow({
   return (
     <li className="border-border bg-card rounded-xl border p-3 shadow-sm">
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="font-semibold">{r.userName ?? "(이름 없음)"}</span>
+        <MemberLink
+          profileId={r.userId}
+          name={r.userName ?? "(이름 없음)"}
+          className="font-semibold"
+        />
         <span className="text-muted-foreground text-xs">
           회원번호 {r.memberNo ?? "-"}
         </span>

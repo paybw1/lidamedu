@@ -21,6 +21,7 @@ import {
   TableRow,
 } from "~/core/components/ui/table";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { MemberLink } from "~/features/admin/components/admin-ui";
 import { getStaffRole } from "~/features/laws/queries.server";
 
 import {
@@ -180,7 +181,12 @@ function BugRow({ report }: { report: BugReportRow }) {
           {report.url}
         </a>
       </TableCell>
-      <TableCell className="text-xs">{report.reporterName ?? "—"}</TableCell>
+      <TableCell className="text-xs">
+        <MemberLink
+          profileId={report.reporterId}
+          name={report.reporterName}
+        />
+      </TableCell>
       <TableCell className="text-xs tabular-nums">
         {new Date(report.createdAt).toLocaleString("ko-KR")}
       </TableCell>

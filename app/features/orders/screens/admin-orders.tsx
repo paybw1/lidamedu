@@ -10,7 +10,13 @@ import { roleAtLeast } from "~/core/lib/roles";
 import makeServerClient from "~/core/lib/supa-client.server";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
-import { Chip, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
+import {
+  Chip,
+  IndexTable,
+  MemberLink,
+  TD,
+  TR,
+} from "~/features/admin/components/admin-ui";
 import { hasDutyAccess } from "~/features/admin/lib/duties.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
@@ -167,6 +173,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     return {
       orderId: o.order_id,
       orderNo: o.order_id.slice(0, 8),
+      userId: o.user_id,
       userName: user?.name ?? "(이름 없음)",
       memberNo: user?.member_no ?? null,
       status: o.status,
@@ -528,6 +535,7 @@ function OrderRow({
   row: {
     orderId: string;
     orderNo: string;
+    userId: string | null;
     userName: string;
     memberNo: number | null;
     status: string;
@@ -569,7 +577,11 @@ function OrderRow({
         <span title={row.orderId}>{row.orderNo}</span>
       </TD>
       <TD>
-        <span className="font-semibold">{row.userName}</span>
+        <MemberLink
+          profileId={row.userId}
+          name={row.userName}
+          className="font-semibold"
+        />
         {row.memberNo != null ? (
           <span className="text-muted-foreground ml-1 text-[11px] tabular-nums">No.{row.memberNo}</span>
         ) : null}

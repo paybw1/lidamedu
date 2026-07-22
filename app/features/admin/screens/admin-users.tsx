@@ -7,7 +7,6 @@ import {
   CheckCircle2Icon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  LineChartIcon,
   MailIcon,
   RefreshCwIcon,
   SearchIcon,
@@ -302,16 +301,7 @@ function UserRow({
                 <span className="text-muted-foreground text-[11px]">({loginId})</span>
               ) : null}
               {isCurrentUser ? <Chip tone="outline">본인</Chip> : null}
-              {/* 수강생 학습현황 상세로 바로 이동 (과목별 진도·마스터리·약점·시청기록 등) */}
-              {user.role === "student" ? (
-                <Link
-                  to={`/admin/students/${user.profileId}`}
-                  className="text-link hover:bg-link/10 inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[11px] font-semibold"
-                  title={`${user.name || "이 수강생"}의 학습현황 보기`}
-                >
-                  <LineChartIcon className="size-3" /> 학습현황
-                </Link>
-              ) : null}
+              {/* 학습현황 칩 제거(feat-7-046) — 회원명 클릭이 CRM(학습현황 탭 포함)으로 이동. */}
               {/* 오류신고 — 이 회원이 낸 신고 건수. 미처리 있으면 코랄 강조. 클릭 → 활동 내역. */}
               {user.bugReportCount > 0 ? (
                 <Link

@@ -12,6 +12,7 @@ import {
   AdminSelect,
   Chip,
   IndexTable,
+  MemberLink,
   TD,
   TR,
 } from "~/features/admin/components/admin-ui";
@@ -217,7 +218,11 @@ export default function AdminAccessLogs({ loaderData }: Route.ComponentProps) {
                 {(page - 1) * PAGE_SIZE + i + 1}
               </TD>
               <TD>
-                {l.userName ?? <span className="text-muted-foreground">(탈퇴 회원)</span>}
+                {l.userId ? (
+                  <MemberLink profileId={l.userId} name={l.userName} />
+                ) : (
+                  <span className="text-muted-foreground">(탈퇴 회원)</span>
+                )}
                 {l.memberNo != null ? (
                   <span className="text-muted-foreground ml-1 text-[11px]">#{l.memberNo}</span>
                 ) : null}

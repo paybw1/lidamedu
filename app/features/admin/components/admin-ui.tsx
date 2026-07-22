@@ -30,6 +30,30 @@ const CHIP_TONE: Record<ChipTone, string> = {
   outline: "border-border text-muted-foreground border bg-transparent",
 };
 
+// feat-7-046 — 회원명/아이디를 어디서든 회원 CRM(/admin/students/:id)로 연결.
+// profileId 없으면 링크 없이 텍스트만. 운영 목록·상세 어디서든 재사용.
+export function MemberLink({
+  profileId,
+  name,
+  className,
+}: {
+  profileId: string | null | undefined;
+  name: string | null | undefined;
+  className?: string;
+}) {
+  const label = name || "—";
+  if (!profileId) return <span className={className}>{label}</span>;
+  return (
+    <Link
+      to={`/admin/students/${profileId}`}
+      className={cn("hover:text-link hover:underline", className)}
+      title={`${name || "이 회원"} 회원 CRM 열기`}
+    >
+      {label}
+    </Link>
+  );
+}
+
 export function Chip({
   tone = "neutral",
   className,
