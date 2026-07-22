@@ -159,6 +159,7 @@ export interface QnaSlaPendingItem {
   subject: string | null;
   targetType: QnaTargetType;
   status: QnaStatus;
+  askerId: string | null;
   askerName: string | null;
   createdAt: string;
   /** 질문 등록 후 경과 시간. */

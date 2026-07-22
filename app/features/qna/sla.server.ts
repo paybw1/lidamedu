@@ -171,6 +171,7 @@ export async function getQnaSlaDashboard(): Promise<QnaSlaDashboard> {
       subject: t.subject,
       targetType: t.target_type,
       status: t.status,
+      askerId: t.asker?.profile_id ?? null,
       askerName: t.asker?.name ?? null,
       createdAt: t.created_at,
       ageHours: round1((now - new Date(t.created_at).getTime()) / HOUR_MS),

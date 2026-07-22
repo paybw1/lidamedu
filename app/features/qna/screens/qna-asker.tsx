@@ -195,6 +195,12 @@ export default function QnaAsker({ loaderData }: Route.ComponentProps) {
                 {new Date(profile.createdAt).toLocaleDateString("ko-KR")}
               </span>
             </p>
+            <Link
+              to={`/admin/students/${profile.profileId}`}
+              className="text-link mt-1.5 inline-flex items-center gap-1 text-[12px] font-semibold hover:underline"
+            >
+              회원 CRM 열기 →
+            </Link>
           </div>
         </div>
 

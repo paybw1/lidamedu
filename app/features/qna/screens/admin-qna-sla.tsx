@@ -8,6 +8,7 @@ import { Badge } from "~/core/components/ui/badge";
 import { Card, CardContent } from "~/core/components/ui/card";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
+import { MemberLink } from "~/features/admin/components/admin-ui";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { getStaffRole } from "~/features/laws/queries.server";
 
@@ -187,7 +188,7 @@ export default function AdminQnaSla({ loaderData }: Route.ComponentProps) {
                         </Link>
                       </td>
                       <td className="text-muted-foreground px-3 py-2 whitespace-nowrap">
-                        {p.askerName ?? "—"}
+                        <MemberLink profileId={p.askerId} name={p.askerName} />
                       </td>
                       <td className="text-muted-foreground px-3 py-2 whitespace-nowrap tabular-nums">
                         {p.createdAt.slice(0, 16).replace("T", " ")}
