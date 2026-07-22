@@ -210,7 +210,7 @@ async function planCaseCards(
   const { data: cases } = await client
     .from("cases")
     .select(
-      "case_id, court, decided_at, case_number, case_type, is_en_banc, case_title, nickname, summary_items, summary_body_md, importance",
+      "case_id, court, decided_at, case_number, case_type, is_en_banc, case_title, nickname, summary_title, summary_items, summary_body_md, reasoning_md, importance",
     )
     .contains("subject_laws", [params.subject])
     .is("deleted_at", null)
@@ -249,7 +249,11 @@ async function planCaseCards(
       isEnBanc: c.is_en_banc ?? false,
     });
     const titleSrc = c.case_title ?? c.nickname ?? null;
-    const items = parseSummaryItemsLite(c.summary_items);
+    // 요지 항목 중 실제 법리(body)가 있는 것만 쟁점별 카드로. 상표 판례처럼 body 가 전부
+    // 비면(쟁점 title 만) → summary_body_md → reasoning_md(판결이유) 순으로 폴백(단일 카드).
+    const items = parseSummaryItemsLite(c.summary_items).filter(
+      (it) => it.body.trim().length > 0,
+    );
     const units: Array<{ key: string; topic: string; md: string }> =
       items.length > 0
         ? items.map((it, idx) => ({
@@ -265,7 +269,15 @@ async function planCaseCards(
                 md: c.summary_body_md,
               },
             ]
-          : [];
+          : c.reasoning_md
+            ? [
+                {
+                  key: `case:${c.case_id}#reason`,
+                  topic: c.summary_title ?? titleSrc ?? "판결이유",
+                  md: c.reasoning_md,
+                },
+              ]
+            : [];
     for (const u of units) {
       const back = flattenMarkdownForCard(u.md, CASE_BACK_MAX);
       if (!back) continue;
