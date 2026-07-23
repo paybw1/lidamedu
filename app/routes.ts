@@ -69,6 +69,8 @@ export default [
     ...prefix("/blanks", [
       route("/attempt", "features/blanks/api/attempt.tsx"),
       route("/auto-attempt", "features/blanks/api/auto-attempt.tsx"),
+      // feat-2-030 — 빈칸 난이도 단계 통과 기록(서버 재검증).
+      route("/tier-complete", "features/blanks/api/tier-complete.tsx"),
       route("/admin-answer", "features/blanks/api/admin-answer.tsx"),
       route("/admin-add-blank", "features/blanks/api/admin-add-blank.tsx"),
       route(

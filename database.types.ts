@@ -1283,6 +1283,38 @@ export type Database = {
         }
         Relationships: []
       }
+      blank_tier_completions: {
+        Row: {
+          completed_at: string
+          completion_id: string
+          set_id: string
+          tier: number
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          completion_id?: string
+          set_id: string
+          tier: number
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          completion_id?: string
+          set_id?: string
+          tier?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blank_tier_completions_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "article_blank_sets"
+            referencedColumns: ["set_id"]
+          },
+        ]
+      }
       book_bundle_items: {
         Row: {
           book_id: string
