@@ -75,7 +75,14 @@ export async function getChapterTierGate(
     for (const s of Object.values(setsByArticle)) setIds.push(s.setId);
   }
   if (setIds.length === 0) return null;
-  const comps = await getTierCompletionsBySet(client, userId, setIds);
+  // ★민법 편(part)은 세트 수백 개 → .in() URL 초과 방어(150 배치 병합).
+  const comps: Record<string, BlankTier[]> = {};
+  for (let i = 0; i < setIds.length; i += 150) {
+    Object.assign(
+      comps,
+      await getTierCompletionsBySet(client, userId, setIds.slice(i, i + 150)),
+    );
+  }
   let tier1Sets = 0;
   let tier2Sets = 0;
   for (const sid of setIds) {
