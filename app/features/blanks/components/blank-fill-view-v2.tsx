@@ -44,6 +44,7 @@ import {
   tierBlankCounts,
   tierUnlockState,
 } from "../lib/tiers";
+import { deriveTierSpanBlanks } from "../lib/tier-spans";
 import type { AutoBlankMeta } from "./blanks-context";
 
 const ZWSP = "​";
@@ -401,14 +402,25 @@ export function BlankFillViewV2({
   });
   const [justPassed, setJustPassed] = useState(false);
   const submittedTierRef = useRef<Set<BlankTier>>(new Set());
+  // ★상(tier 3)은 단어가 아니라 "구간" 빈칸 — 단어 빈칸 위치에서 자동 도출(10어절 캡).
+  const spanBlanks = useMemo(
+    () => (tiersOn ? deriveTierSpanBlanks(body, blanks) : []),
+    [tiersOn, body, blanks],
+  );
+  // 현재 단계에서 실제로 렌더·판정할 빈칸(하/중=단어, 상=구간).
+  const effectiveBlanks = useMemo(
+    () => (tiersOn && currentTier === 3 ? spanBlanks : blanks),
+    [tiersOn, currentTier, spanBlanks, blanks],
+  );
   const answerByIdx = useMemo(
-    () => new Map(blanks.map((b) => [b.idx, b.answer ?? ""])),
-    [blanks],
+    () => new Map(effectiveBlanks.map((b) => [b.idx, b.answer ?? ""])),
+    [effectiveBlanks],
   );
-  const activeIdxs = useMemo(
-    () => (tiersOn ? activeBlankIdxsForTier(blanks, currentTier) : null),
-    [tiersOn, blanks, currentTier],
-  );
+  const activeIdxs = useMemo(() => {
+    if (!tiersOn) return null;
+    if (currentTier === 3) return new Set(spanBlanks.map((b) => b.idx));
+    return activeBlankIdxsForTier(blanks, currentTier);
+  }, [tiersOn, blanks, spanBlanks, currentTier]);
 
   const [reveal, setReveal] = useState(false);
   const [resetKey, setResetKey] = useState(0);
@@ -431,8 +443,8 @@ export function BlankFillViewV2({
   const flushInputRef = useRef<HTMLInputElement>(null);
 
   const lines = useMemo(
-    () => buildLines(body, blanks, activeIdxs),
-    [body, blanks, activeIdxs],
+    () => buildLines(body, effectiveBlanks, activeIdxs),
+    [body, effectiveBlanks, activeIdxs],
   );
   const totalBlanks = blanks.length;
   const mappedCount = blanks.filter((b) => b.answer).length;
@@ -1047,10 +1059,11 @@ export function BlankFillViewV2({
   // ── feat-2-030 난이도 단계 통과 ─────────────────────────────────────
   //   현재 단계 활성 빈칸을 전부 맞히면 서버에 통과 요청(재검증) → 다음 단계 해금.
   const submitTierComplete = (tier: BlankTier) => {
-    if (!tiersOn || !setId) return;
-    const active = activeBlankIdxsForTier(blanks, tier);
+    if (!tiersOn || !setId || !activeIdxs) return;
+    // 현재 단계 활성 idx(상=구간 idx). tier 는 항상 currentTier 라 activeIdxs 와 일치.
     const answers: Record<string, string> = {};
-    for (const idx of active) answers[String(idx)] = valuesRef.current.get(idx) ?? "";
+    for (const idx of activeIdxs)
+      answers[String(idx)] = valuesRef.current.get(idx) ?? "";
     const fd = new FormData();
     fd.set("setId", setId);
     fd.set("tier", String(tier));
@@ -1341,7 +1354,7 @@ export function BlankFillViewV2({
                   ) : null}
                   {TIER_LABEL[t]}
                   <span className="tabular-nums opacity-60">
-                    {tierCounts[t]}
+                    {t === 3 ? spanBlanks.length : tierCounts[t]}
                   </span>
                 </button>
               );

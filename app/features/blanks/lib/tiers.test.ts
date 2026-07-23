@@ -91,20 +91,21 @@ describe("nextTier", () => {
 });
 
 describe("tiersCoveredBy", () => {
-  it("단어 폴백: 중=상(둘 다 전체)이라 중 통과가 상까지 커버, 하는 별개", () => {
-    const b = [0, 1, 2, 3, 4].map((i) => mk(i)); // 하3/중5/상5
+  it("상(구간)은 하·중 통과로 자동 완료되지 않는다", () => {
+    const b = [0, 1, 2, 3, 4].map((i) => mk(i)); // 하3/중5
     expect(tiersCoveredBy(b, 1)).toEqual([1]);
-    expect(tiersCoveredBy(b, 2)).toEqual([2, 3]);
+    expect(tiersCoveredBy(b, 2)).toEqual([2]);
     expect(tiersCoveredBy(b, 3)).toEqual([3]);
   });
-  it("N=3이면 하2/중3/상3 — 중 통과가 상까지 커버", () => {
-    const b = [0, 1, 2].map((i) => mk(i));
-    expect(tiersCoveredBy(b, 2)).toEqual([2, 3]);
-    expect(tiersCoveredBy(b, 1)).toEqual([1]);
+  it("하=중(작은 조문)이면 하 통과가 중까지 커버 — 단 상은 별개", () => {
+    const b = [mk(0)]; // total=1 → 하1/중1
+    expect(tiersCoveredBy(b, 1)).toEqual([1, 2]);
+    expect(tiersCoveredBy(b, 2)).toEqual([2]);
+    expect(tiersCoveredBy(b, 3)).toEqual([3]);
   });
-  it("N=2면 하1/중2/상2 — 하는 별개, 중이 상까지 커버", () => {
+  it("N=2면 하1/중2 — 하는 중과 별개", () => {
     const b = [0, 1].map((i) => mk(i));
     expect(tiersCoveredBy(b, 1)).toEqual([1]);
-    expect(tiersCoveredBy(b, 2)).toEqual([2, 3]);
+    expect(tiersCoveredBy(b, 2)).toEqual([2]);
   });
 });

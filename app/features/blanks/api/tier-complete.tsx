@@ -4,14 +4,16 @@ import { data } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { parseArticleBody } from "~/features/laws/lib/article-body";
 
 import { normalizeAnswer } from "../lib/normalize";
+import { deriveTierSpanBlanks } from "../lib/tier-spans";
 import {
   activeBlankIdxsForTier,
   type BlankTier,
   tiersCoveredBy,
 } from "../lib/tiers";
-import { parseBlanks } from "../queries.server";
+import { parseBlanks, type BlankItem } from "../queries.server";
 import { recordTierCompletions } from "../tiers.server";
 
 import type { Route } from "./+types/tier-complete";
@@ -54,20 +56,32 @@ export async function action({ request }: Route.ActionArgs) {
 
   const { data: setRow, error } = await client
     .from("article_blank_sets")
-    .select("blanks")
+    .select("blanks, article_id")
     .eq("set_id", parsed.data.setId)
     .maybeSingle();
   if (error || !setRow) return { ok: false, error: "Set not found" } as const;
 
   const blanks = parseBlanks(setRow.blanks);
   const tier = parsed.data.tier as BlankTier;
-  const activeIdxs = activeBlankIdxsForTier(blanks, tier);
+
+  // 검증 대상 빈칸: 하/중=단어 빈칸, 상(3)=조문 본문에서 재도출한 구간 빈칸(서버 권위).
+  let activeBlanks: BlankItem[];
+  let activeIdxs: Set<number>;
+  if (tier === 3) {
+    const body = await loadArticleBody(client, setRow.article_id);
+    const spans = body ? deriveTierSpanBlanks(body, blanks) : [];
+    activeBlanks = spans;
+    activeIdxs = new Set(spans.map((b) => b.idx));
+  } else {
+    activeBlanks = blanks;
+    activeIdxs = activeBlankIdxsForTier(blanks, tier);
+  }
   if (activeIdxs.size === 0) {
     return { ok: false, error: "No blanks" } as const;
   }
 
   // 서버 재검증 — 활성 빈칸 전부 정답이어야 통과(100%).
-  const byIdx = new Map(blanks.map((b) => [b.idx, b]));
+  const byIdx = new Map(activeBlanks.map((b) => [b.idx, b]));
   for (const idx of activeIdxs) {
     const answer = byIdx.get(idx)?.answer ?? "";
     const input = answers[String(idx)] ?? "";
@@ -82,6 +96,25 @@ export async function action({ request }: Route.ActionArgs) {
   const covered = tiersCoveredBy(blanks, tier);
   await recordTierCompletions(client, user.id, parsed.data.setId, covered);
   return { ok: true, passed: true, completedTiers: covered } as const;
+}
+
+// 조문 본문(ArticleBody) 로드 — 상 구간 재도출용. article_id → 현재 리비전 body_json.
+async function loadArticleBody(
+  client: ReturnType<typeof makeServerClient>[0],
+  articleId: string,
+) {
+  const { data: art } = await client
+    .from("articles")
+    .select("current_revision_id")
+    .eq("article_id", articleId)
+    .maybeSingle();
+  if (!art?.current_revision_id) return null;
+  const { data: rev } = await client
+    .from("article_revisions")
+    .select("body_json")
+    .eq("revision_id", art.current_revision_id)
+    .maybeSingle();
+  return parseArticleBody(rev?.body_json);
 }
 
 export { postOnlyLoader as loader } from "~/core/lib/api-post-only";

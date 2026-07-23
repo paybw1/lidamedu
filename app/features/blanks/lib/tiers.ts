@@ -76,18 +76,19 @@ export function nextTier(t: BlankTier): BlankTier | null {
   return t < 3 ? ((t + 1) as BlankTier) : null;
 }
 
-// tier T 통과 시, 활성 빈칸 집합이 동일한 상위 tier 들도 함께 통과 처리(빈칸 수가 적어
-//   단계가 겹칠 때 자동 완료). 반환 = 함께 완료로 기록할 tier 목록(T 포함, 오름차순).
+// tier T 통과 시 함께 완료로 기록할 tier 목록(T 포함, 오름차순).
+//   ★상(3)은 단어가 아니라 구간(span) 빈칸이라 하/중과 집합이 다르다 → 하·중 통과가 상을
+//   자동 완료시키지 않는다. 하·중(단어 tier)끼리만, 빈칸 수가 같아 집합이 겹칠 때 자동 완료.
 export function tiersCoveredBy(
   blanks: OrderableBlank[],
   passedTier: BlankTier,
 ): BlankTier[] {
+  if (passedTier === 3) return [3];
   const counts = tierBlankCounts(blanks);
   const base = counts[passedTier];
   const out: BlankTier[] = [];
-  for (const t of BLANK_TIERS) {
+  for (const t of [1, 2] as const) {
     if (t < passedTier) continue;
-    // 상위 tier 라도 활성 빈칸 수가 통과 tier 와 같으면(=같은 집합, 누적이라) 함께 완료.
     if (counts[t] === base) out.push(t);
     else break;
   }
