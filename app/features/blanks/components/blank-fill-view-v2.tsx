@@ -641,12 +641,29 @@ export function BlankFillViewV2({
   useEffect(() => {
     const root = editorRef.current;
     if (!root || typeof window === "undefined") return;
-    // 슬롯 시작~캐럿 사이 문자 수(ZWSP 포함) — 다중 텍스트노드에도 안전.
-    const caretOffsetInSlot = (slot: HTMLElement, range: Range): number => {
+    // 슬롯 실제 텍스트(ZWSP 제외) 상 캐럿 위치 — 다중 텍스트노드·ZWSP 위치와 무관.
+    const realCaretPos = (slot: HTMLElement, range: Range): number => {
       const pre = document.createRange();
       pre.selectNodeContents(slot);
       pre.setEnd(range.startContainer, range.startOffset);
-      return pre.toString().length;
+      return pre.toString().split(ZWSP).join("").length;
+    };
+    // 슬롯을 `ZWSP + realText` 단일 텍스트노드로 재구성하고 캐럿을 real 위치에 놓는다.
+    const rebuildSlot = (
+      slot: HTMLElement,
+      realText: string,
+      realCaret: number,
+    ) => {
+      slot.textContent = realText.length ? ZWSP + realText : ZWSP;
+      const tn = slot.firstChild;
+      const sel = window.getSelection();
+      if (!sel || !tn) return;
+      const r = document.createRange();
+      const tnLen = tn.textContent?.length ?? 1;
+      r.setStart(tn, Math.min(1 + Math.max(0, realCaret), tnLen));
+      r.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(r);
     };
     const handler = (e: InputEvent) => {
       const sel = window.getSelection();
@@ -669,20 +686,36 @@ export function BlankFillViewV2({
         return;
       }
       const it = (e.inputType || "").toLowerCase();
-      // 삭제는 슬롯 안에서만 — 슬롯 맨 앞(off 0)에서의 backspace 만 차단(앞 고정 텍스트 침범
-      //   방지). ZWSP 앵커 위치에 의존하지 않는다(글자가 ZWSP 앞에 들어가는 경우가 있어
-      //   off<=1 로 막으면 첫 글자가 안 지워짐). 빈 슬롯은 onInput 이 ZWSP 로 복원.
+      // ★삭제(캐럿 접힘·비조합)는 수동 처리 — 슬롯 실제 텍스트 기준으로만 지우고 앞/뒤 고정
+      //   텍스트(본문)로 넘치지 않게 한다. off/ZWSP 위치에 의존하던 가드가 커서 위치에 따라
+      //   "첫 글자 안 지워짐"을 냈던 문제를 근본 제거(간헐 실패 해소). 선택 삭제(비접힘)는
+      //   위 슬롯 검사로 슬롯 안에 갇히므로 브라우저 기본 삭제 허용.
       if (it.startsWith("delete") && sel.isCollapsed && !composingRef.current) {
-        const off = caretOffsetInSlot(startSlot, range);
-        const rawLen = (startSlot.textContent ?? "").length;
-        if (it.includes("backward") && off === 0) {
-          e.preventDefault();
-          return;
+        e.preventDefault();
+        const realText = readSlot(startSlot);
+        const caret = realCaretPos(startSlot, range);
+        const backward = it.includes("backward");
+        const wide = it.includes("word") || it.includes("line");
+        let newText = realText;
+        let newCaret = caret;
+        if (backward) {
+          if (caret > 0) {
+            if (wide) {
+              newText = realText.slice(caret);
+              newCaret = 0;
+            } else {
+              newText = realText.slice(0, caret - 1) + realText.slice(caret);
+              newCaret = caret - 1;
+            }
+          }
+        } else if (caret < realText.length) {
+          newText = wide
+            ? realText.slice(0, caret)
+            : realText.slice(0, caret) + realText.slice(caret + 1);
         }
-        if (it.includes("forward") && off >= rawLen) {
-          e.preventDefault();
-          return;
-        }
+        rebuildSlot(startSlot, newText, newCaret);
+        judgeSlot(startSlot, false);
+        return;
       }
     };
     root.addEventListener("beforeinput", handler);
@@ -756,12 +789,19 @@ export function BlankFillViewV2({
       e.preventDefault();
     }
   };
-  // ★터치로 다른 곳을 누를 때(조합 중) — 브라우저가 탭 위치로 캐럿을 놓기 전에 sink 로 흘려
-  //   조합 이월을 sink 에서 확정·폐기시킨다. 조합 중이 아니면 개입 안 함(일반 탭 무영향).
-  const onPointerDownCapture = () => {
+  // ★터치로 "다른 빈칸"을 누를 때(조합 중)만 — 브라우저가 탭 위치로 캐럿을 놓기 전에 sink 로
+  //   흘려 조합 이월을 sink 에서 확정·폐기. 같은 칸 재터치·버튼 등 비-빈칸 터치는 흘리지 않아
+  //   캐럿이 sink 에 고립돼 삭제·입력이 먹통 되는 것을 막는다.
+  const onPointerDownCapture = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!composingRef.current) return;
     const sink = sinkRef.current;
     if (!sink) return;
+    const tgtSlot =
+      e.target instanceof Element
+        ? e.target.closest(`.${SLOT_CLASS}`)
+        : null;
+    const curSlot = slotFromSelection();
+    if (!tgtSlot || tgtSlot === curSlot) return;
     drainToSink();
     requestAnimationFrame(() => {
       sink.textContent = ZWSP;
