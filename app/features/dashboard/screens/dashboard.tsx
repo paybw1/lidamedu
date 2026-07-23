@@ -445,6 +445,15 @@ export async function loader({ request }: Route.LoaderArgs) {
     trialEnded &&
     Date.now() - trialEndsAtMs! <= TRIAL_ENDED_BANNER_DAYS * 86_400_000;
 
+  // 축소판 대시보드용 체험 상태 — trial=체험 중(특허법 무료), ended=체험 종료(미구독 시
+  //   학습정보·커뮤니티만). self_study(유료 과목·mgmt 없음) 등은 null → 기존 안내.
+  const reducedTrial =
+    access.grade === "trial" && trial
+      ? ({ phase: "active", daysLeft: trial.daysLeft } as const)
+      : access.grade === "free_member"
+        ? ({ phase: "ended" } as const)
+        : null;
+
   const resumePoint = await getResumePoint(client, user.id);
 
   return {
@@ -453,6 +462,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     planCode,
     trial,
     trialEndedBanner,
+    reducedTrial,
     // feat-8-026b — 선택 동의(A/B) 토글을 대시보드에서(응시 결과에서 이전).
     myAnalysisConsentAt: predictProfile?.my_analysis_consent_at ?? null,
     poolConsentAt: predictProfile?.pool_consent_at ?? null,
@@ -591,6 +601,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
         name={loaderData.user.name}
         planCode={loaderData.planCode}
         isCohortMember={loaderData.todaySummary.assignments.isCohortMember}
+        trialState={loaderData.reducedTrial}
       />
     );
   }
