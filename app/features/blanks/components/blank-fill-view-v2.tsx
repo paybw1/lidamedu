@@ -139,6 +139,12 @@ type Seg =
       blockIndex?: number;
       cumOffset?: number;
     };
+interface SubGroupData {
+  source: string;
+  articleCount: number;
+  hasBlanks: boolean;
+  innerLines: Line[];
+}
 interface Line {
   depth: number;
   label: string;
@@ -146,7 +152,18 @@ interface Line {
   // 특수 라인(비편집 컨텍스트) — 있으면 heading/box 로 렌더.
   heading?: string;
   context?: string;
+  // 함께 공부할 조문 — 접이식 카드로 렌더(원래 디자인 유지). 있으면 이 라인은 그룹 전체.
+  subGroup?: SubGroupData;
   segs: Seg[];
+}
+
+// 라인 트리에 편집 가능한 빈칸(slot)이 하나라도 있는지.
+function linesHaveBlanks(ls: Line[]): boolean {
+  for (const l of ls) {
+    if (l.segs.some((s) => s.t === "blank")) return true;
+    if (l.subGroup && linesHaveBlanks(l.subGroup.innerLines)) return true;
+  }
+  return false;
 }
 
 // 한 블록의 inline 을 리치 세그먼트로 — 토큰 종류별 스타일 유지 + 빈칸 자리(문자단위, 크로스토큰 안전).
@@ -217,9 +234,9 @@ function buildLines(body: ArticleBody, blanks: BlankItem[]): Line[] {
   const blockHits = computeBlockBlankHits(body, blanks);
   const blankByIdx = new Map(blanks.map((b) => [b.idx, b]));
   const lines: Line[] = [];
-  const visit = (block: Block, depth: number) => {
+  const visit = (block: Block, depth: number, target: Line[]) => {
     if (block.kind === "title_marker") {
-      lines.push({ depth, label: "", subtitle: null, heading: block.text, segs: [] });
+      target.push({ depth, label: "", subtitle: null, heading: block.text, segs: [] });
       return;
     }
     if (block.kind === "header_refs") {
@@ -227,24 +244,31 @@ function buildLines(body: ArticleBody, blanks: BlankItem[]): Line[] {
       return;
     }
     if (block.kind === "sub_article_group") {
-      lines.push({
-        depth,
-        label: "",
-        subtitle: null,
-        heading: `함께 공부할 조문 · ${block.source}`,
-        segs: [],
-      });
-      for (const b of block.preface ?? []) visit(b, depth + 1);
+      // 함께 공부할 조문 — 내부 라인을 따로 만들어 접이식 카드로(원래 디자인) 렌더.
+      const inner: Line[] = [];
+      for (const b of block.preface ?? []) visit(b, 0, inner);
       for (const sa of block.articles) {
-        lines.push({
-          depth: depth + 1,
+        inner.push({
+          depth: 0,
           label: "",
           subtitle: null,
           context: `제${sa.number}조${sa.branch ? `의${sa.branch}` : ""} (${sa.title})`,
           segs: [],
         });
-        for (const b of sa.blocks) visit(b, depth + 1);
+        for (const b of sa.blocks) visit(b, 1, inner);
       }
+      target.push({
+        depth,
+        label: "",
+        subtitle: null,
+        segs: [],
+        subGroup: {
+          source: block.source,
+          articleCount: block.articles.length,
+          hasBlanks: linesHaveBlanks(inner),
+          innerLines: inner,
+        },
+      });
       return;
     }
     const label =
@@ -261,13 +285,13 @@ function buildLines(body: ArticleBody, blanks: BlankItem[]): Line[] {
     const hits = (blockHits.get(block) ?? []).slice().sort((a, b) => a.start - b.start);
     const segs = buildInlineSegs(block, hits, blankByIdx);
     if (segs.length > 0 || label || subtitle) {
-      lines.push({ depth, label, subtitle, segs });
+      target.push({ depth, label, subtitle, segs });
     }
     if (block.kind === "clause" || block.kind === "item" || block.kind === "sub") {
-      for (const c of block.children) visit(c, depth + 1);
+      for (const c of block.children) visit(c, depth + 1, target);
     }
   };
-  for (const b of body.blocks) visit(b, 0);
+  for (const b of body.blocks) visit(b, 0, lines);
   return lines;
 }
 
@@ -477,13 +501,78 @@ export function BlankFillViewV2({
     root.innerHTML = "";
     valuesRef.current = new Map();
     savedRef.current = new Set();
-    for (const line of lines) {
+
+    // 함께 공부할 조문 — 원래(article-body) emerald 접이식 디자인 재현. 접힘=알약 버튼,
+    //   펼침=카드. 내부(참조 조문·빈칸)는 buildLineEl 로 렌더(빈칸 있으면 기본 펼침).
+    const buildSubGroup = (host: HTMLElement, sg: SubGroupData) => {
+      host.style.margin = "0.6rem 0";
+      let open = sg.hasBlanks;
+      const pill = document.createElement("button");
+      pill.type = "button";
+      pill.contentEditable = "false";
+      pill.style.cssText =
+        "display:inline-flex;align-items:center;gap:6px;border:1px solid #a7f3d0;background:#ecfdf5;border-radius:9999px;padding:3px 12px;cursor:pointer;font-size:12px;font-weight:700;color:#065f46;line-height:1.2;";
+      pill.textContent = `📜 함께 공부할 조문 · ${sg.source} · ${sg.articleCount}개`;
+
+      const card = document.createElement("div");
+      card.style.cssText =
+        "position:relative;margin:0.5rem 0;border:1px solid #a7f3d0;border-radius:12px;padding:16px 14px 14px;background:var(--card,#ffffff);";
+      const badge = document.createElement("button");
+      badge.type = "button";
+      badge.contentEditable = "false";
+      badge.title = "접기";
+      badge.style.cssText =
+        "position:absolute;top:-11px;left:12px;display:inline-flex;align-items:center;gap:4px;background:#059669;color:#fff;border:none;border-radius:9999px;padding:2px 10px;font-size:10.5px;font-weight:800;letter-spacing:0.05em;cursor:pointer;line-height:1.4;";
+      badge.textContent = `📜 함께 공부할 조문 · ${sg.articleCount}개`;
+      const src = document.createElement("p");
+      src.contentEditable = "false";
+      src.style.cssText = "margin:2px 0 0;color:#64748b;font-size:11px;";
+      src.textContent = sg.source;
+      const content = document.createElement("div");
+      content.style.cssText = "margin-top:10px;";
+      for (const il of sg.innerLines) content.appendChild(buildLineEl(il));
+      card.appendChild(badge);
+      card.appendChild(src);
+      card.appendChild(content);
+
+      const render = () => {
+        pill.style.display = open ? "none" : "inline-flex";
+        card.style.display = open ? "block" : "none";
+      };
+      const stop = (e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
+      };
+      pill.addEventListener("pointerdown", stop);
+      pill.addEventListener("mousedown", stop);
+      pill.addEventListener("click", (e) => {
+        stop(e);
+        open = true;
+        render();
+      });
+      badge.addEventListener("pointerdown", stop);
+      badge.addEventListener("mousedown", stop);
+      badge.addEventListener("click", (e) => {
+        stop(e);
+        open = false;
+        render();
+      });
+      render();
+      host.appendChild(pill);
+      host.appendChild(card);
+    };
+
+    const buildLineEl = (line: Line): HTMLElement => {
       const lineEl = document.createElement("div");
       lineEl.className = "blank-line-v2";
       lineEl.style.lineHeight = "2.1";
       if (line.depth > 0) lineEl.style.paddingLeft = `${line.depth * 1.1}rem`;
 
-      // 특수 라인 — 비편집 heading/컨텍스트 박스(시행령 그룹·소제목표제·관련조문).
+      if (line.subGroup) {
+        buildSubGroup(lineEl, line.subGroup);
+        return lineEl;
+      }
+      // 특수 라인 — 비편집 heading/컨텍스트 박스(소제목표제 등).
       if (line.heading) {
         lineEl.style.marginTop = "0.4rem";
         const h = document.createElement("span");
@@ -491,20 +580,18 @@ export function BlankFillViewV2({
         h.textContent = line.heading;
         h.style.fontWeight = "700";
         lineEl.appendChild(h);
-        root.appendChild(lineEl);
-        continue;
+        return lineEl;
       }
       if (line.context) {
         const c = document.createElement("span");
         c.contentEditable = "false";
         c.textContent = line.context;
-        c.style.color = "#64748b";
+        c.style.color = "#047857";
         c.style.fontSize = "0.9em";
+        c.style.fontWeight = "600";
         lineEl.appendChild(c);
-        root.appendChild(lineEl);
-        continue;
+        return lineEl;
       }
-
       if (line.label) {
         const lab = document.createElement("span");
         lab.contentEditable = "false";
@@ -550,8 +637,10 @@ export function BlankFillViewV2({
           lineEl.appendChild(b);
         }
       }
-      root.appendChild(lineEl);
-    }
+      return lineEl;
+    };
+
+    for (const line of lines) root.appendChild(buildLineEl(line));
     // ★이월 흘려버리기 sink — 편집 컨테이너 안의 비-빈칸 캐럿 자리(안 보이게, 1px). 칸 이동 시
     //   여기 잠깐 들러 조합 이월을 확정·폐기시킨다. contentEditable 은 컨테이너에서 상속.
     const sink = document.createElement("span");
