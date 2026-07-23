@@ -419,6 +419,9 @@ export function BlankFillViewV2({
   const sinkRef = useRef<HTMLElement | null>(null);
   // 이월 안착 스위퍼 인터벌 id — Tab/Enter 착지 후 이월이 안착할 때까지 폴링(아래 scheduleArrivalSweep).
   const arrivalSweepRef = useRef<number | null>(null);
+  // ★IME flush 용 throwaway <input>(편집영역 밖). 칸 이동 시 여기로 잠깐 포커스를 옮겨 iOS 조합을
+  //   직전 칸에 확정·종료시킨다(조합 버퍼가 다음 칸으로 딸려오는 것을 원천 차단).
+  const flushInputRef = useRef<HTMLInputElement>(null);
 
   const lines = useMemo(
     () => buildLines(body, blanks, activeIdxs),
@@ -599,7 +602,7 @@ export function BlankFillViewV2({
   };
   const focusViaSink = (target: HTMLElement) => {
     const sink = sinkRef.current;
-    const host = editorRef.current;
+    const flush = flushInputRef.current;
     const land = () => {
       caretToEnd(target);
       scrollBlankIntoViewIfNeeded(target);
@@ -608,20 +611,15 @@ export function BlankFillViewV2({
       land();
       return;
     }
-    // 1) 이월 흘려버리기 — 캐럿을 sink 로(있으면).
-    if (sink) drainToSink();
-    // 2) ★iOS IME 잠복 버퍼 flush — 직전 칸 조합이 IME 버퍼에 잠복한 채 다음 칸으로 딸려오면,
-    //    DOM 에 안 보여 sink/스위퍼가 못 잡고 다음 칸에서 backspace 를 누르는 순간 직전 답이
-    //    튀어나와 지워진다. blur 만으론 iOS 가 버퍼를 유지하므로, **contentEditable 토글**로
-    //    편집영역을 잠깐 비편집으로 만들어 조합을 강제 종료·확정시킨다(IME 리셋 관용 우회).
-    //    Tab/Enter=하드웨어 키보드라 소프트 키보드 dismiss 부작용 없음.
-    if (host) {
-      host.blur();
-      host.contentEditable = "false";
-      void host.offsetHeight; // reflow 강제 — 토글이 실제 적용되게
-      host.contentEditable = "true";
-    }
-    // 3) 다음 프레임 — sink 잔여 폐기 후 목표 칸 재포커스·착지.
+    // ★iOS IME 잠복 버퍼 flush — 직전 칸 조합이 IME 버퍼에 잠복한 채 다음 칸으로 딸려오면,
+    //   DOM 에 안 보여 sink/스위퍼가 못 잡고 다음 칸에서 backspace 를 누르는 순간 직전 답이
+    //   튀어나와 지워진다. blur·contentEditable 토글로는 iOS 가 버퍼를 유지 → **편집영역 밖의
+    //   실제 <input> 에 잠깐 포커스**를 옮겨 조합을 직전 칸(현재 캐럿 위치)에 **확정·종료**시킨다
+    //   (다른 텍스트 필드로의 포커스 이동 = 조합 커밋의 가장 강한 신호, input 이라 소프트 키보드
+    //   유지). caret 은 직전 칸 끝에 있으므로 조합은 직전 칸에 올바로 커밋된다(drainToSink 안 함
+    //   — sink 로 옮기면 직전 칸 마지막 음절이 sink 로 새어 손실될 수 있음).
+    if (flush) flush.focus({ preventScroll: true });
+    // 다음 프레임 — sink 잔여 폐기 후 목표 칸 재포커스·착지.
     requestAnimationFrame(() => {
       if (sink) sink.textContent = ZWSP;
       land();
@@ -1197,6 +1195,29 @@ export function BlankFillViewV2({
 
   return (
     <div className="space-y-4">
+      {/* ★IME flush 용 throwaway input — 화면 밖(포커스만 받고 안 보임). 칸 이동 시 여기로 포커스를
+          잠깐 옮겨 iOS 조합을 직전 칸에 확정·종료(조합 버퍼 이월 원천 차단). 텍스트 필드라 소프트
+          키보드 유지, tabIndex=-1 로 Tab 순회 제외. */}
+      <input
+        ref={flushInputRef}
+        type="text"
+        tabIndex={-1}
+        aria-hidden="true"
+        inputMode="text"
+        autoComplete="off"
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: 1,
+          height: 1,
+          opacity: 0,
+          pointerEvents: "none",
+          border: 0,
+          padding: 0,
+          zIndex: -1,
+        }}
+      />
       {tiersOn ? (
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-muted-foreground text-xs font-medium">난이도</span>
