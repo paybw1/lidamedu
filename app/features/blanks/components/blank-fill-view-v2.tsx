@@ -1021,7 +1021,22 @@ export function BlankFillViewV2({
   // ── 편집 이벤트 (컨테이너 위임) ─────────────────────────────────────
   const onInput = (e: React.FormEvent<HTMLDivElement>) => {
     const slot = slotFromSelection();
-    if (!slot) return;
+    if (!slot) {
+      // ★캐럿이 sink(가상 빈칸)에 있는데 이월이 흘러든 경우 = 도착 후 즉시 폐기.
+      const sink = sinkRef.current;
+      const sel = window.getSelection();
+      const anchor = sel?.anchorNode ?? null;
+      if (
+        sink &&
+        anchor &&
+        (sink === anchor || sink.contains(anchor)) &&
+        readSlot(sink).length > 0
+      ) {
+        sink.textContent = ZWSP;
+        setCaretEnd(sink);
+      }
+      return;
+    }
     const composing = (e.nativeEvent as InputEvent).isComposing === true;
     // 조합이 아닌 이월(붙여넣기식 삽입 등)도 도착 후 제거.
     if (!composing && stripCarryIfGuarded(slot)) return;
@@ -1081,7 +1096,18 @@ export function BlankFillViewV2({
     const next = i < 0 ? slots[0] : slots[i + dir];
     if (next) {
       e.preventDefault();
-      // ★sink 경유 이동 — 조합 이월을 sink 에서 흘려버리고 다음 칸으로(키보드 Tab/Enter).
+      // ★Tab/Enter 이동 시 직전 칸 값을 "도착 후 제거" 창에 등록 — iOS 가 다음 칸으로 조합을
+      //   이월시켜도(sink 로도 못 막는 케이스) 도착 즉시 stripCarryIfGuarded 가 제거한다.
+      //   같은 에디터 내 칸 이동에도 적용(cross-article 에서만 걸던 것을 이동 액션 한정으로 확장).
+      const curVal = cur ? readSlot(cur) : "";
+      if (curVal) {
+        crossClear = {
+          slot: next,
+          carried: curVal,
+          until: Date.now() + CROSS_CLEAR_MS,
+        };
+      }
+      // sink 경유 이동(조합 이월을 sink 에서 흘려버림) + 도착 후 제거(위 crossClear) 이중 방어.
       focusViaSink(next);
     } else if (e.key === "Enter") {
       e.preventDefault();
