@@ -12,10 +12,14 @@ import type { Database } from "database.types";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
 
+import type { BugReportStatus } from "~/features/bug-reports/labels";
+import type { QnaStatus } from "~/features/qna/labels";
 import type { StudentNoteVisibility } from "~/features/student-notes/queries.server";
 
 const NOTE_LIMIT = 100;
 const ASSIGNMENT_LIMIT = 100;
+const QNA_LIMIT = 100;
+const BUG_LIMIT = 100;
 
 export interface ActivityNote {
   noteId: string;
@@ -40,9 +44,31 @@ export interface ActivityAssignment {
   totalMembers: number;
 }
 
+export interface ActivityQna {
+  threadId: string;
+  displayNo: number;
+  title: string;
+  askerName: string | null;
+  status: QnaStatus;
+  answered: boolean;
+  createdAt: string;
+  answeredAt: string | null;
+}
+
+export interface ActivityBug {
+  reportId: string;
+  reporterName: string | null;
+  message: string;
+  url: string;
+  status: BugReportStatus;
+  createdAt: string;
+}
+
 export interface StaffActivity {
   notes: ActivityNote[];
   assignments: ActivityAssignment[];
+  qnaAnswers: ActivityQna[];
+  bugReports: ActivityBug[];
 }
 
 function previewOf(body: string): string {
@@ -53,11 +79,69 @@ function previewOf(body: string): string {
 export async function getStaffActivity(authorId: string): Promise<StaffActivity> {
   const admin = adminClient as SupabaseClient<Database>;
 
-  const [notes, assignments] = await Promise.all([
+  const [notes, assignments, qnaAnswers, bugReports] = await Promise.all([
     loadMyNotes(admin, authorId),
     loadMyAssignments(admin, authorId),
+    loadMyQna(admin, authorId),
+    loadBugReports(admin),
   ]);
-  return { notes, assignments };
+  return { notes, assignments, qnaAnswers, bugReports };
+}
+
+// 내게 배정된 Q&A(answerer_id=나) — 답변 완료 + 미답변(대기). 미답변이 '미반응'.
+async function loadMyQna(
+  admin: SupabaseClient<Database>,
+  answererId: string,
+): Promise<ActivityQna[]> {
+  const { data, error } = await admin
+    .from("qna_threads")
+    .select(
+      "thread_id, display_no, title, status, created_at, answered_at, asker_id",
+    )
+    .eq("answerer_id", answererId)
+    .order("created_at", { ascending: false })
+    .limit(QNA_LIMIT);
+  if (error) throw error;
+  const rows = data ?? [];
+  if (rows.length === 0) return [];
+  const askerIds = [...new Set(rows.map((r) => r.asker_id).filter(Boolean))];
+  const nameById = await namesByProfileId(admin, askerIds);
+  return rows.map((r) => ({
+    threadId: r.thread_id,
+    displayNo: r.display_no,
+    title: r.title,
+    askerName: nameById.get(r.asker_id) ?? null,
+    status: r.status as QnaStatus,
+    answered: r.answered_at != null,
+    createdAt: r.created_at,
+    answeredAt: r.answered_at,
+  }));
+}
+
+// 오류 신고 — 답변자 귀속 필드가 없어(상태만) 최근 신고 전체를 노출. 미처리(open/in_progress)가 '미반응'.
+async function loadBugReports(
+  admin: SupabaseClient<Database>,
+): Promise<ActivityBug[]> {
+  const { data, error } = await admin
+    .from("bug_reports")
+    .select("report_id, reporter_id, message, url, status, created_at")
+    .order("created_at", { ascending: false })
+    .limit(BUG_LIMIT);
+  if (error) throw error;
+  const rows = data ?? [];
+  if (rows.length === 0) return [];
+  const reporterIds = [
+    ...new Set(rows.map((r) => r.reporter_id).filter(Boolean) as string[]),
+  ];
+  const nameById = await namesByProfileId(admin, reporterIds);
+  return rows.map((r) => ({
+    reportId: r.report_id,
+    reporterName: r.reporter_id ? (nameById.get(r.reporter_id) ?? null) : null,
+    message: r.message,
+    url: r.url,
+    status: r.status as BugReportStatus,
+    createdAt: r.created_at,
+  }));
 }
 
 async function loadMyNotes(
