@@ -978,6 +978,17 @@ export function BlankFillViewV2({
         return;
       }
       const it = (e.inputType || "").toLowerCase();
+      // ★★iPad 이월 근본 차단 — "조합 중(isComposing) + 실제 내용이 빈 슬롯에서 삭제".
+      //   iOS 는 직전 칸 조합을 버퍼에 물고 있다가, 다음(빈) 칸에서 backspace 를 누르는 순간
+      //   그 버퍼를 이 칸에 재구현(직전 답이 튀어나옴)한다. 빈 슬롯 삭제는 원래 no-op 이므로,
+      //   이 순간을 막고(ZWSP 유지) 이월 버퍼가 실체화되지 못하게 한다. 이 칸에서 실제로 조합
+      //   중이면(readSlot 비어있지 않음) 통과 → 정상 한글 자모 삭제 보존.
+      if (it.startsWith("delete") && e.isComposing && readSlot(startSlot) === "") {
+        e.preventDefault();
+        if (startSlot.textContent !== ZWSP) startSlot.textContent = ZWSP;
+        if (crossClear && crossClear.slot === startSlot) crossClear = null;
+        return;
+      }
       // ★삭제는 전부 수동 처리(선택 삭제·backspace·delete·word/line 모두) — 슬롯 실제
       //   텍스트만 편집하고 항상 `ZWSP+텍스트`로 재구성한다. 이렇게 하면 (a) 앞/뒤 고정 텍스트
       //   침범 불가, (b) 빈 슬롯도 ZWSP 로 남아 브라우저가 빈 inline 요소를 제거(=빈칸 사라짐)
