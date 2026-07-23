@@ -110,6 +110,26 @@ body {
   --prestige-gilt-bright: #b08a35;
 }
 
+/* 빈칸 '함께 공부할 조문' 카드 — emerald 테마 변수(라이트/다크 대응, 인라인 hex 대신 사용) */
+:root {
+  --bk-em-card-bg: #f0fdf4;
+  --bk-em-box-bg: #ecfdf5;
+  --bk-em-border: #a7f3d0;
+  --bk-em-box-border: #d1fae5;
+  --bk-em-text: #047857;
+  --bk-amber-bg: #fffbeb;
+  --bk-amber-border: rgba(251, 191, 36, 0.4);
+}
+.dark {
+  --bk-em-card-bg: rgba(16, 185, 129, 0.1);
+  --bk-em-box-bg: rgba(16, 185, 129, 0.14);
+  --bk-em-border: rgba(16, 185, 129, 0.38);
+  --bk-em-box-border: rgba(16, 185, 129, 0.24);
+  --bk-em-text: #6ee7b7;
+  --bk-amber-bg: rgba(245, 158, 11, 0.13);
+  --bk-amber-border: rgba(245, 158, 11, 0.35);
+}
+
 .dark {
   --background: #252525;
   --foreground: #e6e6e6; /* P1: 순백 #fff → off-white. 다크 halation(흰 글자 번짐) 완화. 배경(#252525)은 비순검 유지 */

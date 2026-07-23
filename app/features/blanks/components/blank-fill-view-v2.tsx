@@ -549,13 +549,13 @@ export function BlankFillViewV2({
       pill.type = "button";
       pill.contentEditable = "false";
       pill.style.cssText =
-        "display:inline-flex;align-items:center;gap:6px;border:1px solid #a7f3d0;background:#ecfdf5;border-radius:9999px;padding:3px 12px;cursor:pointer;font-size:12px;font-weight:700;color:#065f46;line-height:1.2;";
+        "display:inline-flex;align-items:center;gap:6px;border:1px solid var(--bk-em-border);background:var(--bk-em-box-bg);border-radius:9999px;padding:3px 12px;cursor:pointer;font-size:12px;font-weight:700;color:var(--bk-em-text);line-height:1.2;";
       pill.textContent = `📜 함께 공부할 조문 · ${sg.source} · ${sg.articleCount}개`;
 
       const card = document.createElement("div");
-      // 원래 디자인: 은은한 emerald 틴트 배경 + emerald 테두리(흰 배경 지양).
+      // 원래 디자인: 은은한 emerald 틴트 배경 + emerald 테두리(라이트/다크 테마 대응 변수).
       card.style.cssText =
-        "position:relative;margin:0.5rem 0;border:1px solid #a7f3d0;border-radius:12px;padding:16px 14px 14px;background:#f0fdf4;";
+        "position:relative;margin:0.5rem 0;border:1px solid var(--bk-em-border);border-radius:12px;padding:16px 14px 14px;background:var(--bk-em-card-bg);color:var(--card-foreground);";
       const badge = document.createElement("button");
       badge.type = "button";
       badge.contentEditable = "false";
@@ -565,7 +565,7 @@ export function BlankFillViewV2({
       badge.textContent = `📜 함께 공부할 조문 · ${sg.articleCount}개`;
       const src = document.createElement("p");
       src.contentEditable = "false";
-      src.style.cssText = "margin:2px 0 0;color:#64748b;font-size:11px;";
+      src.style.cssText = "margin:2px 0 0;color:var(--muted-foreground);font-size:11px;";
       src.textContent = sg.source;
       const content = document.createElement("div");
       content.style.cssText = "margin-top:10px;display:flex;flex-direction:column;gap:8px;";
@@ -573,12 +573,12 @@ export function BlankFillViewV2({
       if (sg.prefaceLines.length > 0) {
         const pbox = document.createElement("div");
         pbox.style.cssText =
-          "border:1px solid rgba(251,191,36,0.4);background:#fffbeb;border-radius:8px;padding:8px 12px;";
+          "border:1px solid var(--bk-amber-border);background:var(--bk-amber-bg);border-radius:8px;padding:8px 12px;";
         const plabel = document.createElement("p");
         plabel.contentEditable = "false";
         plabel.textContent = "코멘트";
         plabel.style.cssText =
-          "margin:0 0 4px;color:#64748b;font-size:10px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;";
+          "margin:0 0 4px;color:var(--muted-foreground);font-size:10px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;";
         pbox.appendChild(plabel);
         for (const il of sg.prefaceLines) pbox.appendChild(buildLineEl(il));
         content.appendChild(pbox);
@@ -587,12 +587,12 @@ export function BlankFillViewV2({
       for (const g of sg.articleGroups) {
         const abox = document.createElement("div");
         abox.style.cssText =
-          "border:1px solid #d1fae5;background:#ecfdf5;border-radius:8px;padding:8px 12px;";
+          "border:1px solid var(--bk-em-box-border);background:var(--bk-em-box-bg);border-radius:8px;padding:8px 12px;";
         const ahead = document.createElement("p");
         ahead.contentEditable = "false";
         ahead.textContent = g.header;
         ahead.style.cssText =
-          "margin:0 0 2px;color:#047857;font-size:12px;font-weight:700;";
+          "margin:0 0 2px;color:var(--bk-em-text);font-size:12px;font-weight:700;";
         abox.appendChild(ahead);
         for (const il of g.lines) abox.appendChild(buildLineEl(il));
         content.appendChild(abox);
@@ -677,13 +677,18 @@ export function BlankFillViewV2({
         if (seg.t === "tok") {
           const s = document.createElement("span");
           s.contentEditable = "false";
-          // 인라인 강조 라벨은 원래 뷰어처럼 괄호 자동 추가: subtitle→(X), annotation→[X].
+          // 인라인 강조 라벨은 원래 뷰어처럼 괄호 자동 추가:
+          //   subtitle→(X), annotation→[X], ordinance(시행령·시행규칙)→(X).
           s.textContent =
             seg.kind === "subtitle"
               ? `(${seg.s})`
               : seg.kind === "annotation"
                 ? `[${seg.s}]`
-                : seg.s;
+                : seg.kind === "ordinance"
+                  ? seg.s.startsWith("(") && seg.s.endsWith(")")
+                    ? seg.s
+                    : `(${seg.s})`
+                  : seg.s;
           applyTokStyle(s, seg.kind);
           lineEl.appendChild(s);
         } else {
