@@ -4,7 +4,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
-import { fetchAllIn } from "~/core/lib/supa-batch.server";
+import { fetchAllIn, fetchAllPages } from "~/core/lib/supa-batch.server";
 import { parseBlanks } from "~/features/blanks/queries.server";
 import {
   buildPrintBlankBody,
@@ -763,6 +763,8 @@ export async function listMcqCandidates(
     nodeId?: string | null;
     minImportance?: number;
     limit?: number;
+    /** true 면 limit 무시하고 조건 전량(페이지네이션). */
+    all?: boolean;
   },
 ): Promise<McqCandidate[]> {
   const lawId = await lawIdByCode(client, filter.lawCode);
@@ -771,6 +773,7 @@ export async function listMcqCandidates(
     ? await problemIdsForNode(client, filter.nodeId)
     : null;
   if (nodeProblemIds && nodeProblemIds.length === 0) return [];
+  const cap = filter.all ? Infinity : (filter.limit ?? 100);
 
   const makeQuery = (slice: string[] | null) => {
     let q = client
@@ -790,11 +793,13 @@ export async function listMcqCandidates(
 
   const rows = nodeProblemIds
     ? await fetchAllIn(nodeProblemIds, (slice) => makeQuery(slice))
-    : ((await makeQuery(null).limit(filter.limit ?? 100)).data ?? []);
+    : filter.all
+      ? await fetchAllPages(() => makeQuery(null))
+      : ((await makeQuery(null).limit(cap)).data ?? []);
 
   return rows
     .sort((a, b) => (b.importance ?? 0) - (a.importance ?? 0) || (b.year ?? 0) - (a.year ?? 0))
-    .slice(0, filter.limit ?? 100)
+    .slice(0, cap)
     .map((p) => ({
       problemId: p.problem_id,
       snippet: snippet(p.body_md),
@@ -813,22 +818,27 @@ export async function listScienceMcqCandidates(
     scienceSubject: ScienceSubjectSlug;
     sectionId?: string | null;
     limit?: number;
+    /** true 면 limit 무시하고 조건 전량(페이지네이션). */
+    all?: boolean;
   },
 ): Promise<McqCandidate[]> {
-  let q = client
-    .from("problems")
-    .select("problem_id, body_md, year, problem_number, importance, format")
-    .eq("subject_type", "science")
-    .eq("science_subject", filter.scienceSubject)
-    .eq("review_status", "approved")
-    .is("deleted_at", null);
-  if (filter.sectionId) q = q.eq("science_section_id", filter.sectionId);
-  const { data, error } = await q
-    .order("year", { ascending: false })
-    .order("problem_number", { ascending: true })
-    .order("problem_id")
-    .limit(filter.limit ?? 100);
-  if (error) throw error;
+  const makeQuery = () => {
+    let q = client
+      .from("problems")
+      .select("problem_id, body_md, year, problem_number, importance, format")
+      .eq("subject_type", "science")
+      .eq("science_subject", filter.scienceSubject)
+      .eq("review_status", "approved")
+      .is("deleted_at", null);
+    if (filter.sectionId) q = q.eq("science_section_id", filter.sectionId);
+    return q
+      .order("year", { ascending: false })
+      .order("problem_number", { ascending: true })
+      .order("problem_id");
+  };
+  const data = filter.all
+    ? await fetchAllPages(() => makeQuery())
+    : ((await makeQuery().limit(filter.limit ?? 100)).data ?? []);
   return (data ?? []).map((p) => ({
     problemId: p.problem_id,
     snippet: snippet(p.body_md),
@@ -846,6 +856,8 @@ export async function listOxCandidates(
     nodeId?: string | null;
     minImportance?: number;
     limit?: number;
+    /** true 면 limit 무시하고 조건 전량(페이지네이션). */
+    all?: boolean;
   },
 ): Promise<OxCandidate[]> {
   const lawId = await lawIdByCode(client, filter.lawCode);
@@ -854,7 +866,7 @@ export async function listOxCandidates(
     ? await problemIdsForNode(client, filter.nodeId)
     : null;
   if (nodeProblemIds && nodeProblemIds.length === 0) return [];
-  const limit = filter.limit ?? 100;
+  const limit = filter.all ? Infinity : (filter.limit ?? 100);
 
   const makeChoiceQuery = (slice: string[] | null) => {
     let q = client
@@ -890,14 +902,18 @@ export async function listOxCandidates(
   const [choiceRows, boxRows] = await Promise.all([
     nodeProblemIds
       ? fetchAllIn(nodeProblemIds, (slice) => makeChoiceQuery(slice))
-      : makeChoiceQuery(null)
-          .limit(limit)
-          .then((r) => r.data ?? []),
+      : filter.all
+        ? fetchAllPages(() => makeChoiceQuery(null))
+        : makeChoiceQuery(null)
+            .limit(limit)
+            .then((r) => r.data ?? []),
     nodeProblemIds
       ? fetchAllIn(nodeProblemIds, (slice) => makeBoxQuery(slice))
-      : makeBoxQuery(null)
-          .limit(limit)
-          .then((r) => r.data ?? []),
+      : filter.all
+        ? fetchAllPages(() => makeBoxQuery(null))
+        : makeBoxQuery(null)
+            .limit(limit)
+            .then((r) => r.data ?? []),
   ]);
 
   const out: OxCandidate[] = [
@@ -931,6 +947,8 @@ export async function listBlankCandidates(
     nodeId?: string | null;
     minImportance?: number;
     limit?: number;
+    /** true 면 limit 무시하고 조건 전량(페이지네이션). */
+    all?: boolean;
   },
 ): Promise<BlankCandidate[]> {
   const lawId = await lawIdByCode(client, filter.lawCode);
@@ -939,6 +957,7 @@ export async function listBlankCandidates(
     ? await articleIdsForNodes(client, await subtreeNodeIds(client, filter.nodeId))
     : null;
   if (nodeArticleIds && nodeArticleIds.length === 0) return [];
+  const cap = filter.all ? Infinity : (filter.limit ?? 100);
 
   const makeQuery = (slice: string[] | null) => {
     let q = client
@@ -955,7 +974,9 @@ export async function listBlankCandidates(
   };
   const rows = nodeArticleIds
     ? await fetchAllIn(nodeArticleIds, (slice) => makeQuery(slice))
-    : ((await makeQuery(null).limit(filter.limit ?? 100)).data ?? []);
+    : filter.all
+      ? await fetchAllPages(() => makeQuery(null))
+      : ((await makeQuery(null).limit(cap)).data ?? []);
 
   return rows
     .map((r) => ({
@@ -968,5 +989,5 @@ export async function listBlankCandidates(
     // 빈칸이 하나도 없는 세트(blanks: [])는 시험 문항이 될 수 없으므로 후보에서 제외.
     .filter((c) => c.blanksCount > 0)
     .sort((a, b) => b.articleImportance - a.articleImportance)
-    .slice(0, filter.limit ?? 100);
+    .slice(0, cap);
 }

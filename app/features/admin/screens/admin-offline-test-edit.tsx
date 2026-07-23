@@ -66,6 +66,9 @@ export const meta: Route.MetaFunction = ({ data: d }) => {
   return [{ title: `${d.test.title} | 리담변리사학원` }];
 };
 
+// 후보 표시 수량 선택지(+ '전체'). 기본 80.
+const CAND_COUNT_OPTIONS = [80, 200, 500] as const;
+
 export async function loader({ params, request }: Route.LoaderArgs) {
   if (!params.cohortId || !params.assignmentId || !params.testId) {
     throw data("Missing params", { status: 404 });
@@ -113,6 +116,13 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       ? (subjParam as LawSubjectSlug)
       : test.lawCode;
 
+  // 후보 표시 수량 — ?count= (80/200/500/all). 기본 80. all=조건 전량(페이지네이션).
+  const countParam = url.searchParams.get("count");
+  const wantAll = countParam === "all";
+  const candLimit = wantAll
+    ? undefined
+    : (CAND_COUNT_OPTIONS.find((n) => String(n) === countParam) ?? 80);
+
   let mcqCands: Awaited<ReturnType<typeof listMcqCandidates>> = [];
   let oxCands: Awaited<ReturnType<typeof listOxCandidates>> = [];
   let blankCands: Awaited<ReturnType<typeof listBlankCandidates>> = [];
@@ -120,10 +130,17 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     mcqCands = await listScienceMcqCandidates(client, {
       scienceSubject: test.scienceSubject,
       sectionId: nodeId,
-      limit: 80,
+      limit: candLimit,
+      all: wantAll,
     });
   } else if (candLawCode) {
-    const filter = { lawCode: candLawCode, nodeId, minImportance, limit: 80 };
+    const filter = {
+      lawCode: candLawCode,
+      nodeId,
+      minImportance,
+      limit: candLimit,
+      all: wantAll,
+    };
     [mcqCands, oxCands, blankCands] = await Promise.all([
       type === "mcq" ? listMcqCandidates(client, filter) : Promise.resolve([]),
       type === "ox" ? listOxCandidates(client, filter) : Promise.resolve([]),
@@ -166,6 +183,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     role,
     isScience,
     filter: { type, nodeId, minImportance },
+    candCount: wantAll ? "all" : String(candLimit ?? 80),
+    candCountOptions: CAND_COUNT_OPTIONS,
+    candShownTotal:
+      mcqCands.length + oxCands.length + blankCands.length,
     candSubject: isScience ? null : candLawCode,
     subjectOptions: isScience
       ? []
@@ -204,6 +225,8 @@ export default function AdminOfflineTestEdit({
     role,
     isScience,
     filter,
+    candCount,
+    candCountOptions,
     candSubject,
     subjectOptions,
     mcqCands,
@@ -283,6 +306,8 @@ export default function AdminOfflineTestEdit({
             isScience={isScience}
             candSubject={candSubject}
             subjectOptions={subjectOptions}
+            candCount={candCount}
+            candCountOptions={candCountOptions}
           />
           <CandidatePanel
             testId={test.testId}
@@ -576,14 +601,28 @@ function CandidateFilter({
   isScience,
   candSubject,
   subjectOptions,
+  candCount,
+  candCountOptions,
 }: {
   filter: { type: OfflineQuestionType; nodeId: string | null; minImportance: number };
   nodes: Array<{ nodeId: string; label: string; depth: number }>;
   isScience: boolean;
   candSubject: LawSubjectSlug | null;
   subjectOptions: Array<{ code: LawSubjectSlug; name: string }>;
+  candCount: string;
+  candCountOptions: readonly number[];
 }) {
   const navigate = useNavigate();
+  // 수량 변경 — 현재 적용된 필터(과목/유형/파트/중요도)를 보존하며 count 만 바꿔 이동.
+  const changeCount = (count: string) => {
+    const params = new URLSearchParams();
+    if (!isScience && candSubject) params.set("subj", candSubject);
+    params.set("type", filter.type);
+    if (filter.nodeId) params.set("node", filter.nodeId);
+    if (filter.minImportance) params.set("imp", String(filter.minImportance));
+    params.set("count", count);
+    navigate(`?${params.toString()}`, { preventScrollReset: true });
+  };
   return (
     <Form method="get" preventScrollReset className="flex flex-wrap items-end gap-2 border-b px-4 py-3">
       {/* 과목 — 시험지 과목 외 다른 과목의 문항도 담을 수 있다(법률 과목). 변경 시 파트 초기화. */}
@@ -661,6 +700,23 @@ function CandidateFilter({
           </select>
         </div>
       )}
+      <div className="flex flex-col gap-1">
+        <Label className="text-[11px]">수량</Label>
+        <select
+          value={candCount}
+          onChange={(e) => changeCount(e.target.value)}
+          className="border-input bg-background h-8 rounded-md border px-2 text-xs"
+        >
+          {candCountOptions.map((n) => (
+            <option key={n} value={String(n)}>
+              {n}개
+            </option>
+          ))}
+          <option value="all">전체</option>
+        </select>
+      </div>
+      {/* '조회'(GET 제출) 시 선택 수량 보존 */}
+      <input type="hidden" name="count" value={candCount} />
       <Button type="submit" size="sm" variant="outline">
         조회
       </Button>
