@@ -245,9 +245,9 @@ export function LandingStyle() {
 .llx details.qa summary .qt{flex:1;min-width:0}
 .llx details.qa .a{font-size:14px;color:var(--soft);line-height:1.8;padding:0 0 18px 30px;white-space:pre-wrap}
 /* faq — 분류 가로 탭(support_faqs) */
-.llx .faqhint{margin-inline:auto;white-space:nowrap}
-.llx .faqx{max-width:860px;margin:0 auto}
-.llx .faxtabs{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:18px}
+.llx .faqhint{white-space:nowrap}
+.llx .faqx{max-width:860px}
+.llx .faxtabs{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-start;margin-bottom:18px}
 .llx .faxtab{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:999px;border:1px solid var(--line2);background:var(--lsurface);color:var(--soft);font-weight:800;font-size:13.5px;cursor:pointer;transition:border-color .15s,color .15s,background .15s,box-shadow .15s}
 .llx .faxtab:hover{border-color:var(--gilt-soft);color:var(--ink)}
 .llx .faxtab .c{font-size:11px;font-weight:800;color:var(--faint);background:var(--lground);border-radius:999px;padding:1px 7px;min-width:20px;text-align:center}

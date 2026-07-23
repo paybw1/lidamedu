@@ -371,7 +371,7 @@ export default function Landing({ loaderData }: Route.ComponentProps) {
             <Reveal>
               <FaqTabs groups={faqGroups} />
             </Reveal>
-            <div style={{ textAlign: "center", marginTop: 24 }}>
+            <div style={{ marginTop: 24 }}>
               <Link className="btn ghost" to="/lecture/support">
                 고객센터 문의하기 →
               </Link>
