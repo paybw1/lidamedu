@@ -49,17 +49,19 @@ export async function getCohortSrsAggregate(
   const nowIso = new Date().toISOString();
   const now = Date.now();
 
-  // 1) 멤버.
+  // 1) 멤버 — 종합반 관리자(staff)는 통계 제외, 수험생(student)만.
   const { data: members } = await admin
     .from("cohort_members")
     .select(
-      "profile_id, profiles!cohort_members_profile_id_fkey(name)",
+      "profile_id, profiles!cohort_members_profile_id_fkey(name, role)",
     )
     .eq("cohort_id", cohortId);
-  const memberList = (members ?? []).map((m) => ({
-    profileId: m.profile_id,
-    name: m.profiles?.name ?? "(이름 없음)",
-  }));
+  const memberList = (members ?? [])
+    .filter((m) => (m.profiles?.role ?? "student") === "student")
+    .map((m) => ({
+      profileId: m.profile_id,
+      name: m.profiles?.name ?? "(이름 없음)",
+    }));
   const profileIds = memberList.map((m) => m.profileId);
 
   if (profileIds.length === 0) {

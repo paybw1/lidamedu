@@ -52,12 +52,19 @@ export async function getCohortWeakNodes(
   const minAttempts = opts?.minAttempts ?? 5;
   const limit = opts?.limit ?? 12;
 
-  // 1) 멤버
+  // 1) 멤버 — 종합반 관리자(staff)는 제외, 수험생(student)만. (RLS 로 role 이 안 보이면
+  //    null→student 폴백이라 학생을 잘못 빼진 않는다. adminClient 호출 시 정확히 제외.)
   const { data: members } = await client
     .from("cohort_members")
-    .select("profile_id")
+    .select("profile_id, profiles!cohort_members_profile_id_fkey(role)")
     .eq("cohort_id", cohortId);
-  const userIds = [...new Set((members ?? []).map((m) => m.profile_id))];
+  const userIds = [
+    ...new Set(
+      (members ?? [])
+        .filter((m) => (m.profiles?.role ?? "student") === "student")
+        .map((m) => m.profile_id),
+    ),
+  ];
   const cohortSize = userIds.length;
   const threshold = Math.max(floorStudents, Math.ceil(minRatio * cohortSize));
   if (cohortSize === 0) return { cohortSize: 0, threshold, nodes: [] };

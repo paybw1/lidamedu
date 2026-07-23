@@ -38,22 +38,24 @@ export async function listCohortProgressSummary(
 ): Promise<CohortMemberProgress[]> {
   const admin = adminClient as SupabaseClient<Database>;
 
-  // 멤버 + 프로필.
+  // 멤버 + 프로필. 종합반 관리자(staff)는 통계에서 제외 — 수험생(student)만 집계.
   const { data: members, error: mErr } = await admin
     .from("cohort_members")
     .select(
-      "profile_id, joined_at, profiles!cohort_members_profile_id_fkey(name)",
+      "profile_id, joined_at, profiles!cohort_members_profile_id_fkey(name, role)",
     )
     .eq("cohort_id", cohortId);
   if (mErr) throw mErr;
   if (!members || members.length === 0) return [];
 
   return summarizeProgressForProfiles(
-    members.map((m) => ({
-      profileId: m.profile_id,
-      name: m.profiles?.name ?? "",
-      joinedAt: m.joined_at,
-    })),
+    members
+      .filter((m) => (m.profiles?.role ?? "student") === "student")
+      .map((m) => ({
+        profileId: m.profile_id,
+        name: m.profiles?.name ?? "",
+        joinedAt: m.joined_at,
+      })),
   );
 }
 
@@ -824,9 +826,11 @@ export async function getCohortAccuracyTrend(
 
   const { data: members } = await admin
     .from("cohort_members")
-    .select("profile_id")
+    .select("profile_id, profiles!cohort_members_profile_id_fkey(role)")
     .eq("cohort_id", cohortId);
-  const ids = (members ?? []).map((m) => m.profile_id);
+  const ids = (members ?? [])
+    .filter((m) => (m.profiles?.role ?? "student") === "student")
+    .map((m) => m.profile_id);
   if (ids.length === 0) {
     return { weeks: [] };
   }

@@ -744,15 +744,17 @@ export async function listAssignmentProgress(
     .maybeSingle();
   if (!a) return [];
 
-  // 멤버 가져옴 — 개인 과제는 대상 학생만.
+  // 멤버 가져옴 — 개인 과제는 대상 학생만. 종합반 관리자(staff)는 통계에서 제외(수험생만).
   const { data: members } = await admin
     .from("cohort_members")
     .select(
-      "profile_id, profiles!cohort_members_profile_id_fkey(name)",
+      "profile_id, profiles!cohort_members_profile_id_fkey(name, role)",
     )
     .eq("cohort_id", a.cohort_id);
   const memberList = (members ?? []).filter(
-    (m) => !a.target_profile_id || m.profile_id === a.target_profile_id,
+    (m) =>
+      (m.profiles?.role ?? "student") === "student" &&
+      (!a.target_profile_id || m.profile_id === a.target_profile_id),
   );
   if (memberList.length === 0) return [];
 
