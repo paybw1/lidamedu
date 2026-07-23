@@ -516,6 +516,11 @@ export function BlankFillViewV2({
   const stripCarryIfGuarded = (slot: HTMLElement): boolean => {
     const g = crossClear;
     if (!g || slot !== g.slot) return false;
+    // ★조합(marked text) 활성 중에는 슬롯 DOM 을 절대 고치지 않는다 — iOS 는 marked text 가
+    //   아직 이 자리를 가리킨다고 믿어, textContent 를 갈아끼우면 다음 프레임에 조합 글자를
+    //   재삽입한다(=이월 글자가 "지울수록 더 생기는" 증상). 가드는 소진하지 말고 유지했다가
+    //   compositionend(조합 확정, composingRef=false) 또는 비조합 프레임에서만 제거한다.
+    if (composingRef.current) return false;
     if (typeof Date === "undefined" || Date.now() >= g.until) {
       crossClear = null; // 만료 — 해제
       return false;
@@ -554,8 +559,8 @@ export function BlankFillViewV2({
         crossClear = null;
         return stop(id);
       }
-      // ★조합 중이어도 시도 — 이월은 "조합 중" 상태로 들어와 잠복하므로 settle 대기하면 영영
-      //   못 잡는다. stripLeadingOverlap 은 겹치는 이월분만 제거해 실입력은 보존.
+      // ★조합 중이면 stripCarryIfGuarded 가 내부에서 no-op(가드 유지) — marked text 와 싸우지
+      //   않으려고 조합 확정(compositionend) 후 프레임에서만 실제 제거한다. 폴링은 그때까지 유지.
       if (stripCarryIfGuarded(slot)) return stop(id);
     }, 60);
     arrivalSweepRef.current = id as unknown as number;
@@ -1151,11 +1156,14 @@ export function BlankFillViewV2({
     const ne = e.nativeEvent as InputEvent;
     const composing = ne.isComposing === true;
     const isDelete = (ne.inputType || "").toLowerCase().startsWith("delete");
-    // ★이월 도착 제거 — 조합 중이든 아니든 실행한다. iOS 이월은 "조합 중" 상태로 다음 칸에
-    //   들어오므로 !composing 게이트를 두면 영영 못 지운다(이번 버그의 핵심). 두 형태 처리:
+    // ★이월 도착 제거 — **조합이 끝난(비조합) 프레임에서만** 실행한다. 조합(marked text) 활성
+    //   중에 slot.textContent 를 갈아끼우면 iOS 가 다음 프레임에 조합 글자를 재삽입해 "지울수록
+    //   앞 칸 글자가 더 생기는" 증상이 된다. 조합 중엔 가드(crossClear)를 소진하지 말고 유지했다가
+    //   onCompositionEnd→stripCarryIfGuarded 가 확정 후 정리한다. 두 형태 처리:
     //   (a) stripLeadingOverlap — 겹치는 이월분만 제거(실입력 보존).
     //   (b) delete 로 재구현된 직전 답의 앞부분 조각(carried 의 prefix) — 통째로 비운다.
     if (
+      !composing &&
       crossClear &&
       crossClear.slot === slot &&
       typeof Date !== "undefined" &&
@@ -1169,7 +1177,7 @@ export function BlankFillViewV2({
         setCaretEnd(slot);
         crossClear = null;
         judgeSlot(slot, false);
-        if (!composing) maybeCompleteTier();
+        maybeCompleteTier();
         return;
       }
       if (isDelete && val && carried.startsWith(val)) {
