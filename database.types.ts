@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -9989,6 +9989,7 @@ export type Database = {
           trial_ended_notified_at: string | null
           trial_ends_at: string | null
           trial_expiry_notified_at: string | null
+          trial_regranted_at: string | null
           updated_at: string
         }
         Insert: {
@@ -10022,6 +10023,7 @@ export type Database = {
           trial_ended_notified_at?: string | null
           trial_ends_at?: string | null
           trial_expiry_notified_at?: string | null
+          trial_regranted_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -10055,6 +10057,7 @@ export type Database = {
           trial_ended_notified_at?: string | null
           trial_ends_at?: string | null
           trial_expiry_notified_at?: string | null
+          trial_regranted_at?: string | null
           updated_at?: string
         }
         Relationships: []

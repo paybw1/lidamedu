@@ -68,6 +68,7 @@ import { TrialNoticeBanner } from "~/features/dashboard/components/trial-notice-
 import {
   notifyTrialEndedIfDue,
   notifyTrialExpiryIfDue,
+  regrantTrialIfEligible,
   TRIAL_ENDED_BANNER_DAYS,
 } from "~/features/subscriptions/trial.server";
 import { ReducedDashboard } from "~/features/dashboard/components/reduced-dashboard";
@@ -409,7 +410,12 @@ export async function loader({ request }: Route.LoaderArgs) {
   const planCode = sub.planCode;
 
   // feat-8-027 — 체험(가입 15일) 안내 배너 + 만료 임박 인박스 공지(지연 트리거·1회).
-  const access = await getMembershipAccess(client, user.id);
+  //   ★기존 가입 학생 1회 체험 재부여 — 재접속 시 만료된 체험을 15일 다시 열어준다(멱등).
+  let access = await getMembershipAccess(client, user.id);
+  if (access.grade === "free_member") {
+    const regranted = await regrantTrialIfEligible(user.id);
+    if (regranted) access = await getMembershipAccess(client, user.id);
+  }
   const trial =
     access.grade === "trial" && access.trialEndsAt
       ? {

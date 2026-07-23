@@ -51,7 +51,7 @@ export function TrialNoticeBanner({
         to="/pricing"
         className="ml-auto shrink-0 rounded-md border border-current px-3 py-1 text-xs font-semibold transition-opacity hover:opacity-80"
       >
-        요금제 보기
+        {ended ? "구독하기" : "요금제 보기"}
       </Link>
     </div>
   );

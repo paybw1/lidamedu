@@ -312,10 +312,6 @@ function PlanStep({
               </select>
             </div>
           </div>
-          <p className="text-muted-foreground bg-muted/40 rounded px-2 py-1.5 text-[11px]">
-            ℹ️ 1차 자연과학은 4과목(물리·화학·생물·지구과학) 모두 필수
-            응시입니다.
-          </p>
           <div className="flex justify-end">
             <Button type="submit" size="sm">
               다음 <ChevronRightIcon className="size-3.5" />

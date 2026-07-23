@@ -10,6 +10,7 @@ import { redirect } from "react-router";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { regrantTrialIfEligible } from "~/features/subscriptions/trial.server";
 
 export type MembershipGrade =
   | "staff"
@@ -245,8 +246,13 @@ export async function requireSubject(
   userId: string,
   subjectSlug: string,
 ): Promise<void> {
-  const access = await getMembershipAccess(client, userId);
+  let access = await getMembershipAccess(client, userId);
   if (access.grade === "staff") return;
+  // 기존 가입 학생 1회 체험 재부여 — 만료(free_member)면 15일 재체험을 열고 재판정.
+  if (access.grade === "free_member") {
+    const regranted = await regrantTrialIfEligible(userId);
+    if (regranted) access = await getMembershipAccess(client, userId);
+  }
   if (!access.features.includes("area_subjects")) {
     throw redirect(`/pricing?locked=area_subjects`);
   }

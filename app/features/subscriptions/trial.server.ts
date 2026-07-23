@@ -44,6 +44,36 @@ export async function notifyTrialExpiryIfDue(userId: string): Promise<void> {
     .eq("profile_id", userId);
 }
 
+/** 체험 재부여 기간(일) — 기존 학생 1회 재체험. */
+export const TRIAL_REGRANT_DAYS = 15;
+
+// 기존 가입 학생 1회 체험 재부여 — 재접속 시 만료된 체험을 15일 다시 열어준다.
+//   대상: 아직 재부여받지 않은(trial_regranted_at is null) 학생. 호출자가 grade==="free_member"
+//   (구독·종합반 없음)을 확정한 뒤 호출한다 → 결제/종합반 사용자는 건드리지 않는다.
+//   재부여 시 trial_ends_at=now+15d, 재부여 마커 기록, 만료/종료 통지 플래그 초기화(새 종료일에 재발화).
+//   실제 재부여했으면 true. (멱등 — 이미 재부여했으면 no-op false)
+export async function regrantTrialIfEligible(userId: string): Promise<boolean> {
+  const { data: prof } = await admin
+    .from("profiles")
+    .select("trial_regranted_at")
+    .eq("profile_id", userId)
+    .maybeSingle();
+  if (!prof || prof.trial_regranted_at) return false;
+  const now = new Date();
+  const ends = new Date(now.getTime() + TRIAL_REGRANT_DAYS * 86_400_000);
+  const { error } = await admin
+    .from("profiles")
+    .update({
+      trial_ends_at: ends.toISOString(),
+      trial_regranted_at: now.toISOString(),
+      trial_expiry_notified_at: null,
+      trial_ended_notified_at: null,
+    })
+    .eq("profile_id", userId)
+    .is("trial_regranted_at", null); // 동시요청 경쟁 방어
+  return !error;
+}
+
 /** 체험 종료 후 대시보드 배너 노출 기간(일) — 전환 넛지 창. */
 export const TRIAL_ENDED_BANNER_DAYS = 7;
 

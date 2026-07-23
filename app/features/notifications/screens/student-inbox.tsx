@@ -1,6 +1,7 @@
 // 학생용 알림 인박스 — /inbox. 첨삭 완료, Q&A 답변, 공지 등.
 
 import {
+  ArrowRightIcon,
   BellIcon,
   CalendarClockIcon,
   CheckCheckIcon,
@@ -217,6 +218,13 @@ function NotificationBody({ item }: { item: NotificationItem }) {
           <p className="text-muted-foreground mt-1 line-clamp-2 text-xs leading-relaxed">
             {item.body}
           </p>
+        ) : null}
+        {item.kind === "trial_ended" || item.kind === "trial_expiry_warning" ? (
+          // 카드 전체가 href(/pricing)로 이동하는 submit 버튼 안이라, 명시적 CTA 는 중첩
+          //   <button> 대신 버튼처럼 보이는 span 으로 둔다(클릭 시 동일하게 구독 페이지 이동).
+          <span className="bg-primary text-primary-foreground mt-2 inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-semibold">
+            구독하기 <ArrowRightIcon className="size-3.5" />
+          </span>
         ) : null}
       </CardContent>
     </>
