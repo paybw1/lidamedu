@@ -223,8 +223,7 @@ function buildLines(body: ArticleBody, blanks: BlankItem[]): Line[] {
       return;
     }
     if (block.kind === "header_refs") {
-      const s = block.refs.map(inlineTokenContent).join(" ").trim();
-      if (s) lines.push({ depth, label: "", subtitle: null, context: s, segs: [] });
+      // ★빈칸 문제에서는 관련조문(header_refs) 나열을 표시하지 않는다(암기 방해·불필요).
       return;
     }
     if (block.kind === "sub_article_group") {
@@ -442,17 +441,32 @@ export function BlankFillViewV2({
     sink.textContent = ZWSP;
     caretToEnd(sink);
   };
+  // 이동 대상 빈칸이 화면 밖(상·하단 마진 안쪽 포함)이면 화면 중앙으로 부드럽게 스크롤.
+  //   이미 보이면 아무것도 하지 않는다(불필요한 스크롤 방지).
+  const scrollBlankIntoViewIfNeeded = (el: HTMLElement) => {
+    if (typeof window === "undefined") return;
+    const rect = el.getBoundingClientRect();
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    const margin = 96; // 상단 sticky 헤더·하단 키보드 여유
+    if (rect.top < margin || rect.bottom > vh - margin) {
+      el.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+  };
   const focusViaSink = (target: HTMLElement) => {
     const sink = sinkRef.current;
-    if (!sink || !target.isConnected) {
+    const land = () => {
       caretToEnd(target);
+      scrollBlankIntoViewIfNeeded(target);
+    };
+    if (!sink || !target.isConnected) {
+      land();
       return;
     }
     drainToSink();
     // 다음 프레임 — sink 로 흘러든 이월분 폐기 후 실제 칸으로.
     requestAnimationFrame(() => {
       sink.textContent = ZWSP;
-      caretToEnd(target);
+      land();
     });
   };
 
