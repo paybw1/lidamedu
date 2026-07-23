@@ -143,7 +143,9 @@ interface SubGroupData {
   source: string;
   articleCount: number;
   hasBlanks: boolean;
-  innerLines: Line[];
+  // 원래 디자인: 코멘트(preface, amber 박스) + 참조 조문들(각 emerald 박스).
+  prefaceLines: Line[];
+  articleGroups: { header: string; lines: Line[] }[];
 }
 interface Line {
   depth: number;
@@ -161,7 +163,12 @@ interface Line {
 function linesHaveBlanks(ls: Line[]): boolean {
   for (const l of ls) {
     if (l.segs.some((s) => s.t === "blank")) return true;
-    if (l.subGroup && linesHaveBlanks(l.subGroup.innerLines)) return true;
+    if (l.subGroup) {
+      if (linesHaveBlanks(l.subGroup.prefaceLines)) return true;
+      for (const g of l.subGroup.articleGroups) {
+        if (linesHaveBlanks(g.lines)) return true;
+      }
+    }
   }
   return false;
 }
@@ -253,19 +260,20 @@ function buildLines(body: ArticleBody, blanks: BlankItem[]): Line[] {
       return;
     }
     if (block.kind === "sub_article_group") {
-      // 함께 공부할 조문 — 내부 라인을 따로 만들어 접이식 카드로(원래 디자인) 렌더.
-      const inner: Line[] = [];
-      for (const b of block.preface ?? []) visit(b, 0, inner);
-      for (const sa of block.articles) {
-        inner.push({
-          depth: 0,
-          label: "",
-          subtitle: null,
-          context: `제${sa.number}조${sa.branch ? `의${sa.branch}` : ""} (${sa.title})`,
-          segs: [],
-        });
-        for (const b of sa.blocks) visit(b, 1, inner);
-      }
+      // 함께 공부할 조문 — 코멘트(preface) + 조문별 그룹으로 나눠 접이식 카드(원래 디자인).
+      const prefaceLines: Line[] = [];
+      for (const b of block.preface ?? []) visit(b, 0, prefaceLines);
+      const articleGroups = block.articles.map((sa) => {
+        const gLines: Line[] = [];
+        for (const b of sa.blocks) visit(b, 0, gLines);
+        return {
+          header: `제${sa.number}조${sa.branch ? `의${sa.branch}` : ""} (${sa.title})`,
+          lines: gLines,
+        };
+      });
+      const hasBlanks =
+        linesHaveBlanks(prefaceLines) ||
+        articleGroups.some((g) => linesHaveBlanks(g.lines));
       target.push({
         depth,
         label: "",
@@ -274,8 +282,9 @@ function buildLines(body: ArticleBody, blanks: BlankItem[]): Line[] {
         subGroup: {
           source: block.source,
           articleCount: block.articles.length,
-          hasBlanks: linesHaveBlanks(inner),
-          innerLines: inner,
+          hasBlanks,
+          prefaceLines,
+          articleGroups,
         },
       });
       return;
@@ -524,8 +533,9 @@ export function BlankFillViewV2({
       pill.textContent = `📜 함께 공부할 조문 · ${sg.source} · ${sg.articleCount}개`;
 
       const card = document.createElement("div");
+      // 원래 디자인: 은은한 emerald 틴트 배경 + emerald 테두리(흰 배경 지양).
       card.style.cssText =
-        "position:relative;margin:0.5rem 0;border:1px solid #a7f3d0;border-radius:12px;padding:16px 14px 14px;background:var(--card,#ffffff);";
+        "position:relative;margin:0.5rem 0;border:1px solid #a7f3d0;border-radius:12px;padding:16px 14px 14px;background:#f0fdf4;";
       const badge = document.createElement("button");
       badge.type = "button";
       badge.contentEditable = "false";
@@ -538,8 +548,35 @@ export function BlankFillViewV2({
       src.style.cssText = "margin:2px 0 0;color:#64748b;font-size:11px;";
       src.textContent = sg.source;
       const content = document.createElement("div");
-      content.style.cssText = "margin-top:10px;";
-      for (const il of sg.innerLines) content.appendChild(buildLineEl(il));
+      content.style.cssText = "margin-top:10px;display:flex;flex-direction:column;gap:8px;";
+      // 코멘트(preface) — amber 박스.
+      if (sg.prefaceLines.length > 0) {
+        const pbox = document.createElement("div");
+        pbox.style.cssText =
+          "border:1px solid rgba(251,191,36,0.4);background:#fffbeb;border-radius:8px;padding:8px 12px;";
+        const plabel = document.createElement("p");
+        plabel.contentEditable = "false";
+        plabel.textContent = "코멘트";
+        plabel.style.cssText =
+          "margin:0 0 4px;color:#64748b;font-size:10px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;";
+        pbox.appendChild(plabel);
+        for (const il of sg.prefaceLines) pbox.appendChild(buildLineEl(il));
+        content.appendChild(pbox);
+      }
+      // 참조 조문 — 각 emerald 박스(헤더 + 내용).
+      for (const g of sg.articleGroups) {
+        const abox = document.createElement("div");
+        abox.style.cssText =
+          "border:1px solid #d1fae5;background:#ecfdf5;border-radius:8px;padding:8px 12px;";
+        const ahead = document.createElement("p");
+        ahead.contentEditable = "false";
+        ahead.textContent = g.header;
+        ahead.style.cssText =
+          "margin:0 0 2px;color:#047857;font-size:12px;font-weight:700;";
+        abox.appendChild(ahead);
+        for (const il of g.lines) abox.appendChild(buildLineEl(il));
+        content.appendChild(abox);
+      }
       card.appendChild(badge);
       card.appendChild(src);
       card.appendChild(content);
