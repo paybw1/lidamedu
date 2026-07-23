@@ -10,6 +10,7 @@ import { getStaffRole } from "~/features/laws/queries.server";
 import { getUnreadCount } from "~/features/notifications/queries.server";
 import { getMembershipAccess } from "~/features/subscriptions/membership.server";
 
+import { CommandPalette } from "../components/command-palette";
 import Footer from "../components/footer";
 import { NavigationBar } from "../components/navigation-bar";
 import { PlatformSwitch } from "../components/platform-switch";
@@ -280,6 +281,14 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
       <Suspense fallback={null}>
         <Await resolve={userPromise}>
           {({ data: { user } }) => (user ? <BugReportWidget /> : null)}
+        </Await>
+      </Suspense>
+      {/* 전역 검색(⌘K) 팔레트 — 상단바 검색 아이콘(로그인 시 노출)의 대상. navigation.layout
+          전역에 마운트해 랜딩 등 private.layout 밖 페이지에서도 작동(예전엔 private.layout 에만
+          있어 랜딩에서 아이콘이 먹통). private.layout 은 이 아래 nest 라 거기선 제거(중복 방지). */}
+      <Suspense fallback={null}>
+        <Await resolve={userPromise}>
+          {({ data: { user } }) => (user ? <CommandPalette /> : null)}
         </Await>
       </Suspense>
       {/* 팝업 공지 — 활성 공지가 있으면 모달. 닫기 상태는 localStorage(컴포넌트 소유). */}

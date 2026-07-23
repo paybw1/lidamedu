@@ -2,7 +2,6 @@ import type { Route } from "./+types/private.layout";
 
 import { Outlet, data, redirect } from "react-router";
 
-import { CommandPalette } from "~/core/components/command-palette";
 import { SessionHeartbeat } from "~/core/components/session-heartbeat";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { requireAccessApproval } from "../lib/require-approval.server";
@@ -54,7 +53,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 export default function PrivateLayout() {
   return (
     <>
-      <CommandPalette />
+      {/* CommandPalette 는 상위 navigation.layout 에 마운트(랜딩 등 전역 작동). 여기 중복 제거. */}
       <SessionHeartbeat />
       <Outlet />
     </>
