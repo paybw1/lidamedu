@@ -599,18 +599,31 @@ export function BlankFillViewV2({
   };
   const focusViaSink = (target: HTMLElement) => {
     const sink = sinkRef.current;
+    const host = editorRef.current;
     const land = () => {
       caretToEnd(target);
       scrollBlankIntoViewIfNeeded(target);
     };
-    if (!sink || !target.isConnected) {
+    if (!target.isConnected) {
       land();
       return;
     }
-    drainToSink();
-    // 다음 프레임 — sink 로 흘러든 이월분 폐기 후 실제 칸으로.
+    // 1) 이월 흘려버리기 — 캐럿을 sink 로(있으면).
+    if (sink) drainToSink();
+    // 2) ★iOS IME 잠복 버퍼 flush — 직전 칸 조합이 IME 버퍼에 잠복한 채 다음 칸으로 딸려오면,
+    //    DOM 에 안 보여 sink/스위퍼가 못 잡고 다음 칸에서 backspace 를 누르는 순간 직전 답이
+    //    튀어나와 지워진다. blur 만으론 iOS 가 버퍼를 유지하므로, **contentEditable 토글**로
+    //    편집영역을 잠깐 비편집으로 만들어 조합을 강제 종료·확정시킨다(IME 리셋 관용 우회).
+    //    Tab/Enter=하드웨어 키보드라 소프트 키보드 dismiss 부작용 없음.
+    if (host) {
+      host.blur();
+      host.contentEditable = "false";
+      void host.offsetHeight; // reflow 강제 — 토글이 실제 적용되게
+      host.contentEditable = "true";
+    }
+    // 3) 다음 프레임 — sink 잔여 폐기 후 목표 칸 재포커스·착지.
     requestAnimationFrame(() => {
-      sink.textContent = ZWSP;
+      if (sink) sink.textContent = ZWSP;
       land();
     });
   };
