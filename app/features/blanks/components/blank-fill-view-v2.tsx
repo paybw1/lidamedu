@@ -1225,47 +1225,55 @@ export function BlankFillViewV2({
   };
   const onCompositionEnd = () => {
     composingRef.current = false;
-    // 기존 조합-확정 처리(이월 드리프트/스트립/판정) — 조기 return 있으므로 IIFE 로 감싼다.
-    (() => {
-      const slot = slotFromSelection();
-      const startSlot = compStartSlotRef.current;
-      compStartSlotRef.current = null;
-      if (!slot) return;
-      // ★조합 중 다른 칸 터치로 조합이 이 슬롯으로 이월된 경우(시작 슬롯≠종료 슬롯) —
-      //   딸려온 접두(직전 칸 값의 접미)를 제거하고, 직전 칸 값은 복원한다.
-      if (startSlot && startSlot !== slot) {
-        const startIdx = Number(startSlot.dataset.blankIdx);
-        const carried = valuesRef.current.get(startIdx) ?? readSlot(startSlot);
-        if (carried) {
-          const stripped = stripLeadingOverlap(readSlot(slot), carried);
-          if (stripped !== null) {
-            slot.textContent = stripped.length ? stripped : ZWSP;
+    // ★compositionend 직후에는 DOM 을 절대 건드리지 않는다 — iOS Safari 는 compositionend 뒤에
+    //   trailing beforeinput/input(insertFromComposition) 을 흘리는 경우가 있어, 여기서
+    //   slot.textContent 를 바꾸면 늦게 온 input 이 그 수정을 덮어쓴다. 그래서 지금은 슬롯 참조만
+    //   캡처하고, 실제 판정·이월 스트립(DOM 수정)·예약 이동을 rAF 로 미룬다(trailing input 안착·
+    //   paint 후). 슬롯은 요소 참조라 rAF 시점에도 유효(DOM 재빌드 없음).
+    const endSlot = slotFromSelection();
+    const startSlot = compStartSlotRef.current;
+    compStartSlotRef.current = null;
+
+    // 조합-확정 처리(이월 드리프트/스트립/판정) — DOM 수정 포함이라 rAF 로 미룬다. 조기 return
+    //   있으므로 IIFE 로 감싸고, 그 뒤 예약 이동을 실행한다.
+    const commit = () => {
+      (() => {
+        const slot = endSlot;
+        if (!slot) return;
+        // ★조합 중 다른 칸 터치로 조합이 이 슬롯으로 이월된 경우(시작 슬롯≠종료 슬롯) —
+        //   딸려온 접두(직전 칸 값의 접미)를 제거하고, 직전 칸 값은 복원한다.
+        if (startSlot && startSlot !== slot) {
+          const startIdx = Number(startSlot.dataset.blankIdx);
+          const carried = valuesRef.current.get(startIdx) ?? readSlot(startSlot);
+          if (carried) {
+            const stripped = stripLeadingOverlap(readSlot(slot), carried);
+            if (stripped !== null) {
+              slot.textContent = stripped.length ? stripped : ZWSP;
+            }
+            // 이월로 직전 칸의 마지막 음절이 빠졌을 수 있어 값 복원.
+            if (readSlot(startSlot) !== carried) startSlot.textContent = carried;
+            judgeSlot(startSlot, true);
+            setCaretEnd(slot);
+            judgeSlot(slot, true);
+            // 드리프트로 이 슬롯을 이미 정리했으니 도착-가드/스위퍼는 해제(중복 개입 방지).
+            if (crossClear && crossClear.slot === slot) crossClear = null;
+            maybeCompleteTier();
+            return;
           }
-          // 이월로 직전 칸의 마지막 음절이 빠졌을 수 있어 값 복원.
-          if (readSlot(startSlot) !== carried) startSlot.textContent = carried;
-          judgeSlot(startSlot, true);
-          setCaretEnd(slot);
-          judgeSlot(slot, true);
-          // 드리프트로 이 슬롯을 이미 정리했으니 도착-가드/스위퍼는 해제(중복 개입 방지).
-          if (crossClear && crossClear.slot === slot) crossClear = null;
-          maybeCompleteTier();
-          return;
         }
-      }
-      // ★조문 경계/비조합 이월 = 딸려온 조합이 이 슬롯에서 끝남 → carried 텍스트 제거 후 종료.
-      if (stripCarryIfGuarded(slot)) return;
-      judgeSlot(slot, true);
-      maybeCompleteTier();
-    })();
-    // ★예약 이동은 한 프레임 미뤄 실행 — iOS Safari 는 compositionend 시점에 marked text 가
-    //   아직 DOM 에 덜 반영돼(trailing beforeinput/input(insertFromComposition) 가 뒤따름) 있을 수
-    //   있다. rAF 로 그 trailing input 이 안착·paint 된 뒤 caret 을 옮긴다(순서: compositionend →
-    //   input(insertFromComposition) → paint → 이동). 예약은 flushPendingMove 안에서 다시 읽으므로
-    //   그 사이 사용자가 계속 입력하면(onKeyDown 에서 취소) 이동하지 않는다.
-    if (typeof requestAnimationFrame === "function") {
-      requestAnimationFrame(flushPendingMove);
-    } else {
+        // ★조문 경계/비조합 이월 = 딸려온 조합이 이 슬롯에서 끝남 → carried 텍스트 제거 후 종료.
+        if (stripCarryIfGuarded(slot)) return;
+        judgeSlot(slot, true);
+        maybeCompleteTier();
+      })();
+      // 판정·스트립 다음에 예약 이동 — marked text 없고 trailing input 도 안착한 시점.
       flushPendingMove();
+    };
+
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(commit);
+    } else {
+      commit();
     }
   };
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
