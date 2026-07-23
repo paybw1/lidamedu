@@ -33,6 +33,23 @@ const RECIPIENT_RE = /([가-힯]+)에게/g;
 // 문장 안의 주체 표지 — 한글 명사 + 은/는/이/가. 단순 휴리스틱.
 const SUBJECT_MARKER_RE = /[가-힯]+(?:은|는|이|가)/;
 
+// 일반 의존명사·대명사 — "~하는 자에게", "그것에게" 처럼 단독으로 잡히면 암기 가치가 없고
+// 오답만 유발한다. 특히 "제3자에게" 는 숫자(3) 때문에 한글 "자" 만 캡처돼 "자" 빈칸이 되고,
+// "정한 자에게만" 은 문법상 수신자가 의존명사 "자" 자체라 역시 "자" 빈칸이 된다. 주체 빈칸에서 제외.
+const GENERIC_RECIPIENT_NOUNS = new Set([
+  "자",
+  "것",
+  "바",
+  "때",
+  "곳",
+  "데",
+  "이",
+  "그",
+  "저",
+  "등",
+  "수",
+]);
+
 interface CandidateRange {
   start: number;
   end: number;
@@ -68,6 +85,9 @@ function findRecipientRanges(text: string): CandidateRange[] {
   let m: RegExpExecArray | null;
   while ((m = RECIPIENT_RE.exec(text)) !== null) {
     const noun = m[1];
+    // 1글자 이하 또는 일반 의존명사("자" 등) 는 주체로서 의미가 없어 제외
+    //   (제3자에게→"자", 정한 자에게만→"자" 오빈칸 방지).
+    if (noun.length < 2 || GENERIC_RECIPIENT_NOUNS.has(noun)) continue;
     const nounStart = m.index;
     const nounEnd = nounStart + noun.length;
     let sentStart = 0;
