@@ -90,7 +90,7 @@ function applyTokStyle(
   }
 }
 
-const CROSS_CLEAR_MS = 1500;
+const CROSS_CLEAR_MS = 2500;
 // ★이월 방어는 슬롯 단위(에디터 단위 아님) — 같은 조문 안의 빈칸→빈칸 이동에서도 iOS 가
 //   직전 칸의 마지막 조합 음절을 다음 칸으로 딸려보내는 현상이 있어, 조문 경계뿐 아니라
 //   모든 슬롯 전환에서 방어한다.
@@ -417,6 +417,8 @@ export function BlankFillViewV2({
   //   여기 잠깐 들르게 하면, 조합 이월이 이 sink 에서 확정(compositionend)·폐기되고 다음 칸은
   //   깨끗하게 안착한다. (SLOT_CLASS 아님 → 판정/드리프트 로직이 무시)
   const sinkRef = useRef<HTMLElement | null>(null);
+  // 이월 안착 스위퍼 인터벌 id — Tab/Enter 착지 후 이월이 안착할 때까지 폴링(아래 scheduleArrivalSweep).
+  const arrivalSweepRef = useRef<number | null>(null);
 
   const lines = useMemo(
     () => buildLines(body, blanks, activeIdxs),
@@ -478,27 +480,57 @@ export function BlankFillViewV2({
     sel.addRange(range);
   };
 
-  // 조문 경계 이월 방어 — 이 슬롯이 방금 이월 창(crossClear) 대상이면, 딸려온 carried
-  //   텍스트를 제거하고 판정. 처리했으면 true. (조합 종료 후 호출 — 마크드 텍스트 아님)
+  // 조문 경계/칸 전환 이월 방어 — 이 슬롯이 방금 이월 창(crossClear) 대상이면, 딸려온 carried
+  //   텍스트를 제거하고 판정. 처리했으면 true.
+  //   ★핵심: 부분(prefix) 이월이 아직 다 도착하지 않아 겹침이 안 잡히면(null) **가드를 소진하지
+  //   않고 유지**한다. iOS 는 조합 이월을 "소"→"소멸"→"소멸시효" 처럼 점진적으로 채우거나 조합
+  //   상태로 늦게 안착시켜, 첫 onInput 시점엔 아직 전체가 안 보인다. 여기서 소진하면(구버전 버그)
+  //   전체가 도착했을 때 지울 가드가 없어 그대로 남는다. → 성공(제거) 또는 만료 시에만 해제.
   const stripCarryIfGuarded = (slot: HTMLElement): boolean => {
-    if (
-      !crossClear ||
-      slot !== crossClear.slot ||
-      typeof Date === "undefined" ||
-      Date.now() >= crossClear.until
-    ) {
+    const g = crossClear;
+    if (!g || slot !== g.slot) return false;
+    if (typeof Date === "undefined" || Date.now() >= g.until) {
+      crossClear = null; // 만료 — 해제
       return false;
     }
-    const carried = crossClear.carried;
-    crossClear = null; // 한 번만 개입
-    if (!carried) return false;
+    if (!g.carried) {
+      crossClear = null;
+      return false;
+    }
     const val = readSlot(slot);
-    const stripped = stripLeadingOverlap(val, carried);
-    if (stripped === null) return false;
+    if (!val) return false; // 아직 아무것도 안 옴 — 가드 유지
+    const stripped = stripLeadingOverlap(val, g.carried);
+    if (stripped === null) return false; // 부분만 도착 — 가드 유지(다음 입력에서 재시도)
     slot.textContent = stripped.length ? stripped : ZWSP;
     setCaretEnd(slot);
+    crossClear = null; // 전체 이월 제거 완료 — 해제
     judgeSlot(slot, false);
     return true;
+  };
+
+  // ★이월 안착 스위퍼 — Tab/Enter 로 다음 칸에 착지한 뒤, iOS 이월 조합이 언제 안착하든(즉시·
+  //   지연·조합 종료 후) 짧은 창 동안 폴링하며 제거한다. 조합 중엔 손대지 않고(조합 파괴 방지)
+  //   settle 된 프레임에만 stripCarryIfGuarded 를 시도. 제거 성공/가드 소멸/만료 시 정지.
+  const scheduleArrivalSweep = (slot: HTMLElement) => {
+    if (typeof window === "undefined") return;
+    if (arrivalSweepRef.current != null) {
+      window.clearInterval(arrivalSweepRef.current);
+      arrivalSweepRef.current = null;
+    }
+    const stop = (id: number) => {
+      window.clearInterval(id);
+      if (arrivalSweepRef.current === id) arrivalSweepRef.current = null;
+    };
+    const id = window.setInterval(() => {
+      if (!crossClear || crossClear.slot !== slot) return stop(id);
+      if (Date.now() >= crossClear.until) {
+        crossClear = null;
+        return stop(id);
+      }
+      if (composingRef.current) return; // 조합 진행 중 — settle 대기
+      if (stripCarryIfGuarded(slot)) return stop(id);
+    }, 60);
+    arrivalSweepRef.current = id as unknown as number;
   };
 
   const judgeSlot = (slot: HTMLElement, save: boolean) => {
@@ -791,6 +823,16 @@ export function BlankFillViewV2({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey]);
 
+  // ── 언마운트 시 안착 스위퍼 인터벌 정리 ─────────────────────────────
+  useEffect(() => {
+    return () => {
+      if (arrivalSweepRef.current != null && typeof window !== "undefined") {
+        window.clearInterval(arrivalSweepRef.current);
+        arrivalSweepRef.current = null;
+      }
+    };
+  }, []);
+
   // ── 캐럿 가두기 — 선택이 슬롯 밖(고정 텍스트)에 놓이면 인접 슬롯으로 스냅 ────
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -1074,6 +1116,8 @@ export function BlankFillViewV2({
         judgeSlot(startSlot, true);
         setCaretEnd(slot);
         judgeSlot(slot, true);
+        // 드리프트로 이 슬롯을 이미 정리했으니 도착-가드/스위퍼는 해제(중복 개입 방지).
+        if (crossClear && crossClear.slot === slot) crossClear = null;
         maybeCompleteTier();
         return;
       }
@@ -1107,8 +1151,10 @@ export function BlankFillViewV2({
           until: Date.now() + CROSS_CLEAR_MS,
         };
       }
-      // sink 경유 이동(조합 이월을 sink 에서 흘려버림) + 도착 후 제거(위 crossClear) 이중 방어.
+      // sink 경유 이동(조합 이월을 sink 에서 흘려버림) + 도착 후 제거(위 crossClear) + 안착
+      //   스위퍼(이월이 언제 안착하든 폴링 제거) 삼중 방어.
       focusViaSink(next);
+      scheduleArrivalSweep(next);
     } else if (e.key === "Enter") {
       e.preventDefault();
     }
