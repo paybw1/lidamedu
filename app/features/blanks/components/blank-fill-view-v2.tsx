@@ -1257,9 +1257,16 @@ export function BlankFillViewV2({
       judgeSlot(slot, true);
       maybeCompleteTier();
     })();
-    // ★조합이 확정된 "지금"이 다음 칸으로 이동할 안전한 시점 — marked text 없음. (조합 중 Enter/Tab
-    //   으로 예약해 둔 이동을 여기서 실행. 근본 원인=조합 중 caret 이동을 이 시점으로 미룸.)
-    flushPendingMove();
+    // ★예약 이동은 한 프레임 미뤄 실행 — iOS Safari 는 compositionend 시점에 marked text 가
+    //   아직 DOM 에 덜 반영돼(trailing beforeinput/input(insertFromComposition) 가 뒤따름) 있을 수
+    //   있다. rAF 로 그 trailing input 이 안착·paint 된 뒤 caret 을 옮긴다(순서: compositionend →
+    //   input(insertFromComposition) → paint → 이동). 예약은 flushPendingMove 안에서 다시 읽으므로
+    //   그 사이 사용자가 계속 입력하면(onKeyDown 에서 취소) 이동하지 않는다.
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(flushPendingMove);
+    } else {
+      flushPendingMove();
+    }
   };
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     // 조합 중 Enter/Tab 으로 예약해 둔 이동은, 그 사이 '다른 키'(글자·삭제 등)를 누르면 취소한다 —
