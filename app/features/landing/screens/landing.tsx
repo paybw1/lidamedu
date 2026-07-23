@@ -358,10 +358,7 @@ export default function Landing({ loaderData }: Route.ComponentProps) {
       {faqGroups.length > 0 ? (
         <section className="band" id="faq">
           <div className="wrap">
-            <Reveal
-              className="shead"
-              style={{ justifyContent: "center", textAlign: "center" }}
-            >
+            <Reveal className="shead">
               <div>
                 <p className="eyebrow">자주 묻는 질문</p>
                 <h2>궁금한 점을 먼저 확인하세요</h2>
