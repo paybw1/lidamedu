@@ -82,9 +82,24 @@ function applyTokStyle(
 }
 
 const CROSS_CLEAR_MS = 1500;
-let crossPrev: { editor: HTMLElement; value: string } | null = null;
+// ★이월 방어는 슬롯 단위(에디터 단위 아님) — 같은 조문 안의 빈칸→빈칸 이동에서도 iOS 가
+//   직전 칸의 마지막 조합 음절을 다음 칸으로 딸려보내는 현상이 있어, 조문 경계뿐 아니라
+//   모든 슬롯 전환에서 방어한다.
+let crossPrev: { slot: HTMLElement; value: string } | null = null;
 let crossClear: { slot: HTMLElement; carried: string; until: number } | null =
   null;
+
+// carried 의 접미사와 val 의 접두사가 겹치는 최장 구간을 찾아 val 앞에서 제거.
+//   전체 이월("사회질서")·부분 이월(마지막 음절 "명")을 모두 처리. 겹침 없으면 null.
+function stripLeadingOverlap(val: string, carried: string): string | null {
+  const max = Math.min(val.length, carried.length);
+  for (let k = max; k >= 1; k--) {
+    if (val.slice(0, k) === carried.slice(carried.length - k)) {
+      return val.slice(k);
+    }
+  }
+  return null;
+}
 
 // 인라인 토큰 종류 → 세그먼트 kind(스타일 결정).
 type TokKind =
@@ -287,6 +302,9 @@ export function BlankFillViewV2({
   const savedRef = useRef<Set<number>>(new Set());
   // 한글 IME 조합 중 — 조합 중엔 캐럿 스냅·값 덮어쓰기 금지(조합 파괴 방지).
   const composingRef = useRef(false);
+  // 조합이 시작된 슬롯 — 조합 중 다른 칸을 터치하면 iOS 가 조합을 그 칸으로 옮겨(이월)
+  //   compositionend 가 다른 슬롯에서 발생한다. 시작≠종료 슬롯이면 이월로 판정해 제거.
+  const compStartSlotRef = useRef<HTMLElement | null>(null);
 
   const lines = useMemo(() => buildLines(body, blanks), [body, blanks]);
   const totalBlanks = blanks.length;
@@ -359,9 +377,9 @@ export function BlankFillViewV2({
     crossClear = null; // 한 번만 개입
     if (!carried) return false;
     const val = readSlot(slot);
-    if (!val.includes(carried)) return false;
-    const cleaned = val.split(carried).join("");
-    slot.textContent = cleaned.length ? cleaned : ZWSP;
+    const stripped = stripLeadingOverlap(val, carried);
+    if (stripped === null) return false;
+    slot.textContent = stripped.length ? stripped : ZWSP;
     setCaretEnd(slot);
     judgeSlot(slot, false);
     return true;
@@ -372,9 +390,9 @@ export function BlankFillViewV2({
     const answer = slot.dataset.answer ?? "";
     const val = readSlot(slot);
     valuesRef.current.set(idx, val);
-    // 마지막으로 입력된 슬롯 값 기억(다음 조문 이월 감지용).
-    if (val.length > 0 && editorRef.current) {
-      crossPrev = { editor: editorRef.current, value: val };
+    // 마지막으로 입력된 슬롯 값 기억(다음 칸 이월 감지용 — 슬롯 단위).
+    if (val.length > 0) {
+      crossPrev = { slot, value: val };
     }
     if (val.length === 0) {
       setSlotColor(slot, "neutral");
@@ -511,9 +529,18 @@ export function BlankFillViewV2({
       if (!anchor || !root.contains(anchor)) return; // 이 에디터 밖 — 무시
       const inSlot = isInSlot(anchor, root);
       if (inSlot) {
-        // ★다른 조문(에디터)에서 이 에디터의 슬롯으로 캐럿이 진입 = 조문 경계 넘음.
-        //   직전 입력 슬롯 값(carried)을 이월 방어 창으로 등록 → 딸려온 텍스트를 도착 후 제거.
-        if (crossPrev && crossPrev.editor !== root && crossPrev.value) {
+        // ★다른 조문(에디터)의 슬롯에서 이 에디터의 슬롯으로 캐럿이 진입 = 조문 경계 넘음
+        //   (커서 이동으로 넘어간 뒤 직전 값이 통째로 딸려오는 경우). 직전 슬롯 값을 이월
+        //   방어 창으로 등록. 같은 조문 안의 칸 전환은 여기서 arming 하지 않는다 — 정상 입력을
+        //   이월로 오인(첫 글자 겹침)할 수 있고, 같은 조문 내 이월은 compositionEnd 이월 감지가
+        //   조합이 실제로 다른 칸에서 끝났을 때만 정확히 처리한다.
+        const prevEditor = crossPrev?.slot.closest('[contenteditable="true"]');
+        if (
+          crossPrev &&
+          crossPrev.slot !== inSlot &&
+          prevEditor !== root &&
+          crossPrev.value
+        ) {
           crossClear = {
             slot: inSlot,
             carried: crossPrev.value,
@@ -619,12 +646,33 @@ export function BlankFillViewV2({
   };
   const onCompositionStart = () => {
     composingRef.current = true;
+    compStartSlotRef.current = slotFromSelection();
   };
   const onCompositionEnd = () => {
     composingRef.current = false;
     const slot = slotFromSelection();
+    const startSlot = compStartSlotRef.current;
+    compStartSlotRef.current = null;
     if (!slot) return;
-    // ★조문 경계 이월 = 딸려온 조합이 이 슬롯에서 끝남 → carried 텍스트 제거 후 종료.
+    // ★조합 중 다른 칸 터치로 조합이 이 슬롯으로 이월된 경우(시작 슬롯≠종료 슬롯) —
+    //   딸려온 접두(직전 칸 값의 접미)를 제거하고, 직전 칸 값은 복원한다.
+    if (startSlot && startSlot !== slot) {
+      const startIdx = Number(startSlot.dataset.blankIdx);
+      const carried = valuesRef.current.get(startIdx) ?? readSlot(startSlot);
+      if (carried) {
+        const stripped = stripLeadingOverlap(readSlot(slot), carried);
+        if (stripped !== null) {
+          slot.textContent = stripped.length ? stripped : ZWSP;
+        }
+        // 이월로 직전 칸의 마지막 음절이 빠졌을 수 있어 값 복원.
+        if (readSlot(startSlot) !== carried) startSlot.textContent = carried;
+        judgeSlot(startSlot, true);
+        setCaretEnd(slot);
+        judgeSlot(slot, true);
+        return;
+      }
+    }
+    // ★조문 경계/비조합 이월 = 딸려온 조합이 이 슬롯에서 끝남 → carried 텍스트 제거 후 종료.
     if (stripCarryIfGuarded(slot)) return;
     judgeSlot(slot, true);
   };
