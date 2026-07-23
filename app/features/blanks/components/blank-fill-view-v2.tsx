@@ -166,6 +166,12 @@ function linesHaveBlanks(ls: Line[]): boolean {
   return false;
 }
 
+// 본문 끝에 분리되지 않고 박힌 raw 관련조문 방주("法 200의2①" 등, 특허법 import 잔재).
+//   원래 뷰어(article-body)는 이를 추출해 관련조문 박스로 옮긴다 — 빈칸 문제에서는 관련조문을
+//   숨기므로 렌더에서 잘라낸다(끝부분이라 빈칸 좌표는 그대로).
+const TRAILING_LAW_REFS_RE =
+  /(?:[\s,·、，/]*法\s*\d+(?:의\d+)?[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮]*[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]*)+\s*$/;
+
 // 한 블록의 inline 을 리치 세그먼트로 — 토큰 종류별 스타일 유지 + 빈칸 자리(문자단위, 크로스토큰 안전).
 function buildInlineSegs(
   block: Block,
@@ -182,6 +188,9 @@ function buildInlineSegs(
   }
   const text = blockCumulativeText(block);
   if (text.length === 0) return [];
+  // 끝에 박힌 관련조문 방주는 렌더 대상에서 제외(빈칸은 그 앞이라 좌표 무관).
+  const trailing = TRAILING_LAW_REFS_RE.exec(text);
+  const renderLen = trailing ? trailing.index : text.length;
   // 문자별 토큰 종류.
   const typeAt: TokKind[] = new Array(text.length).fill("text");
   {
@@ -205,7 +214,7 @@ function buildInlineSegs(
   }
   const segs: Seg[] = [];
   let pos = 0;
-  while (pos < text.length) {
+  while (pos < renderLen) {
     const hit = hitStart.get(pos);
     if (hit) {
       const bi = blankByIdx.get(hit.blank.idx);
@@ -221,7 +230,7 @@ function buildInlineSegs(
     }
     const kind = typeAt[pos];
     let j = pos;
-    while (j < text.length && !hitStart.has(j) && typeAt[j] === kind) j++;
+    while (j < renderLen && !hitStart.has(j) && typeAt[j] === kind) j++;
     const s = text.slice(pos, j);
     if (s) segs.push({ t: "tok", kind, s });
     pos = j;
