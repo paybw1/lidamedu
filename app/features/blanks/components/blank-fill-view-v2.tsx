@@ -305,6 +305,10 @@ export function BlankFillViewV2({
   // 조합이 시작된 슬롯 — 조합 중 다른 칸을 터치하면 iOS 가 조합을 그 칸으로 옮겨(이월)
   //   compositionend 가 다른 슬롯에서 발생한다. 시작≠종료 슬롯이면 이월로 판정해 제거.
   const compStartSlotRef = useRef<HTMLElement | null>(null);
+  // ★이월 "흘려버리기" sink — 빈칸이 아닌 버리는 캐럿 자리. 다음 칸으로 이동하기 전에 캐럿을
+  //   여기 잠깐 들르게 하면, 조합 이월이 이 sink 에서 확정(compositionend)·폐기되고 다음 칸은
+  //   깨끗하게 안착한다. (SLOT_CLASS 아님 → 판정/드리프트 로직이 무시)
+  const sinkRef = useRef<HTMLElement | null>(null);
 
   const lines = useMemo(() => buildLines(body, blanks), [body, blanks]);
   const totalBlanks = blanks.length;
@@ -429,6 +433,29 @@ export function BlankFillViewV2({
     sel.addRange(range);
   };
 
+  // ★이월 흘려버리기 — 다음 칸으로 이동하기 전에 캐럿을 sink 에 잠깐 들르게 한다. 조합 이월이
+  //   있으면 sink 에서 확정(compositionend)·폐기되고, 다음 프레임에 목표 칸으로 깨끗하게 이동.
+  //   sink 없거나 이 에디터 밖 target 이면 그냥 바로 이동(안전한 폴백).
+  const drainToSink = () => {
+    const sink = sinkRef.current;
+    if (!sink) return;
+    sink.textContent = ZWSP;
+    caretToEnd(sink);
+  };
+  const focusViaSink = (target: HTMLElement) => {
+    const sink = sinkRef.current;
+    if (!sink || !target.isConnected) {
+      caretToEnd(target);
+      return;
+    }
+    drainToSink();
+    // 다음 프레임 — sink 로 흘러든 이월분 폐기 후 실제 칸으로.
+    requestAnimationFrame(() => {
+      sink.textContent = ZWSP;
+      caretToEnd(target);
+    });
+  };
+
   // ── DOM 빌드 (mount / reset / body 변경) ─────────────────────────────
   useEffect(() => {
     const root = editorRef.current;
@@ -511,6 +538,22 @@ export function BlankFillViewV2({
       }
       root.appendChild(lineEl);
     }
+    // ★이월 흘려버리기 sink — 편집 컨테이너 안의 비-빈칸 캐럿 자리(안 보이게, 1px). 칸 이동 시
+    //   여기 잠깐 들러 조합 이월을 확정·폐기시킨다. contentEditable 은 컨테이너에서 상속.
+    const sink = document.createElement("span");
+    sink.className = "blank-sink-v2";
+    sink.setAttribute("aria-hidden", "true");
+    sink.textContent = ZWSP;
+    sink.style.display = "inline-block";
+    sink.style.width = "1px";
+    sink.style.height = "1px";
+    sink.style.overflow = "hidden";
+    sink.style.opacity = "0";
+    sink.style.color = "transparent";
+    sink.style.caretColor = "transparent";
+    sink.style.verticalAlign = "bottom";
+    root.appendChild(sink);
+    sinkRef.current = sink;
     // ★deps=[resetKey]만 — 정답 저장(fetcher)·기타 revalidation 으로 body/blanks 참조가
     //   바뀌어도 편집 DOM(과 캐럿)을 재빌드하지 않는다. 조문/세트가 실제로 바뀌면 부모가
     //   key 로 remount 하므로 mount + 다시풀기에만 재빌드하면 충분. (lines 는 mount 시점 값 사용)
@@ -527,6 +570,10 @@ export function BlankFillViewV2({
       if (!sel || sel.rangeCount === 0 || !sel.isCollapsed) return;
       const anchor = sel.anchorNode;
       if (!anchor || !root.contains(anchor)) return; // 이 에디터 밖 — 무시
+      // sink(이월 흘려버리기 자리)에 캐럿이 있으면 스냅 금지 — 여기 잠깐 머물러 이월을
+      //   확정시킨 뒤 focusViaSink 가 목표 칸으로 옮긴다. 스냅하면 sink 가 무력화됨.
+      const sink = sinkRef.current;
+      if (sink && (sink === anchor || sink.contains(anchor))) return;
       const inSlot = isInSlot(anchor, root);
       if (inSlot) {
         // ★다른 조문(에디터)의 슬롯에서 이 에디터의 슬롯으로 캐럿이 진입 = 조문 경계 넘음
@@ -608,6 +655,12 @@ export function BlankFillViewV2({
         return;
       }
       const range = sel.getRangeAt(0);
+      // ★sink(이월 흘려버리기 자리) 안 편집은 허용 — 이월 조합이 sink 에서 확정돼야 다음 칸이
+      //   깨끗해진다. sink 는 슬롯이 아니라 아래 슬롯 가드에 걸리므로 먼저 통과시킨다.
+      const sink = sinkRef.current;
+      if (sink && (sink === range.startContainer || sink.contains(range.startContainer))) {
+        return;
+      }
       const startSlot = isInSlot(range.startContainer, root);
       const endSlot = isInSlot(range.endContainer, root);
       // 선택 양끝이 같은 슬롯 안이 아니면(고정 텍스트/컨테이너/두 슬롯 걸침) 모든 편집 차단.
@@ -689,10 +742,22 @@ export function BlankFillViewV2({
     const next = i < 0 ? slots[0] : slots[i + dir];
     if (next) {
       e.preventDefault();
-      caretToEnd(next);
+      // ★sink 경유 이동 — 조합 이월을 sink 에서 흘려버리고 다음 칸으로(키보드 Tab/Enter).
+      focusViaSink(next);
     } else if (e.key === "Enter") {
       e.preventDefault();
     }
+  };
+  // ★터치로 다른 곳을 누를 때(조합 중) — 브라우저가 탭 위치로 캐럿을 놓기 전에 sink 로 흘려
+  //   조합 이월을 sink 에서 확정·폐기시킨다. 조합 중이 아니면 개입 안 함(일반 탭 무영향).
+  const onPointerDownCapture = () => {
+    if (!composingRef.current) return;
+    const sink = sinkRef.current;
+    if (!sink) return;
+    drainToSink();
+    requestAnimationFrame(() => {
+      sink.textContent = ZWSP;
+    });
   };
 
   return (
@@ -749,6 +814,7 @@ export function BlankFillViewV2({
         onCompositionStart={onCompositionStart}
         onCompositionEnd={onCompositionEnd}
         onKeyDown={onKeyDown}
+        onPointerDownCapture={onPointerDownCapture}
         className="border-border bg-card focus-within:border-primary rounded-xl border p-4 text-[15px] whitespace-pre-wrap outline-none"
       />
     </div>
