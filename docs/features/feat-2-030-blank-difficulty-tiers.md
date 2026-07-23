@@ -81,11 +81,16 @@
 - **길이 캡(★결정)**: 구간이 너무 길면 수험생 부담 → **띄어쓰기(어절) 기준 최대 10어절**로 끊어 여러 구간으로 분할.
 - answer = 구간 원문. 기존 슬롯 인프라(긴 answer)로 렌더 가능.
 
-### 게이트 범위 (★결정 대기)
-- (A1) **조문 단위**(현재): 한 조문 하 통과 → 그 조문 중 열림.
-- (A2) **장/편 단위**: 특·상·디=제N장의 **모든 조문** 하 통과 → 그 장의 중 열림. 민법=제N편 단위.
-  - 필요: 조문→장/편 매핑(체계도/조문 계층), 스코프 내 전 조문 하-완료 집계.
-  - 강한 "장 클리어" 게임감. 단 breadth-first 강제(유연성↓).
+### 게이트 범위 (★결정: A2 장/편 단위, S4-B 구현 완료)
+- **장/편 단위**: 특·상·디=제N**장**(chapter)의, 민법=제N**편**(part)의 **빈칸 세트 있는 모든 조문**이
+  하(중) 통과해야 중(상) 해금. 세트 없는 조문은 모수 제외. "장 클리어" 게임감(동기부여).
+- 구현: `articles` 트리(level=part|chapter|section|article, path ltree)로 현재 조문→장 노드
+  (parentId walk)→그 장 모든 조문(path prefix, `descendantArticleIds` 패턴)→세트(getBlankSetsByArticleIds,
+  150 배치)→통과 집계(getTierCompletionsBySet). `getChapterTierGate`(tiers.server) → `ChapterTierGate`
+  (tiers.ts). article-viewer loader가 계산해 뷰어 prop `chapterGate`. 게이트 노드/세트 0이면 null →
+  세트 단위(tierUnlockState) 폴백. 완료 기록은 세트 단위 유지, 해금만 장 집계.
+- 뷰어: unlocked=chapterGate.unlocked, 잠긴 단계 힌트 "제N장 모든 조문의 X 통과 시 열림",
+  통과 배너에 장 진행률("하 5/12"). ★서버 tier-complete는 정답만 재검증(게이트 순서는 클라 UX).
 
 ### 민법 명사 자동(S3c)
 - 빈칸 미정의 조문: 문장 길이 비례로 명사 자동 선정 → 중 소스. AI/형태소 필요(별도 단계, 후속).

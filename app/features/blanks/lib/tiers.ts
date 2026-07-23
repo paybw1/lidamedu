@@ -76,6 +76,16 @@ export function nextTier(t: BlankTier): BlankTier | null {
   return t < 3 ? ((t + 1) as BlankTier) : null;
 }
 
+// feat-2-030 S4-B — 장/편 단위 게이트 상태(서버 계산, 뷰어 소비). 세트 있는 조문 모수 기준.
+export interface ChapterTierGate {
+  /** 장 단위 해금(하 항상 열림, 중=장 전체 하 통과, 상=장 전체 중 통과). */
+  unlocked: Record<BlankTier, boolean>;
+  totalSets: number;
+  tier1Sets: number; // 하 통과 세트 수
+  tier2Sets: number; // 중 통과 세트 수
+  chapterLabel: string | null;
+}
+
 // tier T 통과 시 함께 완료로 기록할 tier 목록(T 포함, 오름차순).
 //   ★상(3)은 단어가 아니라 구간(span) 빈칸이라 하/중과 집합이 다르다 → 하·중 통과가 상을
 //   자동 완료시키지 않는다. 하·중(단어 tier)끼리만, 빈칸 수가 같아 집합이 겹칠 때 자동 완료.

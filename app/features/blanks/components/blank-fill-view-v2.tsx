@@ -39,6 +39,7 @@ import {
   activeBlankIdxsForTier,
   BLANK_TIERS,
   type BlankTier,
+  type ChapterTierGate,
   nextTier,
   TIER_LABEL,
   tierBlankCounts,
@@ -377,6 +378,7 @@ export function BlankFillViewV2({
   lawCode,
   enableTiers = false,
   completedTiers,
+  chapterGate,
 }: {
   setId: string | null;
   autoMeta?: AutoBlankMeta;
@@ -387,16 +389,19 @@ export function BlankFillViewV2({
   // feat-2-030 — 난이도 계층(하/중/상). 커리큘럼된 내용 세트(setId)에서만 켠다.
   enableTiers?: boolean;
   completedTiers?: BlankTier[];
+  // feat-2-030 S4-B — 장/편 단위 게이트(있으면 해금을 세트 아닌 장 단위로).
+  chapterGate?: ChapterTierGate | null;
 }) {
   const tiersOn = enableTiers && !!setId;
   const [completed, setCompleted] = useState<Set<BlankTier>>(
     () => new Set(completedTiers ?? []),
   );
-  const unlocked = tierUnlockState(completed);
+  // 해금: 장 게이트가 있으면 장 단위(장 전체 통과), 없으면 세트 단위 폴백.
+  const unlocked = chapterGate?.unlocked ?? tierUnlockState(completed);
   const tierCounts = useMemo(() => tierBlankCounts(blanks), [blanks]);
   const [currentTier, setCurrentTier] = useState<BlankTier>(() => {
     const c = new Set(completedTiers ?? []);
-    const u = tierUnlockState(c);
+    const u = chapterGate?.unlocked ?? tierUnlockState(c);
     for (const t of BLANK_TIERS) if (u[t] && !c.has(t)) return t;
     return 3;
   });
@@ -1291,6 +1296,18 @@ export function BlankFillViewV2({
   const allDone =
     completed.has(1) && completed.has(2) && completed.has(3);
   const nt = nextTier(currentTier);
+  // 장 게이트 진행률(하/중) — 로컬 통과분 +1 보정(loader 값은 이번 통과 반영 전).
+  const chapterProgress = (tier: BlankTier): { done: number; total: number } | null => {
+    if (!chapterGate || (tier !== 1 && tier !== 2)) return null;
+    const base = tier === 1 ? chapterGate.tier1Sets : chapterGate.tier2Sets;
+    const newlyPassed =
+      completed.has(tier) && !(completedTiers ?? []).includes(tier);
+    return {
+      done: Math.min(chapterGate.totalSets, base + (newlyPassed ? 1 : 0)),
+      total: chapterGate.totalSets,
+    };
+  };
+  const gateLabel = chapterGate?.chapterLabel ?? "이 장";
 
   return (
     <div className="space-y-4">
@@ -1334,7 +1351,9 @@ export function BlankFillViewV2({
                   aria-pressed={isCur}
                   title={
                     isLocked
-                      ? "이전 단계를 통과하면 열립니다"
+                      ? chapterGate
+                        ? `${gateLabel} 모든 조문의 ${TIER_LABEL[(t - 1) as BlankTier]}를 통과하면 열립니다`
+                        : "이전 단계를 통과하면 열립니다"
                       : `${TIER_LABEL[t]} · 빈칸 ${tierCounts[t]}개`
                   }
                   className={cn(
@@ -1382,6 +1401,15 @@ export function BlankFillViewV2({
             >
               {TIER_LABEL[nt]} 단계 도전 <ArrowRightIcon className="size-3.5" />
             </Button>
+          ) : nt && chapterGate ? (
+            // 장 게이트 — 이 단계는 통과했지만 장 전체가 아직. 진행률 안내.
+            <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+              {gateLabel}의 다른 조문도 {TIER_LABEL[currentTier]}를 통과하면{" "}
+              {TIER_LABEL[nt]} 단계가 열립니다
+              {chapterProgress(currentTier)
+                ? ` · ${TIER_LABEL[currentTier]} ${chapterProgress(currentTier)!.done}/${chapterProgress(currentTier)!.total}`
+                : ""}
+            </span>
           ) : (
             <span className="font-semibold text-emerald-700 dark:text-emerald-300">
               🎉 이 조문 완전 암기 완료!

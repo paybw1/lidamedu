@@ -50,7 +50,10 @@ import { computePeriodBlanks } from "~/features/blanks/lib/period-blanks";
 import { computeSubjectBlanks } from "~/features/blanks/lib/subject-blanks";
 import { listBlankSetsByArticle } from "~/features/blanks/queries.server";
 import { getDueBlankSets } from "~/features/blanks/srs.server";
-import { getTierCompletionsBySet } from "~/features/blanks/tiers.server";
+import {
+  getChapterTierGate,
+  getTierCompletionsBySet,
+} from "~/features/blanks/tiers.server";
 import { listComments } from "~/features/comments/queries.server";
 import { ArticleBodyView } from "~/features/laws/components/article-body";
 import { ReadingControls } from "~/features/study/components/study-font-control";
@@ -336,6 +339,18 @@ export async function loader({ params, request }: Route.LoaderArgs) {
         blankSet.setId
       ] ?? [])
     : [];
+  // feat-2-030 S4-B — 장/편 단위 게이트. 특허·상표·디자인=장(chapter), 민법=편(part) 모수의
+  //   전체 세트가 하(중) 통과해야 중(상) 해금. tiers 플래그 + 세트 있을 때만 계산(추가 RTT 2).
+  const blankChapterGate =
+    blankTiersEnabled && blankSet
+      ? await getChapterTierGate(
+          client,
+          user.id,
+          articles,
+          article.articleId,
+          lawCode === "civil" ? "part" : "chapter",
+        )
+      : null;
 
   return {
     subject: LAW_SUBJECTS[lawCode],
@@ -376,6 +391,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     blankSet,
     blankTierCompletions,
     blankTiersEnabled,
+    blankChapterGate,
     staffRole,
     isAdmin: staffRole === "admin",
     currentUserId: user.id,
@@ -433,6 +449,7 @@ function ArticleViewerInner({
     blankSet,
     blankTierCompletions,
     blankTiersEnabled,
+    blankChapterGate,
     blankReviewNav,
     blankV2,
     filterScope,
@@ -1441,6 +1458,7 @@ function ArticleViewerInner({
                           lawCode={subject.slug}
                           enableTiers={blankTiersEnabled}
                           completedTiers={blankTierCompletions}
+                          chapterGate={blankChapterGate}
                         />
                       ) : (
                         <div className="border-border bg-card text-muted-foreground rounded-xl border py-10 text-center text-sm">
