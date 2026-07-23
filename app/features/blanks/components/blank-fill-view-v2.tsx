@@ -530,7 +530,8 @@ export function BlankFillViewV2({
         crossClear = null;
         return stop(id);
       }
-      if (composingRef.current) return; // 조합 진행 중 — settle 대기
+      // ★조합 중이어도 시도 — 이월은 "조합 중" 상태로 들어와 잠복하므로 settle 대기하면 영영
+      //   못 잡는다. stripLeadingOverlap 은 겹치는 이월분만 제거해 실입력은 보존.
       if (stripCarryIfGuarded(slot)) return stop(id);
     }, 60);
     arrivalSweepRef.current = id as unknown as number;
@@ -1101,9 +1102,38 @@ export function BlankFillViewV2({
       }
       return;
     }
-    const composing = (e.nativeEvent as InputEvent).isComposing === true;
-    // 조합이 아닌 이월(붙여넣기식 삽입 등)도 도착 후 제거.
-    if (!composing && stripCarryIfGuarded(slot)) return;
+    const ne = e.nativeEvent as InputEvent;
+    const composing = ne.isComposing === true;
+    const isDelete = (ne.inputType || "").toLowerCase().startsWith("delete");
+    // ★이월 도착 제거 — 조합 중이든 아니든 실행한다. iOS 이월은 "조합 중" 상태로 다음 칸에
+    //   들어오므로 !composing 게이트를 두면 영영 못 지운다(이번 버그의 핵심). 두 형태 처리:
+    //   (a) stripLeadingOverlap — 겹치는 이월분만 제거(실입력 보존).
+    //   (b) delete 로 재구현된 직전 답의 앞부분 조각(carried 의 prefix) — 통째로 비운다.
+    if (
+      crossClear &&
+      crossClear.slot === slot &&
+      typeof Date !== "undefined" &&
+      Date.now() < crossClear.until
+    ) {
+      const carried = crossClear.carried;
+      const val = readSlot(slot);
+      const overlap = val ? stripLeadingOverlap(val, carried) : null;
+      if (overlap !== null) {
+        slot.textContent = overlap.length ? overlap : ZWSP;
+        setCaretEnd(slot);
+        crossClear = null;
+        judgeSlot(slot, false);
+        if (!composing) maybeCompleteTier();
+        return;
+      }
+      if (isDelete && val && carried.startsWith(val)) {
+        // backspace 로 튀어나온 직전 답 조각 — 사용자 눈엔 빈 칸이었으므로 통째로 제거.
+        slot.textContent = ZWSP;
+        setCaretEnd(slot);
+        crossClear = null;
+        return;
+      }
+    }
     judgeSlot(slot, !composing);
     // 슬롯이 완전히 비면(모든 글자 삭제) 캐럿 안착용 ZWSP 복원 — inline-block 붕괴·캐럿
     //   유실 방지. 조합 중엔 건드리지 않는다.
