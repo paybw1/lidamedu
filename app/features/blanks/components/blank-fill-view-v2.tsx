@@ -11,7 +11,14 @@
 // P1 범위: 단일 조문 + 순수 텍스트 블록. 리치 토큰(관련조문 링크·표)은 평문으로 렌더(P2에서 보강).
 // DOM은 명령형으로 빌드해 React 재조정이 편집 중 DOM을 덮어쓰지 않게 한다(uncontrolled).
 
-import { ArrowRightIcon, CheckIcon, EyeIcon, LockIcon, RotateCcwIcon } from "lucide-react";
+import {
+  ArrowRightIcon,
+  CheckIcon,
+  EraserIcon,
+  EyeIcon,
+  LockIcon,
+  RotateCcwIcon,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "~/core/components/ui/button";
@@ -1083,6 +1090,27 @@ export function BlankFillViewV2({
     setResetKey((k) => k + 1);
   };
 
+  // ── 틀린 곳만 다시 — 맞힌 칸(초록)은 유지, 오답 칸만 비워 재도전. 첫 오답 칸으로 포커스.
+  //   DOM 을 재빌드하지 않고 슬롯만 직접 갱신(맞힌 칸 보존). 빈 칸은 그대로 둔다.
+  const resetWrongOnly = () => {
+    const root = editorRef.current;
+    if (!root) return;
+    setReveal(false);
+    let firstWrong: HTMLElement | null = null;
+    root.querySelectorAll<HTMLElement>(`.${SLOT_CLASS}`).forEach((slot) => {
+      const idx = Number(slot.dataset.blankIdx);
+      const answer = slot.dataset.answer ?? "";
+      const val = readSlot(slot);
+      if (val.length === 0) return; // 아직 안 푼 칸은 그대로
+      if (normalizeAnswer(val) === normalizeAnswer(answer)) return; // 맞힌 칸 유지
+      valuesRef.current.set(idx, "");
+      slot.textContent = ZWSP;
+      setSlotColor(slot, "neutral");
+      if (!firstWrong) firstWrong = slot;
+    });
+    if (firstWrong) caretToEnd(firstWrong);
+  };
+
   // ── 편집 이벤트 (컨테이너 위임) ─────────────────────────────────────
   const onInput = (e: React.FormEvent<HTMLDivElement>) => {
     const slot = slotFromSelection();
@@ -1374,6 +1402,16 @@ export function BlankFillViewV2({
           >
             <EyeIcon className="size-3.5" />
             {reveal ? "정답 숨기기" : "정답 모두 보기"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={resetWrongOnly}
+            className="h-7 gap-1 text-xs"
+            title="맞힌 칸은 그대로 두고 틀린 칸만 비웁니다"
+          >
+            <EraserIcon className="size-3.5" /> 틀린 곳만 다시
           </Button>
           <Button
             type="button"
