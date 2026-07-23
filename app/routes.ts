@@ -943,6 +943,11 @@ export default [
         "/admin/cohorts/:cohortId/stats",
         "features/admin/screens/admin-cohort-stats.tsx",
       ),
+      // 내 활동 — 내가 한 상담 코멘트·부여 과제 + 상대 반응 통합 뷰.
+      route(
+        "/admin/my-activity",
+        "features/admin/screens/admin-my-activity.tsx",
+      ),
       route("/admin/curricula", "features/admin/screens/admin-curricula.tsx"),
       route(
         "/admin/curricula/:curriculumId",

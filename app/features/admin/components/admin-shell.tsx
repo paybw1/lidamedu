@@ -21,6 +21,7 @@ import {
   PencilLineIcon,
   ScaleIcon,
   SearchIcon,
+  SendIcon,
   SettingsIcon,
   TrendingUpIcon,
   UserCogIcon,
@@ -45,6 +46,7 @@ export type AdminClusterId =
   | "lms"
   | "products"
   | "sales"
+  | "my-activity"
   | "students"
   | "cohorts"
   | "instructors"
@@ -199,6 +201,14 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "세트·번들", to: "/admin/book-bundles" },
       { label: "배송 관리", to: "/admin/shipments" },
     ],
+  },
+  {
+    // 내 활동 — 내가 학생/반에 한 조치(상담 코멘트·과제)와 상대 반응을 한곳에.
+    id: "my-activity",
+    section: "students",
+    label: "내 활동",
+    Icon: SendIcon,
+    screens: [{ label: "내 활동(상담·과제)", to: "/admin/my-activity" }],
   },
   {
     // 회원 관리 — 사람 축(수강생·강사·접속·탈퇴·위험군). 상품/종합반/매출과 분리.
