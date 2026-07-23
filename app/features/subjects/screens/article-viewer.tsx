@@ -50,6 +50,7 @@ import { computePeriodBlanks } from "~/features/blanks/lib/period-blanks";
 import { computeSubjectBlanks } from "~/features/blanks/lib/subject-blanks";
 import { listBlankSetsByArticle } from "~/features/blanks/queries.server";
 import { getDueBlankSets } from "~/features/blanks/srs.server";
+import { getTierCompletionsBySet } from "~/features/blanks/tiers.server";
 import { listComments } from "~/features/comments/queries.server";
 import { ArticleBodyView } from "~/features/laws/components/article-body";
 import { ReadingControls } from "~/features/study/components/study-font-control";
@@ -327,6 +328,13 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     tab: "articles",
   }).catch(() => {});
 
+  // feat-2-030 — 내용 빈칸 세트의 난이도 단계 통과 기록(하/중/상 게이트).
+  const blankTierCompletions = blankSet
+    ? ((await getTierCompletionsBySet(client, user.id, [blankSet.setId]))[
+        blankSet.setId
+      ] ?? [])
+    : [];
+
   return {
     subject: LAW_SUBJECTS[lawCode],
     axisCounts,
@@ -364,6 +372,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     qnaThreads,
     blankSets,
     blankSet,
+    blankTierCompletions,
     staffRole,
     isAdmin: staffRole === "admin",
     currentUserId: user.id,
@@ -419,6 +428,7 @@ function ArticleViewerInner({
     qnaThreads,
     blankSets,
     blankSet,
+    blankTierCompletions,
     blankReviewNav,
     blankV2,
     filterScope,
@@ -1425,6 +1435,8 @@ function ArticleViewerInner({
                           blanks={blankSet.blanks}
                           titleMap={titleMap}
                           lawCode={subject.slug}
+                          enableTiers
+                          completedTiers={blankTierCompletions}
                         />
                       ) : (
                         <div className="border-border bg-card text-muted-foreground rounded-xl border py-10 text-center text-sm">

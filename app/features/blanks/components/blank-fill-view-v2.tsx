@@ -11,10 +11,11 @@
 // P1 범위: 단일 조문 + 순수 텍스트 블록. 리치 토큰(관련조문 링크·표)은 평문으로 렌더(P2에서 보강).
 // DOM은 명령형으로 빌드해 React 재조정이 편집 중 DOM을 덮어쓰지 않게 한다(uncontrolled).
 
-import { EyeIcon, RotateCcwIcon } from "lucide-react";
+import { ArrowRightIcon, CheckIcon, EyeIcon, LockIcon, RotateCcwIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "~/core/components/ui/button";
+import { cn } from "~/core/lib/utils";
 import type { ArticleBody } from "~/features/laws/lib/article-body";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 import type { BlankItem } from "~/features/blanks/queries.server";
@@ -27,6 +28,15 @@ import {
   inlineTokenContent,
 } from "../lib/blank-layout";
 import { normalizeAnswer } from "../lib/normalize";
+import {
+  activeBlankIdxsForTier,
+  BLANK_TIERS,
+  type BlankTier,
+  nextTier,
+  TIER_LABEL,
+  tierBlankCounts,
+  tierUnlockState,
+} from "../lib/tiers";
 import type { AutoBlankMeta } from "./blanks-context";
 
 const ZWSP = "​";
@@ -68,8 +78,7 @@ function applyTokStyle(
       el.style.color = "#b45309";
       break;
     case "amendment":
-      el.style.color = "#94a3b8";
-      el.style.fontSize = "0.85em";
+      // 개정이력(<개정 …>·[전문개정 …])은 본문과 동일 폰트로 통일(작게/회색 강조 제거).
       break;
     case "ref":
       el.style.color = "var(--primary, #4f46e5)";
@@ -180,10 +189,13 @@ const TRAILING_LAW_REFS_RE =
   /(?:[\s,·、，/]*法\s*\d+(?:의\d+)?[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮]*[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]*)+\s*$/;
 
 // 한 블록의 inline 을 리치 세그먼트로 — 토큰 종류별 스타일 유지 + 빈칸 자리(문자단위, 크로스토큰 안전).
+//   activeIdxs = 슬롯으로 만들 빈칸 idx(난이도 단계). null 이면 전부 슬롯. 비활성 빈칸은 정답이
+//   본문 텍스트로 그대로 노출(가리지 않음).
 function buildInlineSegs(
   block: Block,
   hits: { blank: BlankItem; start: number; end: number }[],
   blankByIdx: Map<number, BlankItem>,
+  activeIdxs: ReadonlySet<number> | null,
 ): Seg[] {
   if (
     block.kind !== "clause" &&
@@ -221,10 +233,12 @@ function buildInlineSegs(
   for (let i = text.length - 2; i >= 0; i--) {
     if (!hidden[i] && hidden[i + 1] && isSep(text[i])) hidden[i] = true;
   }
-  // 빈칸 hit — 시작 위치 map + 덮인 구간.
+  // 빈칸 hit — 시작 위치 map + 덮인 구간. 비활성(상위 단계) 빈칸은 slot 을 만들지 않아
+  //   정답 텍스트가 그대로 노출된다.
   const hitStart = new Map<number, { blank: BlankItem; end: number }>();
   for (const h of hits) {
     if (h.start < 0) continue;
+    if (activeIdxs && !activeIdxs.has(h.blank.idx)) continue;
     const s = Math.max(0, Math.min(text.length, h.start));
     const e = Math.max(0, Math.min(text.length, h.end));
     if (!hitStart.has(s)) hitStart.set(s, { blank: h.blank, end: e });
@@ -266,7 +280,12 @@ function buildInlineSegs(
 }
 
 // body + blanks → 리치 라인. 블록 계층(라벨/소제목/들여쓰기) + 시행령 박스 컨텍스트 보존.
-function buildLines(body: ArticleBody, blanks: BlankItem[]): Line[] {
+//   activeIdxs = 슬롯으로 만들 빈칸 idx(난이도 단계). null 이면 전부 슬롯.
+function buildLines(
+  body: ArticleBody,
+  blanks: BlankItem[],
+  activeIdxs: ReadonlySet<number> | null,
+): Line[] {
   const blockHits = computeBlockBlankHits(body, blanks);
   const blankByIdx = new Map(blanks.map((b) => [b.idx, b]));
   const lines: Line[] = [];
@@ -321,7 +340,7 @@ function buildLines(body: ArticleBody, blanks: BlankItem[]): Line[] {
         ? block.subtitle
         : null;
     const hits = (blockHits.get(block) ?? []).slice().sort((a, b) => a.start - b.start);
-    const segs = buildInlineSegs(block, hits, blankByIdx);
+    const segs = buildInlineSegs(block, hits, blankByIdx, activeIdxs);
     if (segs.length > 0 || label || subtitle) {
       target.push({ depth, label, subtitle, segs });
     }
@@ -348,6 +367,8 @@ export function BlankFillViewV2({
   body,
   blanks,
   lawCode,
+  enableTiers = false,
+  completedTiers,
 }: {
   setId: string | null;
   autoMeta?: AutoBlankMeta;
@@ -355,7 +376,33 @@ export function BlankFillViewV2({
   blanks: BlankItem[];
   titleMap?: unknown;
   lawCode: LawSubjectSlug;
+  // feat-2-030 — 난이도 계층(하/중/상). 커리큘럼된 내용 세트(setId)에서만 켠다.
+  enableTiers?: boolean;
+  completedTiers?: BlankTier[];
 }) {
+  const tiersOn = enableTiers && !!setId;
+  const [completed, setCompleted] = useState<Set<BlankTier>>(
+    () => new Set(completedTiers ?? []),
+  );
+  const unlocked = tierUnlockState(completed);
+  const tierCounts = useMemo(() => tierBlankCounts(blanks), [blanks]);
+  const [currentTier, setCurrentTier] = useState<BlankTier>(() => {
+    const c = new Set(completedTiers ?? []);
+    const u = tierUnlockState(c);
+    for (const t of BLANK_TIERS) if (u[t] && !c.has(t)) return t;
+    return 3;
+  });
+  const [justPassed, setJustPassed] = useState(false);
+  const submittedTierRef = useRef<Set<BlankTier>>(new Set());
+  const answerByIdx = useMemo(
+    () => new Map(blanks.map((b) => [b.idx, b.answer ?? ""])),
+    [blanks],
+  );
+  const activeIdxs = useMemo(
+    () => (tiersOn ? activeBlankIdxsForTier(blanks, currentTier) : null),
+    [tiersOn, blanks, currentTier],
+  );
+
   const [reveal, setReveal] = useState(false);
   const [resetKey, setResetKey] = useState(0);
   const editorRef = useRef<HTMLDivElement>(null);
@@ -371,10 +418,14 @@ export function BlankFillViewV2({
   //   깨끗하게 안착한다. (SLOT_CLASS 아님 → 판정/드리프트 로직이 무시)
   const sinkRef = useRef<HTMLElement | null>(null);
 
-  const lines = useMemo(() => buildLines(body, blanks), [body, blanks]);
+  const lines = useMemo(
+    () => buildLines(body, blanks, activeIdxs),
+    [body, blanks, activeIdxs],
+  );
   const totalBlanks = blanks.length;
   const mappedCount = blanks.filter((b) => b.answer).length;
   const unmappedCount = totalBlanks - mappedCount;
+  const activeCount = activeIdxs ? activeIdxs.size : mappedCount;
 
   const readSlot = (slot: HTMLElement): string =>
     (slot.textContent ?? "").split(ZWSP).join("");
@@ -921,6 +972,52 @@ export function BlankFillViewV2({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── feat-2-030 난이도 단계 통과 ─────────────────────────────────────
+  //   현재 단계 활성 빈칸을 전부 맞히면 서버에 통과 요청(재검증) → 다음 단계 해금.
+  const submitTierComplete = (tier: BlankTier) => {
+    if (!tiersOn || !setId) return;
+    const active = activeBlankIdxsForTier(blanks, tier);
+    const answers: Record<string, string> = {};
+    for (const idx of active) answers[String(idx)] = valuesRef.current.get(idx) ?? "";
+    const fd = new FormData();
+    fd.set("setId", setId);
+    fd.set("tier", String(tier));
+    fd.set("answers", JSON.stringify(answers));
+    void fetch("/api/blanks/tier-complete", { method: "POST", body: fd })
+      .then((r) => r.json())
+      .then((j: { passed?: boolean; completedTiers?: number[] }) => {
+        if (!j?.passed) return;
+        setCompleted((prev) => {
+          const n = new Set(prev);
+          for (const t of j.completedTiers ?? [tier]) {
+            if (t === 1 || t === 2 || t === 3) n.add(t as BlankTier);
+          }
+          return n;
+        });
+        setJustPassed(true);
+      })
+      .catch(() => {});
+  };
+  const maybeCompleteTier = () => {
+    if (!tiersOn || !activeIdxs || activeIdxs.size === 0) return;
+    if (submittedTierRef.current.has(currentTier)) return;
+    for (const idx of activeIdxs) {
+      const ans = answerByIdx.get(idx) ?? "";
+      const val = valuesRef.current.get(idx) ?? "";
+      if (ans.length === 0 || normalizeAnswer(val) !== normalizeAnswer(ans)) return;
+    }
+    submittedTierRef.current.add(currentTier);
+    submitTierComplete(currentTier);
+  };
+  const changeTier = (t: BlankTier) => {
+    if (!unlocked[t] || t === currentTier) return;
+    submittedTierRef.current = new Set();
+    setJustPassed(false);
+    setReveal(false);
+    setCurrentTier(t);
+    setResetKey((k) => k + 1);
+  };
+
   // ── 편집 이벤트 (컨테이너 위임) ─────────────────────────────────────
   const onInput = (e: React.FormEvent<HTMLDivElement>) => {
     const slot = slotFromSelection();
@@ -935,6 +1032,7 @@ export function BlankFillViewV2({
       slot.textContent = ZWSP;
       setCaretEnd(slot);
     }
+    if (!composing) maybeCompleteTier();
   };
   const onCompositionStart = () => {
     composingRef.current = true;
@@ -961,12 +1059,14 @@ export function BlankFillViewV2({
         judgeSlot(startSlot, true);
         setCaretEnd(slot);
         judgeSlot(slot, true);
+        maybeCompleteTier();
         return;
       }
     }
     // ★조문 경계/비조합 이월 = 딸려온 조합이 이 슬롯에서 끝남 → carried 텍스트 제거 후 종료.
     if (stripCarryIfGuarded(slot)) return;
     judgeSlot(slot, true);
+    maybeCompleteTier();
   };
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== "Enter" && e.key !== "Tab") return;
@@ -1006,15 +1106,96 @@ export function BlankFillViewV2({
     });
   };
 
+  const allDone =
+    completed.has(1) && completed.has(2) && completed.has(3);
+  const nt = nextTier(currentTier);
+
   return (
     <div className="space-y-4">
+      {tiersOn ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-muted-foreground text-xs font-medium">난이도</span>
+          <div className="bg-muted inline-flex items-center rounded-lg p-[3px]">
+            {BLANK_TIERS.map((t) => {
+              const isCur = t === currentTier;
+              const isLocked = !unlocked[t];
+              const isDone = completed.has(t);
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  disabled={isLocked}
+                  onClick={() => changeTier(t)}
+                  aria-pressed={isCur}
+                  title={
+                    isLocked
+                      ? "이전 단계를 통과하면 열립니다"
+                      : `${TIER_LABEL[t]} · 빈칸 ${tierCounts[t]}개`
+                  }
+                  className={cn(
+                    "inline-flex h-7 items-center gap-1 rounded-md px-3 text-xs font-semibold transition-colors",
+                    isCur
+                      ? "bg-background text-link shadow-sm"
+                      : "text-muted-foreground",
+                    isLocked
+                      ? "cursor-not-allowed opacity-45"
+                      : "hover:text-foreground",
+                  )}
+                >
+                  {isLocked ? (
+                    <LockIcon className="size-3" />
+                  ) : isDone ? (
+                    <CheckIcon className="size-3 text-emerald-500" />
+                  ) : null}
+                  {TIER_LABEL[t]}
+                  <span className="tabular-nums opacity-60">
+                    {tierCounts[t]}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {allDone ? (
+            <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+              <CheckIcon className="size-3.5" /> 완전 암기
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+
+      {tiersOn && justPassed ? (
+        <div className="flex flex-wrap items-center gap-3 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs dark:border-emerald-700/50 dark:bg-emerald-950/30">
+          <span className="font-bold text-emerald-700 dark:text-emerald-300">
+            ✓ {TIER_LABEL[currentTier]} 단계 통과!
+          </span>
+          {nt && unlocked[nt] ? (
+            <Button
+              type="button"
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              onClick={() => changeTier(nt)}
+            >
+              {TIER_LABEL[nt]} 단계 도전 <ArrowRightIcon className="size-3.5" />
+            </Button>
+          ) : (
+            <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+              🎉 이 조문 완전 암기 완료!
+            </span>
+          )}
+        </div>
+      ) : null}
+
       <div className="bg-muted/40 flex flex-wrap items-center gap-3 rounded-md border border-dashed px-3 py-2 text-xs">
-        <span className="font-medium">총 빈칸 {totalBlanks}개</span>
+        <span className="font-medium">
+          {tiersOn
+            ? `${TIER_LABEL[currentTier]} 단계 · 빈칸 ${activeCount}개`
+            : `총 빈칸 ${totalBlanks}개`}
+        </span>
         <span className="text-muted-foreground">
           정답을 맞히면 초록색 · <kbd className="rounded border px-1">Enter</kbd>{" "}
           / <kbd className="rounded border px-1">Tab</kbd> 로 다음 빈칸
         </span>
-        {unmappedCount > 0 ? (
+        {!tiersOn && unmappedCount > 0 ? (
           <span className="text-muted-foreground">
             (정답 미입력 {unmappedCount}개)
           </span>

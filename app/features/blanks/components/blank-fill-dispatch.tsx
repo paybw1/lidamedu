@@ -4,12 +4,15 @@ import type { ArticleBody } from "~/features/laws/lib/article-body";
 import type { BlankItem } from "~/features/blanks/queries.server";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
+import type { BlankTier } from "../lib/tiers";
 import { BlankFillView } from "./blank-fill-view";
 import { BlankFillViewV2 } from "./blank-fill-view-v2";
 import type { AutoBlankMeta } from "./blanks-context";
 
 export function BlankFill({
   v2,
+  enableTiers,
+  completedTiers,
   ...rest
 }: {
   v2: boolean;
@@ -19,6 +22,17 @@ export function BlankFill({
   blanks: BlankItem[];
   titleMap: Map<string, string>;
   lawCode: LawSubjectSlug;
+  // feat-2-030 — 난이도 계층(V2 전용). 구 모델은 무시.
+  enableTiers?: boolean;
+  completedTiers?: BlankTier[];
 }) {
-  return v2 ? <BlankFillViewV2 {...rest} /> : <BlankFillView {...rest} />;
+  return v2 ? (
+    <BlankFillViewV2
+      {...rest}
+      enableTiers={enableTiers}
+      completedTiers={completedTiers}
+    />
+  ) : (
+    <BlankFillView {...rest} />
+  );
 }
