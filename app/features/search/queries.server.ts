@@ -7,7 +7,7 @@ import type { Database } from "database.types";
 import { articleDisplayPrefix, articleSlug } from "~/features/laws/lib/identifier";
 
 export interface SearchHit {
-  group: "article" | "case" | "problem" | "memo" | "bookmark";
+  group: "article" | "case" | "problem" | "qna" | "memo" | "bookmark";
   id: string;
   primaryLabel: string;
   secondaryLabel: string | null;
@@ -21,6 +21,7 @@ export interface SearchResults {
   articles: SearchHit[];
   cases: SearchHit[];
   problems: SearchHit[];
+  qna: SearchHit[];
   memos: SearchHit[];
   bookmarks: SearchHit[];
 }
@@ -141,6 +142,7 @@ export async function runGlobalSearch(
     articles: [],
     cases: [],
     problems: [],
+    qna: [],
     memos: [],
     bookmarks: [],
   };
@@ -326,6 +328,38 @@ export async function runGlobalSearch(
     return hits;
   }
 
+  // 질의응답(qna_threads) — 제목 / (full 범위) 질문·답변 본문. RLS 로 공개 스레드만.
+  async function fetchQna(): Promise<SearchHit[]> {
+    let query = client
+      .from("qna_threads")
+      .select("thread_id, title, question_md, answer_md, display_no, status")
+      .is("deleted_at", null);
+    query =
+      scope === "full"
+        ? query.or(
+            `title.ilike.${pattern},question_md.ilike.${pattern},answer_md.ilike.${pattern}`,
+          )
+        : query.ilike("title", pattern);
+    const { data } = await query
+      .order("updated_at", { ascending: false })
+      .limit(GROUP_LIMIT);
+    const list = data ?? [];
+    if (list.length === 0) return [];
+    return list.map((t): SearchHit => ({
+      group: "qna",
+      id: t.thread_id,
+      primaryLabel: t.title?.trim() || snippet(t.question_md, 60) || "질의응답",
+      secondaryLabel: t.display_no ? `Q-${t.display_no}` : null,
+      bodySnippet:
+        scope === "full"
+          ? (matchSnippet(q, [t.question_md, t.answer_md]) ??
+            snippet(t.question_md, 80))
+          : snippet(t.question_md, 80),
+      href: `/qna/${t.thread_id}`,
+      lawCode: null,
+    }));
+  }
+
   // 본인 메모 — body_md / snippet.
   async function fetchMemos(): Promise<SearchHit[]> {
     if (!userId) return [];
@@ -383,14 +417,15 @@ export async function runGlobalSearch(
     );
   }
 
-  const [articles, cases, problems, memos, bookmarks] = await Promise.all([
+  const [articles, cases, problems, qna, memos, bookmarks] = await Promise.all([
     fetchArticles(),
     fetchCases(),
     fetchProblems(),
+    fetchQna(),
     fetchMemos(),
     fetchBookmarks(),
   ]);
-  return { query: q, articles, cases, problems, memos, bookmarks };
+  return { query: q, articles, cases, problems, qna, memos, bookmarks };
 }
 
 // 메모/즐겨찾기 의 target → 부모 entity 의 viewer href 매핑.

@@ -8,6 +8,7 @@ import {
   FileTextIcon,
   GavelIcon,
   ListChecksIcon,
+  MessageCircleQuestionIcon,
   SearchIcon,
   StickyNoteIcon,
   Trash2Icon,
@@ -27,7 +28,7 @@ import {
 } from "~/core/components/ui/command";
 
 interface SearchHit {
-  group: "article" | "case" | "problem" | "memo" | "bookmark";
+  group: "article" | "case" | "problem" | "qna" | "memo" | "bookmark";
   id: string;
   primaryLabel: string;
   secondaryLabel: string | null;
@@ -47,6 +48,7 @@ interface SearchResults {
   articles: SearchHit[];
   cases: SearchHit[];
   problems: SearchHit[];
+  qna: SearchHit[];
   memos: SearchHit[];
   bookmarks: SearchHit[];
   recentSearches: RecentSearch[];
@@ -59,6 +61,7 @@ const GROUP_META: Record<
   article: { label: "조문", icon: BookOpenIcon },
   case: { label: "판례", icon: GavelIcon },
   problem: { label: "객관식 문제", icon: ListChecksIcon },
+  qna: { label: "질의응답", icon: MessageCircleQuestionIcon },
   memo: { label: "메모", icon: StickyNoteIcon },
   bookmark: { label: "즐겨찾기", icon: BookmarkIcon },
 };
@@ -155,6 +158,7 @@ export function CommandPalette() {
       results.articles.length +
         results.cases.length +
         results.problems.length +
+        results.qna.length +
         results.memos.length +
         results.bookmarks.length >
       0
@@ -308,6 +312,7 @@ function Groups({
     { key: "article", items: results.articles },
     { key: "case", items: results.cases },
     { key: "problem", items: results.problems },
+    { key: "qna", items: results.qna },
     { key: "memo", items: results.memos },
     { key: "bookmark", items: results.bookmarks },
   ];
