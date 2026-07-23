@@ -12,7 +12,7 @@
 // DOM은 명령형으로 빌드해 React 재조정이 편집 중 DOM을 덮어쓰지 않게 한다(uncontrolled).
 
 import { ArrowRightIcon, CheckIcon, EyeIcon, LockIcon, RotateCcwIcon } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "~/core/components/ui/button";
 import { cn } from "~/core/lib/utils";
@@ -422,6 +422,21 @@ export function BlankFillViewV2({
   // ★IME flush 용 throwaway <input>(편집영역 밖). 칸 이동 시 여기로 잠깐 포커스를 옮겨 iOS 조합을
   //   직전 칸에 확정·종료시킨다(조합 버퍼가 다음 칸으로 딸려오는 것을 원천 차단).
   const flushInputRef = useRef<HTMLInputElement>(null);
+  // ── 디버그(?imedebug=1) — iPad 이월 실제 이벤트 시퀀스 관찰용 온스크린 로그.
+  const imeDebugRef = useRef(false);
+  const [imeDebug, setImeDebug] = useState(false);
+  const [dbgLines, setDbgLines] = useState<string[]>([]);
+  useEffect(() => {
+    const on =
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("imedebug") === "1";
+    imeDebugRef.current = on;
+    setImeDebug(on);
+  }, []);
+  const pushDbg = useCallback((s: string) => {
+    if (!imeDebugRef.current) return;
+    setDbgLines((prev) => [...prev.slice(-18), s]);
+  }, []);
 
   const lines = useMemo(
     () => buildLines(body, blanks, activeIdxs),
@@ -979,6 +994,9 @@ export function BlankFillViewV2({
         return;
       }
       const it = (e.inputType || "").toLowerCase();
+      pushDbg(
+        `beforeinput ${it} comp=${e.isComposing} val="${readSlot(startSlot)}"`,
+      );
       // ★★iPad 이월 근본 차단 — "조합 중(isComposing) + 실제 내용이 빈 슬롯에서 삭제".
       //   iOS 는 직전 칸 조합을 버퍼에 물고 있다가, 다음(빈) 칸에서 backspace 를 누르는 순간
       //   그 버퍼를 이 칸에 재구현(직전 답이 튀어나옴)한다. 빈 슬롯 삭제는 원래 no-op 이므로,
@@ -1105,6 +1123,7 @@ export function BlankFillViewV2({
     const ne = e.nativeEvent as InputEvent;
     const composing = ne.isComposing === true;
     const isDelete = (ne.inputType || "").toLowerCase().startsWith("delete");
+    pushDbg(`input ${ne.inputType} comp=${composing} val="${readSlot(slot)}"`);
     // ★이월 도착 제거 — 조합 중이든 아니든 실행한다. iOS 이월은 "조합 중" 상태로 다음 칸에
     //   들어오므로 !composing 게이트를 두면 영영 못 지운다(이번 버그의 핵심). 두 형태 처리:
     //   (a) stripLeadingOverlap — 겹치는 이월분만 제거(실입력 보존).
@@ -1146,11 +1165,15 @@ export function BlankFillViewV2({
   const onCompositionStart = () => {
     composingRef.current = true;
     compStartSlotRef.current = slotFromSelection();
+    pushDbg("compStart");
   };
   const onCompositionEnd = () => {
     composingRef.current = false;
     const slot = slotFromSelection();
     const startSlot = compStartSlotRef.current;
+    pushDbg(
+      `compEnd val="${slot ? readSlot(slot) : "∅"}" drift=${!!(startSlot && startSlot !== slot)}`,
+    );
     compStartSlotRef.current = null;
     if (!slot) return;
     // ★조합 중 다른 칸 터치로 조합이 이 슬롯으로 이월된 경우(시작 슬롯≠종료 슬롯) —
@@ -1180,6 +1203,26 @@ export function BlankFillViewV2({
     maybeCompleteTier();
   };
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    // ★★iPad 이월 원천 차단(핵심) — "빈 슬롯에서 Backspace" 를 keydown 에서 취소한다.
+    //   iOS 는 직전 칸 조합을 버퍼에 물고 있다가 backspace(삭제) 가 있을 때만 이 칸에 한 음절씩
+    //   뱉어낸다(직전 답이 backspace마다 나타남). 빈 칸 backspace 는 원래 지울 게 없어 no-op 이므로,
+    //   keydown 에서 기본동작을 막으면 iOS 가 버퍼를 뱉을 기회 자체가 사라진다. keydown 은
+    //   beforeinput 보다 확실히 취소된다. 실제 입력이 있는 칸(readSlot 비어있지 않음)은 통과.
+    const isBackspace =
+      e.key === "Backspace" || e.keyCode === 8 || e.which === 8;
+    if (isBackspace) {
+      const curSlot = slotFromSelection();
+      pushDbg(
+        `keydown BS key=${e.key} code=${e.keyCode} comp=${composingRef.current} val="${curSlot ? readSlot(curSlot) : "∅"}"`,
+      );
+      if (curSlot && readSlot(curSlot) === "") {
+        e.preventDefault();
+        if (curSlot.textContent !== ZWSP) curSlot.textContent = ZWSP;
+        setCaretEnd(curSlot);
+        return;
+      }
+      return;
+    }
     if (e.key !== "Enter" && e.key !== "Tab") return;
     const cur = slotFromSelection();
     // ★문서 전체 빈칸을 읽기 순서로 — 한 조문의 마지막 칸에서 Tab/Enter 면 다음 조문
@@ -1259,6 +1302,46 @@ export function BlankFillViewV2({
           zIndex: -1,
         }}
       />
+      {imeDebug ? (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            maxHeight: "40vh",
+            overflowY: "auto",
+            background: "rgba(0,0,0,0.88)",
+            color: "#7CFC00",
+            font: "11px/1.4 monospace",
+            padding: "6px 8px",
+            zIndex: 99999,
+            whiteSpace: "pre-wrap",
+          }}
+        >
+          <div style={{ color: "#fff", fontWeight: 700 }}>
+            IME DEBUG (최신이 아래) · 지우려면 화면 탭
+          </div>
+          <button
+            type="button"
+            onClick={() => setDbgLines([])}
+            style={{
+              color: "#fff",
+              background: "#333",
+              border: "1px solid #666",
+              borderRadius: 4,
+              padding: "1px 8px",
+              margin: "2px 0",
+              fontSize: 11,
+            }}
+          >
+            지우기
+          </button>
+          {dbgLines.map((l, i) => (
+            <div key={i}>{l}</div>
+          ))}
+        </div>
+      ) : null}
       {tiersOn ? (
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-muted-foreground text-xs font-medium">난이도</span>
