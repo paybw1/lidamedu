@@ -195,9 +195,6 @@ function buildInlineSegs(
   }
   const text = blockCumulativeText(block);
   if (text.length === 0) return [];
-  // 끝에 박힌 관련조문 방주는 렌더 대상에서 제외(빈칸은 그 앞이라 좌표 무관).
-  const trailing = TRAILING_LAW_REFS_RE.exec(text);
-  const renderLen = trailing ? trailing.index : text.length;
   // 문자별 토큰 종류.
   const typeAt: TokKind[] = new Array(text.length).fill("text");
   {
@@ -211,6 +208,19 @@ function buildInlineSegs(
       pos += c.length;
     }
   }
+  // ★관련조문(法 …) 숨김 — 빈칸 문제에서는 표시하지 않는다. 두 형태 모두 처리:
+  //   (a) ref_article/ref_law 토큰("法 207①", "法 52②본문" 등, tokKind "ref")
+  //   (b) 텍스트에 박힌 끝부분 raw 방주("… <개정>法 200의2①")
+  //   위치 무관(뒤에 amendment_note 가 붙어도 됨) + 인접 구분자(,·、，/ 공백)까지 정리.
+  const hidden = new Array(text.length).fill(false);
+  for (let i = 0; i < text.length; i++) if (typeAt[i] === "ref") hidden[i] = true;
+  const trailing = TRAILING_LAW_REFS_RE.exec(text);
+  if (trailing) for (let i = trailing.index; i < text.length; i++) hidden[i] = true;
+  const isSep = (ch: string) => /[\s,·、，/]/.test(ch);
+  // 숨긴 구간에 인접(왼쪽)한 구분자도 숨겨 댕글링 ", " 를 없앤다.
+  for (let i = text.length - 2; i >= 0; i--) {
+    if (!hidden[i] && hidden[i + 1] && isSep(text[i])) hidden[i] = true;
+  }
   // 빈칸 hit — 시작 위치 map + 덮인 구간.
   const hitStart = new Map<number, { blank: BlankItem; end: number }>();
   for (const h of hits) {
@@ -221,7 +231,7 @@ function buildInlineSegs(
   }
   const segs: Seg[] = [];
   let pos = 0;
-  while (pos < renderLen) {
+  while (pos < text.length) {
     const hit = hitStart.get(pos);
     if (hit) {
       const bi = blankByIdx.get(hit.blank.idx);
@@ -235,11 +245,21 @@ function buildInlineSegs(
       pos = Math.max(pos + 1, hit.end);
       continue;
     }
+    // 같은 종류 + 같은 숨김상태 구간 묶기.
     const kind = typeAt[pos];
+    const h = hidden[pos];
     let j = pos;
-    while (j < renderLen && !hitStart.has(j) && typeAt[j] === kind) j++;
-    const s = text.slice(pos, j);
-    if (s) segs.push({ t: "tok", kind, s });
+    while (
+      j < text.length &&
+      !hitStart.has(j) &&
+      typeAt[j] === kind &&
+      hidden[j] === h
+    )
+      j++;
+    if (!h) {
+      const s = text.slice(pos, j);
+      if (s) segs.push({ t: "tok", kind, s });
+    }
     pos = j;
   }
   return segs;
@@ -657,7 +677,13 @@ export function BlankFillViewV2({
         if (seg.t === "tok") {
           const s = document.createElement("span");
           s.contentEditable = "false";
-          s.textContent = seg.s;
+          // 인라인 강조 라벨은 원래 뷰어처럼 괄호 자동 추가: subtitle→(X), annotation→[X].
+          s.textContent =
+            seg.kind === "subtitle"
+              ? `(${seg.s})`
+              : seg.kind === "annotation"
+                ? `[${seg.s}]`
+                : seg.s;
           applyTokStyle(s, seg.kind);
           lineEl.appendChild(s);
         } else {
