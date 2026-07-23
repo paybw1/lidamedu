@@ -353,7 +353,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
           user.id,
           articles,
           article.articleId,
-          lawCode === "civil" ? "part" : "chapter",
+          "chapter", // 모든 과목 장(章) 단위(민법 편은 조문이 수백 개라 너무 큼 → 장으로 좁힘)
         )
       : null;
 
