@@ -669,11 +669,13 @@ export function BlankFillViewV2({
         return;
       }
       const it = (e.inputType || "").toLowerCase();
-      // 삭제는 슬롯 안에서만 — 선행 ZWSP 앵커(idx 0)는 지우지 않고, 슬롯 끝을 넘지 않는다.
+      // 삭제는 슬롯 안에서만 — 슬롯 맨 앞(off 0)에서의 backspace 만 차단(앞 고정 텍스트 침범
+      //   방지). ZWSP 앵커 위치에 의존하지 않는다(글자가 ZWSP 앞에 들어가는 경우가 있어
+      //   off<=1 로 막으면 첫 글자가 안 지워짐). 빈 슬롯은 onInput 이 ZWSP 로 복원.
       if (it.startsWith("delete") && sel.isCollapsed && !composingRef.current) {
         const off = caretOffsetInSlot(startSlot, range);
         const rawLen = (startSlot.textContent ?? "").length;
-        if (it.includes("backward") && off <= 1) {
+        if (it.includes("backward") && off === 0) {
           e.preventDefault();
           return;
         }
@@ -696,6 +698,12 @@ export function BlankFillViewV2({
     // 조합이 아닌 이월(붙여넣기식 삽입 등)도 도착 후 제거.
     if (!composing && stripCarryIfGuarded(slot)) return;
     judgeSlot(slot, !composing);
+    // 슬롯이 완전히 비면(모든 글자 삭제) 캐럿 안착용 ZWSP 복원 — inline-block 붕괴·캐럿
+    //   유실 방지. 조합 중엔 건드리지 않는다.
+    if (!composing && slot.textContent === "") {
+      slot.textContent = ZWSP;
+      setCaretEnd(slot);
+    }
   };
   const onCompositionStart = () => {
     composingRef.current = true;
