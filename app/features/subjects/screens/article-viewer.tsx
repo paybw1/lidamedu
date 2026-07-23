@@ -286,6 +286,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   // feat-4-A-130b — 빈칸 V2(단일 contenteditable) 정식 전환(2026-07-22). 이제 기본값이며,
   //   ?blankv1=1 이면 구 모델(input)로 롤백. iOS IME 이월 근본 해결(단일 host + 도착 후 clear).
   const legacyBlankParam = reqUrl.searchParams.get("blankv1") === "1";
+  // feat-2-030 — 난이도 계층(하/중/상)은 검증 기간 동안 ?tiers=1 플래그 뒤에만 노출.
+  const blankTiersEnabled = reqUrl.searchParams.get("tiers") === "1";
   let blankReviewNav: { remaining: number; nextHref: string | null } | null =
     null;
   if (blankReviewParam) {
@@ -373,6 +375,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     blankSets,
     blankSet,
     blankTierCompletions,
+    blankTiersEnabled,
     staffRole,
     isAdmin: staffRole === "admin",
     currentUserId: user.id,
@@ -429,6 +432,7 @@ function ArticleViewerInner({
     blankSets,
     blankSet,
     blankTierCompletions,
+    blankTiersEnabled,
     blankReviewNav,
     blankV2,
     filterScope,
@@ -1435,7 +1439,7 @@ function ArticleViewerInner({
                           blanks={blankSet.blanks}
                           titleMap={titleMap}
                           lawCode={subject.slug}
-                          enableTiers
+                          enableTiers={blankTiersEnabled}
                           completedTiers={blankTierCompletions}
                         />
                       ) : (
