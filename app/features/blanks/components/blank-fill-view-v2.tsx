@@ -446,6 +446,14 @@ export function BlankFillViewV2({
   // ★IME flush 용 throwaway <input>(편집영역 밖). 칸 이동 시 여기로 잠깐 포커스를 옮겨 iOS 조합을
   //   직전 칸에 확정·종료시킨다(조합 버퍼가 다음 칸으로 딸려오는 것을 원천 차단).
   const flushInputRef = useRef<HTMLInputElement>(null);
+  // ★조합 중 Enter/Tab 이동을 미뤄두는 예약 슬롯 — 조합(marked text)이 살아있는 채로 caret 을
+  //   옮기면 iOS 가 조합을 다음 칸으로 이월(재조합)한다. Lexical/Slate/ProseMirror 처럼 "조합 중엔
+  //   caret 을 옮기지 않고 compositionend(조합 확정) 직후 이동"하는 게 iOS IME 동작과 정합.
+  //   at=예약 시각(확정이 곧 오지 않으면=계속 입력 중이면 만료·취소).
+  const pendingMoveRef = useRef<{ target: HTMLElement; at: number } | null>(
+    null,
+  );
+  const PENDING_MOVE_MAX_MS = 1200;
 
   const lines = useMemo(
     () => buildLines(body, effectiveBlanks, activeIdxs),
@@ -654,6 +662,20 @@ export function BlankFillViewV2({
       if (sink) sink.textContent = ZWSP;
       land();
     });
+  };
+
+  // ★조합 확정(compositionend) 직후 예약된 이동 실행 — 이 시점엔 marked text 가 사라져
+  //   caret 을 옮겨도 이월이 없다(조합 중 이동 금지의 짝). 예약이 너무 오래됐으면(계속 입력 중)
+  //   버린다. host.focus 는 caretToEnd 안에서 수행.
+  const flushPendingMove = () => {
+    const pm = pendingMoveRef.current;
+    if (!pm) return;
+    pendingMoveRef.current = null;
+    if (typeof Date !== "undefined" && Date.now() - pm.at > PENDING_MOVE_MAX_MS)
+      return;
+    if (!pm.target.isConnected) return;
+    caretToEnd(pm.target);
+    scrollBlankIntoViewIfNeeded(pm.target);
   };
 
   // ── DOM 빌드 (mount / reset / body 변경) ─────────────────────────────
@@ -1203,37 +1225,47 @@ export function BlankFillViewV2({
   };
   const onCompositionEnd = () => {
     composingRef.current = false;
-    const slot = slotFromSelection();
-    const startSlot = compStartSlotRef.current;
-    compStartSlotRef.current = null;
-    if (!slot) return;
-    // ★조합 중 다른 칸 터치로 조합이 이 슬롯으로 이월된 경우(시작 슬롯≠종료 슬롯) —
-    //   딸려온 접두(직전 칸 값의 접미)를 제거하고, 직전 칸 값은 복원한다.
-    if (startSlot && startSlot !== slot) {
-      const startIdx = Number(startSlot.dataset.blankIdx);
-      const carried = valuesRef.current.get(startIdx) ?? readSlot(startSlot);
-      if (carried) {
-        const stripped = stripLeadingOverlap(readSlot(slot), carried);
-        if (stripped !== null) {
-          slot.textContent = stripped.length ? stripped : ZWSP;
+    // 기존 조합-확정 처리(이월 드리프트/스트립/판정) — 조기 return 있으므로 IIFE 로 감싼다.
+    (() => {
+      const slot = slotFromSelection();
+      const startSlot = compStartSlotRef.current;
+      compStartSlotRef.current = null;
+      if (!slot) return;
+      // ★조합 중 다른 칸 터치로 조합이 이 슬롯으로 이월된 경우(시작 슬롯≠종료 슬롯) —
+      //   딸려온 접두(직전 칸 값의 접미)를 제거하고, 직전 칸 값은 복원한다.
+      if (startSlot && startSlot !== slot) {
+        const startIdx = Number(startSlot.dataset.blankIdx);
+        const carried = valuesRef.current.get(startIdx) ?? readSlot(startSlot);
+        if (carried) {
+          const stripped = stripLeadingOverlap(readSlot(slot), carried);
+          if (stripped !== null) {
+            slot.textContent = stripped.length ? stripped : ZWSP;
+          }
+          // 이월로 직전 칸의 마지막 음절이 빠졌을 수 있어 값 복원.
+          if (readSlot(startSlot) !== carried) startSlot.textContent = carried;
+          judgeSlot(startSlot, true);
+          setCaretEnd(slot);
+          judgeSlot(slot, true);
+          // 드리프트로 이 슬롯을 이미 정리했으니 도착-가드/스위퍼는 해제(중복 개입 방지).
+          if (crossClear && crossClear.slot === slot) crossClear = null;
+          maybeCompleteTier();
+          return;
         }
-        // 이월로 직전 칸의 마지막 음절이 빠졌을 수 있어 값 복원.
-        if (readSlot(startSlot) !== carried) startSlot.textContent = carried;
-        judgeSlot(startSlot, true);
-        setCaretEnd(slot);
-        judgeSlot(slot, true);
-        // 드리프트로 이 슬롯을 이미 정리했으니 도착-가드/스위퍼는 해제(중복 개입 방지).
-        if (crossClear && crossClear.slot === slot) crossClear = null;
-        maybeCompleteTier();
-        return;
       }
-    }
-    // ★조문 경계/비조합 이월 = 딸려온 조합이 이 슬롯에서 끝남 → carried 텍스트 제거 후 종료.
-    if (stripCarryIfGuarded(slot)) return;
-    judgeSlot(slot, true);
-    maybeCompleteTier();
+      // ★조문 경계/비조합 이월 = 딸려온 조합이 이 슬롯에서 끝남 → carried 텍스트 제거 후 종료.
+      if (stripCarryIfGuarded(slot)) return;
+      judgeSlot(slot, true);
+      maybeCompleteTier();
+    })();
+    // ★조합이 확정된 "지금"이 다음 칸으로 이동할 안전한 시점 — marked text 없음. (조합 중 Enter/Tab
+    //   으로 예약해 둔 이동을 여기서 실행. 근본 원인=조합 중 caret 이동을 이 시점으로 미룸.)
+    flushPendingMove();
   };
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    // 조합 중 Enter/Tab 으로 예약해 둔 이동은, 그 사이 '다른 키'(글자·삭제 등)를 누르면 취소한다 —
+    //   사용자가 계속 입력 중이면 이동 의도가 아니고, compositionend 지연으로 캐럿이 늦게 튀는 것 방지.
+    //   Enter/Tab 은 예약을 설정/유지하므로 제외.
+    if (e.key !== "Enter" && e.key !== "Tab") pendingMoveRef.current = null;
     // ★★iPad 이월 원천 차단(핵심) — "빈 슬롯에서 Backspace" 를 keydown 에서 취소한다.
     //   iOS 는 직전 칸 조합을 버퍼에 물고 있다가 backspace(삭제) 가 있을 때만 이 칸에 한 음절씩
     //   뱉어낸다(직전 답이 backspace마다 나타남). 빈 칸 backspace 는 원래 지울 게 없어 no-op 이므로,
@@ -1263,9 +1295,14 @@ export function BlankFillViewV2({
     const next = i < 0 ? slots[0] : slots[i + dir];
     if (next) {
       e.preventDefault();
-      // ★Tab/Enter 이동 시 직전 칸 값을 "도착 후 제거" 창에 등록 — iOS 가 다음 칸으로 조합을
-      //   이월시켜도(sink 로도 못 막는 케이스) 도착 즉시 stripCarryIfGuarded 가 제거한다.
-      //   같은 에디터 내 칸 이동에도 적용(cross-article 에서만 걸던 것을 이동 액션 한정으로 확장).
+      // ★★근본 수정 — 조합(marked text) 중이면 지금 caret 을 옮기지 않는다. 옮기면 iOS 가 조합을
+      //   다음 칸으로 이월(재조합)한다. 이동을 예약만 하고, Enter/Tab 이 유발하는 IME commit 의
+      //   compositionend 직후(flushPendingMove)에 실제로 이동한다. (Lexical/Slate/ProseMirror 패턴)
+      if (composingRef.current) {
+        pendingMoveRef.current = { target: next, at: Date.now() };
+        return;
+      }
+      // 비조합 — marked text 없음. 즉시 이동. (직전 칸 latent 버퍼 대비 crossClear/sweep 보조 유지)
       const curVal = cur ? readSlot(cur) : "";
       if (curVal) {
         crossClear = {
@@ -1274,8 +1311,6 @@ export function BlankFillViewV2({
           until: Date.now() + CROSS_CLEAR_MS,
         };
       }
-      // sink 경유 이동(조합 이월을 sink 에서 흘려버림) + 도착 후 제거(위 crossClear) + 안착
-      //   스위퍼(이월이 언제 안착하든 폴링 제거) 삼중 방어.
       focusViaSink(next);
       scheduleArrivalSweep(next);
     } else if (e.key === "Enter") {
