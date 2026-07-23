@@ -641,11 +641,19 @@ export function BlankFillViewV2({
   useEffect(() => {
     const root = editorRef.current;
     if (!root || typeof window === "undefined") return;
-    // 슬롯 실제 텍스트(ZWSP 제외) 상 캐럿 위치 — 다중 텍스트노드·ZWSP 위치와 무관.
-    const realCaretPos = (slot: HTMLElement, range: Range): number => {
+    // 슬롯 실제 텍스트(ZWSP 제외) 상 (container, offset) 위치 — 다중 텍스트노드·ZWSP 위치 무관.
+    const realPosOf = (
+      slot: HTMLElement,
+      container: Node,
+      offset: number,
+    ): number => {
       const pre = document.createRange();
       pre.selectNodeContents(slot);
-      pre.setEnd(range.startContainer, range.startOffset);
+      try {
+        pre.setEnd(container, offset);
+      } catch {
+        return 0;
+      }
       return pre.toString().split(ZWSP).join("").length;
     };
     // 슬롯을 `ZWSP + realText` 단일 텍스트노드로 재구성하고 캐럿을 real 위치에 놓는다.
@@ -686,14 +694,24 @@ export function BlankFillViewV2({
         return;
       }
       const it = (e.inputType || "").toLowerCase();
-      // ★삭제(캐럿 접힘·비조합)는 수동 처리 — 슬롯 실제 텍스트 기준으로만 지우고 앞/뒤 고정
-      //   텍스트(본문)로 넘치지 않게 한다. off/ZWSP 위치에 의존하던 가드가 커서 위치에 따라
-      //   "첫 글자 안 지워짐"을 냈던 문제를 근본 제거(간헐 실패 해소). 선택 삭제(비접힘)는
-      //   위 슬롯 검사로 슬롯 안에 갇히므로 브라우저 기본 삭제 허용.
-      if (it.startsWith("delete") && sel.isCollapsed && !composingRef.current) {
+      // ★삭제는 전부 수동 처리(선택 삭제·backspace·delete·word/line 모두) — 슬롯 실제
+      //   텍스트만 편집하고 항상 `ZWSP+텍스트`로 재구성한다. 이렇게 하면 (a) 앞/뒤 고정 텍스트
+      //   침범 불가, (b) 빈 슬롯도 ZWSP 로 남아 브라우저가 빈 inline 요소를 제거(=빈칸 사라짐)
+      //   하지 못한다. 조합 상태 판정은 stuck 되기 쉬운 ref 대신 이벤트 isComposing 사용.
+      if (it.startsWith("delete") && !e.isComposing) {
         e.preventDefault();
         const realText = readSlot(startSlot);
-        const caret = realCaretPos(startSlot, range);
+        if (!sel.isCollapsed) {
+          // 선택 범위 삭제 — 슬롯 안 real 구간 제거.
+          const rs = realPosOf(startSlot, range.startContainer, range.startOffset);
+          const re = realPosOf(startSlot, range.endContainer, range.endOffset);
+          const a = Math.min(rs, re);
+          const b = Math.max(rs, re);
+          rebuildSlot(startSlot, realText.slice(0, a) + realText.slice(b), a);
+          judgeSlot(startSlot, false);
+          return;
+        }
+        const caret = realPosOf(startSlot, range.startContainer, range.startOffset);
         const backward = it.includes("backward");
         const wide = it.includes("word") || it.includes("line");
         let newText = realText;
