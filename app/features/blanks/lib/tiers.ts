@@ -6,12 +6,16 @@ export type BlankTier = 1 | 2 | 3;
 export const BLANK_TIERS: readonly BlankTier[] = [1, 2, 3] as const;
 export const TIER_LABEL: Record<BlankTier, string> = { 1: "하", 2: "중", 3: "상" };
 
-// 각 tier 가 가리는 누적 빈칸 수(상위 N). 3(상)=전체.
-const TIER_COUNT: Record<BlankTier, number> = {
-  1: 2,
-  2: 4,
-  3: Number.POSITIVE_INFINITY,
-};
+// 각 tier 가 가리는 단어 빈칸 수 — **현재 빈칸(전체) 기준 비례**(사용자 모델).
+//   하 = ⌈전체/2⌉(절반), 중 = 전체(현재 빈칸 그대로). 최소 1. 누적(하 ⊂ 중).
+//   상(tier 3)은 단어 빈칸이 아니라 "구간(구절) 빈칸"(Phase 2, span 빈칸)으로 별도 처리 —
+//   여기서는 단어 기준 폴백으로 전체를 반환(구간 빈칸 미정의 조문은 상=중 자동 완료).
+//   예) 전체 27 → 하 14 / 중 27, 6 → 3 / 6, 3 → 2 / 3.
+export function tierTakeCount(total: number, tier: BlankTier): number {
+  if (total <= 0) return 0;
+  if (tier === 1) return Math.max(1, Math.ceil(total / 2));
+  return total; // 중·상(단어 폴백) = 전체
+}
 
 export interface OrderableBlank {
   idx: number;
@@ -41,8 +45,7 @@ export function activeBlankIdxsForTier(
   tier: BlankTier,
 ): Set<number> {
   const ordered = orderMappedBlanks(blanks);
-  const n = TIER_COUNT[tier];
-  const take = Number.isFinite(n) ? Math.min(n, ordered.length) : ordered.length;
+  const take = tierTakeCount(ordered.length, tier);
   return new Set(ordered.slice(0, take).map((b) => b.idx));
 }
 
@@ -52,9 +55,9 @@ export function tierBlankCounts(
 ): Record<BlankTier, number> {
   const total = orderMappedBlanks(blanks).length;
   return {
-    1: Math.min(TIER_COUNT[1], total),
-    2: Math.min(TIER_COUNT[2], total),
-    3: total,
+    1: tierTakeCount(total, 1),
+    2: tierTakeCount(total, 2),
+    3: tierTakeCount(total, 3),
   };
 }
 

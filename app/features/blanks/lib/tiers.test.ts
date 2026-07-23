@@ -38,27 +38,27 @@ describe("activeBlankIdxsForTier", () => {
     mk(4, "e", 0, 4),
     mk(5, "f", 0, 5),
   ];
-  it("하=상위 2", () => {
-    expect([...activeBlankIdxsForTier(blanks, 1)].sort()).toEqual([0, 1]);
+  it("하=중의 절반(⌈6/2⌉=상위 3)", () => {
+    expect([...activeBlankIdxsForTier(blanks, 1)].sort()).toEqual([0, 1, 2]);
   });
-  it("중=상위 4(하 포함)", () => {
-    expect([...activeBlankIdxsForTier(blanks, 2)].sort()).toEqual([0, 1, 2, 3]);
+  it("중=전체(현재 빈칸 그대로)", () => {
+    expect(activeBlankIdxsForTier(blanks, 2).size).toBe(6);
   });
-  it("상=전체", () => {
+  it("상=전체(단어 폴백 — 구간 빈칸은 S3b)", () => {
     expect(activeBlankIdxsForTier(blanks, 3).size).toBe(6);
   });
   it("빈칸이 적으면 tier 가 자연 축소", () => {
     const few = [mk(0, "a"), mk(1, "b")];
-    expect(activeBlankIdxsForTier(few, 1).size).toBe(2);
+    expect(activeBlankIdxsForTier(few, 1).size).toBe(1); // ⌈2/2⌉
     expect(activeBlankIdxsForTier(few, 2).size).toBe(2);
     expect(activeBlankIdxsForTier(few, 3).size).toBe(2);
   });
 });
 
 describe("tierBlankCounts", () => {
-  it("전체가 5면 하2/중4/상5", () => {
+  it("전체가 5면 하3/중5/상5", () => {
     const b = [0, 1, 2, 3, 4].map((i) => mk(i));
-    expect(tierBlankCounts(b)).toEqual({ 1: 2, 2: 4, 3: 5 });
+    expect(tierBlankCounts(b)).toEqual({ 1: 3, 2: 5, 3: 5 });
   });
   it("전체가 3이면 하2/중3/상3", () => {
     const b = [0, 1, 2].map((i) => mk(i));
@@ -91,19 +91,20 @@ describe("nextTier", () => {
 });
 
 describe("tiersCoveredBy", () => {
-  it("빈칸 많으면 통과 tier 만", () => {
-    const b = [0, 1, 2, 3, 4].map((i) => mk(i));
+  it("단어 폴백: 중=상(둘 다 전체)이라 중 통과가 상까지 커버, 하는 별개", () => {
+    const b = [0, 1, 2, 3, 4].map((i) => mk(i)); // 하3/중5/상5
     expect(tiersCoveredBy(b, 1)).toEqual([1]);
-    expect(tiersCoveredBy(b, 2)).toEqual([2]);
+    expect(tiersCoveredBy(b, 2)).toEqual([2, 3]);
     expect(tiersCoveredBy(b, 3)).toEqual([3]);
   });
-  it("N=3이면 중 통과가 상까지 커버(중=상 동일 집합)", () => {
+  it("N=3이면 하2/중3/상3 — 중 통과가 상까지 커버", () => {
     const b = [0, 1, 2].map((i) => mk(i));
     expect(tiersCoveredBy(b, 2)).toEqual([2, 3]);
     expect(tiersCoveredBy(b, 1)).toEqual([1]);
   });
-  it("N=2면 하 통과가 중·상까지 커버", () => {
+  it("N=2면 하1/중2/상2 — 하는 별개, 중이 상까지 커버", () => {
     const b = [0, 1].map((i) => mk(i));
-    expect(tiersCoveredBy(b, 1)).toEqual([1, 2, 3]);
+    expect(tiersCoveredBy(b, 1)).toEqual([1]);
+    expect(tiersCoveredBy(b, 2)).toEqual([2, 3]);
   });
 });
