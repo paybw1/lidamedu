@@ -19,7 +19,7 @@ import {
   SparklesIcon,
   TargetIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, redirect, useFetcher } from "react-router";
 
 import {
@@ -395,8 +395,10 @@ function AllDoneCard() {
 
 function RecommendationPrefsPanel({
   prefs,
+  onSaved,
 }: {
   prefs: Record<DailyMenuKind, boolean>;
+  onSaved: () => void;
 }) {
   return (
     <Surface tone="subtle" pad={4} className="mb-6">
@@ -407,7 +409,12 @@ function RecommendationPrefsPanel({
       </p>
       <div className="mt-3 space-y-1.5">
         {ALL_DAILY_MENU_KINDS.map((kind) => (
-          <PrefToggleRow key={kind} kind={kind} enabled={prefs[kind]} />
+          <PrefToggleRow
+            key={kind}
+            kind={kind}
+            enabled={prefs[kind]}
+            onSaved={onSaved}
+          />
         ))}
       </div>
     </Surface>
@@ -417,12 +424,26 @@ function RecommendationPrefsPanel({
 function PrefToggleRow({
   kind,
   enabled,
+  onSaved,
 }: {
   kind: DailyMenuKind;
   enabled: boolean;
+  onSaved: () => void;
 }) {
   const fetcher = useFetcher<{ ok?: boolean }>();
   const submitting = fetcher.state !== "idle";
+  // 저장 완료(제출→idle 전이 + ok) 시 설정 패널을 접는다 — 변경이 반영되면 자동으로 tuck away.
+  const prevState = useRef(fetcher.state);
+  useEffect(() => {
+    if (
+      prevState.current !== "idle" &&
+      fetcher.state === "idle" &&
+      fetcher.data?.ok
+    ) {
+      onSaved();
+    }
+    prevState.current = fetcher.state;
+  }, [fetcher.state, fetcher.data, onSaved]);
   // optimistic — 제출 중에는 토글된 상태로 표시.
   const shown = submitting ? !enabled : enabled;
   return (
@@ -501,7 +522,10 @@ export default function StudyToday({ loaderData }: Route.ComponentProps) {
       </header>
 
       {prefsOpen ? (
-        <RecommendationPrefsPanel prefs={recommendationPrefs} />
+        <RecommendationPrefsPanel
+          prefs={recommendationPrefs}
+          onSaved={() => setPrefsOpen(false)}
+        />
       ) : null}
 
       {!summary.isEmptyForNewUser ? <ProgressBar summary={summary} /> : null}
