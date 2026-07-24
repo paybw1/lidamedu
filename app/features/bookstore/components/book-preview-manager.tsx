@@ -9,9 +9,10 @@ import { Button } from "~/core/components/ui/button";
 
 const PDF_PAGE_CAP = 100; // PDF 업로드 시 앞에서부터 변환할 페이지 수(목차 다페이지 대비)
 const TARGET_W = 1000; // 변환 이미지 가로 픽셀(가독성·용량 균형)
-// ★Vercel 서버리스 요청 본문 크기 제한(≈4.5MB) 회피 — 이미지를 한 번에 다 올리지 않고
-//   이 개수씩 나눠 여러 번 POST 한다(각 요청이 제한 아래로 유지). 서버는 매 요청 count/sort 재계산.
-const UPLOAD_BATCH = 6;
+// ★Vercel 서버리스 요청 본문 크기 제한(≈4.5MB) 회피 — 한 요청 본문이 이 바이트 예산을
+//   넘지 않도록 이미지를 묶어 나눠 POST 한다(개수 아님·바이트 기준). 서버는 매 요청 count/sort 재계산.
+const BYTE_BUDGET = 3_500_000; // 요청당 이미지 합계 상한(멀티파트 오버헤드 여유 포함)
+const COUNT_CAP = 8; // 요청당 장수 상한(스토리지 업로드가 한 함수 호출에 몰려 타임아웃 나는 것 방지)
 
 export interface PreviewPage {
   previewId: string;
@@ -40,7 +41,13 @@ export function BookPreviewManager({
       | { ok?: boolean; error?: string; added?: number }
       | null;
     if (!res.ok || !json?.ok) {
-      throw new Error(json?.error ?? "요청에 실패했습니다.");
+      // 본문이 JSON 이 아니면(413 용량초과·플랫폼 오류 등) 상태코드로 원인 안내.
+      const reason =
+        json?.error ??
+        (res.status === 413
+          ? "파일이 너무 큽니다. 페이지 수를 줄이거나 다시 시도해 주세요."
+          : `요청에 실패했습니다. (HTTP ${res.status})`);
+      throw new Error(reason);
     }
     return json;
   };
@@ -65,21 +72,35 @@ export function BookPreviewManager({
           name: `page-${String(i + 1).padStart(3, "0")}.jpg`,
         }));
       } else {
-        items = Array.from(files)
-          .filter((f) => f.type.startsWith("image/"))
-          .map((f) => ({ blob: f, name: f.name }));
+        // 직접 올린 이미지도 원본 그대로 보내면(폰 스캔 수 MB) 요청 크기 초과 → 클라에서 축소.
+        setMsg("이미지를 준비하는 중…");
+        const imgs = Array.from(files).filter((f) => f.type.startsWith("image/"));
+        for (let i = 0; i < imgs.length; i++) {
+          const f = imgs[i];
+          items.push({ blob: await downscaleImage(f), name: `${i + 1}.jpg` });
+        }
       }
       if (items.length === 0) {
         setErr("이미지 또는 PDF 파일을 선택해 주세요.");
         return;
       }
 
-      // 2) 배치 업로드 — 한 요청당 UPLOAD_BATCH 장씩 나눠 POST(Vercel 요청 크기 제한 회피).
-      for (let i = 0; i < items.length; i += UPLOAD_BATCH) {
-        const batch = items.slice(i, i + UPLOAD_BATCH);
-        setMsg(
-          `업로드 중… (${Math.min(i + batch.length, items.length)}/${items.length})`,
-        );
+      // 2) 배치 업로드 — 한 요청 본문이 BYTE_BUDGET 를 넘지 않게 묶어 나눠 POST(Vercel 크기 제한 회피).
+      let i = 0;
+      while (i < items.length) {
+        const batch: Array<{ blob: Blob; name: string }> = [];
+        let bytes = 0;
+        // 최소 1장은 담되(단일 이미지가 예산을 넘어도 개별 전송), 이후 예산·장수 내에서 추가.
+        while (
+          i < items.length &&
+          batch.length < COUNT_CAP &&
+          (batch.length === 0 || bytes + items[i].blob.size <= BYTE_BUDGET)
+        ) {
+          batch.push(items[i]);
+          bytes += items[i].blob.size;
+          i++;
+        }
+        setMsg(`업로드 중… (${Math.min(i, items.length)}/${items.length})`);
         const fd = new FormData();
         fd.set("op", "add");
         fd.set("bookId", bookId);
@@ -194,6 +215,34 @@ export function BookPreviewManager({
       )}
     </div>
   );
+}
+
+// 직접 올린 이미지 1장을 가로 TARGET_W 이하 JPEG 로 축소(원본 수 MB → 수백 KB).
+async function downscaleImage(file: File): Promise<Blob> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("이미지를 읽을 수 없습니다."));
+      el.src = url;
+    });
+    const scale = img.naturalWidth > TARGET_W ? TARGET_W / img.naturalWidth : 1;
+    const w = Math.round(img.naturalWidth * scale);
+    const h = Math.round(img.naturalHeight * scale);
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.drawImage(img, 0, 0, w, h);
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob((b) => resolve(b), "image/jpeg", 0.82),
+    );
+    return blob ?? file;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 // PDF 앞 N페이지를 JPEG Blob 배열로 변환(클라이언트, pdfjs).
