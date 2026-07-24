@@ -539,6 +539,14 @@ export function BlankFillViewV2({
     }
     const val = readSlot(slot);
     if (!val) return false; // 아직 아무것도 안 옴 — 가드 유지
+    // ★이미 정답이 채워진 칸은 이월이 아니라 사용자의 실제 입력 — 절대 지우지 않는다.
+    //   (빈칸을 순서 무시하고 채운 뒤 앞 칸에서 Enter 로 이동할 때, 겹치는 접두 때문에 이미
+    //    채운 칸이 잘리던 버그 방지.) 가드는 해제하고 no-op.
+    const answer = slot.dataset.answer ?? "";
+    if (answer && normalizeAnswer(val) === normalizeAnswer(answer)) {
+      crossClear = null;
+      return false;
+    }
     const stripped = stripLeadingOverlap(val, g.carried);
     if (stripped === null) return false; // 부분만 도착 — 가드 유지(다음 입력에서 재시도)
     slot.textContent = stripped.length ? stripped : ZWSP;
@@ -922,7 +930,8 @@ export function BlankFillViewV2({
           crossPrev &&
           crossPrev.slot !== inSlot &&
           prevEditor !== root &&
-          crossPrev.value
+          crossPrev.value &&
+          readSlot(inSlot) === "" // ★이미 채워진 칸엔 걸지 않음(순서 무시 입력 삭제 방지)
         ) {
           crossClear = {
             slot: inSlot,
@@ -1189,7 +1198,10 @@ export function BlankFillViewV2({
       crossClear &&
       crossClear.slot === slot &&
       typeof Date !== "undefined" &&
-      Date.now() < crossClear.until
+      Date.now() < crossClear.until &&
+      // ★이미 정답이 채워진 칸이면 이월이 아니라 실제 입력 — 스트립하지 않는다(순서 무시 입력 보호).
+      normalizeAnswer(readSlot(slot)) !==
+        normalizeAnswer(slot.dataset.answer ?? " ")
     ) {
       const carried = crossClear.carried;
       const val = readSlot(slot);
@@ -1318,8 +1330,12 @@ export function BlankFillViewV2({
         return;
       }
       // 비조합 — marked text 없음. 즉시 이동. (직전 칸 latent 버퍼 대비 crossClear/sweep 보조 유지)
+      //   ★이월 가드는 '다음 칸이 비어 있을 때만' 건다 — 이미 채워진 칸이면 그 내용은 이월이
+      //   아니라 사용자가 순서 무시하고 먼저 채운 실제 입력이므로, 가드를 걸면 겹치는 접두가
+      //   지워진다(순서 무시 입력 삭제 버그).
       const curVal = cur ? readSlot(cur) : "";
-      if (curVal) {
+      const nextEmpty = readSlot(next) === "";
+      if (curVal && nextEmpty) {
         crossClear = {
           slot: next,
           carried: curVal,
@@ -1327,7 +1343,7 @@ export function BlankFillViewV2({
         };
       }
       focusViaSink(next);
-      scheduleArrivalSweep(next);
+      if (nextEmpty) scheduleArrivalSweep(next);
     } else if (e.key === "Enter") {
       e.preventDefault();
     }
