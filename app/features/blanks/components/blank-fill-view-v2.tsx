@@ -42,7 +42,6 @@ import {
   type ChapterTierGate,
   nextTier,
   TIER_LABEL,
-  tierBlankCounts,
   tierUnlockState,
 } from "../lib/tiers";
 import { deriveTierSpanBlanks } from "../lib/tier-spans";
@@ -398,7 +397,6 @@ export function BlankFillViewV2({
   );
   // 해금: 장 게이트가 있으면 장 단위(장 전체 통과), 없으면 세트 단위 폴백.
   const unlocked = chapterGate?.unlocked ?? tierUnlockState(completed);
-  const tierCounts = useMemo(() => tierBlankCounts(blanks), [blanks]);
   const [currentTier, setCurrentTier] = useState<BlankTier>(() => {
     const c = new Set(completedTiers ?? []);
     const u = chapterGate?.unlocked ?? tierUnlockState(c);
@@ -1458,7 +1456,7 @@ export function BlankFillViewV2({
                       ? chapterGate
                         ? `${gateLabel} 모든 조문의 ${TIER_LABEL[(t - 1) as BlankTier]}를 통과하면 열립니다`
                         : "이전 단계를 통과하면 열립니다"
-                      : `${TIER_LABEL[t]} · 빈칸 ${tierCounts[t]}개`
+                      : TIER_LABEL[t]
                   }
                   className={cn(
                     "inline-flex h-7 items-center gap-1 rounded-md px-3 text-xs font-semibold transition-colors",
@@ -1476,9 +1474,6 @@ export function BlankFillViewV2({
                     <CheckIcon className="size-3 text-emerald-500" />
                   ) : null}
                   {TIER_LABEL[t]}
-                  <span className="tabular-nums opacity-60">
-                    {t === 3 ? spanBlanks.length : tierCounts[t]}
-                  </span>
                 </button>
               );
             })}
