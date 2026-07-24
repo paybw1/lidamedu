@@ -486,11 +486,14 @@ function Pagination({
         className="h-7"
       >
         {prev != null ? (
-          <Link to={makeUrl({ page: String(prev) })}>
+          <Link
+            to={makeUrl({ page: String(prev) })}
+            className="inline-flex items-center gap-1"
+          >
             <ChevronLeftIcon className="size-3" /> 이전
           </Link>
         ) : (
-          <span>
+          <span className="inline-flex items-center gap-1">
             <ChevronLeftIcon className="size-3" /> 이전
           </span>
         )}
@@ -506,11 +509,14 @@ function Pagination({
         className="h-7"
       >
         {next != null ? (
-          <Link to={makeUrl({ page: String(next) })}>
+          <Link
+            to={makeUrl({ page: String(next) })}
+            className="inline-flex items-center gap-1"
+          >
             다음 <ChevronRightIcon className="size-3" />
           </Link>
         ) : (
-          <span>
+          <span className="inline-flex items-center gap-1">
             다음 <ChevronRightIcon className="size-3" />
           </span>
         )}
