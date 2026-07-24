@@ -14,7 +14,7 @@ import { getStaffRole } from "~/features/laws/queries.server";
 import type { Route } from "./+types/book-preview";
 
 const BUCKET = "book-covers"; // 공개 버킷 재사용(미리보기는 공개 look-inside)
-const MAX_PAGES = 20; // 도서당 미리보기 총 페이지 상한
+const MAX_PAGES = 100; // 도서당 미리보기 총 페이지 상한 (기본서 목차 등 다페이지 대비)
 
 async function requireStaffUser(request: Request) {
   const [client] = makeServerClient(request);

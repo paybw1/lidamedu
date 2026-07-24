@@ -7,8 +7,11 @@ import { useRevalidator } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 
-const PDF_PAGE_CAP = 10; // PDF 업로드 시 앞에서부터 변환할 페이지 수
+const PDF_PAGE_CAP = 100; // PDF 업로드 시 앞에서부터 변환할 페이지 수(목차 다페이지 대비)
 const TARGET_W = 1000; // 변환 이미지 가로 픽셀(가독성·용량 균형)
+// ★Vercel 서버리스 요청 본문 크기 제한(≈4.5MB) 회피 — 이미지를 한 번에 다 올리지 않고
+//   이 개수씩 나눠 여러 번 POST 한다(각 요청이 제한 아래로 유지). 서버는 매 요청 count/sort 재계산.
+const UPLOAD_BATCH = 6;
 
 export interface PreviewPage {
   previewId: string;
@@ -47,34 +50,52 @@ export function BookPreviewManager({
     setBusy(true);
     setErr(null);
     setMsg(null);
+    let added = 0;
     try {
-      const fd = new FormData();
-      fd.set("op", "add");
-      fd.set("bookId", bookId);
+      // 1) 업로드할 이미지 목록 구성 — PDF 는 앞 N페이지를 이미지로 변환, 아니면 선택 이미지들.
+      let items: Array<{ blob: Blob; name: string }> = [];
       const pdf = Array.from(files).find(
         (f) => f.type === "application/pdf" || /\.pdf$/i.test(f.name),
       );
       if (pdf) {
         setMsg("PDF 페이지를 이미지로 변환하는 중…");
         const blobs = await rasterizePdf(pdf);
-        blobs.forEach((b, i) =>
-          fd.append("images", b, `page-${String(i + 1).padStart(2, "0")}.jpg`),
-        );
+        items = blobs.map((b, i) => ({
+          blob: b,
+          name: `page-${String(i + 1).padStart(3, "0")}.jpg`,
+        }));
       } else {
-        for (const f of Array.from(files)) {
-          if (f.type.startsWith("image/")) fd.append("images", f);
-        }
+        items = Array.from(files)
+          .filter((f) => f.type.startsWith("image/"))
+          .map((f) => ({ blob: f, name: f.name }));
       }
-      if (!fd.has("images")) {
+      if (items.length === 0) {
         setErr("이미지 또는 PDF 파일을 선택해 주세요.");
         return;
       }
-      setMsg("업로드 중…");
-      const r = await post(fd);
-      setMsg(`${r.added ?? 0}페이지를 추가했습니다.`);
+
+      // 2) 배치 업로드 — 한 요청당 UPLOAD_BATCH 장씩 나눠 POST(Vercel 요청 크기 제한 회피).
+      for (let i = 0; i < items.length; i += UPLOAD_BATCH) {
+        const batch = items.slice(i, i + UPLOAD_BATCH);
+        setMsg(
+          `업로드 중… (${Math.min(i + batch.length, items.length)}/${items.length})`,
+        );
+        const fd = new FormData();
+        fd.set("op", "add");
+        fd.set("bookId", bookId);
+        for (const it of batch) fd.append("images", it.blob, it.name);
+        const r = await post(fd);
+        added += r.added ?? 0;
+      }
+      setMsg(`${added}페이지를 추가했습니다.`);
       if (inputRef.current) inputRef.current.value = "";
       revalidator.revalidate();
     } catch (e) {
+      // 일부 배치 성공 후 상한 도달·오류 시, 지금까지 추가분을 반영해 보여준다.
+      if (added > 0) {
+        setMsg(`${added}페이지를 추가했습니다.`);
+        revalidator.revalidate();
+      }
       setErr(e instanceof Error ? e.message : "업로드에 실패했습니다.");
     } finally {
       setBusy(false);
@@ -107,8 +128,9 @@ export function BookPreviewManager({
             <ImageIcon className="size-4" /> 미리보기 페이지
           </h3>
           <p className="text-muted-foreground mt-0.5 text-[12px]">
-            이미지 여러 장 또는 PDF(앞 {PDF_PAGE_CAP}페이지)를 올리면 상세 페이지에
-            look-inside 로 노출됩니다.
+            이미지 여러 장 또는 PDF(앞 {PDF_PAGE_CAP}페이지까지 자동 변환)를 올리면 상세
+            페이지에 look-inside 로 노출됩니다. 도서당 최대 100페이지, 대량은 자동으로
+            나눠 업로드합니다.
           </p>
         </div>
         <div className="flex items-center gap-2">
