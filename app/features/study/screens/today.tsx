@@ -9,6 +9,7 @@ import {
   ArrowRightIcon,
   BookOpenIcon,
   CheckCircle2Icon,
+  CheckIcon,
   ClipboardListIcon,
   ClockIcon,
   GraduationCapIcon,
@@ -19,7 +20,7 @@ import {
   SparklesIcon,
   TargetIcon,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Link, redirect, useFetcher } from "react-router";
 
 import {
@@ -395,10 +396,10 @@ function AllDoneCard() {
 
 function RecommendationPrefsPanel({
   prefs,
-  onSaved,
+  onDone,
 }: {
   prefs: Record<DailyMenuKind, boolean>;
-  onSaved: () => void;
+  onDone: () => void;
 }) {
   return (
     <Surface tone="subtle" pad={4} className="mb-6">
@@ -409,13 +410,14 @@ function RecommendationPrefsPanel({
       </p>
       <div className="mt-3 space-y-1.5">
         {ALL_DAILY_MENU_KINDS.map((kind) => (
-          <PrefToggleRow
-            key={kind}
-            kind={kind}
-            enabled={prefs[kind]}
-            onSaved={onSaved}
-          />
+          <PrefToggleRow key={kind} kind={kind} enabled={prefs[kind]} />
         ))}
+      </div>
+      {/* 여러 항목을 조정한 뒤 '완료'를 눌러야 패널이 접힌다(각 토글은 즉시 저장됨). */}
+      <div className="mt-3 flex justify-end">
+        <Button size="sm" onClick={onDone} className="gap-1.5">
+          <CheckIcon className="size-3.5" /> 완료
+        </Button>
       </div>
     </Surface>
   );
@@ -424,26 +426,12 @@ function RecommendationPrefsPanel({
 function PrefToggleRow({
   kind,
   enabled,
-  onSaved,
 }: {
   kind: DailyMenuKind;
   enabled: boolean;
-  onSaved: () => void;
 }) {
   const fetcher = useFetcher<{ ok?: boolean }>();
   const submitting = fetcher.state !== "idle";
-  // 저장 완료(제출→idle 전이 + ok) 시 설정 패널을 접는다 — 변경이 반영되면 자동으로 tuck away.
-  const prevState = useRef(fetcher.state);
-  useEffect(() => {
-    if (
-      prevState.current !== "idle" &&
-      fetcher.state === "idle" &&
-      fetcher.data?.ok
-    ) {
-      onSaved();
-    }
-    prevState.current = fetcher.state;
-  }, [fetcher.state, fetcher.data, onSaved]);
   // optimistic — 제출 중에는 토글된 상태로 표시.
   const shown = submitting ? !enabled : enabled;
   return (
@@ -524,7 +512,7 @@ export default function StudyToday({ loaderData }: Route.ComponentProps) {
       {prefsOpen ? (
         <RecommendationPrefsPanel
           prefs={recommendationPrefs}
-          onSaved={() => setPrefsOpen(false)}
+          onDone={() => setPrefsOpen(false)}
         />
       ) : null}
 
