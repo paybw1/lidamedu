@@ -1258,7 +1258,16 @@ export function BlankFillViewV2({
           const startIdx = Number(startSlot.dataset.blankIdx);
           const carried = valuesRef.current.get(startIdx) ?? readSlot(startSlot);
           if (carried) {
-            const stripped = stripLeadingOverlap(readSlot(slot), carried);
+            // ★도착 슬롯이 이미 자기 정답으로 완성돼 있으면 이월이 아니라 실제 입력 — 스트립
+            //   금지(이전 칸과 같은 단어가 정답일 때 완성 칸이 지워지던 버그 방지).
+            const endAns = slot.dataset.answer ?? "";
+            const endVal = readSlot(slot);
+            const endComplete =
+              endAns.length > 0 &&
+              normalizeAnswer(endVal) === normalizeAnswer(endAns);
+            const stripped = endComplete
+              ? null
+              : stripLeadingOverlap(endVal, carried);
             if (stripped !== null) {
               slot.textContent = stripped.length ? stripped : ZWSP;
             }
@@ -1302,11 +1311,32 @@ export function BlankFillViewV2({
       e.key === "Backspace" || e.keyCode === 8 || e.which === 8;
     if (isBackspace) {
       const curSlot = slotFromSelection();
-      if (curSlot && readSlot(curSlot) === "") {
-        e.preventDefault();
-        if (curSlot.textContent !== ZWSP) curSlot.textContent = ZWSP;
-        setCaretEnd(curSlot);
-        return;
+      if (curSlot) {
+        const val = readSlot(curSlot);
+        if (val === "") {
+          e.preventDefault();
+          if (curSlot.textContent !== ZWSP) curSlot.textContent = ZWSP;
+          setCaretEnd(curSlot);
+          return;
+        }
+        // ★이월 버퍼 materialization — 이 칸 내용이 이월 가드(carried)의 접미사이고 자기 정답은
+        //   아니면(=사용자 입력이 아니라 직전 칸 잔여가 뱉어진 것) backspace 로 한 글자씩 뱉게 두지
+        //   말고 통째로 지운다(가드 해제). 132조 등에서 "지울수록 앞 글자가 계속 나오는" 증상 차단.
+        const g = crossClear;
+        const answer = curSlot.dataset.answer ?? "";
+        if (
+          g &&
+          g.slot === curSlot &&
+          g.carried &&
+          g.carried.endsWith(val) &&
+          normalizeAnswer(val) !== normalizeAnswer(answer)
+        ) {
+          e.preventDefault();
+          curSlot.textContent = ZWSP;
+          setCaretEnd(curSlot);
+          crossClear = null;
+          return;
+        }
       }
       return;
     }
