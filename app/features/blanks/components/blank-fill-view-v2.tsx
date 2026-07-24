@@ -465,6 +465,45 @@ export function BlankFillViewV2({
   const readSlot = (slot: HTMLElement): string =>
     (slot.textContent ?? "").split(ZWSP).join("");
 
+  // ── 진단 로그(?imedebug=1) — 드물게 남는 이월을 실제 이벤트 순서로 '사후' 포착. iOS 타이밍을
+  //   교란(이벤트마다 리렌더 = Heisenbug)하지 않도록 ref 링버퍼에만 쌓고(리렌더 없음), 오버레이는
+  //   별도 인터벌로 렌더하며 '복사' 버튼으로 통째 확보한다. 각 줄에 crossClear(cc)·pendingMove(pm)·
+  //   대상 슬롯 스냅샷을 함께 남겨 상태 전이(무엇이 언제 armed/consumed 됐는지)를 추적한다.
+  const imeDebugRef = useRef(false);
+  const [imeDebug, setImeDebug] = useState(false);
+  const dbgBufRef = useRef<Array<{ t: number; s: string }>>([]);
+  const dbgT0Ref = useRef(0);
+  const lastSelDbgRef = useRef("");
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const on =
+      new URLSearchParams(window.location.search).get("imedebug") === "1";
+    imeDebugRef.current = on;
+    setImeDebug(on);
+  }, []);
+  const slotIdxOf = (el: HTMLElement | null | undefined): string =>
+    el && el.dataset?.blankIdx != null ? `#${el.dataset.blankIdx}` : "∅";
+  const pushDbg = useCallback((tag: string, extra?: string) => {
+    if (!imeDebugRef.current) return;
+    const now =
+      typeof performance !== "undefined" && performance.now
+        ? performance.now()
+        : 0;
+    if (dbgT0Ref.current === 0) dbgT0Ref.current = now;
+    const cc = crossClear
+      ? `cc${slotIdxOf(crossClear.slot)}"${crossClear.carried}"`
+      : "cc-";
+    const pm = pendingMoveRef.current
+      ? `pm${slotIdxOf(pendingMoveRef.current.target)}`
+      : "pm-";
+    const buf = dbgBufRef.current;
+    buf.push({
+      t: now,
+      s: `+${Math.round(now - dbgT0Ref.current)} ${tag} ${cc} ${pm}${extra ? ` ${extra}` : ""}`,
+    });
+    if (buf.length > 240) buf.shift();
+  }, []);
+
   const setSlotColor = (slot: HTMLElement, s: keyof typeof COLORS) => {
     // 인라인 스타일 — Tailwind 클래스 순서 충돌 없이 확실히 반영.
     slot.style.borderBottomColor = COLORS[s].border;
@@ -677,9 +716,13 @@ export function BlankFillViewV2({
     const pm = pendingMoveRef.current;
     if (!pm) return;
     pendingMoveRef.current = null;
-    if (typeof Date !== "undefined" && Date.now() - pm.at > PENDING_MOVE_MAX_MS)
+    const stale =
+      typeof Date !== "undefined" && Date.now() - pm.at > PENDING_MOVE_MAX_MS;
+    if (stale || !pm.target.isConnected) {
+      pushDbg("pmFlush.skip", `${slotIdxOf(pm.target)} ${stale ? "stale" : "detached"}`);
       return;
-    if (!pm.target.isConnected) return;
+    }
+    pushDbg("pmFlush.move", slotIdxOf(pm.target));
     caretToEnd(pm.target);
     scrollBlankIntoViewIfNeeded(pm.target);
   };
@@ -918,6 +961,12 @@ export function BlankFillViewV2({
       if (sink && (sink === anchor || sink.contains(anchor))) return;
       const inSlot = isInSlot(anchor, root);
       if (inSlot) {
+        // 슬롯 간 캐럿 이동만 기록(같은 슬롯 연속 selectionchange 는 dedupe — 버퍼 범람 방지).
+        const selKey = slotIdxOf(inSlot);
+        if (selKey !== lastSelDbgRef.current) {
+          lastSelDbgRef.current = selKey;
+          pushDbg("sel", `${selKey} v="${readSlot(inSlot)}"`);
+        }
         // ★다른 조문(에디터)의 슬롯에서 이 에디터의 슬롯으로 캐럿이 진입 = 조문 경계 넘음
         //   (커서 이동으로 넘어간 뒤 직전 값이 통째로 딸려오는 경우). 직전 슬롯 값을 이월
         //   방어 창으로 등록. 같은 조문 안의 칸 전환은 여기서 arming 하지 않는다 — 정상 입력을
@@ -936,6 +985,7 @@ export function BlankFillViewV2({
             carried: crossPrev.value,
             until: Date.now() + CROSS_CLEAR_MS,
           };
+          pushDbg("ccArm@sel", `${slotIdxOf(inSlot)} carried="${crossPrev.value}"`);
         }
         return; // 이미 슬롯 안 — 스냅 불필요
       }
@@ -1031,6 +1081,10 @@ export function BlankFillViewV2({
       }
       const startSlot = isInSlot(range.startContainer, root);
       const endSlot = isInSlot(range.endContainer, root);
+      pushDbg(
+        "beforeinput",
+        `${(e.inputType || "").toLowerCase()} comp=${e.isComposing} s=${slotIdxOf(startSlot)} v="${startSlot ? readSlot(startSlot) : "∅"}"`,
+      );
       // 선택 양끝이 같은 슬롯 안이 아니면(고정 텍스트/컨테이너/두 슬롯 걸침) 모든 편집 차단.
       if (!startSlot || startSlot !== endSlot) {
         e.preventDefault();
@@ -1185,6 +1239,10 @@ export function BlankFillViewV2({
     const ne = e.nativeEvent as InputEvent;
     const composing = ne.isComposing === true;
     const isDelete = (ne.inputType || "").toLowerCase().startsWith("delete");
+    pushDbg(
+      "input",
+      `${(ne.inputType || "").toLowerCase()} comp=${composing} ${slotIdxOf(slot)} v="${readSlot(slot)}"`,
+    );
     // ★이월 도착 제거 — **조합이 끝난(비조합) 프레임에서만** 실행한다. 조합(marked text) 활성
     //   중에 slot.textContent 를 갈아끼우면 iOS 가 다음 프레임에 조합 글자를 재삽입해 "지울수록
     //   앞 칸 글자가 더 생기는" 증상이 된다. 조합 중엔 가드(crossClear)를 소진하지 말고 유지했다가
@@ -1205,6 +1263,7 @@ export function BlankFillViewV2({
       const val = readSlot(slot);
       const overlap = val ? stripLeadingOverlap(val, carried) : null;
       if (overlap !== null) {
+        pushDbg("input.strip", `${slotIdxOf(slot)} "${val}"→"${overlap}" carried="${carried}"`);
         slot.textContent = overlap.length ? overlap : ZWSP;
         setCaretEnd(slot);
         crossClear = null;
@@ -1214,6 +1273,7 @@ export function BlankFillViewV2({
       }
       if (isDelete && val && carried.startsWith(val)) {
         // backspace 로 튀어나온 직전 답 조각 — 사용자 눈엔 빈 칸이었으므로 통째로 제거.
+        pushDbg("input.nukeFrag", `${slotIdxOf(slot)} "${val}" carried="${carried}"`);
         slot.textContent = ZWSP;
         setCaretEnd(slot);
         crossClear = null;
@@ -1232,6 +1292,7 @@ export function BlankFillViewV2({
   const onCompositionStart = () => {
     composingRef.current = true;
     compStartSlotRef.current = slotFromSelection();
+    pushDbg("compStart", slotIdxOf(compStartSlotRef.current));
   };
   const onCompositionEnd = () => {
     composingRef.current = false;
@@ -1243,6 +1304,10 @@ export function BlankFillViewV2({
     const endSlot = slotFromSelection();
     const startSlot = compStartSlotRef.current;
     compStartSlotRef.current = null;
+    pushDbg(
+      "compEnd",
+      `end=${slotIdxOf(endSlot)} start=${slotIdxOf(startSlot)} drift=${!!(startSlot && startSlot !== endSlot)} v="${endSlot ? readSlot(endSlot) : "∅"}"`,
+    );
 
     // 조합-확정 처리(이월 드리프트/스트립/판정) — DOM 수정 포함이라 rAF 로 미룬다. 조기 return
     //   있으므로 IIFE 로 감싸고, 그 뒤 예약 이동을 실행한다.
@@ -1266,6 +1331,10 @@ export function BlankFillViewV2({
             const stripped = endComplete
               ? null
               : stripLeadingOverlap(endVal, carried);
+            pushDbg(
+              "compEnd.drift",
+              `${slotIdxOf(startSlot)}→${slotIdxOf(slot)} v="${endVal}" carried="${carried}" complete=${endComplete} stripped=${stripped === null ? "-" : `"${stripped}"`}`,
+            );
             if (stripped !== null) {
               slot.textContent = stripped.length ? stripped : ZWSP;
             }
@@ -1311,10 +1380,15 @@ export function BlankFillViewV2({
       const curSlot = slotFromSelection();
       if (curSlot) {
         const val = readSlot(curSlot);
+        pushDbg(
+          "keydown.BS",
+          `comp=${composingRef.current} ${slotIdxOf(curSlot)} v="${val}"`,
+        );
         if (val === "") {
           e.preventDefault();
           if (curSlot.textContent !== ZWSP) curSlot.textContent = ZWSP;
           setCaretEnd(curSlot);
+          pushDbg("keydown.BS.blockEmpty", slotIdxOf(curSlot));
           return;
         }
         // ★이월 버퍼 materialization — 이 칸 내용이 이월 가드(carried)의 접미사이고 자기 정답은
@@ -1330,6 +1404,7 @@ export function BlankFillViewV2({
           normalizeAnswer(val) !== normalizeAnswer(answer)
         ) {
           e.preventDefault();
+          pushDbg("keydown.BS.nukeBuf", `${slotIdxOf(curSlot)} "${val}"`);
           curSlot.textContent = ZWSP;
           setCaretEnd(curSlot);
           crossClear = null;
@@ -1355,6 +1430,7 @@ export function BlankFillViewV2({
       //   compositionend 직후(flushPendingMove)에 실제로 이동한다. (Lexical/Slate/ProseMirror 패턴)
       if (composingRef.current) {
         pendingMoveRef.current = { target: next, at: Date.now() };
+        pushDbg("pmSet", `${e.key} ${slotIdxOf(cur)}→${slotIdxOf(next)}`);
         return;
       }
       // 비조합 — marked text 없음. 즉시 이동. (직전 칸 latent 버퍼 대비 crossClear/sweep 보조 유지)
@@ -1369,7 +1445,9 @@ export function BlankFillViewV2({
           carried: curVal,
           until: Date.now() + CROSS_CLEAR_MS,
         };
+        pushDbg("ccArm@move", `${slotIdxOf(next)} carried="${curVal}"`);
       }
+      pushDbg("move", `${e.key} ${slotIdxOf(cur)}→${slotIdxOf(next)} nextEmpty=${nextEmpty}`);
       focusViaSink(next);
       if (nextEmpty) scheduleArrivalSweep(next);
     } else if (e.key === "Enter") {
@@ -1586,6 +1664,107 @@ export function BlankFillViewV2({
         onPointerDownCapture={onPointerDownCapture}
         className="border-border bg-card focus-within:border-primary rounded-xl border p-4 text-[15px] whitespace-pre-wrap outline-none"
       />
+      {imeDebug ? <ImeDebugOverlay bufRef={dbgBufRef} /> : null}
+    </div>
+  );
+}
+
+// ?imedebug=1 진단 오버레이 — ref 링버퍼를 인터벌로 스냅샷 렌더(IME 이벤트와 렌더를 분리해
+//   타이밍 교란 방지). '복사'는 textarea+execCommand(iOS Safari 에서 가장 확실) 로 전체 로그 확보.
+function ImeDebugOverlay({
+  bufRef,
+}: {
+  bufRef: React.MutableRefObject<Array<{ t: number; s: string }>>;
+}) {
+  const [lines, setLines] = useState<string[]>([]);
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setLines(bufRef.current.slice(-26).map((e) => e.s));
+    }, 300);
+    return () => window.clearInterval(id);
+  }, [bufRef]);
+  const copy = () => {
+    const text = bufRef.current.map((e) => e.s).join("\n");
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.top = "0";
+    ta.style.left = "0";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    let ok = false;
+    try {
+      ok = document.execCommand("copy");
+    } catch {
+      ok = false;
+    }
+    document.body.removeChild(ta);
+    if (!ok && navigator.clipboard) void navigator.clipboard.writeText(text);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1200);
+  };
+  const btn: React.CSSProperties = {
+    background: "#334",
+    color: "#fff",
+    border: "none",
+    borderRadius: 4,
+    padding: "2px 8px",
+    fontSize: 11,
+    cursor: "pointer",
+  };
+  return (
+    <div
+      style={{
+        position: "fixed",
+        bottom: 8,
+        right: 8,
+        zIndex: 9999,
+        width: 340,
+        maxWidth: "92vw",
+        maxHeight: "46vh",
+        overflow: "auto",
+        background: "rgba(0,0,0,0.86)",
+        color: "#9edcff",
+        font: "10px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace",
+        padding: 8,
+        borderRadius: 8,
+        whiteSpace: "pre-wrap",
+        wordBreak: "break-all",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          gap: 6,
+          alignItems: "center",
+          marginBottom: 6,
+          position: "sticky",
+          top: 0,
+        }}
+      >
+        <span style={{ color: "#fff", fontWeight: 700 }}>
+          IME log ({bufRef.current.length})
+        </span>
+        <button type="button" style={btn} onClick={copy}>
+          {copied ? "복사됨" : "복사"}
+        </button>
+        <button
+          type="button"
+          style={btn}
+          onClick={() => {
+            bufRef.current.length = 0;
+            setLines([]);
+          }}
+        >
+          지우기
+        </button>
+      </div>
+      {lines.map((l, i) => (
+        <div key={i}>{l}</div>
+      ))}
     </div>
   );
 }
