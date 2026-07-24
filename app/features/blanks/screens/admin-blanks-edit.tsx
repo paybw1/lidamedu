@@ -3,6 +3,10 @@
 
 import {
   AlertTriangleIcon,
+  ArrowLeftIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ListIcon,
   MousePointerClickIcon,
   PlusCircleIcon,
 } from "lucide-react";
@@ -155,6 +159,41 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     originalBodyJson = rev?.body_json ?? null;
   }
 
+  // prev/next — 같은 법령에서 '내가 소유한' 빈칸 세트를 조문 순서로 정렬해 인접 세트로 이동.
+  //   (편집은 소유자만 가능하므로 non-owner 는 이동 대상 없음). admin-blanks-all 과 동일한 sortKey.
+  let prevSet: { setId: string; label: string } | null = null;
+  let nextSet: { setId: string; label: string } | null = null;
+  if (isOwner && article?.law_id) {
+    const { data: siblings } = await client
+      .from("article_blank_sets")
+      .select("set_id, articles!inner(article_number, display_label, law_id)")
+      .eq("owner_id", user.id)
+      .eq("articles.law_id", article.law_id);
+    const sortKey = (num: string | null): [number, number] => {
+      if (!num) return [0, 0];
+      const m = num.match(/^(\d+)(?:의(\d+))?/);
+      return m ? [Number(m[1]), m[2] ? Number(m[2]) : 0] : [0, 0];
+    };
+    const sorted = (siblings ?? [])
+      .map((s) => ({
+        setId: s.set_id,
+        articleNumber: s.articles?.article_number ?? "",
+        label: s.articles?.display_label ?? "",
+      }))
+      .sort((a, b) => {
+        const aK = sortKey(a.articleNumber);
+        const bK = sortKey(b.articleNumber);
+        if (aK[0] !== bK[0]) return aK[0] - bK[0];
+        if (aK[1] !== bK[1]) return aK[1] - bK[1];
+        return a.setId.localeCompare(b.setId);
+      });
+    const pos = sorted.findIndex((s) => s.setId === row.set_id);
+    if (pos > 0)
+      prevSet = { setId: sorted[pos - 1].setId, label: sorted[pos - 1].label };
+    if (pos >= 0 && pos < sorted.length - 1)
+      nextSet = { setId: sorted[pos + 1].setId, label: sorted[pos + 1].label };
+  }
+
   // 미매칭 일괄 검수 화면에서 진입 시 활성 빈칸을 지정. 존재하지 않는 idx 면 무시.
   const focusParam = new URL(request.url).searchParams.get("focus");
   const focusIdx =
@@ -177,6 +216,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     version: row.version,
     displayName: row.display_name,
     initialFocusIdx,
+    prevSet,
+    nextSet,
     role,
   };
 }
@@ -195,6 +236,8 @@ export default function AdminBlanksEdit({ loaderData }: Route.ComponentProps) {
     version,
     displayName,
     initialFocusIdx,
+    prevSet,
+    nextSet,
     role,
   } = loaderData;
   const [drafts, setDrafts] = useState<Record<number, string>>(() => {
@@ -469,6 +512,82 @@ export default function AdminBlanksEdit({ loaderData }: Route.ComponentProps) {
           </button>
         </div>
       ) : null}
+
+      {/* 상단 내비 — 돌아가기(목록·조문 뷰어) + 인접 세트 prev/next */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5">
+          <Button
+            asChild
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1 text-xs"
+          >
+            <Link to={`/admin/blanks/law/${lawCode}`}>
+              <ListIcon className="size-3.5" /> 빈칸 목록
+            </Link>
+          </Button>
+          {articleNumber ? (
+            <Button
+              asChild
+              size="sm"
+              variant="ghost"
+              className="h-8 gap-1 text-xs"
+            >
+              <Link to={`/subjects/${lawCode}/articles/${articleNumber}`}>
+                <ArrowLeftIcon className="size-3.5" /> 조문 뷰어
+              </Link>
+            </Button>
+          ) : null}
+        </div>
+        {isOwner ? (
+          <div className="flex items-center gap-1.5">
+            {prevSet ? (
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                className="h-8 gap-1 text-xs"
+                title={prevSet.label}
+              >
+                <Link to={`/admin/blanks/${prevSet.setId}`}>
+                  <ChevronLeftIcon className="size-3.5" /> 이전 조문
+                </Link>
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled
+                className="h-8 gap-1 text-xs"
+              >
+                <ChevronLeftIcon className="size-3.5" /> 이전 조문
+              </Button>
+            )}
+            {nextSet ? (
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                className="h-8 gap-1 text-xs"
+                title={nextSet.label}
+              >
+                <Link to={`/admin/blanks/${nextSet.setId}`}>
+                  다음 조문 <ChevronRightIcon className="size-3.5" />
+                </Link>
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled
+                className="h-8 gap-1 text-xs"
+              >
+                다음 조문 <ChevronRightIcon className="size-3.5" />
+              </Button>
+            )}
+          </div>
+        ) : null}
+      </div>
 
       {/* 소유자 정보 배너 (다른 강사 자료일 때) */}
       {!isOwner ? (
