@@ -9,7 +9,7 @@ import type { Route } from "./+types/attempt";
 
 const schema = z.object({
   setId: z.string().uuid(),
-  blankIdx: z.coerce.number().int().min(1),
+  blankIdx: z.coerce.number().int().min(0), // 자동생성 세트는 idx 0-based — 0 허용
   userInput: z.string().max(500),
 });
 

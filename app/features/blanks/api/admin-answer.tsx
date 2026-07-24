@@ -11,7 +11,7 @@ import type { Route } from "./+types/admin-answer";
 // 미지정이면 기존 슬롯 컨텍스트를 보존 (단순 정답 paste/타이핑).
 const schema = z.object({
   setId: z.string().uuid(),
-  blankIdx: z.coerce.number().int().min(1),
+  blankIdx: z.coerce.number().int().min(0), // 자동생성 세트는 idx 0-based — 0 허용
   answer: z.string().max(500),
   beforeHint: z.string().max(500).optional(),
   afterHint: z.string().max(500).optional(),
