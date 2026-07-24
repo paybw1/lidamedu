@@ -3,6 +3,7 @@ import {
   BookOpenIcon,
   DownloadIcon,
   GraduationCapIcon,
+  ListIcon,
   MinusIcon,
   PlusIcon,
 } from "lucide-react";
@@ -297,6 +298,17 @@ export default function BookDetail({ loaderData }: Route.ComponentProps) {
           <p className="text-muted-foreground mt-2 text-sm leading-relaxed whitespace-pre-wrap">
             {book.description}
           </p>
+        </section>
+      ) : null}
+
+      {book.toc ? (
+        <section className="mt-10">
+          <h2 className="flex items-center gap-1.5 text-sm font-bold tracking-tight">
+            <ListIcon className="size-4" /> 목차
+          </h2>
+          <div className="bg-muted/30 border-border text-muted-foreground mt-2 rounded-xl border p-4 text-sm leading-relaxed whitespace-pre-wrap">
+            {book.toc}
+          </div>
         </section>
       ) : null}
 
