@@ -833,6 +833,17 @@ function Inner({
                           {a.displayLabel}
                         </h2>
                       )}
+                      {/* 빈칸 편집(staff) — 특허법 조문 뷰어와 동일하게 이 조문의 내용 빈칸을
+                          바로 편집. article-viewer 의 빈칸 편집 서브모드로 진입(세트 없어도 생성). */}
+                      {loaderData.isStaff && a.articleNumber ? (
+                        <Link
+                          to={`/subjects/${subject.slug}/articles/${a.articleNumber}?blankMode=1&blankEdit=1`}
+                          className="inline-flex h-6 items-center gap-1 rounded-full border border-amber-400/70 bg-amber-50 px-2.5 text-[11px] font-semibold text-amber-800 transition-colors hover:bg-amber-100 dark:border-amber-500/40 dark:bg-amber-950/40 dark:text-amber-200 dark:hover:bg-amber-950/60"
+                          title="이 조문의 내용 빈칸 편집(강사·원장)"
+                        >
+                          <PencilLineIcon className="size-3" /> 빈칸 편집
+                        </Link>
+                      ) : null}
                       {/* 중요도 별 */}
                       {importance > 0 ? (
                         <span
