@@ -91,7 +91,19 @@ export function StudentBottomBar({
   const [sheetTab, setSheetTab] = useState<string | null>(null);
 
   const close = () => setSheetTab(null);
+  // ★링크 클릭 시 시트를 '즉시' 닫으면(setState) Radix Sheet 언마운트가 React Router 내비게이션과
+  //   같은 클릭에서 경합해, iOS 모바일에서 이동이 씹히거나 body 스크롤락이 남아 목적 페이지가
+  //   먹통처럼 보인다(인박스가 '안 열림'). 닫기를 다음 프레임으로 미뤄 내비게이션이 먼저
+  //   처리되게 하고, 시트는 마운트된 채 정상 닫힘 정리(스크롤락 해제)를 거치게 한다.
+  const deferClose = () => {
+    if (typeof requestAnimationFrame === "function") requestAnimationFrame(close);
+    else close();
+  };
   const open = sheetTab !== null;
+  // 경로가 바뀌면(내비게이션 성공) 시트를 확실히 닫는다 — deferClose 가 누락돼도 안전.
+  useEffect(() => {
+    setSheetTab(null);
+  }, [path, search]);
 
   // 스크롤 내릴 때 자동으로 바를 미끄러뜨려 숨김(공부 화면 확대), 올릴 때 다시
   // 노출. 최상단 부근·시트 열림 중에는 항상 노출. 수동 접기 상태와 독립.
@@ -261,7 +273,7 @@ export function StudentBottomBar({
             {sheetTab === "more" ? (
               <MoreSheet
                 isStaff={isStaff}
-                onPick={close}
+                onPick={deferClose}
                 secondary={secondary}
                 inboxUnread={inboxUnread}
                 inboxHref={inboxHref}
@@ -270,7 +282,7 @@ export function StudentBottomBar({
               />
             ) : sheetTab === "subjects" ? (
               <SubjectsSheet
-                onPick={close}
+                onPick={deferClose}
                 path={path}
                 search={search}
                 locked={lockOf(core.find((g) => g.id === "subjects")?.area)}
@@ -281,7 +293,7 @@ export function StudentBottomBar({
             ) : sheetTab ? (
               <GroupSheet
                 tabId={sheetTab}
-                onPick={close}
+                onPick={deferClose}
                 core={core}
                 path={path}
                 search={search}
