@@ -588,6 +588,10 @@ function ArticleViewerInner({
     ],
   );
   const canEdit = staffRole !== null;
+  // 민법(civil)은 공동 편집 — '편집'이 '풀기'와 같은 세트(현재 표시 중인 blankSet)를 대상으로 해야
+  //   추가한 빈칸이 풀기에 바로 반영된다. 그 외 과목은 per-owner(내 세트)를 편집(포크 정책).
+  const blankEditTargetSet =
+    subject.slug === "civil" && canEdit ? blankSet : myBlankSet;
   // 모호 케이스(ambiguous)는 운영자 검토용 — 학생에겐 확정 빈칸만 노출한다. 확정 빈칸이 0개인데
   //   모호만 있으면 학생에겐 '기간 빈칸' 모드 자체를 숨긴다(채울 게 없음).
   const periodBlankAvailable =
@@ -1441,10 +1445,10 @@ function ArticleViewerInner({
                         <ArticleBlankEditOverlay
                           articleId={article.articleId}
                           mySet={
-                            myBlankSet
+                            blankEditTargetSet
                               ? {
-                                  setId: myBlankSet.setId,
-                                  blanks: myBlankSet.blanks,
+                                  setId: blankEditTargetSet.setId,
+                                  blanks: blankEditTargetSet.blanks,
                                 }
                               : null
                           }

@@ -174,7 +174,10 @@ export function ArticleBlankEditOverlay({
   const addBlank = useCallback(() => {
     if (!selection) return;
     const fd = new FormData();
-    fd.set("articleId", articleId);
+    // 세트가 이미 있으면 '그 세트'에 직접 추가(편집 대상=풀기 대상 일치). 없으면 articleId 로
+    //   자동 생성. 민법 공동 편집은 상위에서 표시 중인 공유 세트를 mySet 으로 넘겨준다.
+    if (mySet) fd.set("setId", mySet.setId);
+    else fd.set("articleId", articleId);
     fd.set("selectionText", selection.text);
     fd.set("beforeHint", selection.beforeHint);
     fd.set("afterHint", selection.afterHint);
@@ -186,7 +189,7 @@ export function ArticleBlankEditOverlay({
     fetcher.submit(fd, { method: "post", action: "/api/blanks/admin-add-blank" });
     if (typeof window !== "undefined") window.getSelection()?.removeAllRanges();
     setSelection(null);
-  }, [selection, articleId, fetcher]);
+  }, [selection, articleId, mySet, fetcher]);
 
   // 빈칸 chip 클릭 → 그 위치에 제거 확인 버튼.
   const onChipClick = useCallback(
