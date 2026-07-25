@@ -250,14 +250,23 @@ export default function LatestLaws({ loaderData }: Route.ComponentProps) {
                         </Pill>
                       </Td>
                       <Td>
-                        <Link
-                          to={`/subjects/${r.lawCode}`}
-                          viewTransition
-                          className="hover:text-link text-[13px] font-semibold"
-                        >
-                          {(LAW_SUBJECTS[r.lawCode as LawSubjectSlug]?.name ??
-                            r.lawName) + KIND_SUFFIX[r.revisionKind]}
-                        </Link>
+                        {/* 시행규칙(rule)은 학습과목에 전문이 없어 /subjects 로 링크하지 않는다
+                            (본법 조문 페이지로 잘못 안내됨). 본법·시행령만 링크. */}
+                        {r.revisionKind === "rule" ? (
+                          <span className="text-[13px] font-semibold">
+                            {(LAW_SUBJECTS[r.lawCode as LawSubjectSlug]?.name ??
+                              r.lawName) + KIND_SUFFIX[r.revisionKind]}
+                          </span>
+                        ) : (
+                          <Link
+                            to={`/subjects/${r.lawCode}`}
+                            viewTransition
+                            className="hover:text-link text-[13px] font-semibold"
+                          >
+                            {(LAW_SUBJECTS[r.lawCode as LawSubjectSlug]?.name ??
+                              r.lawName) + KIND_SUFFIX[r.revisionKind]}
+                          </Link>
+                        )}
                         <div className="mt-1 flex flex-wrap items-center gap-1.5">
                           {r.affectedArticleCount > 0 ? (
                             <span className="text-muted-foreground text-[11px]">
@@ -284,16 +293,28 @@ export default function LatestLaws({ loaderData }: Route.ComponentProps) {
                               label={`${SUBJECT_CATEGORY_LABEL[r.lawCode as LawSubjectSlug] ?? r.lawCode} ${r.revisionNumber ?? ""}`}
                             />
                           ) : null}
-                          <Link
-                            to={`/subjects/${r.lawCode}`}
-                            viewTransition
-                            className={cn(
-                              "text-link text-[11px] font-semibold hover:underline",
-                              isStaff ? "" : "ml-auto",
-                            )}
-                          >
-                            보러 가기 →
-                          </Link>
+                          {r.revisionKind === "rule" ? (
+                            <span
+                              className={cn(
+                                "text-muted-foreground text-[11px]",
+                                isStaff ? "" : "ml-auto",
+                              )}
+                              title="시행규칙 전문은 학습과목에 수록되어 있지 않습니다. 개정 이유·신구조문 비교표는 우측 자료를 참고하세요."
+                            >
+                              학습과목 미수록
+                            </span>
+                          ) : (
+                            <Link
+                              to={`/subjects/${r.lawCode}`}
+                              viewTransition
+                              className={cn(
+                                "text-link text-[11px] font-semibold hover:underline",
+                                isStaff ? "" : "ml-auto",
+                              )}
+                            >
+                              보러 가기 →
+                            </Link>
+                          )}
                         </div>
                       </Td>
                       <Td className="text-[13px] tabular-nums">
