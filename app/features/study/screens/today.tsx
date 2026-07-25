@@ -200,8 +200,39 @@ function ReviewCard({ summary }: { summary: TodaySummary }) {
             <Link to="/srs">암기 카드 시작</Link>
           </Button>
         ) : null}
+        {review.problemBacklog > 0 ? <RescheduleBacklogButton /> : null}
       </div>
     </Surface>
+  );
+}
+
+/* 밀린 복습 나눠 받기 — 누적 overdue 를 하루 상한씩 며칠에 재배치(feat-2-031 ③). */
+function RescheduleBacklogButton() {
+  const fetcher = useFetcher<{
+    ok?: boolean;
+    spreadDays?: number;
+    moved?: number;
+  }>();
+  const submitting = fetcher.state !== "idle";
+  const done = fetcher.state === "idle" && fetcher.data?.ok;
+  return (
+    <fetcher.Form method="post" action="/api/study/reschedule-backlog">
+      <Button
+        type="submit"
+        size="sm"
+        variant="outline"
+        disabled={submitting || done}
+        className="gap-1.5"
+        title="밀린 복습을 하루 분량씩 앞으로 며칠에 걸쳐 다시 배치합니다(오래된 것 우선). 부담을 줄이는 용도이며, 원할 때 그대로 더 복습해도 됩니다."
+      >
+        <ClockIcon className="size-3.5" />
+        {submitting
+          ? "나누는 중…"
+          : done
+            ? `${fetcher.data?.spreadDays ?? ""}일에 나눴어요`
+            : "밀린 복습 나눠 받기"}
+      </Button>
+    </fetcher.Form>
   );
 }
 
