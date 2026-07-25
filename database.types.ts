@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -9580,6 +9580,59 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "public_profiles"
             referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      problem_grading_notes: {
+        Row: {
+          author: string | null
+          body_md: string
+          created_at: string
+          created_by: string | null
+          display_order: number
+          example_answer_md: string | null
+          form: string | null
+          note_id: string
+          problem_id: string
+          source: string
+          source_year: number | null
+          updated_at: string
+        }
+        Insert: {
+          author?: string | null
+          body_md: string
+          created_at?: string
+          created_by?: string | null
+          display_order?: number
+          example_answer_md?: string | null
+          form?: string | null
+          note_id?: string
+          problem_id: string
+          source?: string
+          source_year?: number | null
+          updated_at?: string
+        }
+        Update: {
+          author?: string | null
+          body_md?: string
+          created_at?: string
+          created_by?: string | null
+          display_order?: number
+          example_answer_md?: string | null
+          form?: string | null
+          note_id?: string
+          problem_id?: string
+          source?: string
+          source_year?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "problem_grading_notes_problem_id_fkey"
+            columns: ["problem_id"]
+            isOneToOne: false
+            referencedRelation: "problems"
+            referencedColumns: ["problem_id"]
           },
         ]
       }
