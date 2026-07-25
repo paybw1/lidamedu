@@ -23,6 +23,20 @@ const MIN_EASE = 1.3;
 const DEFAULT_EASE = 2.5;
 const EASE_PENALTY = 0.2;
 
+// feat-2-031 — 하루 복습 노출 상한(부담 조절). 밀린 due 가 아무리 많아도 한 번에 이만큼만
+//   '오래된 것 우선' 노출해 "산더미 → 포기" 를 막는다. 나머지는 '밀림'으로 부드럽게 안내.
+//   복습 종류별로 각각 적용(문제·빈칸 세트·정오·조문 정독). 값은 합리적 기본값(추후 사용자 조절 편입 가능).
+export const DAILY_REVIEW_BUDGET = 40;
+
+/** 밀림 표시용 — 총 due 대비 오늘 노출/밀림 수를 나눠 반환. */
+export function splitReviewBudget(
+  totalDue: number,
+  budget: number = DAILY_REVIEW_BUDGET,
+): { shown: number; backlog: number } {
+  const shown = Math.min(totalDue, budget);
+  return { shown, backlog: Math.max(0, totalDue - shown) };
+}
+
 /** SM-2 simplified — 다음 SRS 상태 계산. 시간 미정 시 now=Date(). */
 export function computeNextSrsState(
   input: SrsInput,

@@ -21,12 +21,22 @@ import {
 } from "~/features/study/daily-menu.server";
 import type { DailyMenuItem } from "~/features/study/lib/daily-menu";
 import {
+  DAILY_REVIEW_BUDGET,
+  splitReviewBudget,
+} from "~/features/study/lib/srs";
+import {
   getSrsCounts as getProblemSrsCounts,
 } from "~/features/study/srs.server";
 
 export interface TodayReviewSummary {
-  /** v1 (객체별 SM-2) due 수. */
+  /** v1 (객체별 SM-2) 오늘 노출 due 수 — 하루 상한 적용 후(오래된 것 우선). */
   problemDue: number;
+  /** v1 실제 누적 due(상한 적용 전). 밀림 안내용. */
+  problemDueTotal: number;
+  /** v1 상한 초과로 오늘 안 보이는 밀린 문제 복습 수. */
+  problemBacklog: number;
+  /** 문제 복습 하루 상한(부담 조절). */
+  problemBudget: number;
   /** v2 (능동 플래시카드) 큐의 due 항목 수 (상한 적용 후). */
   flashcardDue: number;
   /** v2 큐의 신규 항목 수 (상한 적용 후). */
@@ -35,7 +45,7 @@ export interface TodayReviewSummary {
   totalToday: number;
   /** v2 일일 상한 설정. */
   maxPerDay: number;
-  /** v2 가 누적 due 를 다 못 보여줬는지 (밀려 있음). */
+  /** 누적 due 를 상한 때문에 다 못 보여줬는지(v1 또는 v2 밀림). */
   hasBacklog: boolean;
 }
 
@@ -163,15 +173,25 @@ export async function getTodaySummary(
   const flashcardNew = flashcardQueue.newCount;
   const flashcardTotalShown = flashcardDue + flashcardNew;
   // v2 의 누적 due 와 표시값 비교는 비싸므로 단순 추정: 표시값이 상한과 같으면 backlog 가능성.
-  const hasBacklog = flashcardTotalShown >= flashcardQueue.settings.maxReviewsPerDay;
+  const flashcardBacklog =
+    flashcardTotalShown >= flashcardQueue.settings.maxReviewsPerDay;
+
+  // feat-2-031 — 문제 복습(v1)에 하루 노출 상한 적용. 밀린 due 전부 헤드라인에 얹어 "산더미"로
+  //   보이던 것을, 오늘 상한만큼만 노출하고 나머지는 '밀림'으로 부드럽게 안내한다.
+  const { shown: problemShown, backlog: problemBacklog } = splitReviewBudget(
+    problemSrs.due,
+  );
 
   const review: TodayReviewSummary = {
-    problemDue: problemSrs.due,
+    problemDue: problemShown,
+    problemDueTotal: problemSrs.due,
+    problemBacklog,
+    problemBudget: DAILY_REVIEW_BUDGET,
     flashcardDue,
     flashcardNew,
-    totalToday: problemSrs.due + flashcardTotalShown,
+    totalToday: problemShown + flashcardTotalShown,
     maxPerDay: flashcardQueue.settings.maxReviewsPerDay,
-    hasBacklog,
+    hasBacklog: flashcardBacklog || problemBacklog > 0,
   };
 
   // 과제 — cohort 멤버 아니면 모두 0/빈배열.

@@ -161,10 +161,8 @@ function ReviewCard({ summary }: { summary: TodaySummary }) {
         <div className="min-w-0 flex-1">
           <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
             <Chip tone="danger">최우선</Chip>
-            {review.hasBacklog ? (
-              <Chip tone="warn">
-                밀린 항목 우선 · 하루 상한 {review.maxPerDay}
-              </Chip>
+            {review.problemBacklog > 0 ? (
+              <Chip tone="warn">오래된 것부터 · 하루 {review.problemBudget}개</Chip>
             ) : null}
           </div>
           <h2 className="text-foreground text-lg font-semibold tracking-tight md:text-xl">
@@ -178,6 +176,14 @@ function ReviewCard({ summary }: { summary: TodaySummary }) {
               <span className="bg-muted text-ink-faint ml-1.5 rounded px-1 py-0.5 text-[10px]">
                 베타
               </span>
+            </p>
+          ) : null}
+          {/* feat-2-031 — 밀려도 압박 대신 안심. 밀린 총량은 작게, 오늘 분량은 명확히. */}
+          {review.problemBacklog > 0 ? (
+            <p className="text-ink-soft mt-1 text-xs leading-relaxed">
+              밀린 문제 복습 {review.problemDueTotal}개 중 오늘{" "}
+              {review.problemDue}개만 골라뒀어요. 다 못 해도 괜찮아요 — 오래된
+              것부터 매일 조금씩 줄여가요.
             </p>
           ) : null}
         </div>

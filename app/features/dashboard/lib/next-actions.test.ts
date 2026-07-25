@@ -12,6 +12,9 @@ function today(over: Partial<TodaySummary> = {}): TodaySummary {
     date: "2026-07-12",
     review: {
       problemDue: 0,
+      problemDueTotal: 0,
+      problemBacklog: 0,
+      problemBudget: 40,
       flashcardDue: 0,
       flashcardNew: 0,
       totalToday: 0,
@@ -55,6 +58,9 @@ describe("buildNextActions 우선순위", () => {
       today: today({
         review: {
           problemDue: 12,
+          problemDueTotal: 12,
+          problemBacklog: 0,
+          problemBudget: 40,
           flashcardDue: 0,
           flashcardNew: 0,
           totalToday: 12,
@@ -113,6 +119,9 @@ describe("buildNextActions 우선순위", () => {
       today: today({
         review: {
           problemDue: 30,
+          problemDueTotal: 30,
+          problemBacklog: 0,
+          problemBudget: 40,
           flashcardDue: 10,
           flashcardNew: 0,
           totalToday: 40,
@@ -151,6 +160,9 @@ describe("buildNextActions 우선순위", () => {
       today: today({
         review: {
           problemDue: 5,
+          problemDueTotal: 5,
+          problemBacklog: 0,
+          problemBudget: 40,
           flashcardDue: 0,
           flashcardNew: 0,
           totalToday: 5,

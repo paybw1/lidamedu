@@ -30,6 +30,9 @@ function makeCohortSummary(): TodaySummary {
     date: "2026-05-30",
     review: {
       problemDue: 12,
+      problemDueTotal: 12,
+      problemBacklog: 0,
+      problemBudget: 40,
       flashcardDue: 8,
       flashcardNew: 3,
       totalToday: 23,
@@ -78,6 +81,9 @@ function makeEmptySummary(): TodaySummary {
     date: "2026-05-30",
     review: {
       problemDue: 0,
+      problemDueTotal: 0,
+      problemBacklog: 0,
+      problemBudget: 40,
       flashcardDue: 0,
       flashcardNew: 0,
       totalToday: 0,

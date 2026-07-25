@@ -78,10 +78,12 @@ export function TodayEntryCard({
           // 비종합반 — 과제 카드가 보이지 않는 이유 자연스럽게 안내.
           <Chip tone="neutral">자기주도 모드 · 종합반 가입 시 과제 표시</Chip>
         )}
-        {summary.review.hasBacklog ? (
+        {summary.review.problemBacklog > 0 ? (
           <Chip tone="warn">
-            밀린 항목 우선 · 하루 상한 {summary.review.maxPerDay}
+            오래된 것부터 · 하루 {summary.review.problemBudget}개씩
           </Chip>
+        ) : summary.review.hasBacklog ? (
+          <Chip tone="warn">밀린 항목 우선 · 하루 상한 {summary.review.maxPerDay}</Chip>
         ) : null}
       </div>
 
