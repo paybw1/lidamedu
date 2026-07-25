@@ -33,6 +33,25 @@ export async function action({ request }: Route.ActionArgs) {
   const role = await getStaffRole(client, user.id);
   if (!role) throw data("Forbidden", { status: 403 });
 
+  // 민법(civil)은 원장·스태프 공동 편집 — 소유자 무관하게 이미 세트가 있으면 그것을 함께 편집한다
+  //   (per-owner 포크로 갈라지지 않게 '가장 먼저 만든' 세트로 수렴).
+  const { data: articleRow } = await adminClient
+    .from("articles")
+    .select("law_id, laws(law_code)")
+    .eq("article_id", parsed.data.articleId)
+    .maybeSingle();
+  const isCivil = articleRow?.laws?.law_code === "civil";
+  if (isCivil) {
+    const { data: shared } = await adminClient
+      .from("article_blank_sets")
+      .select("set_id")
+      .eq("article_id", parsed.data.articleId)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (shared) return redirect(`/admin/blanks/${shared.set_id}`);
+  }
+
   // 본인 owner 의 기존 set 이 있는지 — 있으면 그 set 의 편집 화면으로 redirect.
   const { data: existing } = await adminClient
     .from("article_blank_sets")

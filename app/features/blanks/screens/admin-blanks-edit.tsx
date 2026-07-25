@@ -240,6 +240,10 @@ export default function AdminBlanksEdit({ loaderData }: Route.ComponentProps) {
     nextSet,
     role,
   } = loaderData;
+  // 민법(civil) 빈칸은 원장·스태프 공동 편집 — 소유자가 아니어도 staff 면 편집 가능(RLS 도 동일 허용).
+  //   그 외 과목은 기존대로 소유자만(다른 owner 자료는 '내 자료로 복사'로 포크).
+  const civilCoEdit = !isOwner && role !== null && lawCode === "civil";
+  const canEdit = isOwner || civilCoEdit;
   const [drafts, setDrafts] = useState<Record<number, string>>(() => {
     const init: Record<number, string> = {};
     for (const b of blanks) init[b.idx] = b.answer;
@@ -475,12 +479,14 @@ export default function AdminBlanksEdit({ loaderData }: Route.ComponentProps) {
       cluster="blanks"
       role={role}
       title={`${articleLabel || `제${articleNumber}조`} 빈칸`}
-      desc={`${isOwner ? "내 자료" : `${ownerName}의 자료`} · ${displayName ?? version}`}
+      desc={`${isOwner ? "내 자료" : civilCoEdit ? `${ownerName} 자료 · 공동 편집` : `${ownerName}의 자료`} · ${displayName ?? version}`}
       width={960}
-      headerRight={!isOwner ? <ForkButton setId={setId} /> : undefined}
+      headerRight={
+        !isOwner && !civilCoEdit ? <ForkButton setId={setId} /> : undefined
+      }
     >
-      {/* floating 버튼 — 텍스트 선택 시 */}
-      {selection ? (
+      {/* floating 버튼 — 텍스트 선택 시(편집 권한 있을 때만) */}
+      {selection && canEdit ? (
         <div
           className="fixed z-50 flex items-center gap-1"
           style={{ top: selection.top, left: selection.left }}
@@ -589,8 +595,14 @@ export default function AdminBlanksEdit({ loaderData }: Route.ComponentProps) {
         ) : null}
       </div>
 
-      {/* 소유자 정보 배너 (다른 강사 자료일 때) */}
-      {!isOwner ? (
+      {/* 소유자/공동편집 정보 배너 */}
+      {civilCoEdit ? (
+        <div className="mb-4 rounded-xl border border-sky-300/60 bg-sky-50/60 px-4 py-3 text-sm text-sky-900 dark:border-sky-700/60 dark:bg-sky-950/30 dark:text-sky-200">
+          <span className="font-semibold">{ownerName}</span>이(가) 만든 민법 빈칸
+          자료입니다. 민법은 원장·스태프가 <b>공동 편집</b>하므로 여기서 바로
+          수정할 수 있고, 변경 내용은 모두에게 동일하게 보입니다.
+        </div>
+      ) : !isOwner ? (
         <div className="mb-4 rounded-xl border border-amber-300/60 bg-amber-50/60 px-4 py-3 text-sm text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-200">
           <span className="font-semibold">{ownerName}</span>의 자료입니다.
           수정하려면 우상단의 "내 자료로 복사"를 사용하세요.
@@ -668,7 +680,7 @@ export default function AdminBlanksEdit({ loaderData }: Route.ComponentProps) {
                   unplaced={unlocatableBlanks}
                   activeIdx={activeIdx}
                   onActivate={setActiveIdx}
-                  disabled={!isOwner}
+                  disabled={!canEdit}
                 />
               </div>
             ) : (
@@ -691,7 +703,11 @@ export default function AdminBlanksEdit({ loaderData }: Route.ComponentProps) {
             </p>
           </CardHeader>
           <CardContent className="space-y-2">
-            {!isOwner ? (
+            {civilCoEdit ? (
+              <p className="text-muted-foreground border-sky-300/50 bg-sky-50/40 rounded-md border border-dashed px-3 py-2 text-[11px] dark:bg-sky-950/20">
+                민법 빈칸은 공동 편집입니다. 여기서 바로 수정하면 모두에게 반영됩니다.
+              </p>
+            ) : !isOwner ? (
               <p className="text-muted-foreground rounded-md border border-dashed bg-amber-50/40 px-3 py-2 text-[11px] dark:bg-amber-950/20">
                 다른 강사({ownerName})의 자료입니다. 수정하려면 우상단의
                 "내 자료로 복사" 를 사용하세요.
@@ -713,7 +729,7 @@ export default function AdminBlanksEdit({ loaderData }: Route.ComponentProps) {
                 initialFocus={
                   initialFocusIdx === b.idx || newlyAddedIdx === b.idx
                 }
-                disabled={!isOwner}
+                disabled={!canEdit}
                 onFocus={() => setActiveIdx(b.idx)}
                 onDraftChange={(v) =>
                   setDrafts((prev) => ({ ...prev, [b.idx]: v }))
