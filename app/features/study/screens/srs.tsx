@@ -47,6 +47,7 @@ import {
   type SrsRowMetric,
   getPasserSrsBenchmark,
 } from "~/features/study/passer-srs-benchmark.server";
+import { DAILY_REVIEW_BUDGET } from "~/features/study/lib/srs";
 import { type SrsTrend, getSrsTrend } from "~/features/study/srs-trend.server";
 import { getDueProblems, getSrsCounts } from "~/features/study/srs.server";
 import {
@@ -151,6 +152,18 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
     slug,
     sets: blankItems.filter((b) => b.lawCode === slug),
   })).filter((g) => g.sets.length > 0);
+  // feat-2-031 — '오늘 할 분량'은 하루 상한까지만 표기(오래된 것 우선). 총계는 그대로 두어
+  //   밀린 규모는 볼 수 있게 하되, 압박은 주지 않는다.
+  const problemToday = Math.min(counts.due, DAILY_REVIEW_BUDGET);
+  const blankToday = Math.min(blankCounts.dueSets, DAILY_REVIEW_BUDGET);
+  const oxToday = Math.min(oxCounts.due, DAILY_REVIEW_BUDGET);
+  const articleToday = Math.min(articleCounts.due, DAILY_REVIEW_BUDGET);
+  const backlogTotal =
+    counts.due -
+    problemToday +
+    (blankCounts.dueSets - blankToday) +
+    (oxCounts.due - oxToday) +
+    (articleCounts.due - articleToday);
   return (
     <StudentShell width="wide">
       <header className="mb-6 flex items-start justify-between gap-3">
@@ -182,6 +195,12 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
                   종류별로 묶음 복습을 시작해 보세요. 객관식·빈칸은 아래 과목별
                   버튼으로, 정오문제는 여기서 바로 시작할 수 있습니다.
                 </p>
+                {backlogTotal > 0 ? (
+                  <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-400">
+                    밀린 복습 {backlogTotal}개는 하루 {DAILY_REVIEW_BUDGET}개씩
+                    오래된 것부터 골라 드려요. 다 못 해도 괜찮아요.
+                  </p>
+                ) : null}
               </div>
               {oxCounts.due > 0 ? (
                 <Button asChild size="sm" className="rounded-full">
@@ -193,10 +212,10 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
               {[
-                { label: "객관식", value: counts.due, unit: "문항" },
-                { label: "빈칸", value: blankCounts.dueSets, unit: "세트" },
-                { label: "정오문제", value: oxCounts.due, unit: "문항" },
-                { label: "조문 정독", value: articleCounts.due, unit: "건" },
+                { label: "객관식", value: problemToday, unit: "문항" },
+                { label: "빈칸", value: blankToday, unit: "세트" },
+                { label: "정오문제", value: oxToday, unit: "문항" },
+                { label: "조문 정독", value: articleToday, unit: "건" },
               ].map((t) => (
                 <div
                   key={t.label}
@@ -232,7 +251,7 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
         <KpiTile
           icon={<CalendarClockIcon className="size-3" />}
           label="오늘 풀 것"
-          value={counts.due}
+          value={problemToday}
           tone="rose"
         />
         <KpiTile
@@ -404,7 +423,7 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
         <KpiTile
           icon={<CalendarClockIcon className="size-3" />}
           label="오늘 풀 세트"
-          value={blankCounts.dueSets}
+          value={blankToday}
           tone="rose"
         />
         <KpiTile
@@ -485,7 +504,7 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
         <KpiTile
           icon={<CalendarClockIcon className="size-3" />}
           label="오늘 풀 항목"
-          value={oxCounts.due}
+          value={oxToday}
           tone="rose"
         />
         <KpiTile
@@ -554,7 +573,7 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
         <KpiTile
           icon={<CalendarClockIcon className="size-3" />}
           label="오늘 다시 볼 조문"
-          value={articleCounts.due}
+          value={articleToday}
           tone="rose"
         />
         <KpiTile

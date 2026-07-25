@@ -10,6 +10,7 @@ import { data, redirect } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { DAILY_REVIEW_BUDGET } from "~/features/study/lib/srs";
 import { createQuizSession } from "~/features/study/queries.server";
 import { getDueProblems } from "~/features/study/srs.server";
 import { lawSubjectSlugSchema } from "~/features/subjects/lib/subjects";
@@ -45,10 +46,12 @@ export async function action({ request }: Route.ActionArgs) {
   const { subject, mode } = parsed.data;
 
   // 전과목 due(overdue 가장 오래된 것 우선) 중 이 과목만. 정렬 순서 그대로 세션에 freeze.
+  // feat-2-031 — 한 세션이 밀린 due 전부를 담아 압박 주지 않도록 하루 상한(오래된 것 우선)까지만.
   const due = await getDueProblems(client, user.id, DUE_FETCH_LIMIT);
   const problemIds = due
     .filter((d) => d.lawCode === subject)
-    .map((d) => d.problemId);
+    .map((d) => d.problemId)
+    .slice(0, DAILY_REVIEW_BUDGET);
   if (problemIds.length === 0) {
     return data({ error: "지금 복습할 항목이 없습니다." }, { status: 400 });
   }
