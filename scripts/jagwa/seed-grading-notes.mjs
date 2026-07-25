@@ -72,7 +72,7 @@ async function main() {
       continue;
     }
     for (const f of entries) {
-      if (!/\.hwpx$/i.test(f)) continue;
+      if (!/\.(hwpx|hwtx)$/i.test(f)) continue; // hwtx=한글 서식파일(52회 특허B가 이 형식)
       const m = meta(folder, f);
       if (!m) {
         console.log(`  ⚠ 메타 파싱 실패: ${folder}/${f}`);
