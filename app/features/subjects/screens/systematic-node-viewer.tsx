@@ -42,6 +42,8 @@ import {
   type BlankItem,
   listBlankSetsByArticle,
 } from "~/features/blanks/queries.server";
+import { getTierCompletionsBySet } from "~/features/blanks/tiers.server";
+import type { BlankTier } from "~/features/blanks/lib/tiers";
 import { listCommentsBulk } from "~/features/comments/queries.server";
 import { ArticleBodyView } from "~/features/laws/components/article-body";
 import { ArticleRightPanel } from "~/features/laws/components/article-right-panel";
@@ -259,6 +261,18 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   }
   const blankOwners = [...ownerMap.values()];
 
+  // feat-2-030 — 난이도 계층(하/중/상). 특허·민법=대상 활성, 그 외 staff 검증 ?tiers=1.
+  //   (체계도 뷰어는 다중 조문이라 장 게이트 대신 세트별 해금 폴백 사용 — chapterGate=null)
+  const TIER_ENABLED_SUBJECTS: readonly string[] = ["patent", "civil"];
+  const blankTiersEnabled =
+    TIER_ENABLED_SUBJECTS.includes(lawCode) ||
+    new URL(request.url).searchParams.get("tiers") === "1";
+  const contentSetIds = Object.values(blankSetsByArticle).map((s) => s.setId);
+  const tierCompletionsBySet: Record<string, BlankTier[]> =
+    blankTiersEnabled && contentSetIds.length > 0
+      ? await getTierCompletionsBySet(client, user.id, contentSetIds)
+      : {};
+
   // 전체 OX refId 모아 한 번에 메모/즐겨찾기 prefetch.
   const allOxItems = Object.values(oxQuestionsByArticle).flat();
   const oxAnnotationsByRef: Record<string, OxRefAnnotations> =
@@ -349,6 +363,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     qnaByArticle,
     blankSetsByArticle,
     blankOwners,
+    blankTiersEnabled,
+    tierCompletionsBySet,
     oxQuestionsByArticle,
     oxAnnotationsByRef,
     relatedCasesByArticle: relatedCasesByArticleScoped,
@@ -398,6 +414,8 @@ function Inner({
     qnaByArticle,
     blankSetsByArticle,
     blankOwners,
+    blankTiersEnabled,
+    tierCompletionsBySet,
     oxQuestionsByArticle,
     oxAnnotationsByRef,
     relatedCasesByArticle,
@@ -884,6 +902,10 @@ function Inner({
                           blanks={blankSet.blanks}
                           titleMap={titleMap}
                           lawCode={subject.slug}
+                          enableTiers={blankTiersEnabled}
+                          completedTiers={
+                            tierCompletionsBySet[blankSet.setId] ?? []
+                          }
                         />
                       ) : subjectBlankMode && body ? (
                         <BlankFill
