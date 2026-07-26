@@ -13,6 +13,10 @@ export const FREE_SHIPPING_THRESHOLD_KEY = "free_shipping_threshold_krw";
 // 수강 후기 작성 보상 포인트(대상당 1회). 미설정 시 기본값(REVIEW_REWARD_POINTS_DEFAULT).
 export const REVIEW_REWARD_POINTS_KEY = "review_reward_points";
 
+// 강의 랜딩 히어로 단(tier) 사이 간격(px)과 그 간격 배경색. feat-12 배너.
+export const LANDING_TIER_GAP_PX_KEY = "landing_tier_gap_px";
+export const LANDING_TIER_GAP_COLOR_KEY = "landing_tier_gap_color";
+
 /** app_settings 한 키의 값. 없으면 null. */
 export async function getAppSetting(
   client: SupabaseClient<Database>,
@@ -78,4 +82,30 @@ export async function getReviewRewardPoints(
   return typeof raw === "number" && Number.isFinite(raw) && raw >= 0
     ? Math.floor(raw)
     : REVIEW_REWARD_POINTS_DEFAULT;
+}
+
+export interface LandingTierGap {
+  /** 단 사이 간격(px). 0 = 붙임. */
+  px: number;
+  /** 간격 배경색(CSS 색). null = 투명(페이지 배경). */
+  color: string | null;
+}
+
+/** 랜딩 히어로 단 사이 간격·색. 미설정 시 간격 0·투명. */
+export async function getLandingTierGap(
+  client: SupabaseClient<Database>,
+): Promise<LandingTierGap> {
+  const [pxRaw, colorRaw] = await Promise.all([
+    getAppSetting(client, LANDING_TIER_GAP_PX_KEY),
+    getAppSetting(client, LANDING_TIER_GAP_COLOR_KEY),
+  ]);
+  const px =
+    typeof pxRaw === "number" && Number.isFinite(pxRaw) && pxRaw >= 0
+      ? Math.min(400, Math.floor(pxRaw))
+      : 0;
+  const color =
+    typeof colorRaw === "string" && /^#[0-9a-fA-F]{6}$/.test(colorRaw)
+      ? colorRaw
+      : null;
+  return { px, color };
 }

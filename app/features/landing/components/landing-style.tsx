@@ -100,9 +100,9 @@ export function LandingStyle() {
 .llx .pbadges span{font-size:12px;font-weight:800;color:#fff;background:rgba(74,222,128,.16);border:1px solid rgba(74,222,128,.32);padding:6px 11px;border-radius:99px}
 
 /* 히어로 아래 추가 단(2·3단) 배너 */
-.llx .btier{padding:22px 0 0}
-/* 히어로(1단) 바로 다음 단(2단)은 붙여 노출 — 히어로와 이어지는 배너용(간격 제거). */
-.llx .hero-carousel + .btier{padding-top:0}
+/* 단(tier) 사이 간격·색 = 운영자 설정(--tier-gap/--tier-gap-bg, landing.tsx 주입).
+   각 단 상단 여백이 이전 단(또는 히어로)과의 간격. 미설정 시 0·투명. */
+.llx .btier{padding:var(--tier-gap,0) 0 0;background:var(--tier-gap-bg,transparent)}
 .llx .bt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
 .llx .bt-grid.one{grid-template-columns:1fr}
 .llx .bt-block{border-radius:16px;overflow:hidden;box-shadow:var(--lshadow)}

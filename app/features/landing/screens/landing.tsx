@@ -1,7 +1,9 @@
 // feat-12 강의 플랫폼 랜딩 — /lecture/home. 편집형 배너 + 현장강의 일정 + 강사진 +
 // 커리큘럼 + 후기 + 리담소식 + 도서 + FAQ + 오시는 길. 공개 접근(lecture.layout).
+import type { CSSProperties } from "react";
 import { Link } from "react-router";
 
+import { getLandingTierGap } from "~/core/lib/app-settings.server";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { listBookstoreBooks } from "~/features/bookstore/queries.server";
@@ -65,6 +67,11 @@ export async function loader({ request }: Route.LoaderArgs) {
     //   adminClient 로 조회(공개·미블라인드만 반환하는 공개-안전 쿼리).
     listFeaturedReviews(adminClient).catch(() => []),
   ]);
+  // 히어로 단 사이 간격·색(운영자 설정) — anon 노출 위해 adminClient.
+  const tierGap = await getLandingTierGap(adminClient).catch(() => ({
+    px: 0,
+    color: null as string | null,
+  }));
   // 랜딩 강사진은 계열 구분 없이 한 줄 가로 레일(좌우 화살표) — 배치 순서(display_order) 그대로.
   return {
     banners,
@@ -75,6 +82,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     faqGroups,
     books: books.slice(0, 6),
     featuredReviews,
+    tierGap,
     todayISO,
   };
 }
@@ -89,6 +97,7 @@ export default function Landing({ loaderData }: Route.ComponentProps) {
     faqGroups,
     books,
     featuredReviews,
+    tierGap,
     todayISO,
   } = loaderData;
   // tier 1=메인 히어로 캐러셀, 2·3=히어로 아래 추가 단.
@@ -96,7 +105,15 @@ export default function Landing({ loaderData }: Route.ComponentProps) {
   const tier2 = banners.filter((b) => b.tier === 2);
   const tier3 = banners.filter((b) => b.tier === 3);
   return (
-    <div className="llx">
+    <div
+      className="llx"
+      style={
+        {
+          "--tier-gap": `${tierGap.px}px`,
+          "--tier-gap-bg": tierGap.color ?? "transparent",
+        } as CSSProperties
+      }
+    >
       <LandingStyle />
       <HeroCarousel banners={tier1} schedules={schedules} todayISO={todayISO} />
       <BannerTiers tier2={tier2} tier3={tier3} />
