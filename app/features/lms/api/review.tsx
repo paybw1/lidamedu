@@ -83,11 +83,15 @@ export async function action({ request }: Route.ActionArgs) {
       reviewId = inserted.review_id;
     }
 
-    // 보상 — 일정 분량 이상 본문 + 이 대상에 미지급이면 포인트 적립(대상당 1회).
+    // 보상 — 강의(plan) 후기만 대상. 일정 분량 이상 본문 + 이 대상에 미지급이면 적립(대상당 1회).
+    //   ★교재(book) 후기는 보상 제외(원장 결정 2026-07-26).
     //   ★멱등: 소프트삭제 포함 전체 조회로 이미 지급된 대상은 재지급 안 함(삭제→재작성 어뷰즈 차단).
     //   ★point_transactions insert 는 staff RLS 전용 → adminClient(adjustMemberPoints) 경유.
     let awardedPoints = 0;
-    if (p.body.trim().length >= REVIEW_REWARD_MIN_CHARS) {
+    if (
+      p.targetType === "plan" &&
+      p.body.trim().length >= REVIEW_REWARD_MIN_CHARS
+    ) {
       const { data: prior } = await adminClient
         .from("course_reviews")
         .select("review_id")
@@ -100,7 +104,7 @@ export async function action({ request }: Route.ActionArgs) {
         const res = await adjustMemberPoints({
           userId: user.id,
           delta: REVIEW_REWARD_POINTS,
-          reason: `수강 후기 작성 보상 (${p.targetType === "plan" ? "강의" : "교재"})`,
+          reason: "수강 후기 작성 보상",
         });
         if (res.ok) {
           await adminClient
