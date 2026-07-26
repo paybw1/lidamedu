@@ -207,11 +207,6 @@ export function CommandPalette() {
             {label}
           </button>
         ))}
-        {scope === "full" ? (
-          <span className="text-muted-foreground ml-auto hidden text-[10px] sm:inline">
-            요지·판시이유·평석·선지·해설까지 검색
-          </span>
-        ) : null}
       </div>
       <CommandList>
         {query.trim().length === 0 ? (

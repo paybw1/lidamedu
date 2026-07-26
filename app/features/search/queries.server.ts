@@ -136,7 +136,9 @@ export async function runGlobalSearch(
   rawQuery: string,
   scope: SearchScope = "title",
 ): Promise<SearchResults> {
-  const q = rawQuery.trim().slice(0, 100);
+  // 공백 정규화 — 복사한 검색어의 NBSP( )·중복/이형 공백을 일반 공백 1개로.
+  //   (본문의 공백은 일반 space 라, 검색어에 NBSP 가 섞이면 ilike '%q%' 가 안 맞아 "검색 안 됨".)
+  const q = rawQuery.replace(/\s+/g, " ").trim().slice(0, 100);
   const empty: SearchResults = {
     query: q,
     articles: [],
