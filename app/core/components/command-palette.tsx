@@ -52,6 +52,8 @@ interface SearchResults {
   memos: SearchHit[];
   bookmarks: SearchHit[];
   recentSearches: RecentSearch[];
+  // 제목 검색이 0건이라 본문 전체로 자동 재검색된 경우 true.
+  autoFull?: boolean;
 }
 
 const GROUP_META: Record<
@@ -225,7 +227,15 @@ export function CommandPalette() {
         ) : results && !hasAnyResult ? (
           <CommandEmpty>일치하는 결과가 없습니다.</CommandEmpty>
         ) : results ? (
-          <Groups results={results} onSelect={go} />
+          <>
+            {results.autoFull && scope === "title" ? (
+              <div className="text-muted-foreground bg-muted/40 border-b px-3 py-1.5 text-[11px]">
+                제목에서 결과가 없어 <b className="text-foreground">본문 전체</b>
+                (요지·판시이유·평석 등)에서 찾았습니다.
+              </div>
+            ) : null}
+            <Groups results={results} onSelect={go} />
+          </>
         ) : null}
       </CommandList>
       <div className="text-muted-foreground border-t px-3 py-2 text-[10.5px]">

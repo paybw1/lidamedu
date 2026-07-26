@@ -25,7 +25,23 @@ export async function loader({ request }: Route.LoaderArgs) {
     data: { user },
   } = await client.auth.getUser();
 
-  const results = await runGlobalSearch(client, user?.id ?? null, q, scope);
+  let results = await runGlobalSearch(client, user?.id ?? null, q, scope);
+  // 제목 검색이 0건이면 본문 전체로 자동 재검색 — 본문 문구("구성요소가 독립하여" 등)를
+  //   토글을 몰라 못 찾는 문제 구제. autoFull 로 UI 가 "본문 전체에서 찾음" 안내.
+  let autoFull = false;
+  if (scope === "title" && q.trim().length >= 2) {
+    const total =
+      results.articles.length +
+      results.cases.length +
+      results.problems.length +
+      results.qna.length +
+      results.memos.length +
+      results.bookmarks.length;
+    if (total === 0) {
+      results = await runGlobalSearch(client, user?.id ?? null, q, "full");
+      autoFull = true;
+    }
+  }
 
   let recentSearches: RecentSearch[] = [];
   if (user) {
@@ -37,5 +53,5 @@ export async function loader({ request }: Route.LoaderArgs) {
     }
   }
 
-  return data({ ...results, recentSearches });
+  return data({ ...results, recentSearches, autoFull });
 }
