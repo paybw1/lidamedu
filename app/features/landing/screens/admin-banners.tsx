@@ -8,10 +8,15 @@ import { toast } from "sonner";
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import {
+  LANDING_TIER_GAP2_COLOR_KEY,
+  LANDING_TIER_GAP2_PX_KEY,
   LANDING_TIER_GAP_COLOR_KEY,
   LANDING_TIER_GAP_PX_KEY,
+  LANDING_TIER_GAP_TOP_COLOR_KEY,
+  LANDING_TIER_GAP_TOP_PX_KEY,
   getLandingTierGap,
   setAppSetting,
+  type TierGapOne,
 } from "~/core/lib/app-settings.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
@@ -58,23 +63,34 @@ export async function action({ request }: Route.ActionArgs) {
   if (fd.get("intent") !== "set_tier_gap")
     return data({ error: "알 수 없는 요청" }, { status: 400 });
 
-  const px = Math.trunc(Number(fd.get("px") ?? NaN));
-  if (!Number.isFinite(px) || px < 0 || px > 400)
-    return data({ error: "간격은 0~400px 사이여야 합니다." }, { status: 400 });
-  const colorRaw = String(fd.get("color") ?? "").trim();
-  // 색 비움("")=투명(페이지 배경). 지정 시 #RRGGBB 만 허용. (null 저장 회피 — value NOT NULL 대비)
-  const useColor = fd.get("useColor") === "1";
-  const color = useColor && /^#[0-9a-fA-F]{6}$/.test(colorRaw) ? colorRaw : "";
+  // 경계별(1↔2단 suffix "12", 2↔3단 "23") px·색 파싱. 색 비움=""(투명, null 저장 회피).
+  const parseGap = (suffix: string) => {
+    const px = Math.trunc(Number(fd.get(`px${suffix}`) ?? NaN));
+    const colorRaw = String(fd.get(`color${suffix}`) ?? "").trim();
+    const useColor = fd.get(`useColor${suffix}`) === "1";
+    const color =
+      useColor && /^#[0-9a-fA-F]{6}$/.test(colorRaw) ? colorRaw : "";
+    return { px, color };
+  };
+  const gTop = parseGap("Top");
+  const g12 = parseGap("12");
+  const g23 = parseGap("23");
+  for (const g of [gTop, g12, g23]) {
+    if (!Number.isFinite(g.px) || g.px < 0 || g.px > 400)
+      return data({ error: "간격은 0~400px 사이여야 합니다." }, { status: 400 });
+  }
 
-  const r1 = await setAppSetting(client, LANDING_TIER_GAP_PX_KEY, px, user.id);
-  if (!r1.ok) return data({ error: r1.error }, { status: 400 });
-  const r2 = await setAppSetting(
-    client,
-    LANDING_TIER_GAP_COLOR_KEY,
-    color,
-    user.id,
-  );
-  if (!r2.ok) return data({ error: r2.error }, { status: 400 });
+  const writes = await Promise.all([
+    setAppSetting(client, LANDING_TIER_GAP_TOP_PX_KEY, gTop.px, user.id),
+    setAppSetting(client, LANDING_TIER_GAP_TOP_COLOR_KEY, gTop.color, user.id),
+    setAppSetting(client, LANDING_TIER_GAP_PX_KEY, g12.px, user.id),
+    setAppSetting(client, LANDING_TIER_GAP_COLOR_KEY, g12.color, user.id),
+    setAppSetting(client, LANDING_TIER_GAP2_PX_KEY, g23.px, user.id),
+    setAppSetting(client, LANDING_TIER_GAP2_COLOR_KEY, g23.color, user.id),
+  ]);
+  const failed = writes.find((w) => !w.ok);
+  if (failed && !failed.ok)
+    return data({ error: failed.error }, { status: 400 });
   return data({ ok: true as const });
 }
 
@@ -141,11 +157,56 @@ export default function AdminBanners({ loaderData }: Route.ComponentProps) {
   );
 }
 
-// 단(tier) 사이 간격(px)·색 설정 — 랜딩 히어로 1↔2↔3단 사이 여백과 그 배경색.
+// 경계 1개 편집 행 — px + 간격 색(체크 시 적용). suffix 로 필드명 구분(12/23).
+function GapRow({
+  label,
+  suffix,
+  gap,
+}: {
+  label: string;
+  suffix: string;
+  gap: TierGapOne;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+      <span className="w-20 text-sm font-medium">{label}</span>
+      <label className="inline-flex items-center gap-1.5 text-sm">
+        간격
+        <input
+          type="number"
+          name={`px${suffix}`}
+          min={0}
+          max={400}
+          defaultValue={gap.px}
+          className="border-input bg-background h-8 w-20 rounded-md border px-2 text-sm tabular-nums"
+        />
+        px
+      </label>
+      <label className="inline-flex items-center gap-1.5 text-sm">
+        <input
+          type="checkbox"
+          name={`useColor${suffix}`}
+          value="1"
+          defaultChecked={gap.color !== null}
+          className="size-3.5"
+        />
+        간격 색
+        <input
+          type="color"
+          name={`color${suffix}`}
+          defaultValue={gap.color ?? "#0e1d38"}
+          className="border-input h-8 w-12 cursor-pointer rounded-md border bg-transparent p-0.5"
+        />
+      </label>
+    </div>
+  );
+}
+
+// 단(tier) 사이 간격(px)·색 설정 — 경계별(1↔2단 / 2↔3단) 독립.
 function TierGapPanel({
   tierGap,
 }: {
-  tierGap: { px: number; color: string | null };
+  tierGap: { gapTop: TierGapOne; gap12: TierGapOne; gap23: TierGapOne };
 }) {
   const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
   useEffect(() => {
@@ -156,46 +217,30 @@ function TierGapPanel({
   return (
     <fetcher.Form
       method="post"
-      className="border-border bg-card mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border p-4"
+      className="border-border bg-card mb-4 rounded-xl border p-4"
     >
       <input type="hidden" name="intent" value="set_tier_gap" />
-      <div>
-        <p className="text-sm font-semibold">단 사이 간격</p>
-        <p className="text-muted-foreground text-xs">
-          히어로 1↔2↔3단 사이 여백(px)과 그 배경색을 조정합니다.
-        </p>
+      <div className="mb-3 flex items-center gap-2">
+        <div>
+          <p className="text-sm font-semibold">단 사이 간격</p>
+          <p className="text-muted-foreground text-xs">
+            히어로 단 사이 여백(px)과 그 배경색을 경계별로 조정합니다.
+          </p>
+        </div>
+        <Button
+          type="submit"
+          size="sm"
+          className="ml-auto"
+          disabled={fetcher.state !== "idle"}
+        >
+          저장
+        </Button>
       </div>
-      <label className="ml-auto inline-flex items-center gap-1.5 text-sm">
-        간격
-        <input
-          type="number"
-          name="px"
-          min={0}
-          max={400}
-          defaultValue={tierGap.px}
-          className="border-input bg-background h-8 w-20 rounded-md border px-2 text-sm tabular-nums"
-        />
-        px
-      </label>
-      <label className="inline-flex items-center gap-1.5 text-sm">
-        <input
-          type="checkbox"
-          name="useColor"
-          value="1"
-          defaultChecked={tierGap.color !== null}
-          className="size-3.5"
-        />
-        간격 색
-        <input
-          type="color"
-          name="color"
-          defaultValue={tierGap.color ?? "#0e1d38"}
-          className="border-input h-8 w-12 cursor-pointer rounded-md border bg-transparent p-0.5"
-        />
-      </label>
-      <Button type="submit" size="sm" disabled={fetcher.state !== "idle"}>
-        저장
-      </Button>
+      <div className="flex flex-col gap-2">
+        <GapRow label="히어로 위" suffix="Top" gap={tierGap.gapTop} />
+        <GapRow label="1 ↔ 2단" suffix="12" gap={tierGap.gap12} />
+        <GapRow label="2 ↔ 3단" suffix="23" gap={tierGap.gap23} />
+      </div>
     </fetcher.Form>
   );
 }

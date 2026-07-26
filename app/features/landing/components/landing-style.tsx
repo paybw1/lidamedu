@@ -39,7 +39,8 @@ export function LandingStyle() {
 .llx .btn.sm{padding:7px 13px;font-size:13px}
 
 /* hero carousel */
-.llx .hero-carousel{position:relative;overflow:hidden}
+/* 히어로 위 간격·색 = 운영자 설정(--tier-gap-top/-bg, landing.tsx 주입). 미설정 시 0·투명. */
+.llx .hero-carousel{position:relative;overflow:hidden;padding-top:var(--tier-gap-top,0);background:var(--tier-gap-top-bg,transparent)}
 .llx .track{display:flex}
 .llx .track.anim{transition:transform .7s cubic-bezier(.4,0,.2,1)}
 .llx .slide{min-width:100%;position:relative;overflow:hidden;color:var(--hero-ink);background:radial-gradient(120% 130% at 88% -20%,rgba(154,117,38,.22),transparent 52%),linear-gradient(158deg,var(--navy),var(--navy2))}
@@ -48,14 +49,16 @@ export function LandingStyle() {
 .llx .slide.green{background:radial-gradient(120% 130% at 50% -32%,rgba(74,222,128,.16),transparent 55%),linear-gradient(158deg,var(--navy),var(--navy2))}
 .llx .slide::after{content:"";position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(var(--hero-soft) 1px,transparent 1px);background-size:100% 38px;opacity:.045}
 .llx .hero-in{position:relative;z-index:1;display:grid;grid-template-columns:1.15fr .85fr;gap:48px;align-items:center;padding:72px 0 92px}
-/* 이미지/HTML 배너 슬라이드 — 만든 그대로 노출 */
-.llx .slide.imgslide,.llx .slide.htmlslide{min-height:clamp(320px,40vw,500px);display:flex}
+/* 이미지 배너 — 원본 비율 전체 표시(크롭 없음). 높이는 이미지 비율을 따라가 업로드 이미지가
+   최적 크기로 보인다. (기존 cover 크롭 폐지 — 잘림·왜곡 방지) */
+.llx .slide.imgslide{display:block}
+.llx .slide.htmlslide{min-height:clamp(320px,40vw,500px);display:flex}
 .llx .slide-imglink,.llx .slide-img{display:block;width:100%}
-.llx .slide-img{height:100%;object-fit:cover;position:relative;z-index:1}
-/* 이미지 최대 폭 지정(fit) — 가운데 정렬 + 원본 비율(꽉 채우지 않음) */
-.llx .slide.imgslide.fit{align-items:center;justify-content:center;padding:20px 16px}
+.llx .slide-img{height:auto;position:relative;z-index:1}
+/* 이미지 최대 폭 지정(fit) — 가운데 정렬 + 원본 비율(꽉 채우지 않음), 화면보다 크면 축소 */
+.llx .slide.imgslide.fit{display:flex;align-items:center;justify-content:center;padding:20px 16px}
 .llx .slide.imgslide.fit .slide-imglink{width:100%;margin:0 auto}
-.llx .slide.imgslide.fit .slide-img{height:auto;max-height:clamp(320px,40vw,500px);object-fit:contain;margin:0 auto}
+.llx .slide.imgslide.fit .slide-img{height:auto;max-height:clamp(320px,40vw,500px);object-fit:contain;margin:0 auto;max-width:100%}
 .llx .slide-html{position:relative;z-index:1;width:100%;align-self:center;color:var(--hero-ink)}
 /* 스크립트 포함 HTML 배너 — iframe 격리 실행. 초기 높이(로드 후 JS가 내용 높이로 교체),
    스크롤바 없음(오토핏), 짧으면 세로 중앙. */
@@ -100,9 +103,11 @@ export function LandingStyle() {
 .llx .pbadges span{font-size:12px;font-weight:800;color:#fff;background:rgba(74,222,128,.16);border:1px solid rgba(74,222,128,.32);padding:6px 11px;border-radius:99px}
 
 /* 히어로 아래 추가 단(2·3단) 배너 */
-/* 단(tier) 사이 간격·색 = 운영자 설정(--tier-gap/--tier-gap-bg, landing.tsx 주입).
-   각 단 상단 여백이 이전 단(또는 히어로)과의 간격. 미설정 시 0·투명. */
-.llx .btier{padding:var(--tier-gap,0) 0 0;background:var(--tier-gap-bg,transparent)}
+/* 단(tier) 사이 간격·색 = 운영자 설정(landing.tsx 주입). 각 단 상단 여백이 이전 단(또는
+   히어로)과의 간격. 경계별 독립: gap-12(1↔2단)=--tier-gap, gap-23(2↔3단)=--tier-gap-2. */
+.llx .btier{padding:0}
+.llx .btier-gap-12{padding-top:var(--tier-gap,0);background:var(--tier-gap-bg,transparent)}
+.llx .btier-gap-23{padding-top:var(--tier-gap-2,0);background:var(--tier-gap-2-bg,transparent)}
 .llx .bt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
 .llx .bt-grid.one{grid-template-columns:1fr}
 .llx .bt-block{border-radius:16px;overflow:hidden;box-shadow:var(--lshadow)}

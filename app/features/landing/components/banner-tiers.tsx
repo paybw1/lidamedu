@@ -56,10 +56,11 @@ function Block({ b }: { b: BannerRow }) {
   );
 }
 
-function Tier({ banners }: { banners: BannerRow[] }) {
+// gapClass = 경계별 간격/색 CSS 변수 적용(btier-gap-12: 1↔2단, btier-gap-23: 2↔3단).
+function Tier({ banners, gapClass }: { banners: BannerRow[]; gapClass: string }) {
   if (banners.length === 0) return null;
   return (
-    <section className="btier">
+    <section className={`btier ${gapClass}`}>
       <div className="wrap">
         <div className={`bt-grid${banners.length === 1 ? " one" : ""}`}>
           {banners.map((b) => (
@@ -75,8 +76,8 @@ export function BannerTiers({ tier2, tier3 }: { tier2: BannerRow[]; tier3: Banne
   if (tier2.length === 0 && tier3.length === 0) return null;
   return (
     <>
-      <Tier banners={tier2} />
-      <Tier banners={tier3} />
+      <Tier banners={tier2} gapClass="btier-gap-12" />
+      <Tier banners={tier3} gapClass="btier-gap-23" />
     </>
   );
 }

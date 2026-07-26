@@ -69,8 +69,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   ]);
   // 히어로 단 사이 간격·색(운영자 설정) — anon 노출 위해 adminClient.
   const tierGap = await getLandingTierGap(adminClient).catch(() => ({
-    px: 0,
-    color: null as string | null,
+    gapTop: { px: 0, color: null as string | null },
+    gap12: { px: 0, color: null as string | null },
+    gap23: { px: 0, color: null as string | null },
   }));
   // 랜딩 강사진은 계열 구분 없이 한 줄 가로 레일(좌우 화살표) — 배치 순서(display_order) 그대로.
   return {
@@ -109,8 +110,12 @@ export default function Landing({ loaderData }: Route.ComponentProps) {
       className="llx"
       style={
         {
-          "--tier-gap": `${tierGap.px}px`,
-          "--tier-gap-bg": tierGap.color ?? "transparent",
+          "--tier-gap-top": `${tierGap.gapTop.px}px`,
+          "--tier-gap-top-bg": tierGap.gapTop.color ?? "transparent",
+          "--tier-gap": `${tierGap.gap12.px}px`,
+          "--tier-gap-bg": tierGap.gap12.color ?? "transparent",
+          "--tier-gap-2": `${tierGap.gap23.px}px`,
+          "--tier-gap-2-bg": tierGap.gap23.color ?? "transparent",
         } as CSSProperties
       }
     >

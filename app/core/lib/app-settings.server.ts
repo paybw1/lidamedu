@@ -13,9 +13,14 @@ export const FREE_SHIPPING_THRESHOLD_KEY = "free_shipping_threshold_krw";
 // 수강 후기 작성 보상 포인트(대상당 1회). 미설정 시 기본값(REVIEW_REWARD_POINTS_DEFAULT).
 export const REVIEW_REWARD_POINTS_KEY = "review_reward_points";
 
-// 강의 랜딩 히어로 단(tier) 사이 간격(px)과 그 간격 배경색. feat-12 배너.
-export const LANDING_TIER_GAP_PX_KEY = "landing_tier_gap_px";
-export const LANDING_TIER_GAP_COLOR_KEY = "landing_tier_gap_color";
+// 강의 랜딩 히어로 단(tier) 사이 간격(px)·배경색. feat-12 배너.
+//   gapTop = 히어로(1단) 위, gap12 = 1↔2단, gap23 = 2↔3단 (경계별 독립 설정).
+export const LANDING_TIER_GAP_TOP_PX_KEY = "landing_tier_gap_top_px"; // 히어로 위
+export const LANDING_TIER_GAP_TOP_COLOR_KEY = "landing_tier_gap_top_color"; // 히어로 위
+export const LANDING_TIER_GAP_PX_KEY = "landing_tier_gap_px"; // 1↔2단
+export const LANDING_TIER_GAP_COLOR_KEY = "landing_tier_gap_color"; // 1↔2단
+export const LANDING_TIER_GAP2_PX_KEY = "landing_tier_gap2_px"; // 2↔3단
+export const LANDING_TIER_GAP2_COLOR_KEY = "landing_tier_gap2_color"; // 2↔3단
 
 /** app_settings 한 키의 값. 없으면 null. */
 export async function getAppSetting(
@@ -84,28 +89,45 @@ export async function getReviewRewardPoints(
     : REVIEW_REWARD_POINTS_DEFAULT;
 }
 
-export interface LandingTierGap {
+export interface TierGapOne {
   /** 단 사이 간격(px). 0 = 붙임. */
   px: number;
   /** 간격 배경색(CSS 색). null = 투명(페이지 배경). */
   color: string | null;
 }
+export interface LandingTierGaps {
+  /** 히어로(1단) 위. */
+  gapTop: TierGapOne;
+  /** 1↔2단 경계. */
+  gap12: TierGapOne;
+  /** 2↔3단 경계. */
+  gap23: TierGapOne;
+}
 
-/** 랜딩 히어로 단 사이 간격·색. 미설정 시 간격 0·투명. */
+function normPx(raw: unknown): number {
+  return typeof raw === "number" && Number.isFinite(raw) && raw >= 0
+    ? Math.min(400, Math.floor(raw))
+    : 0;
+}
+function normColor(raw: unknown): string | null {
+  return typeof raw === "string" && /^#[0-9a-fA-F]{6}$/.test(raw) ? raw : null;
+}
+
+/** 랜딩 히어로 단 사이 간격·색(경계별). 미설정 시 간격 0·투명. */
 export async function getLandingTierGap(
   client: SupabaseClient<Database>,
-): Promise<LandingTierGap> {
-  const [pxRaw, colorRaw] = await Promise.all([
+): Promise<LandingTierGaps> {
+  const [pxTop, colorTop, px1, color1, px2, color2] = await Promise.all([
+    getAppSetting(client, LANDING_TIER_GAP_TOP_PX_KEY),
+    getAppSetting(client, LANDING_TIER_GAP_TOP_COLOR_KEY),
     getAppSetting(client, LANDING_TIER_GAP_PX_KEY),
     getAppSetting(client, LANDING_TIER_GAP_COLOR_KEY),
+    getAppSetting(client, LANDING_TIER_GAP2_PX_KEY),
+    getAppSetting(client, LANDING_TIER_GAP2_COLOR_KEY),
   ]);
-  const px =
-    typeof pxRaw === "number" && Number.isFinite(pxRaw) && pxRaw >= 0
-      ? Math.min(400, Math.floor(pxRaw))
-      : 0;
-  const color =
-    typeof colorRaw === "string" && /^#[0-9a-fA-F]{6}$/.test(colorRaw)
-      ? colorRaw
-      : null;
-  return { px, color };
+  return {
+    gapTop: { px: normPx(pxTop), color: normColor(colorTop) },
+    gap12: { px: normPx(px1), color: normColor(color1) },
+    gap23: { px: normPx(px2), color: normColor(color2) },
+  };
 }

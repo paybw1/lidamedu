@@ -88,14 +88,18 @@ export default function AdminBannerEdit({ loaderData }: Route.ComponentProps) {
             <p className="text-muted-foreground text-[12px]">
               이미지/HTML 배너용 · 종류를 이미지·HTML로 선택했을 때 사용합니다.
             </p>
-            <Row label="배너 이미지" hint="이미지 종류일 때. 파일 업로드 또는 URL">
+            <Row label="배너 이미지" hint="이미지 종류일 때. 파일 업로드 또는 URL. 업로드한 이미지는 원본 비율 그대로(잘림 없이) 노출됩니다">
               <input type="file" name="image_file" accept="image/*" className="text-xs" />
               <Input name="image_url" defaultValue={b?.image_url ?? ""} placeholder="https://… (외부 URL)" className={IN} />
+              <p className="text-muted-foreground text-[11px]">
+                권장: 1단(메인 히어로) 가로형 <b>1920×720</b> 안팎(폭이 화면에 맞춰 확대·축소, 세로는 비율대로).
+                2·3단은 배치 폭(최대 1200px)에 맞춰 표시됩니다.
+              </p>
               {b?.image_url ? (
                 <img src={b.image_url} alt="현재 배너" className="mt-1 max-h-32 rounded border object-contain" />
               ) : null}
             </Row>
-            <Row label="이미지 최대 폭(px)" hint="비우면 전체 폭 꽉 채움. 넓어 보이면 예:960·1200 지정(가운데 정렬, 원본 비율 유지)">
+            <Row label="이미지 최대 폭(px)" hint="비우면 전체 폭. 너무 커 보이면 예:960·1200 지정(가운데 정렬). 어느 쪽이든 원본 비율 유지·잘림 없음">
               <Input type="number" name="image_max_width" min={0} defaultValue={b?.image_max_width ?? ""} placeholder="예: 1200" className={`${IN} w-40`} />
             </Row>
             <Row label="HTML 내용" hint="HTML 종류일 때. 파일 업로드 또는 아래에 직접 작성">
