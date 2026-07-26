@@ -79,8 +79,6 @@ export function openCommandPalette() {
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  // 검색 범위 — 제목(title) / 본문 전체(full). 세션 내 마지막 선택 유지.
-  const [scope, setScope] = useState<"title" | "full">("title");
   const fetcher = useFetcher<SearchResults>();
   const navigate = useNavigate();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -114,8 +112,9 @@ export function CommandPalette() {
     const trimmed = query.trim();
     debounceRef.current = setTimeout(
       () => {
+        // 항상 본문 전체 검색(요지·판시이유·평석·선지·해설까지). scope 토글 폐지.
         fetcher.load(
-          `/api/search?q=${encodeURIComponent(trimmed)}&scope=${scope}`,
+          `/api/search?q=${encodeURIComponent(trimmed)}&scope=full`,
         );
       },
       trimmed.length === 0 ? 0 : 180,
@@ -125,7 +124,7 @@ export function CommandPalette() {
     };
     // fetcher 객체는 매 렌더마다 새 참조 — 의존성에서 제외.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, query, scope]);
+  }, [open, query]);
 
   // 모달 닫힐 때 입력 리셋.
   useEffect(() => {
@@ -176,39 +175,10 @@ export function CommandPalette() {
       shouldFilter={false}
     >
       <CommandInput
-        placeholder="검색어를 입력하세요 (조문 / 판례 / 문제 / 메모)"
+        placeholder="검색어를 입력하세요 (조문 · 판례 · 문제 · 메모 — 본문까지 검색)"
         value={query}
         onValueChange={setQuery}
       />
-      {/* 검색 범위 — 제목(빠름·정확) vs 본문 전체(요지·판시이유·평석·선지·해설까지) */}
-      <div
-        className="flex items-center gap-1.5 border-b px-3 py-1.5"
-        data-testid="search-scope-toggle"
-      >
-        <span className="text-muted-foreground text-[10.5px] font-medium">
-          검색 대상
-        </span>
-        {(
-          [
-            ["title", "제목"],
-            ["full", "본문 전체"],
-          ] as const
-        ).map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            aria-pressed={scope === value}
-            onClick={() => setScope(value)}
-            className={
-              scope === value
-                ? "bg-primary text-primary-foreground rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                : "text-muted-foreground hover:bg-accent rounded-full border px-2.5 py-0.5 text-[11px]"
-            }
-          >
-            {label}
-          </button>
-        ))}
-      </div>
       <CommandList>
         {query.trim().length === 0 ? (
           <EmptyState
@@ -223,15 +193,7 @@ export function CommandPalette() {
         ) : results && !hasAnyResult ? (
           <CommandEmpty>일치하는 결과가 없습니다.</CommandEmpty>
         ) : results ? (
-          <>
-            {results.autoFull && scope === "title" ? (
-              <div className="text-muted-foreground bg-muted/40 border-b px-3 py-1.5 text-[11px]">
-                제목에서 결과가 없어 <b className="text-foreground">본문 전체</b>
-                (요지·판시이유·평석 등)에서 찾았습니다.
-              </div>
-            ) : null}
-            <Groups results={results} onSelect={go} />
-          </>
+          <Groups results={results} onSelect={go} />
         ) : null}
       </CommandList>
       <div className="text-muted-foreground border-t px-3 py-2 text-[10.5px]">

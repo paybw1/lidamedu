@@ -17,8 +17,8 @@ import type { Route } from "./+types/search";
 export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const q = url.searchParams.get("q") ?? "";
-  // 검색 범위 — title(제목·라벨) / full(본문 전체). 기본 title.
-  const scope = url.searchParams.get("scope") === "full" ? "full" : "title";
+  // 검색 범위 — 항상 본문 전체(full) 기본. (팔레트 토글 폐지 — 명시적 title 요청만 제목검색)
+  const scope = url.searchParams.get("scope") === "title" ? "title" : "full";
 
   const [client] = makeServerClient(request);
   const {
