@@ -54,6 +54,10 @@ export default [
       "/study/reschedule-backlog",
       "features/study/api/reschedule-backlog.tsx",
     ),
+    route(
+      "/study/subjective-ai-grade",
+      "features/study/api/subjective-ai-grade.tsx",
+    ),
     route("/srs/queue", "features/srs/api/queue.tsx"),
     route("/srs/review", "features/srs/api/review.tsx"),
     route("/srs/stats", "features/srs/api/stats.tsx"),

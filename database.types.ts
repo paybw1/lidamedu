@@ -12403,6 +12403,10 @@ export type Database = {
       }
       user_subjective_attempts: {
         Row: {
+          ai_axis_scores: Json | null
+          ai_feedback_md: string | null
+          ai_graded_at: string | null
+          ai_overall_score: number | null
           answer_md: string
           attempt_id: string
           created_at: string
@@ -12421,6 +12425,10 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          ai_axis_scores?: Json | null
+          ai_feedback_md?: string | null
+          ai_graded_at?: string | null
+          ai_overall_score?: number | null
           answer_md?: string
           attempt_id?: string
           created_at?: string
@@ -12439,6 +12447,10 @@ export type Database = {
           user_id: string
         }
         Update: {
+          ai_axis_scores?: Json | null
+          ai_feedback_md?: string | null
+          ai_graded_at?: string | null
+          ai_overall_score?: number | null
           answer_md?: string
           attempt_id?: string
           created_at?: string

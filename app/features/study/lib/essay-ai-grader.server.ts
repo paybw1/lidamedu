@@ -1,0 +1,233 @@
+// feat-2-032 S3 — 2차 논술 답안 AI 채점 초안 생성기.
+//   근거 = 실제 채점위원 채점평(problem_grading_notes) + 모범답안 + 3축 루브릭(docs/features/feat-2-032).
+//   출력 = 3축 점수(논점/구성/논증 0~100) + 종합(가중합) + 총평 마크다운. 강사 확정 전 초안.
+//   환경변수: ANTHROPIC_API_KEY. 사용량은 gs_ai_usage 에 kind=ai_grade 로 기록(round 없음).
+import Anthropic from "@anthropic-ai/sdk";
+
+import { recordAiUsage } from "~/features/gs/lib/usage-tracker.server";
+
+const MODEL = "claude-opus-4-7";
+
+// 3축 가중치(코퍼스 강조 빈도 반영). 문서 SSOT: docs/features/feat-2-032-essay-grading.md
+export const ESSAY_AXES = [
+  { key: "issue", label: "논점 추출", weight: 0.4 },
+  { key: "structure", label: "목차·구성", weight: 0.25 },
+  { key: "writing", label: "답안 작성·논증", weight: 0.35 },
+] as const;
+
+export type EssayAxisScores = { issue: number; structure: number; writing: number };
+
+export interface EssayGradingDraft {
+  overall: number; // 0~100 가중합
+  axisScores: EssayAxisScores;
+  feedbackMd: string;
+  reasoning?: string;
+}
+
+interface GradeArgs {
+  questionLabel: string | null; // 예 "A-1"
+  questionBody: string; // 발문(body_md)
+  modelAnswer: string | null; // 모범답안
+  gradingNotesMd: string | null; // 실제 채점위원 채점평(폼 단위)
+  studentAnswer: string; // 학생 답안 마크다운
+  userId?: string | null; // 사용량 로깅
+}
+
+const SYSTEM_PROMPT = `당신은 대한민국 변리사 2차 시험(주관식·논술)의 채점 보조 AI 입니다.
+아래 '채점 3축 기준'과 '실제 채점위원 채점평', '모범답안'에 근거해서만 채점하세요. 기준에 없는 임의
+잣대를 만들지 마세요.
+
+[채점 3축 기준]
+1) 논점 추출(issue): 출제자가 무엇을 묻는지(설문 취지·핵심)를 정확히 파악했는가. 사안의 특정 사실을
+   포착해 배점에 맞는 쟁점을 빠짐없이 적시했는가. 묻지 않은 것·무관한 조문·일반론 나열, 설문 단서
+   위반, 자의적 해석, 핵심 쟁점 누락은 감점.
+2) 목차·구성(structure): 쟁점별 목차·소제목으로 체계화했는가. 배점 비례로 분량·강약을 배분(일반론
+   최소·사안 해결에 지면 할애)했는가. 학설·판례를 구분 배치했는가. 수험서 목차 단순 암기, 특정 쟁점
+   편중, 서론 장황, 조문 전사식 나열은 감점.
+3) 답안 작성·논증(writing): 실정법(조문)→학설·판례 순으로 근거를 제시하고 사안에 포섭·적용했는가.
+   명확한 결론과 결론에 이르는 일관된 논리가 있는가. 학설 대립 시 자기 입장·논거를 밝혔는가. 법전
+   전사, 애매모호한 결론, 논리 비약, 본문↔결론 모순은 감점.
+
+각 축을 0~100 으로 채점하고, 총평은 한국어 마크다운으로 '강점 → 보완할 점 → 다음 학습 제안' 순 6~12줄.
+채점은 강사 검토 전 초안이며 강사가 최종 수정할 수 있습니다.`;
+
+/** 0~100 로 clamp + 0.5 단위 반올림. */
+function clampScore(n: unknown): number {
+  const v = typeof n === "number" && Number.isFinite(n) ? n : 0;
+  return Math.max(0, Math.min(100, Math.round(v * 2) / 2));
+}
+
+export async function gradeEssayDraft(
+  args: GradeArgs,
+): Promise<EssayGradingDraft | null> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const meta = { userId: args.userId ?? null };
+  if (!apiKey) {
+    await recordAiUsage({
+      kind: "ai_grade",
+      model: MODEL,
+      inputTokens: 0,
+      outputTokens: 0,
+      outcome: "skipped_no_key",
+      meta,
+    });
+    return null;
+  }
+  const client = new Anthropic({ apiKey });
+
+  // 문제·모범답안·채점평 = 프리픽스(같은 문제 재채점 시 캐시 재사용). 학생 답안만 뒤에.
+  const promptPrefix = [
+    args.questionLabel ? `## 문제 ${args.questionLabel}` : "## 문제",
+    args.questionBody,
+    args.modelAnswer ? `\n## 모범답안\n${args.modelAnswer}` : "",
+    args.gradingNotesMd
+      ? `\n## 실제 채점위원 채점평(이 문제 소속 폼)\n${args.gradingNotesMd}`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+  const studentSection = `## 학생 답안\n${args.studentAnswer}`;
+
+  let response: Awaited<ReturnType<typeof client.messages.create>>;
+  try {
+    response = await client.messages.create({
+      model: MODEL,
+      max_tokens: 4000,
+      thinking: { type: "adaptive" },
+      output_config: {
+        effort: "high",
+        format: {
+          type: "json_schema",
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              issue_score: { type: "number", description: "논점 추출 0~100" },
+              structure_score: {
+                type: "number",
+                description: "목차·구성 0~100",
+              },
+              writing_score: {
+                type: "number",
+                description: "답안 작성·논증 0~100",
+              },
+              feedback_md: {
+                type: "string",
+                description:
+                  "학생용 총평 마크다운. 강점→보완할 점→다음 학습 제안 순.",
+              },
+              reasoning: {
+                type: "string",
+                description: "축별 점수 산정 근거(강사 참고용, 짧게).",
+              },
+            },
+            required: [
+              "issue_score",
+              "structure_score",
+              "writing_score",
+              "feedback_md",
+              "reasoning",
+            ],
+          },
+        },
+      },
+      system: SYSTEM_PROMPT,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: promptPrefix,
+              cache_control: { type: "ephemeral" },
+            },
+            { type: "text", text: studentSection },
+          ],
+        },
+      ],
+    });
+  } catch (e) {
+    const msg =
+      e instanceof Anthropic.APIError
+        ? `Anthropic API ${e.status}: ${e.message}`
+        : e instanceof Error
+          ? e.message
+          : String(e);
+    await recordAiUsage({
+      kind: "ai_grade",
+      model: MODEL,
+      inputTokens: 0,
+      outputTokens: 0,
+      outcome: "failed",
+      meta,
+      reason: msg.slice(0, 300),
+    });
+    return null;
+  }
+
+  const inputTokens = Number(response.usage?.input_tokens ?? 0);
+  const outputTokens = Number(response.usage?.output_tokens ?? 0);
+  const textBlock = response.content.find((b) => b.type === "text");
+  if (!textBlock || textBlock.type !== "text") {
+    await recordAiUsage({
+      kind: "ai_grade",
+      model: MODEL,
+      inputTokens,
+      outputTokens,
+      outcome: "failed",
+      meta,
+      reason: "no text block",
+    });
+    return null;
+  }
+  let parsed: {
+    issue_score?: number;
+    structure_score?: number;
+    writing_score?: number;
+    feedback_md?: string;
+    reasoning?: string;
+  };
+  try {
+    parsed = JSON.parse(textBlock.text);
+  } catch {
+    await recordAiUsage({
+      kind: "ai_grade",
+      model: MODEL,
+      inputTokens,
+      outputTokens,
+      outcome: "failed",
+      meta,
+      reason: "json parse",
+    });
+    return null;
+  }
+
+  const axisScores: EssayAxisScores = {
+    issue: clampScore(parsed.issue_score),
+    structure: clampScore(parsed.structure_score),
+    writing: clampScore(parsed.writing_score),
+  };
+  const overall =
+    Math.round(
+      (axisScores.issue * ESSAY_AXES[0].weight +
+        axisScores.structure * ESSAY_AXES[1].weight +
+        axisScores.writing * ESSAY_AXES[2].weight) *
+        2,
+    ) / 2;
+
+  await recordAiUsage({
+    kind: "ai_grade",
+    model: MODEL,
+    inputTokens,
+    outputTokens,
+    outcome: "success",
+    meta,
+  });
+
+  return {
+    overall,
+    axisScores,
+    feedbackMd: (parsed.feedback_md ?? "").trim() || "(피드백 없음)",
+    reasoning: parsed.reasoning,
+  };
+}
