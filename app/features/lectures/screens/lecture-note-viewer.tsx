@@ -6,6 +6,7 @@
 import type { Route } from "./+types/lecture-note-viewer";
 
 import {
+  AlertTriangleIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   Loader2Icon,
@@ -170,6 +171,7 @@ export default function LectureNoteViewer({
 
   // 고지 확인 — SSR 은 null(미판정)로 두고 클라이언트에서 판정해 하이드레이션 불일치 방지.
   const [noticeAck, setNoticeAck] = useState<boolean | null>(null);
+  const [abnormalWarned, setAbnormalWarned] = useState(false);
   useEffect(() => {
     try {
       setNoticeAck(window.localStorage.getItem(NOTICE_KEY) === "1");
@@ -208,11 +210,16 @@ export default function LectureNoteViewer({
           `/api/note-pages?kind=${kind}&id=${id}&from=${from}&to=${to}`,
         );
         if (!res.ok) throw new Error(String(res.status));
-        const body = (await res.json()) as { urls?: UrlMap };
+        const body = (await res.json()) as {
+          urls?: UrlMap;
+          abnormal?: boolean;
+        };
         if (body.urls) {
           setUrls((prev) => (fresh ? { ...body.urls } : { ...prev, ...body.urls }));
           setLoadError(false);
         }
+        // 유출방지 ③ — 단시간 대량 열람 감지 시 본인에게 안내(한 세션 1회).
+        if (body.abnormal) setAbnormalWarned(true);
       } catch {
         setLoadError(true);
       } finally {
@@ -409,6 +416,35 @@ export default function LectureNoteViewer({
                 </li>
               </ul>
               <Button size="sm" className="w-full" onClick={acknowledgeNotice}>
+                확인했습니다
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        {/* 유출방지 ③ — 단시간 대량 열람 감지 시 본인 안내(억지 아님·경고성). */}
+        {abnormalWarned ? (
+          <div className="bg-background/85 absolute inset-0 z-30 flex items-center justify-center p-4 backdrop-blur-sm">
+            <div className="bg-card w-full max-w-md space-y-3 rounded-xl border border-amber-400/60 p-5 shadow-lg">
+              <p className="flex items-center gap-2 text-base font-bold text-amber-700 dark:text-amber-300">
+                <AlertTriangleIcon className="size-5" /> 이상 열람이 감지되고 있습니다
+              </p>
+              <ul className="text-muted-foreground list-disc space-y-1.5 pl-5 text-sm leading-relaxed">
+                <li>
+                  짧은 시간에 많은 페이지를 여셨습니다. 강의노트는 개인 식별
+                  워터마크가 적용되며, <b>모든 열람 기록이 저장</b>됩니다.
+                </li>
+                <li>
+                  대량 저장·자동 캡처 등 유출 행위는 이용약관 위반으로 이용
+                  제한 및 법적 책임이 따를 수 있습니다.
+                </li>
+                <li>정상 학습 중이라면 그대로 계속 이용하셔도 됩니다.</li>
+              </ul>
+              <Button
+                size="sm"
+                className="w-full"
+                onClick={() => setAbnormalWarned(false)}
+              >
                 확인했습니다
               </Button>
             </div>

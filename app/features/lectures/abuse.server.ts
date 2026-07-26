@@ -6,12 +6,35 @@ import adminClient from "~/core/lib/supa-admin-client.server";
 import { getDutyRecipientIds } from "~/features/admin/lib/duties.server";
 import { createUserNotifications } from "~/features/notifications/queries.server";
 
-// 최근 10분간 서명된 페이지 수가 이 값을 넘으면 자동화 캡처 의심.
-// (정상 열람은 창 13p 단위 — 250p/10분은 20초당 1창 이상 연속 소비 수준)
+// 최근 10분간 '고유' 페이지 수가 이 값을 넘으면 자동화 캡처 의심.
+// (겹치는 창 재조회는 중복 집계하지 않는다 — 실제 열람 페이지 기준)
 const ABUSE_WINDOW_MIN = 10;
 const ABUSE_PAGES_THRESHOLD = 250;
+// 학생 본인에게 '감지 중' 안내를 띄우는(soft) 임계 — staff 알림보다 먼저 경고.
+export const STUDENT_WARN_PAGES = 180;
+export const STUDENT_WARN_WINDOW_MIN = ABUSE_WINDOW_MIN;
 // 같은 사용자 재알림 억제 기간.
 const RENOTIFY_HOURS = 24;
+
+// 최근 windowMin 분간 열람한 '고유 페이지' 수(노트별 페이지 union). 겹치는 창 중복 제거.
+export async function countRecentUniquePages(
+  profileId: string,
+  windowMin: number = ABUSE_WINDOW_MIN,
+): Promise<number> {
+  const since = new Date(Date.now() - windowMin * 60 * 1000).toISOString();
+  const { data: recent } = await adminClient
+    .from("lecture_note_views")
+    .select("target_id, from_page, to_page")
+    .eq("profile_id", profileId)
+    .gte("viewed_at", since);
+  const seen = new Set<string>();
+  for (const r of recent ?? []) {
+    const from = Math.max(1, r.from_page);
+    const to = Math.min(r.to_page, from + 100); // 방어적 상한(창 ≤30)
+    for (let p = from; p <= to; p++) seen.add(`${r.target_id}:${p}`);
+  }
+  return seen.size;
+}
 
 export async function logLectureNoteView(input: {
   profileId: string;
@@ -29,19 +52,8 @@ export async function logLectureNoteView(input: {
   });
   if (error) return; // best-effort
 
-  // ── 이상 탐지 — 최근 10분 창 합산(중복 창은 근사 허용) ──
-  const since = new Date(
-    Date.now() - ABUSE_WINDOW_MIN * 60 * 1000,
-  ).toISOString();
-  const { data: recent } = await adminClient
-    .from("lecture_note_views")
-    .select("from_page, to_page")
-    .eq("profile_id", input.profileId)
-    .gte("viewed_at", since);
-  const pages = (recent ?? []).reduce(
-    (s, r) => s + (r.to_page - r.from_page + 1),
-    0,
-  );
+  // ── 이상 탐지 — 최근 10분 '고유' 페이지 수(겹치는 창 중복 제거) ──
+  const pages = await countRecentUniquePages(input.profileId);
   if (pages < ABUSE_PAGES_THRESHOLD) return;
 
   // ── 재알림 억제 — 24h 내 같은 사용자 대상 알림이 있으면 skip ──

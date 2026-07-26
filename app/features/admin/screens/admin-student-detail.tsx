@@ -70,6 +70,7 @@ import {
   getUserWatchHistory,
   type UserWatchCourse,
 } from "~/features/lms/watch.server";
+import { getLectureNoteViewLog } from "~/features/lectures/queries.server";
 import {
   getStudentActivity,
   type StudentActivity,
@@ -297,13 +298,22 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   });
 
   // CS 처리 이력(cs_actions) + 영상 시청 기록 + 활동 내역(질의·문의·커뮤니티) — manager+ 만.
-  const [csActions, watchHistory, activity] = roleAtLeast(role, "manager")
+  const [csActions, watchHistory, activity, noteViewLog] = roleAtLeast(
+    role,
+    "manager",
+  )
     ? await Promise.all([
         listCsActionsForUser(params.profileId),
         getUserWatchHistory(params.profileId),
         getStudentActivity(params.profileId),
+        getLectureNoteViewLog(params.profileId),
       ])
-    : [[], [], { qna: [], inquiries: [], posts: [], bugReports: [] }];
+    : [
+        [],
+        [],
+        { qna: [], inquiries: [], posts: [], bugReports: [] },
+        { events: [], recent10minUnique: 0, totalEvents: 0 },
+      ];
 
   // ── feat-7-046 회원 CRM — 회원정보/이력 데이터 ──
   // 회원정보(신원·연락처·로그인 계정)는 instructor 도 조회 가능(로더가 조회 권한 통과).
@@ -381,6 +391,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     csActions,
     watchHistory,
     activity,
+    noteViewLog,
     passTrend,
     subscriptions,
     payments,
@@ -433,6 +444,7 @@ export default function AdminStudentDetail({
     csActions,
     watchHistory,
     activity,
+    noteViewLog,
     passTrend,
     subscriptions,
     payments,
@@ -473,12 +485,14 @@ export default function AdminStudentDetail({
     | "sends"
     | "memo"
     | "activity"
+    | "notelog"
   >("study");
   useEffect(() => {
     const h = window.location.hash.replace("#", "");
     if (h === "watch-history" && isAdmin) setTab("history");
     else if (h === "activity" && isAdmin) setTab("activity");
     else if (h === "notes" || h === "cs-history") setTab("memo");
+    else if (h === "notelog" && isAdmin) setTab("notelog");
   }, [isAdmin]);
 
   return (
@@ -602,6 +616,9 @@ export default function AdminStudentDetail({
           <TabsTrigger value="info">회원정보</TabsTrigger>
           {isAdmin ? (
             <TabsTrigger value="history">회원이력</TabsTrigger>
+          ) : null}
+          {isAdmin ? (
+            <TabsTrigger value="notelog">강의노트</TabsTrigger>
           ) : null}
           {isAdmin ? <TabsTrigger value="orders">주문</TabsTrigger> : null}
           {isAdmin ? <TabsTrigger value="coupons">쿠폰</TabsTrigger> : null}
@@ -895,6 +912,12 @@ export default function AdminStudentDetail({
               bookDownloads={bookDownloads}
               accessLogs={accessLogs}
             />
+          </TabsContent>
+        ) : null}
+
+        {isAdmin ? (
+          <TabsContent value="notelog" className="mt-3">
+            <NoteViewLogTab log={noteViewLog} />
           </TabsContent>
         ) : null}
 
@@ -1240,6 +1263,104 @@ function MemberInfoTab({
 function HistEmpty({ text }: { text: string }) {
   return (
     <p className="text-muted-foreground py-6 text-center text-sm">{text}</p>
+  );
+}
+
+// 강의노트 열람 로그 — 이상 열람 알림 확인용. 최근 10분 고유 페이지 + 이벤트 목록.
+function NoteViewLogTab({
+  log,
+}: {
+  log: {
+    events: {
+      viewedAt: string;
+      kind: "src" | "res";
+      noteTitle: string;
+      fromPage: number;
+      toPage: number;
+    }[];
+    recent10minUnique: number;
+    totalEvents: number;
+  };
+}) {
+  const hot = log.recent10minUnique >= 180;
+  const fmt = (iso: string) =>
+    new Date(iso).toLocaleString("ko-KR", {
+      timeZone: "Asia/Seoul",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-3">
+        <div
+          className={cn(
+            "rounded-xl border px-4 py-3",
+            hot
+              ? "border-amber-400/60 bg-amber-50/60 dark:bg-amber-950/20"
+              : "border-border bg-card",
+          )}
+        >
+          <p className="text-muted-foreground text-[11px]">최근 10분 고유 페이지</p>
+          <p
+            className={cn(
+              "text-lg font-bold tabular-nums",
+              hot ? "text-amber-700 dark:text-amber-300" : "text-foreground",
+            )}
+          >
+            {log.recent10minUnique}
+            {hot ? " ⚠" : ""}
+          </p>
+        </div>
+        <div className="border-border bg-card rounded-xl border px-4 py-3">
+          <p className="text-muted-foreground text-[11px]">총 열람 이벤트</p>
+          <p className="text-foreground text-lg font-bold tabular-nums">
+            {log.totalEvents}
+          </p>
+        </div>
+      </div>
+      <p className="text-muted-foreground text-[11px] leading-relaxed">
+        겹치는 스크롤 창은 중복 제거한 <b>고유 페이지</b> 기준입니다. 페이지가
+        비순차로 점프하고 요청 간격에 수 분의 정독 멈춤이 섞여 있으면 정상 학습,
+        1→2→3…처럼 순차로 짧은 간격에 전 범위를 훑으면 자동 캡처 의심입니다.
+      </p>
+      {log.events.length === 0 ? (
+        <p className="text-muted-foreground rounded-lg border border-dashed py-8 text-center text-sm">
+          강의노트 열람 기록이 없습니다.
+        </p>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border">
+          <table className="w-full min-w-[560px] text-sm">
+            <thead className="bg-muted/60 text-muted-foreground text-[11px]">
+              <tr>
+                <th className="px-3 py-2 text-left font-semibold">시각(KST)</th>
+                <th className="px-3 py-2 text-left font-semibold">강의노트</th>
+                <th className="px-3 py-2 text-center font-semibold">종류</th>
+                <th className="px-3 py-2 text-right font-semibold">페이지</th>
+              </tr>
+            </thead>
+            <tbody>
+              {log.events.map((e, i) => (
+                <tr key={i} className="border-border/60 border-t">
+                  <td className="text-muted-foreground px-3 py-1.5 tabular-nums whitespace-nowrap">
+                    {fmt(e.viewedAt)}
+                  </td>
+                  <td className="px-3 py-1.5">{e.noteTitle}</td>
+                  <td className="text-muted-foreground px-3 py-1.5 text-center text-xs">
+                    {e.kind === "src" ? "통합본" : "자료"}
+                  </td>
+                  <td className="px-3 py-1.5 text-right tabular-nums whitespace-nowrap">
+                    {e.fromPage}–{e.toPage}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }
 

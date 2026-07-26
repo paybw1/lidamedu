@@ -1061,3 +1061,75 @@ export async function importSystematicTree(
 
   return { inserted, linked, skippedLinks, deletedExisting };
 }
+
+// feat: 강의노트 열람 로그(운영자 학생 상세). 최근 이벤트 + 노트 제목 + 10분 고유 페이지 수.
+export interface NoteViewLogItem {
+  viewedAt: string;
+  kind: "src" | "res";
+  noteTitle: string;
+  fromPage: number;
+  toPage: number;
+}
+export async function getLectureNoteViewLog(
+  profileId: string,
+  limit = 100,
+): Promise<{
+  events: NoteViewLogItem[];
+  recent10minUnique: number;
+  totalEvents: number;
+}> {
+  const { data: rows, count } = await adminClient
+    .from("lecture_note_views")
+    .select("viewed_at, kind, target_id, from_page, to_page", {
+      count: "exact",
+    })
+    .eq("profile_id", profileId)
+    .order("viewed_at", { ascending: false })
+    .limit(limit);
+  const list = rows ?? [];
+
+  // 제목 batch 조회.
+  const srcIds = [
+    ...new Set(list.filter((r) => r.kind === "src").map((r) => r.target_id)),
+  ];
+  const resIds = [
+    ...new Set(list.filter((r) => r.kind === "res").map((r) => r.target_id)),
+  ];
+  const titleMap = new Map<string, string>();
+  if (srcIds.length > 0) {
+    const { data: srcs } = await adminClient
+      .from("lecture_source_pdfs")
+      .select("source_pdf_id, title")
+      .in("source_pdf_id", srcIds);
+    for (const s of srcs ?? []) titleMap.set(s.source_pdf_id, s.title);
+  }
+  if (resIds.length > 0) {
+    const { data: ress } = await adminClient
+      .from("lecture_resources")
+      .select("resource_id, title")
+      .in("resource_id", resIds);
+    for (const r of ress ?? []) titleMap.set(r.resource_id, r.title ?? "자료");
+  }
+
+  // 최근 10분 고유 페이지(노트별 union).
+  const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const seen = new Set<string>();
+  for (const r of list) {
+    if (r.viewed_at < since) continue;
+    const from = Math.max(1, r.from_page);
+    const to = Math.min(r.to_page, from + 100);
+    for (let p = from; p <= to; p++) seen.add(`${r.target_id}:${p}`);
+  }
+
+  return {
+    events: list.map((r) => ({
+      viewedAt: r.viewed_at,
+      kind: r.kind as "src" | "res",
+      noteTitle: titleMap.get(r.target_id) ?? "(알 수 없음)",
+      fromPage: r.from_page,
+      toPage: r.to_page,
+    })),
+    recent10minUnique: seen.size,
+    totalEvents: count ?? list.length,
+  };
+}
