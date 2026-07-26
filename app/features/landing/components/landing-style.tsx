@@ -101,7 +101,8 @@ export function LandingStyle() {
 
 /* 히어로 아래 추가 단(2·3단) 배너 */
 .llx .btier{padding:22px 0 0}
-.llx .btier:first-of-type{padding-top:26px}
+/* 히어로(1단) 바로 다음 단(2단)은 붙여 노출 — 히어로와 이어지는 배너용(간격 제거). */
+.llx .hero-carousel + .btier{padding-top:0}
 .llx .bt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
 .llx .bt-grid.one{grid-template-columns:1fr}
 .llx .bt-block{border-radius:16px;overflow:hidden;box-shadow:var(--lshadow)}
