@@ -11,6 +11,7 @@ import { listSupportFaqGroups } from "~/features/cs-inquiries/faq.server";
 import { listPasserSummaries } from "~/features/exam-results/analytics.server";
 import { EXAM_ROUND_LABEL } from "~/features/exam-results/labels";
 import { listInstructors } from "~/features/instructors/queries.server";
+import { REVIEWS_ENABLED } from "~/features/lms/reviews-config";
 import { listFeaturedReviews } from "~/features/lms/reviews.server";
 
 import { BannerTiers } from "../components/banner-tiers";
@@ -339,8 +340,8 @@ export default function Landing({ loaderData }: Route.ComponentProps) {
         </div>
       </section>
 
-      {/* 수강생 후기 — 운영자가 취사선택(랜딩 노출)한 수강 후기. 없으면 섹션 숨김. */}
-      {featuredReviews.length > 0 ? (
+      {/* 수강생 후기 — 운영자가 취사선택(랜딩 노출)한 수강 후기. 기능 숨김 시·없으면 미노출. */}
+      {REVIEWS_ENABLED && featuredReviews.length > 0 ? (
         <section className="band" id="course-reviews">
           <div className="wrap">
             <Reveal className="shead">

@@ -34,6 +34,7 @@ import { ROLE_LABEL, roleAtLeast, type UserRole } from "~/core/lib/roles";
 import { cn } from "~/core/lib/utils";
 import { AdminCommandPalette } from "~/features/admin/components/admin-command-palette";
 import { openAdminCommandPalette } from "~/features/admin/components/admin-palette-event";
+import { REVIEWS_ENABLED } from "~/features/lms/reviews-config";
 
 export type AdminClusterId =
   | "hub"
@@ -193,7 +194,10 @@ export const ADMIN_NAV: NavCluster[] = [
     screens: [
       { label: "강의 시리즈·에디션", to: "/admin/lms/courses" },
       { label: "콘텐츠 라이브러리", to: "/admin/lms/contents" },
-      { label: "수강평·교재평", to: "/admin/lms/reviews" },
+      // 수강 후기 일단 숨김(REVIEWS_ENABLED) — 재오픈 시 자동 복원.
+      ...(REVIEWS_ENABLED
+        ? [{ label: "수강평·교재평", to: "/admin/lms/reviews" }]
+        : []),
       { label: "영상 수강권", to: "/admin/lms/enrollments" },
       { label: "기기 관리", to: "/admin/lms/devices" },
       // feat-11-004 4c — 도서몰.

@@ -25,7 +25,10 @@ import { useCart } from "~/features/lms/lib/cart";
 import { getWatchBalances } from "~/features/lms/queries.server";
 import { getReviewRewardPoints } from "~/core/lib/app-settings.server";
 import { getMyPlanReviews } from "~/features/lms/reviews.server";
-import { REVIEW_REWARD_MIN_CHARS } from "~/features/lms/reviews-config";
+import {
+  REVIEWS_ENABLED,
+  REVIEW_REWARD_MIN_CHARS,
+} from "~/features/lms/reviews-config";
 import { getLessonProgressForUser } from "~/features/lms/watch.server";
 
 import type { Route } from "./+types/my-courses";
@@ -499,7 +502,7 @@ function CourseCard({
             ))}
           </div>
         ) : null}
-        {course.planId ? (
+        {REVIEWS_ENABLED && course.planId ? (
           <ReviewCTA
             planId={course.planId}
             review={course.review}

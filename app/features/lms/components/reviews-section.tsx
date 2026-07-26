@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { Button } from "~/core/components/ui/button";
 import { cn } from "~/core/lib/utils";
+import { REVIEWS_ENABLED } from "~/features/lms/reviews-config";
 import type {
   ReviewRow,
   ReviewSummary,
@@ -62,6 +63,9 @@ export function ReviewsSection({
       setWriting(false);
     }
   }, [fetcher.state, fetcher.data]);
+
+  // 수강 후기 기능 숨김 스위치(일단 비노출) — 모든 훅 호출 뒤에서 조건부 return.
+  if (!REVIEWS_ENABLED) return null;
 
   const report = (reviewId: string) => {
     if (!isLoggedIn) return toast.error("로그인이 필요합니다.");
