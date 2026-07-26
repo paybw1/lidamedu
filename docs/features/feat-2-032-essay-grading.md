@@ -9,7 +9,8 @@
 - **S1 (완료)** 채점평 전용 테이블 `problem_grading_notes` + 채점평 96건 적재.
 - **S2 (본 문서)** 채점평 코퍼스 분석 → 3축 루브릭 정립.
 - **S3** AI 채점 도입(기출 연습 경로) — 루브릭 + 문제별 채점평/모범답안 근거.
-- **S4** 이용 가이드에 채점 기준 수록.
+- **S4 (완료)** 이용 가이드에 채점 기준 수록 — `guide_articles` "2차 대비" 카테고리
+  "2차 답안, 이렇게 채점됩니다 — 논점·목차·논증 3축"(도구 `scripts/jagwa/seed-grading-guide.mjs`, 멱등).
 
 ## 데이터
 - `problem_grading_notes`(source: examiner|instructor, body_md, example_answer_md, form, source_year).
