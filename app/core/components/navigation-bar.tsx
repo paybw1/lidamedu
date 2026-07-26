@@ -25,7 +25,7 @@ import {
 import {
   LOCKED_DIM_CLASS,
   LOCKED_HINT,
-  TOPBAR_DROPDOWNS,
+  getTopbarDropdowns,
   isAreaLocked,
   isSubjectLocked,
   subjectLockedHint,
@@ -462,6 +462,8 @@ export function NavigationBar({
   if (hideAll) return null;
   // 잠금 판정은 등급 기준(체험 모드 반영), 미전달 시 역할 기준 폴백.
   const lockStaff = gradeStaff ?? isStaff;
+  // 종합반 접근자는 '모의고사' 드롭다운이 '종합반'으로 교체됨(폭 증가 없이 슬롯 교체).
+  const topbarDropdowns = getTopbarDropdowns(lockStaff, features);
   // feat-8-008 — 영역 잠금은 TOPBAR_DROPDOWNS 의 area 로 드롭다운별 판정(isAreaLocked) →
   //   흐림(dim) 처리. staff 면제·미산정 시 미표시. 서버 영역 게이트가 권위(시각 힌트만).
   return (
@@ -507,8 +509,9 @@ export function NavigationBar({
               {leadingFlats.map((m) => (
                 <FlatLink key={m.to} {...m} />
               ))}
-              {/* SSOT 파생 — 현행 6 드롭다운 순서·구성 동일. 학습과목만 chip 렌더. */}
-              {TOPBAR_DROPDOWNS.map((d) =>
+              {/* SSOT 파생 — 현행 6 드롭다운 순서·구성 동일. 학습과목만 chip 렌더.
+                  종합반 접근자는 '모의고사'→'종합반' 교체(getTopbarDropdowns). */}
+              {topbarDropdowns.map((d) =>
                 d.subjects ? (
                   <SubjectsDropdown
                     key={d.label}
@@ -607,7 +610,7 @@ export function NavigationBar({
                   ))}
 
                   {/* SSOT 파생 — 로그아웃 햄버거(잠금 N/A: 비인증=구독 없음). */}
-                  {TOPBAR_DROPDOWNS.map((d) =>
+                  {topbarDropdowns.map((d) =>
                     d.subjects ? (
                       <MobileSubjects key={d.label} />
                     ) : (

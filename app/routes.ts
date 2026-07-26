@@ -430,8 +430,8 @@ export default [
       // feat-7-028 — 학생용 상담 코멘트(강사 공유) 열람. 알림 student_note_shared 의 목적지.
       // 학습관리 토글을 얹되 게이트는 없는 bare 레이아웃으로 감쌈(알림 목적지라 비구독자 접근 유지).
       layout(
-        "features/study/layouts/study-mgmt-tabs.layout.tsx",
-        { id: "study-mgmt-consult" },
+        "features/study/layouts/cohort-tabs.layout.tsx",
+        { id: "cohort-consult" },
         [
           route(
             "/me/consult",
@@ -614,7 +614,21 @@ export default [
             "/community/attachment/signed-url",
             "features/community/api/attachment-signed-url.tsx",
           ),
-          // feat-6-010 — 반별 게시판(학생·강사). 접근 통제는 RLS 가 DB 에서 강제.
+          route(
+            "/announcements",
+            "features/announcements/screens/announcements-inbox.tsx",
+          ),
+          // 이용 가이드 허브 — 기능 사용법(글+영상). 운영자 작성(/admin/guides).
+          route("/guide", "features/guide/screens/guide-index.tsx"),
+          route("/guide/:guideId", "features/guide/screens/guide-detail.tsx"),
+        ],
+      ),
+      // feat-6-010 / feat-2-031 — 반별 게시판(종합반 통합). 접근 통제는 RLS 가 DB 에서 강제.
+      //   커뮤니티 → 종합반으로 이관 → 종합반 탭(CohortTabs) strip 부착. 게이트 없음(RLS 권위).
+      layout(
+        "features/study/layouts/cohort-tabs.layout.tsx",
+        { id: "cohort-boards" },
+        [
           route(
             "/cohort-boards",
             "features/cohort-boards/screens/cohort-board-list.tsx",
@@ -636,13 +650,6 @@ export default [
             "features/cohort-boards/screens/cohort-board-post-new.tsx",
             { id: "cohort-board-post-edit" },
           ),
-          route(
-            "/announcements",
-            "features/announcements/screens/announcements-inbox.tsx",
-          ),
-          // 이용 가이드 허브 — 기능 사용법(글+영상). 운영자 작성(/admin/guides).
-          route("/guide", "features/guide/screens/guide-index.tsx"),
-          route("/guide/:guideId", "features/guide/screens/guide-detail.tsx"),
         ],
       ),
       route("/admin", "features/admin/screens/admin.tsx"),
@@ -1092,10 +1099,10 @@ export default [
       route("/api/admin/importance", "features/admin/api/importance.tsx"),
       // feat-2-023 암기 카드 생성(조문·판례 → srs_items, dry-run·멱등·소프트삭제).
       route("/api/admin/srs-cards", "features/admin/api/srs-cards.tsx"),
-      // feat-8-008 학습관리 영역 게이트 (과제).
+      // feat-8-008 학습관리 영역 게이트 (과제) — 종합반 통합(feat-2-031): 종합반 탭 노출.
       layout(
-        "features/study/layouts/study-management.layout.tsx",
-        { id: "study-mgmt-assignments" },
+        "features/study/layouts/cohort-management.layout.tsx",
+        { id: "cohort-assignments" },
         [
           route(
             "/assignments",

@@ -8,6 +8,7 @@ import {
   BarChart3Icon,
   BookOpenIcon,
   CalendarCheckIcon,
+  GraduationCapIcon,
   HighlighterIcon,
   HomeIcon,
   ListChecksIcon,
@@ -87,9 +88,7 @@ export const NAV_GROUP_POOL = {
       // feat — 학습 목표·진도 + 통계를 한 화면으로 통합(통폐합 3b). /goals 는 redirect.
       // OX 약점 진단도 "학습현황 > 정오문제 약점" 탭으로 흡수. 진입점 일원화.
       { label: "학습현황", to: "/study/stats" },
-      // 과제·상담 = 종합반 전용 — 일반 수험생에게 숨김(cohort 플랜 기능 플래그).
-      { label: "과제", to: "/assignments", feature: "cohort_curriculum" },
-      { label: "상담", to: "/me/consult", feature: "one_on_one_consult" },
+      // 과제·상담 = 종합반 전용 → cohort 그룹(종합반 드롭다운)으로 이동. 여기서 제거.
     ],
     area: "area_study_mgmt",
   },
@@ -140,6 +139,24 @@ export const NAV_GROUP_POOL = {
     ],
     area: "area_mock_exams",
   },
+  // 종합반(cohort) 전용 통합 그룹 — 흩어져 있던 반별 게시판·과제·상담을 여기로 모으고,
+  //   종합반 학생이 쓰는 1차·2차 모의고사 진입도 함께 담는다. 이 그룹은 종합반 접근자
+  //   (hasCohortAccess: staff 또는 cohort_curriculum·one_on_one_consult 보유)에게만 노출되며,
+  //   그 경우 상단바에서 '모의고사' 드롭다운을 대체(getTopbarDropdowns)하고 사이드바·하단탭에서
+  //   mock1·mock2 그룹을 숨긴다(useNavLayout). 모의 링크는 area 잠금이 없으나 실제 접근은
+  //   mock.layout requireFeature(area_mock_exams)가 서버 권위 — nav 는 진입점만 제공.
+  cohort: {
+    id: "cohort" as const,
+    label: "종합반",
+    Icon: GraduationCapIcon,
+    items: [
+      { label: "반별 게시판", to: "/cohort-boards", feature: "cohort_curriculum" },
+      { label: "과제", to: "/assignments", feature: "cohort_curriculum" },
+      { label: "상담", to: "/me/consult", feature: "one_on_one_consult" },
+      { label: "1차 모의고사", to: "/latest/mcq/exams" },
+      { label: "2차 모의고사", to: "/gs/issues" },
+    ],
+  },
   community: {
     id: "community" as const,
     label: "커뮤니티",
@@ -148,8 +165,7 @@ export const NAV_GROUP_POOL = {
       { label: "공지사항", to: "/announcements" },
       { label: "자유게시판", to: "/community/free" },
       { label: "스터디 모집", to: "/community/study" },
-      // 종합반 전용 — 일반 수험생에게 숨김(콘텐츠 접근은 RLS 가 권위).
-      { label: "반별 게시판", to: "/cohort-boards", feature: "cohort_curriculum" },
+      // 반별 게시판 = 종합반 전용 → cohort 그룹(종합반 드롭다운)으로 이동. 여기서 제거.
       { label: "Q&A", to: "/qna" },
       { label: "합격 수기", to: "/community/review" },
       // 이용 가이드 허브 — 기능 사용법(글+영상). 운영자 작성(/admin/guides).
@@ -170,8 +186,25 @@ export const AREA_GROUP_IDS = {
   info: ["info"],
   mock1: ["mock1"],
   mock2: ["mock2"],
+  cohort: ["cohort"],
   community: ["community"],
 } as const satisfies Record<string, ReadonlyArray<NavGroupId>>;
+
+// 종합반(cohort) 표면 노출 판정 — staff 이거나 종합반 기능 플래그를 하나라도 보유한 학생.
+//   true 면 상단바 '모의고사' 드롭다운이 '종합반'으로 교체되고(getTopbarDropdowns),
+//   사이드바·하단탭에서 mock1·mock2 그룹이 숨겨지며 cohort 그룹이 노출된다(useNavLayout).
+//   ★서버 게이트(각 화면 requireFeature)가 접근 권위 — 이건 nav 노출 제어만.
+export function hasCohortAccess(
+  isStaff: boolean,
+  features?: string[],
+): boolean {
+  if (isStaff) return true;
+  if (!features) return false;
+  return (
+    features.includes("cohort_curriculum") ||
+    features.includes("one_on_one_consult")
+  );
+}
 
 // feat — 영역 잠금(🔒) 판정. 상단바·사이드바·하단탭 공용(표면 일관).
 //   staff 면제, features 미산정(undefined=로딩) 시 미표시(깜빡임 방지), area 없으면 잠금 없음.
@@ -305,6 +338,25 @@ export const TOPBAR_DROPDOWNS: ReadonlyArray<{
   { label: "커뮤니티", groupIds: AREA_GROUP_IDS.community },
 ];
 
+// 종합반 접근자용 상단바 드롭다운 — '모의고사' 슬롯을 대체한다.
+//   항목 = cohort 그룹(반별 게시판·과제·상담·1차 모의·2차 모의). area 잠금 없음(접근자에게만 노출).
+const COHORT_TOPBAR_DROPDOWN: (typeof TOPBAR_DROPDOWNS)[number] = {
+  label: "종합반",
+  groupIds: AREA_GROUP_IDS.cohort,
+};
+
+// 역할별 상단바 드롭다운 목록 — 종합반 접근자는 '모의고사'를 '종합반'으로 교체(폭 증가 없음).
+//   비종합반은 현행 그대로. 상단바는 이 함수 결과를 map 한다(정적 TOPBAR_DROPDOWNS 직접 사용 금지).
+export function getTopbarDropdowns(
+  isStaff: boolean,
+  features?: string[],
+): typeof TOPBAR_DROPDOWNS {
+  if (!hasCohortAccess(isStaff, features)) return TOPBAR_DROPDOWNS;
+  return TOPBAR_DROPDOWNS.map((d) =>
+    d.label === "모의고사" ? COHORT_TOPBAR_DROPDOWN : d,
+  );
+}
+
 // staffOnly 항목은 학생에게 숨김(staff 는 전부). isStaff 미지정 시 전부 노출(안전 기본).
 // feature 항목은 해당 기능 플래그 보유 학생에게만(staff 면제) — features 미전달(미산정 포함) 시 숨김.
 export function visibleItems(
@@ -399,6 +451,12 @@ export function useNavLayout(
   // features 배열 identity 가 렌더마다 바뀌어도 내용이 같으면 재계산하지 않도록 키로 직렬화.
   const featureKey = features ? features.join("|") : null;
   return useMemo(() => {
+    const cohort = hasCohortAccess(isStaff, features);
+    // 종합반 접근자: 모의고사(mock1·mock2)는 종합반 그룹으로 흡수 → 개별 표시 제외.
+    //   비종합반: 종합반 그룹 자체 제외(모의 링크가 feature 무관이라 필터로는 안 사라짐).
+    const excluded = new Set<NavGroupId>(
+      cohort ? ["mock1", "mock2"] : ["cohort"],
+    );
     const coreIds = getCoreTabIds();
     const coreSet = new Set<NavGroupId>(coreIds);
     // staffOnly·feature 항목을 학생에게서 필터(오픈 준비 중·종합반 전용 숨김). staff 는 전부.
@@ -408,8 +466,10 @@ export function useNavLayout(
     };
     const core = coreIds.map(withVisible);
     const secondary = (Object.keys(NAV_GROUP_POOL) as NavGroupId[])
-      .filter((id) => !coreSet.has(id))
-      .map(withVisible);
+      .filter((id) => !coreSet.has(id) && !excluded.has(id))
+      .map(withVisible)
+      // subjects 는 items=[](특별 렌더)라 예외. 그 외 표시 항목이 0 인 그룹은 숨김.
+      .filter((g) => g.id === "subjects" || g.items.length > 0);
     return { core, secondary };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isStaff, featureKey]);
@@ -438,6 +498,7 @@ export const MOBILE_TAB_LABELS: Partial<Record<NavGroupId, string>> = {
   info: "정보",
   mock1: "1차 모의",
   mock2: "2차 모의",
+  cohort: "종합반",
   community: "커뮤니티",
 };
 

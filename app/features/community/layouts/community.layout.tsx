@@ -1,7 +1,7 @@
 // 커뮤니티 영역 공용 레이아웃 — 화면 내 토글(AreaTabs) 단일 부착점.
 // 게이트 없음(커뮤니티는 무료 영역). 토글 항목 = SSOT(AREA_GROUP_IDS.community) 파생 →
-// 상단바 드롭다운과 항상 일치(공지·자유게시판·스터디·반별·Q&A·수기). 다른 영역 토글과 동일 디자인(AreaTabs).
-// 반별 게시판은 종합반 전용(feature: cohort_curriculum) — 일반 수험생에게 숨김(loader 로 멤버십 판정).
+// 상단바 드롭다운과 항상 일치(공지·자유게시판·스터디·Q&A·수기·가이드). 다른 영역 토글과 동일 디자인(AreaTabs).
+// ★반별 게시판은 종합반(cohort) 그룹으로 이관(feat-2-031) — 커뮤니티 strip 에서 제외, /cohort-boards 는 CohortTabs.
 import { Outlet, data } from "react-router";
 
 import { AreaTabs, type SectionTabItem } from "~/core/components/student";
