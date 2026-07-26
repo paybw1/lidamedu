@@ -173,6 +173,7 @@ export function CommandPalette() {
       onOpenChange={setOpen}
       title="전역 검색"
       description="조문 · 판례 · 객관식 · 메모 · 즐겨찾기 통합 검색"
+      shouldFilter={false}
     >
       <CommandInput
         placeholder="검색어를 입력하세요 (조문 / 판례 / 문제 / 메모)"
