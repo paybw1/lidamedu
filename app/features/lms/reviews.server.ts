@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
+import { getLessonProgressForUser } from "~/features/lms/watch.server";
 
 type Client = SupabaseClient<Database>;
 export type ReviewTargetType = "plan" | "book";
@@ -55,6 +56,47 @@ export async function isPurchaser(
     .eq("orders.status", "paid")
     .limit(1);
   return (data ?? []).length > 0;
+}
+
+/** 강의 완강 여부 — 강의(plan) 후기 작성 게이트(구매 아닌 '완강한 사람만'). 서버 권위.
+ *   판정: 이 사용자+plan 의 수강권이 걸린 course 중 하나라도 **게시된 전 회차를 모두 완강**했는가.
+ *   완강 기준은 getLessonProgressForUser(콘텐츠별 completion_threshold)와 동일 — 내 강의 진도와 일치. */
+export async function isPlanCourseCompleted(
+  userId: string,
+  planId: string,
+): Promise<boolean> {
+  const { data: enrs } = await adminClient
+    .from("enrollments")
+    .select("course_id")
+    .eq("user_id", userId)
+    .eq("plan_id", planId);
+  const courseIds = [
+    ...new Set((enrs ?? []).map((e) => e.course_id).filter(Boolean)),
+  ] as string[];
+  if (courseIds.length === 0) return false;
+
+  const { data: lessons } = await adminClient
+    .from("course_lessons")
+    .select("lesson_id, course_id")
+    .in("course_id", courseIds)
+    .eq("is_published", true)
+    .is("deleted_at", null);
+  const byCourse = new Map<string, string[]>();
+  for (const l of lessons ?? []) {
+    const arr = byCourse.get(l.course_id) ?? [];
+    arr.push(l.lesson_id);
+    byCourse.set(l.course_id, arr);
+  }
+  const allLessonIds = [...byCourse.values()].flat();
+  if (allLessonIds.length === 0) return false; // 회차 없는 강의는 완강 판정 불가
+
+  const progress = await getLessonProgressForUser(userId, allLessonIds);
+  for (const lids of byCourse.values()) {
+    if (lids.length > 0 && lids.every((lid) => progress.get(lid)?.completed)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /** 공개 리뷰 목록 + 별점 요약(공개·미블라인드만). 베스트 먼저, 최신순. */

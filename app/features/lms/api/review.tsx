@@ -6,7 +6,11 @@ import { z } from "zod";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { adjustMemberPoints } from "~/features/admin/queries/member-crm.server";
-import { isPurchaser, type ReviewTargetType } from "~/features/lms/reviews.server";
+import {
+  isPlanCourseCompleted,
+  isPurchaser,
+  type ReviewTargetType,
+} from "~/features/lms/reviews.server";
 import {
   REVIEW_REWARD_MIN_CHARS,
   REVIEW_REWARD_POINTS,
@@ -43,12 +47,26 @@ export async function action({ request }: Route.ActionArgs) {
     if (!parsed.success)
       return data({ error: "별점과 내용을 확인해 주세요." }, { status: 400 });
     const p = parsed.data;
-    // 구매자 게이트.
-    if (!(await isPurchaser(client, user.id, p.targetType as ReviewTargetType, p.targetId)))
+    // 작성 게이트 — 강의(plan)=완강한 사람만(원장 결정 2026-07-26) / 교재(book)=구매자.
+    if (p.targetType === "plan") {
+      if (!(await isPlanCourseCompleted(user.id, p.targetId)))
+        return data(
+          { error: "강의를 완강한 후에 수강 후기를 작성할 수 있습니다." },
+          { status: 403 },
+        );
+    } else if (
+      !(await isPurchaser(
+        client,
+        user.id,
+        p.targetType as ReviewTargetType,
+        p.targetId,
+      ))
+    ) {
       return data(
-        { error: "구매(수강)한 회원만 후기를 작성할 수 있습니다." },
+        { error: "구매한 회원만 후기를 작성할 수 있습니다." },
         { status: 403 },
       );
+    }
     // upsert(대상당 1인 1리뷰) — 기존 있으면 수정.
     const { data: existing } = await client
       .from("course_reviews")

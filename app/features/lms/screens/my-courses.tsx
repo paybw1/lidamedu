@@ -571,31 +571,16 @@ function ReviewCTA({
               수정
             </button>
           </div>
-        ) : (
-          <div
-            className={cn(
-              "flex flex-wrap items-center gap-2",
-              completed &&
-                "bg-amber-50 dark:bg-amber-500/10 -mx-1 rounded-lg px-2.5 py-2",
-            )}
-          >
+        ) : completed ? (
+          // 완강한 사람만 작성 가능 — 유도 배너.
+          <div className="bg-amber-50 dark:bg-amber-500/10 -mx-1 flex flex-wrap items-center gap-2 rounded-lg px-2.5 py-2">
             <span className="inline-flex items-center gap-1.5 text-[13px] font-medium">
-              {completed ? (
-                <>
-                  <SparklesIcon className="size-4 text-amber-500" />
-                  완강을 축하해요! 후기를 남겨 주세요
-                </>
-              ) : (
-                <>
-                  <StarIcon className="size-4 text-amber-500" />
-                  수강 후기 남기기
-                </>
-              )}
+              <SparklesIcon className="size-4 text-amber-500" />
+              완강을 축하해요! 후기를 남겨 주세요
             </span>
             <Button
               type="button"
               size="sm"
-              variant={completed ? "default" : "outline"}
               className="h-7 text-[12px]"
               onClick={() => setOpen(true)}
             >
@@ -608,6 +593,18 @@ function ReviewCTA({
                   {REVIEW_REWARD_POINTS.toLocaleString("ko-KR")}P
                 </b>{" "}
                 적립
+              </span>
+            ) : null}
+          </div>
+        ) : (
+          // 미완강 — 완강 후 작성 가능 안내(서버에서도 완강 게이트).
+          <div className="text-muted-foreground flex flex-wrap items-center gap-1.5 text-[12px]">
+            <StarIcon className="text-muted-foreground/50 size-3.5" />
+            완강 후 수강 후기를 작성할 수 있어요
+            {rewardHint ? (
+              <span className="text-[11px]">
+                · {REVIEW_REWARD_MIN_CHARS}자 이상 시{" "}
+                {REVIEW_REWARD_POINTS.toLocaleString("ko-KR")}P 적립
               </span>
             ) : null}
           </div>
