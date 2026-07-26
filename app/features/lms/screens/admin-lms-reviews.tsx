@@ -8,6 +8,11 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 import { Button } from "~/core/components/ui/button";
+import {
+  REVIEW_REWARD_POINTS_KEY,
+  getReviewRewardPoints,
+  setAppSetting,
+} from "~/core/lib/app-settings.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Chip } from "~/features/admin/components/admin-ui";
@@ -29,6 +34,7 @@ const FILTERS = [
   { value: "reported", label: "신고" },
   { value: "blinded", label: "블라인드" },
   { value: "best", label: "베스트" },
+  { value: "featured", label: "랜딩 노출" },
 ] as const;
 type Filter = (typeof FILTERS)[number]["value"];
 
@@ -55,17 +61,48 @@ export async function loader({ request }: Route.LoaderArgs) {
     client,
     FILTERS.some((f) => f.value === filter) ? filter : "all",
   );
-  return { role, reviews, filter };
+  const rewardPoints = await getReviewRewardPoints(client);
+  return { role, reviews, filter, rewardPoints };
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  const { client } = await requireStaff(request);
+  const { client, user } = await requireStaff(request);
   const fd = await request.formData();
   const intent = fd.get("intent");
+
+  // 후기 보상 포인트 설정 — reviewId 불필요(전역 설정).
+  if (intent === "set_reward_points") {
+    const points = Math.trunc(Number(fd.get("points") ?? NaN));
+    if (!Number.isFinite(points) || points < 0 || points > 1_000_000) {
+      return data({ error: "0 이상의 포인트를 입력해 주세요." }, { status: 400 });
+    }
+    const res = await setAppSetting(
+      client,
+      REVIEW_REWARD_POINTS_KEY,
+      points,
+      user.id,
+    );
+    if (!res.ok) return data({ error: res.error }, { status: 400 });
+    return data({ ok: true as const });
+  }
+
   const reviewId = z.string().uuid().safeParse(fd.get("reviewId"));
   if (!reviewId.success)
     return data({ error: "대상을 확인해 주세요." }, { status: 400 });
   const id = reviewId.data;
+
+  if (intent === "toggle_featured") {
+    const value = fd.get("value") === "1";
+    const { error } = await client
+      .from("course_reviews")
+      .update({
+        is_featured: value,
+        featured_at: value ? new Date().toISOString() : null,
+      })
+      .eq("review_id", id);
+    if (error) return data({ error: error.message }, { status: 400 });
+    return data({ ok: true as const });
+  }
 
   if (intent === "toggle_blind") {
     const value = fd.get("value") === "1";
@@ -110,7 +147,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function AdminLmsReviews({ loaderData }: Route.ComponentProps) {
-  const { role, reviews, filter } = loaderData;
+  const { role, reviews, filter, rewardPoints } = loaderData;
   const [searchParams, setSearchParams] = useSearchParams();
   const active = searchParams.get("filter") ?? filter;
 
@@ -119,9 +156,11 @@ export default function AdminLmsReviews({ loaderData }: Route.ComponentProps) {
       cluster="lms"
       role={role}
       title="수강평·교재평 관리"
-      desc="후기 신고 처리(블라인드)·베스트 선정·운영자 답변을 관리합니다."
+      desc="후기 신고 처리(블라인드)·베스트/랜딩 노출 선정·운영자 답변·보상 포인트를 관리합니다."
       width={1200}
     >
+      <RewardSettingPanel rewardPoints={rewardPoints} />
+
       <div className="mb-4 flex gap-1">
         {FILTERS.map((f) => (
           <button
@@ -157,6 +196,42 @@ export default function AdminLmsReviews({ loaderData }: Route.ComponentProps) {
         </ul>
       )}
     </AdminShell>
+  );
+}
+
+// 후기 보상 포인트 설정 — 강의(수강) 후기 100자 이상 작성 시 지급(대상당 1회).
+function RewardSettingPanel({ rewardPoints }: { rewardPoints: number }) {
+  const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  useEffect(() => {
+    if (fetcher.state !== "idle" || !fetcher.data) return;
+    if (fetcher.data.error) toast.error(fetcher.data.error);
+    else if (fetcher.data.ok) toast.success("보상 포인트를 저장했습니다.");
+  }, [fetcher.state, fetcher.data]);
+  return (
+    <fetcher.Form
+      method="post"
+      className="border-border bg-card mb-4 flex flex-wrap items-center gap-2 rounded-xl border p-3.5"
+    >
+      <input type="hidden" name="intent" value="set_reward_points" />
+      <span className="text-sm font-semibold">후기 보상 포인트</span>
+      <span className="text-muted-foreground text-xs">
+        강의 후기 100자 이상 작성 시 지급(대상당 1회)
+      </span>
+      <span className="ml-auto inline-flex items-center gap-1.5">
+        <input
+          type="number"
+          name="points"
+          min={0}
+          max={1000000}
+          defaultValue={rewardPoints}
+          className="border-input bg-background h-8 w-28 rounded-md border px-2 text-sm tabular-nums"
+        />
+        <span className="text-muted-foreground text-sm">P</span>
+        <Button type="submit" size="sm" disabled={fetcher.state !== "idle"}>
+          저장
+        </Button>
+      </span>
+    </fetcher.Form>
   );
 }
 
@@ -199,6 +274,7 @@ function AdminReviewCard({ review: r }: { review: AdminReviewRow }) {
           ))}
         </span>
         {r.isBest ? <Chip tone="amber">베스트</Chip> : null}
+        {r.isFeatured ? <Chip tone="blue">랜딩 노출</Chip> : null}
         {r.isBlinded ? <Chip tone="coral">블라인드</Chip> : null}
         {!r.isPublic ? <Chip tone="outline">비공개</Chip> : null}
         {r.reportCount > 0 ? <Chip tone="coral">신고 {r.reportCount}</Chip> : null}
@@ -231,6 +307,21 @@ function AdminReviewCard({ review: r }: { review: AdminReviewRow }) {
             }
           >
             {r.isBest ? "베스트 해제" : "베스트"}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-[12px]"
+            disabled={busy}
+            title="강의 랜딩(/lecture/home)에 노출 — 공개·미블라인드 후기만 실제 표시"
+            onClick={() =>
+              submit({
+                intent: "toggle_featured",
+                value: r.isFeatured ? "0" : "1",
+              })
+            }
+          >
+            {r.isFeatured ? "랜딩 해제" : "랜딩 노출"}
           </Button>
           <Button
             size="sm"

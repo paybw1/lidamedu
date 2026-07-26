@@ -230,22 +230,24 @@ export interface AdminReviewRow extends ReviewRow {
   targetLabel: string;
   reportCount: number;
   deletedAt: string | null;
+  isFeatured: boolean;
 }
 
-/** 운영자 리뷰 목록 — 대상 라벨 조인, 필터(blinded/reported/all). */
+/** 운영자 리뷰 목록 — 대상 라벨 조인, 필터(blinded/reported/best/featured/all). */
 export async function listReviewsForAdmin(
   client: Client,
-  filter: "all" | "blinded" | "reported" | "best",
+  filter: "all" | "blinded" | "reported" | "best" | "featured",
 ): Promise<AdminReviewRow[]> {
   let q = client
     .from("course_reviews")
     .select(
-      "review_id, target_type, target_id, author_id, rating, body, is_best, is_public, is_blinded, admin_reply, admin_reply_at, created_at, deleted_at, profiles!course_reviews_author_id_fkey(name)",
+      "review_id, target_type, target_id, author_id, rating, body, is_best, is_featured, is_public, is_blinded, admin_reply, admin_reply_at, created_at, deleted_at, profiles!course_reviews_author_id_fkey(name)",
     )
     .order("created_at", { ascending: false })
     .limit(300);
   if (filter === "blinded") q = q.eq("is_blinded", true);
   else if (filter === "best") q = q.eq("is_best", true);
+  else if (filter === "featured") q = q.eq("is_featured", true);
   const { data } = await q;
   let rows = data ?? [];
 
@@ -293,5 +295,66 @@ export async function listReviewsForAdmin(
         : bookTitle.get(r.target_id) ?? "(삭제된 교재)",
     reportCount: reportCount.get(r.review_id) ?? 0,
     deletedAt: r.deleted_at,
+    isFeatured: r.is_featured,
+  }));
+}
+
+// ── 강의 랜딩 노출(큐레이션) ─────────────────────────────────────────────────
+export interface FeaturedReviewRow {
+  reviewId: string;
+  rating: number;
+  body: string;
+  authorName: string | null;
+  targetType: ReviewTargetType;
+  targetLabel: string;
+}
+
+/** 강의 랜딩(/lecture/home) 노출용 큐레이션 후기 — is_featured·공개·미블라인드만, 최근 지정 순. */
+export async function listFeaturedReviews(
+  client: Client,
+  limit = 6,
+): Promise<FeaturedReviewRow[]> {
+  const { data } = await client
+    .from("course_reviews")
+    .select(
+      "review_id, target_type, target_id, rating, body, profiles!course_reviews_author_id_fkey(name)",
+    )
+    .eq("is_featured", true)
+    .eq("is_public", true)
+    .eq("is_blinded", false)
+    .is("deleted_at", null)
+    .order("featured_at", { ascending: false, nullsFirst: false })
+    .limit(limit);
+  const rows = data ?? [];
+  if (rows.length === 0) return [];
+
+  // 대상(강의/교재) 라벨 배치 조회.
+  const planIds = [
+    ...new Set(rows.filter((r) => r.target_type === "plan").map((r) => r.target_id)),
+  ];
+  const bookIds = [
+    ...new Set(rows.filter((r) => r.target_type === "book").map((r) => r.target_id)),
+  ];
+  const [plansRes, booksRes] = await Promise.all([
+    planIds.length
+      ? client.from("subscription_plans").select("plan_id, name").in("plan_id", planIds)
+      : Promise.resolve({ data: [] as { plan_id: string; name: string }[] }),
+    bookIds.length
+      ? client.from("books").select("book_id, title").in("book_id", bookIds)
+      : Promise.resolve({ data: [] as { book_id: string; title: string }[] }),
+  ]);
+  const planName = new Map((plansRes.data ?? []).map((p) => [p.plan_id, p.name]));
+  const bookTitle = new Map((booksRes.data ?? []).map((b) => [b.book_id, b.title]));
+
+  return rows.map((r) => ({
+    reviewId: r.review_id,
+    rating: r.rating,
+    body: r.body,
+    authorName: (r.profiles as { name: string | null } | null)?.name ?? null,
+    targetType: r.target_type as ReviewTargetType,
+    targetLabel:
+      r.target_type === "plan"
+        ? planName.get(r.target_id) ?? "강의"
+        : bookTitle.get(r.target_id) ?? "교재",
   }));
 }

@@ -23,11 +23,9 @@ import adminClient from "~/core/lib/supa-admin-client.server";
 import { resetDevice } from "~/features/lms/devices.server";
 import { useCart } from "~/features/lms/lib/cart";
 import { getWatchBalances } from "~/features/lms/queries.server";
+import { getReviewRewardPoints } from "~/core/lib/app-settings.server";
 import { getMyPlanReviews } from "~/features/lms/reviews.server";
-import {
-  REVIEW_REWARD_MIN_CHARS,
-  REVIEW_REWARD_POINTS,
-} from "~/features/lms/reviews-config";
+import { REVIEW_REWARD_MIN_CHARS } from "~/features/lms/reviews-config";
 import { getLessonProgressForUser } from "~/features/lms/watch.server";
 
 import type { Route } from "./+types/my-courses";
@@ -143,6 +141,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
   // 수강 후기 CTA 상태 — 강의(plan)별 내 리뷰(있으면 수정, 없으면 작성 유도).
   const myReviews = await getMyPlanReviews(client, user.id, planIds);
+  // 후기 보상 포인트(운영관리 설정값) — 작성 안내 문구용.
+  const reviewRewardPoints = await getReviewRewardPoints(client);
 
   const { data: pauses } = await client
     .from("enrollment_pauses")
@@ -222,6 +222,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       registeredAt: d.registered_at,
       lastSeenAt: d.last_seen_at,
     })),
+    reviewRewardPoints,
   };
 }
 
@@ -311,7 +312,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function MyCourses({ loaderData }: Route.ComponentProps) {
-  const { courses, devices } = loaderData;
+  const { courses, devices, reviewRewardPoints } = loaderData;
   return (
     <div className="mx-auto w-full max-w-3xl space-y-5 px-4 py-8 md:px-6 md:py-10">
       <h1 className="flex items-center gap-2 text-xl font-extrabold tracking-tight">
@@ -325,7 +326,13 @@ export default function MyCourses({ loaderData }: Route.ComponentProps) {
           </CardContent>
         </Card>
       ) : (
-        courses.map((c) => <CourseCard key={c.enrollmentId} course={c} />)
+        courses.map((c) => (
+          <CourseCard
+            key={c.enrollmentId}
+            course={c}
+            rewardPoints={reviewRewardPoints}
+          />
+        ))
       )}
 
       <Card>
@@ -357,7 +364,9 @@ export default function MyCourses({ loaderData }: Route.ComponentProps) {
 
 function CourseCard({
   course,
+  rewardPoints,
 }: {
+  rewardPoints: number;
   course: {
     enrollmentId: string;
     planId: string | null;
@@ -495,6 +504,7 @@ function CourseCard({
             planId={course.planId}
             review={course.review}
             completed={completed}
+            rewardPoints={rewardPoints}
           />
         ) : null}
       </CardContent>
@@ -525,10 +535,12 @@ function ReviewCTA({
   planId,
   review,
   completed,
+  rewardPoints,
 }: {
   planId: string;
   review: { rating: number; body: string; isPublic: boolean; rewarded: boolean } | null;
   completed: boolean;
+  rewardPoints: number;
 }) {
   const fetcher = useFetcher<{
     ok?: boolean;
@@ -590,7 +602,7 @@ function ReviewCTA({
               <span className="text-muted-foreground text-[11px]">
                 {REVIEW_REWARD_MIN_CHARS}자 이상 작성 시{" "}
                 <b className="text-amber-600">
-                  {REVIEW_REWARD_POINTS.toLocaleString("ko-KR")}P
+                  {rewardPoints.toLocaleString("ko-KR")}P
                 </b>{" "}
                 적립
               </span>
@@ -604,7 +616,7 @@ function ReviewCTA({
             {rewardHint ? (
               <span className="text-[11px]">
                 · {REVIEW_REWARD_MIN_CHARS}자 이상 시{" "}
-                {REVIEW_REWARD_POINTS.toLocaleString("ko-KR")}P 적립
+                {rewardPoints.toLocaleString("ko-KR")}P 적립
               </span>
             ) : null}
           </div>
@@ -651,7 +663,7 @@ function ReviewCTA({
         rows={3}
         maxLength={2000}
         defaultValue={review?.body ?? ""}
-        placeholder={`강의에 대한 솔직한 후기를 남겨 주세요. (${REVIEW_REWARD_MIN_CHARS}자 이상 작성 시 ${REVIEW_REWARD_POINTS.toLocaleString("ko-KR")}P 적립)`}
+        placeholder={`강의에 대한 솔직한 후기를 남겨 주세요. (${REVIEW_REWARD_MIN_CHARS}자 이상 작성 시 ${rewardPoints.toLocaleString("ko-KR")}P 적립)`}
         className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
       />
       {/* ★checkbox(value=1) 가 hidden(value=0) 보다 먼저 와야 체크 시 fd.get 첫값="1"(공개). */}

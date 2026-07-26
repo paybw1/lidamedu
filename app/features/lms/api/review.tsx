@@ -3,6 +3,7 @@
 import { data } from "react-router";
 import { z } from "zod";
 
+import { getReviewRewardPoints } from "~/core/lib/app-settings.server";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { adjustMemberPoints } from "~/features/admin/queries/member-crm.server";
@@ -11,10 +12,7 @@ import {
   isPurchaser,
   type ReviewTargetType,
 } from "~/features/lms/reviews.server";
-import {
-  REVIEW_REWARD_MIN_CHARS,
-  REVIEW_REWARD_POINTS,
-} from "~/features/lms/reviews-config";
+import { REVIEW_REWARD_MIN_CHARS } from "~/features/lms/reviews-config";
 
 import type { Route } from "./+types/review";
 
@@ -119,17 +117,21 @@ export async function action({ request }: Route.ActionArgs) {
         .not("points_awarded_at", "is", null)
         .limit(1);
       if (!prior || prior.length === 0) {
-        const res = await adjustMemberPoints({
-          userId: user.id,
-          delta: REVIEW_REWARD_POINTS,
-          reason: "수강 후기 작성 보상",
-        });
-        if (res.ok) {
-          await adminClient
-            .from("course_reviews")
-            .update({ points_awarded_at: new Date().toISOString() })
-            .eq("review_id", reviewId);
-          awardedPoints = REVIEW_REWARD_POINTS;
+        // 지급 포인트 = 운영관리 설정값(app_settings, 미설정 시 기본 2000).
+        const rewardPoints = await getReviewRewardPoints(client);
+        if (rewardPoints > 0) {
+          const res = await adjustMemberPoints({
+            userId: user.id,
+            delta: rewardPoints,
+            reason: "수강 후기 작성 보상",
+          });
+          if (res.ok) {
+            await adminClient
+              .from("course_reviews")
+              .update({ points_awarded_at: new Date().toISOString() })
+              .eq("review_id", reviewId);
+            awardedPoints = rewardPoints;
+          }
         }
       }
     }

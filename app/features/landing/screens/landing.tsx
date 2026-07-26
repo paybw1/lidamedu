@@ -2,12 +2,14 @@
 // 커리큘럼 + 후기 + 리담소식 + 도서 + FAQ + 오시는 길. 공개 접근(lecture.layout).
 import { Link } from "react-router";
 
+import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { listBookstoreBooks } from "~/features/bookstore/queries.server";
 import { listSupportFaqGroups } from "~/features/cs-inquiries/faq.server";
 import { listPasserSummaries } from "~/features/exam-results/analytics.server";
 import { EXAM_ROUND_LABEL } from "~/features/exam-results/labels";
 import { listInstructors } from "~/features/instructors/queries.server";
+import { listFeaturedReviews } from "~/features/lms/reviews.server";
 
 import { BannerTiers } from "../components/banner-tiers";
 import { FaqTabs } from "../components/faq-tabs";
@@ -36,22 +38,33 @@ export function meta() {
 export async function loader({ request }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);
   const todayISO = new Date().toISOString();
-  const [banners, schedules, news, instructors, passers, faqGroups, books] =
-    await Promise.all([
-      listBanners(client),
-      listSchedules(client, { todayISO, limit: 4 }),
-      listNews(client, { limit: 5 }),
-      listInstructors(client),
-      listPasserSummaries({
-        year: null,
-        round: null,
-        limit: 3,
-        excludeSynthetic: true,
-      }).catch(() => []),
-      listSupportFaqGroups(client).catch(() => []),
-      // 리담 교재 섹션 — 도서몰(도서구입) 판매중 도서 노출.
-      listBookstoreBooks(client).catch(() => []),
-    ]);
+  const [
+    banners,
+    schedules,
+    news,
+    instructors,
+    passers,
+    faqGroups,
+    books,
+    featuredReviews,
+  ] = await Promise.all([
+    listBanners(client),
+    listSchedules(client, { todayISO, limit: 4 }),
+    listNews(client, { limit: 5 }),
+    listInstructors(client),
+    listPasserSummaries({
+      year: null,
+      round: null,
+      limit: 3,
+      excludeSynthetic: true,
+    }).catch(() => []),
+    listSupportFaqGroups(client).catch(() => []),
+    // 리담 교재 섹션 — 도서몰(도서구입) 판매중 도서 노출.
+    listBookstoreBooks(client).catch(() => []),
+    // 운영자 큐레이션 수강 후기 — 강의 랜딩 노출(취사선택). 비로그인(anon)에도 보이도록
+    //   adminClient 로 조회(공개·미블라인드만 반환하는 공개-안전 쿼리).
+    listFeaturedReviews(adminClient).catch(() => []),
+  ]);
   // 랜딩 강사진은 계열 구분 없이 한 줄 가로 레일(좌우 화살표) — 배치 순서(display_order) 그대로.
   return {
     banners,
@@ -61,13 +74,23 @@ export async function loader({ request }: Route.LoaderArgs) {
     passers,
     faqGroups,
     books: books.slice(0, 6),
+    featuredReviews,
     todayISO,
   };
 }
 
 export default function Landing({ loaderData }: Route.ComponentProps) {
-  const { banners, schedules, news, instructors, passers, faqGroups, books, todayISO } =
-    loaderData;
+  const {
+    banners,
+    schedules,
+    news,
+    instructors,
+    passers,
+    faqGroups,
+    books,
+    featuredReviews,
+    todayISO,
+  } = loaderData;
   // tier 1=메인 히어로 캐러셀, 2·3=히어로 아래 추가 단.
   const tier1 = banners.filter((b) => (b.tier ?? 1) === 1);
   const tier2 = banners.filter((b) => b.tier === 2);
@@ -293,6 +316,43 @@ export default function Landing({ loaderData }: Route.ComponentProps) {
           </Reveal>
         </div>
       </section>
+
+      {/* 수강생 후기 — 운영자가 취사선택(랜딩 노출)한 수강 후기. 없으면 섹션 숨김. */}
+      {featuredReviews.length > 0 ? (
+        <section className="band" id="course-reviews">
+          <div className="wrap">
+            <Reveal className="shead">
+              <div>
+                <p className="eyebrow">수강생 후기</p>
+                <h2>강의를 들은 수강생의 목소리</h2>
+                <p>강의를 완강한 수강생이 직접 남긴 평가입니다.</p>
+              </div>
+            </Reveal>
+            <div className="revs">
+              {featuredReviews.map((r) => (
+                <Reveal as="article" className="rev" key={r.reviewId}>
+                  <span className="badge" aria-label={`별점 ${r.rating}점`}>
+                    {"★".repeat(r.rating)}
+                    {"☆".repeat(5 - r.rating)}
+                  </span>
+                  <p className="q" style={{ whiteSpace: "pre-line" }}>
+                    {r.body.length > 220 ? r.body.slice(0, 220) + "…" : r.body}
+                  </p>
+                  <div className="who">
+                    <span className="av">
+                      {(r.authorName ?? "수").slice(0, 1)}
+                    </span>
+                    <span>
+                      <span className="nm">{r.authorName ?? "수강생"}</span>{" "}
+                      <span className="mt">· {r.targetLabel}</span>
+                    </span>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {/* 후기 (실데이터: 합격자 수기, 없으면 CTA) */}
       <section className="band tint" id="reviews">

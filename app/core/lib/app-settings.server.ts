@@ -10,6 +10,9 @@ export const LATEST_CASES_RECENCY_MONTHS_KEY = "latest_cases_recency_months";
 // 도서 무료배송 임계(원). 도서 결제금액 합계가 이 값 이상이면 배송비 면제. 0 = 미적용.
 export const FREE_SHIPPING_THRESHOLD_KEY = "free_shipping_threshold_krw";
 
+// 수강 후기 작성 보상 포인트(대상당 1회). 미설정 시 기본값(REVIEW_REWARD_POINTS_DEFAULT).
+export const REVIEW_REWARD_POINTS_KEY = "review_reward_points";
+
 /** app_settings 한 키의 값. 없으면 null. */
 export async function getAppSetting(
   client: SupabaseClient<Database>,
@@ -62,4 +65,17 @@ export async function getFreeShippingThresholdKrw(
   return typeof raw === "number" && Number.isFinite(raw) && raw > 0
     ? Math.floor(raw)
     : 0;
+}
+
+// 후기 보상 기본 포인트 — app_settings 미설정 시 사용(운영관리에서 조정 가능).
+export const REVIEW_REWARD_POINTS_DEFAULT = 2000;
+
+/** 수강 후기 작성 보상 포인트. 미설정·비정상값은 기본값(2000). */
+export async function getReviewRewardPoints(
+  client: SupabaseClient<Database>,
+): Promise<number> {
+  const raw = await getAppSetting(client, REVIEW_REWARD_POINTS_KEY);
+  return typeof raw === "number" && Number.isFinite(raw) && raw >= 0
+    ? Math.floor(raw)
+    : REVIEW_REWARD_POINTS_DEFAULT;
 }

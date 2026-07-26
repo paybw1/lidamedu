@@ -4426,8 +4426,10 @@ export type Database = {
           body: string
           created_at: string
           deleted_at: string | null
+          featured_at: string | null
           is_best: boolean
           is_blinded: boolean
+          is_featured: boolean
           is_public: boolean
           points_awarded_at: string | null
           rating: number
@@ -4445,8 +4447,10 @@ export type Database = {
           body?: string
           created_at?: string
           deleted_at?: string | null
+          featured_at?: string | null
           is_best?: boolean
           is_blinded?: boolean
+          is_featured?: boolean
           is_public?: boolean
           points_awarded_at?: string | null
           rating: number
@@ -4464,8 +4468,10 @@ export type Database = {
           body?: string
           created_at?: string
           deleted_at?: string | null
+          featured_at?: string | null
           is_best?: boolean
           is_blinded?: boolean
+          is_featured?: boolean
           is_public?: boolean
           points_awarded_at?: string | null
           rating?: number
