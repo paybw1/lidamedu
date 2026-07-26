@@ -42,6 +42,10 @@ import { PastExamRoundToggle } from "~/features/latest/components/past-exam-roun
 import makeServerClient from "~/core/lib/supa-client.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
+  getMembershipAccess,
+  isCohortAccess,
+} from "~/features/subscriptions/membership.server";
+import {
   MCQ_PACK_KIND_LABELS,
   MCQ_PACK_KIND_SHORT,
   MCQ_PACK_SUBJECT_LABELS,
@@ -107,6 +111,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   } = await client.auth.getUser();
   if (!user) throw data("Unauthorized", { status: 401 });
   const role = await getStaffRole(client, user.id);
+  // 진도별 모의고사 = 종합반 전용(feat-2-031). 비종합반은 전용 뷰 잠금·통합 뷰서 진도별 제외.
+  const cohortAccess = isCohortAccess(await getMembershipAccess(client, user.id));
 
   const url = new URL(request.url);
   const subjectScopeRaw = url.searchParams.get("subject");
@@ -135,27 +141,35 @@ export async function loader({ request }: Route.LoaderArgs) {
   const year = yearRaw && /^\d{4}$/.test(yearRaw) ? Number(yearRaw) : undefined;
   const filters: Filters = { q, subjectScope, kind, kindGroup, year };
 
-  // 이 화면은 1차 객관식 모의/기출 영역 — 민사소송법(2차 주관식) 팩은 노출하지 않는다.
-  const packs = (
-    await listPacks(client, {
-      query: filters.q || undefined,
-      subjectScope: filters.subjectScope,
-      kind: filters.kind,
-      kinds:
-        filters.kindGroup === "mock"
-          ? ["mock_full", "mock_progressive"]
-          : undefined,
-      year: filters.year,
-    })
-  ).filter((p) => p.subjectScope !== "civil_procedure");
+  // 진도별 전용 뷰(?kind=mock_progressive)를 비종합반이 열면 잠금 — 목록 대신 안내.
+  const progressiveLocked = !cohortAccess && filters.kind === "mock_progressive";
 
-  return { packs, filters, canEdit: role !== null };
+  // 이 화면은 1차 객관식 모의/기출 영역 — 민사소송법(2차 주관식) 팩은 노출하지 않는다.
+  const packs = progressiveLocked
+    ? []
+    : (
+        await listPacks(client, {
+          query: filters.q || undefined,
+          subjectScope: filters.subjectScope,
+          kind: filters.kind,
+          kinds:
+            filters.kindGroup === "mock"
+              ? ["mock_full", "mock_progressive"]
+              : undefined,
+          year: filters.year,
+        })
+      )
+        .filter((p) => p.subjectScope !== "civil_procedure")
+        // 비종합반: 통합 모의(kindGroup=mock) 등 어떤 목록에서도 진도별 팩은 제외.
+        .filter((p) => cohortAccess || p.kind !== "mock_progressive");
+
+  return { packs, filters, canEdit: role !== null, progressiveLocked };
 }
 
 const COLUMNS = ["No", "과목", "구분", "명칭", "출제일", "문항"];
 
 export default function LatestMcq({ loaderData }: Route.ComponentProps) {
-  const { packs, filters, canEdit } = loaderData;
+  const { packs, filters, canEdit, progressiveLocked } = loaderData;
   const [showAdd, setShowAdd] = useState(false);
   // 구분(기출/모의/기타) 필터·컬럼은 항상 숨김 — 전부 기출이라 무의미.
   // kind 는 메뉴(URL: ?kind=past_exam / ?kind=mock)로 결정.
@@ -284,7 +298,14 @@ export default function LatestMcq({ loaderData }: Route.ComponentProps) {
         />
       </LatestFilterForm>
 
-      {packs.length === 0 ? (
+      {progressiveLocked ? (
+        <LatestEmpty
+          icon={ListChecksIcon}
+          tone="neutral"
+          title="진도별 모의고사는 종합반 전용입니다"
+          body="종합반 수강생에게 제공되는 진도별 모의고사입니다. 통합 모의고사·기출문제는 그대로 이용하실 수 있습니다."
+        />
+      ) : packs.length === 0 ? (
         <LatestEmpty
           icon={filterActive ? SearchXIcon : ListChecksIcon}
           tone={filterActive ? "subdued" : "neutral"}

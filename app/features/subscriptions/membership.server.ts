@@ -239,6 +239,17 @@ export async function getMembershipAccess(
   };
 }
 
+// 종합반(cohort) 접근 판정 — nav 의 hasCohortAccess(nav-groups)와 동일 규칙(staff 또는
+//   종합반 기능 플래그 보유). 진도별 모의고사 등 "종합반 전용" 서버 게이트에서 사용.
+//   ★nav(진도별 숨김)와 서버(진도별 차단)가 같은 규칙을 써야 표시·접근이 일치한다.
+export function isCohortAccess(access: MembershipAccess): boolean {
+  return (
+    access.grade === "staff" ||
+    access.features.includes("cohort_curriculum") ||
+    access.features.includes("one_on_one_consult")
+  );
+}
+
 // 학습과목(조문·판례·문제) 과목별 게이트 — /subjects/:subject 진입 loader 에서 호출.
 // 체험=특허법만, 자기학습=결제 과목(+자연과학), 종합반/staff=전체, 무료회원=차단.
 export async function requireSubject(

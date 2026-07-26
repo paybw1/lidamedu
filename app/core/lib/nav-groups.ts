@@ -119,7 +119,13 @@ export const NAV_GROUP_POOL = {
     items: [
       // 통합(여러 교시 묶음 = mcq_exams)과 진도별(과목별 mock 팩)로 구분 — 진입점 분리.
       { label: "통합 모의고사", to: "/latest/mcq/exams" },
-      { label: "진도별 모의고사", to: "/latest/mcq?kind=mock_progressive" },
+      // 진도별 모의고사 = 종합반 전용(feat-2-031) — 개인 nav(사이드바·하단탭)에서 숨김.
+      //   접근 권위는 서버(mcq loader·pack detail·start 의 isCohortAccess 게이트).
+      {
+        label: "진도별 모의고사",
+        to: "/latest/mcq?kind=mock_progressive",
+        feature: "cohort_curriculum",
+      },
     ],
     area: "area_mock_exams",
   },

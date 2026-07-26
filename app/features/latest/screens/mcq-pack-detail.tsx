@@ -17,6 +17,7 @@ import {
   Form,
   Link,
   data,
+  redirect,
   useFetcher,
   useLocation,
   useNavigate,
@@ -49,6 +50,7 @@ import {
   listPackProblems,
 } from "~/features/mcq-packs/queries.server";
 import { lawSubjectSlugSchema } from "~/features/subjects/lib/subjects";
+import { isCohortAccess } from "~/features/subscriptions/membership.server";
 import { requireFeature } from "~/features/subscriptions/queries.server";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
@@ -74,7 +76,11 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   }
   // feat-8-008: 모의고사 종류 팩은 area_mock_exams 게이트 (회원3 / staff 면제).
   if (isMockKind(pack.kind)) {
-    await requireFeature(client, user.id, "area_mock_exams");
+    const access = await requireFeature(client, user.id, "area_mock_exams");
+    // 진도별 모의고사 = 종합반 전용(feat-2-031). 비종합반은 통합 모의 목록으로 안내(막다른 403 회피).
+    if (pack.kind === "mock_progressive" && !isCohortAccess(access)) {
+      throw redirect("/latest/mcq?kind=mock");
+    }
   }
   const problems = await listPackProblems(client, params.packId);
   const oxSessions = await listMyOxSessions(client, user.id, {

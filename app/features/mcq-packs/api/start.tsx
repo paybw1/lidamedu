@@ -13,6 +13,10 @@ import {
   getPackProblemIds,
 } from "~/features/mcq-packs/queries.server";
 import { isMockKind } from "~/features/mcq-packs/labels";
+import {
+  getMembershipAccess,
+  isCohortAccess,
+} from "~/features/subscriptions/membership.server";
 import { createQuizSession } from "~/features/study/queries.server";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
@@ -50,6 +54,17 @@ export async function action({ request }: Route.ActionArgs) {
 
   const pack = await getPackById(client, packId);
   if (!pack) return data({ error: "Pack not found" }, { status: 404 });
+
+  // 진도별 모의고사 = 종합반 전용(feat-2-031) — 응시 시작 차단(서버 권위).
+  if (pack.kind === "mock_progressive") {
+    const access = await getMembershipAccess(client, user.id);
+    if (!isCohortAccess(access)) {
+      return data(
+        { error: "진도별 모의고사는 종합반 수강생에게 제공됩니다." },
+        { status: 403 },
+      );
+    }
+  }
 
   // 모의 pack 인데 study 모드 요청 시 학습 진입 허용 (사용자 선택).
   // 단, exam 모드는 모의 pack 만.
