@@ -99,6 +99,42 @@ export async function getMyReview(
   return data ? mapRows([data])[0] : null;
 }
 
+/** "내 강의" 카드 CTA 상태 — planId → 내 리뷰 요약(있으면) + 보상 지급 여부. */
+export interface PlanReviewState {
+  rating: number;
+  body: string;
+  isPublic: boolean;
+  /** 이 대상에 보상 포인트가 이미 지급됐는지(재지급 안내 억제용). */
+  rewarded: boolean;
+}
+
+/** 내 강의(수강권)별 내 리뷰 배치 조회. */
+export async function getMyPlanReviews(
+  client: Client,
+  userId: string,
+  planIds: string[],
+): Promise<Map<string, PlanReviewState>> {
+  const uniq = [...new Set(planIds)];
+  if (uniq.length === 0) return new Map();
+  const { data } = await client
+    .from("course_reviews")
+    .select("target_id, rating, body, is_public, points_awarded_at")
+    .eq("target_type", "plan")
+    .eq("author_id", userId)
+    .in("target_id", uniq)
+    .is("deleted_at", null);
+  const byPlan = new Map<string, PlanReviewState>();
+  for (const row of data ?? []) {
+    byPlan.set(row.target_id, {
+      rating: row.rating,
+      body: row.body,
+      isPublic: row.is_public,
+      rewarded: row.points_awarded_at !== null,
+    });
+  }
+  return byPlan;
+}
+
 function mapRows(
   rows: Array<{
     review_id: string;

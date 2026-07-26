@@ -4429,6 +4429,7 @@ export type Database = {
           is_best: boolean
           is_blinded: boolean
           is_public: boolean
+          points_awarded_at: string | null
           rating: number
           report_count: number
           review_id: string
@@ -4447,6 +4448,7 @@ export type Database = {
           is_best?: boolean
           is_blinded?: boolean
           is_public?: boolean
+          points_awarded_at?: string | null
           rating: number
           report_count?: number
           review_id?: string
@@ -4465,6 +4467,7 @@ export type Database = {
           is_best?: boolean
           is_blinded?: boolean
           is_public?: boolean
+          points_awarded_at?: string | null
           rating?: number
           report_count?: number
           review_id?: string

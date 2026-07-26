@@ -1,13 +1,15 @@
 // /lecture — 내 강의실(수강현황) (feat-11-004 4c, 구 /me/courses).
 // 수강권 목록(기간·배수 사용/잔여·진도율·완강) + 일시정지 신청(정책 범위 서버 검증) + 등록 기기 셀프 초기화.
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   CalendarPlusIcon,
   ClapperboardIcon,
   MonitorSmartphoneIcon,
   PauseCircleIcon,
   PlayCircleIcon,
+  SparklesIcon,
+  StarIcon,
 } from "lucide-react";
 import { Link, data, redirect, useFetcher, useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -16,10 +18,16 @@ import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { cn } from "~/core/lib/utils";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import { resetDevice } from "~/features/lms/devices.server";
 import { useCart } from "~/features/lms/lib/cart";
 import { getWatchBalances } from "~/features/lms/queries.server";
+import { getMyPlanReviews } from "~/features/lms/reviews.server";
+import {
+  REVIEW_REWARD_MIN_CHARS,
+  REVIEW_REWARD_POINTS,
+} from "~/features/lms/reviews-config";
 import { getLessonProgressForUser } from "~/features/lms/watch.server";
 
 import type { Route } from "./+types/my-courses";
@@ -133,6 +141,9 @@ export async function loader({ request }: Route.LoaderArgs) {
       });
     }
   }
+  // 수강 후기 CTA 상태 — 강의(plan)별 내 리뷰(있으면 수정, 없으면 작성 유도).
+  const myReviews = await getMyPlanReviews(client, user.id, planIds);
+
   const { data: pauses } = await client
     .from("enrollment_pauses")
     .select("enrollment_id, days")
@@ -171,8 +182,11 @@ export async function loader({ request }: Route.LoaderArgs) {
       const bal = balances.get(e.enrollment_id) ?? null;
       const policy = e.plan_id ? (policyByPlan.get(e.plan_id) ?? null) : null;
       const usedPause = pauseAgg.get(e.enrollment_id) ?? { usedDays: 0, count: 0 };
+      const myReview = e.plan_id ? (myReviews.get(e.plan_id) ?? null) : null;
       return {
         enrollmentId: e.enrollment_id,
+        planId: e.plan_id ?? null,
+        review: myReview,
         label: course ? `${course.series?.title ?? ""} ${course.edition_label}`.trim() : "강의",
         firstLessonId: lessonIds[0] ?? null,
         startsAt: e.starts_at,
@@ -346,6 +360,13 @@ function CourseCard({
 }: {
   course: {
     enrollmentId: string;
+    planId: string | null;
+    review: {
+      rating: number;
+      body: string;
+      isPublic: boolean;
+      rewarded: boolean;
+    } | null;
     label: string;
     firstLessonId: string | null;
     startsAt: string;
@@ -469,8 +490,198 @@ function CourseCard({
             ))}
           </div>
         ) : null}
+        {course.planId ? (
+          <ReviewCTA
+            planId={course.planId}
+            review={course.review}
+            completed={completed}
+          />
+        ) : null}
       </CardContent>
     </Card>
+  );
+}
+
+function Stars({ value }: { value: number }) {
+  return (
+    <span className="inline-flex" aria-label={`별점 ${value}점`}>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <StarIcon
+          key={n}
+          className={cn(
+            "size-3.5",
+            n <= Math.round(value)
+              ? "fill-amber-400 text-amber-400"
+              : "text-muted-foreground/40",
+          )}
+        />
+      ))}
+    </span>
+  );
+}
+
+// 수강 후기 작성/수정 — /api/lms/review 로 제출. 일정 분량 이상이면 포인트 적립(대상당 1회).
+function ReviewCTA({
+  planId,
+  review,
+  completed,
+}: {
+  planId: string;
+  review: { rating: number; body: string; isPublic: boolean; rewarded: boolean } | null;
+  completed: boolean;
+}) {
+  const fetcher = useFetcher<{
+    ok?: boolean;
+    error?: string;
+    awardedPoints?: number;
+  }>();
+  const [open, setOpen] = useState(false);
+  const [rating, setRating] = useState(review?.rating ?? 5);
+  useEffect(() => {
+    if (fetcher.state !== "idle" || !fetcher.data) return;
+    if (fetcher.data.error) toast.error(fetcher.data.error);
+    else if (fetcher.data.ok) {
+      if (fetcher.data.awardedPoints) {
+        toast.success(
+          `후기 등록 완료 — ${fetcher.data.awardedPoints.toLocaleString("ko-KR")}P 적립!`,
+        );
+      } else {
+        toast.success("수강 후기를 등록했습니다.");
+      }
+      setOpen(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetcher.state, fetcher.data]);
+
+  // 아직 보상받지 않은 경우에만 적립 안내 노출(재작성 시 오해 방지).
+  const rewardHint = !review?.rewarded;
+
+  if (!open) {
+    return (
+      <div className="border-border/60 border-t pt-2.5">
+        {review ? (
+          <div className="flex flex-wrap items-center gap-2 text-[12px]">
+            <span className="text-muted-foreground">내 후기</span>
+            <Stars value={review.rating} />
+            <button
+              type="button"
+              onClick={() => setOpen(true)}
+              className="text-link hover:underline"
+            >
+              수정
+            </button>
+          </div>
+        ) : (
+          <div
+            className={cn(
+              "flex flex-wrap items-center gap-2",
+              completed &&
+                "bg-amber-50 dark:bg-amber-500/10 -mx-1 rounded-lg px-2.5 py-2",
+            )}
+          >
+            <span className="inline-flex items-center gap-1.5 text-[13px] font-medium">
+              {completed ? (
+                <>
+                  <SparklesIcon className="size-4 text-amber-500" />
+                  완강을 축하해요! 후기를 남겨 주세요
+                </>
+              ) : (
+                <>
+                  <StarIcon className="size-4 text-amber-500" />
+                  수강 후기 남기기
+                </>
+              )}
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant={completed ? "default" : "outline"}
+              className="h-7 text-[12px]"
+              onClick={() => setOpen(true)}
+            >
+              수강 후기 작성
+            </Button>
+            {rewardHint ? (
+              <span className="text-muted-foreground text-[11px]">
+                {REVIEW_REWARD_MIN_CHARS}자 이상 작성 시{" "}
+                <b className="text-amber-600">
+                  {REVIEW_REWARD_POINTS.toLocaleString("ko-KR")}P
+                </b>{" "}
+                적립
+              </span>
+            ) : null}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <fetcher.Form
+      method="post"
+      action="/api/lms/review"
+      className="border-border/60 space-y-2.5 border-t pt-3"
+    >
+      <input type="hidden" name="intent" value="submit" />
+      <input type="hidden" name="targetType" value="plan" />
+      <input type="hidden" name="targetId" value={planId} />
+      <input type="hidden" name="rating" value={rating} />
+      <div className="flex items-center gap-2">
+        <span className="text-[13px] font-semibold">별점</span>
+        <span className="inline-flex">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => setRating(n)}
+              className="p-0.5"
+              aria-label={`${n}점`}
+            >
+              <StarIcon
+                className={cn(
+                  "size-5",
+                  n <= rating
+                    ? "fill-amber-400 text-amber-400"
+                    : "text-muted-foreground/40",
+                )}
+              />
+            </button>
+          ))}
+        </span>
+      </div>
+      <textarea
+        name="body"
+        rows={3}
+        maxLength={2000}
+        defaultValue={review?.body ?? ""}
+        placeholder={`강의에 대한 솔직한 후기를 남겨 주세요. (${REVIEW_REWARD_MIN_CHARS}자 이상 작성 시 ${REVIEW_REWARD_POINTS.toLocaleString("ko-KR")}P 적립)`}
+        className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
+      />
+      {/* ★checkbox(value=1) 가 hidden(value=0) 보다 먼저 와야 체크 시 fd.get 첫값="1"(공개). */}
+      <label className="text-muted-foreground flex items-center gap-1.5 text-xs">
+        <input
+          type="checkbox"
+          name="isPublic"
+          value="1"
+          defaultChecked={review?.isPublic ?? true}
+          className="size-3.5"
+        />
+        공개(다른 수험생에게 보임)
+      </label>
+      <input type="hidden" name="isPublic" value="0" />
+      <div className="flex items-center gap-2">
+        <Button type="submit" size="sm" disabled={fetcher.state !== "idle"}>
+          {review ? "후기 수정" : "후기 등록"}
+        </Button>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="text-muted-foreground text-xs hover:underline"
+        >
+          취소
+        </button>
+      </div>
+    </fetcher.Form>
   );
 }
 

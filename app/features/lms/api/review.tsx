@@ -3,8 +3,14 @@
 import { data } from "react-router";
 import { z } from "zod";
 
+import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { adjustMemberPoints } from "~/features/admin/queries/member-crm.server";
 import { isPurchaser, type ReviewTargetType } from "~/features/lms/reviews.server";
+import {
+  REVIEW_REWARD_MIN_CHARS,
+  REVIEW_REWARD_POINTS,
+} from "~/features/lms/reviews-config";
 
 import type { Route } from "./+types/review";
 
@@ -52,24 +58,60 @@ export async function action({ request }: Route.ActionArgs) {
       .eq("author_id", user.id)
       .is("deleted_at", null)
       .maybeSingle();
+    let reviewId: string;
     if (existing) {
       const { error } = await client
         .from("course_reviews")
         .update({ rating: p.rating, body: p.body, is_public: p.isPublic })
         .eq("review_id", existing.review_id);
       if (error) return data({ error: error.message }, { status: 400 });
+      reviewId = existing.review_id;
     } else {
-      const { error } = await client.from("course_reviews").insert({
-        target_type: p.targetType,
-        target_id: p.targetId,
-        author_id: user.id,
-        rating: p.rating,
-        body: p.body,
-        is_public: p.isPublic,
-      });
+      const { data: inserted, error } = await client
+        .from("course_reviews")
+        .insert({
+          target_type: p.targetType,
+          target_id: p.targetId,
+          author_id: user.id,
+          rating: p.rating,
+          body: p.body,
+          is_public: p.isPublic,
+        })
+        .select("review_id")
+        .single();
       if (error) return data({ error: error.message }, { status: 400 });
+      reviewId = inserted.review_id;
     }
-    return data({ ok: true as const });
+
+    // 보상 — 일정 분량 이상 본문 + 이 대상에 미지급이면 포인트 적립(대상당 1회).
+    //   ★멱등: 소프트삭제 포함 전체 조회로 이미 지급된 대상은 재지급 안 함(삭제→재작성 어뷰즈 차단).
+    //   ★point_transactions insert 는 staff RLS 전용 → adminClient(adjustMemberPoints) 경유.
+    let awardedPoints = 0;
+    if (p.body.trim().length >= REVIEW_REWARD_MIN_CHARS) {
+      const { data: prior } = await adminClient
+        .from("course_reviews")
+        .select("review_id")
+        .eq("author_id", user.id)
+        .eq("target_type", p.targetType)
+        .eq("target_id", p.targetId)
+        .not("points_awarded_at", "is", null)
+        .limit(1);
+      if (!prior || prior.length === 0) {
+        const res = await adjustMemberPoints({
+          userId: user.id,
+          delta: REVIEW_REWARD_POINTS,
+          reason: `수강 후기 작성 보상 (${p.targetType === "plan" ? "강의" : "교재"})`,
+        });
+        if (res.ok) {
+          await adminClient
+            .from("course_reviews")
+            .update({ points_awarded_at: new Date().toISOString() })
+            .eq("review_id", reviewId);
+          awardedPoints = REVIEW_REWARD_POINTS;
+        }
+      }
+    }
+    return data({ ok: true as const, awardedPoints });
   }
 
   if (intent === "delete") {
