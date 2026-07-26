@@ -9,7 +9,11 @@ import { gradeEssayDraft } from "~/features/study/lib/essay-ai-grader.server";
 
 import type { Route } from "./+types/subjective-ai-grade";
 
-const schema = z.object({ problemId: z.string().uuid() });
+const schema = z.object({
+  problemId: z.string().uuid(),
+  // 화면에 보이는 현재 답안(자동저장 레이스 방지). 없으면 저장된 답안 사용.
+  answer: z.string().max(50000).optional(),
+});
 const MIN_ANSWER_LEN = 50; // 너무 짧은 답안은 채점 무의미(비용 낭비 방지).
 
 export async function action({ request }: Route.ActionArgs) {
@@ -23,11 +27,14 @@ export async function action({ request }: Route.ActionArgs) {
   if (!user) return data({ error: "Unauthorized" }, { status: 401 });
 
   const fd = await request.formData();
-  const parsed = schema.safeParse({ problemId: fd.get("problemId") });
+  const parsed = schema.safeParse({
+    problemId: fd.get("problemId"),
+    answer: (fd.get("answer") as string | null) ?? undefined,
+  });
   if (!parsed.success) return data({ error: "Invalid input" }, { status: 400 });
   const problemId = parsed.data.problemId;
 
-  // 본인 답안(최근) — RLS 로 본인 것만.
+  // 본인 답안(최근) — RLS 로 본인 것만. 화면 답안(form)이 오면 그것을 채점(레이스 방지).
   const { data: attempt } = await client
     .from("user_subjective_attempts")
     .select("attempt_id, answer_md")
@@ -37,8 +44,8 @@ export async function action({ request }: Route.ActionArgs) {
     .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  const answer = (attempt?.answer_md ?? "").trim();
-  if (!attempt || answer.length < MIN_ANSWER_LEN) {
+  const answer = (parsed.data.answer ?? attempt?.answer_md ?? "").trim();
+  if (answer.length < MIN_ANSWER_LEN) {
     return data(
       { error: "답안을 조금 더 작성한 뒤 채점을 요청하세요." },
       { status: 400 },
@@ -78,17 +85,18 @@ export async function action({ request }: Route.ActionArgs) {
     );
   }
 
-  // 저장 — RLS(본인 attempt). ai_graded_at 은 서버 시각.
-  const { error: upErr } = await client
-    .from("user_subjective_attempts")
-    .update({
-      ai_overall_score: draft.overall,
-      ai_axis_scores: draft.axisScores,
-      ai_feedback_md: draft.feedbackMd,
-      ai_graded_at: new Date().toISOString(),
-    })
-    .eq("attempt_id", attempt.attempt_id);
-  if (upErr) return data({ error: upErr.message }, { status: 500 });
+  // 저장 — 저장된 attempt 가 있으면 거기에 초안 기록(RLS 본인). 없으면 결과만 반환.
+  if (attempt) {
+    await client
+      .from("user_subjective_attempts")
+      .update({
+        ai_overall_score: draft.overall,
+        ai_axis_scores: draft.axisScores,
+        ai_feedback_md: draft.feedbackMd,
+        ai_graded_at: new Date().toISOString(),
+      })
+      .eq("attempt_id", attempt.attempt_id);
+  }
 
   return data({ ok: true, draft });
 }

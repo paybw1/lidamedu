@@ -1771,6 +1771,66 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
   );
 }
 
+// AI 채점 결과(3축 + 총평). feat-2-032 S3 — 강사 확정 전 초안임을 명시.
+function AiGradeResult({
+  result,
+}: {
+  result: {
+    overall: number;
+    axisScores: { issue: number; structure: number; writing: number };
+    feedbackMd: string;
+  } | null;
+}) {
+  if (!result) return null;
+  const axes: { key: keyof typeof result.axisScores; label: string }[] = [
+    { key: "issue", label: "논점 추출" },
+    { key: "structure", label: "목차·구성" },
+    { key: "writing", label: "답안 작성·논증" },
+  ];
+  return (
+    <div className="border-primary/30 bg-card space-y-3 rounded-xl border p-5 shadow-sm">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-muted-foreground text-[11px] font-bold tracking-widest uppercase">
+          AI 채점{" "}
+          <span className="bg-muted text-ink-faint ml-1 rounded px-1 py-0.5 text-[10px] normal-case">
+            초안 · 강사 확정 전
+          </span>
+        </p>
+        <p className="text-foreground text-lg font-bold tabular-nums">
+          {result.overall}
+          <span className="text-muted-foreground text-xs">/100</span>
+        </p>
+      </div>
+      <div className="space-y-1.5">
+        {axes.map((a) => {
+          const v = result.axisScores[a.key];
+          return (
+            <div key={a.key} className="flex items-center gap-2 text-xs">
+              <span className="text-muted-foreground w-24 shrink-0">
+                {a.label}
+              </span>
+              <div className="bg-muted h-2 flex-1 overflow-hidden rounded-full">
+                <div
+                  className="bg-primary h-full rounded-full"
+                  style={{ width: `${Math.max(0, Math.min(100, v))}%` }}
+                />
+              </div>
+              <span className="text-foreground w-10 shrink-0 text-right font-semibold tabular-nums">
+                {v}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      {result.feedbackMd ? (
+        <div className="border-border border-t pt-3 text-[length:calc(14px*var(--study-fs))] leading-[1.75]">
+          <MarkdownView text={result.feedbackMd} trusted={false} />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 // 주관식(format='subjective') 학습 — 답안 textarea + autosave + 자기채점 + 모범답안/채점기준 reveal.
 function SubjectivePanel({
   problemId,
@@ -1818,6 +1878,21 @@ function SubjectivePanel({
     attempt?: SubjectiveAttempt;
     error?: string;
   }>();
+  // AI 채점 초안 (feat-2-032 S3).
+  const aiGradeFetcher = useFetcher<{
+    ok?: boolean;
+    draft?: {
+      overall: number;
+      axisScores: { issue: number; structure: number; writing: number };
+      feedbackMd: string;
+    };
+    error?: string;
+  }>();
+  const aiGrading = aiGradeFetcher.state !== "idle";
+  const aiError =
+    aiGradeFetcher.state === "idle" && aiGradeFetcher.data?.error
+      ? aiGradeFetcher.data.error
+      : null;
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSentRef = useRef<string>(initialAttempt?.answerMd ?? "");
 
@@ -2054,7 +2129,45 @@ function SubjectivePanel({
         >
           {showScoreForm ? "자기채점 닫기" : "자기채점 완료"}
         </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          disabled={aiGrading || timedActive || draft.trim().length < 50}
+          onClick={() => {
+            const fd = new FormData();
+            fd.set("problemId", problemId);
+            fd.set("answer", draft);
+            aiGradeFetcher.submit(fd, {
+              method: "post",
+              action: "/api/study/subjective-ai-grade",
+            });
+          }}
+          className="rounded-full"
+          title={
+            timedActive
+              ? "시험 모드 중에는 AI 채점 잠금"
+              : "내 답안을 3축 기준(논점·구성·논증)으로 AI가 채점합니다 (초안)"
+          }
+          data-testid="subjective-ai-grade"
+        >
+          {aiGrading ? "AI 채점 중…" : "AI 채점"}
+        </Button>
       </div>
+      {aiError ? (
+        <p className="text-destructive text-xs">{aiError}</p>
+      ) : null}
+      <AiGradeResult
+        result={
+          aiGradeFetcher.data?.draft ??
+          (lastSaved?.aiOverallScore != null && lastSaved.aiAxisScores
+            ? {
+                overall: lastSaved.aiOverallScore,
+                axisScores: lastSaved.aiAxisScores,
+                feedbackMd: lastSaved.aiFeedbackMd ?? "",
+              }
+            : null)
+        }
+      />
 
       {lastSaved?.submittedAt ? (
         <div className="rounded-xl border border-emerald-300/50 bg-emerald-50/60 px-4 py-3 text-xs dark:border-emerald-700/40 dark:bg-emerald-950/20">

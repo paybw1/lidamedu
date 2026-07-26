@@ -699,10 +699,15 @@ export interface SubjectiveAttempt {
   reviewerCommentMd: string | null;
   // 채점기준 체크리스트 체크된 항목 인덱스 (feat-4-A-322).
   rubricSelfCheck: number[] | null;
+  // AI 채점 초안 (feat-2-032 S3).
+  aiOverallScore: number | null;
+  aiAxisScores: { issue: number; structure: number; writing: number } | null;
+  aiFeedbackMd: string | null;
+  aiGradedAt: string | null;
 }
 
 const ATTEMPT_COLUMNS =
-  "attempt_id, user_id, problem_id, answer_md, self_score, self_score_note, submitted_at, updated_at, review_requested_at, review_completed_at, reviewer_id, reviewer_score, reviewer_comment_md, rubric_self_check";
+  "attempt_id, user_id, problem_id, answer_md, self_score, self_score_note, submitted_at, updated_at, review_requested_at, review_completed_at, reviewer_id, reviewer_score, reviewer_comment_md, rubric_self_check, ai_overall_score, ai_axis_scores, ai_feedback_md, ai_graded_at";
 
 function rowToAttempt(row: {
   attempt_id: string;
@@ -717,7 +722,20 @@ function rowToAttempt(row: {
   reviewer_score: number | null;
   reviewer_comment_md: string | null;
   rubric_self_check: unknown;
+  ai_overall_score?: number | null;
+  ai_axis_scores?: unknown;
+  ai_feedback_md?: string | null;
+  ai_graded_at?: string | null;
 }): SubjectiveAttempt {
+  const ax = row.ai_axis_scores;
+  const aiAxisScores =
+    ax && typeof ax === "object" && "issue" in ax
+      ? {
+          issue: Number((ax as Record<string, unknown>).issue) || 0,
+          structure: Number((ax as Record<string, unknown>).structure) || 0,
+          writing: Number((ax as Record<string, unknown>).writing) || 0,
+        }
+      : null;
   return {
     attemptId: row.attempt_id,
     answerMd: row.answer_md,
@@ -735,6 +753,10 @@ function rowToAttempt(row: {
           (v): v is number => typeof v === "number",
         )
       : null,
+    aiOverallScore: row.ai_overall_score ?? null,
+    aiAxisScores,
+    aiFeedbackMd: row.ai_feedback_md ?? null,
+    aiGradedAt: row.ai_graded_at ?? null,
   };
 }
 
