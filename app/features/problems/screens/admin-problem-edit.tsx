@@ -10,7 +10,7 @@ import {
   SaveIcon,
   Trash2Icon,
 } from "lucide-react";
-import { type ChangeEvent, useEffect, useState } from "react";
+import { type ChangeEvent, useEffect, useRef, useState } from "react";
 import {
   Form,
   Link,
@@ -271,6 +271,22 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     primaryNodeId = pn?.primary_node_id ?? null;
   }
 
+  // feat-2-032 — 강사 채점평·예시답안(source=instructor). examiner(실제 채점위원)는 참고용 개수만.
+  const { data: gradingNotes } = await client
+    .from("problem_grading_notes")
+    .select(
+      "note_id, source, author, body_md, example_answer_md, source_year, form, created_at",
+    )
+    .eq("problem_id", problemId)
+    .order("source", { ascending: true })
+    .order("created_at", { ascending: true });
+  const instructorNotes = (gradingNotes ?? []).filter(
+    (n) => n.source === "instructor",
+  );
+  const examinerNoteCount = (gradingNotes ?? []).filter(
+    (n) => n.source === "examiner",
+  ).length;
+
   return {
     problem,
     mcqPacks,
@@ -279,6 +295,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     subNodeOptions,
     allNodeOptions,
     primaryNodeId,
+    instructorNotes,
+    examinerNoteCount,
   };
 }
 
@@ -389,6 +407,37 @@ export async function action({ params, request }: Route.ActionArgs) {
       kind: intent,
       synced: (choicesUpdated ?? 0) + (boxesUpdated ?? 0),
     } as const;
+  }
+
+  // feat-2-032 — 강사 채점평·예시답안 추가/삭제(problem_grading_notes, source=instructor).
+  if (intent === "add_grading_note") {
+    const bodyMd = String(fd.get("bodyMd") ?? "").trim();
+    if (!bodyMd)
+      return { ok: false, error: "채점평 내용을 입력하세요." } as const;
+    const exampleMd = String(fd.get("exampleAnswerMd") ?? "").trim();
+    const author = String(fd.get("author") ?? "").trim() || null;
+    const { error } = await client.from("problem_grading_notes").insert({
+      problem_id: problemId,
+      source: "instructor",
+      author,
+      body_md: bodyMd,
+      example_answer_md: exampleMd || null,
+      created_by: user.id,
+    });
+    if (error) return { ok: false, error: error.message } as const;
+    return { ok: true, kind: "add_grading_note" } as const;
+  }
+  if (intent === "delete_grading_note") {
+    const noteId = String(fd.get("noteId") ?? "");
+    if (!noteId) return { ok: false, error: "noteId 누락" } as const;
+    const { error } = await client
+      .from("problem_grading_notes")
+      .delete()
+      .eq("note_id", noteId)
+      .eq("problem_id", problemId)
+      .eq("source", "instructor");
+    if (error) return { ok: false, error: error.message } as const;
+    return { ok: true, kind: "delete_grading_note" } as const;
   }
 
   // primary_article_id 변경: articleNumber 텍스트 ("29" / "28의2" / "" )를 받아 같은 law 의 articles 조회.
@@ -658,6 +707,8 @@ function AdminProblemEditInner({
     subNodeOptions,
     allNodeOptions,
     primaryNodeId,
+    instructorNotes,
+    examinerNoteCount,
   } = loaderData;
   // prev/next 는 진입 시점의 목록 순서로 고정한다(mount-time snapshot). 조문을 바꿔 저장하면
   // 목록이 조문순으로 재정렬돼 형제가 달라지지만, 같은 problemId 동안엔 외곽 key 가 그대로라
@@ -736,6 +787,23 @@ function AdminProblemEditInner({
   }, [reviewFetcher.data]);
   const mismatchFetcher = useFetcher<{ ok?: boolean; kind?: string; error?: string }>();
   const isFlagging = mismatchFetcher.state !== "idle";
+  // feat-2-032 — 강사 채점평 추가/삭제 fetcher.
+  const gradingNoteFetcher = useFetcher<{
+    ok?: boolean;
+    kind?: string;
+    error?: string;
+  }>();
+  const gnRef = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    const r = gradingNoteFetcher.data;
+    if (!r || gradingNoteFetcher.state !== "idle") return;
+    if (r.ok && r.kind === "add_grading_note") {
+      toast.success("강사 채점평을 추가했습니다");
+      gnRef.current?.reset();
+    } else if (r.ok && r.kind === "delete_grading_note")
+      toast.success("삭제했습니다");
+    else if (r.error) toast.error(r.error);
+  }, [gradingNoteFetcher.data, gradingNoteFetcher.state]);
   useEffect(() => {
     const r = mismatchFetcher.data;
     if (!r) return;
@@ -1279,6 +1347,106 @@ function AdminProblemEditInner({
           </Button>
         </div>
       </Form>
+
+      {format === "subjective" ? (
+        <div className="border-border mt-8 rounded-xl border p-5">
+          <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
+            <h3 className="text-sm font-bold">강사 채점평 · 예시답안</h3>
+            <p className="text-muted-foreground text-[11px]">
+              실제 채점위원 채점평 {examinerNoteCount}건(자동 적재) 외에, 강사가
+              직접 채점평·예시답안을 추가합니다. AI 채점 근거와 학생 열람에 함께
+              쓰입니다.
+            </p>
+          </div>
+
+          {instructorNotes.length > 0 ? (
+            <ul className="mb-4 space-y-2">
+              {instructorNotes.map((n) => (
+                <li
+                  key={n.note_id}
+                  className="border-border bg-muted/20 rounded-lg border p-3"
+                >
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <span className="text-muted-foreground text-[11px] font-semibold">
+                      {n.author ? `${n.author} · ` : ""}강사 채점평
+                      {n.example_answer_md ? " · 예시답안 포함" : ""}
+                    </span>
+                    <gradingNoteFetcher.Form method="post">
+                      <input
+                        type="hidden"
+                        name="intent"
+                        value="delete_grading_note"
+                      />
+                      <input type="hidden" name="noteId" value={n.note_id} />
+                      <button
+                        type="submit"
+                        className="text-muted-foreground hover:text-destructive text-[11px] font-semibold"
+                        title="이 채점평 삭제"
+                      >
+                        삭제
+                      </button>
+                    </gradingNoteFetcher.Form>
+                  </div>
+                  <p className="text-foreground text-sm whitespace-pre-wrap">
+                    {n.body_md.length > 400
+                      ? `${n.body_md.slice(0, 400)}…`
+                      : n.body_md}
+                  </p>
+                  {n.example_answer_md ? (
+                    <details className="mt-2">
+                      <summary className="text-link cursor-pointer text-[11px] font-semibold">
+                        예시답안 보기
+                      </summary>
+                      <p className="text-muted-foreground mt-1 text-sm whitespace-pre-wrap">
+                        {n.example_answer_md}
+                      </p>
+                    </details>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-muted-foreground mb-4 rounded-lg border border-dashed py-4 text-center text-xs">
+              등록된 강사 채점평이 없습니다.
+            </p>
+          )}
+
+          <gradingNoteFetcher.Form
+            method="post"
+            ref={gnRef}
+            className="space-y-2"
+          >
+            <input type="hidden" name="intent" value="add_grading_note" />
+            <input
+              name="author"
+              placeholder="작성자(선택) — 예: 홍길동 강사"
+              className="border-border bg-background w-full rounded-md border px-3 py-2 text-sm"
+            />
+            <textarea
+              name="bodyMd"
+              required
+              rows={4}
+              placeholder="채점평 (필수) — 이 문제 답안에서 무엇을 보는지, 흔한 감점 등"
+              className="border-border bg-background w-full rounded-md border px-3 py-2 text-sm"
+            />
+            <textarea
+              name="exampleAnswerMd"
+              rows={4}
+              placeholder="예시답안 (선택) — 목차·본문"
+              className="border-border bg-background w-full rounded-md border px-3 py-2 text-sm"
+            />
+            <div className="flex justify-end">
+              <Button
+                type="submit"
+                size="sm"
+                disabled={gradingNoteFetcher.state !== "idle"}
+              >
+                채점평 추가
+              </Button>
+            </div>
+          </gradingNoteFetcher.Form>
+        </div>
+      ) : null}
 
       <div className="border-border/60 mt-8 flex items-center justify-between gap-3 border-t pt-5">
         <p className="text-muted-foreground text-[11px]">
