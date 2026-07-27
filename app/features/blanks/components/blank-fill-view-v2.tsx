@@ -453,6 +453,11 @@ export function BlankFillViewV2({
   // ★iPad(크롬/사파리)에서 하드웨어 키보드 Enter/Tab 한 번이 keydown 을 두 번 흘려 "두 칸씩"
   //   이동하던 문제 방어 — 직전 이동 시각을 기억해 근접(70ms 내) 중복 keydown 은 무시한다.
   const lastNavAtRef = useRef(0);
+  // ★한글 조합 확정 Enter/Tab 뒤에 iOS/iPad 가 흘리는 '확정 후 진짜' Enter/Tab(비조합)까지
+  //   또 이동해 두 칸 넘어가는 문제 방어 — 조합 확정으로 이동을 '예약'한 시각을 기억해, 그
+  //   직후 짧은 창(TRAILING_IME_NAV_MS) 안에 오는 '비조합' Enter/Tab 은 무시한다.
+  const composingNavAtRef = useRef(0);
+  const TRAILING_IME_NAV_MS = 500;
 
   const lines = useMemo(
     () => buildLines(body, effectiveBlanks, activeIdxs),
@@ -1422,6 +1427,18 @@ export function BlankFillViewV2({
       e.preventDefault();
       return;
     }
+    // ★IME 확정 후 트레일링 Enter/Tab 삼키기 — 한글 조합을 확정하는 Enter/Tab(조합 중)로
+    //   아래에서 이동을 예약한 직후, iOS/iPad 는 '확정 후 진짜' Enter/Tab(비조합)을 한 번 더
+    //   흘린다. 그 두 번째 이벤트로 또 이동하면 두 칸 넘어가므로, 조합 확정 이동 예약 시각부터
+    //   짧은 창 안의 '비조합' Enter/Tab 은 무시한다(정상 연속 입력은 그보다 느림).
+    if (
+      !composingRef.current &&
+      nowNav - composingNavAtRef.current < TRAILING_IME_NAV_MS
+    ) {
+      e.preventDefault();
+      composingNavAtRef.current = 0;
+      return;
+    }
     lastNavAtRef.current = nowNav;
     const cur = slotFromSelection();
     // ★문서 전체 빈칸을 읽기 순서로 — 한 조문의 마지막 칸에서 Tab/Enter 면 다음 조문
@@ -1439,6 +1456,8 @@ export function BlankFillViewV2({
       //   compositionend 직후(flushPendingMove)에 실제로 이동한다. (Lexical/Slate/ProseMirror 패턴)
       if (composingRef.current) {
         pendingMoveRef.current = { target: next, at: Date.now() };
+        // ★확정 후 트레일링 Enter/Tab 을 삼키기 위한 기준 시각(위 가드 참조).
+        composingNavAtRef.current = nowNav;
         pushDbg("pmSet", `${e.key} ${slotIdxOf(cur)}→${slotIdxOf(next)}`);
         return;
       }

@@ -1,7 +1,7 @@
 // 가배포 테스터용 플로팅 오류 신고 위젯. 로그인 사용자에게만 노출(레이아웃에서 제어).
 // 현재 URL + userAgent 자동 첨부 → /api/bug-report.
 import { BugIcon } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "~/core/components/ui/button";
@@ -17,14 +17,18 @@ import { Textarea } from "~/core/components/ui/textarea";
 
 export function BugReportWidget() {
   const [open, setOpen] = useState(false);
-  const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // ★uncontrolled(ref) — textarea 를 controlled(value+setState) 로 두면 키 입력마다 위젯이
+  //   리렌더돼, 무거운 화면(inbox·조문 빈칸 뷰어 등)에서 타이핑이 매우 느려진다. 입력 중
+  //   리렌더가 없도록 ref 로만 읽고, 제출 시 .value 를 꺼낸다.
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // ★순수 fetch(fire-and-forget) 로 보낸다 — RR fetcher.submit 은 현재 페이지 로더 재검증을
   //   유발해, 무거운 화면(민법 조문 빈칸 뷰어 등)에서 신고 시 화면이 매우 느려진다. 신고는
   //   페이지 데이터와 무관하므로 재검증 없이 보낸다.
   async function submit() {
-    if (!message.trim()) {
+    const message = textareaRef.current?.value.trim() ?? "";
+    if (!message) {
       toast.error("오류 내용을 입력해주세요.");
       return;
     }
@@ -33,7 +37,7 @@ export function BugReportWidget() {
       const fd = new FormData();
       fd.set("intent", "create");
       fd.set("url", window.location.href);
-      fd.set("message", message.trim());
+      fd.set("message", message);
       fd.set("userAgent", navigator.userAgent);
       const res = await fetch("/api/bug-report", { method: "POST", body: fd });
       const j = (await res.json().catch(() => ({}))) as {
@@ -42,7 +46,7 @@ export function BugReportWidget() {
       };
       if (res.ok && j.ok) {
         toast.success("오류 신고가 접수됐습니다. 감사합니다!");
-        setMessage("");
+        if (textareaRef.current) textareaRef.current.value = "";
         setOpen(false);
       } else {
         toast.error(`신고 전송 실패: ${j.error ?? res.status}`);
@@ -80,8 +84,8 @@ export function BugReportWidget() {
             </DialogDescription>
           </DialogHeader>
           <Textarea
-            value={message}
-            onChange={(e) => setMessage(e.currentTarget.value)}
+            ref={textareaRef}
+            defaultValue=""
             placeholder="예: 특허법 제29조 화면에서 기출 칩이 겹쳐 보입니다."
             rows={5}
             maxLength={5000}
