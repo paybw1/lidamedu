@@ -1,0 +1,1 @@
+alter table public.video_contents add column if not exists upload_file_key text;

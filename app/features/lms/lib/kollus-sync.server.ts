@@ -87,13 +87,14 @@ export async function syncKollusContents(
         result.skipped++; // 운영자가 지운 콘텐츠는 동기화로 되살리지 않음
         continue;
       }
-      // 콜러스 권위 필드만 갱신.
+      // 콜러스 권위 필드만 갱신(upload_file_key 참조값 포함).
       const { error } = await adminClient
         .from("video_contents")
         .update({
           duration_seconds: c.durationSeconds,
           encoding_status: c.encodingStatus,
           original_filename: c.originalFileName,
+          upload_file_key: c.uploadFileKey,
           synced_at: nowIso,
         })
         .eq("content_id", found.content_id);
@@ -103,6 +104,7 @@ export async function syncKollusContents(
       toInsert.push({
         drm_provider: "kollus",
         content_key: c.contentKey,
+        upload_file_key: c.uploadFileKey,
         title: c.title,
         original_filename: c.originalFileName,
         duration_seconds: c.durationSeconds,

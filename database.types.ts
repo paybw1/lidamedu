@@ -12803,6 +12803,7 @@ export type Database = {
           synced_at: string | null
           title: string
           updated_at: string
+          upload_file_key: string | null
           use_status: string
         }
         Insert: {
@@ -12822,6 +12823,7 @@ export type Database = {
           synced_at?: string | null
           title: string
           updated_at?: string
+          upload_file_key?: string | null
           use_status?: string
         }
         Update: {
@@ -12841,6 +12843,7 @@ export type Database = {
           synced_at?: string | null
           title?: string
           updated_at?: string
+          upload_file_key?: string | null
           use_status?: string
         }
         Relationships: [
