@@ -26,6 +26,17 @@ export type ResolvedCart =
     }
   | { ok: false; error: string; status: number };
 
+// 현재 재고(v_book_stock) — 하부 book_stock_moves 가 staff-only RLS 라 adminClient 로 읽는다.
+//   행 없으면(입고 이력 없음) 0으로 간주(track_stock=on 인데 입고 없음 = 품절).
+async function bookStock(bookId: string): Promise<number> {
+  const { data } = await adminClient
+    .from("v_book_stock")
+    .select("stock")
+    .eq("book_id", bookId)
+    .maybeSingle();
+  return Number(data?.stock ?? 0);
+}
+
 export async function resolveCartItems(
   client: SupabaseClient<Database>,
   userId: string,
@@ -56,7 +67,7 @@ export async function resolveCartItems(
       const { data: book } = await client
         .from("books")
         .select(
-          "book_id, title, price_krw, sale_status, shipping_fee_type, shipping_fee_krw, per_person_limit",
+          "book_id, title, price_krw, sale_status, shipping_fee_type, shipping_fee_krw, per_person_limit, track_stock",
         )
         .eq("book_id", it.bookId)
         .is("deleted_at", null)
@@ -65,6 +76,18 @@ export async function resolveCartItems(
         return { ok: false, error: "판매 중인 도서가 아닙니다", status: 404 };
       if (book.price_krw <= 0)
         return { ok: false, error: "유료 도서만 결제할 수 있습니다", status: 400 };
+      // ★품절 서버 재검증 — 재고 관리(track_stock) 도서는 현재 재고가 요청 수량 이상이어야
+      //   결제 허용. FE soldOut 표시에만 의존하면 동시결제·직접호출로 음수 재고가 날 수 있어
+      //   결제 authority(cart-resolve)에서 차단한다.
+      if (book.track_stock) {
+        const avail = await bookStock(book.book_id);
+        if (avail < it.quantity)
+          return {
+            ok: false,
+            error: `《${book.title}》 재고가 부족합니다 (남은 재고 ${Math.max(avail, 0)}개).`,
+            status: 400,
+          };
+      }
       if (book.per_person_limit != null) {
         const { data: prior } = await adminClient
           .from("order_items")
@@ -104,7 +127,9 @@ export async function resolveCartItems(
         return { ok: false, error: "유료 세트만 결제할 수 있습니다", status: 400 };
       const { data: members } = await client
         .from("book_bundle_items")
-        .select("book_id, books(price_krw, sale_status, deleted_at)")
+        .select(
+          "book_id, books(title, price_krw, sale_status, deleted_at, track_stock)",
+        )
         .eq("bundle_id", it.bundleId);
       const valid = (members ?? []).filter((m) => {
         const b = m.books as {
@@ -116,6 +141,16 @@ export async function resolveCartItems(
       });
       if (valid.length === 0)
         return { ok: false, error: "세트 구성 도서가 없습니다", status: 400 };
+      // ★세트 구성 도서도 품절 서버 재검증(track_stock 도서는 1개 이상 필요).
+      for (const m of valid) {
+        const b = m.books as { title: string; track_stock: boolean };
+        if (b.track_stock && (await bookStock(m.book_id)) < 1)
+          return {
+            ok: false,
+            error: `세트 구성 도서 《${b.title}》 재고가 부족합니다.`,
+            status: 400,
+          };
+      }
       const listPrices = valid.map(
         (m) => (m.books as { price_krw: number }).price_krw,
       );

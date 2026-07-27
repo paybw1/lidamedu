@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { data, useFetcher, useLocation, useNavigate } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
+import { ImageUploadHint } from "~/core/components/image-upload-hint";
 import { Input } from "~/core/components/ui/input";
 import { roleAtLeast } from "~/core/lib/roles";
 import makeServerClient from "~/core/lib/supa-client.server";
@@ -613,6 +614,11 @@ function PlanForm({
                   name="detailImageFile"
                   accept="image/*"
                   className="text-xs"
+                />
+                <ImageUploadHint
+                  size="가로 800px 내외"
+                  note="세로 길이 제한 없음, 상세페이지 폭에 맞춰 표시"
+                  maxMb={8}
                 />
               </FormField>
               <FormField label="또는 이미지 URL 직접 입력 (파일 업로드 시 무시)">

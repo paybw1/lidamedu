@@ -1,0 +1,774 @@
+<p>&nbsp;</p>
+<style>
+:root{
+  --bg:#f5f7fb;
+  --card:#fff;
+  --text:#172033;
+  --muted:#657086;
+  --line:#e6eaf1;
+  --primary:#315efb;
+  --primary-soft:#eef3ff;
+  --danger:#d64545;
+  --danger-soft:#fff0f0;
+  --success:#138a5b;
+  --success-soft:#ebf8f2;
+  --warning:#a56a00;
+  --warning-soft:#fff8e8;
+  --shadow:0 18px 45px rgba(30,45,80,.08);
+  --radius:22px;
+}
+
+*{
+  box-sizing:border-box;
+}
+
+html{
+  scroll-behavior:smooth;
+}
+
+body{
+  margin:0;
+  font-family:Pretendard,"Noto Sans KR",Arial,sans-serif;
+  background:
+    radial-gradient(circle at top left,rgba(49,94,251,.10),transparent 30%),
+    linear-gradient(180deg,#fbfcff 0%,var(--bg) 100%);
+  color:var(--text);
+  line-height:1.72;
+}
+
+.wrap{
+  width:min(1180px,calc(100% - 32px));
+  margin:0 auto;
+  padding:56px 0 90px;
+}
+
+.hero{
+  position:relative;
+  overflow:hidden;
+  padding:52px;
+  border-radius:30px;
+  background:linear-gradient(135deg,#17233f 0%,#284dcc 58%,#6d8cff 100%);
+  color:#fff;
+  box-shadow:0 28px 70px rgba(35,68,175,.26);
+}
+
+.hero:after{
+  content:"";
+  position:absolute;
+  width:280px;
+  height:280px;
+  right:-80px;
+  top:-90px;
+  border-radius:50%;
+  background:rgba(255,255,255,.12);
+}
+
+.hero .eyebrow{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:7px 12px;
+  border:1px solid rgba(255,255,255,.25);
+  border-radius:999px;
+  background:rgba(255,255,255,.10);
+  font-size:13px;
+  font-weight:700;
+}
+
+.hero h1{
+  margin:18px 0 12px;
+  font-size:clamp(30px,5vw,48px);
+  line-height:1.18;
+  letter-spacing:-.04em;
+}
+
+.hero p{
+  margin:0;
+  max-width:780px;
+  color:rgba(255,255,255,.84);
+  font-size:16px;
+}
+
+.summary{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:16px;
+  margin:24px 0 38px;
+}
+
+.summary .item{
+  background:rgba(255,255,255,.95);
+  border:1px solid rgba(255,255,255,.7);
+  border-radius:18px;
+  padding:20px;
+  box-shadow:var(--shadow);
+}
+
+.summary strong{
+  display:block;
+  font-size:22px;
+  color:var(--primary);
+  margin-bottom:3px;
+}
+
+.summary span{
+  display:block;
+  color:var(--muted);
+  font-size:14px;
+}
+
+.section-title{
+  margin:54px 0 18px;
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:16px;
+}
+
+.section-title h2{
+  margin:0;
+  font-size:28px;
+  letter-spacing:-.03em;
+}
+
+.section-title p{
+  margin:0;
+  color:var(--muted);
+  font-size:14px;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:20px;
+}
+
+.card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:26px;
+  box-shadow:var(--shadow);
+}
+
+.card.full{
+  grid-column:1/-1;
+}
+
+.card-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:14px;
+  margin-bottom:14px;
+}
+
+.card h3{
+  margin:0;
+  font-size:20px;
+  line-height:1.35;
+  letter-spacing:-.025em;
+}
+
+.badge{
+  flex:none;
+  padding:7px 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:800;
+  white-space:nowrap;
+  background:var(--primary-soft);
+  color:var(--primary);
+}
+
+.badge.required{
+  background:var(--danger-soft);
+  color:var(--danger);
+}
+
+.badge.ops{
+  background:var(--success-soft);
+  color:var(--success);
+}
+
+.card p{
+  margin:0 0 12px;
+  color:#3f4b61;
+}
+
+ul{
+  margin:12px 0 0;
+  padding-left:20px;
+}
+
+li{
+  margin:6px 0;
+}
+
+.flow{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:14px;
+}
+
+.flow span{
+  padding:9px 13px;
+  border-radius:12px;
+  background:#f7f9fd;
+  border:1px solid var(--line);
+  font-size:14px;
+  font-weight:700;
+}
+
+.flow span:not(:last-child):after{
+  content:"→";
+  margin-left:10px;
+  color:#8a94a8;
+}
+
+.notice{
+  margin-top:16px;
+  padding:14px 16px;
+  border-radius:14px;
+  background:var(--warning-soft);
+  border:1px solid #f3dfab;
+  color:#6f5410;
+  font-size:14px;
+}
+
+.important{
+  margin-top:16px;
+  padding:15px 16px;
+  border-left:4px solid var(--primary);
+  background:var(--primary-soft);
+  border-radius:10px;
+  font-size:14px;
+}
+
+.table-wrap{
+  overflow:auto;
+  margin-top:14px;
+  border:1px solid var(--line);
+  border-radius:16px;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  min-width:720px;
+  background:#fff;
+}
+
+th,
+td{
+  padding:14px 16px;
+  border-bottom:1px solid var(--line);
+  text-align:left;
+  font-size:14px;
+  vertical-align:top;
+}
+
+th{
+  background:#f7f9fc;
+  color:#445067;
+  font-weight:800;
+}
+
+tr:last-child td{
+  border-bottom:0;
+}
+
+.stat-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:14px;
+  margin-top:18px;
+}
+
+.stat-box{
+  padding:18px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:#f9fbff;
+}
+
+.stat-box strong{
+  display:block;
+  margin-bottom:7px;
+  color:var(--primary);
+  font-size:16px;
+}
+
+.stat-box p{
+  margin:0;
+  color:var(--muted);
+  font-size:14px;
+}
+
+.footer{
+  margin-top:48px;
+  padding:24px;
+  border-radius:18px;
+  background:#17233f;
+  color:#dce4ff;
+  text-align:center;
+  font-size:14px;
+}
+
+@media(max-width:820px){
+  .wrap{
+    width:min(100% - 20px,1180px);
+    padding:20px 0 55px;
+  }
+
+  .hero{
+    padding:30px 22px;
+    border-radius:22px;
+  }
+
+  .summary{
+    grid-template-columns:1fr;
+  }
+
+  .grid{
+    grid-template-columns:1fr;
+  }
+
+  .card.full{
+    grid-column:auto;
+  }
+
+  .section-title{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  .card{
+    padding:22px;
+  }
+
+  .flow{
+    display:block;
+  }
+
+  .flow span{
+    display:block;
+    margin-bottom:8px;
+  }
+
+  .flow span:not(:last-child):after{
+    float:right;
+  }
+
+  .stat-grid{
+    grid-template-columns:1fr;
+  }
+
+  table{
+    min-width:650px;
+  }
+}
+</style>
+<main class="wrap">
+<section class="hero">
+<h1>강의 사이트<br />기능 보완 요청사항</h1>
+</section>
+<section class="summary">
+<div class="item"><strong>★★★ 필수</strong>서비스 운영 및 결제&middot;재생에 직접 필요한 기능</div>
+<div class="item"><strong>★★ 운영필수</strong>관리 효율과 사용자 편의에 필요한 기능</div>
+<div class="item"><strong>권한 구분</strong>삭제 등 중요 기능은 최고관리자에게만 허용</div>
+</section>
+<div class="section-title">
+<h2>관리자 기능</h2>
+<p>강의&middot;콘텐츠&middot;도서몰&middot;매출&middot;공지&middot;커뮤니티 운영 기능</p>
+</div>
+<section class="grid">
+<article class="card">
+<div class="card-head">
+<h3>시리즈 및 에디션 제목 수정</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>시리즈명과 각 에디션명을 관리자 페이지에서 직접 변경할 수 있도록 수정 버튼이 필요합니다.</p>
+<ul>
+<li>시리즈명 수정</li>
+<li>에디션명 수정</li>
+<li>수정 후 기존 강의&middot;목차&middot;콘텐츠 연결 관계 유지</li>
+</ul>
+</article>
+<article class="card">
+<div class="card-head">
+<h3>회차 및 제목 수정&middot;삭제</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>등록된 강의 목차의 회차 번호와 제목을 수정하거나 삭제할 수 있어야 합니다.</p>
+<ul>
+<li>회차 번호 수정</li>
+<li>회차 제목 수정</li>
+<li>회차 삭제 및 삭제 확인 메시지</li>
+<li>기존 콘텐츠 연결 및 순서 정보 유지</li>
+</ul>
+</article>
+<article class="card">
+<div class="card-head">
+<h3>수강신청 페이지 노출 순서 설정</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>홈페이지 &gt; 수강신청에 노출되는 강의의 순서를 UID 숫자로 직접 설정할 수 있어야 합니다.</p>
+<div class="important">UID 숫자가 작은 강의부터 사용자 화면에 우선 노출되도록 처리해 주세요.</div>
+</article>
+<article class="card">
+<div class="card-head">
+<h3>콜러스 콘텐츠 동기화 키 수정</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>콘텐츠라이브러리에서 콜러스 동기화 시 업로드 파일키가 아닌 <strong>미디어 콘텐츠키</strong>를 불러와 저장해야 합니다.</p>
+<ul>
+<li>동기화 기준값: Media Content Key</li>
+<li>콘텐츠 목록과 강의 목차 연결 시 동일 키 사용</li>
+<li>기존 업로드 파일키 저장 데이터 점검</li>
+</ul>
+<div class="notice">실제 영상 재생에 직접 영향을 주는 항목이므로 우선 수정이 필요합니다.</div>
+</article>
+<article class="card">
+<div class="card-head">
+<h3>시리즈&middot;에디션 삭제 조건</h3>
+<span class="badge required">★★★ 필수</span></div>
+<ul>
+<li>수강생이 존재하는 시리즈 또는 에디션은 삭제 불가</li>
+<li>수강생이 없는 경우에만 삭제 가능</li>
+<li>삭제 전 경고 및 재확인 메시지 표시</li>
+<li>삭제 권한은 최고관리자만 보유</li>
+</ul>
+</article>
+<article class="card">
+<div class="card-head">
+<h3>강의관리 권한 확대</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>현재 관리자 계정에서 제한된 기능이 많으므로 강의 운영에 필요한 권한을 전체적으로 부여해 주세요.</p>
+<ul>
+<li>강의 등록&middot;수정&middot;복사&middot;노출 관리</li>
+<li>목차 및 회차 관리</li>
+<li>시리즈&middot;에디션 관리</li>
+<li>콘텐츠 연결 및 콜러스 동기화</li>
+<li>판매정보&middot;수강정책&middot;교재&middot;샘플영상 관리</li>
+</ul>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>매출&middot;정산관리 통계 분리</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>관리자 페이지의 매출&middot;정산관리에서는 전체 매출을 한 화면에만 통합하여 표시하지 않고, 상품 유형에 따라 다음 3개의 통계 메뉴로 구분하여 관리할 수 있어야 합니다.</p>
+<div class="stat-grid">
+<div class="stat-box"><strong>정기구독 통계</strong>
+<p>정기결제 상품의 신규 구독, 유지 구독, 해지, 결제 성공 및 결제 실패 내역을 기준으로 매출을 확인합니다.</p>
+</div>
+<div class="stat-box"><strong>강의매출 통계</strong>
+<p>온라인 단과, 현장강의, 패키지강의 등 강의 상품의 결제 및 환불 내역을 기준으로 매출을 확인합니다.</p>
+</div>
+<div class="stat-box"><strong>도서매출 통계</strong>
+<p>도서몰에 등록된 교재와 도서 상품의 결제, 취소, 환불 내역을 기준으로 매출을 확인합니다.</p>
+</div>
+</div>
+<div class="important">정기구독, 강의, 도서의 매출 데이터는 각각 분리하여 조회할 수 있어야 하며, 필요할 경우 전체 매출 합계도 별도로 확인할 수 있도록 해 주세요.</div>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>매출통계 기간 검색 기능</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>정기구독 통계, 강의매출 통계, 도서매출 통계에서 공통으로 기간별 검색 기능을 제공해야 합니다.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>검색 기준</th>
+<th>요청 기능</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>일별</td>
+<td>선택한 날짜의 매출, 환불, 실매출 확인</td>
+</tr>
+<tr>
+<td>주별</td>
+<td>선택한 주간의 일자별 매출 및 주간 합계 확인</td>
+</tr>
+<tr>
+<td>월별</td>
+<td>선택한 월의 일자별 매출 및 월간 합계 확인</td>
+</tr>
+<tr>
+<td>연도별</td>
+<td>선택한 연도의 월별 매출 및 연간 합계 확인</td>
+</tr>
+<tr>
+<td>직접 기간 설정</td>
+<td>시작일과 종료일을 직접 선택하여 검색</td>
+</tr>
+</tbody>
+</table>
+</div>
+<ul>
+<li>결제금액</li>
+<li>할인금액</li>
+<li>쿠폰 및 포인트 사용금액</li>
+<li>환불금액</li>
+<li>실매출금액</li>
+<li>결제건수</li>
+<li>취소&middot;환불건수</li>
+</ul>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>강의매출 통계 검색 조건</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>강의매출 통계에서는 기간 검색과 함께 강의 유형 및 카테고리를 기준으로 매출을 구분하여 확인할 수 있어야 합니다.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>검색 항목</th>
+<th>요청 기능</th>
+<th>중요도</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>전체강의</td>
+<td>모든 강의 상품의 매출을 통합하여 조회</td>
+<td>필수</td>
+</tr>
+<tr>
+<td>단과강의</td>
+<td>온라인 단과강의 매출만 별도 조회</td>
+<td>필수</td>
+</tr>
+<tr>
+<td>현장강의</td>
+<td>학원 현장강의 매출만 별도 조회</td>
+<td>필수</td>
+</tr>
+<tr>
+<td>패키지강의</td>
+<td>패키지 및 기간제 강의 상품 매출만 별도 조회</td>
+<td>필수</td>
+</tr>
+<tr>
+<td>카테고리</td>
+<td>민법, 특허법, 상표법, 디자인보호법, 자연과학 등 카테고리별 조회</td>
+<td>필수</td>
+</tr>
+<tr>
+<td>개별 강의 검색</td>
+<td>강의명, 강사명 또는 강의 UID로 특정 강의 매출 조회</td>
+<td>선택</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="important">전체강의, 단과강의, 현장강의, 패키지강의 구분 검색은 반드시 제공해 주세요. 개별 강의 검색 기능은 개발 여건에 따라 제외해도 무관합니다.</div>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>도서매출 통계 검색 조건</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>도서매출 통계에서는 기간 검색과 함께 도서 카테고리를 기준으로 매출을 구분하여 확인할 수 있어야 합니다.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>검색 항목</th>
+<th>요청 기능</th>
+<th>중요도</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>전체도서</td>
+<td>도서몰에 등록된 전체 도서 매출 조회</td>
+<td>필수</td>
+</tr>
+<tr>
+<td>카테고리</td>
+<td>과목, 시험 구분, 출판 분야 등 등록된 도서 카테고리별 조회</td>
+<td>필수</td>
+</tr>
+<tr>
+<td>개별 도서 검색</td>
+<td>도서명, ISBN 또는 도서 UID로 특정 도서 매출 조회</td>
+<td>선택</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="important">도서 카테고리별 매출 검색 기능은 반드시 제공해 주세요. 개별 도서 검색 기능은 개발 여건에 따라 제외해도 무관합니다.</div>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>매출통계 결과 표시 및 다운로드</h3>
+<span class="badge ops">★★ 운영필수</span></div>
+<p>검색 결과에서는 매출과 환불 내역을 한눈에 확인할 수 있도록 요약 정보와 상세 내역을 함께 표시해 주세요.</p>
+<ul>
+<li>총 주문금액</li>
+<li>총 할인금액</li>
+<li>총 결제금액</li>
+<li>총 환불금액</li>
+<li>최종 실매출금액</li>
+<li>결제건수 및 환불건수</li>
+<li>상품별 판매수량</li>
+<li>결제수단별 매출</li>
+<li>검색 결과 엑셀 다운로드</li>
+</ul>
+<div class="notice">엑셀 다운로드 시 현재 화면에서 적용한 기간, 상품 유형, 카테고리, 개별 상품 등의 검색 조건이 동일하게 반영되어야 합니다.</div>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>이미지 권장 사이즈 안내</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>관리자 페이지에서 이미지를 등록하는 모든 영역에 해당 이미지의 <strong>권장 가로 &times; 세로 픽셀(px) 사이즈</strong>를 명확하게 표시해 주세요.<br /><br />예시)</p>
+<ul>
+<li>강의 썸네일: 800 &times; 450px</li>
+<li>교재 표지: 600 &times; 850px</li>
+<li>강사 프로필: 600 &times; 800px</li>
+<li>PC 배너: 1920 &times; 500px</li>
+<li>모바일 배너: 750 &times; 900px</li>
+</ul>
+<p style="margin-top: 18px;">이미지 등록 영역에는 다음 정보를 함께 안내해야 합니다.</p>
+<ul>
+<li>권장 이미지 크기</li>
+<li>권장 이미지 비율</li>
+<li>허용 파일 형식</li>
+<li>최대 파일 용량</li>
+</ul>
+<div class="important">권장 사이즈와 다른 이미지를 업로드하더라도 화면이 깨지거나 비율이 과도하게 변형되지 않도록 자동 리사이징 또는 중앙 기준 잘라내기 기능을 적용해 주세요.</div>
+<div class="notice">PC용 이미지와 모바일용 이미지의 권장 크기가 다른 경우에는 각각 별도로 등록할 수 있도록 하고, 각 등록 위치에 맞는 권장 사이즈를 개별적으로 표시해 주세요.</div>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>공지&middot;커뮤니티 게시판 에디터 기능</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>관리자 페이지의 공지&middot;커뮤니티 게시판에도 통합 에디터 기능을 적용하여 일반 편집모드와 HTML 소스 편집모드를 모두 사용할 수 있어야 합니다.</p>
+<ul>
+<li>일반 글쓰기 편집모드 지원</li>
+<li>HTML 소스 직접 편집모드 지원</li>
+<li>일반 편집모드와 HTML 편집모드 간 전환</li>
+<li>글자 크기, 굵기, 색상, 정렬 등 기본 서식 기능</li>
+<li>이미지 업로드 및 본문 삽입</li>
+<li>표 삽입 및 편집</li>
+<li>외부 링크 및 내부 페이지 링크 삽입</li>
+<li>유튜브 영상 및 iframe 소스 삽입</li>
+<li>파일 첨부 및 첨부파일 다운로드</li>
+<li>작성 중 미리보기 및 전체화면 편집</li>
+</ul>
+<div class="important">HTML 편집모드에서 입력한 스타일, 표, 이미지, 링크 및 iframe 코드가 저장 과정에서 임의로 삭제되거나 변경되지 않도록 처리해 주세요.</div>
+<div class="notice">첨부파일 등록 영역에는 허용 확장자와 최대 파일 용량을 표시하고, 실행파일 등 보안상 위험한 파일 형식은 업로드할 수 없도록 제한해 주세요.</div>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>강의별 주교재&middot;부교재 연결</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>도서몰에 등록된 교재를 강의와 연결하여 사용자 화면과 결제 화면에 표시할 수 있어야 합니다.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>구분</th>
+<th>요청 기능</th>
+<th>비고</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>교재 검색</td>
+<td>도서몰에 등록된 교재명 또는 도서 UID로 검색</td>
+<td>판매 중인 교재 중심</td>
+</tr>
+<tr>
+<td>교재 구분</td>
+<td>주교재와 부교재를 구분하여 지정</td>
+<td>부교재 복수 선택 가능</td>
+</tr>
+<tr>
+<td>구매 설정</td>
+<td>필수 구매 또는 선택 구매 설정</td>
+<td>강의별 설정</td>
+</tr>
+<tr>
+<td>노출 관리</td>
+<td>교재 노출 순서, 노출 여부, 연결 해제</td>
+<td>기존 도서정보 자동 반영</td>
+</tr>
+</tbody>
+</table>
+</div>
+</article>
+</section>
+<div class="section-title">
+<h2>사용자 기능</h2>
+<p>수강생 강의실&middot;플레이어&middot;결제 기능</p>
+</div>
+<section class="grid">
+<article class="card">
+<div class="card-head">
+<h3>마이페이지 강의실 입장 방식</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>수강현황에서 버튼을 클릭했을 때 영상이 즉시 재생되지 않고 강의 목차 화면으로 먼저 이동해야 합니다.</p>
+<div class="flow">마이페이지수강현황강의실 입장강의 목차회차 선택영상 재생</div>
+<div class="important">현재 &lsquo;강의보기&rsquo; 버튼 명칭은 &lsquo;강의실 입장&rsquo;으로 변경해 주세요.</div>
+</article>
+<article class="card">
+<div class="card-head">
+<h3>강의와 교재 동시 결제</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>강의 신청 과정에서 연결된 주교재&middot;부교재를 선택하여 하나의 주문으로 동시에 결제할 수 있어야 합니다.</p>
+<ul>
+<li>강의 결제 완료 후 수강권 자동 지급</li>
+<li>교재 주문 생성 및 재고 자동 차감</li>
+<li>배송지 입력 및 배송비 자동 계산</li>
+<li>품절 교재 선택&middot;결제 차단</li>
+<li>강의와 교재의 취소&middot;환불 상태 분리 관리</li>
+</ul>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>결제 화면 내 교재 정보 간소화</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>강의 결제 화면에서는 교재 상세설명을 모두 노출하지 않고 구매 결정에 필요한 정보만 간략하게 표시해 주세요.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>노출 항목</th>
+<th>처리 방식</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>교재 이미지</td>
+<td>작은 썸네일 형태로 표시</td>
+</tr>
+<tr>
+<td>교재 구분</td>
+<td>주교재 / 부교재 구분 표시</td>
+</tr>
+<tr>
+<td>교재명&middot;판매가격</td>
+<td>한눈에 확인 가능하도록 간단히 표시</td>
+</tr>
+<tr>
+<td>재고 상태</td>
+<td>판매중 / 품절 상태 표시</td>
+</tr>
+<tr>
+<td>선택 기능</td>
+<td>체크박스 및 수량 선택 제공</td>
+</tr>
+<tr>
+<td>상세보기</td>
+<td>도서몰 교재 상세페이지로 이동</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="important">결제금액은 강의 금액, 교재 금액, 배송비, 할인금액, 최종 결제금액으로 구분하여 표시해 주세요.</div>
+</article>
+</section>
+</main>
+<p>&nbsp;</p>

@@ -2,6 +2,7 @@
 import { Form, Link, redirect } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
+import { ImageUploadHint } from "~/core/components/image-upload-hint";
 import { Input } from "~/core/components/ui/input";
 import { Label } from "~/core/components/ui/label";
 import { AdminShell } from "~/features/admin/components/admin-shell";
@@ -94,6 +95,7 @@ export default function AdminInstructorEdit({ loaderData }: Route.ComponentProps
               <img src={it.photoPath} alt="" className="border-border mb-2 h-28 w-auto rounded-md border object-cover" />
             ) : null}
             <input type="file" name="photo" accept="image/*" className="text-sm" />
+            <ImageUploadHint size="600 × 800px" ratio="3:4" note="세로형 인물사진 권장" />
           </Row>
 
           <Row label="핵심 명제(헤드라인)" hint="히어로 한 줄">

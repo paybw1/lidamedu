@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Form, Link, redirect, useSearchParams } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
+import { ImageUploadHint } from "~/core/components/image-upload-hint";
 import { Input } from "~/core/components/ui/input";
 import { Label } from "~/core/components/ui/label";
 import makeServerClient from "~/core/lib/supa-client.server";
@@ -201,6 +202,7 @@ export default function AdminLectureVideoEdit({
                 defaultValue={v?.thumbnail_url ?? ""}
                 className={IN}
               />
+              <ImageUploadHint size="800 × 450px" ratio="16:9" />
             </Row>
             <Row label="길이 표시" hint='선택, "3분 12초"'>
               <Input

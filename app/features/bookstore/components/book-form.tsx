@@ -2,6 +2,8 @@
 // 리치 편집기 대신 textarea(마크다운 저장) — 학생 화면은 마크다운 렌더.
 import type { ReactNode } from "react";
 
+import { ImageUploadHint } from "~/core/components/image-upload-hint";
+
 export interface BookFormData {
   bookId?: string;
   title: string;
@@ -80,6 +82,11 @@ export function BookForm({
           <input type="file" name="coverFile" accept="image/jpeg,image/png,image/gif" className="text-xs" />
           <input name="coverPath" type="url" placeholder="외부 URL (우선 노출)" defaultValue={b?.coverPath ?? ""} className={IN} />
           <p className="text-muted-foreground text-[11px]">파일과 외부 URL을 모두 등록하면 외부 URL이 우선 노출됩니다.</p>
+          <ImageUploadHint
+            size="600 × 850px"
+            ratio="3:4"
+            note="세로형 표지 권장, 다른 비율은 가운데 기준으로 잘려 보입니다"
+          />
         </div>
       </Row>
       <Row label="도서 유형">
