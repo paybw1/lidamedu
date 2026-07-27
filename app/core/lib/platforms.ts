@@ -131,5 +131,16 @@ export const LECTURE_NAV_LINKS: ReadonlyArray<LectureNavItem> = [
 //   접두 매칭이면 강사소개 페이지에서 인사말이 함께 활성화된다.
 export function childMatchesPath(to: string, pathname: string): boolean {
   if (to === "/lecture" || to === "/about") return pathname === to;
+  // 강사소개(/about/instructors)는 강사 모집(/about/instructors/recruit)을 삼키지 않는다 —
+  //   recruit 은 리담안내가 아니라 커뮤니티 "강사 모집" 항목이라, 여기서 강사소개가
+  //   활성화되면 recruit 페이지에 리담안내 서브내비(강사소개 하이라이트)가 떠서
+  //   "강사소개로 넘어간 것"처럼 보인다. 강사 상세(:slug)는 강사소개 소속이라 유지.
+  if (to === "/about/instructors") {
+    return (
+      pathname === to ||
+      (pathname.startsWith(to + "/") &&
+        pathname !== "/about/instructors/recruit")
+    );
+  }
   return pathname === to || pathname.startsWith(to + "/");
 }
