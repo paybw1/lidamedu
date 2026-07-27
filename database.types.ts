@@ -7282,6 +7282,78 @@ export type Database = {
         }
         Relationships: []
       }
+      lecture_videos: {
+        Row: {
+          category: string
+          content_id: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          description: string | null
+          display_order: number
+          duration_label: string | null
+          linked_plan_id: string | null
+          provider: string
+          published: boolean
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+          video_id: string
+          youtube_url: string | null
+        }
+        Insert: {
+          category?: string
+          content_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          display_order?: number
+          duration_label?: string | null
+          linked_plan_id?: string | null
+          provider?: string
+          published?: boolean
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string
+          video_id?: string
+          youtube_url?: string | null
+        }
+        Update: {
+          category?: string
+          content_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          display_order?: number
+          duration_label?: string | null
+          linked_plan_id?: string | null
+          provider?: string
+          published?: boolean
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+          video_id?: string
+          youtube_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lecture_videos_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "video_contents"
+            referencedColumns: ["content_id"]
+          },
+          {
+            foreignKeyName: "lecture_videos_linked_plan_id_fkey"
+            columns: ["linked_plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["plan_id"]
+          },
+        ]
+      }
       lecture_views: {
         Row: {
           completed_at: string | null

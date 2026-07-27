@@ -13,16 +13,18 @@ import { reorderRow, softDeleteRow, upsertExamInfo } from "../queries.server";
 
 import type { Route } from "./+types/admin-landing";
 
-type Entity = "schedule" | "news" | "banner";
+type Entity = "schedule" | "news" | "banner" | "video";
 const TABLE = {
   schedule: "lecture_schedules",
   news: "lecture_news",
   banner: "landing_banners",
+  video: "lecture_videos",
 } as const;
 const LIST_PATH: Record<Entity, string> = {
   schedule: "/admin/lecture-schedules",
   news: "/admin/lecture-news",
   banner: "/admin/landing-banners",
+  video: "/admin/lecture-videos",
 };
 
 const str = (fd: FormData, k: string) => {
@@ -124,6 +126,46 @@ export async function action({ request }: Route.ActionArgs) {
       : client.from("lecture_news").insert(row);
     const { error } = await q;
     if (error) return data({ error: error.message }, { status: 400 });
+  } else if (entity === "video") {
+    // 강의 홈 짧은 영상(공부방법·맛보기). youtube=youtube_url / kollus=content_id 소스.
+    const backPath = id
+      ? `/admin/lecture-videos/${id}/edit`
+      : "/admin/lecture-videos/new";
+    const provider = str(fd, "provider") === "kollus" ? "kollus" : "youtube";
+    const youtubeUrl = str(fd, "youtube_url");
+    const contentId = str(fd, "content_id");
+    // 소스 무결성(DB CHECK 와 동일) — 조용한 실패 대신 사유 표시.
+    if (provider === "youtube" && !youtubeUrl)
+      return redirect(
+        `${backPath}?err=${encodeURIComponent("유튜브 URL 을 입력하세요.")}`,
+      );
+    if (provider === "kollus" && !contentId)
+      return redirect(
+        `${backPath}?err=${encodeURIComponent("콜러스 콘텐츠를 선택하세요.")}`,
+      );
+    const catRaw = str(fd, "category") ?? "study_method";
+    const category = ["study_method", "teaser", "etc"].includes(catRaw)
+      ? catRaw
+      : "study_method";
+    const row = {
+      title: str(fd, "title") ?? "",
+      description: str(fd, "description"),
+      category,
+      provider,
+      youtube_url: provider === "youtube" ? youtubeUrl : null,
+      content_id: provider === "kollus" ? contentId : null,
+      thumbnail_url: str(fd, "thumbnail_url"),
+      linked_plan_id: str(fd, "linked_plan_id"),
+      duration_label: str(fd, "duration_label"),
+      display_order: int(fd, "display_order"),
+      published: bool(fd, "published"),
+    } satisfies Database["public"]["Tables"]["lecture_videos"]["Insert"];
+    const q = id
+      ? client.from("lecture_videos").update(row).eq("video_id", id)
+      : client.from("lecture_videos").insert(row);
+    const { error } = await q;
+    if (error)
+      return redirect(`${backPath}?err=${encodeURIComponent(error.message)}`);
   } else {
     // 저장 실패 시 되돌아갈 폼 경로(조용한 실패 방지 — ?err= 로 사유 표시).
     const backPath = id

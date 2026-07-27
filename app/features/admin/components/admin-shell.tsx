@@ -364,6 +364,7 @@ export const ADMIN_NAV: NavCluster[] = [
     Icon: MegaphoneIcon,
     screens: [
       { label: "히어로 배너", to: "/admin/landing-banners" },
+      { label: "공부방법·맛보기 영상", to: "/admin/lecture-videos" },
       { label: "현장강의 일정", to: "/admin/lecture-schedules" },
       { label: "리담소식", to: "/admin/lecture-news" },
       { label: "시험정보", to: "/admin/exam-info" },

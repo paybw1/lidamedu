@@ -20,9 +20,16 @@ import { HeroCarousel } from "../components/hero-carousel";
 import { InstructorRail } from "../components/instructor-rail";
 import { KakaoFloat } from "../components/kakao-float";
 import { LandingStyle } from "../components/landing-style";
+import { LectureVideoSection } from "../components/lecture-video-section";
 import { ScheduleRail } from "../components/schedule-rail";
+import { buildLectureVideosPublic } from "../lib/lecture-videos.server";
 import { newsKindChipClass, newsKindLabel } from "../labels";
-import { listBanners, listNews, listSchedules } from "../queries.server";
+import {
+  listBanners,
+  listLectureVideos,
+  listNews,
+  listSchedules,
+} from "../queries.server";
 
 import { Reveal } from "../components/reveal";
 import type { Route } from "./+types/landing";
@@ -50,6 +57,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     faqGroups,
     books,
     featuredReviews,
+    videoRows,
   ] = await Promise.all([
     listBanners(client),
     listSchedules(client, { todayISO, limit: 4 }),
@@ -67,7 +75,14 @@ export async function loader({ request }: Route.LoaderArgs) {
     // 운영자 큐레이션 수강 후기 — 강의 랜딩 노출(취사선택). 비로그인(anon)에도 보이도록
     //   adminClient 로 조회(공개·미블라인드만 반환하는 공개-안전 쿼리).
     listFeaturedReviews(adminClient).catch(() => []),
+    // 공부방법·맛보기 영상(공개). 요청 클라이언트 RLS(published) 로 조회.
+    listLectureVideos(client).catch(() => []),
   ]);
+  // 콜러스 서명 URL·연결 강의 해석은 adminClient(video_contents·subscription_plans anon
+  //   제약 대비). cuid=anon("preview-anon") — 접근제어 아닌 통계 매칭용이라 무방.
+  const videos = await buildLectureVideosPublic(adminClient, videoRows, null).catch(
+    () => [],
+  );
   // 히어로 단 사이 간격·색(운영자 설정) — anon 노출 위해 adminClient.
   const tierGap = await getLandingTierGap(adminClient).catch(() => ({
     gapTop: { px: 0, color: null as string | null },
@@ -84,6 +99,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     faqGroups,
     books: books.slice(0, 6),
     featuredReviews,
+    videos,
     tierGap,
     todayISO,
   };
@@ -99,6 +115,7 @@ export default function Landing({ loaderData }: Route.ComponentProps) {
     faqGroups,
     books,
     featuredReviews,
+    videos,
     tierGap,
     todayISO,
   } = loaderData;
@@ -123,6 +140,9 @@ export default function Landing({ loaderData }: Route.ComponentProps) {
       <LandingStyle />
       <HeroCarousel banners={tier1} schedules={schedules} todayISO={todayISO} />
       <BannerTiers tier2={tier2} tier3={tier3} />
+
+      {/* 공부방법 & 맛보기 영상 */}
+      <LectureVideoSection videos={videos} />
 
       {/* 리담소식 */}
       <section className="band" id="news">

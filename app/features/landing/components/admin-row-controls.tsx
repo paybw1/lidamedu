@@ -11,7 +11,7 @@ export function AdminRowControls({
   isFirst,
   isLast,
 }: {
-  entity: "schedule" | "news" | "banner";
+  entity: "schedule" | "news" | "banner" | "video";
   id: string;
   isFirst: boolean;
   isLast: boolean;

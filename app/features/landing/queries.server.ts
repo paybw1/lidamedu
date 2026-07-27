@@ -10,7 +10,12 @@ import {
   parseExamInfo,
   type ExamInfoData,
 } from "./lib/exam-info";
-import type { BannerRow, NewsRow, ScheduleRow } from "./labels";
+import type {
+  BannerRow,
+  LectureVideoRow,
+  NewsRow,
+  ScheduleRow,
+} from "./labels";
 
 type Client = SupabaseClient<Database>;
 
@@ -220,15 +225,49 @@ export async function getBanner(
   return data ?? null;
 }
 
+// ── 강의 홈 짧은 영상(공부방법·맛보기) ───────────────────────────────────────
+// 공개 조회는 요청 클라이언트(RLS: published 만). 운영자 목록은 staff 세션이라 RLS 가
+// 미게시 포함을 허용. 카테고리별 그룹핑은 화면(loader/컴포넌트)에서 수행.
+export async function listLectureVideos(
+  client: Client,
+  opts: { includeUnpublished?: boolean } = {},
+): Promise<LectureVideoRow[]> {
+  let q = client
+    .from("lecture_videos")
+    .select("*")
+    .is("deleted_at", null)
+    .order("category", { ascending: true })
+    .order("display_order", { ascending: true })
+    .order("created_at", { ascending: false });
+  if (!opts.includeUnpublished) q = q.eq("published", true);
+  const { data } = await q;
+  return data ?? [];
+}
+
+export async function getLectureVideo(
+  client: Client,
+  id: string,
+): Promise<LectureVideoRow | null> {
+  const { data } = await client
+    .from("lecture_videos")
+    .select("*")
+    .eq("video_id", id)
+    .is("deleted_at", null)
+    .maybeSingle();
+  return data ?? null;
+}
+
 // ── 공용 soft-delete / reorder ──────────────────────────────────────────────
 type LandingTable =
   | "lecture_schedules"
   | "lecture_news"
-  | "landing_banners";
+  | "landing_banners"
+  | "lecture_videos";
 const PK: Record<LandingTable, string> = {
   lecture_schedules: "schedule_id",
   lecture_news: "news_id",
   landing_banners: "banner_id",
+  lecture_videos: "video_id",
 };
 
 export async function softDeleteRow(

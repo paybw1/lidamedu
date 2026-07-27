@@ -4,6 +4,27 @@ import type { Database } from "database.types";
 export type ScheduleRow = Database["public"]["Tables"]["lecture_schedules"]["Row"];
 export type NewsRow = Database["public"]["Tables"]["lecture_news"]["Row"];
 export type BannerRow = Database["public"]["Tables"]["landing_banners"]["Row"];
+export type LectureVideoRow =
+  Database["public"]["Tables"]["lecture_videos"]["Row"];
+
+// ── 강의 홈 짧은 영상(공부방법·맛보기) feat-12-002 ──
+export type LectureVideoCategory = "study_method" | "teaser" | "etc";
+export type LectureVideoProvider = "youtube" | "kollus";
+
+export const LECTURE_VIDEO_CATEGORY_LABEL: Record<
+  LectureVideoCategory,
+  string
+> = {
+  study_method: "공부방법",
+  teaser: "맛보기 강의",
+  etc: "기타",
+};
+// 홈 노출 순서(카테고리 그룹).
+export const LECTURE_VIDEO_CATEGORY_ORDER: LectureVideoCategory[] = [
+  "study_method",
+  "teaser",
+  "etc",
+];
 
 // ── 현장강의 일정 ──
 export type LectureFormat = "offline" | "live" | "video";

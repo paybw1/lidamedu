@@ -726,6 +726,19 @@ export default [
         "features/landing/screens/admin-news-edit.tsx",
       ),
       route(
+        "/admin/lecture-videos",
+        "features/landing/screens/admin-lecture-videos.tsx",
+      ),
+      route(
+        "/admin/lecture-videos/new",
+        "features/landing/screens/admin-lecture-video-edit.tsx",
+        { id: "admin-lecture-video-new" },
+      ),
+      route(
+        "/admin/lecture-videos/:videoId/edit",
+        "features/landing/screens/admin-lecture-video-edit.tsx",
+      ),
+      route(
         "/admin/landing-banners",
         "features/landing/screens/admin-banners.tsx",
       ),

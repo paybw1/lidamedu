@@ -134,6 +134,10 @@ export function LandingStyle() {
 .llx .more{color:var(--blue-ink);font-weight:800;font-size:13.5px;white-space:nowrap}
 .llx .more:hover{text-decoration:underline}
 
+/* 공부방법·맛보기 영상 */
+.llx .vidsub{font-size:13px;font-weight:800;letter-spacing:.04em;color:var(--gilt)}
+.llx .vidgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:18px;margin-top:12px}
+
 /* schedule strip */
 .llx .strip{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
 .llx .sc{background:var(--lsurface);border:1px solid var(--line);border-radius:15px;padding:18px;box-shadow:var(--lshadow);display:flex;flex-direction:column;gap:11px;position:relative;overflow:hidden}
