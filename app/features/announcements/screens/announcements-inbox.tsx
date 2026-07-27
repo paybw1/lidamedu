@@ -169,7 +169,13 @@ function InboxCard({ item }: { item: AnnouncementListItem }) {
       </button>
       {expanded ? (
         <div className="border-border/60 border-t px-4 pt-3.5 pb-4">
-          {item.bodyMd ? (
+          {item.bodyHtml ? (
+            // 운영자 작성(신뢰) HTML — 통합 에디터 저장분. 레거시는 마크다운 폴백.
+            <div
+              className="lecture-detail-html text-sm"
+              dangerouslySetInnerHTML={{ __html: item.bodyHtml }}
+            />
+          ) : item.bodyMd ? (
             <MarkdownView text={item.bodyMd} className="text-sm" />
           ) : (
             <p className="text-muted-foreground text-xs">(본문 없음)</p>

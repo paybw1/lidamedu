@@ -26,6 +26,8 @@ export interface HtmlEditorProps {
   /** 이미지 업로드 엔드포인트(POST multipart file → {url}). */
   uploadUrl: string;
   minHeight?: number;
+  /** 값 변경 콜백 — FormData 를 수동 구성하는 폼에서 controlled 로 쓰기 위함(선택). */
+  onChange?: (html: string) => void;
 }
 
 // 유튜브 URL/ID → 임베드 iframe.
@@ -45,9 +47,14 @@ export function HtmlEditor({
   defaultValue = "",
   uploadUrl,
   minHeight = 320,
+  onChange,
 }: HtmlEditorProps) {
   const [mode, setMode] = useState<Mode>("visual");
   const [html, setHtml] = useState(defaultValue);
+  // 값 변경 통지(수동 FormData 폼용). hidden input 은 그대로 유지(네이티브 폼 호환).
+  useEffect(() => {
+    onChange?.(html);
+  }, [html]); // eslint-disable-line react-hooks/exhaustive-deps
   const [fullscreen, setFullscreen] = useState(false);
   const [mobilePreview, setMobilePreview] = useState(false);
   const [uploading, setUploading] = useState(false);

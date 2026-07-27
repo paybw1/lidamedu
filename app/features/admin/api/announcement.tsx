@@ -27,6 +27,7 @@ const audienceItemSchema = z.object({
 const createSchema = z.object({
   title: z.string().trim().min(1).max(200),
   bodyMd: z.string().max(20_000).default(""),
+  bodyHtml: z.string().max(200_000).default(""),
   audienceKind: audienceKindSchema,
   audiences: z.array(audienceItemSchema).max(500),
   isPinned: z.boolean().default(false),
@@ -71,6 +72,7 @@ export async function action({ request }: Route.ActionArgs) {
     const parsed = createSchema.safeParse({
       title: fd.get("title"),
       bodyMd: fd.get("bodyMd") ?? "",
+      bodyHtml: fd.get("bodyHtml") ?? "",
       audienceKind: fd.get("audienceKind"),
       audiences: parseAudienceArray(fd.get("audiences")),
       isPinned: fd.get("isPinned") === "1",
@@ -84,7 +86,7 @@ export async function action({ request }: Route.ActionArgs) {
     }
     const res = await createAnnouncement(client, {
       title: parsed.data.title,
-      bodyMd: parsed.data.bodyMd,
+      bodyHtml: parsed.data.bodyHtml,
       authorId: user.id,
       audienceKind: parsed.data.audienceKind,
       audiences: parsed.data.audiences,
@@ -120,6 +122,7 @@ export async function action({ request }: Route.ActionArgs) {
     const parsed = createSchema.safeParse({
       title: fd.get("title"),
       bodyMd: fd.get("bodyMd") ?? "",
+      bodyHtml: fd.get("bodyHtml") ?? "",
       audienceKind: fd.get("audienceKind"),
       audiences: parseAudienceArray(fd.get("audiences")),
       isPinned: fd.get("isPinned") === "1",
@@ -133,7 +136,7 @@ export async function action({ request }: Route.ActionArgs) {
     }
     const res = await updateAnnouncement(client, announcementId, {
       title: parsed.data.title,
-      bodyMd: parsed.data.bodyMd,
+      bodyHtml: parsed.data.bodyHtml,
       audienceKind: parsed.data.audienceKind,
       audiences: parsed.data.audiences,
       isPinned: parsed.data.isPinned,

@@ -390,6 +390,7 @@ export type Database = {
           announcement_id: string
           audience_kind: Database["public"]["Enums"]["announcement_audience_kind"]
           author_id: string
+          body_html: string | null
           body_md: string
           created_at: string
           deleted_at: string | null
@@ -402,6 +403,7 @@ export type Database = {
           announcement_id?: string
           audience_kind?: Database["public"]["Enums"]["announcement_audience_kind"]
           author_id: string
+          body_html?: string | null
           body_md?: string
           created_at?: string
           deleted_at?: string | null
@@ -414,6 +416,7 @@ export type Database = {
           announcement_id?: string
           audience_kind?: Database["public"]["Enums"]["announcement_audience_kind"]
           author_id?: string
+          body_html?: string | null
           body_md?: string
           created_at?: string
           deleted_at?: string | null
@@ -9272,6 +9275,7 @@ export type Database = {
       }
       popup_notices: {
         Row: {
+          body_html: string | null
           body_md: string
           created_at: string
           created_by: string | null
@@ -9287,6 +9291,7 @@ export type Database = {
           youtube_url: string | null
         }
         Insert: {
+          body_html?: string | null
           body_md?: string
           created_at?: string
           created_by?: string | null
@@ -9302,6 +9307,7 @@ export type Database = {
           youtube_url?: string | null
         }
         Update: {
+          body_html?: string | null
           body_md?: string
           created_at?: string
           created_by?: string | null

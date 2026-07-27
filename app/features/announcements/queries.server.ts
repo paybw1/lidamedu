@@ -22,12 +22,13 @@ export type {
 } from "./labels";
 
 const STAFF_COLUMNS =
-  "announcement_id, title, body_md, author_id, audience_kind, is_pinned, published_at, created_at, updated_at, profiles!author_id(name)";
+  "announcement_id, title, body_md, body_html, author_id, audience_kind, is_pinned, published_at, created_at, updated_at, profiles!author_id(name)";
 
 interface RawRow {
   announcement_id: string;
   title: string;
   body_md: string;
+  body_html: string | null;
   author_id: string;
   audience_kind: AnnouncementAudienceKind;
   is_pinned: boolean;
@@ -47,6 +48,7 @@ function toListItem(
     announcementId: r.announcement_id,
     title: r.title,
     bodyMd: r.body_md,
+    bodyHtml: r.body_html,
     authorId: r.author_id,
     authorName: r.profiles?.name ?? null,
     audienceKind: r.audience_kind,
@@ -291,7 +293,8 @@ export async function markAnnouncementRead(
 
 export interface CreateAnnouncementInput {
   title: string;
-  bodyMd: string;
+  bodyMd?: string;
+  bodyHtml?: string;
   authorId: string;
   audienceKind: AnnouncementAudienceKind;
   audiences: { audienceType: "cohort" | "user"; audienceId: string }[];
@@ -318,7 +321,8 @@ export async function createAnnouncement(
     .from("announcements")
     .insert({
       title: input.title,
-      body_md: input.bodyMd,
+      body_md: input.bodyMd ?? "",
+      body_html: input.bodyHtml,
       author_id: input.authorId,
       audience_kind: input.audienceKind,
       is_pinned: input.isPinned,
@@ -354,6 +358,7 @@ export async function createAnnouncement(
 export interface UpdateAnnouncementInput {
   title?: string;
   bodyMd?: string;
+  bodyHtml?: string;
   isPinned?: boolean;
   audienceKind?: AnnouncementAudienceKind;
   audiences?: { audienceType: "cohort" | "user"; audienceId: string }[];
@@ -368,6 +373,7 @@ export async function updateAnnouncement(
   const update: Record<string, unknown> = {};
   if (input.title !== undefined) update.title = input.title;
   if (input.bodyMd !== undefined) update.body_md = input.bodyMd;
+  if (input.bodyHtml !== undefined) update.body_html = input.bodyHtml;
   if (input.isPinned !== undefined) update.is_pinned = input.isPinned;
   if (input.audienceKind !== undefined) update.audience_kind = input.audienceKind;
   if (input.publish === true) update.published_at = new Date().toISOString();

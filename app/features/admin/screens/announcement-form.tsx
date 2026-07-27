@@ -20,6 +20,7 @@ import { useFetcher, useLocation, useNavigate } from "react-router";
 import { Button } from "~/core/components/ui/button";
 import { Input } from "~/core/components/ui/input";
 import { cn } from "~/core/lib/utils";
+import { HtmlEditor } from "~/features/lms/components/html-editor";
 import type {
   AnnouncementAudienceKind,
   AnnouncementListItem,
@@ -119,9 +120,15 @@ export function AnnouncementRow({
         <span className="line-clamp-1 max-w-[22rem] text-[13px] font-semibold">
           {item.title}
         </span>
-        {item.bodyMd ? (
+        {item.bodyHtml || item.bodyMd ? (
           <p className="text-muted-foreground line-clamp-1 max-w-[22rem] text-[11px]">
-            {item.bodyMd.slice(0, 100)}
+            {(item.bodyHtml
+              ? item.bodyHtml.replace(/<[^>]*>/g, " ")
+              : item.bodyMd
+            )
+              .replace(/\s+/g, " ")
+              .trim()
+              .slice(0, 100)}
           </p>
         ) : null}
       </TD>
@@ -239,7 +246,9 @@ export function AnnouncementForm({
     fetcher.data && "error" in fetcher.data ? fetcher.data.error : null;
 
   const [title, setTitle] = useState(existing?.title ?? "");
-  const [bodyMd, setBodyMd] = useState(existing?.bodyMd ?? "");
+  const [bodyHtml, setBodyHtml] = useState(
+    existing?.bodyHtml || existing?.bodyMd || "",
+  );
   const [audienceKind, setAudienceKind] = useState<AnnouncementAudienceKind>(
     existing?.audienceKind ?? "all",
   );
@@ -332,7 +341,7 @@ export function AnnouncementForm({
       fd.set("announcementId", existing.announcementId);
     }
     fd.set("title", title.trim());
-    fd.set("bodyMd", bodyMd);
+    fd.set("bodyHtml", bodyHtml);
     fd.set("audienceKind", audienceKind);
     fd.set("audiences", JSON.stringify(audiencesPayload));
     fd.set("isPinned", isPinned ? "1" : "0");
@@ -370,15 +379,13 @@ export function AnnouncementForm({
         />
       </Field>
 
-      <Field label="본문 (Markdown 지원)" htmlFor="ann-body">
-        <textarea
-          id="ann-body"
-          value={bodyMd}
-          onChange={(e) => setBodyMd(e.target.value)}
-          maxLength={20_000}
-          rows={6}
-          className="border-input bg-background focus:border-primary w-full rounded-md border px-3 py-2 text-sm outline-none"
-          placeholder="공지 내용을 입력하세요"
+      <Field label="본문" htmlFor="ann-body">
+        <HtmlEditor
+          name="bodyHtml"
+          defaultValue={bodyHtml}
+          onChange={setBodyHtml}
+          uploadUrl="/api/lms/editor-image"
+          minHeight={220}
         />
       </Field>
 

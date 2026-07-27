@@ -6,6 +6,7 @@ export interface AnnouncementListItem {
   announcementId: string;
   title: string;
   bodyMd: string;
+  bodyHtml: string | null;
   authorId: string;
   authorName: string | null;
   audienceKind: AnnouncementAudienceKind;
