@@ -90,6 +90,10 @@ export function BugReportWidget() {
             rows={5}
             maxLength={5000}
             disabled={submitting}
+            // ★입력 지연 방지 — Textarea 기본 field-sizing:content 는 글자마다 높이를
+            //   재계산해 무거운 화면(inbox 등)에서 매 키 입력마다 전체 리플로우를 유발한다.
+            //   고정 크기(field-sizing:fixed)로 덮고 세로 리사이즈만 허용.
+            className="[field-sizing:fixed] min-h-32 resize-y"
           />
           <DialogFooter>
             <Button
