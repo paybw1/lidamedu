@@ -2717,6 +2717,7 @@ export type Database = {
           official_text_md: string | null
           official_text_pdf_path: string | null
           official_text_unavailable: boolean
+          pending_primary_node_id: string | null
           primary_article_id: string | null
           primary_node_id: string | null
           reasoning_md: string | null
@@ -2756,6 +2757,7 @@ export type Database = {
           official_text_md?: string | null
           official_text_pdf_path?: string | null
           official_text_unavailable?: boolean
+          pending_primary_node_id?: string | null
           primary_article_id?: string | null
           primary_node_id?: string | null
           reasoning_md?: string | null
@@ -2795,6 +2797,7 @@ export type Database = {
           official_text_md?: string | null
           official_text_pdf_path?: string | null
           official_text_unavailable?: boolean
+          pending_primary_node_id?: string | null
           primary_article_id?: string | null
           primary_node_id?: string | null
           reasoning_md?: string | null
@@ -2809,6 +2812,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "cases_pending_primary_node_id_fkey"
+            columns: ["pending_primary_node_id"]
+            isOneToOne: false
+            referencedRelation: "systematic_nodes"
+            referencedColumns: ["node_id"]
+          },
           {
             foreignKeyName: "cases_primary_article_id_fkey"
             columns: ["primary_article_id"]

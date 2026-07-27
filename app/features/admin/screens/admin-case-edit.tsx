@@ -213,6 +213,18 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
     (n) =>
       n.caseOnly && n.parentId === null && n.displayLabel.includes("최신판례"),
   );
+  // 승인대기 = 최신판례 노드에 배치된 상태. 이때 ★/sub-node 지정은 예약
+  // (pending_primary_node_id)으로만 저장되고, 승인 시 실제 위치로 이동한다.
+  const inLatest =
+    kase != null &&
+    latestNode != null &&
+    kase.primary_node_id === latestNode.nodeId;
+  const pendingNode =
+    kase != null && inLatest && kase.pending_primary_node_id
+      ? (systematicNodes.find(
+          (n) => n.nodeId === kase.pending_primary_node_id,
+        ) ?? null)
+      : null;
   const subjectLawsValue = (kase?.subject_laws ?? []).join(",");
   // feat-3-213 — 교재 구조 본문이 있는 판례(상표 등)는 book_sections 가 표시 SSOT.
   // 판결요지·판시이유·비고 편집 카드는 숨기고, 값은 hidden 으로 보존(목록 제목·검색용 컬럼이
@@ -680,22 +692,33 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
             caseId={kase.case_id}
             initialImages={parseCaseImages(kase.images)}
           />
-          {latestNode && kase.primary_node_id === latestNode.nodeId ? (
+          {inLatest && latestNode ? (
             <LatestCaseApprovalCard
               caseId={kase.case_id}
               latestNodeLabel={
                 latestNode.caseDisplayLabel ?? latestNode.displayLabel
               }
+              pendingNodeLabel={
+                pendingNode
+                  ? (pendingNode.caseDisplayLabel ?? pendingNode.displayLabel)
+                  : null
+              }
               primaryArticleId={kase.primary_article_id ?? null}
               relatedArticles={relatedArticles}
             />
           ) : null}
+          {/* 승인대기 중엔 예약 노드(pending)를 넘겨 ★/sub-node 편집이 예약을
+              편집하게 한다 — 실제 이동은 승인 시에만. */}
           <RelatedArticlesEditor
             caseId={kase.case_id}
             subjectLaws={(kase.subject_laws ?? []) as LawSubjectSlug[]}
             relatedArticles={relatedArticles}
             primaryArticleId={kase.primary_article_id ?? null}
-            primaryNodeId={kase.primary_node_id ?? null}
+            primaryNodeId={
+              inLatest
+                ? (kase.pending_primary_node_id ?? null)
+                : (kase.primary_node_id ?? null)
+            }
             systematicNodes={systematicNodes}
           />
           {siblings && siblings.siblings.length > 1 ? (
@@ -721,17 +744,19 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
 /* ── LatestCaseApprovalCard — 최신판례 강제 배치 → 승인 이동 ──────────
    2026년 이후 선고 특허·상표·디자인 판례는 등록 시 DB 트리거(force_latest_case_placement)가
    primary_node_id 를 체계도 최상위 '최신판례'(case_only) 노드로 강제한다.
-   운영자가 여기서 승인하면 primary_node_id 를 해제(set_primary_placement,
-   nodeId 없음)해 메인 조문(★) 기준 관련조문 위치로 이동한다. 메인 조문 미지정
-   상태면 아래 관련 조문 카드에서 ★ 지정을 안내한다(★ 지정 자체가 이동을 수반). */
+   승인대기 중 ★ 메인 조문·sub-node 지정은 예약(pending_primary_node_id)으로만
+   저장되고 판례는 최신판례에 머문다 — 여기의 승인 버튼(approve_latest_case)을
+   눌러야 예약 노드(없으면 메인 조문 파생 위치)로 실제 이동한다. */
 function LatestCaseApprovalCard({
   caseId,
   latestNodeLabel,
+  pendingNodeLabel,
   primaryArticleId,
   relatedArticles,
 }: {
   caseId: string;
   latestNodeLabel: string;
+  pendingNodeLabel: string | null;
   primaryArticleId: string | null;
   relatedArticles: RelatedArticle[];
 }) {
@@ -741,6 +766,8 @@ function LatestCaseApprovalCard({
   const mainArticle = primaryArticleId
     ? (relatedArticles.find((a) => a.articleId === primaryArticleId) ?? null)
     : null;
+  const targetLabel =
+    pendingNodeLabel ?? (mainArticle ? mainArticle.displayLabel : null);
 
   const handledRef = useRef<unknown>(null);
   useEffect(() => {
@@ -749,7 +776,7 @@ function LatestCaseApprovalCard({
     if (!r || r === handledRef.current) return;
     handledRef.current = r;
     if (r.ok) {
-      toast.success("승인 완료 — 관련조문 메인 위치로 이동했습니다");
+      toast.success("승인 완료 — 지정한 위치로 이동했습니다");
       revalidator.revalidate();
     } else if (r.error) {
       toast.error(r.error);
@@ -757,12 +784,9 @@ function LatestCaseApprovalCard({
   }, [approveFetcher.state, approveFetcher.data, revalidator]);
 
   function approve() {
-    if (!primaryArticleId) return;
     const fd = new FormData();
-    fd.set("intent", "set_primary_placement");
+    fd.set("intent", "approve_latest_case");
     fd.set("caseId", caseId);
-    fd.set("articleId", primaryArticleId);
-    fd.set("nodeId", "");
     approveFetcher.submit(fd, { method: "post", action: "/api/admin/case" });
   }
 
@@ -774,18 +798,18 @@ function LatestCaseApprovalCard({
         </p>
         <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">
           최신 선고 판례는 승인 전까지 체계도{" "}
-          <strong>{latestNodeLabel}</strong> 노드에 강제 배치됩니다. 승인하면
-          메인 조문(★) 기준 관련조문 위치로 이동합니다.
+          <strong>{latestNodeLabel}</strong> 노드에 머뭅니다. 아래 관련 조문
+          카드에서 메인 조문(★)·체계도 위치를 미리 지정해 두어도 이동하지
+          않으며, 여기서 승인해야 그 위치로 이동합니다.
         </p>
       </CardHeader>
       <CardContent className="flex flex-wrap items-center gap-2">
-        {mainArticle ? (
+        {targetLabel ? (
           <>
             <span className="text-muted-foreground text-[11px]">
-              이동 위치: 메인 조문{" "}
-              <strong className="text-foreground">
-                {mainArticle.displayLabel}
-              </strong>
+              승인 시 이동 위치:{" "}
+              <strong className="text-foreground">{targetLabel}</strong>
+              {pendingNodeLabel === null ? " (메인 조문 기준)" : null}
             </span>
             <Button
               type="button"
@@ -794,13 +818,13 @@ function LatestCaseApprovalCard({
               disabled={isBusy}
               onClick={approve}
             >
-              {isBusy ? "이동 중…" : "승인 — 관련조문 위치로 이동"}
+              {isBusy ? "이동 중…" : "승인 — 지정 위치로 이동"}
             </Button>
           </>
         ) : (
           <span className="text-muted-foreground text-[11px]">
-            메인 조문(★)이 아직 지정되지 않았습니다. 아래 관련 조문 카드에서
-            메인(★)을 지정하면 그 위치로 이동합니다.
+            메인 조문(★)·체계도 위치가 아직 지정되지 않았습니다. 아래 관련
+            조문 카드에서 먼저 지정한 뒤 승인하세요.
           </span>
         )}
       </CardContent>

@@ -38,6 +38,23 @@ function parseStringArray(raw: FormDataEntryValue | null): string[] {
     .filter(Boolean);
 }
 
+// 과목별 체계도 최상위 case_only '최신판례' 노드 id 집합 — 최신판례 승인대기 판정용.
+// DB 트리거(force_latest_case_placement)와 같은 조건으로 조회한다.
+async function getLatestCaseNodeIds(
+  client: ReturnType<typeof makeServerClient>[0],
+  subjectLaws: string[] | null,
+): Promise<Set<string>> {
+  if (!subjectLaws || subjectLaws.length === 0) return new Set();
+  const { data } = await client
+    .from("systematic_nodes")
+    .select("node_id")
+    .in("law_code", subjectLaws)
+    .eq("case_only", true)
+    .is("parent_id", null)
+    .like("display_label", "%최신판례%");
+  return new Set((data ?? []).map((n) => n.node_id));
+}
+
 const courtEnum = z.enum([
   "supreme",
   "patent_court",
@@ -370,6 +387,8 @@ export async function action({ request }: Route.ActionArgs) {
   // ── 메인 조문 + 발명 sub-node placement 단일 결정 (feat-7-005 후속) ─
   // primary_article_id 가 set 되면 그 case 는 단일 위치에 표시됨.
   // primary_article_id 가 발명(제2조) 인 경우만 primary_node_id 도 함께 받음.
+  // ★최신판례 승인대기 중이면 직접 이동하지 않고 예약(pending_primary_node_id)만
+  //   갱신 — 승인(approve_latest_case) 시에만 실제 위치로 이동한다.
   if (intent === "set_primary_placement") {
     const caseId = String(fd.get("caseId") ?? "");
     if (!z.string().uuid().safeParse(caseId).success) {
@@ -385,9 +404,27 @@ export async function action({ request }: Route.ActionArgs) {
       nodeIdRaw && z.string().uuid().safeParse(nodeIdRaw).success
         ? nodeIdRaw
         : null;
+    const { data: cur, error: curErr } = await client
+      .from("cases")
+      .select("primary_node_id, subject_laws")
+      .eq("case_id", caseId)
+      .maybeSingle();
+    if (curErr) return data({ error: curErr.message }, { status: 400 });
+    if (!cur) return data({ error: "case 를 찾을 수 없음" }, { status: 404 });
+    const latestIds = await getLatestCaseNodeIds(client, cur.subject_laws);
+    const pendingMode =
+      cur.primary_node_id !== null && latestIds.has(cur.primary_node_id);
     const { error } = await client
       .from("cases")
-      .update({ primary_article_id: articleId, primary_node_id: nodeId })
+      .update(
+        pendingMode
+          ? { primary_article_id: articleId, pending_primary_node_id: nodeId }
+          : {
+              primary_article_id: articleId,
+              primary_node_id: nodeId,
+              pending_primary_node_id: null,
+            },
+      )
       .eq("case_id", caseId);
     if (error) return data({ error: error.message }, { status: 400 });
     void logAuditEvent({
@@ -396,7 +433,58 @@ export async function action({ request }: Route.ActionArgs) {
       action: "case.set_primary_placement",
       entityType: "case",
       entityId: caseId,
-      metadata: { articleId, nodeId },
+      metadata: { articleId, nodeId, pending: pendingMode },
+    });
+    return data({ ok: true, pending: pendingMode });
+  }
+
+  // ── 최신판례 승인 — 예약(pending) 노드 또는 메인 조문 위치로 실제 이동 ──
+  if (intent === "approve_latest_case") {
+    const caseId = String(fd.get("caseId") ?? "");
+    if (!z.string().uuid().safeParse(caseId).success) {
+      return data({ error: "Invalid caseId" }, { status: 400 });
+    }
+    const { data: cur, error: curErr } = await client
+      .from("cases")
+      .select(
+        "primary_node_id, primary_article_id, pending_primary_node_id, subject_laws, case_number",
+      )
+      .eq("case_id", caseId)
+      .maybeSingle();
+    if (curErr) return data({ error: curErr.message }, { status: 400 });
+    if (!cur) return data({ error: "case 를 찾을 수 없음" }, { status: 404 });
+    const latestIds = await getLatestCaseNodeIds(client, cur.subject_laws);
+    if (!(cur.primary_node_id && latestIds.has(cur.primary_node_id))) {
+      return data(
+        { error: "최신판례 승인대기 상태가 아닙니다" },
+        { status: 400 },
+      );
+    }
+    if (!cur.pending_primary_node_id && !cur.primary_article_id) {
+      return data(
+        { error: "메인 조문(★) 또는 체계도 위치를 먼저 지정하세요" },
+        { status: 400 },
+      );
+    }
+    const { error } = await client
+      .from("cases")
+      .update({
+        primary_node_id: cur.pending_primary_node_id,
+        pending_primary_node_id: null,
+      })
+      .eq("case_id", caseId);
+    if (error) return data({ error: error.message }, { status: 400 });
+    void logAuditEvent({
+      actorId: user.id,
+      actorRole: role,
+      action: "case.approve_latest_case",
+      entityType: "case",
+      entityId: caseId,
+      metadata: {
+        caseNumber: cur.case_number,
+        from: cur.primary_node_id,
+        to: cur.pending_primary_node_id ?? "article_derived",
+      },
     });
     return data({ ok: true });
   }

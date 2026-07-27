@@ -329,13 +329,17 @@ create index cases_law_api_serial_id_idx on cases (law_api_serial_id) where law_
 --   > legacy article_case_links. `getCasePlacementMaps()` 참조.
 
 -- 최신판례 강제 배치 트리거 (2026-07-27, scripts/sql/20260727_force_latest_case_placement.sql
---   + 20260727_latest_case_placement_all_ip.sql 로 3과목 확대):
+--   + 20260727_latest_case_placement_all_ip.sql 3과목 확대
+--   + 20260727_latest_case_pending_placement.sql 예약 배치):
 --   force_latest_case_placement() — 특허·상표·디자인 + decided_at ≥ 2026-01-01 인 판례를
 --   INSERT 시(및 decided_at 이 그 구간으로 변경된 UPDATE 시) 해당 과목 체계도 최상위
 --   case_only '최신판례' 노드로 primary_node_id 강제(디자인 노드는 이때 신설, design.b11).
---   운영자 승인(set_primary_placement 로 primary_node_id 변경)은 트리거 WHEN 조건에 안 걸려
---   관련조문 메인 위치로 이동 가능. 승인 UI: /admin/cases/edit/:caseId 의
---   "최신판례 배치 (승인 대기)" 카드.
+--   강제 전 명시/기존 노드는 pending_primary_node_id 로 보존.
+--   승인대기 중 ★메인 조문·sub-node 지정(set_primary_placement)은 pending_primary_node_id
+--   예약으로만 저장되고 판례는 최신판례에 머문다 — approve_latest_case intent(승인 카드
+--   버튼, /admin/cases/edit/:caseId)만이 primary_node_id 를 예약 노드(없으면 null=메인 조문
+--   파생 위치)로 실제 이동시킨다. 승인 write 는 decided_at 을 안 건드려 트리거 미발화.
+--   cases.pending_primary_node_id uuid — 승인대기 중 예약 노드(승인 시 반영 후 null).
 
 -- 관련 논문/기사
 create table public.case_papers (
