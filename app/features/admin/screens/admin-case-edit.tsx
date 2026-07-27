@@ -207,6 +207,12 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
     if (saveError) toast.error(`저장 실패: ${saveError}`);
   }, [saveError]);
   const isNew = kase === null;
+  // 체계도 최상위 '최신판례'(case_only) 노드 — 2026년 이후 선고 특허·상표·디자인
+  // 판례는 DB 트리거가 이 노드로 primary_node_id 를 강제 배치한다(승인 카드 노출 판정용).
+  const latestNode = systematicNodes.find(
+    (n) =>
+      n.caseOnly && n.parentId === null && n.displayLabel.includes("최신판례"),
+  );
   const subjectLawsValue = (kase?.subject_laws ?? []).join(",");
   // feat-3-213 — 교재 구조 본문이 있는 판례(상표 등)는 book_sections 가 표시 SSOT.
   // 판결요지·판시이유·비고 편집 카드는 숨기고, 값은 hidden 으로 보존(목록 제목·검색용 컬럼이
@@ -674,6 +680,16 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
             caseId={kase.case_id}
             initialImages={parseCaseImages(kase.images)}
           />
+          {latestNode && kase.primary_node_id === latestNode.nodeId ? (
+            <LatestCaseApprovalCard
+              caseId={kase.case_id}
+              latestNodeLabel={
+                latestNode.caseDisplayLabel ?? latestNode.displayLabel
+              }
+              primaryArticleId={kase.primary_article_id ?? null}
+              relatedArticles={relatedArticles}
+            />
+          ) : null}
           <RelatedArticlesEditor
             caseId={kase.case_id}
             subjectLaws={(kase.subject_laws ?? []) as LawSubjectSlug[]}
@@ -699,6 +715,96 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
         </>
       ) : null}
     </AdminShell>
+  );
+}
+
+/* ── LatestCaseApprovalCard — 최신판례 강제 배치 → 승인 이동 ──────────
+   2026년 이후 선고 특허·상표·디자인 판례는 등록 시 DB 트리거(force_latest_case_placement)가
+   primary_node_id 를 체계도 최상위 '최신판례'(case_only) 노드로 강제한다.
+   운영자가 여기서 승인하면 primary_node_id 를 해제(set_primary_placement,
+   nodeId 없음)해 메인 조문(★) 기준 관련조문 위치로 이동한다. 메인 조문 미지정
+   상태면 아래 관련 조문 카드에서 ★ 지정을 안내한다(★ 지정 자체가 이동을 수반). */
+function LatestCaseApprovalCard({
+  caseId,
+  latestNodeLabel,
+  primaryArticleId,
+  relatedArticles,
+}: {
+  caseId: string;
+  latestNodeLabel: string;
+  primaryArticleId: string | null;
+  relatedArticles: RelatedArticle[];
+}) {
+  const approveFetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  const revalidator = useRevalidator();
+  const isBusy = approveFetcher.state !== "idle";
+  const mainArticle = primaryArticleId
+    ? (relatedArticles.find((a) => a.articleId === primaryArticleId) ?? null)
+    : null;
+
+  const handledRef = useRef<unknown>(null);
+  useEffect(() => {
+    if (approveFetcher.state !== "idle") return;
+    const r = approveFetcher.data;
+    if (!r || r === handledRef.current) return;
+    handledRef.current = r;
+    if (r.ok) {
+      toast.success("승인 완료 — 관련조문 메인 위치로 이동했습니다");
+      revalidator.revalidate();
+    } else if (r.error) {
+      toast.error(r.error);
+    }
+  }, [approveFetcher.state, approveFetcher.data, revalidator]);
+
+  function approve() {
+    if (!primaryArticleId) return;
+    const fd = new FormData();
+    fd.set("intent", "set_primary_placement");
+    fd.set("caseId", caseId);
+    fd.set("articleId", primaryArticleId);
+    fd.set("nodeId", "");
+    approveFetcher.submit(fd, { method: "post", action: "/api/admin/case" });
+  }
+
+  return (
+    <Card className="mt-4 border-amber-400/60 bg-amber-50/60 dark:border-amber-500/30 dark:bg-amber-500/5">
+      <CardHeader>
+        <p className="text-xs font-semibold tracking-wide text-amber-700 uppercase dark:text-amber-400">
+          최신판례 배치 (승인 대기)
+        </p>
+        <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">
+          최신 선고 판례는 승인 전까지 체계도{" "}
+          <strong>{latestNodeLabel}</strong> 노드에 강제 배치됩니다. 승인하면
+          메인 조문(★) 기준 관련조문 위치로 이동합니다.
+        </p>
+      </CardHeader>
+      <CardContent className="flex flex-wrap items-center gap-2">
+        {mainArticle ? (
+          <>
+            <span className="text-muted-foreground text-[11px]">
+              이동 위치: 메인 조문{" "}
+              <strong className="text-foreground">
+                {mainArticle.displayLabel}
+              </strong>
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              className="ml-auto h-7 px-3 text-[11px]"
+              disabled={isBusy}
+              onClick={approve}
+            >
+              {isBusy ? "이동 중…" : "승인 — 관련조문 위치로 이동"}
+            </Button>
+          </>
+        ) : (
+          <span className="text-muted-foreground text-[11px]">
+            메인 조문(★)이 아직 지정되지 않았습니다. 아래 관련 조문 카드에서
+            메인(★)을 지정하면 그 위치로 이동합니다.
+          </span>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

@@ -6,6 +6,7 @@
 // 사용:
 //   node scripts/jagwa/assign-latest-cases.mjs            # dry-run, 2026
 //   node scripts/jagwa/assign-latest-cases.mjs --year=2026 --apply
+//   node scripts/jagwa/assign-latest-cases.mjs --subjects=patent --apply  # 과목 한정
 import "dotenv/config";
 import { writeFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
@@ -18,7 +19,10 @@ const sb = createClient(url, key);
 const yearArg = process.argv.find((a) => a.startsWith("--year="));
 const year = yearArg ? Number(yearArg.split("=")[1]) : 2026;
 const apply = process.argv.includes("--apply");
-const SUBJECTS = ["patent", "trademark", "design"];
+const subjectsArg = process.argv.find((a) => a.startsWith("--subjects="));
+const SUBJECTS = subjectsArg
+  ? subjectsArg.split("=")[1].split(",").filter(Boolean)
+  : ["patent", "trademark", "design"];
 
 async function latestNodeId(lawCode) {
   const { data, error } = await sb

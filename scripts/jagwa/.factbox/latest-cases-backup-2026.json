@@ -1,0 +1,38 @@
+[
+  {
+    "case_id": "5473355f-8936-41eb-9401-2c6e36e24d8b",
+    "case_number": "2024후10504",
+    "prev_primary_node_id": "c131aa28-0a74-4296-b1d8-c5561cab92ba",
+    "new_primary_node_id": "7e3457a2-3e74-4166-bf14-e3c47aeeb6fe"
+  },
+  {
+    "case_id": "adda6aee-52d4-4bfd-9c9a-896ae55181e1",
+    "case_number": "2024후11460",
+    "prev_primary_node_id": "c131aa28-0a74-4296-b1d8-c5561cab92ba",
+    "new_primary_node_id": "7e3457a2-3e74-4166-bf14-e3c47aeeb6fe"
+  },
+  {
+    "case_id": "40c23e52-f299-4d6a-bab6-76a53168aa3c",
+    "case_number": "2023허10910",
+    "prev_primary_node_id": "3ea23f43-c44c-40c6-b2f6-622d59a9fa64",
+    "new_primary_node_id": "7e3457a2-3e74-4166-bf14-e3c47aeeb6fe"
+  },
+  {
+    "case_id": "541c1e62-75e2-40ab-a8a3-258d54a954d4",
+    "case_number": "2024다311181",
+    "prev_primary_node_id": "88912149-5330-4a63-8e05-da35b9576ab1",
+    "new_primary_node_id": "7e3457a2-3e74-4166-bf14-e3c47aeeb6fe"
+  },
+  {
+    "case_id": "90436279-8b90-40d8-85e2-f1850974e4b2",
+    "case_number": "2022후10401",
+    "prev_primary_node_id": "f650dc6e-58dc-4b3f-aff8-c05c83787974",
+    "new_primary_node_id": "0b99d48b-e8b3-4087-b773-cc6c95933d5f"
+  },
+  {
+    "case_id": "1efca322-a40d-4c41-a3a0-5ceb5b13d921",
+    "case_number": "2022후10418",
+    "prev_primary_node_id": "62a26f7e-d78a-4fcc-9346-3117d121a000",
+    "new_primary_node_id": "0b99d48b-e8b3-4087-b773-cc6c95933d5f"
+  }
+]

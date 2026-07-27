@@ -286,12 +286,6 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     placementMaps.caseSetByNodeId,
   );
 
-  // 공식 전문 PDF — official_text_pdf_path 있을 때만 정적 redirect 라우트 URL 노출.
-  // 그 라우트가 매 클릭마다 fresh signed URL 발급(1h) + 302 redirect → TTL 만료 무관.
-  const officialPdfUrl = kase.officialTextPdfPath
-    ? `/api/cases/${kase.caseId}/official-text-pdf`
-    : null;
-
   return {
     subject: LAW_SUBJECTS[lawCode],
     axisCounts,
@@ -320,7 +314,6 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     pdfLocationsEnabled,
     caseBlankSets,
     siblings,
-    officialPdfUrl,
   };
 }
 
@@ -671,7 +664,6 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                   canEditCase={canEditCase}
                   canEditReferences={canEditReferences}
                   prevNext={prevNext}
-                  officialPdfUrl={loaderData.officialPdfUrl}
                   showAskAi={false}
                 />
               ) : memMode === "blanks" ? (

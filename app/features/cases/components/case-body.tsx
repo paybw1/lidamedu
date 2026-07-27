@@ -118,7 +118,6 @@ export function CaseBody({
   highlights,
   viewerIsStaff = false,
   prevNext = null,
-  officialPdfUrl = null,
   showAskAi = true,
 }: {
   kase: CaseDetail;
@@ -133,12 +132,18 @@ export function CaseBody({
   viewerIsStaff?: boolean;
   /** 형제 case ←/→ 이동. null 이면 헤더에서 prev/next 영역 미노출. */
   prevNext?: CasePrevNextData | null;
-  /** 공식 전문 PDF (signed URL, 1h). null 이면 버튼 미노출. */
-  officialPdfUrl?: string | null;
   /** "질문하기" 버튼 노출. 학습과목 뷰어는 우측 패널 Q&A 와 중복이라 false. 기본 true(학습정보 read-only 등). */
   showAskAi?: boolean;
 }) {
   const enableHighlights = highlights !== undefined;
+  // 전문 PDF 열람 통일 — 수동 업로드(full_text_pdf 공개 URL)와 공식 자동 조판
+  // (official_text_pdf_path → 매 클릭 fresh signed URL 발급 302 라우트) 어느 쪽이든
+  // 헤더 "전문 PDF" 버튼(새 탭) 단일 진입점으로 연다. 둘 다 있으면 수동 우선.
+  const fullPdfUrl =
+    kase.fullTextPdf ??
+    (kase.officialTextPdfPath
+      ? `/api/cases/${kase.caseId}/official-text-pdf`
+      : null);
   // staff "수정" 버튼 — 현재 경로(학생 판례 뷰어 / 학습정보 뷰어 등)를 returnTo 로 전달해
   // 변경 저장 후 같은 페이지로 돌아오게 한다. safeReturnTo (api/admin/case.tsx) 가 화이트리스트.
   const location = useLocation();
@@ -264,15 +269,15 @@ export function CaseBody({
             />
           ) : null}
 
-          {/* 공식 전문 PDF — 국가법령정보 OPEN API 자동 생성. 모든 사용자 노출. */}
-          {officialPdfUrl ? (
+          {/* 전문 PDF — 수동 업로드/공식 자동 생성 공통(단일 URL). 모든 사용자 노출. */}
+          {fullPdfUrl ? (
             <Button
               asChild
               variant="outline"
               size="sm"
               className="h-9 gap-1 text-xs sm:h-7"
             >
-              <a href={officialPdfUrl} target="_blank" rel="noopener noreferrer">
+              <a href={fullPdfUrl} target="_blank" rel="noopener noreferrer">
                 <FileTextIcon className="size-3" /> 전문 PDF
               </a>
             </Button>
@@ -424,34 +429,6 @@ export function CaseBody({
               <Prose text={kase.reasoningMd} />
             </MaybeHighlight>
             <CaseImagesGrid images={imagesByPosition.reasoning} />
-          </BodySection>
-        ) : null}
-
-        {kase.fullTextPdf ? (
-          <BodySection title="판결전문 PDF">
-            <div className="space-y-3">
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-full"
-                asChild
-              >
-                <a href={kase.fullTextPdf} target="_blank" rel="noreferrer">
-                  <FileTextIcon className="size-3.5" /> 새 탭에서 열기
-                </a>
-              </Button>
-              {/* PDF placeholder 영역 — 점선 박스 */}
-              <div className="border-border bg-muted/40 flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-6 py-10 text-center">
-                <FileTextIcon className="text-muted-foreground/50 size-6" />
-                <p className="text-muted-foreground text-sm">판결전문 PDF</p>
-              </div>
-              <iframe
-                title="판결전문 PDF"
-                src={kase.fullTextPdf}
-                className="border-border h-[80vh] w-full rounded-xl border"
-                loading="lazy"
-              />
-            </div>
           </BodySection>
         ) : null}
 

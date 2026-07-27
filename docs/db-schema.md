@@ -321,6 +321,22 @@ create index cases_search_tsv on cases using gin (search_tsv);
 create index cases_subject_laws on cases using gin (subject_laws);
 create index cases_law_api_serial_id_idx on cases (law_api_serial_id) where law_api_serial_id is not null;
 
+-- 체계도 배치 컬럼 (후속 추가 — 위 DDL 스냅샷에는 미포함):
+--   primary_node_id    uuid references systematic_nodes(node_id)  -- 노드 직접 배치 (최우선)
+--   primary_article_id uuid references articles(article_id)       -- 메인 조문(★) 기반 배치
+--   source_seq         int                                        -- 같은 placement 안 노출 순번
+-- 배치 우선순위: primary_node_id > primary_article_id(→article_systematic_links 파생)
+--   > legacy article_case_links. `getCasePlacementMaps()` 참조.
+
+-- 최신판례 강제 배치 트리거 (2026-07-27, scripts/sql/20260727_force_latest_case_placement.sql
+--   + 20260727_latest_case_placement_all_ip.sql 로 3과목 확대):
+--   force_latest_case_placement() — 특허·상표·디자인 + decided_at ≥ 2026-01-01 인 판례를
+--   INSERT 시(및 decided_at 이 그 구간으로 변경된 UPDATE 시) 해당 과목 체계도 최상위
+--   case_only '최신판례' 노드로 primary_node_id 강제(디자인 노드는 이때 신설, design.b11).
+--   운영자 승인(set_primary_placement 로 primary_node_id 변경)은 트리거 WHEN 조건에 안 걸려
+--   관련조문 메인 위치로 이동 가능. 승인 UI: /admin/cases/edit/:caseId 의
+--   "최신판례 배치 (승인 대기)" 카드.
+
 -- 관련 논문/기사
 create table public.case_papers (
   case_id      uuid references cases(case_id) on delete cascade,
