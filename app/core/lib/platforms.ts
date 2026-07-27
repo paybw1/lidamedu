@@ -82,6 +82,18 @@ export const LECTURE_MYPAGE_LINKS: ReadonlyArray<{ label: string; to: string }> 
     { label: "포인트 관리", to: "/lecture/points" },
   ];
 
+// 커뮤니티 하위 — 학습 플랫폼과 공유하는 게시판(자유·스터디·합격수기). 강의 플랫폼 상단바에서도
+//   같은 커뮤니티로 진입한다(별도 게시판 신설 아님 = 단일 소스). 커뮤니티 화면은 인증 영역
+//   (navigation.layout)에서 렌더되므로, 진입 시 학습 플랫폼 컨텍스트로 이동한다(공유 공간).
+export const LECTURE_COMMUNITY_LINKS: ReadonlyArray<{
+  label: string;
+  to: string;
+}> = [
+  { label: "자유게시판", to: "/community/free" },
+  { label: "스터디 모집", to: "/community/study" },
+  { label: "합격 수기", to: "/community/review" },
+];
+
 export const LECTURE_NAV_LINKS: ReadonlyArray<LectureNavItem> = [
   {
     label: "리담안내",
@@ -89,6 +101,10 @@ export const LECTURE_NAV_LINKS: ReadonlyArray<LectureNavItem> = [
   },
   { label: "수강신청", to: "/lecture/catalog" },
   { label: "도서구입", to: "/lecture/books" },
+  {
+    label: "커뮤니티",
+    children: LECTURE_COMMUNITY_LINKS,
+  },
   { label: "고객센터", to: "/lecture/support" },
   {
     label: "마이페이지",
