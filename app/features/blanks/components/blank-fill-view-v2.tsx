@@ -397,12 +397,10 @@ export function BlankFillViewV2({
   );
   // 해금: 장 게이트가 있으면 장 단위(장 전체 통과), 없으면 세트 단위 폴백.
   const unlocked = chapterGate?.unlocked ?? tierUnlockState(completed);
-  const [currentTier, setCurrentTier] = useState<BlankTier>(() => {
-    const c = new Set(completedTiers ?? []);
-    const u = chapterGate?.unlocked ?? tierUnlockState(c);
-    for (const t of BLANK_TIERS) if (u[t] && !c.has(t)) return t;
-    return 3;
-  });
+  // ★기본은 항상 가장 낮은 단계(하) — 하는 언제나 해금. 상위 단계는 사용자가 직접 선택.
+  //   (누적 완료 시 '상'이 기본으로 잡혀 시작하던 문제 + 상은 최상위라 완료해도 다음
+  //    난이도 카운트가 안 오르던 문제를 함께 해소.)
+  const [currentTier, setCurrentTier] = useState<BlankTier>(1);
   const [justPassed, setJustPassed] = useState(false);
   const submittedTierRef = useRef<Set<BlankTier>>(new Set());
   // ★상(tier 3)은 단어가 아니라 "구간" 빈칸 — 단어 빈칸 위치에서 자동 도출(10어절 캡).
@@ -452,6 +450,9 @@ export function BlankFillViewV2({
     null,
   );
   const PENDING_MOVE_MAX_MS = 1200;
+  // ★iPad(크롬/사파리)에서 하드웨어 키보드 Enter/Tab 한 번이 keydown 을 두 번 흘려 "두 칸씩"
+  //   이동하던 문제 방어 — 직전 이동 시각을 기억해 근접(70ms 내) 중복 keydown 은 무시한다.
+  const lastNavAtRef = useRef(0);
 
   const lines = useMemo(
     () => buildLines(body, effectiveBlanks, activeIdxs),
@@ -1414,6 +1415,14 @@ export function BlankFillViewV2({
       return;
     }
     if (e.key !== "Enter" && e.key !== "Tab") return;
+    // ★이중 이동 방어(iPad) — 한 번의 키 입력이 keydown 을 두 번 흘리면 근접 중복을 무시.
+    //   (사람의 개별 탭은 70ms 보다 훨씬 느리므로 정상 이동은 영향 없음.)
+    const nowNav = Date.now();
+    if (nowNav - lastNavAtRef.current < 70) {
+      e.preventDefault();
+      return;
+    }
+    lastNavAtRef.current = nowNav;
     const cur = slotFromSelection();
     // ★문서 전체 빈칸을 읽기 순서로 — 한 조문의 마지막 칸에서 Tab/Enter 면 다음 조문
     //   첫 빈칸으로 넘어간다(장 뷰어 다중 조문). 단일 조문이면 자기 빈칸만 나온다.

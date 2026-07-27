@@ -1,8 +1,7 @@
 // 가배포 테스터용 플로팅 오류 신고 위젯. 로그인 사용자에게만 노출(레이아웃에서 제어).
 // 현재 URL + userAgent 자동 첨부 → /api/bug-report.
 import { BugIcon } from "lucide-react";
-import { useEffect, useState } from "react";
-import { useFetcher } from "react-router";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "~/core/components/ui/button";
@@ -19,32 +18,40 @@ import { Textarea } from "~/core/components/ui/textarea";
 export function BugReportWidget() {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
-  const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
-  const submitting = fetcher.state !== "idle";
+  const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (fetcher.state !== "idle" || !fetcher.data) return;
-    if (fetcher.data.ok) {
-      toast.success("오류 신고가 접수됐습니다. 감사합니다!");
-      setMessage("");
-      setOpen(false);
-    } else if (fetcher.data.error) {
-      toast.error(`신고 전송 실패: ${fetcher.data.error}`);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetcher.state, fetcher.data]);
-
-  function submit() {
+  // ★순수 fetch(fire-and-forget) 로 보낸다 — RR fetcher.submit 은 현재 페이지 로더 재검증을
+  //   유발해, 무거운 화면(민법 조문 빈칸 뷰어 등)에서 신고 시 화면이 매우 느려진다. 신고는
+  //   페이지 데이터와 무관하므로 재검증 없이 보낸다.
+  async function submit() {
     if (!message.trim()) {
       toast.error("오류 내용을 입력해주세요.");
       return;
     }
-    const fd = new FormData();
-    fd.set("intent", "create");
-    fd.set("url", window.location.href);
-    fd.set("message", message.trim());
-    fd.set("userAgent", navigator.userAgent);
-    fetcher.submit(fd, { method: "post", action: "/api/bug-report" });
+    setSubmitting(true);
+    try {
+      const fd = new FormData();
+      fd.set("intent", "create");
+      fd.set("url", window.location.href);
+      fd.set("message", message.trim());
+      fd.set("userAgent", navigator.userAgent);
+      const res = await fetch("/api/bug-report", { method: "POST", body: fd });
+      const j = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+      };
+      if (res.ok && j.ok) {
+        toast.success("오류 신고가 접수됐습니다. 감사합니다!");
+        setMessage("");
+        setOpen(false);
+      } else {
+        toast.error(`신고 전송 실패: ${j.error ?? res.status}`);
+      }
+    } catch {
+      toast.error("신고 전송에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
