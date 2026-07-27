@@ -494,8 +494,9 @@ export function NavigationBar({
               md~lg 폭에서는 숨겨 로고만 유지. */}
         </Link>
 
-        {/* 플랫폼 스위처 — 학습 ↔ 강의. 강의 플랫폼 오픈 전까지 staff 에게만 노출(IA 검증). */}
-        {isStaff ? <PlatformSwitch className="shrink-0" /> : null}
+        {/* 플랫폼 스위처 — 학습 ↔ 강의. 학생에게도 노출하되, 학생의 '강의'는 외부 운영
+            사이트(lidamedu.com)로 연결(개발 중 내부 플랫폼 대신). staff 는 내부 /lecture. */}
+        <PlatformSwitch className="shrink-0" isStaff={isStaff} />
 
         {/* 데스크톱 네비게이션 — 로고 바로 오른쪽, '운영자'까지 왼쪽 정렬 */}
         <div

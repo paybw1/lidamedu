@@ -82,7 +82,7 @@ export default function LectureLayout({ loaderData }: Route.ComponentProps) {
               className="h-7 w-auto max-w-none dark:[filter:invert(1)_hue-rotate(180deg)]"
             />
           </Link>
-          <PlatformSwitch />
+          <PlatformSwitch isStaff={isStaff} />
 
           {/* 강의 플랫폼 네비 — 데스크톱(마이페이지 드롭다운) */}
           <LectureNav isStaff={isStaff} />

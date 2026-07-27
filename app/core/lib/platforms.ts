@@ -103,6 +103,8 @@ export const LECTURE_COMMUNITY_LINKS: ReadonlyArray<{
   { label: "자유게시판", to: "/community/free" },
   { label: "스터디 모집", to: "/community/study" },
   { label: "합격 수기", to: "/community/review" },
+  // 강사 모집 — 강의 플랫폼 커뮤니티에서만 노출(학습 플랫폼 커뮤니티에는 없음).
+  { label: "강사 모집", to: "/about/instructors/recruit" },
 ];
 
 export const LECTURE_NAV_LINKS: ReadonlyArray<LectureNavItem> = [

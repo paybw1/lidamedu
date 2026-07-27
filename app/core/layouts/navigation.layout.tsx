@@ -175,29 +175,31 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
           사라져 콘텐츠 영역 확보). md↑ 는 상단 바/사이드바가 로고 제공하므로 숨김. */}
       <Suspense fallback={null}>
         <Await resolve={userPromise}>
-          {({ data: { user } }) =>
-            user ? (
-              <div className="border-border bg-background flex h-11 items-center gap-3 border-b px-4 md:hidden">
-                <Link
-                  to="/"
-                  aria-label="리담변리사학원 홈 — 학습 플랫폼"
-                  className="flex shrink-0 items-center"
-                >
-                  <img
-                    src="/lidam-logo.png"
-                    alt="리담변리사학원"
-                    className="h-6 w-auto max-w-none dark:[filter:invert(1)_hue-rotate(180deg)]"
-                  />
-                </Link>
-                {/* 강의 플랫폼 오픈 전까지 staff 에게만 노출(IA 검증). */}
+          {({ data: { user } }) => (
+            <div className="border-border bg-background flex h-11 items-center gap-3 border-b px-4 md:hidden">
+              <Link
+                to="/"
+                aria-label="리담변리사학원 홈 — 학습 플랫폼"
+                className="flex shrink-0 items-center"
+              >
+                <img
+                  src="/lidam-logo.png"
+                  alt="리담변리사학원"
+                  className="h-6 w-auto max-w-none dark:[filter:invert(1)_hue-rotate(180deg)]"
+                />
+              </Link>
+              {/* 비로그인·학생 모두 노출 — '강의'는 외부 운영 사이트 링크(개발 중 내부 대신). */}
+              {user ? (
                 <Suspense fallback={null}>
                   <Await resolve={inboxPromise}>
-                    {(inbox) => (inbox.isStaff ? <PlatformSwitch /> : null)}
+                    {(inbox) => <PlatformSwitch isStaff={inbox.isStaff} />}
                   </Await>
                 </Suspense>
-              </div>
-            ) : null
-          }
+              ) : (
+                <PlatformSwitch isStaff={false} />
+              )}
+            </div>
+          )}
         </Await>
       </Suspense>
       <div className={cn("flex w-full flex-1", isSidebar && "md:flex-row")}>
