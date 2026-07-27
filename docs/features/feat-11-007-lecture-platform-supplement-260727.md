@@ -50,8 +50,21 @@
 - **#5 삭제 조건**: 시리즈/에디션 삭제 액션 신설 — **enrollments 존재 시 차단**, 경고·재확인, **원장(admin) 전용 게이트**. (soft-delete/archived status 활용)
 - DB 변경 없음(컬럼 이미 존재).
 
-### Phase 2 — 콜러스 동기화 키 (#4) *(독립·주의)*
-- 테스트 영상으로 재생 키 검증 → `kollus-content-api.server.ts:78` 우선순위 반전(media_content_key 우선) + 주석 정정 → **백필 마이그레이션**(video_contents.content_key 및 파생 lesson_videos.drm_video_id) → 재생·동기화 재검증. (결정 2)
+### Phase 2 — 콜러스 동기화 키 (#4) *(★확인 대기 — 라이브 API 검증 결과)*
+- **2026-07-27 라이브 API 실측**: 동기화 엔드포인트 `GET /0/media/library/media_content` 응답에는
+  **`upload_file_key` 만 있고 `media_content_key` 필드가 존재하지 않는다.** 전체 필드 = `id, kind,
+  title, upload_file_key, duration, category_name, category_key, poster_url, snapshot_url,
+  original_file_name, transcoding_stage(_name), transcoding_files, channels, status, …`.
+  → 코드의 `it.media_content_key` 폴백은 항상 undefined. 이 API 만으로는 "미디어 콘텐츠키"를
+  가져올 방법이 없다.
+- **따라서 착수 전 확정 필요(둘 중 하나)**:
+  1. **미디어 콘텐츠키의 출처**: 콜러스 어느 화면/다른 API 필드가 "미디어 콘텐츠키"인가?
+     (후보: 위 응답의 `id`(정수) 또는 `category_key`, 혹은 별도 "미디어 콘텐츠" 리스트 API.
+     현재 라이브러리 API 의 `upload_file_key` 와 별개 식별자.)
+  2. **또는 현행 재생 실검증**: 현재 `upload_file_key` 로 만든 웹토큰이 실제로 재생되는가?
+     재생되면 요청의 "키 교체"는 불필요(현행이 정답). 재생 안 되는 케이스가 있으면 그 키를 확보.
+- 확정 후: 파서 키 소스 교체 + **백필 마이그레이션**(video_contents.content_key 및 파생
+  lesson_videos.drm_video_id) + 재생·동기화 재검증. 확정 전에는 재생을 깨뜨릴 수 있어 **보류**.
 
 ### Phase 3 — 교재 연결·결제 UX (#14·17)
 - **#14 모델 통합**: `plan_books` 에 `book_role`(main/sub) 추가·`requirement`·`sort_order` UI 노출, admin-plans "연결 교재"를 주/부·필수/선택·순서 편집 그리드로. `plan_book_links` 데이터 이관 후 폐지. (결정 6)
