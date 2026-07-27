@@ -37,6 +37,17 @@ export function getActivePlatform(pathname: string): PlatformId {
   ) {
     return "lecture";
   }
+  // 커뮤니티 영역(자유게시판·스터디·합격수기 + 공지·이용가이드)도 강의 플랫폼 상단바
+  // 컨텍스트에서 렌더(lecture.layout 아래로 이관) — 스위처가 '강의'로 표시되도록 판별.
+  if (
+    pathname === "/community" ||
+    pathname.startsWith("/community/") ||
+    pathname === "/announcements" ||
+    pathname === "/guide" ||
+    pathname.startsWith("/guide/")
+  ) {
+    return "lecture";
+  }
   return "study";
 }
 
