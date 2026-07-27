@@ -458,6 +458,12 @@ export function BlankFillViewV2({
   //   직후 짧은 창(TRAILING_IME_NAV_MS) 안에 오는 '비조합' Enter/Tab 은 무시한다.
   const composingNavAtRef = useRef(0);
   const TRAILING_IME_NAV_MS = 500;
+  // ★"입력 없이 연속 이동" 방어 — iPad 에서 Enter 한 번이 keydown 을 두 번(수백 ms 간격)
+  //   흘려 빈 칸을 두 칸 건너뛰던 문제(190조 등). 직전 이동 이후 사용자 입력(onInput)이 전혀
+  //   없었는데 짧은 창(NAV_NO_INPUT_DEDUPE_MS) 안에 또 이동 신호가 오면 스퓨리어스로 무시한다.
+  //   타이핑 후 Enter 는 입력이 있어 통과, 의도적 '빈 칸 건너뛰기'는 창 밖(느린 두 번째)이면 정상.
+  const lastInputAtRef = useRef(0);
+  const NAV_NO_INPUT_DEDUPE_MS = 450;
 
   const lines = useMemo(
     () => buildLines(body, effectiveBlanks, activeIdxs),
@@ -1245,6 +1251,8 @@ export function BlankFillViewV2({
     const ne = e.nativeEvent as InputEvent;
     const composing = ne.isComposing === true;
     const isDelete = (ne.inputType || "").toLowerCase().startsWith("delete");
+    // ★실제 입력 발생 시각 — "입력 없이 연속 이동"(스퓨리어스 Enter) 판별용.
+    lastInputAtRef.current = Date.now();
     pushDbg(
       "input",
       `${(ne.inputType || "").toLowerCase()} comp=${composing} ${slotIdxOf(slot)} v="${readSlot(slot)}"`,
@@ -1424,6 +1432,15 @@ export function BlankFillViewV2({
     //   (사람의 개별 탭은 70ms 보다 훨씬 느리므로 정상 이동은 영향 없음.)
     const nowNav = Date.now();
     if (nowNav - lastNavAtRef.current < 70) {
+      e.preventDefault();
+      return;
+    }
+    // ★"입력 없이 연속 이동" 방어 — 직전 이동 이후 사용자 입력이 전혀 없었는데 짧은 창 안에
+    //   또 이동 신호가 오면(=한 번의 Enter 가 keydown 을 두 번 흘린 스퓨리어스) 무시.
+    if (
+      nowNav - lastNavAtRef.current < NAV_NO_INPUT_DEDUPE_MS &&
+      lastInputAtRef.current < lastNavAtRef.current
+    ) {
       e.preventDefault();
       return;
     }
