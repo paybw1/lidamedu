@@ -4501,6 +4501,7 @@ export type Database = {
       course_series: {
         Row: {
           created_at: string
+          deleted_at: string | null
           instructor_id: string | null
           series_id: string
           subject_code: string
@@ -4509,6 +4510,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           instructor_id?: string | null
           series_id?: string
           subject_code: string
@@ -4517,6 +4519,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           instructor_id?: string | null
           series_id?: string
           subject_code?: string

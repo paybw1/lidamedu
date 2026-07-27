@@ -14,7 +14,7 @@ import {
   UploadIcon,
   XIcon,
 } from "lucide-react";
-import { Link, data, useFetcher } from "react-router";
+import { Link, data, redirect, useFetcher } from "react-router";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -152,10 +152,12 @@ const saveBasicSchema = z.object({
   categoryId: z.string().uuid().nullable(),
   adminMemo: z.string().trim().max(2000).nullable(),
   isVisible: z.boolean(),
+  editionLabel: z.string().trim().min(1).max(100),
+  editionYear: z.coerce.number().int().min(2000).max(2100),
 });
 
 export async function action({ request, params }: Route.ActionArgs) {
-  const { client, user } = await requireStaff(request);
+  const { client, user, role } = await requireStaff(request);
   const courseId = params.courseId!;
   const fd = await request.formData();
   const intent = fd.get("intent");
@@ -501,10 +503,13 @@ export async function action({ request, params }: Route.ActionArgs) {
       categoryId: emptyNull(fd.get("categoryId")),
       adminMemo: emptyNull(fd.get("adminMemo")),
       isVisible: fd.get("isVisible") === "on",
+      editionLabel: fd.get("editionLabel"),
+      editionYear: fd.get("editionYear"),
     });
     if (!parsed.success)
-      return data({ error: "입력을 확인해 주세요." }, { status: 400 });
+      return data({ error: "입력을 확인해 주세요. (에디션명·연도 확인)" }, { status: 400 });
     const p = parsed.data;
+    // ★에디션명(edition_label)·연도 수정 — 연결(회차·콘텐츠)은 FK(course_id) 기준이라 보존.
     const { error } = await client
       .from("courses")
       .update({
@@ -512,6 +517,8 @@ export async function action({ request, params }: Route.ActionArgs) {
         category_id: p.categoryId,
         admin_memo: p.adminMemo,
         is_visible: p.isVisible,
+        edition_label: p.editionLabel,
+        edition_year: p.editionYear,
       })
       .eq("course_id", courseId);
     if (error) return data({ error: error.message }, { status: 400 });
@@ -519,9 +526,106 @@ export async function action({ request, params }: Route.ActionArgs) {
       courseId,
       actorId: user.id,
       action: "update_basic",
-      summary: `기본정보 수정 · 노출 ${p.isVisible ? "ON" : "OFF"}`,
+      summary: `기본정보 수정 · ${p.editionLabel}(${p.editionYear}) · 노출 ${p.isVisible ? "ON" : "OFF"}`,
     });
     return data({ ok: true as const });
+  }
+
+  if (intent === "rename_series") {
+    // ★시리즈명 수정 — 이 에디션이 속한 시리즈의 제목 변경(모든 에디션 공통).
+    const title = String(fd.get("seriesTitle") ?? "").trim();
+    if (!title || title.length > 200)
+      return data({ error: "시리즈명을 확인해 주세요." }, { status: 400 });
+    const { data: cr } = await client
+      .from("courses")
+      .select("series_id")
+      .eq("course_id", courseId)
+      .maybeSingle();
+    if (!cr?.series_id)
+      return data({ error: "시리즈를 찾을 수 없습니다." }, { status: 404 });
+    const { error } = await client
+      .from("course_series")
+      .update({ title })
+      .eq("series_id", cr.series_id);
+    if (error) return data({ error: error.message }, { status: 400 });
+    await logCourseAudit(client, {
+      courseId,
+      actorId: user.id,
+      action: "rename_series",
+      summary: `시리즈명 수정 → ${title}`,
+    });
+    return data({ ok: true as const });
+  }
+
+  if (intent === "edit_lesson") {
+    // ★회차 번호·제목 수정 — 콘텐츠 연결(lesson_videos.lesson_id)·순서 보존.
+    const lessonId = String(fd.get("lessonId") ?? "");
+    const parsed = addLessonSchema.safeParse({
+      lessonNo: fd.get("lessonNo"),
+      title: fd.get("title"),
+    });
+    if (!lessonId || !parsed.success)
+      return data({ error: "회차 번호·제목을 확인해 주세요." }, { status: 400 });
+    const { error } = await client
+      .from("course_lessons")
+      .update({ lesson_no: parsed.data.lessonNo, title: parsed.data.title })
+      .eq("lesson_id", lessonId)
+      .eq("course_id", courseId);
+    if (error)
+      return data(
+        { error: error.code === "23505" ? "이미 있는 회차 번호입니다." : error.message },
+        { status: 400 },
+      );
+    return data({ ok: true as const });
+  }
+
+  if (intent === "delete_lesson") {
+    // ★회차 삭제(soft) — 연결 영상·기록 보존(deleted_at). 목록에서만 제외.
+    const lessonId = String(fd.get("lessonId") ?? "");
+    if (!lessonId) return data({ error: "잘못된 요청" }, { status: 400 });
+    const { error } = await client
+      .from("course_lessons")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("lesson_id", lessonId)
+      .eq("course_id", courseId);
+    if (error) return data({ error: error.message }, { status: 400 });
+    await logCourseAudit(client, {
+      courseId,
+      actorId: user.id,
+      action: "delete_lesson",
+      summary: "회차 삭제",
+    });
+    return data({ ok: true as const });
+  }
+
+  if (intent === "delete_edition") {
+    // ★에디션 삭제 — 수강생(enrollments) 존재 시 차단 + 원장(admin) 전용 + soft-delete.
+    if (role !== "admin")
+      return data(
+        { error: "에디션 삭제는 최고관리자(원장)만 할 수 있습니다." },
+        { status: 403 },
+      );
+    const { count } = await adminClient
+      .from("enrollments")
+      .select("enrollment_id", { count: "exact", head: true })
+      .eq("course_id", courseId);
+    if ((count ?? 0) > 0)
+      return data(
+        { error: `수강생이 ${count}명 있어 삭제할 수 없습니다. 수강생이 없는 에디션만 삭제 가능합니다.` },
+        { status: 400 },
+      );
+    const { error } = await client
+      .from("courses")
+      .update({ deleted_at: new Date().toISOString(), is_visible: false })
+      .eq("course_id", courseId);
+    if (error) return data({ error: error.message }, { status: 400 });
+    await logCourseAudit(client, {
+      courseId,
+      actorId: user.id,
+      action: "delete_edition",
+      summary: "에디션 삭제(수강생 0)",
+    });
+    return redirect("/admin/lms/courses");
   }
 
   if (intent === "add_instructor") {
@@ -645,6 +749,7 @@ export default function AdminLmsCourseDetail({ loaderData }: Route.ComponentProp
           course={course}
           categories={categories}
           allInstructors={allInstructors}
+          role={role}
         />
       ) : null}
 
@@ -689,10 +794,12 @@ function BasicInfoTab({
   course,
   categories,
   allInstructors,
+  role,
 }: {
   course: CourseDetail;
   categories: CourseCategoryRow[];
   allInstructors: Array<{ profileId: string; name: string }>;
+  role: string;
 }) {
   const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
   useEffect(() => {
@@ -700,6 +807,28 @@ function BasicInfoTab({
     if (fetcher.data.error) toast.error(fetcher.data.error);
     else if (fetcher.data.ok) toast.success("기본정보를 저장했습니다.");
   }, [fetcher.state, fetcher.data]);
+  // 시리즈명 수정 · 에디션 삭제 — 저장 폼과 fetcher 분리(토스트 메시지 구분).
+  const seriesFetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  useEffect(() => {
+    if (seriesFetcher.state !== "idle" || !seriesFetcher.data) return;
+    if (seriesFetcher.data.error) toast.error(seriesFetcher.data.error);
+    else if (seriesFetcher.data.ok) toast.success("시리즈명을 저장했습니다.");
+  }, [seriesFetcher.state, seriesFetcher.data]);
+  const delFetcher = useFetcher<{ error?: string }>();
+  useEffect(() => {
+    if (delFetcher.data?.error) toast.error(delFetcher.data.error);
+  }, [delFetcher.data]);
+  const deleteEdition = () => {
+    if (
+      !window.confirm(
+        `"${course.seriesTitle} — ${course.editionLabel}" 에디션을 삭제할까요?\n수강생이 있으면 삭제되지 않습니다. 이 작업은 되돌리기 어렵습니다.`,
+      )
+    )
+      return;
+    const fd = new FormData();
+    fd.set("intent", "delete_edition");
+    delFetcher.submit(fd, { method: "post" });
+  };
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
@@ -709,6 +838,30 @@ function BasicInfoTab({
       >
         <input type="hidden" name="intent" value="save_basic" />
         <h3 className="text-sm font-bold">강의 기본정보</h3>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-muted-foreground text-[11px] font-semibold">에디션명</span>
+            <input
+              name="editionLabel"
+              required
+              maxLength={100}
+              defaultValue={course.editionLabel}
+              className="border-input bg-background h-9 rounded-lg border px-2 text-sm"
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-muted-foreground text-[11px] font-semibold">에디션 연도</span>
+            <input
+              type="number"
+              name="editionYear"
+              required
+              min={2000}
+              max={2100}
+              defaultValue={course.editionYear}
+              className="border-input bg-background h-9 rounded-lg border px-2 text-sm tabular-nums"
+            />
+          </label>
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
             <span className="text-muted-foreground text-[11px] font-semibold">강의 유형</span>
@@ -780,6 +933,51 @@ function BasicInfoTab({
           </Button>
         </div>
       </fetcher.Form>
+
+      {/* 시리즈명 수정 + 에디션 삭제 */}
+      <div className="border-border bg-card space-y-4 rounded-xl border p-4 shadow-sm">
+        <seriesFetcher.Form method="post" className="space-y-2">
+          <input type="hidden" name="intent" value="rename_series" />
+          <h3 className="text-sm font-bold">시리즈명 수정</h3>
+          <p className="text-muted-foreground text-[11px]">
+            이 시리즈의 모든 에디션에 공통 적용됩니다.
+          </p>
+          <div className="flex gap-2">
+            <input
+              name="seriesTitle"
+              required
+              maxLength={200}
+              defaultValue={course.seriesTitle}
+              className="border-input bg-background h-9 flex-1 rounded-lg border px-2 text-sm"
+            />
+            <Button
+              type="submit"
+              size="sm"
+              variant="outline"
+              disabled={seriesFetcher.state !== "idle"}
+            >
+              저장
+            </Button>
+          </div>
+        </seriesFetcher.Form>
+
+        <div className="border-t pt-3">
+          <h3 className="text-sm font-bold text-rose-600">에디션 삭제</h3>
+          <p className="text-muted-foreground mt-1 text-[11px]">
+            수강생이 없는 에디션만 삭제할 수 있습니다. 삭제 후에도 데이터는 보존(soft
+            delete)되며 목록에서만 제외됩니다.
+            {role !== "admin" ? " (최고관리자 전용)" : ""}
+          </p>
+          <button
+            type="button"
+            onClick={deleteEdition}
+            disabled={role !== "admin" || delFetcher.state !== "idle"}
+            className="mt-2 h-8 rounded-md border border-rose-300 px-3 text-[12px] font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-40 dark:border-rose-900 dark:hover:bg-rose-950/30"
+          >
+            이 에디션 삭제
+          </button>
+        </div>
+      </div>
 
       <InstructorsManager
         instructors={course.instructors}
@@ -1255,6 +1453,19 @@ function LessonCard({
     diffSeconds: number;
     affectedCount: number;
   } | null>(null);
+  const [editing, setEditing] = useState(false);
+  const deleteLesson = () => {
+    if (
+      !window.confirm(
+        `${lesson.lessonNo}강 "${lesson.title}" 회차를 삭제할까요?\n연결된 영상·기록은 보존되며 목록에서만 제외됩니다.`,
+      )
+    )
+      return;
+    const fd = new FormData();
+    fd.set("intent", "delete_lesson");
+    fd.set("lessonId", lesson.lessonId);
+    fetcher.submit(fd, { method: "post" });
+  };
   useEffect(() => {
     if (fetcher.state !== "idle" || !fetcher.data) return;
     if (fetcher.data.error) toast.error(fetcher.data.error);
@@ -1348,8 +1559,40 @@ function LessonCard({
               저장
             </button>
           </fetcher.Form>
+          <button type="button" onClick={() => setEditing((v) => !v)}
+            className="border-border hover:bg-muted/50 h-6 rounded-md border px-2 text-[11px] font-medium">
+            {editing ? "수정 취소" : "수정"}
+          </button>
+          <button type="button" onClick={deleteLesson}
+            className="h-6 rounded-md border border-rose-300 px-2 text-[11px] font-medium text-rose-600 hover:bg-rose-50 dark:border-rose-900 dark:hover:bg-rose-950/30"
+            title="회차 삭제">
+            삭제
+          </button>
         </div>
       </div>
+
+      {/* 회차 번호·제목 수정 (인라인) */}
+      {editing ? (
+        <fetcher.Form method="post" onSubmit={() => setEditing(false)}
+          className="bg-muted/20 border-border/60 mb-2 flex flex-wrap items-end gap-2 rounded-lg border p-2.5">
+          <input type="hidden" name="intent" value="edit_lesson" />
+          <input type="hidden" name="lessonId" value={lesson.lessonId} />
+          <label className="flex flex-col gap-1">
+            <span className="text-muted-foreground text-[10px] font-semibold">회차 번호</span>
+            <input type="number" name="lessonNo" min={1} max={999} defaultValue={lesson.lessonNo}
+              className="border-input bg-background h-8 w-20 rounded-md border px-2 text-[12px] tabular-nums" />
+          </label>
+          <label className="flex min-w-[240px] flex-1 flex-col gap-1">
+            <span className="text-muted-foreground text-[10px] font-semibold">회차 제목</span>
+            <input name="title" required maxLength={200} defaultValue={lesson.title}
+              className="border-input bg-background h-8 rounded-md border px-2 text-[12px]" />
+          </label>
+          <button type="submit"
+            className="bg-primary text-primary-foreground h-8 rounded-md px-3 text-[12px] font-semibold">
+            저장
+          </button>
+        </fetcher.Form>
+      ) : null}
 
       {/* 영상 등록/교체 — 콘텐츠 라이브러리에서 선택(키·재생시간 자동) */}
       <fetcher.Form method="post" className="bg-muted/20 border-border/60 flex flex-wrap items-end gap-2 rounded-lg border p-2.5">

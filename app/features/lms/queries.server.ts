@@ -70,6 +70,7 @@ export async function listSeriesWithEditions(
     .select(
       "series_id, title, subject_code, instructor_id, instructor:profiles!course_series_instructor_id_fkey(name)",
     )
+    .is("deleted_at", null)
     .order("created_at", { ascending: false });
   if (error) throw error;
   const { data: courses, error: cErr } = await client

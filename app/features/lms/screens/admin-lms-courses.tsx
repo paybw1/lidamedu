@@ -109,9 +109,50 @@ const linkTpassSchema = z.object({
 });
 
 export async function action({ request }: Route.ActionArgs) {
-  const { client, user } = await requireStaff(request);
+  const { client, user, role } = await requireStaff(request);
   const fd = await request.formData();
   const intent = fd.get("intent");
+
+  if (intent === "delete_series") {
+    // ★시리즈 삭제 — 어느 에디션에든 수강생이 있으면 차단 + 원장(admin) 전용 + soft-delete
+    //   (시리즈 및 소속 에디션 모두 deleted_at). 되돌리기 어려운 작업이라 재확인은 UI 에서.
+    if (role !== "admin")
+      return data(
+        { error: "시리즈 삭제는 최고관리자(원장)만 할 수 있습니다." },
+        { status: 403 },
+      );
+    const seriesId = String(fd.get("seriesId") ?? "");
+    if (!seriesId) return data({ error: "잘못된 요청" }, { status: 400 });
+    const { data: editions } = await client
+      .from("courses")
+      .select("course_id")
+      .eq("series_id", seriesId)
+      .is("deleted_at", null);
+    const courseIds = (editions ?? []).map((c) => c.course_id);
+    if (courseIds.length > 0) {
+      const { count } = await adminClient
+        .from("enrollments")
+        .select("enrollment_id", { count: "exact", head: true })
+        .in("course_id", courseIds);
+      if ((count ?? 0) > 0)
+        return data(
+          { error: `이 시리즈의 에디션에 수강생이 ${count}명 있어 삭제할 수 없습니다.` },
+          { status: 400 },
+        );
+    }
+    const now = new Date().toISOString();
+    if (courseIds.length > 0)
+      await client
+        .from("courses")
+        .update({ deleted_at: now, is_visible: false })
+        .in("course_id", courseIds);
+    const { error } = await client
+      .from("course_series")
+      .update({ deleted_at: now })
+      .eq("series_id", seriesId);
+    if (error) return data({ error: error.message }, { status: 400 });
+    return data({ ok: true as const });
+  }
 
   if (intent === "create_series") {
     const parsed = createSeriesSchema.safeParse({
@@ -435,7 +476,9 @@ export default function AdminLmsCourses({ loaderData }: Route.ComponentProps) {
             <p className="text-sm font-medium">등록된 시리즈가 없습니다.</p>
           </div>
         ) : (
-          series.map((s) => <SeriesCard key={s.seriesId} series={s} />)
+          series.map((s) => (
+            <SeriesCard key={s.seriesId} series={s} role={role} />
+          ))
         )}
       </div>
     </AdminShell>
@@ -652,18 +695,51 @@ function CreateSeriesForm({
   );
 }
 
-function SeriesCard({ series }: { series: SeriesWithEditions }) {
+function SeriesCard({
+  series,
+  role,
+}: {
+  series: SeriesWithEditions;
+  role: string;
+}) {
   const subjectLabel =
     SUBJECT_OPTIONS.find((o) => o.value === series.subjectCode)?.label ??
     series.subjectCode;
+  const delFetcher = useFetcher<{ error?: string }>();
+  useEffect(() => {
+    if (delFetcher.data?.error) toast.error(delFetcher.data.error);
+  }, [delFetcher.data]);
+  const deleteSeries = () => {
+    if (
+      !window.confirm(
+        `시리즈 "${series.title}" 을(를) 삭제할까요?\n소속 에디션에 수강생이 있으면 삭제되지 않습니다. 되돌리기 어렵습니다.`,
+      )
+    )
+      return;
+    const fd = new FormData();
+    fd.set("intent", "delete_series");
+    fd.set("seriesId", series.seriesId);
+    delFetcher.submit(fd, { method: "post" });
+  };
   return (
     <section className="border-border bg-card rounded-xl border p-4 shadow-sm">
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <h3 className="text-[15px] font-bold">{series.title}</h3>
         <Chip tone="neutral">{subjectLabel}</Chip>
         {series.instructorName ? <Chip tone="outline">{series.instructorName}</Chip> : null}
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-1.5">
           <CreateEditionForm seriesId={series.seriesId} />
+          {role === "admin" ? (
+            <button
+              type="button"
+              onClick={deleteSeries}
+              disabled={delFetcher.state !== "idle"}
+              className="h-8 rounded-md border border-rose-300 px-2 text-[11px] font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-40 dark:border-rose-900 dark:hover:bg-rose-950/30"
+              title="시리즈 삭제(수강생 없을 때만)"
+            >
+              시리즈 삭제
+            </button>
+          ) : null}
         </div>
       </div>
       {series.editions.length === 0 ? (
