@@ -1748,7 +1748,9 @@ function ImeDebugOverlay({
       style={{
         position: "fixed",
         bottom: 8,
-        right: 8,
+        // ★왼쪽 하단 — 오른쪽 하단의 '오류 신고' 버튼(fixed right-4 bottom-4)을 가리지 않게.
+        //   진단 로그를 복사해 오류신고로 보낼 수 있도록 두 요소를 좌/우로 분리.
+        left: 8,
         zIndex: 9999,
         width: 340,
         maxWidth: "92vw",
