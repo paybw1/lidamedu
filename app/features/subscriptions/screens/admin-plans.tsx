@@ -34,11 +34,13 @@ import {
   type SaleStatus,
   type SubscriptionPlan,
 } from "~/features/subscriptions/labels";
+import { BookLinksEditor } from "~/features/subscriptions/components/book-links-editor";
 import {
   getPlanBookLinks,
   getPlanCourseLinks,
   getPlanPolicies,
   listAllPlans,
+  type PlanBookLink,
   type PlanPolicy,
 } from "~/features/subscriptions/queries.server";
 import {
@@ -132,7 +134,7 @@ export default function AdminPlans({ loaderData }: Route.ComponentProps) {
             editions={editions}
             linkedCourseIds={[]}
             books={books}
-            linkedBookIds={[]}
+            linkedBooks={[]}
             onClose={() => setAdding(false)}
           />
         </div>
@@ -159,7 +161,7 @@ export default function AdminPlans({ loaderData }: Route.ComponentProps) {
             editions={editions}
             linkedCourseIds={courseLinks[p.planId] ?? []}
             books={books}
-            linkedBookIds={bookLinks[p.planId] ?? []}
+            linkedBooks={bookLinks[p.planId] ?? []}
           />
         ))}
       </IndexTable>
@@ -176,7 +178,7 @@ function PlanRow({
   editions,
   linkedCourseIds,
   books,
-  linkedBookIds,
+  linkedBooks,
 }: {
   plan: SubscriptionPlan;
   policy?: PlanPolicy;
@@ -184,7 +186,7 @@ function PlanRow({
   editions: CourseEditionRef[];
   linkedCourseIds: string[];
   books: BookPickerItem[];
-  linkedBookIds: string[];
+  linkedBooks: PlanBookLink[];
 }) {
   const [editing, setEditing] = useState(false);
   return (
@@ -240,7 +242,7 @@ function PlanRow({
               editions={editions}
               linkedCourseIds={linkedCourseIds}
               books={books}
-              linkedBookIds={linkedBookIds}
+              linkedBooks={linkedBooks}
               onClose={() => setEditing(false)}
             />
           </td>
@@ -277,7 +279,7 @@ function PlanForm({
   editions,
   linkedCourseIds,
   books,
-  linkedBookIds,
+  linkedBooks,
   onClose,
 }: {
   mode: "create" | "update";
@@ -287,7 +289,7 @@ function PlanForm({
   editions: CourseEditionRef[];
   linkedCourseIds: string[];
   books: BookPickerItem[];
-  linkedBookIds: string[];
+  linkedBooks: PlanBookLink[];
   onClose: () => void;
 }) {
   const fetcher = useFetcher<{ ok?: true; error?: string }>();
@@ -510,42 +512,7 @@ function PlanForm({
       ) : null}
 
       {showPolicy ? (
-        <div className="border-border bg-muted/30 space-y-1.5 rounded-lg border border-dashed p-3">
-          <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
-            연결 교재
-          </p>
-          <p className="text-muted-foreground/70 text-[11px]">
-            이 강의의 사용 교재를 연결하면 수강신청 화면에 교재로 함께 표시됩니다.
-          </p>
-          {books.length === 0 ? (
-            <p className="text-muted-foreground/60 text-[11px]">
-              등록된 도서가 없습니다. (도서 관리에서 먼저 등록)
-            </p>
-          ) : (
-            <div className="grid max-h-44 grid-cols-1 gap-1 overflow-y-auto sm:grid-cols-2">
-              {books.map((b) => (
-                <label
-                  key={b.bookId}
-                  className="inline-flex items-center gap-1.5 text-[12px]"
-                >
-                  <input
-                    type="checkbox"
-                    name="bookIds"
-                    value={b.bookId}
-                    defaultChecked={linkedBookIds.includes(b.bookId)}
-                    className="size-3.5 shrink-0"
-                  />
-                  <span className="truncate">{b.title}</span>
-                  {b.courseOnly ? (
-                    <span className="text-muted-foreground/60 shrink-0 text-[10px]">
-                      (강의전용)
-                    </span>
-                  ) : null}
-                </label>
-              ))}
-            </div>
-          )}
-        </div>
+        <BookLinksEditor books={books} value={linkedBooks} />
       ) : null}
 
       {showPolicy ? (

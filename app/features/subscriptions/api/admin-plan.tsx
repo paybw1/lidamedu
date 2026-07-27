@@ -11,7 +11,7 @@ import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { FEATURE_LABEL } from "~/features/subscriptions/labels";
 import {
-  syncPlanBooks,
+  syncPlanBookLinks,
   syncPlanCourses,
   upsertPlan,
   upsertPlanPolicy,
@@ -241,12 +241,31 @@ export async function action({ request }: Route.ActionArgs) {
     const linkRes = await syncPlanCourses(res.planId, courseIds);
     if (!linkRes.ok) return data({ error: linkRes.error }, { status: 400 });
 
-    // 연결 교재(도서) 동기화 — plan_books.
-    const bookIds = fd
-      .getAll("bookIds")
-      .map(String)
-      .filter((s) => /^[0-9a-f-]{36}$/i.test(s));
-    const bookRes = await syncPlanBooks(res.planId, bookIds);
+    // 연결 교재(주/부·필수/선택·순서) 동기화 — plan_book_links(JSON).
+    let bookLinks: Array<{
+      bookId: string;
+      role: "main" | "sub";
+      requirement: "required" | "optional";
+    }> = [];
+    try {
+      const raw = JSON.parse(String(fd.get("bookLinks") ?? "[]"));
+      if (Array.isArray(raw))
+        bookLinks = raw
+          .filter(
+            (r) =>
+              r &&
+              typeof r.bookId === "string" &&
+              /^[0-9a-f-]{36}$/i.test(r.bookId),
+          )
+          .map((r) => ({
+            bookId: r.bookId,
+            role: r.role === "sub" ? "sub" : "main",
+            requirement: r.requirement === "required" ? "required" : "optional",
+          }));
+    } catch {
+      bookLinks = [];
+    }
+    const bookRes = await syncPlanBookLinks(res.planId, bookLinks);
     if (!bookRes.ok) return data({ error: bookRes.error }, { status: 400 });
   }
 

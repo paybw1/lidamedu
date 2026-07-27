@@ -8867,18 +8867,24 @@ export type Database = {
       plan_book_links: {
         Row: {
           book_id: string
+          book_role: string
           plan_id: string
           requirement: string
+          sort_order: number
         }
         Insert: {
           book_id: string
+          book_role?: string
           plan_id: string
           requirement?: string
+          sort_order?: number
         }
         Update: {
           book_id?: string
+          book_role?: string
           plan_id?: string
           requirement?: string
+          sort_order?: number
         }
         Relationships: [
           {

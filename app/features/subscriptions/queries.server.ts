@@ -317,55 +317,62 @@ export async function syncPlanCourses(
   return { ok: true };
 }
 
-// ─── 상품↔교재(도서) 연결 (plan_books) ───
-// 강의 상품에 사용 교재를 연결 → 카탈로그·수강화면 교재 크로스셀.
+// ─── 상품↔교재(도서) 연결 (plan_book_links) ───
+// 강의 상품에 주/부 교재를 연결 → 카탈로그·수강·결제화면 교재 크로스셀. feat-11-007 #14 로
+// plan_books(미사용·빈)를 폐지하고 plan_book_links(실데이터)에 book_role·sort_order 를 얹어 일원화.
+export type BookRole = "main" | "sub";
+export type BookRequirement = "required" | "optional";
+export interface PlanBookLink {
+  bookId: string;
+  role: BookRole;
+  requirement: BookRequirement;
+  sortOrder: number;
+}
 
-// planId → 연결된 bookId[] 맵. adminClient.
+// planId → 연결 교재(주/부·필수/선택·순서) 맵. adminClient.
 export async function getPlanBookLinks(
   planIds: string[],
-): Promise<Record<string, string[]>> {
+): Promise<Record<string, PlanBookLink[]>> {
   if (planIds.length === 0) return {};
   const admin = adminClient as SupabaseClient<Database>;
   const { data, error } = await admin
-    .from("plan_books")
-    .select("plan_id, book_id")
-    .in("plan_id", planIds);
+    .from("plan_book_links")
+    .select("plan_id, book_id, book_role, requirement, sort_order")
+    .in("plan_id", planIds)
+    .order("sort_order", { ascending: true });
   if (error) throw error;
-  const out: Record<string, string[]> = {};
-  for (const r of data ?? []) (out[r.plan_id] ??= []).push(r.book_id);
+  const out: Record<string, PlanBookLink[]> = {};
+  for (const r of data ?? [])
+    (out[r.plan_id] ??= []).push({
+      bookId: r.book_id,
+      role: (r.book_role as BookRole) ?? "main",
+      requirement: (r.requirement as BookRequirement) ?? "optional",
+      sortOrder: r.sort_order ?? 0,
+    });
   return out;
 }
 
-// 연결 동기화 — 목표 bookIds 로 교체(제거분 delete + 추가분 upsert). adminClient.
-export async function syncPlanBooks(
+// 연결 동기화 — 이 plan 의 링크를 목표 목록으로 전량 교체(단순·정합). adminClient.
+export async function syncPlanBookLinks(
   planId: string,
-  bookIds: string[],
+  links: Array<{ bookId: string; role: BookRole; requirement: BookRequirement }>,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const admin = adminClient as SupabaseClient<Database>;
-  const target = new Set(bookIds);
-  const { data: existing, error: exErr } = await admin
-    .from("plan_books")
-    .select("book_id")
+  const { error: delErr } = await admin
+    .from("plan_book_links")
+    .delete()
     .eq("plan_id", planId);
-  if (exErr) return { ok: false, error: exErr.message };
-  const have = new Set((existing ?? []).map((r) => r.book_id));
-  const toRemove = [...have].filter((b) => !target.has(b));
-  const toAdd = [...target].filter((b) => !have.has(b));
-  if (toRemove.length > 0) {
-    const { error } = await admin
-      .from("plan_books")
-      .delete()
-      .eq("plan_id", planId)
-      .in("book_id", toRemove);
-    if (error) return { ok: false, error: error.message };
-  }
-  if (toAdd.length > 0) {
-    const { error } = await admin
-      .from("plan_books")
-      .upsert(
-        toAdd.map((bid) => ({ plan_id: planId, book_id: bid })),
-        { onConflict: "plan_id,book_id" },
-      );
+  if (delErr) return { ok: false, error: delErr.message };
+  if (links.length > 0) {
+    const { error } = await admin.from("plan_book_links").insert(
+      links.map((l, i) => ({
+        plan_id: planId,
+        book_id: l.bookId,
+        book_role: l.role,
+        requirement: l.requirement,
+        sort_order: i,
+      })),
+    );
     if (error) return { ok: false, error: error.message };
   }
   return { ok: true };

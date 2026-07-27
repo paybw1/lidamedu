@@ -172,25 +172,63 @@ export default function LectureProductDetail({
         </div>
       ) : null}
 
-      {/* 포함 교재 — 크로스셀 */}
+      {/* 포함 교재 — 주/부교재 간소 표시(#17) */}
       {product.books.length > 0 ? (
         <section className="mt-8 border-t pt-6">
-          <h2 className="mb-3 text-base font-bold">함께 쓰는 교재</h2>
+          <h2 className="mb-1 text-base font-bold">함께 쓰는 교재</h2>
+          <p className="text-muted-foreground mb-3 text-xs">
+            강의와 함께 한 번에 결제할 수 있습니다. 상세는 도서 페이지에서 확인하세요.
+          </p>
           <ul className="space-y-2">
             {product.books.map((b) => {
               const inBookCart = has(`book:${b.bookId}`);
               return (
                 <li
                   key={b.bookId}
-                  className="flex items-center gap-3 rounded-lg border px-4 py-2.5 text-sm"
+                  className="flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm"
                 >
-                  <span className="min-w-0 flex-1 truncate font-medium">
-                    {b.title}
+                  <span className="bg-muted h-14 w-10 shrink-0 overflow-hidden rounded border">
+                    {b.coverUrl ? (
+                      <img
+                        src={b.coverUrl}
+                        alt=""
+                        loading="lazy"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : null}
                   </span>
-                  <span className="shrink-0 tabular-nums">
-                    {b.priceKrw.toLocaleString("ko-KR")}원
+                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <span className="flex flex-wrap items-center gap-1">
+                      <span
+                        className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${b.role === "main" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}
+                      >
+                        {b.role === "main" ? "주교재" : "부교재"}
+                      </span>
+                      <span
+                        className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${b.requirement === "required" ? "bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300" : "bg-muted text-muted-foreground"}`}
+                      >
+                        {b.requirement === "required" ? "필수" : "선택"}
+                      </span>
+                      {b.soldOut ? (
+                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                          품절
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="truncate font-medium">{b.title}</span>
+                    <span className="text-muted-foreground flex items-center gap-2 text-xs">
+                      <span className="tabular-nums">
+                        {b.priceKrw.toLocaleString("ko-KR")}원
+                      </span>
+                      <Link
+                        to={`/lecture/books/${b.bookId}`}
+                        className="text-link hover:underline"
+                      >
+                        상세보기
+                      </Link>
+                    </span>
                   </span>
-                  {isAuthed ? (
+                  {isAuthed && !b.soldOut ? (
                     inBookCart ? (
                       <Link
                         to="/lecture/cart"

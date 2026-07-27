@@ -821,6 +821,10 @@ export interface LectureProductBook {
   bookId: string;
   title: string;
   priceKrw: number;
+  role: "main" | "sub"; // 주교재 / 부교재
+  requirement: "required" | "optional"; // 필수구매 / 선택구매
+  coverUrl: string | null;
+  soldOut: boolean;
 }
 export interface LectureProduct {
   planId: string;
@@ -895,34 +899,63 @@ export async function listSellableLectureProducts(
     coursesByPlan.set(l.plan_id, arr);
   }
 
-  // 연결 교재(plan_books) — 판매중(listed) 도서만 크로스셀로 표시.
+  // 연결 교재(plan_book_links) — 주/부·필수/선택·순서. 판매중(listed) 도서만 크로스셀로 표시.
   const { data: bookLinks } = await client
-    .from("plan_books")
-    .select("plan_id, book_id, sort_order")
-    .in("plan_id", planIds);
+    .from("plan_book_links")
+    .select("plan_id, book_id, book_role, requirement, sort_order")
+    .in("plan_id", planIds)
+    .order("sort_order", { ascending: true });
   const bookLinkRows = bookLinks ?? [];
-  const bookInfo = new Map<string, LectureProductBook>();
+  const bookMeta = new Map<
+    string,
+    { title: string; priceKrw: number; coverUrl: string | null; trackStock: boolean }
+  >();
   const bookIds = [...new Set(bookLinkRows.map((l) => l.book_id))];
   if (bookIds.length > 0) {
     const { data: bookRows } = await client
       .from("books")
-      .select("book_id, title, price_krw")
+      .select("book_id, title, price_krw, cover_path, cover_file_path, track_stock")
       .in("book_id", bookIds)
       .eq("listed", true)
       .is("deleted_at", null);
     for (const b of bookRows ?? [])
-      bookInfo.set(b.book_id, {
-        bookId: b.book_id,
+      bookMeta.set(b.book_id, {
         title: b.title,
         priceKrw: b.price_krw ?? 0,
+        coverUrl:
+          b.cover_path ||
+          (b.cover_file_path
+            ? client.storage.from("book-covers").getPublicUrl(b.cover_file_path)
+                .data.publicUrl
+            : null),
+        trackStock: b.track_stock ?? false,
       });
+  }
+  // 재고(품절) — track_stock 도서만 v_book_stock 조회(adminClient, 하부 이동은 staff-only RLS).
+  const stockMap = new Map<string, number>();
+  const trackIds = bookIds.filter((id) => bookMeta.get(id)?.trackStock);
+  if (trackIds.length > 0) {
+    const { data: st } = await adminClient
+      .from("v_book_stock")
+      .select("book_id, stock")
+      .in("book_id", trackIds);
+    for (const r of st ?? [])
+      if (r.book_id) stockMap.set(r.book_id, Number(r.stock ?? 0));
   }
   const booksByPlan = new Map<string, LectureProductBook[]>();
   for (const l of bookLinkRows) {
-    const info = bookInfo.get(l.book_id);
-    if (!info) continue; // 미판매·삭제 도서 제외
+    const meta = bookMeta.get(l.book_id);
+    if (!meta) continue; // 미판매·삭제 도서 제외
     const arr = booksByPlan.get(l.plan_id) ?? [];
-    arr.push(info);
+    arr.push({
+      bookId: l.book_id,
+      title: meta.title,
+      priceKrw: meta.priceKrw,
+      role: (l.book_role as "main" | "sub") ?? "main",
+      requirement: (l.requirement as "required" | "optional") ?? "optional",
+      coverUrl: meta.coverUrl,
+      soldOut: meta.trackStock && (stockMap.get(l.book_id) ?? 0) <= 0,
+    });
     booksByPlan.set(l.plan_id, arr);
   }
 
