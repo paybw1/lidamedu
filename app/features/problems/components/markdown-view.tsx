@@ -117,6 +117,13 @@ const components: Components = {
       {...props}
     />
   ),
+  // h4 미매핑 시 preflight 로 본문과 완전 동일(크기·굵기)해져 계층이 사라진다.
+  h4: (props) => (
+    <h4
+      className="my-1 text-[length:calc(12px*var(--study-fs))] font-semibold"
+      {...props}
+    />
+  ),
   code: (props) => (
     <code
       className="bg-muted rounded px-1 py-0.5 font-mono text-[length:calc(13px*var(--study-fs))]"

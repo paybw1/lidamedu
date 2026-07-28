@@ -1843,6 +1843,15 @@ function AiGradeResult({
 }
 
 // 주관식(format='subjective') 학습 — 답안 textarea + autosave + 자기채점 + 모범답안/채점기준 reveal.
+// 채점기준·모범답안·해설 마크다운 — 공용 렌더러의 머리글(16/14/12px)이 본문(14px)보다
+// 작아 목차 번호(1. 2. 3.)가 묻힘 → 본문보다 큰 계층으로 스코프 오버라이드.
+const SUBJECTIVE_MD_CLASS =
+  "leading-[1.8] tracking-[-0.005em] " +
+  "[&_h1]:text-[length:calc(18px*var(--study-fs))] " +
+  "[&_h2]:text-[length:calc(16.5px*var(--study-fs))] [&_h2]:mt-4 " +
+  "[&_h3]:text-[length:calc(15.5px*var(--study-fs))] [&_h3]:mt-3 " +
+  "[&_h4]:text-[length:calc(14.5px*var(--study-fs))] [&_h4]:mt-2";
+
 function SubjectivePanel({
   problemId,
   modelAnswerMd,
@@ -2343,7 +2352,7 @@ function SubjectivePanel({
             <MarkdownView
               text={gradingRubricMd ?? ""}
               breaks
-              className="leading-[1.8] tracking-[-0.005em]"
+              className={SUBJECTIVE_MD_CLASS}
             />
           </div>
         </div>
@@ -2360,7 +2369,7 @@ function SubjectivePanel({
             <MarkdownView
               text={modelAnswerMd ?? ""}
               breaks
-              className="leading-[1.8] tracking-[-0.005em]"
+              className={SUBJECTIVE_MD_CLASS}
             />
           </div>
         </div>
@@ -2377,7 +2386,7 @@ function SubjectivePanel({
             <MarkdownView
               text={explanationMd ?? ""}
               breaks
-              className="leading-[1.8] tracking-[-0.005em]"
+              className={SUBJECTIVE_MD_CLASS}
             />
           </div>
         </div>
