@@ -648,7 +648,9 @@ export function BlankFillViewV2({
   const judgeSlot = (slot: HTMLElement, save: boolean) => {
     const idx = Number(slot.dataset.blankIdx);
     const answer = slot.dataset.answer ?? "";
-    const val = readSlot(slot);
+    let val = readSlot(slot);
+    // ★이월 구제용 — crossPrev 갱신 전의 '직전 슬롯' 스냅샷(아래에서 현재 슬롯으로 덮이기 전).
+    const prevCross = crossPrev;
     valuesRef.current.set(idx, val);
     // 마지막으로 입력된 슬롯 값 기억(다음 칸 이월 감지용 — 슬롯 단위).
     if (val.length > 0) {
@@ -658,7 +660,30 @@ export function BlankFillViewV2({
       setSlotColor(slot, "neutral");
       return;
     }
-    const correct = normalizeAnswer(val) === normalizeAnswer(answer);
+    let correct = normalizeAnswer(val) === normalizeAnswer(answer);
+    // ★하드웨어 키보드 IME 이월 구제(2026-07-28 신고, imedebug comp=false) — 비조합
+    //   (inserttext/deletecontentbackward 쌍) 경로는 composition 기반 방어(cc/pm/sink)가
+    //   전부 미발동하고 직전 슬롯 마지막 음절이 새 슬롯 첫머리에 재조합된다("권"+점유권).
+    //   "오답 && 직전 슬롯 마지막 음절로 시작 && 그 음절을 떼면 정확히 정답" 3중 조건에서만
+    //   꼬리를 제거해 정답 처리 — 나머지가 정답과 완전 일치할 때만 발동해 정상 입력 훼손 불가.
+    //   조합 중(marked text)에는 DOM 을 건드리지 않는다.
+    if (!correct && !composingRef.current && prevCross && prevCross.slot !== slot) {
+      const tail = prevCross.value.slice(-1);
+      if (
+        tail &&
+        val.startsWith(tail) &&
+        val.length > tail.length &&
+        normalizeAnswer(val.slice(tail.length)) === normalizeAnswer(answer)
+      ) {
+        val = val.slice(tail.length);
+        valuesRef.current.set(idx, val);
+        slot.textContent = ZWSP + val;
+        if (slotFromSelection() === slot) caretToEnd(slot);
+        crossPrev = { slot, value: val };
+        correct = true;
+        pushDbg("carryRescue", `${slotIdxOf(slot)} tail="${tail}" -> "${val}"`);
+      }
+    }
     if (correct) {
       setSlotColor(slot, "correct");
       if (save) saveAttempt(slot, idx, val);
