@@ -172,8 +172,10 @@ const components: Components = {
 
 // 줄 머리 "1. " 수동 번호를 마크다운 순서 목록으로 바꾸지 않게 이스케이프("1\.").
 // 렌더는 친 그대로 "1." — 목록 들여쓰기·후속 줄 말려들어감(item 연속행) 방지.
+// 불릿("- ") 바로 뒤 숫자도 대상 — "- 2011. 8. 29. 출원" 이 중첩 순서목록(2011→8→29)으로
+// 오해석돼 날짜가 깨지는 것 방지(첫 숫자만 이스케이프하면 나머지는 문단 텍스트).
 function escapeOrderedListMarkers(text: string): string {
-  return text.replace(/^(\s*)(\d+)\.(?=\s)/gm, "$1$2\\.");
+  return text.replace(/^(\s*(?:[-*+]\s+)?)(\d+)\.(?=\s)/gm, "$1$2\\.");
 }
 
 export function MarkdownView({
