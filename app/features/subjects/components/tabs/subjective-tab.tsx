@@ -24,6 +24,7 @@ import { Button } from "~/core/components/ui/button";
 import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
 import type { SystematicNode } from "~/features/laws/queries.server";
 import {
+  compareSubjectiveDisplay,
   ORIGIN_LABEL,
   type ProblemListItem,
   type ProblemOrigin,
@@ -54,14 +55,8 @@ interface YearGroup {
 }
 
 function groupByYear(problems: ProblemListItem[]): YearGroup[] {
-  // 시험 최신순(연도 desc, 회차 desc) + 문제번호 asc — 2차 기출 목록과 동일 규칙.
-  const sorted = [...problems].sort(
-    (a, b) =>
-      (b.year ?? -1) - (a.year ?? -1) ||
-      (b.examRoundNo ?? -1) - (a.examRoundNo ?? -1) ||
-      (a.problemNumber ?? Number.MAX_SAFE_INTEGER) -
-        (b.problemNumber ?? Number.MAX_SAFE_INTEGER),
-  );
+  // 시험 최신순(연도 desc, 회차 desc) + 문제번호 asc — 뷰어 prev/next 와 공유(labels).
+  const sorted = [...problems].sort(compareSubjectiveDisplay);
   const groups: YearGroup[] = [];
   for (const p of sorted) {
     const last = groups[groups.length - 1];
@@ -319,8 +314,15 @@ function SubjectiveCard({
   linkQuery: string;
   status: { submitted: boolean; reviewed: boolean } | null;
 }) {
-  const snippet =
-    item.bodyMd.length > 160 ? `${item.bodyMd.slice(0, 160)}…` : item.bodyMd;
+  // 카드 미리보기 — 본문의 HTML(case-box)·표·이미지·강조 마크업을 걷어낸 평문.
+  const plain = item.bodyMd
+    .replace(/<[^>]+>/g, " ")
+    .replace(/^\|.*\|\s*$/gm, " ")
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+    .replace(/\*\*/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const snippet = plain.length > 160 ? `${plain.slice(0, 160)}…` : plain;
   return (
     <Link
       to={`/subjects/${subjectSlug}/problems/${item.problemId}${linkQuery}`}

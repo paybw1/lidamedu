@@ -263,6 +263,20 @@ export interface ProblemListItem {
   importance: number;
 }
 
+// 주관식(2차) 표시 순서 — 시험 최신순(연도↓·회차↓) + 문제번호↑.
+// 주관식 탭(groupByYear)과 문제 뷰어 prev/next(?list=1)가 공유해 순서 정합 보장.
+export function compareSubjectiveDisplay(
+  a: Pick<ProblemListItem, "year" | "examRoundNo" | "problemNumber">,
+  b: Pick<ProblemListItem, "year" | "examRoundNo" | "problemNumber">,
+): number {
+  return (
+    (b.year ?? -1) - (a.year ?? -1) ||
+    (b.examRoundNo ?? -1) - (a.examRoundNo ?? -1) ||
+    (a.problemNumber ?? Number.MAX_SAFE_INTEGER) -
+      (b.problemNumber ?? Number.MAX_SAFE_INTEGER)
+  );
+}
+
 export interface ProblemChoice {
   choiceId: string;
   choiceIndex: number;

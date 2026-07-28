@@ -59,6 +59,7 @@ import {
   POLARITY_LABEL,
   SCOPE_LABEL,
   SUBJECTIVE_KIND_LABEL,
+  compareSubjectiveDisplay,
   isOxEligible,
   problemDisplayNumber,
 } from "~/features/problems/labels";
@@ -454,6 +455,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     const scoped = cur
       ? displayed.filter((p) => p.examRound === cur.examRound)
       : displayed;
+    // 주관식(2차) 탭은 컬럼 정렬 없이 항상 시험 최신순으로 표시 — prev/next 도 동일 순서.
+    if (cur?.examRound === "second") scoped.sort(compareSubjectiveDisplay);
     const idx = scoped.findIndex((p) => p.problemId === problem.problemId);
     const toAdj = (
       p: (typeof scoped)[number] | undefined,
