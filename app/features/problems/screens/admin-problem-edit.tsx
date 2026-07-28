@@ -847,7 +847,7 @@ function AdminProblemEditInner({
   }, [actionData]);
   return (
     <AdminShell
-      cluster="problems"
+      cluster={problem.format === "subjective" ? "subjective" : "problems"}
       role={role}
       width={1040}
       title={

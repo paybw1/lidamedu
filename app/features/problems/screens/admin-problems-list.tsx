@@ -40,7 +40,14 @@ const ORIGINS: ProblemOrigin[] = [
   "mock",
   "expected",
 ];
-const FORMATS: ProblemFormat[] = ["mc_short", "mc_box", "mc_case"];
+const FORMATS: ProblemFormat[] = [
+  "mc_short",
+  "mc_box",
+  "mc_case",
+  "ox",
+  "blank",
+  "subjective",
+];
 const POLARITIES: ProblemPolarity[] = ["positive", "negative"];
 const SCOPES: ProblemScope[] = ["unit", "comprehensive"];
 
@@ -145,9 +152,9 @@ export default function AdminProblemsList({
     filters.hasUnclassified;
   return (
     <AdminShell
-      cluster="problems"
+      cluster={filters.format === "subjective" ? "subjective" : "problems"}
       role={role}
-      title="객관식 문제"
+      title={filters.format === "subjective" ? "주관식 문제 (2차)" : "객관식 문제"}
       desc="체계도 / 조문 순서로 문제 목록을 조회합니다. 분류되지 않은 지문이 있는 문제는 ? 칩으로 표시됩니다."
       headerRight={
         <Button asChild size="sm">

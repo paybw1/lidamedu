@@ -8,6 +8,7 @@ import {
   ChevronDownIcon,
   ClapperboardIcon,
   ClipboardCheckIcon,
+  FileTextIcon,
   GavelIcon,
   GraduationCapIcon,
   LayoutDashboardIcon,
@@ -41,6 +42,7 @@ export type AdminClusterId =
   | "laws"
   | "cases"
   | "problems"
+  | "subjective"
   | "blanks"
   | "relations"
   | "checks"
@@ -145,6 +147,16 @@ export const ADMIN_NAV: NavCluster[] = [
       // ?kind=mock 은 가상 통합 필터 (mock_full + mock_progressive) — 한 화면.
       { label: "모의고사 문제집 관리", to: "/latest/mcq?kind=mock" },
       { label: "통합 모의고사 (3교시)", to: "/admin/mcq-exams" },
+    ],
+  },
+  {
+    // 주관식(2차 논술)은 객관식과 별도 축 — 목록·편집·채점기준 관리가 흐름이 다름.
+    id: "subjective",
+    section: "content",
+    label: "주관식 문제 (2차)",
+    Icon: FileTextIcon,
+    screens: [
+      { label: "주관식 문제 보기", to: "/admin/problems?format=subjective" },
     ],
   },
   {
