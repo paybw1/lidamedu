@@ -77,7 +77,12 @@ export async function action({ request }: Route.ActionArgs) {
   }
   // 완료로 "전환"될 때만 신고자에게 인박스 알림(이미 done 이었으면 재알림 없음).
   const prev = await getBugReport(reportId);
-  await updateBugReportStatus(reportId, status as BugReportStatus);
+  const isDoneTransition = status === "done" && prev?.status !== "done";
+  await updateBugReportStatus(
+    reportId,
+    status as BugReportStatus,
+    isDoneTransition ? { note: note || null } : undefined,
+  );
   if (
     status === "done" &&
     prev &&
@@ -170,6 +175,19 @@ function BugRow({ report }: { report: BugReportRow }) {
       </TableCell>
       <TableCell className="max-w-md text-sm whitespace-pre-wrap">
         {report.message}
+        {report.resolutionNote ? (
+          <div className="border-border bg-muted/40 mt-2 rounded-md border px-2.5 py-1.5 text-xs">
+            <p className="text-muted-foreground mb-0.5 font-semibold">
+              답변
+              {report.resolvedAt ? (
+                <span className="ml-1.5 font-normal tabular-nums">
+                  {new Date(report.resolvedAt).toLocaleString("ko-KR")}
+                </span>
+              ) : null}
+            </p>
+            <p className="whitespace-pre-wrap">{report.resolutionNote}</p>
+          </div>
+        ) : null}
       </TableCell>
       <TableCell className="max-w-[12rem] truncate text-xs">
         <a

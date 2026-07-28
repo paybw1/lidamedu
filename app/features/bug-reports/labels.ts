@@ -11,4 +11,6 @@ export interface BugReportRow {
   userAgent: string | null;
   status: BugReportStatus;
   createdAt: string;
+  resolutionNote: string | null;
+  resolvedAt: string | null;
 }

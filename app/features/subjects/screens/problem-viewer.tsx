@@ -2340,9 +2340,11 @@ function SubjectivePanel({
             </p>
           </div>
           <div className="px-5 py-4">
-            <p className="text-foreground text-sm leading-[1.8] tracking-[-0.005em] whitespace-pre-line">
-              {gradingRubricMd}
-            </p>
+            <MarkdownView
+              text={gradingRubricMd ?? ""}
+              breaks
+              className="leading-[1.8] tracking-[-0.005em]"
+            />
           </div>
         </div>
       ) : null}
@@ -2355,9 +2357,11 @@ function SubjectivePanel({
             </p>
           </div>
           <div className="px-5 py-4">
-            <p className="text-foreground text-sm leading-[1.8] tracking-[-0.005em] whitespace-pre-line">
-              {modelAnswerMd}
-            </p>
+            <MarkdownView
+              text={modelAnswerMd ?? ""}
+              breaks
+              className="leading-[1.8] tracking-[-0.005em]"
+            />
           </div>
         </div>
       ) : null}
@@ -2370,9 +2374,11 @@ function SubjectivePanel({
             </p>
           </div>
           <div className="px-5 py-4">
-            <p className="text-foreground text-sm leading-[1.8] tracking-[-0.005em] whitespace-pre-line">
-              {explanationMd}
-            </p>
+            <MarkdownView
+              text={explanationMd ?? ""}
+              breaks
+              className="leading-[1.8] tracking-[-0.005em]"
+            />
           </div>
         </div>
       ) : null}

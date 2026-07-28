@@ -31,7 +31,9 @@ export async function listAllBugReports(): Promise<BugReportRow[]> {
   const admin = adminClient as SupabaseClient<Database>;
   const { data, error } = await admin
     .from("bug_reports")
-    .select("report_id, reporter_id, url, message, user_agent, status, created_at")
+    .select(
+      "report_id, reporter_id, url, message, user_agent, status, created_at, resolution_note, resolved_at",
+    )
     .order("created_at", { ascending: false })
     .limit(500);
   if (error) throw error;
@@ -56,15 +58,30 @@ export async function listAllBugReports(): Promise<BugReportRow[]> {
     userAgent: r.user_agent,
     status: r.status as BugReportStatus,
     createdAt: r.created_at,
+    resolutionNote: r.resolution_note,
+    resolvedAt: r.resolved_at,
   }));
 }
 
 export async function updateBugReportStatus(
   reportId: string,
   status: BugReportStatus,
+  // 완료 "전환" 시에만 전달 — 처리 쪽지·처리 시각을 함께 영속(관리자 화면 표시용).
+  resolution?: { note: string | null },
 ): Promise<void> {
   const admin = adminClient as SupabaseClient<Database>;
-  await admin.from("bug_reports").update({ status }).eq("report_id", reportId);
+  await admin
+    .from("bug_reports")
+    .update(
+      resolution
+        ? {
+            status,
+            resolution_note: resolution.note,
+            resolved_at: new Date().toISOString(),
+          }
+        : { status },
+    )
+    .eq("report_id", reportId);
 }
 
 /** 상태 전환 판정·알림용 단건 조회 (staff 경로 — admin client). */

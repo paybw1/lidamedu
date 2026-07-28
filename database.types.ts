@@ -2162,6 +2162,8 @@ export type Database = {
           message: string
           report_id: string
           reporter_id: string | null
+          resolution_note: string | null
+          resolved_at: string | null
           status: string
           url: string
           user_agent: string | null
@@ -2171,6 +2173,8 @@ export type Database = {
           message: string
           report_id?: string
           reporter_id?: string | null
+          resolution_note?: string | null
+          resolved_at?: string | null
           status?: string
           url: string
           user_agent?: string | null
@@ -2180,6 +2184,8 @@ export type Database = {
           message?: string
           report_id?: string
           reporter_id?: string | null
+          resolution_note?: string | null
+          resolved_at?: string | null
           status?: string
           url?: string
           user_agent?: string | null
