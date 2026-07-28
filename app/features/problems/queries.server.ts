@@ -3031,7 +3031,7 @@ export async function getAdjacentProblems(
 ): Promise<{ prev: AdjacentProblem | null; next: AdjacentProblem | null }> {
   const { data: cur } = await client
     .from("problems")
-    .select("law_id, year, problem_number")
+    .select("law_id, year, problem_number, exam_round")
     .eq("problem_id", problemId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -3040,10 +3040,12 @@ export async function getAdjacentProblems(
   //   연도 내에서 exam_number 우선(nulls last) → problem_number 타이브레이커. 이렇게 하면
   //   기출 7번의 prev=6번·next=8번(시험번호 순)이 되고, problem_number(노드 순번) 스왑으로
   //   인접이 어긋나던 문제가 해소된다.
+  //   같은 차수(1차 객관식/2차 주관식) 안에서만 이동 — 화면 목록도 차수별 분리 표시.
   const { data: rows } = await client
     .from("problems")
     .select("problem_id, year, problem_number, exam_number, origin")
     .eq("law_id", cur.law_id)
+    .eq("exam_round", cur.exam_round)
     .is("deleted_at", null)
     .order("year", { ascending: false, nullsFirst: false })
     .order("exam_number", { ascending: true, nullsFirst: false })
