@@ -1217,13 +1217,17 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                 highlights={highlights}
                 viewerIsStaff={canEditComment}
               >
-                {/* 이미지 또는 case-box(사실관계 박스) 포함 본문은 마크다운 렌더 —
-                    그 외 plain 은 우발적 마크다운 오렌더 방지를 위해 기존 pre-line 유지. */}
-                {MD_IMAGE_RE.test(problem.bodyMd) ||
+                {/* 주관식(2차) 본문은 마크다운 저작물(**(N점)**·박스·표) — 항상 마크다운 렌더.
+                    객관식은 이미지·case-box 포함일 때만 — 그 외 plain 은 우발적 마크다운
+                    오렌더 방지를 위해 기존 pre-line 유지. */}
+                {problem.format === "subjective" ||
+                MD_IMAGE_RE.test(problem.bodyMd) ||
                 problem.bodyMd.includes("case-box") ? (
                   <div className="mb-7 text-[length:calc(17px*var(--study-fs))] leading-[1.8] font-medium dark:[&_img]:brightness-[.8]">
                     <MarkdownView
                       text={problem.bodyMd}
+                      breaks={problem.format === "subjective"}
+                      literalNumbering={problem.format === "subjective"}
                       className="text-[length:calc(17px*var(--study-fs))]"
                     />
                   </div>
