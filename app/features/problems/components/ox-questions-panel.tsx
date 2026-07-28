@@ -168,11 +168,31 @@ export function OxQuestionsPanel({
   // 학생 개인 숨김: 기본은 숨긴 지문 제외, 토글 켜면 복원용으로 함께 표시.
   const [showHidden, setShowHidden] = useState(false);
   // 한 번에 보는 지문 수(1~5) + 현재 창 시작 위치.
-  const [pageSize, setPageSize] = useState(1);
+  // 풀이 위치 기억 — 신고·새로고침·이탈 후 복귀 시 "처음부터"가 되지 않게 조문(경로)별로
+  // sessionStorage 에 보관. 인터랙션 상태라 FE 소유(서버 저장 불필요).
+  const posKey = `ox-pos:${location.pathname}`;
+  const savedPos = (() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = window.sessionStorage.getItem(posKey);
+      if (!raw) return null;
+      const v = JSON.parse(raw) as { start?: number; size?: number };
+      return typeof v.start === "number" && v.start >= 0 ? v : null;
+    } catch {
+      return null;
+    }
+  })();
+  const [pageSize, setPageSize] = useState(() =>
+    savedPos?.size && savedPos.size >= 1 && savedPos.size <= 5 ? savedPos.size : 1,
+  );
   const [pageStart, setPageStart] = useState<number>(() => {
-    if (!restoreRefId) return 0;
-    const i = items.findIndex((it) => it.refId === restoreRefId);
-    return i >= 0 ? i : 0;
+    if (restoreRefId) {
+      const i = items.findIndex((it) => it.refId === restoreRefId);
+      if (i >= 0) return i;
+    }
+    // 저장 위치가 목록 범위를 벗어나면(지문 변동) 처음부터.
+    if (savedPos && savedPos.start! < items.length) return savedPos.start!;
+    return 0;
   });
 
   // 출처별 개수(토글 라벨) + 현재 토글로 거른 목록.
@@ -207,6 +227,18 @@ export function OxQuestionsPanel({
     setPageStart(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemsKey, originFilter]);
+
+  // 위치 변경 시마다 저장 (복귀용).
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem(
+        posKey,
+        JSON.stringify({ start: pageStart, size: pageSize }),
+      );
+    } catch {
+      /* storage 불가 환경 무시 */
+    }
+  }, [posKey, pageStart, pageSize]);
 
   if (items.length === 0) {
     return (
