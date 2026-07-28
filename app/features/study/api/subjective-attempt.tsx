@@ -1,14 +1,13 @@
 // 주관식 답안 autosave + 자기채점 제출.
 // intent=autosave : answer_md 만 갱신 (submitted_at 유지).
 // intent=submit   : answer_md + self_score + submitted_at 갱신.
+import type { Route } from "./+types/subjective-attempt";
 
 import { data } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
 import { upsertSubjectiveAttempt } from "~/features/study/queries.server";
-
-import type { Route } from "./+types/subjective-attempt";
 
 // rubric_self_check 는 JSON 인코딩된 number[] 로 전달.
 const rubricCheckSchema = z
@@ -35,6 +34,9 @@ const baseSchema = z.object({
 const submitSchema = baseSchema.extend({
   selfScore: z.coerce.number().int().min(0).max(100).nullable().optional(),
   selfScoreNote: z.string().max(2000).nullable().optional(),
+  // 시험 모드 제출 시에만 전달 (feat-2-033).
+  timedLimitMin: z.coerce.number().int().min(1).max(180).optional(),
+  timedElapsedSec: z.coerce.number().int().min(0).optional(),
 });
 
 export async function action({ request }: Route.ActionArgs) {
@@ -54,13 +56,18 @@ export async function action({ request }: Route.ActionArgs) {
     const parsed = baseSchema.safeParse({
       problemId: fd.get("problemId"),
       answerMd: fd.get("answerMd") ?? "",
+      rubricSelfCheck: fd.get("rubricSelfCheck"),
     });
-    if (!parsed.success) return data({ error: "Invalid input" }, { status: 400 });
+    if (!parsed.success)
+      return data({ error: "Invalid input" }, { status: 400 });
     const attempt = await upsertSubjectiveAttempt(
       client,
       user.id,
       parsed.data.problemId,
-      { answerMd: parsed.data.answerMd },
+      {
+        answerMd: parsed.data.answerMd,
+        rubricSelfCheck: parsed.data.rubricSelfCheck,
+      },
     );
     return data({ ok: true, attempt });
   }
@@ -71,8 +78,11 @@ export async function action({ request }: Route.ActionArgs) {
       answerMd: fd.get("answerMd") ?? "",
       selfScore: fd.get("selfScore"),
       selfScoreNote: (fd.get("selfScoreNote") as string | null) || null,
+      timedLimitMin: fd.get("timedLimitMin") ?? undefined,
+      timedElapsedSec: fd.get("timedElapsedSec") ?? undefined,
     });
-    if (!parsed.success) return data({ error: "Invalid input" }, { status: 400 });
+    if (!parsed.success)
+      return data({ error: "Invalid input" }, { status: 400 });
     const attempt = await upsertSubjectiveAttempt(
       client,
       user.id,
@@ -82,6 +92,8 @@ export async function action({ request }: Route.ActionArgs) {
         submit: {
           selfScore: parsed.data.selfScore ?? null,
           selfScoreNote: parsed.data.selfScoreNote ?? null,
+          timedLimitMin: parsed.data.timedLimitMin,
+          timedElapsedSec: parsed.data.timedElapsedSec,
         },
       },
     );

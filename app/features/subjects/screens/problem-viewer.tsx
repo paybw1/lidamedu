@@ -11,9 +11,9 @@ import {
   PanelRightIcon,
   PencilIcon,
   ScrollTextIcon,
+  SearchIcon,
   TimerIcon,
   VideoIcon,
-  SearchIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -30,7 +30,6 @@ import { Separator } from "~/core/components/ui/separator";
 import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
-import { GuideHelpButton } from "~/features/guide/components/guide-help-button";
 import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
 import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
 import type { BookmarkRecord } from "~/features/annotations/labels";
@@ -43,6 +42,7 @@ import {
   listMemos,
 } from "~/features/annotations/queries.server";
 import { listComments } from "~/features/comments/queries.server";
+import { GuideHelpButton } from "~/features/guide/components/guide-help-button";
 import { ArticleRightPanel } from "~/features/laws/components/article-right-panel";
 import {
   getLawByCode,
@@ -51,17 +51,16 @@ import {
 } from "~/features/laws/queries.server";
 import { listLectureResources } from "~/features/lectures/queries.server";
 import { MarkdownView } from "~/features/problems/components/markdown-view";
-import { ProblemCodeChip } from "~/features/problems/components/problem-code-chip";
-import { ReadingControls } from "~/features/study/components/study-font-control";
 import { OxBookmarkToggle } from "~/features/problems/components/ox-bookmark-toggle";
+import { ProblemCodeChip } from "~/features/problems/components/problem-code-chip";
 import {
   FORMAT_LABEL,
-  isOxEligible,
   ORIGIN_LABEL,
   POLARITY_LABEL,
-  problemDisplayNumber,
   SCOPE_LABEL,
   SUBJECTIVE_KIND_LABEL,
+  isOxEligible,
+  problemDisplayNumber,
 } from "~/features/problems/labels";
 import {
   deriveBoxItemOxTruth,
@@ -81,6 +80,7 @@ import {
 } from "~/features/problems/queries.server";
 import { listThreadsForTarget } from "~/features/qna/queries.server";
 import { FlowNav } from "~/features/study/components/flow-nav";
+import { ReadingControls } from "~/features/study/components/study-font-control";
 import {
   DIFFICULTY_LABEL,
   DIFFICULTY_TONE,
@@ -101,12 +101,12 @@ import {
   useRightPanelCollapse,
 } from "~/features/subjects/components/left-panel-collapse";
 import { MobileNavDrawer } from "~/features/subjects/components/mobile-nav-drawer";
-import { SubjectBookmarkRail } from "~/features/subjects/components/subject-bookmark-rail";
 import { ProblemSystematicTree } from "~/features/subjects/components/problem-systematic-tree";
 import {
   SortAxisProvider,
   SortAxisToggle,
 } from "~/features/subjects/components/sort-axis";
+import { SubjectBookmarkRail } from "~/features/subjects/components/subject-bookmark-rail";
 import { ViewerBackButton } from "~/features/subjects/components/viewer-back-button";
 import {
   listDisplayedProblems,
@@ -885,46 +885,53 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
             <SortAxisProvider forced="systematic">
               {leftCollapsed ? (
                 <div className="flex h-[70vh] items-center justify-center">
-                  <PanelEdgeHandle side="left" collapsed onToggle={toggleLeft} />
+                  <PanelEdgeHandle
+                    side="left"
+                    collapsed
+                    onToggle={toggleLeft}
+                  />
                 </div>
               ) : (
                 <>
-                <div className="flex items-start">
-                <SubjectBookmarkRail
-                  subjectSlug={subject.slug}
-                  active={isSubjectiveProblem ? "subjective" : "problems"}
-                  counts={axisCounts}
-                  showSubjective={isStaff}
-                />
-                <div className="min-w-0 flex-1 lg:max-h-[calc(100vh-3.5rem-41px)] lg:overflow-y-auto">
-                  {/* 헤더(상단 고정): [돋보기 토글][체계도/조문(조문 비활성)]. */}
-                  <div className="bg-background sticky top-0 z-10">
-                    <div className="flex items-center justify-between gap-2 px-3 py-2">
-                      <SortAxisToggle size="sm" disabledAxes={["statutory"]} />
-                    </div>
-                  </div>
-                  {systematicEmpty ? (
-                    <p className="text-muted-foreground px-4 py-6 text-xs">
-                      체계도가 아직 등록되지 않았습니다.
-                    </p>
-                  ) : (
-                    <ProblemSystematicTree
-                      searchVisible={false}
-                      nodes={systematicNodes}
-                      nodeStats={problemNodeStats}
-                      activeNodeId={activeNodeId ?? undefined}
-                      linkBase={`/subjects/${subject.slug}`}
+                  <div className="flex items-start">
+                    <SubjectBookmarkRail
+                      subjectSlug={subject.slug}
+                      active={isSubjectiveProblem ? "subjective" : "problems"}
+                      counts={axisCounts}
+                      showSubjective={isStaff}
                     />
-                  )}
-                </div>
-                {/* 경계 손잡이 — 패널 오른쪽 변 세로 중앙(국가법령정보센터식). */}
-                <PanelEdgeHandle
-                  side="left"
-                  collapsed={false}
-                  onToggle={toggleLeft}
-                  className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2"
-                />
-                </div>
+                    <div className="min-w-0 flex-1 lg:max-h-[calc(100vh-3.5rem-41px)] lg:overflow-y-auto">
+                      {/* 헤더(상단 고정): [돋보기 토글][체계도/조문(조문 비활성)]. */}
+                      <div className="bg-background sticky top-0 z-10">
+                        <div className="flex items-center justify-between gap-2 px-3 py-2">
+                          <SortAxisToggle
+                            size="sm"
+                            disabledAxes={["statutory"]}
+                          />
+                        </div>
+                      </div>
+                      {systematicEmpty ? (
+                        <p className="text-muted-foreground px-4 py-6 text-xs">
+                          체계도가 아직 등록되지 않았습니다.
+                        </p>
+                      ) : (
+                        <ProblemSystematicTree
+                          searchVisible={false}
+                          nodes={systematicNodes}
+                          nodeStats={problemNodeStats}
+                          activeNodeId={activeNodeId ?? undefined}
+                          linkBase={`/subjects/${subject.slug}`}
+                        />
+                      )}
+                    </div>
+                    {/* 경계 손잡이 — 패널 오른쪽 변 세로 중앙(국가법령정보센터식). */}
+                    <PanelEdgeHandle
+                      side="left"
+                      collapsed={false}
+                      onToggle={toggleLeft}
+                      className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2"
+                    />
+                  </div>
                 </>
               )}
             </SortAxisProvider>
@@ -1723,37 +1730,41 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
           <aside className="relative hidden lg:sticky lg:top-[calc(3.5rem+41px)] lg:block">
             {rightCollapsed ? (
               <div className="flex h-[70vh] items-center justify-center">
-                <PanelEdgeHandle side="right" collapsed onToggle={toggleRight} />
+                <PanelEdgeHandle
+                  side="right"
+                  collapsed
+                  onToggle={toggleRight}
+                />
               </div>
             ) : (
               <>
                 <div className="lg:max-h-[calc(100vh-3.5rem-41px)] lg:overflow-y-auto">
-                <ArticleRightPanel
-                  target={{ type: "problem", id: problem.problemId }}
-                  bookmark={bookmark}
-                  memos={memos}
-                  highlights={highlights}
-                  qnaThreads={qnaThreads}
-                  relatedProblems={relatedProblems}
-                  subjectSlug={subject.slug}
-                  relatedCases={citedCases.map((c) => ({
-                    caseId: c.caseId,
-                    caseNumber: c.caseNumber,
-                    caseTitle: c.caseTitle,
-                    summaryTitle: c.summaryTitle,
-                    decidedAt: c.decidedAt,
-                    importance: c.importance,
-                    relationType: PC_TO_AC[c.relationType] ?? "cites",
-                    note: null,
-                  }))}
-                  comments={problemComments}
-                  canEditComment={canEditComment}
-                  currentUserId={currentUserId}
-                  lectureResources={lectureResources}
-                  isAdmin={isAdmin}
-                  viewerIsStaff={canEditComment}
-                  importance={problem.importance}
-                />
+                  <ArticleRightPanel
+                    target={{ type: "problem", id: problem.problemId }}
+                    bookmark={bookmark}
+                    memos={memos}
+                    highlights={highlights}
+                    qnaThreads={qnaThreads}
+                    relatedProblems={relatedProblems}
+                    subjectSlug={subject.slug}
+                    relatedCases={citedCases.map((c) => ({
+                      caseId: c.caseId,
+                      caseNumber: c.caseNumber,
+                      caseTitle: c.caseTitle,
+                      summaryTitle: c.summaryTitle,
+                      decidedAt: c.decidedAt,
+                      importance: c.importance,
+                      relationType: PC_TO_AC[c.relationType] ?? "cites",
+                      note: null,
+                    }))}
+                    comments={problemComments}
+                    canEditComment={canEditComment}
+                    currentUserId={currentUserId}
+                    lectureResources={lectureResources}
+                    isAdmin={isAdmin}
+                    viewerIsStaff={canEditComment}
+                    importance={problem.importance}
+                  />
                 </div>
                 {/* 경계 손잡이 — 패널 왼쪽 변 세로 중앙(국가법령정보센터식). */}
                 <PanelEdgeHandle
@@ -1863,7 +1874,12 @@ function SubjectivePanel({
   // 시간제한 응시 모드 — 클라이언트 상태. 새로고침 시 리셋 (자기학습용).
   const [timedStartedAt, setTimedStartedAt] = useState<number | null>(null);
   const [timedLimitMin, setTimedLimitMin] = useState<number>(30);
-  const [timedExpired, setTimedExpired] = useState(false);
+  // 시험 모드 완료(조기 제출·시간 만료) 결과 — 완료 카드 표시용, 문제 이동 시 리셋.
+  const [timedResult, setTimedResult] = useState<{
+    limitMin: number;
+    elapsedSec: number;
+    expired: boolean;
+  } | null>(null);
   // 채점기준 체크리스트 (feat-4-A-322). null = rubric 없음.
   const [checkedIdx, setCheckedIdx] = useState<Set<number>>(
     new Set(initialAttempt?.rubricSelfCheck ?? []),
@@ -1908,7 +1924,7 @@ function SubjectivePanel({
     setRevealedModel(false);
     setRevealedRubric(false);
     setTimedStartedAt(null);
-    setTimedExpired(false);
+    setTimedResult(null);
     setCheckedIdx(new Set(initialAttempt?.rubricSelfCheck ?? []));
     lastSentRef.current = initialAttempt?.answerMd ?? "";
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2011,53 +2027,106 @@ function SubjectivePanel({
     const id = setInterval(() => forceTick((n) => n + 1), 1000);
     return () => clearInterval(id);
   }, [timedStartedAt]);
-  const timedRemainSec = useMemo(() => {
-    if (timedStartedAt === null) return null;
-    const elapsed = Math.floor((Date.now() - timedStartedAt) / 1000);
-    return Math.max(0, timedLimitMin * 60 - elapsed);
-  }, [timedStartedAt, timedLimitMin]);
+  // 매초 forceTick 리렌더마다 재계산해야 하므로 useMemo 금지 (deps 불변 → 카운트다운 정지).
+  const timedRemainSec =
+    timedStartedAt === null
+      ? null
+      : Math.max(
+          0,
+          timedLimitMin * 60 - Math.floor((Date.now() - timedStartedAt) / 1000),
+        );
+  // 시험 종료(조기 제출 or 만료) — 소요 시간과 함께 제출, 완료 카드로 전환.
+  const finishTimedExam = (expired: boolean) => {
+    if (timedStartedAt === null) return;
+    const elapsedSec = expired
+      ? timedLimitMin * 60
+      : Math.min(
+          timedLimitMin * 60,
+          Math.max(0, Math.floor((Date.now() - timedStartedAt) / 1000)),
+        );
+    setTimedResult({ limitMin: timedLimitMin, elapsedSec, expired });
+    setTimedStartedAt(null);
+    const fd = new FormData();
+    fd.set("intent", "submit");
+    fd.set("problemId", problemId);
+    fd.set("answerMd", draft);
+    fd.set("timedLimitMin", String(timedLimitMin));
+    fd.set("timedElapsedSec", String(elapsedSec));
+    submitFetcher.submit(fd, {
+      method: "post",
+      action: "/api/study/subjective-attempt",
+    });
+  };
   useEffect(() => {
-    if (timedStartedAt === null || timedExpired) return;
-    if (timedRemainSec === 0) {
-      setTimedExpired(true);
-      // 만료 시 자동 제출 — 현재 draft + score 미입력(null) 으로 submitted_at 만 찍는다.
-      const fd = new FormData();
-      fd.set("intent", "submit");
-      fd.set("problemId", problemId);
-      fd.set("answerMd", draft);
-      submitFetcher.submit(fd, {
-        method: "post",
-        action: "/api/study/subjective-attempt",
-      });
-    }
-    // submitFetcher 는 매 렌더 새 참조라 의존성 제외.
+    if (timedStartedAt === null) return;
+    if (timedRemainSec === 0) finishTimedExam(true);
+    // finishTimedExam/submitFetcher 는 매 렌더 새 참조라 의존성 제외.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timedRemainSec, timedStartedAt, timedExpired, draft, problemId]);
-  const timedActive = timedStartedAt !== null && !timedExpired;
+  }, [timedRemainSec, timedStartedAt]);
+  const timedActive = timedStartedAt !== null;
+  const runAiGrade = () => {
+    const fd = new FormData();
+    fd.set("problemId", problemId);
+    fd.set("answer", draft);
+    aiGradeFetcher.submit(fd, {
+      method: "post",
+      action: "/api/study/subjective-ai-grade",
+    });
+  };
+  const aiGraded =
+    aiGradeFetcher.data?.draft != null || lastSaved?.aiOverallScore != null;
 
   return (
     <div className="space-y-5">
-      <SubjectiveTimedBar
-        timedStartedAt={timedStartedAt}
-        timedLimitMin={timedLimitMin}
-        timedRemainSec={timedRemainSec}
-        timedExpired={timedExpired}
-        onStart={(min) => {
-          setTimedLimitMin(min);
-          setTimedStartedAt(Date.now());
-          setTimedExpired(false);
-        }}
-        onCancel={() => {
-          if (
-            confirm(
-              "시험 모드를 취소하시겠습니까? 작성한 답안은 그대로 유지됩니다.",
-            )
-          ) {
-            setTimedStartedAt(null);
-            setTimedExpired(false);
+      {timedResult ? (
+        <SubjectiveExamResultCard
+          result={timedResult}
+          answerLength={draft.length}
+          rubricDone={checkedIdx.size > 0}
+          rubricAvailable={hasRubric || (rubricItems?.length ?? 0) > 0}
+          onOpenRubric={() => setRevealedRubric(true)}
+          aiDone={aiGraded}
+          aiGrading={aiGrading}
+          aiDisabled={aiGrading || draft.trim().length < 50}
+          onRunAiGrade={runAiGrade}
+          scoreDone={lastSaved?.selfScore != null}
+          onOpenScoreForm={() => setShowScoreForm(true)}
+        />
+      ) : (
+        <SubjectiveTimedBar
+          timedStartedAt={timedStartedAt}
+          timedLimitMin={timedLimitMin}
+          timedRemainSec={timedRemainSec}
+          lastRecord={
+            lastSaved?.timedLimitMin != null &&
+            lastSaved?.timedElapsedSec != null
+              ? {
+                  limitMin: lastSaved.timedLimitMin,
+                  elapsedSec: lastSaved.timedElapsedSec,
+                }
+              : null
           }
-        }}
-      />
+          onStart={(min) => {
+            setTimedLimitMin(min);
+            setTimedStartedAt(Date.now());
+            setTimedResult(null);
+          }}
+          onSubmit={() => {
+            if (confirm("답안을 제출하고 시험을 종료할까요?")) {
+              finishTimedExam(false);
+            }
+          }}
+          onCancel={() => {
+            if (
+              confirm(
+                "시험 모드를 취소하시겠습니까? 작성한 답안은 그대로 유지됩니다.",
+              )
+            ) {
+              setTimedStartedAt(null);
+            }
+          }}
+        />
+      )}
 
       {/* Answer textarea */}
       <div className="border-border bg-card rounded-xl border shadow-sm">
@@ -2133,15 +2202,7 @@ function SubjectivePanel({
           variant="secondary"
           size="sm"
           disabled={aiGrading || timedActive || draft.trim().length < 50}
-          onClick={() => {
-            const fd = new FormData();
-            fd.set("problemId", problemId);
-            fd.set("answer", draft);
-            aiGradeFetcher.submit(fd, {
-              method: "post",
-              action: "/api/study/subjective-ai-grade",
-            });
-          }}
+          onClick={runAiGrade}
           className="rounded-full"
           title={
             timedActive
@@ -2153,9 +2214,7 @@ function SubjectivePanel({
           {aiGrading ? "AI 채점 중…" : "AI 채점"}
         </Button>
       </div>
-      {aiError ? (
-        <p className="text-destructive text-xs">{aiError}</p>
-      ) : null}
+      {aiError ? <p className="text-destructive text-xs">{aiError}</p> : null}
       <AiGradeResult
         result={
           aiGradeFetcher.data?.draft ??
@@ -2495,32 +2554,31 @@ function ReviewSection({
   );
 }
 
+// mm:ss 포맷 (시험 모드 소요 시간 표기).
+function fmtMMSS(totalSec: number) {
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
 function SubjectiveTimedBar({
   timedStartedAt,
   timedLimitMin,
   timedRemainSec,
-  timedExpired,
+  lastRecord,
   onStart,
+  onSubmit,
   onCancel,
 }: {
   timedStartedAt: number | null;
   timedLimitMin: number;
   timedRemainSec: number | null;
-  timedExpired: boolean;
+  lastRecord: { limitMin: number; elapsedSec: number } | null;
   onStart: (min: number) => void;
+  onSubmit: () => void;
   onCancel: () => void;
 }) {
   const [minInput, setMinInput] = useState<string>("30");
-  if (timedExpired) {
-    return (
-      <div className="flex items-center gap-2 rounded-xl border border-rose-400/50 bg-rose-50 px-4 py-2.5 text-xs dark:border-rose-700/40 dark:bg-rose-950/30">
-        <TimerIcon className="size-4 text-rose-500" />
-        <p className="font-semibold text-rose-700 dark:text-rose-300">
-          시간 만료 — 답안이 자동 제출되었습니다 ({timedLimitMin}분 응시).
-        </p>
-      </div>
-    );
-  }
   if (timedStartedAt === null) {
     return (
       <div className="border-border bg-muted/30 flex flex-wrap items-center gap-3 rounded-xl border border-dashed px-4 py-3 text-xs">
@@ -2556,7 +2614,9 @@ function SubjectiveTimedBar({
           시험 모드 시작
         </Button>
         <span className="text-muted-foreground ml-auto text-[11px]">
-          시작하면 모범답안·채점기준이 잠깁니다.
+          {lastRecord
+            ? `지난 응시: ${lastRecord.limitMin}분 제한 · ${fmtMMSS(lastRecord.elapsedSec)} 소요`
+            : "시작하면 모범답안·채점기준이 잠깁니다."}
         </span>
       </div>
     );
@@ -2581,15 +2641,149 @@ function SubjectiveTimedBar({
         {String(m).padStart(2, "0")}:{String(s).padStart(2, "0")}
       </span>
       <span className="text-muted-foreground">/ {timedLimitMin}분</span>
-      <Button
-        size="sm"
-        variant="ghost"
-        className="ml-auto h-7 rounded-full"
-        onClick={onCancel}
-        data-testid="subjective-timed-cancel"
-      >
-        취소
-      </Button>
+      <div className="ml-auto flex items-center gap-1.5">
+        <Button
+          size="sm"
+          variant="default"
+          className="h-7 rounded-full"
+          onClick={onSubmit}
+          data-testid="subjective-timed-submit"
+        >
+          제출하기
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 rounded-full"
+          onClick={onCancel}
+          data-testid="subjective-timed-cancel"
+        >
+          취소
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// 시험 모드 완료 카드 — 결과 요약 + 다음 절차(채점 단계) 안내 (feat-2-033).
+function SubjectiveExamResultCard({
+  result,
+  answerLength,
+  rubricDone,
+  rubricAvailable,
+  onOpenRubric,
+  aiDone,
+  aiGrading,
+  aiDisabled,
+  onRunAiGrade,
+  scoreDone,
+  onOpenScoreForm,
+}: {
+  result: { limitMin: number; elapsedSec: number; expired: boolean };
+  answerLength: number;
+  rubricDone: boolean;
+  rubricAvailable: boolean;
+  onOpenRubric: () => void;
+  aiDone: boolean;
+  aiGrading: boolean;
+  aiDisabled: boolean;
+  onRunAiGrade: () => void;
+  scoreDone: boolean;
+  onOpenScoreForm: () => void;
+}) {
+  const steps = [
+    {
+      label: "채점기준 자기점검",
+      desc: "채점기준을 열고 항목별로 내 답안을 점검",
+      done: rubricDone,
+      disabled: !rubricAvailable,
+      loading: false,
+      onClick: onOpenRubric,
+      testId: "subjective-exam-step-rubric",
+    },
+    {
+      label: "AI 채점",
+      desc: "논점·구성·논증 3축 초안 채점",
+      done: aiDone,
+      disabled: aiDisabled,
+      loading: aiGrading,
+      onClick: onRunAiGrade,
+      testId: "subjective-exam-step-ai",
+    },
+    {
+      label: "자기채점 입력",
+      desc: "최종 점수와 자기 평가 기록",
+      done: scoreDone,
+      disabled: false,
+      loading: false,
+      onClick: onOpenScoreForm,
+      testId: "subjective-exam-step-score",
+    },
+  ];
+  return (
+    <div
+      className={cn(
+        "rounded-xl border shadow-sm",
+        result.expired
+          ? "border-rose-300/60 bg-rose-50/50 dark:border-rose-700/40 dark:bg-rose-950/20"
+          : "border-emerald-300/60 bg-emerald-50/50 dark:border-emerald-700/40 dark:bg-emerald-950/20",
+      )}
+      data-testid="subjective-exam-result"
+    >
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
+        <span
+          className={cn(
+            "inline-flex items-center gap-1.5 text-xs font-bold",
+            result.expired
+              ? "text-rose-700 dark:text-rose-300"
+              : "text-emerald-700 dark:text-emerald-300",
+          )}
+        >
+          <TimerIcon className="size-4" />
+          {result.expired
+            ? "시간 만료 — 답안이 자동 제출되었습니다"
+            : "시험 모드 완료 — 답안이 제출되었습니다"}
+        </span>
+        <span className="text-muted-foreground text-[11px] tabular-nums">
+          제한 {result.limitMin}분 · 소요 {fmtMMSS(result.elapsedSec)} ·{" "}
+          {answerLength.toLocaleString()}자
+        </span>
+      </div>
+      <div className="border-border/60 grid gap-2 border-t px-4 py-3 sm:grid-cols-3">
+        {steps.map((step, i) => (
+          <button
+            key={step.label}
+            type="button"
+            onClick={step.onClick}
+            disabled={step.disabled || step.loading}
+            data-testid={step.testId}
+            className={cn(
+              "bg-card flex items-start gap-2.5 rounded-lg border p-3 text-left transition-colors",
+              step.done
+                ? "border-emerald-300/60 dark:border-emerald-700/40"
+                : "border-border hover:border-primary/40",
+              (step.disabled || step.loading) &&
+                "cursor-not-allowed opacity-50",
+            )}
+          >
+            {step.done ? (
+              <CircleCheckIcon className="mt-0.5 size-4 shrink-0 text-emerald-500" />
+            ) : (
+              <span className="bg-muted text-muted-foreground mt-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold tabular-nums">
+                {i + 1}
+              </span>
+            )}
+            <span>
+              <span className="block text-xs font-semibold">
+                {step.loading ? `${step.label} 중…` : step.label}
+              </span>
+              <span className="text-muted-foreground mt-0.5 block text-[11px] leading-snug">
+                {step.desc}
+              </span>
+            </span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -2655,11 +2849,12 @@ function ProblemPrevNextButton({
     );
   }
   const num =
-    problemDisplayNumber(target.origin, target.examNumber, target.problemNumber) ??
-    "?";
-  const label = target.year
-    ? `${target.year}년 #${num}`
-    : `#${num}`;
+    problemDisplayNumber(
+      target.origin,
+      target.examNumber,
+      target.problemNumber,
+    ) ?? "?";
+  const label = target.year ? `${target.year}년 #${num}` : `#${num}`;
   return (
     <Link
       to={`/subjects/${subjectSlug}/problems/${target.problemId}${query}`}

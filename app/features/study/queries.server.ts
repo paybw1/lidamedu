@@ -351,9 +351,12 @@ export async function getResumePoint(
     .eq("user_id", userId)
     .order("started_at", { ascending: false })
     .limit(30);
-  let hit:
-    | { tt: "article" | "case" | "problem"; id: string; subject: LawSubjectSlug; at: string }
-    | null = null;
+  let hit: {
+    tt: "article" | "case" | "problem";
+    id: string;
+    subject: LawSubjectSlug;
+    at: string;
+  } | null = null;
   for (const row of data ?? []) {
     const scope = row.scope as Partial<StudyScope> | null;
     const tt = scope?.target_type;
@@ -362,7 +365,12 @@ export async function getResumePoint(
       scope?.target_id &&
       (tt === "article" || tt === "case" || tt === "problem")
     ) {
-      hit = { tt, id: scope.target_id, subject: scope.subject, at: row.started_at };
+      hit = {
+        tt,
+        id: scope.target_id,
+        subject: scope.subject,
+        at: row.started_at,
+      };
       break;
     }
   }
@@ -704,10 +712,13 @@ export interface SubjectiveAttempt {
   aiAxisScores: { issue: number; structure: number; writing: number } | null;
   aiFeedbackMd: string | null;
   aiGradedAt: string | null;
+  // 시험 모드 응시 기록 (feat-2-033). NULL=학습 모드 제출.
+  timedLimitMin: number | null;
+  timedElapsedSec: number | null;
 }
 
 const ATTEMPT_COLUMNS =
-  "attempt_id, user_id, problem_id, answer_md, self_score, self_score_note, submitted_at, updated_at, review_requested_at, review_completed_at, reviewer_id, reviewer_score, reviewer_comment_md, rubric_self_check, ai_overall_score, ai_axis_scores, ai_feedback_md, ai_graded_at";
+  "attempt_id, user_id, problem_id, answer_md, self_score, self_score_note, submitted_at, updated_at, review_requested_at, review_completed_at, reviewer_id, reviewer_score, reviewer_comment_md, rubric_self_check, ai_overall_score, ai_axis_scores, ai_feedback_md, ai_graded_at, timed_limit_min, timed_elapsed_sec";
 
 function rowToAttempt(row: {
   attempt_id: string;
@@ -726,6 +737,8 @@ function rowToAttempt(row: {
   ai_axis_scores?: unknown;
   ai_feedback_md?: string | null;
   ai_graded_at?: string | null;
+  timed_limit_min?: number | null;
+  timed_elapsed_sec?: number | null;
 }): SubjectiveAttempt {
   const ax = row.ai_axis_scores;
   const aiAxisScores =
@@ -757,6 +770,8 @@ function rowToAttempt(row: {
     aiAxisScores,
     aiFeedbackMd: row.ai_feedback_md ?? null,
     aiGradedAt: row.ai_graded_at ?? null,
+    timedLimitMin: row.timed_limit_min ?? null,
+    timedElapsedSec: row.timed_elapsed_sec ?? null,
   };
 }
 
@@ -903,7 +918,13 @@ export async function upsertSubjectiveAttempt(
   input: {
     answerMd: string;
     // submit=true 시 self_score / submitted_at 동시 갱신.
-    submit?: { selfScore: number | null; selfScoreNote: string | null };
+    submit?: {
+      selfScore: number | null;
+      selfScoreNote: string | null;
+      // 시험 모드 제출일 때만 전달 — 미전달 시 기존 기록 보존.
+      timedLimitMin?: number;
+      timedElapsedSec?: number;
+    };
     // rubric 체크리스트 — 항상 갱신 가능 (자기채점 진행 중에도).
     rubricSelfCheck?: number[] | null;
   },
@@ -918,6 +939,12 @@ export async function upsertSubjectiveAttempt(
             self_score: input.submit.selfScore,
             self_score_note: input.submit.selfScoreNote,
             submitted_at: new Date().toISOString(),
+            ...(input.submit.timedLimitMin !== undefined
+              ? { timed_limit_min: input.submit.timedLimitMin }
+              : {}),
+            ...(input.submit.timedElapsedSec !== undefined
+              ? { timed_elapsed_sec: input.submit.timedElapsedSec }
+              : {}),
           }
         : {}),
       ...(input.rubricSelfCheck !== undefined

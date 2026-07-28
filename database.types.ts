@@ -12527,6 +12527,8 @@ export type Database = {
           self_score: number | null
           self_score_note: string | null
           submitted_at: string | null
+          timed_elapsed_sec: number | null
+          timed_limit_min: number | null
           updated_at: string
           user_id: string
         }
@@ -12549,6 +12551,8 @@ export type Database = {
           self_score?: number | null
           self_score_note?: string | null
           submitted_at?: string | null
+          timed_elapsed_sec?: number | null
+          timed_limit_min?: number | null
           updated_at?: string
           user_id: string
         }
@@ -12571,6 +12575,8 @@ export type Database = {
           self_score?: number | null
           self_score_note?: string | null
           submitted_at?: string | null
+          timed_elapsed_sec?: number | null
+          timed_limit_min?: number | null
           updated_at?: string
           user_id?: string
         }
