@@ -2445,11 +2445,14 @@ function RubricChecklist({
                     data-testid={`rubric-item-${i}`}
                   />
                   <span className="flex-1">
-                    <span
-                      className={cn(isChecked && "line-through opacity-60")}
-                    >
-                      {it.label}
-                    </span>
+                    {/* 라벨에 **강조** 등 마크다운이 섞여 있어 채점기준·모범답안과 같은 렌더러 사용. */}
+                    <MarkdownView
+                      text={it.label}
+                      className={cn(
+                        "text-xs leading-normal [&_p]:my-0",
+                        isChecked && "line-through opacity-60",
+                      )}
+                    />
                   </span>
                   <span className="text-muted-foreground shrink-0 tabular-nums">
                     {it.points}점
