@@ -150,6 +150,23 @@ function pickNumber(...candidates: unknown[]): number | undefined {
   return undefined;
 }
 
+// BlankItem → DB 저장 JSON(snake_case) — 배치에 필요한 모든 필드 보존.
+//   blanks 배열을 통째로 재직렬화하는 곳(추가/제거)은 반드시 이걸 쓴다. 좌표
+//   (block_index/cum_offset)를 빠뜨리면 짧은 답(2자 명사 등)의 슬롯 배치가 실패한다.
+export function blankToDbJson(b: BlankItem): Record<string, unknown> {
+  return {
+    idx: b.idx,
+    length: b.length,
+    answer: b.answer,
+    before_context: b.beforeContext ?? "",
+    after_context: b.afterContext ?? "",
+    ...(b.blockId ? { block_id: b.blockId } : {}),
+    ...(typeof b.blockIndex === "number" ? { block_index: b.blockIndex } : {}),
+    ...(typeof b.cumOffset === "number" ? { cum_offset: b.cumOffset } : {}),
+    ...(b.hint ? { hint: b.hint } : {}),
+  };
+}
+
 export function parseBlanks(value: unknown): BlankItem[] {
   if (!Array.isArray(value)) return [];
   const out: BlankItem[] = [];
@@ -786,14 +803,11 @@ export async function removeBlankFromSet(
   const tokenRe = new RegExp(`\\[\\[BLANK:${blankIdx}\\]\\]`, "g");
   const newBodyText = row.body_text.replace(tokenRe, replacement);
 
+  // ★남는 빈칸의 배치 좌표(block_index/cum_offset/block_id)·hint 를 보존해 재직렬화 —
+  //   이전 버전은 컨텍스트만 남기고 좌표를 떨어뜨려, 빈칸 하나를 지우면 세트 전체의
+  //   Pass 0 좌표가 유실됐다(자동생성 세트 96건 좌표 소실 사고의 원인).
   const newBlanks = blanks.filter((b) => b.idx !== blankIdx);
-  const dbJson = newBlanks.map((b) => ({
-    idx: b.idx,
-    length: b.length,
-    answer: b.answer,
-    before_context: b.beforeContext ?? "",
-    after_context: b.afterContext ?? "",
-  }));
+  const dbJson = newBlanks.map(blankToDbJson);
 
   const { error: upErr } = await client
     .from("article_blank_sets")
@@ -836,14 +850,9 @@ export async function removeBlanksFromSet(
     newBodyText = newBodyText.replace(tokenRe, replacement);
   }
 
+  // ★좌표 보존 재직렬화(위 removeBlankFromSet 와 동일 — blankToDbJson).
   const newBlanks = blanks.filter((b) => !idxSet.has(b.idx));
-  const dbJson = newBlanks.map((b) => ({
-    idx: b.idx,
-    length: b.length,
-    answer: b.answer,
-    before_context: b.beforeContext ?? "",
-    after_context: b.afterContext ?? "",
-  }));
+  const dbJson = newBlanks.map(blankToDbJson);
 
   const { error: upErr } = await client
     .from("article_blank_sets")
