@@ -84,7 +84,16 @@ const ORIGINS: ProblemOrigin[] = [
   "mock",
   "expected",
 ];
-const FORMATS: ProblemFormat[] = ["mc_short", "mc_box", "mc_case"];
+// ★전체 유형 포함 필수 — 현재 값이 옵션에 없으면 셀렉트가 첫 옵션(mc_short)으로
+// 폴백돼 저장 시 format 이 조용히 덮여쓰인다(주관식→단답형 오염 사고, 2026-07-29).
+const FORMATS: ProblemFormat[] = [
+  "mc_short",
+  "mc_box",
+  "mc_case",
+  "ox",
+  "blank",
+  "subjective",
+];
 const POLARITIES: ProblemPolarity[] = ["positive", "negative"];
 const SCOPES: ProblemScope[] = ["unit", "comprehensive"];
 // header 의 검토완료 버튼이 form 속성으로 메인 폼을 가리키기 위한 고정 id.
