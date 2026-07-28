@@ -354,6 +354,15 @@ function SubjectiveCard({
               {SUBJECTIVE_KIND_LABEL[item.subjectiveKind]}
             </Badge>
           ) : null}
+          {(item.modelAnswerMd ?? "").trim() ? (
+            <Badge
+              variant="outline"
+              className="border-emerald-400/40 bg-emerald-50/60 text-xs text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
+              title="채점기준·모범답안이 등록된 문제입니다"
+            >
+              모범답안
+            </Badge>
+          ) : null}
           {item.primaryArticleLabel ? (
             <Badge variant="outline" className="text-xs">
               {item.primaryArticleLabel}
