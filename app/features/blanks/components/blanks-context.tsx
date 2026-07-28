@@ -34,6 +34,27 @@ import { normalizeAnswer } from "../lib/normalize";
 //   그 조합 결과를 버린다. iOS 는 blur 로 조합 버퍼가 flush 되지 않아(Windows 와 다름) 이
 //   윈도우 방식으로 잡는다. window(브라우저)에서만 Date.now 사용(SSR 무관).
 let blankCarryoverUntil = 0;
+// ★iPad 하드웨어 키보드 IME 이월 구제용 — 빈칸 이동 시 직전 칸 마지막 음절을 기록.
+//   하드웨어 키보드(스마트 키보드 등)는 composition 이벤트 없이(inserttext/deletecontentbackward
+//   쌍, comp=false) 직전 칸 마지막 음절을 새 칸 첫머리에 재조합한다(2026-07-28 신고, imedebug).
+//   조합 이벤트 기반 방어가 전부 무력하므로, 판정 시점에 "오답 && 기록된 꼬리 음절로 시작 &&
+//   꼬리를 떼면 정확히 정답"인 극보수 조건에서만 꼬리를 제거해 구제한다. 전 provider 공유.
+let blankCarryTail = "";
+let blankCarryTailUntil = 0;
+const BLANK_CARRY_TAIL_MS = 30_000;
+function markBlankCarryTail(el: Element | null): void {
+  if (
+    el instanceof HTMLInputElement &&
+    el.matches("input[data-lidam-blank]") &&
+    el.value.length > 0
+  ) {
+    blankCarryTail = el.value.slice(-1);
+    blankCarryTailUntil = Date.now() + BLANK_CARRY_TAIL_MS;
+  }
+}
+function takeBlankCarryTail(): string {
+  return Date.now() < blankCarryTailUntil ? blankCarryTail : "";
+}
 // ★터치(iOS/iPad)는 blur 로 IME flush 가 안 돼 잔여 음절 재조합이 데스크톱보다 늦게 시작될 수
 //   있다 → 이월 감지 윈도우를 넓혀야 새는 걸 막는다. 데스크톱은 좁게 유지(빠른 사용자의 '진짜'
 //   새 조합을 이월로 오폐기하지 않도록). iPadOS 는 데스크톱 Safari UA 라 pointer:coarse/터치로 감지.
@@ -302,6 +323,7 @@ export function BlanksRenderProvider({
       activeEl.dataset.lidamBlank === "1" &&
       typeof activeEl.blur === "function"
     ) {
+      markBlankCarryTail(activeEl); // 하드웨어 키보드 이월 구제용 꼬리 기록
       activeEl.blur();
     }
   }, []);
@@ -433,6 +455,7 @@ export function BlanksRenderProvider({
         ? (document.activeElement as HTMLElement | null)
         : null;
     if (activeEl && activeEl !== el && typeof activeEl.blur === "function") {
+      markBlankCarryTail(activeEl); // 하드웨어 키보드 이월 구제용 꼬리 기록
       activeEl.blur();
     }
     const focusTarget = () => {
@@ -545,16 +568,35 @@ export function BlanksRenderProvider({
       const input = rawInput;
 
       // 입력값이 정답이 아니어도 typed value 는 state 에 반영해 사용자가 결과를 볼 수 있게 한다.
-      const isCorrect =
-        normalizeAnswer(input) === normalizeAnswer(blank.answer);
+      let isCorrect = normalizeAnswer(input) === normalizeAnswer(blank.answer);
+      let accepted = input;
+      // ★iPad 하드웨어 키보드 IME 이월 구제 — composition 이벤트 없이 직전 칸 마지막 음절이
+      //   새 칸 첫머리에 붙는 경로(comp=false, 2026-07-28 신고). "오답 && 이동 시 기록한 꼬리
+      //   음절로 시작 && 꼬리를 떼면 정확히 정답" 세 조건이 모두 맞을 때만 꼬리를 제거해 정답
+      //   처리한다. (과거 광범위 substring 휴리스틱이 정상 입력을 훼손했던 것과 달리, 이 규칙은
+      //   나머지가 정답과 완전 일치할 때만 발동 — 정상 입력엔 도달 불가.)
+      if (!isCorrect) {
+        const tail = takeBlankCarryTail();
+        if (
+          tail &&
+          input.startsWith(tail) &&
+          input.length > tail.length &&
+          normalizeAnswer(input.slice(tail.length)) ===
+            normalizeAnswer(blank.answer)
+        ) {
+          accepted = input.slice(tail.length);
+          isCorrect = true;
+        }
+      }
+      const inputForState = accepted;
       if (isCorrect) {
-        updateState(idx, { input, status: "correct" });
+        updateState(idx, { input: inputForState, status: "correct" });
         // attempt 저장 — 우선순위: setId(content) > autoMeta(subject/period) > skip
         if (setId) {
           const fd = new FormData();
           fd.set("setId", setId);
           fd.set("blankIdx", String(idx));
-          fd.set("userInput", input);
+          fd.set("userInput", accepted);
           fetcher.submit(fd, {
             method: "post",
             action: "/api/blanks/attempt",
@@ -570,7 +612,7 @@ export function BlanksRenderProvider({
           fd.set("blockIndex", String(blank.blockIndex));
           fd.set("cumOffset", String(blank.cumOffset));
           fd.set("answer", blank.answer);
-          fd.set("userInput", input);
+          fd.set("userInput", accepted);
           fetcher.submit(fd, {
             method: "post",
             action: "/api/blanks/auto-attempt",
