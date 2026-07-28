@@ -1861,6 +1861,7 @@ function SubjectivePanel({
   const [draft, setDraft] = useState(initialAttempt?.answerMd ?? "");
   const [revealedModel, setRevealedModel] = useState(false);
   const [revealedRubric, setRevealedRubric] = useState(false);
+  const [revealedChecklist, setRevealedChecklist] = useState(false);
   const [lastSaved, setLastSaved] = useState<SubjectiveAttempt | null>(
     initialAttempt,
   );
@@ -1923,6 +1924,7 @@ function SubjectivePanel({
     setShowScoreForm(false);
     setRevealedModel(false);
     setRevealedRubric(false);
+    setRevealedChecklist(false);
     setTimedStartedAt(null);
     setTimedResult(null);
     setCheckedIdx(new Set(initialAttempt?.rubricSelfCheck ?? []));
@@ -2084,7 +2086,10 @@ function SubjectivePanel({
           answerLength={draft.length}
           rubricDone={checkedIdx.size > 0}
           rubricAvailable={hasRubric || (rubricItems?.length ?? 0) > 0}
-          onOpenRubric={() => setRevealedRubric(true)}
+          onOpenRubric={() => {
+            setRevealedRubric(true);
+            setRevealedChecklist(true);
+          }}
           aiDone={aiGraded}
           aiGrading={aiGrading}
           aiDisabled={aiGrading || draft.trim().length < 50}
@@ -2155,14 +2160,6 @@ function SubjectivePanel({
         </div>
       </div>
 
-      {rubricItems && rubricItems.length > 0 && !timedActive ? (
-        <RubricChecklist
-          items={rubricItems}
-          checked={checkedIdx}
-          onToggle={toggleRubric}
-        />
-      ) : null}
-
       <div className="flex flex-wrap gap-2">
         <Button
           variant={revealedModel ? "outline" : "default"}
@@ -2187,6 +2184,18 @@ function SubjectivePanel({
         >
           {revealedRubric ? "채점기준 숨기기" : "채점기준 보기"}
           {!hasRubric ? " (미등록)" : ""}
+        </Button>
+        <Button
+          variant={revealedChecklist ? "outline" : "secondary"}
+          size="sm"
+          onClick={() => setRevealedChecklist((v) => !v)}
+          disabled={!rubricItems?.length || timedActive}
+          title={timedActive ? "시험 모드 중에는 체크리스트 잠금" : undefined}
+          className="rounded-full"
+          data-testid="subjective-reveal-checklist"
+        >
+          {revealedChecklist ? "채점 체크리스트 숨기기" : "채점 체크리스트 보기"}
+          {!rubricItems?.length ? " (미등록)" : ""}
         </Button>
         <Button
           variant="default"
@@ -2313,6 +2322,14 @@ function SubjectivePanel({
             ) : null}
           </div>
         </div>
+      ) : null}
+
+      {revealedChecklist && rubricItems && rubricItems.length > 0 && !timedActive ? (
+        <RubricChecklist
+          items={rubricItems}
+          checked={checkedIdx}
+          onToggle={toggleRubric}
+        />
       ) : null}
 
       {revealedRubric && hasRubric ? (
