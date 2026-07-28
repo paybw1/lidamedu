@@ -50,10 +50,7 @@ import { computePeriodBlanks } from "~/features/blanks/lib/period-blanks";
 import { computeSubjectBlanks } from "~/features/blanks/lib/subject-blanks";
 import { listBlankSetsByArticle } from "~/features/blanks/queries.server";
 import { getDueBlankSets } from "~/features/blanks/srs.server";
-import {
-  getChapterTierGate,
-  getTierCompletionsBySet,
-} from "~/features/blanks/tiers.server";
+import { getTierCompletionsBySet } from "~/features/blanks/tiers.server";
 import { listComments } from "~/features/comments/queries.server";
 import { ArticleBodyView } from "~/features/laws/components/article-body";
 import { ReadingControls } from "~/features/study/components/study-font-control";
@@ -344,18 +341,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
         blankSet.setId
       ] ?? [])
     : [];
-  // feat-2-030 S4-B — 장/편 단위 게이트. 특허·상표·디자인=장(chapter), 민법=편(part) 모수의
-  //   전체 세트가 하(중) 통과해야 중(상) 해금. tiers 플래그 + 세트 있을 때만 계산(추가 RTT 2).
-  const blankChapterGate =
-    blankTiersEnabled && blankSet
-      ? await getChapterTierGate(
-          client,
-          user.id,
-          articles,
-          article.articleId,
-          "chapter", // 모든 과목 장(章) 단위(민법 편은 조문이 수백 개라 너무 큼 → 장으로 좁힘)
-        )
-      : null;
+  // ★난이도 해금 스코프 통일(2026-07-28 사용자 결정) — 장(chapter) 게이트를 제거하고
+  //   장 뷰어·체계도 뷰어와 동일하게 "조문(세트) 단위" 해금으로 통일한다. 조문 뷰어만
+  //   장 게이트를 쓰면 같은 조문이 화면에 따라 잠금 상태가 달라져(186 중 잠김 등) 혼란.
+  //   장 게이트 로직(getChapterTierGate)은 tiers.server 에 보존 — 재도입 시 재배선만.
 
   return {
     subject: LAW_SUBJECTS[lawCode],
@@ -396,7 +385,6 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     blankSet,
     blankTierCompletions,
     blankTiersEnabled,
-    blankChapterGate,
     staffRole,
     isAdmin: staffRole === "admin",
     currentUserId: user.id,
@@ -454,7 +442,6 @@ function ArticleViewerInner({
     blankSet,
     blankTierCompletions,
     blankTiersEnabled,
-    blankChapterGate,
     blankReviewNav,
     blankV2,
     filterScope,
@@ -1467,7 +1454,6 @@ function ArticleViewerInner({
                           lawCode={subject.slug}
                           enableTiers={blankTiersEnabled}
                           completedTiers={blankTierCompletions}
-                          chapterGate={blankChapterGate}
                         />
                       ) : (
                         <div className="border-border bg-card text-muted-foreground rounded-xl border py-10 text-center text-sm">

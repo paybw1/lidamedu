@@ -6,6 +6,7 @@ import { z } from "zod";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { parseArticleBody } from "~/features/laws/lib/article-body";
 
+import { filterPlaceableBlanks } from "../lib/blank-layout";
 import { normalizeAnswer } from "../lib/normalize";
 import { deriveTierSpanBlanks } from "../lib/tier-spans";
 import {
@@ -65,6 +66,10 @@ export async function action({ request }: Route.ActionArgs) {
   const tier = parsed.data.tier as BlankTier;
 
   // 검증 대상 빈칸: 하/중=단어 빈칸, 상(3)=조문 본문에서 재도출한 구간 빈칸(서버 권위).
+  //   ★하/중 모수 = 본문 배치에 성공한 빈칸만(filterPlaceableBlanks) — 클라 V2 렌더와 동일
+  //   필터. 잉여 중복 빈칸(본문 출현 초과)은 슬롯이 안 만들어져 사용자가 못 채우므로,
+  //   모수에 포함하면 통과가 구조적으로 불가능해진다(민법 199 "하자"×2 사례).
+  let tierBaseBlanks = blanks;
   let activeBlanks: BlankItem[];
   let activeIdxs: Set<number>;
   if (tier === 3) {
@@ -73,8 +78,10 @@ export async function action({ request }: Route.ActionArgs) {
     activeBlanks = spans;
     activeIdxs = new Set(spans.map((b) => b.idx));
   } else {
-    activeBlanks = blanks;
-    activeIdxs = activeBlankIdxsForTier(blanks, tier);
+    const body = await loadArticleBody(client, setRow.article_id);
+    tierBaseBlanks = body ? filterPlaceableBlanks(body, blanks) : blanks;
+    activeBlanks = tierBaseBlanks;
+    activeIdxs = activeBlankIdxsForTier(tierBaseBlanks, tier);
   }
   if (activeIdxs.size === 0) {
     return { ok: false, error: "No blanks" } as const;
@@ -93,7 +100,7 @@ export async function action({ request }: Route.ActionArgs) {
     }
   }
 
-  const covered = tiersCoveredBy(blanks, tier);
+  const covered = tiersCoveredBy(tierBaseBlanks, tier);
   await recordTierCompletions(client, user.id, parsed.data.setId, covered);
   return { ok: true, passed: true, completedTiers: covered } as const;
 }

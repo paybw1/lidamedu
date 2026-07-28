@@ -32,6 +32,7 @@ import type { Block, Inline } from "~/features/laws/lib/article-body";
 import {
   blockCumulativeText,
   computeBlockBlankHits,
+  filterPlaceableBlanks,
   inlineTokenContent,
 } from "../lib/blank-layout";
 import { normalizeAnswer } from "../lib/normalize";
@@ -105,6 +106,14 @@ const CROSS_CLEAR_MS = 2500;
 let crossPrev: { slot: HTMLElement; value: string } | null = null;
 let crossClear: { slot: HTMLElement; carried: string; until: number } | null =
   null;
+// ★Enter/Tab 이동 dedupe 상태 — 컴포넌트 ref 가 아니라 모듈 공유(전 에디터 공통).
+//   장 뷰어는 조문마다 별개 인스턴스라, 조문 A 마지막 칸에서 Enter → B 첫 칸으로 넘어간 직후
+//   스퓨리어스 두 번째 Enter 가 B 인스턴스에서 처리되면 B 의 (초기값 0) ref 로는 근접 중복을
+//   못 잡아 "한 번의 Enter 로 두 칸" 이동한다. 이동/입력 시각을 모듈 레벨로 공유해
+//   인스턴스 경계와 무관하게 dedupe 한다.
+let lastNavAt = 0;
+let lastInputAt = 0;
+let composingNavAt = 0;
 
 // carried 의 접미사와 val 의 접두사가 겹치는 최장 구간을 찾아 val 앞에서 제거.
 //   전체 이월("사회질서")·부분 이월(마지막 음절 "명")을 모두 처리. 겹침 없으면 null.
@@ -417,11 +426,18 @@ export function BlankFillViewV2({
     () => new Map(effectiveBlanks.map((b) => [b.idx, b.answer ?? ""])),
     [effectiveBlanks],
   );
+  // ★티어(하/중) 판정 모수 = 본문 배치에 성공한 빈칸만 — 자동생성 세트의 잉여 중복 빈칸
+  //   (본문 출현 횟수 초과, 예: 민법 199 "하자"×2)은 슬롯이 안 렌더돼 영원히 못 채우므로
+  //   모수에 넣으면 그 단계 통과가 불가능해진다. 서버(tier-complete)도 동일 필터로 재검증.
+  const placeableBlanks = useMemo(
+    () => (tiersOn ? filterPlaceableBlanks(body, blanks) : blanks),
+    [tiersOn, body, blanks],
+  );
   const activeIdxs = useMemo(() => {
     if (!tiersOn) return null;
     if (currentTier === 3) return new Set(spanBlanks.map((b) => b.idx));
-    return activeBlankIdxsForTier(blanks, currentTier);
-  }, [tiersOn, blanks, spanBlanks, currentTier]);
+    return activeBlankIdxsForTier(placeableBlanks, currentTier);
+  }, [tiersOn, placeableBlanks, spanBlanks, currentTier]);
 
   const [reveal, setReveal] = useState(false);
   const [resetKey, setResetKey] = useState(0);
@@ -451,18 +467,16 @@ export function BlankFillViewV2({
   );
   const PENDING_MOVE_MAX_MS = 1200;
   // ★iPad(크롬/사파리)에서 하드웨어 키보드 Enter/Tab 한 번이 keydown 을 두 번 흘려 "두 칸씩"
-  //   이동하던 문제 방어 — 직전 이동 시각을 기억해 근접(70ms 내) 중복 keydown 은 무시한다.
-  const lastNavAtRef = useRef(0);
+  //   이동하던 문제 방어 — 직전 이동 시각(모듈 공유 lastNavAt)으로 근접(70ms 내) 중복 무시.
   // ★한글 조합 확정 Enter/Tab 뒤에 iOS/iPad 가 흘리는 '확정 후 진짜' Enter/Tab(비조합)까지
-  //   또 이동해 두 칸 넘어가는 문제 방어 — 조합 확정으로 이동을 '예약'한 시각을 기억해, 그
+  //   또 이동해 두 칸 넘어가는 문제 방어 — 조합 확정으로 이동을 '예약'한 시각(composingNavAt)
   //   직후 짧은 창(TRAILING_IME_NAV_MS) 안에 오는 '비조합' Enter/Tab 은 무시한다.
-  const composingNavAtRef = useRef(0);
   const TRAILING_IME_NAV_MS = 500;
   // ★"입력 없이 연속 이동" 방어 — iPad 에서 Enter 한 번이 keydown 을 두 번(수백 ms 간격)
   //   흘려 빈 칸을 두 칸 건너뛰던 문제(190조 등). 직전 이동 이후 사용자 입력(onInput)이 전혀
   //   없었는데 짧은 창(NAV_NO_INPUT_DEDUPE_MS) 안에 또 이동 신호가 오면 스퓨리어스로 무시한다.
   //   타이핑 후 Enter 는 입력이 있어 통과, 의도적 '빈 칸 건너뛰기'는 창 밖(느린 두 번째)이면 정상.
-  const lastInputAtRef = useRef(0);
+  //   (세 시각 모두 모듈 공유 — 조문 경계를 넘는 이동에서 인스턴스가 바뀌어도 dedupe 유지.)
   const NAV_NO_INPUT_DEDUPE_MS = 450;
 
   const lines = useMemo(
@@ -1251,8 +1265,8 @@ export function BlankFillViewV2({
     const ne = e.nativeEvent as InputEvent;
     const composing = ne.isComposing === true;
     const isDelete = (ne.inputType || "").toLowerCase().startsWith("delete");
-    // ★실제 입력 발생 시각 — "입력 없이 연속 이동"(스퓨리어스 Enter) 판별용.
-    lastInputAtRef.current = Date.now();
+    // ★실제 입력 발생 시각 — "입력 없이 연속 이동"(스퓨리어스 Enter) 판별용(모듈 공유).
+    lastInputAt = Date.now();
     pushDbg(
       "input",
       `${(ne.inputType || "").toLowerCase()} comp=${composing} ${slotIdxOf(slot)} v="${readSlot(slot)}"`,
@@ -1431,32 +1445,27 @@ export function BlankFillViewV2({
     // ★이중 이동 방어(iPad) — 한 번의 키 입력이 keydown 을 두 번 흘리면 근접 중복을 무시.
     //   (사람의 개별 탭은 70ms 보다 훨씬 느리므로 정상 이동은 영향 없음.)
     const nowNav = Date.now();
-    if (nowNav - lastNavAtRef.current < 70) {
+    if (nowNav - lastNavAt < 70) {
       e.preventDefault();
       return;
     }
     // ★"입력 없이 연속 이동" 방어 — 직전 이동 이후 사용자 입력이 전혀 없었는데 짧은 창 안에
     //   또 이동 신호가 오면(=한 번의 Enter 가 keydown 을 두 번 흘린 스퓨리어스) 무시.
-    if (
-      nowNav - lastNavAtRef.current < NAV_NO_INPUT_DEDUPE_MS &&
-      lastInputAtRef.current < lastNavAtRef.current
-    ) {
+    if (nowNav - lastNavAt < NAV_NO_INPUT_DEDUPE_MS && lastInputAt < lastNavAt) {
       e.preventDefault();
+      pushDbg("nav.dedupe", `${e.key} +${nowNav - lastNavAt}ms noInput`);
       return;
     }
     // ★IME 확정 후 트레일링 Enter/Tab 삼키기 — 한글 조합을 확정하는 Enter/Tab(조합 중)로
     //   아래에서 이동을 예약한 직후, iOS/iPad 는 '확정 후 진짜' Enter/Tab(비조합)을 한 번 더
     //   흘린다. 그 두 번째 이벤트로 또 이동하면 두 칸 넘어가므로, 조합 확정 이동 예약 시각부터
     //   짧은 창 안의 '비조합' Enter/Tab 은 무시한다(정상 연속 입력은 그보다 느림).
-    if (
-      !composingRef.current &&
-      nowNav - composingNavAtRef.current < TRAILING_IME_NAV_MS
-    ) {
+    if (!composingRef.current && nowNav - composingNavAt < TRAILING_IME_NAV_MS) {
       e.preventDefault();
-      composingNavAtRef.current = 0;
+      composingNavAt = 0;
       return;
     }
-    lastNavAtRef.current = nowNav;
+    lastNavAt = nowNav;
     const cur = slotFromSelection();
     // ★문서 전체 빈칸을 읽기 순서로 — 한 조문의 마지막 칸에서 Tab/Enter 면 다음 조문
     //   첫 빈칸으로 넘어간다(장 뷰어 다중 조문). 단일 조문이면 자기 빈칸만 나온다.
@@ -1474,7 +1483,7 @@ export function BlankFillViewV2({
       if (composingRef.current) {
         pendingMoveRef.current = { target: next, at: Date.now() };
         // ★확정 후 트레일링 Enter/Tab 을 삼키기 위한 기준 시각(위 가드 참조).
-        composingNavAtRef.current = nowNav;
+        composingNavAt = nowNav;
         pushDbg("pmSet", `${e.key} ${slotIdxOf(cur)}→${slotIdxOf(next)}`);
         return;
       }
@@ -1499,22 +1508,39 @@ export function BlankFillViewV2({
       e.preventDefault();
     }
   };
-  // ★터치로 "다른 빈칸"을 누를 때(조합 중)만 — 브라우저가 탭 위치로 캐럿을 놓기 전에 sink 로
-  //   흘려 조합 이월을 sink 에서 확정·폐기. 같은 칸 재터치·버튼 등 비-빈칸 터치는 흘리지 않아
-  //   캐럿이 sink 에 고립돼 삭제·입력이 먹통 되는 것을 막는다.
+  // ★터치로 "다른 빈칸"을 누를 때 — 직전 칸의 IME 잔여가 새 칸으로 새는 것을 막는다.
+  //   같은 칸 재터치·버튼 등 비-빈칸 터치는 건드리지 않아 캐럿/키보드 동작을 보존.
+  //   (a) 조합(composition) 중: 캐럿이 탭 위치로 가기 전에 sink 로 흘려 조합을 확정·폐기.
+  //   (b) 비조합 IME(iPadOS 한글 — composition 이벤트 없이 delete+insert 페어로 입력): 조합
+  //       이벤트가 없어도 IME 가 마지막 음절을 내부 버퍼에 물고 있어, 다른 칸을 탭한 뒤 첫
+  //       입력에 그 음절이 병합돼 "이전 글자가 다시 나타나는" 증상(자→잦). 터치 슬롯 전환
+  //       시 flush input 에 잠깐 포커스를 옮겨 버퍼를 직전 칸에 확정·종료시키고, 다음
+  //       프레임에 목표 칸 끝으로 착지한다. 마우스는 칸 중간 클릭 캐럿 배치 보존을 위해 제외.
   const onPointerDownCapture = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!composingRef.current) return;
-    const sink = sinkRef.current;
-    if (!sink) return;
     const tgtSlot =
       e.target instanceof Element
-        ? e.target.closest(`.${SLOT_CLASS}`)
+        ? e.target.closest<HTMLElement>(`.${SLOT_CLASS}`)
         : null;
     const curSlot = slotFromSelection();
     if (!tgtSlot || tgtSlot === curSlot) return;
-    drainToSink();
+    if (composingRef.current) {
+      const sink = sinkRef.current;
+      if (!sink) return;
+      drainToSink();
+      requestAnimationFrame(() => {
+        sink.textContent = ZWSP;
+      });
+      return;
+    }
+    if (e.pointerType === "mouse") return;
+    const flush = flushInputRef.current;
+    if (!flush) return;
+    e.preventDefault();
+    pushDbg("tapFlush", `${slotIdxOf(curSlot)}→${slotIdxOf(tgtSlot)}`);
+    flush.focus({ preventScroll: true });
     requestAnimationFrame(() => {
-      sink.textContent = ZWSP;
+      caretToEnd(tgtSlot);
+      scrollBlankIntoViewIfNeeded(tgtSlot);
     });
   };
 

@@ -411,3 +411,19 @@ export function computeBlockBlankHits(
   }
   return result;
 }
+
+// 본문 배치에 성공한(=슬롯이 실제로 렌더되는) 빈칸만 남긴다 — 티어(하/중) 판정 모수 공용
+//   (클라 V2 뷰어 · 서버 tier-complete 재검증 동일 필터). 자동생성 세트에 본문 출현 횟수보다
+//   많은 중복 빈칸이 있으면(예: 민법 199 "하자"×2) 잉여 빈칸은 슬롯이 안 만들어져 사용자가
+//   영원히 못 채우므로, 모수에 포함하면 그 단계 100% 통과가 구조적으로 불가능해진다.
+export function filterPlaceableBlanks(
+  body: ArticleBody,
+  blanks: BlankItem[],
+): BlankItem[] {
+  const hitsMap = computeBlockBlankHits(body, blanks);
+  const ok = new Set<number>();
+  for (const hits of hitsMap.values()) {
+    for (const h of hits) if (h.start >= 0) ok.add(h.blank.idx);
+  }
+  return blanks.filter((b) => ok.has(b.idx));
+}
