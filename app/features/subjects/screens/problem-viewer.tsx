@@ -1092,6 +1092,16 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                       {SUBJECTIVE_KIND_LABEL[problem.subjectiveKind]}
                     </span>
                   ) : null}
+                  {problem.format === "subjective" &&
+                  (problem.modelAnswerMd ?? "").trim() ? (
+                    <span
+                      className="inline-flex items-center rounded-full border border-emerald-400/40 bg-emerald-50/60 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
+                      title="채점기준·모범답안이 등록된 문제입니다"
+                      data-testid="problem-model-answer-chip"
+                    >
+                      모범답안
+                    </span>
+                  ) : null}
                   {problem.year ? (
                     <span
                       className={cn(
