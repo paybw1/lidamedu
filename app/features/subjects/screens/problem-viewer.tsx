@@ -1217,7 +1217,10 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                 highlights={highlights}
                 viewerIsStaff={canEditComment}
               >
-                {MD_IMAGE_RE.test(problem.bodyMd) ? (
+                {/* 이미지 또는 case-box(사실관계 박스) 포함 본문은 마크다운 렌더 —
+                    그 외 plain 은 우발적 마크다운 오렌더 방지를 위해 기존 pre-line 유지. */}
+                {MD_IMAGE_RE.test(problem.bodyMd) ||
+                problem.bodyMd.includes("case-box") ? (
                   <div className="mb-7 text-[length:calc(17px*var(--study-fs))] leading-[1.8] font-medium dark:[&_img]:brightness-[.8]">
                     <MarkdownView
                       text={problem.bodyMd}
