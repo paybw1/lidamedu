@@ -295,9 +295,17 @@ export default function BookDetail({ loaderData }: Route.ComponentProps) {
       {book.description ? (
         <section className="mt-10">
           <h2 className="text-sm font-bold tracking-tight">책 소개</h2>
-          <p className="text-muted-foreground mt-2 text-sm leading-relaxed whitespace-pre-wrap">
-            {book.description}
-          </p>
+          {/* HtmlEditor 저장분(표·이미지 포함)은 HTML 로, 기존 평문 소개는 pre-wrap 으로. */}
+          {/<[a-z][\s\S]*>/i.test(book.description) ? (
+            <div
+              className="lecture-detail-html text-muted-foreground mt-2 text-sm leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: book.description }}
+            />
+          ) : (
+            <p className="text-muted-foreground mt-2 text-sm leading-relaxed whitespace-pre-wrap">
+              {book.description}
+            </p>
+          )}
         </section>
       ) : null}
 

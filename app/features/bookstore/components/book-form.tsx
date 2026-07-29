@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 
 import { ImageUploadHint } from "~/core/components/image-upload-hint";
+import { HtmlEditor } from "~/features/lms/components/html-editor";
 
 export interface BookFormData {
   bookId?: string;
@@ -182,7 +183,14 @@ export function BookForm({
         <textarea name="shortIntro" rows={2} maxLength={1000} defaultValue={b?.shortIntro ?? ""} className={TA} />
       </Row>
       <Row label="도서소개">
-        <textarea name="description" rows={5} maxLength={20000} defaultValue={b?.description ?? ""} className={TA} />
+        {/* 표·이미지 삽입 요청(2026-07-29 신고)으로 HtmlEditor 로 전환 — 상세 화면은 HTML
+            포함 여부를 감지해 렌더하므로 기존 평문 소개는 그대로 표시된다. */}
+        <HtmlEditor
+          name="description"
+          defaultValue={b?.description ?? ""}
+          uploadUrl="/api/lms/editor-image"
+          minHeight={200}
+        />
       </Row>
       <Row label="저자소개">
         <textarea name="authorBio" rows={3} maxLength={20000} defaultValue={b?.authorBio ?? ""} className={TA} />
