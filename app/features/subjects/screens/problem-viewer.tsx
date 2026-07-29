@@ -1294,6 +1294,7 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                   gradingRubricMd={problem.gradingRubricMd}
                   explanationMd={problem.explanationMd}
                   rubricItems={problem.rubricItems}
+                  rubricAiGenerated={Boolean(problem.rubricAiGeneratedAt)}
                   initialAttempt={subjectiveAttempt}
                 />
               ) : (
@@ -1889,6 +1890,7 @@ function SubjectivePanel({
   gradingRubricMd,
   explanationMd,
   rubricItems,
+  rubricAiGenerated,
   initialAttempt,
 }: {
   problemId: string;
@@ -1896,6 +1898,8 @@ function SubjectivePanel({
   gradingRubricMd: string | null;
   explanationMd: string | null;
   rubricItems: { label: string; points: number }[] | null;
+  // 채점기준·모범답안이 강사 해설 없이 AI 생성됨 — 섹션 헤더에 배지 표시(비교분석용).
+  rubricAiGenerated: boolean;
   initialAttempt: SubjectiveAttempt | null;
 }) {
   const [draft, setDraft] = useState(initialAttempt?.answerMd ?? "");
@@ -2374,10 +2378,11 @@ function SubjectivePanel({
 
       {revealedRubric && hasRubric ? (
         <div className="border-border bg-card rounded-xl border shadow-sm">
-          <div className="border-border border-b px-5 py-3">
+          <div className="border-border flex items-center gap-2 border-b px-5 py-3">
             <p className="text-muted-foreground text-[11px] font-bold tracking-widest uppercase">
               채점 기준
             </p>
+            {rubricAiGenerated ? <AiGeneratedBadge /> : null}
           </div>
           <div className="px-5 py-4">
             <MarkdownView
@@ -2391,10 +2396,11 @@ function SubjectivePanel({
 
       {revealedModel && hasModel ? (
         <div className="border-border bg-card rounded-xl border shadow-sm">
-          <div className="border-border border-b px-5 py-3">
+          <div className="border-border flex items-center gap-2 border-b px-5 py-3">
             <p className="text-muted-foreground text-[11px] font-bold tracking-widest uppercase">
               모범답안
             </p>
+            {rubricAiGenerated ? <AiGeneratedBadge /> : null}
           </div>
           <div className="px-5 py-4">
             <MarkdownView
@@ -2423,6 +2429,18 @@ function SubjectivePanel({
         </div>
       ) : null}
     </div>
+  );
+}
+
+// AI 생성 배지 — 채점기준·모범답안이 강사 해설 없이 AI 생성된 문항 표시(비교분석용).
+function AiGeneratedBadge() {
+  return (
+    <span
+      className="rounded-full border border-violet-300 bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:border-violet-700 dark:bg-violet-950 dark:text-violet-300"
+      title="이 채점기준·모범답안은 AI가 판례·교재 근거로 생성한 초안입니다"
+    >
+      AI 생성
+    </span>
   );
 }
 

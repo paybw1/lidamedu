@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -9897,6 +9897,7 @@ export type Database = {
           review_status: Database["public"]["Enums"]["problem_review_status"]
           reviewed_at: string | null
           reviewed_by: string | null
+          rubric_ai_generated_at: string | null
           rubric_items: Json | null
           science_section_id: string | null
           science_subject: Database["public"]["Enums"]["science_subject"] | null
@@ -9947,6 +9948,7 @@ export type Database = {
           review_status?: Database["public"]["Enums"]["problem_review_status"]
           reviewed_at?: string | null
           reviewed_by?: string | null
+          rubric_ai_generated_at?: string | null
           rubric_items?: Json | null
           science_section_id?: string | null
           science_subject?:
@@ -10001,6 +10003,7 @@ export type Database = {
           review_status?: Database["public"]["Enums"]["problem_review_status"]
           reviewed_at?: string | null
           reviewed_by?: string | null
+          rubric_ai_generated_at?: string | null
           rubric_items?: Json | null
           science_section_id?: string | null
           science_subject?:
