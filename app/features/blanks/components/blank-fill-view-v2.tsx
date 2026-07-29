@@ -104,6 +104,11 @@ const CROSS_CLEAR_MS = 2500;
 //   직전 칸의 마지막 조합 음절을 다음 칸으로 딸려보내는 현상이 있어, 조문 경계뿐 아니라
 //   모든 슬롯 전환에서 방어한다.
 let crossPrev: { slot: HTMLElement; value: string } | null = null;
+// ★슬롯 '진입 시점'의 직전(타 슬롯) 값 스냅샷 — judgeSlot 이월 구제(carryRescue)용.
+//   crossPrev 는 새 슬롯의 첫 키 입력에서 현재 슬롯 자신으로 덮이므로, 잔류 조합이 타이핑
+//   도중 점진적으로 섞여 들어오는 경우(2026-07-29 신고: "맃"→"리책임") 구제 시점에는 직전
+//   슬롯 값을 이미 잃는다. 슬롯 요소별로 진입 당시 직전 값을 보존해 폴백으로 쓴다.
+const entryPrevBySlot = new WeakMap<HTMLElement, string>();
 let crossClear: { slot: HTMLElement; carried: string; until: number } | null =
   null;
 // ★Enter/Tab 이동 dedupe 상태 — 컴포넌트 ref 가 아니라 모듈 공유(전 에디터 공통).
@@ -651,6 +656,10 @@ export function BlankFillViewV2({
     let val = readSlot(slot);
     // ★이월 구제용 — crossPrev 갱신 전의 '직전 슬롯' 스냅샷(아래에서 현재 슬롯으로 덮이기 전).
     const prevCross = crossPrev;
+    // 타 슬롯에서 넘어온 직후의 직전 값을 슬롯별로 보존 — 첫 키 입력 이후에도 구제 가능.
+    if (prevCross && prevCross.slot !== slot && prevCross.value.length > 0) {
+      entryPrevBySlot.set(slot, prevCross.value);
+    }
     valuesRef.current.set(idx, val);
     // 마지막으로 입력된 슬롯 값 기억(다음 칸 이월 감지용 — 슬롯 단위).
     if (val.length > 0) {
@@ -667,11 +676,17 @@ export function BlankFillViewV2({
     //   "오답 && 직전 슬롯 마지막 음절로 시작 && 그 음절을 떼면 정확히 정답" 3중 조건에서만
     //   꼬리를 제거해 정답 처리 — 나머지가 정답과 완전 일치할 때만 발동해 정상 입력 훼손 불가.
     //   조합 중(marked text)에는 DOM 을 건드리지 않는다.
-    if (!correct && !composingRef.current && prevCross && prevCross.slot !== slot) {
+    // 구제용 직전 값 — 같은 슬롯 연속 타이핑으로 crossPrev 가 자기 자신을 가리키면
+    // 진입 시점 스냅샷(entryPrevBySlot)으로 폴백(점진적 이월 재조합 대응).
+    const rescuePrev =
+      prevCross && prevCross.slot !== slot && prevCross.value.length > 0
+        ? prevCross.value
+        : (entryPrevBySlot.get(slot) ?? "");
+    if (!correct && !composingRef.current && rescuePrev.length > 0) {
       // 꼬리 후보 = 직전 슬롯 값의 suffix 중 현재 값의 prefix 인 가장 긴 것 — 마지막
       // 한 음절 재조합뿐 아니라 단어 전체 이월(2026-07-29 신고)도 커버. 떼고 남은
       // 값이 정답과 정확히 일치할 때만 발동하므로 정상 입력은 훼손 불가.
-      const prevVal = prevCross.value;
+      const prevVal = rescuePrev;
       for (let n = Math.min(prevVal.length, val.length - 1); n >= 1; n--) {
         const tail = prevVal.slice(-n);
         if (!val.startsWith(tail)) continue;
