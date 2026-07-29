@@ -10,6 +10,8 @@ import {
 } from "~/features/study/lib/srs";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
+import { parseBlanks } from "./queries.server";
+
 /**
  * 빈칸 attempt 후 SRS 상태 upsert.
  * 호출처 = blanks/api/attempt.tsx insert 직후. best-effort.
@@ -89,7 +91,7 @@ export async function getDueBlankSets(
   const { data, error } = await client
     .from("user_blank_srs")
     .select(
-      "set_id, blank_idx, next_due_at, article_blank_sets!inner(set_id, article_id, articles!inner(article_number, display_label, laws!inner(law_code)))",
+      "set_id, blank_idx, next_due_at, article_blank_sets!inner(set_id, article_id, blanks, articles!inner(article_number, display_label, laws!inner(law_code)))",
     )
     .eq("user_id", userId)
     .lte("next_due_at", nowIso)
@@ -98,6 +100,22 @@ export async function getDueBlankSets(
   if (error) throw error;
 
   type Row = NonNullable<typeof data>[number];
+  // ★고아 SRS 행 제외 — 세트 재직렬화/빈칸 제거로 blank_idx 가 현재 세트에 없으면 다시
+  //   풀 방법이 없어 영구 due 로 남는다(2026-07-29 신고: 민법 35·40조). 현재 세트에
+  //   존재하고 정답이 매핑된 idx 만 due 로 집계한다.
+  const validIdxBySet = new Map<string, Set<number>>();
+  const liveRows = (data ?? []).filter((r) => {
+    let valid = validIdxBySet.get(r.set_id);
+    if (!valid) {
+      valid = new Set(
+        parseBlanks(r.article_blank_sets.blanks)
+          .filter((b) => b.answer.trim().length > 0)
+          .map((b) => b.idx),
+      );
+      validIdxBySet.set(r.set_id, valid);
+    }
+    return valid.has(r.blank_idx);
+  });
   const bySet = new Map<
     string,
     {
@@ -106,7 +124,7 @@ export async function getDueBlankSets(
       earliestDueAt: string;
     }
   >();
-  for (const r of data ?? []) {
+  for (const r of liveRows) {
     const cur = bySet.get(r.set_id);
     if (!cur) {
       bySet.set(r.set_id, {
