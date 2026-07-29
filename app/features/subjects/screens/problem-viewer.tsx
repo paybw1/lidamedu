@@ -124,6 +124,13 @@ import {
 // 파이프표 감지 = 구분선 `|---|` (\|[\s:]*-{3,}). mcq-pack-sheet 와 동일 규칙.
 const MD_IMAGE_RE = /!\[[^\]]*\]\([^)]*\)|<(img|table|div)\b|\|[\s:]*-{3,}/i;
 
+// 주관식 본문 — 사실관계와 설문((1)…) 사이에 구분선(hr)을 렌더 시점에 삽입.
+// 원문(body_md)은 무변경. 첫 "(1) " 문단 앞에만 삽입하며, 본문이 (1)로 시작하거나
+// 설문 마커가 없으면 no-op.
+function withQuestionDivider(md: string): string {
+  return md.replace(/\n\n(\(1\)\s)/, "\n\n---\n\n$1");
+}
+
 export const meta: Route.MetaFunction = ({ data: loaderData }) => {
   if (!loaderData || "deleted" in loaderData)
     return [{ title: "문제 | 리담변리사학원" }];
@@ -1228,10 +1235,14 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                 problem.bodyMd.includes("case-box") ? (
                   <div className="mb-7 text-[length:calc(17px*var(--study-fs))] leading-[1.8] font-medium dark:[&_img]:brightness-[.8]">
                     <MarkdownView
-                      text={problem.bodyMd}
+                      text={
+                        problem.format === "subjective"
+                          ? withQuestionDivider(problem.bodyMd)
+                          : problem.bodyMd
+                      }
                       breaks={problem.format === "subjective"}
                       literalNumbering={problem.format === "subjective"}
-                      className="text-[length:calc(17px*var(--study-fs))]"
+                      className="text-[length:calc(17px*var(--study-fs))] [&_hr]:my-5"
                     />
                   </div>
                 ) : (
