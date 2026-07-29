@@ -668,20 +668,22 @@ export function BlankFillViewV2({
     //   꼬리를 제거해 정답 처리 — 나머지가 정답과 완전 일치할 때만 발동해 정상 입력 훼손 불가.
     //   조합 중(marked text)에는 DOM 을 건드리지 않는다.
     if (!correct && !composingRef.current && prevCross && prevCross.slot !== slot) {
-      const tail = prevCross.value.slice(-1);
-      if (
-        tail &&
-        val.startsWith(tail) &&
-        val.length > tail.length &&
-        normalizeAnswer(val.slice(tail.length)) === normalizeAnswer(answer)
-      ) {
-        val = val.slice(tail.length);
+      // 꼬리 후보 = 직전 슬롯 값의 suffix 중 현재 값의 prefix 인 가장 긴 것 — 마지막
+      // 한 음절 재조합뿐 아니라 단어 전체 이월(2026-07-29 신고)도 커버. 떼고 남은
+      // 값이 정답과 정확히 일치할 때만 발동하므로 정상 입력은 훼손 불가.
+      const prevVal = prevCross.value;
+      for (let n = Math.min(prevVal.length, val.length - 1); n >= 1; n--) {
+        const tail = prevVal.slice(-n);
+        if (!val.startsWith(tail)) continue;
+        if (normalizeAnswer(val.slice(n)) !== normalizeAnswer(answer)) continue;
+        val = val.slice(n);
         valuesRef.current.set(idx, val);
         slot.textContent = ZWSP + val;
         if (slotFromSelection() === slot) caretToEnd(slot);
         crossPrev = { slot, value: val };
         correct = true;
         pushDbg("carryRescue", `${slotIdxOf(slot)} tail="${tail}" -> "${val}"`);
+        break;
       }
     }
     if (correct) {
