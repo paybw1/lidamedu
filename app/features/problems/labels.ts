@@ -257,6 +257,8 @@ export interface ProblemListItem {
   rubricItems: RubricItem[] | null;
   // 채점기준·모범답안이 강사 해설 없이 AI 생성된 경우(배지 표시·비교분석용). null = 강사 해설 기반.
   rubricAiGeneratedAt: string | null;
+  // 운영자가 채점기준·모범답안을 심층 검수 완료한 시각. null = 미검수.
+  rubricReviewedAt: string | null;
   // 종합/지문/박스 해설 어딘가에 마크다운 표가 있는지.
   hasTable: boolean;
   // 종합/지문/박스 해설 어딘가에 이미지가 있는지.

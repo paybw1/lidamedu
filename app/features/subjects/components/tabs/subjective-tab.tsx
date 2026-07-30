@@ -380,6 +380,15 @@ function SubjectiveCard({
               AI 생성
             </Badge>
           ) : null}
+          {isStaff && item.rubricReviewedAt ? (
+            <Badge
+              variant="outline"
+              className="border-emerald-400/60 bg-emerald-50 text-xs text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+              title={`운영자 검수완료 (${new Date(item.rubricReviewedAt).toLocaleDateString("ko-KR")})`}
+            >
+              ✓ 검수완료
+            </Badge>
+          ) : null}
           {item.primaryArticleLabel ? (
             <Badge variant="outline" className="text-xs">
               {item.primaryArticleLabel}

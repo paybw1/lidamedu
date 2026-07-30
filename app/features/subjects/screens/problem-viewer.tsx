@@ -1341,6 +1341,8 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                   explanationMd={problem.explanationMd}
                   rubricItems={problem.rubricItems}
                   rubricAiGenerated={Boolean(problem.rubricAiGeneratedAt) && isStaff}
+                  rubricReviewedAt={problem.rubricReviewedAt}
+                  viewerIsStaff={isStaff}
                   initialAttempt={subjectiveAttempt}
                 />
               ) : (
@@ -1938,6 +1940,8 @@ function SubjectivePanel({
   explanationMd,
   rubricItems,
   rubricAiGenerated,
+  rubricReviewedAt,
+  viewerIsStaff,
   initialAttempt,
 }: {
   problemId: string;
@@ -1947,6 +1951,9 @@ function SubjectivePanel({
   rubricItems: { label: string; points: number }[] | null;
   // 채점기준·모범답안이 강사 해설 없이 AI 생성됨 — 섹션 헤더에 배지 표시(비교분석용).
   rubricAiGenerated: boolean;
+  // 운영자 검수완료 시각 (null=미검수) — staff 에게만 토글 버튼 노출.
+  rubricReviewedAt: string | null;
+  viewerIsStaff: boolean;
   initialAttempt: SubjectiveAttempt | null;
 }) {
   const [draft, setDraft] = useState(initialAttempt?.answerMd ?? "");
@@ -1986,6 +1993,26 @@ function SubjectivePanel({
     attempt?: SubjectiveAttempt;
     error?: string;
   }>();
+  // 검수완료 토글 (staff) — 모범답안 심층 리뷰 진행 표시.
+  const reviewFetcher = useFetcher<{
+    ok?: true;
+    reviewedAt?: string | null;
+    error?: string;
+  }>();
+  const reviewedNow = reviewFetcher.formData
+    ? reviewFetcher.formData.get("reviewed") === "true"
+    : reviewFetcher.data?.ok
+      ? reviewFetcher.data.reviewedAt != null
+      : rubricReviewedAt != null;
+  const toggleReviewed = () => {
+    const fd = new FormData();
+    fd.set("problemId", problemId);
+    fd.set("reviewed", reviewedNow ? "false" : "true");
+    reviewFetcher.submit(fd, {
+      method: "post",
+      action: "/api/problems/rubric-review",
+    });
+  };
   // AI 채점 초안 (feat-2-032 S3).
   const aiGradeFetcher = useFetcher<{
     ok?: boolean;
@@ -2448,6 +2475,27 @@ function SubjectivePanel({
               모범답안
             </p>
             {rubricAiGenerated ? <AiGeneratedBadge /> : null}
+            {viewerIsStaff ? (
+              <button
+                type="button"
+                onClick={toggleReviewed}
+                disabled={reviewFetcher.state !== "idle"}
+                title={
+                  reviewedNow
+                    ? `검수완료됨${rubricReviewedAt ? ` (${new Date(rubricReviewedAt).toLocaleDateString("ko-KR")})` : ""} — 클릭 시 해제`
+                    : "이 문제의 채점기준·모범답안을 심층 검수했음으로 표시"
+                }
+                className={cn(
+                  "ml-auto inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold transition-colors",
+                  reviewedNow
+                    ? "border-emerald-400/60 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                    : "border-border text-muted-foreground hover:bg-muted",
+                )}
+                data-testid="rubric-review-toggle"
+              >
+                {reviewedNow ? "✓ 검수완료" : "검수완료로 표시"}
+              </button>
+            ) : null}
           </div>
           <div className="px-5 py-4">
             <MarkdownView
