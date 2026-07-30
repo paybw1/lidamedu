@@ -399,7 +399,9 @@ create table public.problems (
   created_by          uuid references profiles(profile_id),
   source_gs_question_id uuid references gs_questions(question_id) on delete set null,  -- feat-10-001: GS 문항에서 승격된 경우 원본 문항
   released_at         timestamptz,  -- feat-10-002: origin=mock 문제의 학습과목 공개 시각 (null=비노출)
-  rubric_ai_generated_at timestamptz -- 2026-07: 채점기준·모범답안이 강사 해설 없이 AI 생성된 시각(뷰어 'AI 생성' 배지·비교분석용). null=강사 해설 기반
+  rubric_ai_generated_at timestamptz, -- 2026-07: 채점기준·모범답안이 강사 해설 없이 AI 생성된 시각(뷰어 'AI 생성' 배지·비교분석용). null=강사 해설 기반
+  rubric_reviewed_at  timestamptz,  -- 2026-07: 주관식 채점기준·모범답안 운영자 심층 검수완료 시각(뷰어 토글·목록 배지). null=미검수
+  rubric_reviewed_by  uuid          -- 검수한 운영자 user id
 );
 
 create index problems_law on problems(law_id);
