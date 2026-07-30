@@ -1294,7 +1294,7 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                   gradingRubricMd={problem.gradingRubricMd}
                   explanationMd={problem.explanationMd}
                   rubricItems={problem.rubricItems}
-                  rubricAiGenerated={Boolean(problem.rubricAiGeneratedAt)}
+                  rubricAiGenerated={Boolean(problem.rubricAiGeneratedAt) && isStaff}
                   initialAttempt={subjectiveAttempt}
                 />
               ) : (

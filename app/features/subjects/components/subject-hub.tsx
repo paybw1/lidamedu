@@ -270,6 +270,7 @@ function SubjectHubInner({
                 appliedFilters={problemFilters ?? {}}
                 attemptStatus={subjectiveAttemptStatus ?? {}}
                 systematicNodes={systematicNodes ?? []}
+                isStaff={isStaff}
               />
             </TabsContent>
           ) : null}

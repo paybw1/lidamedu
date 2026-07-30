@@ -75,12 +75,15 @@ export function SubjectiveTab({
   appliedFilters,
   attemptStatus,
   systematicNodes,
+  isStaff = false,
 }: {
   subject: LawSubjectMeta;
   problems: ProblemListItem[];
   appliedFilters: ProblemFiltersApplied;
   attemptStatus: SubjectiveAttemptStatus;
   systematicNodes: SystematicNode[];
+  // AI 생성 배지(비교분석용)는 운영자에게만 노출.
+  isStaff?: boolean;
 }) {
   const [searchParams] = useSearchParams();
   const { width: leftWidth, setWidth: setLeftWidth } = useLeftPanelWidth();
@@ -236,6 +239,7 @@ export function SubjectiveTab({
                     item={p}
                     linkQuery={problemLinkQuery}
                     status={attemptStatus[p.problemId] ?? null}
+                    isStaff={isStaff}
                   />
                 ))}
               </div>
@@ -308,11 +312,13 @@ function SubjectiveCard({
   item,
   linkQuery,
   status,
+  isStaff = false,
 }: {
   subjectSlug: LawSubjectMeta["slug"];
   item: ProblemListItem;
   linkQuery: string;
   status: { submitted: boolean; reviewed: boolean } | null;
+  isStaff?: boolean;
 }) {
   // 카드 미리보기 — 본문의 HTML(case-box)·표·이미지·강조 마크업을 걷어낸 평문.
   const plain = item.bodyMd
@@ -363,6 +369,15 @@ function SubjectiveCard({
               title="채점기준·모범답안이 등록된 문제입니다"
             >
               모범답안
+            </Badge>
+          ) : null}
+          {isStaff && item.rubricAiGeneratedAt ? (
+            <Badge
+              variant="outline"
+              className="border-violet-300 bg-violet-50 text-xs text-violet-700 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-300"
+              title="채점기준·모범답안이 AI 생성된 문항입니다(운영자 전용 표시, 비교분석용)"
+            >
+              AI 생성
             </Badge>
           ) : null}
           {item.primaryArticleLabel ? (
