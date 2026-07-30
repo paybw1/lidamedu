@@ -7,6 +7,41 @@ import makeServerClient from "~/core/lib/supa-client.server";
 
 import type { Route } from "./+types/ref-preview";
 
+// body_json → 읽기용 텍스트 평탄화. clause 블록의 label + inline 텍스트, children(호·목) 재귀.
+interface BodyBlock {
+  kind?: string;
+  label?: string;
+  inline?: Array<{ text?: string; type?: string }>;
+  children?: BodyBlock[];
+}
+function flattenBlock(b: BodyBlock, depth: number): string {
+  const inline = (b.inline ?? [])
+    .filter((t) => t.type !== "subtitle")
+    .map((t) => t.text ?? "")
+    .join("")
+    .trim();
+  const label = b.label ? `${b.label} ` : "";
+  const indent = "  ".repeat(Math.min(depth, 3));
+  const self = inline ? `${indent}${label}${inline}` : "";
+  const kids = (b.children ?? [])
+    .map((c) => flattenBlock(c, depth + 1))
+    .filter(Boolean)
+    .join("\n");
+  return [self, kids].filter(Boolean).join("\n");
+}
+function flattenBodyJson(bodyJson: unknown): string {
+  const blocks = (bodyJson as { blocks?: BodyBlock[] } | null)?.blocks;
+  if (!Array.isArray(blocks)) return "";
+  return blocks
+    .filter((b) => b.kind !== "header_refs")
+    .map((b) => flattenBlock(b, 0))
+    .filter(Boolean)
+    .join("\n")
+    .split("\n")
+    .filter((line) => !/^[\s,·]+$/.test(line))
+    .join("\n");
+}
+
 export async function loader({ request }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);
   const {
@@ -39,37 +74,49 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (type === "article") {
     const { data: art } = await client
       .from("articles")
-      .select("article_id, display_label, path, law_id")
+      .select("article_id, display_label, path, current_revision_id")
       .eq("article_id", id)
       .is("deleted_at", null)
       .maybeSingle();
     if (!art) return data({ error: "Not found" }, { status: 404 });
-    // 조 + 하위(항·호·목) 스냅샷 본문 조립 — path prefix.
-    const { data: subs } = await client
-      .from("articles")
-      .select("article_id, path, current_revision_id")
-      .eq("law_id", art.law_id)
-      .is("deleted_at", null)
-      .like("path", `${String(art.path)}%`)
-      .order("path")
-      .limit(80);
-    const revIds = (subs ?? [])
-      .filter(
-        (s) =>
-          String(s.path) === String(art.path) ||
-          String(s.path).startsWith(String(art.path) + "."),
-      )
-      .map((s) => s.current_revision_id)
-      .filter((x): x is string => !!x);
+    // 조 + 하위(항·호·목) 수집 — path 는 ltree 라 LIKE 불가 → parent_id BFS(최대 3단계).
+    const rows: Array<{ article_id: string; path: unknown; current_revision_id: string | null }> =
+      [{ article_id: art.article_id, path: art.path, current_revision_id: art.current_revision_id }];
+    let frontier = [art.article_id];
+    for (let depth = 0; depth < 3 && frontier.length; depth++) {
+      const { data: kids } = await client
+        .from("articles")
+        .select("article_id, path, current_revision_id")
+        .in("parent_id", frontier)
+        .is("deleted_at", null)
+        .limit(300);
+      if (!kids?.length) break;
+      rows.push(...kids);
+      frontier = kids.map((k) => k.article_id);
+    }
+    // 문서 순 정렬 — path 세그먼트 숫자 우선 비교.
+    const seg = (p: unknown) => String(p ?? "").split(".");
+    rows.sort((a, b) => {
+      const as = seg(a.path), bs = seg(b.path);
+      for (let i = 0; i < Math.max(as.length, bs.length); i++) {
+        const x = as[i] ?? "", y = bs[i] ?? "";
+        if (x === y) continue;
+        const xn = Number(x), yn = Number(y);
+        if (!Number.isNaN(xn) && !Number.isNaN(yn) && xn !== yn) return xn - yn;
+        return x < y ? -1 : 1;
+      }
+      return 0;
+    });
+    const revIds = rows.map((r) => r.current_revision_id).filter((x): x is string => !!x);
     const texts: string[] = [];
     for (let i = 0; i < revIds.length; i += 100) {
       const { data: revs } = await client
         .from("article_revisions")
-        .select("revision_id, body_text")
+        .select("revision_id, body_json")
         .in("revision_id", revIds.slice(i, i + 100));
-      const byId = new Map((revs ?? []).map((r) => [r.revision_id, r.body_text ?? ""]));
+      const byId = new Map((revs ?? []).map((r) => [r.revision_id, r.body_json]));
       for (const rid of revIds.slice(i, i + 100)) {
-        const t = byId.get(rid);
+        const t = flattenBodyJson(byId.get(rid));
         if (t) texts.push(t);
       }
     }
