@@ -107,7 +107,7 @@ export async function loader({ request }: Route.LoaderArgs) {
         : undefined,
   };
 
-  const [problems, years, systematicNodes] = await Promise.all([
+  const [fetched, years, systematicNodes] = await Promise.all([
     // feat-10-002: 운영자 문제 관리 화면 — 미공개 mock 문제도 표시.
     // 검토 미승인(draft/rejected) 도 운영자에게 노출해야 검토 작업 가능 — 학생
     // 노출 게이트는 별도 경로에서 적용됨.
@@ -118,6 +118,10 @@ export async function loader({ request }: Route.LoaderArgs) {
     listProblemYears(client, subject),
     listSystematicTopNodes(client, subject),
   ]);
+  // 유형 "전체"(format 미지정) = 1차 객관식 화면 — 주관식(2차)은 format=subjective 로만 표시.
+  const problems = filters.format
+    ? fetched
+    : fetched.filter((p) => p.format !== "subjective");
   // sort=asc/desc → 기본 정렬(체계도/조문 순서) 정/역순, no_asc/no_desc → 식별번호(P-n) 순.
   // prev/next(편집 화면)는 기본 순서 유지.
   const sortParam = url.searchParams.get("sort");
