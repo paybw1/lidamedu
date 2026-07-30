@@ -15,7 +15,7 @@ import {
   TimerIcon,
   VideoIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   Link,
   data,
@@ -104,6 +104,10 @@ import {
 import { MobileNavDrawer } from "~/features/subjects/components/mobile-nav-drawer";
 import { ProblemSystematicTree } from "~/features/subjects/components/problem-systematic-tree";
 import {
+  stripSystematicNumber,
+  SystematicNumberBadge,
+} from "~/features/subjects/components/systematic-node-label";
+import {
   SortAxisProvider,
   SortAxisToggle,
 } from "~/features/subjects/components/sort-axis";
@@ -114,6 +118,7 @@ import {
   parseProblemFilters,
 } from "~/features/subjects/lib/loader.server";
 import { getSubjectAxisCounts } from "~/features/subjects/lib/loader.server";
+import { getProblemPlacementNodeId } from "~/features/subjects/lib/problem-node-attribution.server";
 import {
   LAW_SUBJECTS,
   lawSubjectSlugSchema,
@@ -248,6 +253,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     axisCounts,
     lectureResources,
     problemNodeStats,
+    placementNodeId,
   ] = await Promise.all([
     law ? getSystematicSkeleton(client, lawCode) : Promise.resolve([]),
     getBookmark(client, user.id, "problem", problem.problemId),
@@ -271,6 +277,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     law
       ? getSystematicNodeProblemStats(client, lawCode)
       : Promise.resolve<Record<string, SystematicNodeProblemStat>>({}),
+    getProblemPlacementNodeId(client, params.problemId),
   ]);
 
   // 해설 지문별 "관련 조문/판례" 링크용 reference 한 번에 lookup.
@@ -518,6 +525,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     lectureResources,
     problemNodeStats,
     activeNodeId: nodeId,
+    placementNodeId,
   };
 }
 
@@ -653,7 +661,20 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
     adjacent,
     adjacentQuery,
     lectureResources,
+    placementNodeId,
   } = loaderData;
+  // 체계도 위치 배지 — 배치 노드에서 루트까지 parent 체인(루트→노드 순, depth=index).
+  const placementChain = useMemo(() => {
+    if (!placementNodeId) return [];
+    const byId = new Map(systematicNodes.map((n) => [n.nodeId, n]));
+    const chain: typeof systematicNodes = [];
+    let cur = byId.get(placementNodeId);
+    while (cur) {
+      chain.unshift(cur);
+      cur = cur.parentId ? byId.get(cur.parentId) : undefined;
+    }
+    return chain;
+  }, [placementNodeId, systematicNodes]);
   // 주관식 문제면 레일 활성 축·"목록으로" 복귀 탭을 주관식으로.
   const isSubjectiveProblem = problem.format === "subjective";
   const [selected, setSelected] = useState<number | null>(null);
@@ -1076,6 +1097,29 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                       subjectSlug={subject.slug}
                       query={adjacentQuery}
                     />
+                  </div>
+                ) : null}
+                {/* 체계도 위치 — 배치 노드의 번호+제목 경로(루트→소분류). 노드 뷰어로 이동. */}
+                {placementChain.length > 0 ? (
+                  <div
+                    className="mb-2 flex flex-wrap items-center gap-1"
+                    data-testid="problem-systematic-breadcrumb"
+                  >
+                    {placementChain.map((n, i) => (
+                      <Fragment key={n.nodeId}>
+                        {i > 0 ? (
+                          <ChevronRightIcon className="text-muted-foreground/50 size-3 flex-none" />
+                        ) : null}
+                        <Link
+                          to={`/subjects/${subject.slug}/systematic/${n.nodeId}`}
+                          className="border-border/60 bg-muted/40 text-foreground/80 hover:bg-muted inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium"
+                          title={`체계도 — ${n.displayLabel}`}
+                        >
+                          <SystematicNumberBadge depth={i} ord={n.ord} />
+                          {stripSystematicNumber(n.displayLabel)}
+                        </Link>
+                      </Fragment>
+                    ))}
                   </div>
                 ) : null}
                 {/* Chips row */}

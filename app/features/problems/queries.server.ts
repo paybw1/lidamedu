@@ -2526,16 +2526,14 @@ export async function getSystematicNodeProblems(
   // subtree 노드 전부.
   const { data: subtreeNodes } = await client
     .from("systematic_nodes")
-    .select("node_id, path")
+    .select("node_id, path, parent_id, ord, display_label")
     .eq("law_code", node.law_code);
   const nodePath = String(node.path);
-  const subtreeIds = (subtreeNodes ?? [])
-    .filter(
-      (n) =>
-        String(n.path) === nodePath ||
-        String(n.path).startsWith(nodePath + "."),
-    )
-    .map((n) => n.node_id);
+  const subtreeRows = (subtreeNodes ?? []).filter(
+    (n) =>
+      String(n.path) === nodePath || String(n.path).startsWith(nodePath + "."),
+  );
+  const subtreeIds = subtreeRows.map((n) => n.node_id);
 
   // subtree 에 매핑된 article_id 들.
   const links = await fetchAllIn(subtreeIds, (slice) =>
@@ -2546,17 +2544,7 @@ export async function getSystematicNodeProblems(
       .order("article_id"),
   );
   const articleIds = [...new Set(links.map((l) => l.article_id))];
-  if (articleIds.length === 0) {
-    return {
-      node: {
-        nodeId: node.node_id,
-        path: nodePath,
-        displayLabel: node.display_label,
-      },
-      articleGroups: [],
-      emptyArticles: [],
-    };
-  }
+  // 조문 링크 0개여도 조기 반환 금지 — node-pinned 문제는 링크 없이도 존재한다(상표 객관식 등).
 
   // article 정보 (path/article_number/display_label) — 조문 순서로 정렬.
   const articles = await fetchAllIn(articleIds, (slice) =>
@@ -2571,9 +2559,8 @@ export async function getSystematicNodeProblems(
   );
 
   // feat-4-A-340 — node-pinned 우선 + 조문 파생으로 배치된 문제만 fetch.
-  const placedIds = (
-    await fetchPlacedProblemRows(client, subtreeIds, articleIds)
-  ).map((p) => p.problem_id);
+  const placedRows = await fetchPlacedProblemRows(client, subtreeIds, articleIds);
+  const placedIds = placedRows.map((p) => p.problem_id);
   const problemList = await fetchAllIn(placedIds, (slice) =>
     client
       .from("problems")
@@ -2649,10 +2636,7 @@ export async function getSystematicNodeProblems(
   // article 별 그룹핑 + 문제 정렬 (year DESC, problem_number ASC).
   const articleGroups: SystematicNodeProblemsResult["articleGroups"] = [];
   const emptyArticles: SystematicNodeProblemsResult["emptyArticles"] = [];
-  for (const a of sortedArticles) {
-    const probs = problemList
-      .filter((p) => p.primary_article_id === a.article_id)
-      .map<ProblemDetail>((p) => ({
+  const toDetail = (p: (typeof problemList)[number]): ProblemDetail => ({
         problemId: p.problem_id,
         displayNo: p.display_no,
         examRound: p.exam_round,
@@ -2703,7 +2687,11 @@ export async function getSystematicNodeProblems(
           ),
         choices: choicesByProblem.get(p.problem_id) ?? [],
         boxItems: boxItemsByProblem.get(p.problem_id) ?? [],
-      }))
+  });
+  for (const a of sortedArticles) {
+    const probs = problemList
+      .filter((p) => p.primary_article_id === a.article_id)
+      .map(toDetail)
       .sort((x, y) => {
         if ((y.year ?? 0) !== (x.year ?? 0))
           return (y.year ?? 0) - (x.year ?? 0);
@@ -2725,6 +2713,44 @@ export async function getSystematicNodeProblems(
       });
     }
   }
+
+  // 조문 미지정 핀 문제(primary_article_id=null) — 조문 그룹에 안 걸리므로 핀 노드별
+  // 가상 그룹으로 이어붙인다(핀 노드의 트리 표시순 → 노드 내 problem_number ASC).
+  const groupedIds = new Set(
+    articleGroups.flatMap((g) => g.problems.map((p) => p.problemId)),
+  );
+  const leftovers = problemList.filter((p) => !groupedIds.has(p.problem_id));
+  if (leftovers.length > 0) {
+    const pinById = new Map(placedRows.map((r) => [r.problem_id, r]));
+    const orderedNodes = sortSystematicTreeOrder(
+      subtreeRows.map((n) => ({
+        nodeId: n.node_id,
+        parentId: n.parent_id,
+        ord: n.ord,
+        path: String(n.path),
+      })),
+    );
+    const labelByNode = new Map(
+      subtreeRows.map((n) => [n.node_id, n.display_label]),
+    );
+    for (const on of orderedNodes) {
+      const probs = leftovers
+        .filter((p) => pinById.get(p.problem_id)?.primary_node_id === on.nodeId)
+        .map(toDetail)
+        .sort(
+          (x, y) => (x.problemNumber ?? 0) - (y.problemNumber ?? 0),
+        );
+      if (probs.length === 0) continue;
+      articleGroups.push({
+        articleId: `node:${on.nodeId}`,
+        articleNumber: null,
+        articleLabel: labelByNode.get(on.nodeId) ?? node.display_label,
+        articlePath: on.path,
+        problems: probs,
+      });
+    }
+  }
+
   return {
     node: {
       nodeId: node.node_id,
@@ -2763,16 +2789,14 @@ export async function getSystematicNodeProblemSequence(
 
   const { data: subtreeNodes } = await client
     .from("systematic_nodes")
-    .select("node_id, path")
+    .select("node_id, path, parent_id, ord, display_label")
     .eq("law_code", node.law_code);
   const nodePath = String(node.path);
-  const subtreeIds = (subtreeNodes ?? [])
-    .filter(
-      (n) =>
-        String(n.path) === nodePath ||
-        String(n.path).startsWith(nodePath + "."),
-    )
-    .map((n) => n.node_id);
+  const subtreeRows = (subtreeNodes ?? []).filter(
+    (n) =>
+      String(n.path) === nodePath || String(n.path).startsWith(nodePath + "."),
+  );
+  const subtreeIds = subtreeRows.map((n) => n.node_id);
 
   const links = await fetchAllIn(subtreeIds, (slice) =>
     client
@@ -2833,6 +2857,43 @@ export async function getSystematicNodeProblemSequence(
         problemId: p.problem_id,
         articleId: a.article_id,
         articleLabel: a.display_label,
+        problemNumber: p.problem_number,
+        year: p.year,
+      });
+    }
+  }
+
+  // 조문 미지정 핀 문제(primary_article_id=null — 상표 객관식 등)는 조문 그룹핑에 안 걸려
+  // 통째로 탈락한다 → 핀 노드의 트리 표시순 → problem_number ASC 로 뒤에 이어붙인다.
+  const grouped = new Set(problems.map((p) => p.problemId));
+  const leftovers = list.filter((p) => !grouped.has(p.problem_id));
+  if (leftovers.length > 0) {
+    const orderedNodes = sortSystematicTreeOrder(
+      subtreeRows.map((n) => ({
+        nodeId: n.node_id,
+        parentId: n.parent_id,
+        ord: n.ord,
+        path: String(n.path),
+      })),
+    );
+    const nodeOrder = new Map(orderedNodes.map((n, i) => [n.nodeId, i]));
+    const labelByNode = new Map(
+      subtreeRows.map((n) => [n.node_id, n.display_label]),
+    );
+    leftovers.sort((x, y) => {
+      const nx = nodeOrder.get(x.primary_node_id ?? "") ?? Infinity;
+      const ny = nodeOrder.get(y.primary_node_id ?? "") ?? Infinity;
+      if (nx !== ny) return nx - ny;
+      if ((x.problem_number ?? 0) !== (y.problem_number ?? 0))
+        return (x.problem_number ?? 0) - (y.problem_number ?? 0);
+      return (x.year ?? 0) - (y.year ?? 0);
+    });
+    for (const p of leftovers) {
+      problems.push({
+        problemId: p.problem_id,
+        articleId: "",
+        articleLabel:
+          labelByNode.get(p.primary_node_id ?? "") ?? node.display_label,
         problemNumber: p.problem_number,
         year: p.year,
       });

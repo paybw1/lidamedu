@@ -32,6 +32,29 @@ export function attributeProblemNodes(
 }
 
 /**
+ * 단일 문제의 체계도 배치 노드 — 핀(primary_node_id) 우선, 없으면 조문 링크 첫 노드.
+ * 문제 뷰어의 체계도 위치 배지용.
+ */
+export async function getProblemPlacementNodeId(
+  client: SupabaseClient<Database>,
+  problemId: string,
+): Promise<string | null> {
+  const { data } = await client
+    .from("problems")
+    .select("primary_node_id, primary_article_id")
+    .eq("problem_id", problemId)
+    .maybeSingle();
+  if (!data) return null;
+  if (data.primary_node_id) return data.primary_node_id;
+  if (!data.primary_article_id) return null;
+  const map = await buildArticleToNodes(client, [data.primary_article_id]);
+  return (
+    attributeProblemNodes(data, map, { fallbackMultiplicity: "first" })[0] ??
+    null
+  );
+}
+
+/**
  * article_id → 걸린 node_id[] 맵(행 순서 보존; 'first' 폴백은 [0]).
  *   .order() 없이 조회하던 기존 소비처(마스터리·OX)와 동일한 삽입 순서 의미.
  */
