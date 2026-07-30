@@ -57,6 +57,8 @@ import type { Route } from "./+types/mcq-pack-sheet";
 // MarkdownView 로 렌더하고, 그 외 텍스트 문항은 whitespace-pre-line 경로를 유지한다.
 // 파이프표 감지 = 구분선 `|---|` (\|[\s:]*-{3,}).
 const MD_IMAGE_RE = /!\[[^\]]*\]\([^)]*\)|<(img|table|div)\b|\|[\s:]*-{3,}/i;
+// 종합해설 마크다운 서식 감지 — **굵게**·헤더·별표 감싼 줄(민법 해설 "*관련 조문·판례*").
+const MD_FORMAT_RE = /\*\*[^*\n]+\*\*|(?:^|\n)#{1,6}\s+\S|(?:^|\n)\*[^*\n]+\*(?=\n|$)/;
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
   if (!d || !d.pack) return [{ title: "응시 | 리담변리사학원" }];
@@ -786,7 +788,8 @@ function ExplanationBlock({ problem }: { problem: ProblemDetail }) {
           <p className="text-muted-foreground mb-1 text-xs font-mono font-semibold tracking-[0.06em] uppercase">
             종합 해설
           </p>
-          {MD_IMAGE_RE.test(problem.explanationMd) ? (
+          {MD_IMAGE_RE.test(problem.explanationMd) ||
+          MD_FORMAT_RE.test(problem.explanationMd) ? (
             <MarkdownView text={problem.explanationMd} />
           ) : (
             <p className="whitespace-pre-line">{problem.explanationMd}</p>

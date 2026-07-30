@@ -128,6 +128,8 @@ import {
 // 있으면 MarkdownView 로 렌더(이미지·표·수식). 없으면 plain whitespace-pre-line.
 // 파이프표 감지 = 구분선 `|---|` (\|[\s:]*-{3,}). mcq-pack-sheet 와 동일 규칙.
 const MD_IMAGE_RE = /!\[[^\]]*\]\([^)]*\)|<(img|table|div)\b|\|[\s:]*-{3,}/i;
+// 종합해설 마크다운 서식 감지 — **굵게**·헤더·별표 감싼 줄(민법 해설 "*관련 조문·판례*").
+const MD_FORMAT_RE = /\*\*[^*\n]+\*\*|(?:^|\n)#{1,6}\s+\S|(?:^|\n)\*[^*\n]+\*(?=\n|$)/;
 
 // 주관식 본문 — 사실관계와 설문((1)…) 사이에 구분선(hr)을 렌더 시점에 삽입.
 // 원문(body_md)은 무변경. 첫 "(1) " 문단 앞에만 삽입하며, 본문이 (1)로 시작하거나
@@ -1579,7 +1581,8 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                               종합 해설
                             </p>
                           </div>
-                          {MD_IMAGE_RE.test(problem.explanationMd) ? (
+                          {MD_IMAGE_RE.test(problem.explanationMd) ||
+                          MD_FORMAT_RE.test(problem.explanationMd) ? (
                             <div className="px-5 py-5 text-[length:calc(16px*var(--study-fs))] leading-[1.85] dark:[&_img]:brightness-[.8]">
                               <MarkdownView
                                 text={problem.explanationMd}
