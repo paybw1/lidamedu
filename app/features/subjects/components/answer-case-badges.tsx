@@ -64,26 +64,19 @@ function CaseBadge({ c }: { c: AnswerCitedCase }) {
               대법원 {c.caseNumber}
             </DialogTitle>
           </DialogHeader>
-          <p className="text-muted-foreground -mt-2 text-sm leading-relaxed font-medium">
-            {c.title}
-          </p>
-          {/* 판결요지 박스 */}
-          <div className="border-border bg-muted/30 rounded-lg border">
-            <div className="border-border border-b px-4 py-2">
-              <p className="text-muted-foreground text-[11px] font-bold tracking-widest uppercase">
-                판결요지
-              </p>
-            </div>
-            <div className="px-4 py-3">
-              {c.summaryMd ? (
-                <MarkdownView text={c.summaryMd} className="text-sm leading-[1.8]" />
-              ) : (
-                <p className="text-muted-foreground text-sm">
-                  요지가 등록되지 않은 판례입니다.
-                </p>
-              )}
-            </div>
+          {/* 판례 제목 박스 */}
+          <div className="border-border bg-muted/30 -mt-1 rounded-lg border px-4 py-3">
+            <p className="text-foreground text-sm leading-relaxed font-medium">
+              {c.title}
+            </p>
           </div>
+          {c.summaryMd ? (
+            <MarkdownView text={c.summaryMd} className="text-sm leading-[1.8]" />
+          ) : (
+            <p className="text-muted-foreground text-sm">
+              요지가 등록되지 않은 판례입니다.
+            </p>
+          )}
           <div className="flex justify-end">
             <Button asChild size="sm" className="gap-1">
               <Link to={studyHref}>
