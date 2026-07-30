@@ -17,7 +17,12 @@ import { Link, data } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "~/core/components/ui/card";
 import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
@@ -64,6 +69,7 @@ import type { OxRefAnnotations } from "~/features/problems/labels";
 import {
   getOxAnnotationsForRefs,
   getOxQuestionsForArticle,
+  getSystematicNodeProblemSequence,
   listProblemsByArticleIds,
 } from "~/features/problems/queries.server";
 import { QnaPanel } from "~/features/qna/components/qna-panel";
@@ -344,9 +350,14 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     })
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
 
+  // 노드 배치(primary_node_id 핀) 문제 — 조문 링크가 없는 논점 노드(상표 §34 각호 등)도
+  // 체계도에서 문제로 진입할 수 있게 서브트리 핀 문제 목록을 함께 내려준다.
+  const nodeProblemSeq = await getSystematicNodeProblemSequence(client, nodeId);
+
   return {
     subject: LAW_SUBJECTS[lawCode],
     axisCounts,
+    nodeProblems: nodeProblemSeq?.problems ?? [],
     // feat-4-A-130b — 빈칸 V2(단일 contenteditable) 기본. ?blankv1=1 이면 구 모델 롤백.
     blankV2: new URL(request.url).searchParams.get("blankv1") !== "1",
     lawId: law.lawId,
@@ -420,6 +431,7 @@ function Inner({
     oxAnnotationsByRef,
     relatedCasesByArticle,
     problemsByArticle,
+    nodeProblems,
     progressByArticle,
     selectedBlankOwner,
     commentsByArticle,
@@ -792,6 +804,37 @@ function Inner({
 
           {periodBlankMode && periodAmbiguousAll.length > 0 ? (
             <PeriodAmbiguousPanel cases={periodAmbiguousAll} />
+          ) : null}
+
+          {/* 노드 배치 문제 — 조문 링크 없는 논점 노드(상표 §34 각호 등)도 문제로 진입. */}
+          {nodeProblems.length > 0 ? (
+            <Card className="rounded-xl border shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-bold">
+                  이 단원의 문제{" "}
+                  <span className="text-muted-foreground font-normal">
+                    {nodeProblems.length}문항
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-wrap gap-1.5 pt-0">
+                {nodeProblems.map((p, i) => (
+                  <Button
+                    key={p.problemId}
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="h-7 rounded-full text-xs tabular-nums"
+                  >
+                    <Link
+                      to={`/subjects/${subject.slug}/problems/${p.problemId}?node=${node.nodeId}&list=1`}
+                    >
+                      {i + 1}.{p.year ? ` ${p.year}년` : ""}
+                    </Link>
+                  </Button>
+                ))}
+              </CardContent>
+            </Card>
           ) : null}
 
           {/* 연관 자료 미니맵 — 후속 다듬기 위해 일시 숨김. */}
