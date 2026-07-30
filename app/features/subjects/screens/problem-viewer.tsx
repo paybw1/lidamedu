@@ -293,11 +293,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
         format: problem.format,
         modelAnswerMd: problem.modelAnswerMd,
         gradingRubricMd: problem.gradingRubricMd,
+        // 객관식 상단 카드는 종합해설 인용만 — 선지 인용은 선지 행의 조문 배지 옆 인라인 배지로.
         explanationMd: problem.explanationMd,
-        choiceExplanations: [
-          ...problem.choices.map((c) => c.explanationMd),
-          ...problem.boxItems.map((b) => b.explanationMd),
-        ],
+        choiceExplanations: [],
       },
       lawCode,
     ),
@@ -307,12 +305,13 @@ export async function loader({ params, request }: Route.LoaderArgs) {
         ...problem.choices.map((c) => ({
           id: c.choiceId,
           explanationMd: c.explanationMd,
-          linkedCaseNumber: c.relatedCaseNumber,
+          // 실제 링크(case_id)가 있어 칩이 이미 뜨는 경우에만 중복 제외.
+          linkedCaseNumber: c.relatedCaseId ? c.relatedCaseNumber : null,
         })),
         ...problem.boxItems.map((b) => ({
           id: b.boxItemId,
           explanationMd: b.explanationMd,
-          linkedCaseNumber: b.relatedCaseNumber,
+          linkedCaseNumber: b.relatedCaseId ? b.relatedCaseNumber : null,
         })),
       ],
       lawCode,
