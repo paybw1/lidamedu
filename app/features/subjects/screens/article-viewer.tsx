@@ -286,10 +286,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   // feat-4-A-130b — 빈칸 V2(단일 contenteditable) 정식 전환(2026-07-22). 이제 기본값이며,
   //   ?blankv1=1 이면 구 모델(input)로 롤백. iOS IME 이월 근본 해결(단일 host + 도착 후 clear).
   const legacyBlankParam = reqUrl.searchParams.get("blankv1") === "1";
-  // feat-2-030 — 난이도 계층(하/중/상) 공개. 특허법=수험생 전체, 민법=종합반(민법은
+  // feat-2-030 — 난이도 계층(하/중/상) 공개. 특허법·상표법=수험생 전체, 민법=종합반(민법은
   //   COHORT_OPEN 이라 접근 자체가 종합반/staff 로 제한됨 → 과목 활성화만으로 대상 한정됨).
   //   그 외 과목은 staff 검증용 ?tiers=1 오버라이드로만.
-  const TIER_ENABLED_SUBJECTS: readonly string[] = ["patent", "civil"];
+  const TIER_ENABLED_SUBJECTS: readonly string[] = ["patent", "trademark", "civil"];
   const blankTiersEnabled =
     TIER_ENABLED_SUBJECTS.includes(lawCode) ||
     reqUrl.searchParams.get("tiers") === "1";

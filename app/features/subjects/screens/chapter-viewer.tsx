@@ -247,7 +247,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   // feat-2-030 — 난이도 계층(하/중/상). 특허·민법=대상 활성, 그 외 staff 검증 ?tiers=1.
   //   (장 뷰어는 다중 조문이라 장 게이트 대신 세트별 해금 폴백 — chapterGate=null)
-  const TIER_ENABLED_SUBJECTS_C: readonly string[] = ["patent", "civil"];
+  const TIER_ENABLED_SUBJECTS_C: readonly string[] = ["patent", "trademark", "civil"];
   const blankTiersEnabled =
     TIER_ENABLED_SUBJECTS_C.includes(lawCode) ||
     new URL(request.url).searchParams.get("tiers") === "1";
