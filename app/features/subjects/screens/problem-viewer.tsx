@@ -284,7 +284,20 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       ? getSystematicNodeProblemStats(client, lawCode)
       : Promise.resolve<Record<string, SystematicNodeProblemStat>>({}),
     getProblemPlacementNodeId(client, params.problemId),
-    getAnswerCitedCaseGroups(client, problem, lawCode),
+    getAnswerCitedCaseGroups(
+      client,
+      {
+        format: problem.format,
+        modelAnswerMd: problem.modelAnswerMd,
+        gradingRubricMd: problem.gradingRubricMd,
+        explanationMd: problem.explanationMd,
+        choiceExplanations: [
+          ...problem.choices.map((c) => c.explanationMd),
+          ...problem.boxItems.map((b) => b.explanationMd),
+        ],
+      },
+      lawCode,
+    ),
   ]);
 
   // 해설 지문별 "관련 조문/판례" 링크용 reference 한 번에 lookup.
@@ -1606,6 +1619,9 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                           )}
                         </div>
                       ) : null}
+
+                      {/* 해설 인용 판례 배지 — 팝업 요지·학습화면 이동 */}
+                      <AnswerCaseBadges groups={answerCaseGroups} />
 
                       {/* Per-choice explanation cards */}
                       <div className="border-border bg-card rounded-xl border shadow-sm">

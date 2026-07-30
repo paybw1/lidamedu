@@ -3353,34 +3353,42 @@ export async function getAnswerCitedCaseGroups(
     format: string;
     modelAnswerMd: string | null;
     gradingRubricMd: string | null;
+    explanationMd?: string | null;
+    choiceExplanations?: Array<string | null>;
   },
   fallbackSubject: string,
 ): Promise<AnswerCaseGroup[]> {
-  if (problem.format !== "subjective") return [];
-  const answer = problem.modelAnswerMd ?? "";
-  if (!answer.trim()) return [];
-
-  // 섹션 분할 — '## ' 헤딩. 헤딩에서 설문 번호를 뽑아 라벨링.
   const groups: Array<{ label: string; nums: string[] }> = [];
   const seenInSetmun = new Set<string>();
-  const parts = answer.split(/^(?=##\s)/m);
-  for (const part of parts) {
-    const heading = part.match(/^##\s+([^\n]+)/)?.[1] ?? "";
-    const m = heading.match(/설문\s*\(?([\d①-⑨]+)\)?/);
-    const nums = [...new Set([...part.matchAll(ANSWER_CASE_NUM_RE)].map((x) => x[0]))];
-    if (!nums.length) continue;
-    if (m) {
-      groups.push({ label: `설문(${m[1]})`, nums });
-      for (const n of nums) seenInSetmun.add(n);
-    } else {
-      groups.push({ label: "공통", nums });
+  if (problem.format === "subjective") {
+    const answer = problem.modelAnswerMd ?? "";
+    if (!answer.trim()) return [];
+    // 섹션 분할 — '## ' 헤딩. 헤딩에서 설문 번호를 뽑아 라벨링.
+    const parts = answer.split(/^(?=##\s)/m);
+    for (const part of parts) {
+      const heading = part.match(/^##\s+([^\n]+)/)?.[1] ?? "";
+      const m = heading.match(/설문\s*\(?([\d①-⑨]+)\)?/);
+      const nums = [...new Set([...part.matchAll(ANSWER_CASE_NUM_RE)].map((x) => x[0]))];
+      if (!nums.length) continue;
+      if (m) {
+        groups.push({ label: `설문(${m[1]})`, nums });
+        for (const n of nums) seenInSetmun.add(n);
+      } else {
+        groups.push({ label: "공통", nums });
+      }
     }
+    // 채점기준 인용도 '공통'에 합류(설문 그룹에 이미 있으면 제외).
+    const rubricNums = [
+      ...new Set([...(problem.gradingRubricMd ?? "").matchAll(ANSWER_CASE_NUM_RE)].map((x) => x[0])),
+    ].filter((n) => !seenInSetmun.has(n));
+    if (rubricNums.length) groups.push({ label: "공통", nums: rubricNums });
+  } else {
+    // 객관식 — 종합해설 + 선지/박스 해설의 인용 판례를 '해설' 단일 그룹으로.
+    const all = [problem.explanationMd ?? "", ...(problem.choiceExplanations ?? [])].join("\n");
+    const nums = [...new Set([...all.matchAll(ANSWER_CASE_NUM_RE)].map((x) => x[0]))];
+    if (!nums.length) return [];
+    groups.push({ label: "해설", nums });
   }
-  // 채점기준 인용도 '공통'에 합류(설문 그룹에 이미 있으면 제외).
-  const rubricNums = [
-    ...new Set([...(problem.gradingRubricMd ?? "").matchAll(ANSWER_CASE_NUM_RE)].map((x) => x[0])),
-  ].filter((n) => !seenInSetmun.has(n));
-  if (rubricNums.length) groups.push({ label: "공통", nums: rubricNums });
 
   // '공통' 병합 + 설문 그룹과 중복 제거.
   const merged: Array<{ label: string; nums: string[] }> = [];
