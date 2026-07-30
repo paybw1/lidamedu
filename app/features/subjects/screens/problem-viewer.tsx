@@ -56,6 +56,7 @@ import { ProblemCodeChip } from "~/features/problems/components/problem-code-chi
 import {
   FORMAT_LABEL,
   ORIGIN_LABEL,
+  type AnswerCaseGroup,
   POLARITY_LABEL,
   SCOPE_LABEL,
   SUBJECTIVE_KIND_LABEL,
@@ -72,6 +73,7 @@ import {
   type AdjacentProblem,
   type SystematicNodeProblemStat,
   getAdjacentProblems,
+  getAnswerCitedCaseGroups,
   getCasesCitedByProblem,
   getChoiceLinkRefs,
   getProblemById,
@@ -101,6 +103,7 @@ import {
   useLeftPanelCollapse,
   useRightPanelCollapse,
 } from "~/features/subjects/components/left-panel-collapse";
+import { AnswerCaseBadges } from "~/features/subjects/components/answer-case-badges";
 import { MobileNavDrawer } from "~/features/subjects/components/mobile-nav-drawer";
 import { ProblemSystematicTree } from "~/features/subjects/components/problem-systematic-tree";
 import {
@@ -256,6 +259,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     lectureResources,
     problemNodeStats,
     placementNodeId,
+    answerCaseGroups,
   ] = await Promise.all([
     law ? getSystematicSkeleton(client, lawCode) : Promise.resolve([]),
     getBookmark(client, user.id, "problem", problem.problemId),
@@ -280,6 +284,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       ? getSystematicNodeProblemStats(client, lawCode)
       : Promise.resolve<Record<string, SystematicNodeProblemStat>>({}),
     getProblemPlacementNodeId(client, params.problemId),
+    getAnswerCitedCaseGroups(client, problem, lawCode),
   ]);
 
   // 해설 지문별 "관련 조문/판례" 링크용 reference 한 번에 lookup.
@@ -528,6 +533,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     problemNodeStats,
     activeNodeId: nodeId,
     placementNodeId,
+    answerCaseGroups,
   };
 }
 
@@ -664,6 +670,7 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
     adjacentQuery,
     lectureResources,
     placementNodeId,
+    answerCaseGroups,
   } = loaderData;
   // 체계도 위치 배지 — 배치 노드에서 루트까지 parent 체인(루트→노드 순, depth=index).
   const placementChain = useMemo(() => {
@@ -1343,6 +1350,7 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                   rubricAiGenerated={Boolean(problem.rubricAiGeneratedAt) && isStaff}
                   rubricReviewedAt={problem.rubricReviewedAt}
                   viewerIsStaff={isStaff}
+                  answerCaseGroups={answerCaseGroups}
                   initialAttempt={subjectiveAttempt}
                 />
               ) : (
@@ -1942,6 +1950,7 @@ function SubjectivePanel({
   rubricAiGenerated,
   rubricReviewedAt,
   viewerIsStaff,
+  answerCaseGroups,
   initialAttempt,
 }: {
   problemId: string;
@@ -1954,6 +1963,8 @@ function SubjectivePanel({
   // 운영자 검수완료 시각 (null=미검수) — staff 에게만 토글 버튼 노출.
   rubricReviewedAt: string | null;
   viewerIsStaff: boolean;
+  // 설문별 관련 판례 배지(모범답안 인용 판례 자동 추출).
+  answerCaseGroups: AnswerCaseGroup[];
   initialAttempt: SubjectiveAttempt | null;
 }) {
   const [draft, setDraft] = useState(initialAttempt?.answerMd ?? "");
@@ -2277,6 +2288,9 @@ function SubjectivePanel({
           </p>
         </div>
       </div>
+
+      {/* 설문별 관련 판례 배지 — 팝업 학습/학습화면 이동. 시험 모드 중엔 숨김(모범답안과 동일 잠금). */}
+      {!timedActive ? <AnswerCaseBadges groups={answerCaseGroups} /> : null}
 
       <div className="flex flex-wrap gap-2">
         <Button

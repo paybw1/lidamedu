@@ -267,6 +267,19 @@ export interface ProblemListItem {
   importance: number;
 }
 
+// 주관식 모범답안 인용 판례 배지(설문별) — problem-viewer 관련판례 카드.
+export interface AnswerCitedCase {
+  caseId: string;
+  caseNumber: string;
+  title: string;
+  summaryMd: string;
+  subjectSlug: string;
+}
+export interface AnswerCaseGroup {
+  label: string; // "설문(1)" | "공통"
+  cases: AnswerCitedCase[];
+}
+
 // 주관식(2차) 표시 순서 — 시험 최신순(연도↓·회차↓) + 문제번호↑.
 // 주관식 탭(groupByYear)과 문제 뷰어 prev/next(?list=1)가 공유해 순서 정합 보장.
 export function compareSubjectiveDisplay(

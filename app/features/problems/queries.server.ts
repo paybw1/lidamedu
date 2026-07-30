@@ -25,6 +25,8 @@ import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 import { LAW_SUBJECT_SLUGS } from "~/features/subjects/lib/subjects";
 
 import {
+  type AnswerCaseGroup,
+  type AnswerCitedCase,
   MC_FORMATS,
   type OxQuestionItem,
   type OxRefAnnotations,
@@ -3336,4 +3338,86 @@ export async function getProblemForReview(
     })),
     sourceChunks,
   };
+}
+
+// ── 주관식 모범답안 인용 판례 배지 (설문별) ─────────────────────────────────
+//   모범답안·채점기준 텍스트에서 사건번호를 추출해 DB 판례와 매칭.
+//   "## Ⅱ. 설문(1)…" 헤딩 단위로 그룹핑 — 설문 헤딩이 없는 섹션·채점기준 인용은 '공통'.
+//   뷰어에서 배지 → 팝업(요지 학습) / 학습화면(판례 뷰어 이동) 두 동선 제공.
+
+const ANSWER_CASE_NUM_RE = /\d{2,4}(?:다|후|허|마|도|누|두)\d+/g;
+
+export async function getAnswerCitedCaseGroups(
+  client: SupabaseClient<Database>,
+  problem: {
+    format: string;
+    modelAnswerMd: string | null;
+    gradingRubricMd: string | null;
+  },
+  fallbackSubject: string,
+): Promise<AnswerCaseGroup[]> {
+  if (problem.format !== "subjective") return [];
+  const answer = problem.modelAnswerMd ?? "";
+  if (!answer.trim()) return [];
+
+  // 섹션 분할 — '## ' 헤딩. 헤딩에서 설문 번호를 뽑아 라벨링.
+  const groups: Array<{ label: string; nums: string[] }> = [];
+  const seenInSetmun = new Set<string>();
+  const parts = answer.split(/^(?=##\s)/m);
+  for (const part of parts) {
+    const heading = part.match(/^##\s+([^\n]+)/)?.[1] ?? "";
+    const m = heading.match(/설문\s*\(?([\d①-⑨]+)\)?/);
+    const nums = [...new Set([...part.matchAll(ANSWER_CASE_NUM_RE)].map((x) => x[0]))];
+    if (!nums.length) continue;
+    if (m) {
+      groups.push({ label: `설문(${m[1]})`, nums });
+      for (const n of nums) seenInSetmun.add(n);
+    } else {
+      groups.push({ label: "공통", nums });
+    }
+  }
+  // 채점기준 인용도 '공통'에 합류(설문 그룹에 이미 있으면 제외).
+  const rubricNums = [
+    ...new Set([...(problem.gradingRubricMd ?? "").matchAll(ANSWER_CASE_NUM_RE)].map((x) => x[0])),
+  ].filter((n) => !seenInSetmun.has(n));
+  if (rubricNums.length) groups.push({ label: "공통", nums: rubricNums });
+
+  // '공통' 병합 + 설문 그룹과 중복 제거.
+  const merged: Array<{ label: string; nums: string[] }> = [];
+  const commonNums = new Set<string>();
+  for (const g of groups) {
+    if (g.label === "공통") {
+      for (const n of g.nums) if (!seenInSetmun.has(n)) commonNums.add(n);
+    } else merged.push(g);
+  }
+  if (commonNums.size) merged.push({ label: "공통", nums: [...commonNums] });
+  if (!merged.length) return [];
+
+  // DB 매칭 — 사건번호 부분일치(병합 사건 "2005다71659·71666" 대응).
+  const uniq = [...new Set(merged.flatMap((g) => g.nums))].slice(0, 20);
+  const byNum = new Map<string, AnswerCitedCase>();
+  for (const num of uniq) {
+    const { data } = await client
+      .from("cases")
+      .select("case_id, case_number, case_title, summary_title, summary_body_md, subject_laws")
+      .ilike("case_number", `%${num}%`)
+      .is("deleted_at", null)
+      .limit(1);
+    const row = data?.[0];
+    if (!row) continue;
+    byNum.set(num, {
+      caseId: row.case_id,
+      caseNumber: row.case_number,
+      title: row.summary_title ?? row.case_title ?? row.case_number,
+      summaryMd: (row.summary_body_md ?? "").slice(0, 6000),
+      subjectSlug: (row.subject_laws as string[] | null)?.[0] ?? fallbackSubject,
+    });
+  }
+
+  return merged
+    .map((g) => ({
+      label: g.label,
+      cases: g.nums.map((n) => byNum.get(n)).filter((c): c is AnswerCitedCase => !!c),
+    }))
+    .filter((g) => g.cases.length > 0);
 }
