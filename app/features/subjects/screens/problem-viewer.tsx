@@ -75,6 +75,7 @@ import {
   getAdjacentProblems,
   getAnswerCitedCaseGroups,
   getCasesCitedByProblem,
+  getExplanationCaseRefsByItem,
   getChoiceLinkRefs,
   getProblemById,
   getRelatedProblems,
@@ -104,6 +105,7 @@ import {
   useRightPanelCollapse,
 } from "~/features/subjects/components/left-panel-collapse";
 import { AnswerCaseBadges } from "~/features/subjects/components/answer-case-badges";
+import { RefPreviewBadge } from "~/features/subjects/components/ref-preview-badge";
 import { MobileNavDrawer } from "~/features/subjects/components/mobile-nav-drawer";
 import { ProblemSystematicTree } from "~/features/subjects/components/problem-systematic-tree";
 import {
@@ -260,6 +262,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     problemNodeStats,
     placementNodeId,
     answerCaseGroups,
+    explanationCaseRefs,
   ] = await Promise.all([
     law ? getSystematicSkeleton(client, lawCode) : Promise.resolve([]),
     getBookmark(client, user.id, "problem", problem.problemId),
@@ -296,6 +299,22 @@ export async function loader({ params, request }: Route.LoaderArgs) {
           ...problem.boxItems.map((b) => b.explanationMd),
         ],
       },
+      lawCode,
+    ),
+    getExplanationCaseRefsByItem(
+      client,
+      [
+        ...problem.choices.map((c) => ({
+          id: c.choiceId,
+          explanationMd: c.explanationMd,
+          linkedCaseNumber: c.relatedCaseNumber,
+        })),
+        ...problem.boxItems.map((b) => ({
+          id: b.boxItemId,
+          explanationMd: b.explanationMd,
+          linkedCaseNumber: b.relatedCaseNumber,
+        })),
+      ],
       lawCode,
     ),
   ]);
@@ -547,6 +566,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     activeNodeId: nodeId,
     placementNodeId,
     answerCaseGroups,
+    explanationCaseRefs,
   };
 }
 
@@ -684,6 +704,7 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
     lectureResources,
     placementNodeId,
     answerCaseGroups,
+    explanationCaseRefs,
   } = loaderData;
   // 체계도 위치 배지 — 배치 노드에서 루트까지 parent 체인(루트→노드 순, depth=index).
   const placementChain = useMemo(() => {
@@ -1682,6 +1703,24 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                                             </span>
                                           ) : null}
                                         </p>
+                                        {(explanationCaseRefs[bi.boxItemId] ??
+                                          []).length > 0 ? (
+                                          <div className="flex flex-wrap gap-1.5">
+                                            {(
+                                              explanationCaseRefs[
+                                                bi.boxItemId
+                                              ] ?? []
+                                            ).map((r) => (
+                                              <RefPreviewBadge
+                                                key={r.caseId}
+                                                kind="case"
+                                                refId={r.caseId}
+                                                label={r.caseNumber}
+                                                studyHref={`/subjects/${r.subjectSlug}/cases/${r.caseId}`}
+                                              />
+                                            ))}
+                                          </div>
+                                        ) : null}
                                         <OxBookmarkToggle
                                           refType="box"
                                           refId={bi.boxItemId}
@@ -1757,17 +1796,15 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                                               c.relatedArticleId
                                             ]
                                           : null;
-                                        if (articleRef) {
+                                        if (articleRef && c.relatedArticleId) {
                                           return (
-                                            <Link
-                                              to={`/subjects/${articleRef.lawCode}/articles/${articleRef.pathSlug}`}
-                                              viewTransition
-                                              prefetch="intent"
-                                              data-testid="choice-related-article"
-                                              className="border-primary/30 bg-primary/10 text-link hover:bg-primary/20 inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs"
-                                            >
-                                              조문 {articleRef.displayLabel}
-                                            </Link>
+                                            <RefPreviewBadge
+                                              kind="article"
+                                              refId={c.relatedArticleId}
+                                              label={articleRef.displayLabel}
+                                              studyHref={`/subjects/${articleRef.lawCode}/articles/${articleRef.pathSlug}`}
+                                              testId="choice-related-article"
+                                            />
                                           );
                                         }
                                         if (c.relatedArticleId) {
@@ -1784,17 +1821,15 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                                         const caseRef = c.relatedCaseId
                                           ? choiceCaseRefs[c.relatedCaseId]
                                           : null;
-                                        if (caseRef) {
+                                        if (caseRef && c.relatedCaseId) {
                                           return (
-                                            <Link
-                                              to={`/subjects/${caseRef.lawCode}/cases/${c.relatedCaseId}`}
-                                              viewTransition
-                                              prefetch="intent"
-                                              data-testid="choice-related-case"
-                                              className="inline-flex items-center gap-1 rounded-full border border-violet-300/50 bg-violet-50 px-2.5 py-0.5 text-xs text-violet-700 hover:bg-violet-100 dark:border-violet-700/40 dark:bg-violet-950/30 dark:text-violet-300"
-                                            >
-                                              판례 {caseRef.caseNumber}
-                                            </Link>
+                                            <RefPreviewBadge
+                                              kind="case"
+                                              refId={c.relatedCaseId}
+                                              label={caseRef.caseNumber}
+                                              studyHref={`/subjects/${caseRef.lawCode}/cases/${c.relatedCaseId}`}
+                                              testId="choice-related-case"
+                                            />
                                           );
                                         }
                                         if (c.relatedCaseId) {
@@ -1806,6 +1841,17 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                                         }
                                         return null;
                                       })()}
+                                      {(explanationCaseRefs[c.choiceId] ?? []).map(
+                                        (r) => (
+                                          <RefPreviewBadge
+                                            key={r.caseId}
+                                            kind="case"
+                                            refId={r.caseId}
+                                            label={r.caseNumber}
+                                            studyHref={`/subjects/${r.subjectSlug}/cases/${r.caseId}`}
+                                          />
+                                        ),
+                                      )}
                                       <OxBookmarkToggle
                                         refType="choice"
                                         refId={c.choiceId}

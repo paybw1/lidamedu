@@ -27,6 +27,7 @@ import { LAW_SUBJECT_SLUGS } from "~/features/subjects/lib/subjects";
 import {
   type AnswerCaseGroup,
   type AnswerCitedCase,
+  type ChoiceCaseRef,
   MC_FORMATS,
   type OxQuestionItem,
   type OxRefAnnotations,
@@ -3428,4 +3429,55 @@ export async function getAnswerCitedCaseGroups(
       cases: g.nums.map((n) => byNum.get(n)).filter((c): c is AnswerCitedCase => !!c),
     }))
     .filter((g) => g.cases.length > 0);
+}
+
+// 객관식 선지/박스 해설 텍스트 인용 판례 → 배지용 참조. related_case 링크와 별개로
+// 해설 본문의 사건번호를 추출해 DB 판례와 매칭(링크된 판례와 중복 번호는 제외).
+export async function getExplanationCaseRefsByItem(
+  client: SupabaseClient<Database>,
+  items: Array<{
+    id: string;
+    explanationMd: string | null;
+    linkedCaseNumber?: string | null;
+  }>,
+  fallbackSubject: string,
+): Promise<Record<string, ChoiceCaseRef[]>> {
+  const numsByItem = new Map<string, string[]>();
+  const uniq = new Set<string>();
+  for (const it of items) {
+    const t = it.explanationMd ?? "";
+    if (!t) continue;
+    const nums = [...new Set([...t.matchAll(ANSWER_CASE_NUM_RE)].map((x) => x[0]))].filter(
+      (n) => !(it.linkedCaseNumber ?? "").includes(n),
+    );
+    if (!nums.length) continue;
+    numsByItem.set(it.id, nums);
+    for (const n of nums) uniq.add(n);
+  }
+  if (!uniq.size) return {};
+  const byNum = new Map<string, ChoiceCaseRef>();
+  for (const num of [...uniq].slice(0, 40)) {
+    const { data } = await client
+      .from("cases")
+      .select("case_id, case_number, subject_laws")
+      .ilike("case_number", `%${num}%`)
+      .is("deleted_at", null)
+      .limit(1);
+    const row = data?.[0];
+    if (!row) continue;
+    byNum.set(num, {
+      caseId: row.case_id,
+      caseNumber: num,
+      subjectSlug: (row.subject_laws as string[] | null)?.[0] ?? fallbackSubject,
+    });
+  }
+  const out: Record<string, ChoiceCaseRef[]> = {};
+  for (const [id, nums] of numsByItem) {
+    const refs = nums.map((n) => byNum.get(n)).filter((r): r is ChoiceCaseRef => !!r);
+    // 같은 판례 중복 제거(요지 병합 사건 등).
+    const seen = new Set<string>();
+    const deduped = refs.filter((r) => (seen.has(r.caseId) ? false : (seen.add(r.caseId), true)));
+    if (deduped.length) out[id] = deduped;
+  }
+  return out;
 }

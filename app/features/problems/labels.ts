@@ -280,6 +280,13 @@ export interface AnswerCaseGroup {
   cases: AnswerCitedCase[];
 }
 
+// 객관식 선지/박스 해설 텍스트에서 추출한 인용 판례 배지(팝업 미리보기용).
+export interface ChoiceCaseRef {
+  caseId: string;
+  caseNumber: string;
+  subjectSlug: string;
+}
+
 // 주관식(2차) 표시 순서 — 시험 최신순(연도↓·회차↓) + 문제번호↑.
 // 주관식 탭(groupByYear)과 문제 뷰어 prev/next(?list=1)가 공유해 순서 정합 보장.
 export function compareSubjectiveDisplay(

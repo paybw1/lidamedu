@@ -210,6 +210,7 @@ export default [
       route("/ox-review-update", "features/problems/api/ox-review-update.tsx"),
       route("/ox-user-hide", "features/problems/api/ox-user-hide.tsx"),
       route("/rubric-review", "features/problems/api/rubric-review.tsx"),
+      route("/ref-preview", "features/problems/api/ref-preview.tsx"),
     ]),
     ...prefix("/study", [
       route("/session-complete", "features/study/api/session-complete.tsx"),
