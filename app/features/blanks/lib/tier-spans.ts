@@ -14,6 +14,7 @@ import type { BlankItem } from "~/features/blanks/queries.server";
 import {
   blockCumulativeText,
   computeBlockBlankHits,
+  inlineTokenContent,
   walkBlocks,
 } from "./blank-layout";
 
@@ -47,6 +48,31 @@ export function chunkByEojeol(
   return chunks;
 }
 
+// 블록 cumulative text 안에서 학생이 '타이핑해야 하는' 토큰(text·underline)의 [start,end) 목록.
+//   subtitle("(예외)" 라벨)·annotation·ref·개정주기 등은 화면 장식/메타라 구간 정답에 포함되면
+//   라벨 문구까지 입력해야 정답 처리되는 버그가 된다(2026-07-30 신고: 특허 29조③④ "예외").
+//   좌표계는 cumulative text 그대로 — 구간을 이 범위들로 쪼갤 뿐 오프셋 변형은 없다.
+function typeableRanges(block: Block): Array<{ start: number; end: number }> {
+  if (block.kind === "title_marker") {
+    return [{ start: 0, end: block.text.length }];
+  }
+  if (block.kind === "header_refs" || block.kind === "sub_article_group") {
+    return [];
+  }
+  const out: Array<{ start: number; end: number }> = [];
+  let pos = 0;
+  for (const t of block.inline) {
+    const len = inlineTokenContent(t).length;
+    if (len > 0 && (t.type === "text" || t.type === "underline")) {
+      const last = out[out.length - 1];
+      if (last && last.end === pos) last.end = pos + len;
+      else out.push({ start: pos, end: pos + len });
+    }
+    pos += len;
+  }
+  return out;
+}
+
 // 단어 빈칸 → 상 구간 빈칸(합성 BlankItem).
 export function deriveTierSpanBlanks(
   body: ArticleBody,
@@ -70,16 +96,22 @@ export function deriveTierSpanBlanks(
       if (h.start < spanStart) spanStart = h.start;
       if (h.end > spanEnd) spanEnd = h.end;
     }
-    for (const chunk of chunkByEojeol(text, spanStart, spanEnd, maxEojeol)) {
-      const answer = text.slice(chunk.start, chunk.end);
-      if (answer.trim().length === 0) continue;
-      spans.push({
-        idx: idx++,
-        length: answer.length,
-        answer,
-        blockIndex: bi,
-        cumOffset: chunk.start,
-      });
+    // 구간을 타이핑 대상 토큰 범위와 교차 — subtitle 라벨 등 비입력 토큰에서 구간이 끊긴다.
+    for (const seg of typeableRanges(blockOrder[bi])) {
+      const segStart = Math.max(spanStart, seg.start);
+      const segEnd = Math.min(spanEnd, seg.end);
+      if (segStart >= segEnd) continue;
+      for (const chunk of chunkByEojeol(text, segStart, segEnd, maxEojeol)) {
+        const answer = text.slice(chunk.start, chunk.end);
+        if (answer.trim().length === 0) continue;
+        spans.push({
+          idx: idx++,
+          length: answer.length,
+          answer,
+          blockIndex: bi,
+          cumOffset: chunk.start,
+        });
+      }
     }
   }
   return spans;

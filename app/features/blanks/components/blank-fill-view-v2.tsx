@@ -734,9 +734,14 @@ export function BlankFillViewV2({
   // ★이월 흘려버리기 — 다음 칸으로 이동하기 전에 캐럿을 sink 에 잠깐 들르게 한다. 조합 이월이
   //   있으면 sink 에서 확정(compositionend)·폐기되고, 다음 프레임에 목표 칸으로 깨끗하게 이동.
   //   sink 없거나 이 에디터 밖 target 이면 그냥 바로 이동(안전한 폴백).
+  // 드레인 창 — 이 시각까지만 캐럿이 sink 에 머무는 것을 허용(프로그램적 경유).
+  //   창 밖에서 캐럿이 sink 에 있으면(사용자 탭/방향키로 진입) 스냅 로직이 인접 빈칸으로
+  //   되돌린다(2026-07-30 신고: 하단 숨은 칸으로 커서가 감).
+  const sinkDrainUntilRef = useRef(0);
   const drainToSink = () => {
     const sink = sinkRef.current;
     if (!sink) return;
+    sinkDrainUntilRef.current = Date.now() + 600;
     sink.textContent = ZWSP;
     caretToEnd(sink);
   };
@@ -992,6 +997,7 @@ export function BlankFillViewV2({
     sink.style.height = "1px";
     sink.style.overflow = "hidden";
     sink.style.opacity = "0";
+    sink.style.pointerEvents = "none";
     sink.style.color = "transparent";
     sink.style.caretColor = "transparent";
     sink.style.verticalAlign = "bottom";
@@ -1026,7 +1032,11 @@ export function BlankFillViewV2({
       // sink(이월 흘려버리기 자리)에 캐럿이 있으면 스냅 금지 — 여기 잠깐 머물러 이월을
       //   확정시킨 뒤 focusViaSink 가 목표 칸으로 옮긴다. 스냅하면 sink 가 무력화됨.
       const sink = sinkRef.current;
-      if (sink && (sink === anchor || sink.contains(anchor))) return;
+      if (sink && (sink === anchor || sink.contains(anchor))) {
+        // 드레인 창 안 = focusViaSink 경유 중 — 이월 확정을 위해 잠깐 머무는 것 허용.
+        // 창 밖 = 사용자가 탭/방향키로 들어온 것 — 아래 스냅 로직으로 인접 빈칸에 되돌림.
+        if (Date.now() <= sinkDrainUntilRef.current) return;
+      }
       const inSlot = isInSlot(anchor, root);
       if (inSlot) {
         // 슬롯 간 캐럿 이동만 기록(같은 슬롯 연속 selectionchange 는 dedupe — 버퍼 범람 방지).
