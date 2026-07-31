@@ -6,6 +6,8 @@ import type { Database } from "database.types";
 import {
   type SrsState,
   computeNextSrsState,
+  reviewDueCutoffIso,
+  reviewDueCutoffMs,
 } from "~/features/study/lib/srs";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
@@ -88,7 +90,7 @@ export async function getDueProblems(
       "problem_id, next_due_at, interval_days, reps, lapses, problems!inner(body_md, year, problem_number, primary_article_id, articles!primary_article_id(display_label), laws!inner(law_code))",
     )
     .eq("user_id", userId)
-    .lte("next_due_at", new Date().toISOString())
+    .lte("next_due_at", reviewDueCutoffIso())
     .order("next_due_at", { ascending: true })
     .limit(limit);
   if (error) throw error;
@@ -122,19 +124,21 @@ export async function getSrsCounts(
   client: SupabaseClient<Database>,
   userId: string,
 ): Promise<SrsCounts> {
-  const nowIso = new Date().toISOString();
-  const sevenDays = new Date(Date.now() + 7 * 86_400_000).toISOString();
+  const cutoffIso = reviewDueCutoffIso();
+  const sevenDays = new Date(
+    reviewDueCutoffMs() + 7 * 86_400_000,
+  ).toISOString();
   const [dueRes, upcomingRes, totalRes, lapsesRes] = await Promise.all([
     client
       .from("user_problem_srs")
       .select("problem_id", { head: true, count: "exact" })
       .eq("user_id", userId)
-      .lte("next_due_at", nowIso),
+      .lte("next_due_at", cutoffIso),
     client
       .from("user_problem_srs")
       .select("problem_id", { head: true, count: "exact" })
       .eq("user_id", userId)
-      .gt("next_due_at", nowIso)
+      .gt("next_due_at", cutoffIso)
       .lte("next_due_at", sevenDays),
     client
       .from("user_problem_srs")

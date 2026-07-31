@@ -49,12 +49,20 @@ function levenshtein(a: string, b: string): number {
 // 정답과의 유사도 0..1 — 1.0 = 완전 일치. 정규화 후 Levenshtein 기반.
 // 빈 입력은 0, 정규화 후 빈 정답은 1.0 (원래 비어있는 block).
 export function computeSimilarity(input: string, expected: string): number {
+  return computeSimilarityNormalized(input, normalizeForComparison(expected));
+}
+
+// 미리 정규화한 정답과 비교 — 암기 모드 타이핑 중 정답 정규화(regex 다발)를
+// 키 입력마다 반복하지 않도록 블록당 1회 정규화 후 이 함수로 비교한다.
+export function computeSimilarityNormalized(
+  input: string,
+  expectedNorm: string,
+): number {
   const a = normalizeForComparison(input);
-  const b = normalizeForComparison(expected);
-  if (b.length === 0) return a.length === 0 ? 1 : 0;
+  if (expectedNorm.length === 0) return a.length === 0 ? 1 : 0;
   if (a.length === 0) return 0;
-  const d = levenshtein(a, b);
-  const maxLen = Math.max(a.length, b.length);
+  const d = levenshtein(a, expectedNorm);
+  const maxLen = Math.max(a.length, expectedNorm.length);
   return Math.max(0, 1 - d / maxLen);
 }
 

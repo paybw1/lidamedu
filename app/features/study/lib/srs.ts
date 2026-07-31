@@ -28,6 +28,23 @@ const EASE_PENALTY = 0.2;
 //   복습 종류별로 각각 적용(문제·빈칸 세트·정오·조문 정독). 값은 합리적 기본값(추후 사용자 조절 편입 가능).
 export const DAILY_REVIEW_BUDGET = 40;
 
+// 복습 due 판정 기준 — '지금'이 아니라 '오늘(KST) 끝'으로 절사.
+// 시각 단위 판정이면 항목이 하루 종일 흘러들어와 매시간 목록이 바뀐다(학생 피드백).
+// 일 단위 절사면 하루치 due 가 자정에 한 번에 열리고 낮 동안 목록이 늘지 않는다.
+// 간격(1·3·7…일)이 일 단위 의미라 절사가 자연스럽다. 4종 복습(문제·빈칸·정오·조문) 공통.
+const KST_OFFSET_MS = 9 * 3_600_000;
+
+/** 오늘(KST)의 끝 = 다음 KST 자정의 UTC ISO. due 쿼리·카운트의 단일 기준. */
+export function reviewDueCutoffIso(now: Date = new Date()): string {
+  return new Date(reviewDueCutoffMs(now)).toISOString();
+}
+
+/** reviewDueCutoffIso 의 epoch ms 버전 (ms 비교 코드용). */
+export function reviewDueCutoffMs(now: Date = new Date()): number {
+  const kstDay = Math.floor((now.getTime() + KST_OFFSET_MS) / 86_400_000);
+  return (kstDay + 1) * 86_400_000 - KST_OFFSET_MS;
+}
+
 /** 밀림 표시용 — 총 due 대비 오늘 노출/밀림 수를 나눠 반환. */
 export function splitReviewBudget(
   totalDue: number,

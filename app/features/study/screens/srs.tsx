@@ -176,7 +176,8 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
           </h1>
           <p className="text-ink-soft mt-2 text-sm leading-relaxed">
             틀리면 1일, 맞으면 3·7·14·30·60일 간격으로 일정이 자동으로 잡힙니다.
-            지금 봐야 할 객관식 문제와 빈칸을 모아서 보여 드립니다.
+            복습 목록은 하루 단위(자정 기준)로 갱신되어, 낮 동안 새 항목이
+            계속 흘러들어오지 않습니다.
           </p>
         </div>
         <GuideHelpButton screenKey="study-srs" className="mt-1" />

@@ -7,6 +7,8 @@ import type { Database } from "database.types";
 import {
   type SrsState,
   computeNextSrsState,
+  reviewDueCutoffIso,
+  reviewDueCutoffMs,
 } from "~/features/study/lib/srs";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
@@ -86,7 +88,7 @@ export async function getDueBlankSets(
   userId: string,
   limit = 50,
 ): Promise<DueBlankSetItem[]> {
-  const nowIso = new Date().toISOString();
+  const cutoffIso = reviewDueCutoffIso();
   // due rows fetch — set 별 그룹핑은 클라이언트.
   const { data, error } = await client
     .from("user_blank_srs")
@@ -94,7 +96,7 @@ export async function getDueBlankSets(
       "set_id, blank_idx, next_due_at, article_blank_sets!inner(set_id, article_id, blanks, articles!inner(article_number, display_label, laws!inner(law_code)))",
     )
     .eq("user_id", userId)
-    .lte("next_due_at", nowIso)
+    .lte("next_due_at", cutoffIso)
     .order("next_due_at", { ascending: true })
     .limit(500); // set 집계 후 limit 적용 위해 raw 는 넉넉히
   if (error) throw error;
@@ -188,20 +190,22 @@ export async function getBlankSrsCounts(
   client: SupabaseClient<Database>,
   userId: string,
 ): Promise<BlankSrsCounts> {
-  const nowIso = new Date().toISOString();
-  const sevenDays = new Date(Date.now() + 7 * 86_400_000).toISOString();
+  const cutoffIso = reviewDueCutoffIso();
+  const sevenDays = new Date(
+    reviewDueCutoffMs() + 7 * 86_400_000,
+  ).toISOString();
 
   const [dueRes, upcomingRes, totalRes, lapsesRes] = await Promise.all([
     client
       .from("user_blank_srs")
       .select("set_id")
       .eq("user_id", userId)
-      .lte("next_due_at", nowIso),
+      .lte("next_due_at", cutoffIso),
     client
       .from("user_blank_srs")
       .select("set_id")
       .eq("user_id", userId)
-      .gt("next_due_at", nowIso)
+      .gt("next_due_at", cutoffIso)
       .lte("next_due_at", sevenDays),
     client
       .from("user_blank_srs")

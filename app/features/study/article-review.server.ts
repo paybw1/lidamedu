@@ -12,6 +12,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
+import { reviewDueCutoffMs } from "~/features/study/lib/srs";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
 export interface DueArticleReviewItem {
@@ -67,6 +68,7 @@ export async function getDueArticleReviews(
   }
 
   const now = Date.now();
+  const cutoff = reviewDueCutoffMs();
   // due 필터 + sort.
   const dueIds: string[] = [];
   const dueMap = new Map<
@@ -81,7 +83,7 @@ export async function getDueArticleReviews(
   for (const [articleId, acc] of byArticle.entries()) {
     const interval = intervalForVisitCount(acc.visitCount);
     const dueAtMs = new Date(acc.lastVisitedAt).getTime() + interval * 86_400_000;
-    if (dueAtMs <= now) {
+    if (dueAtMs <= cutoff) {
       dueIds.push(articleId);
       dueMap.set(articleId, {
         visitCount: acc.visitCount,
@@ -152,14 +154,14 @@ export async function getArticleReviewCounts(
       if (r.started_at > cur.lastVisitedAt) cur.lastVisitedAt = r.started_at;
     }
   }
-  const now = Date.now();
-  const sevenDays = now + 7 * 86_400_000;
+  const cutoff = reviewDueCutoffMs();
+  const sevenDays = cutoff + 7 * 86_400_000;
   let due = 0;
   let upcoming = 0;
   for (const acc of byArticle.values()) {
     const interval = intervalForVisitCount(acc.visitCount);
     const dueAtMs = new Date(acc.lastVisitedAt).getTime() + interval * 86_400_000;
-    if (dueAtMs <= now) due += 1;
+    if (dueAtMs <= cutoff) due += 1;
     else if (dueAtMs <= sevenDays) upcoming += 1;
   }
   return {

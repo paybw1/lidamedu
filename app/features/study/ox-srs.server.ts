@@ -7,6 +7,8 @@ import type { Database } from "database.types";
 import {
   type SrsState,
   computeNextSrsState,
+  reviewDueCutoffIso,
+  reviewDueCutoffMs,
 } from "~/features/study/lib/srs";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
@@ -89,12 +91,12 @@ export async function getDueOxRefs(
   userId: string,
   limit: number = 100,
 ): Promise<DueOxRefItem[]> {
-  const nowIso = new Date().toISOString();
+  const cutoffIso = reviewDueCutoffIso();
   const { data: rows, error } = await client
     .from("user_ox_ref_srs")
     .select("ref_type, ref_id, next_due_at, interval_days, reps, lapses")
     .eq("user_id", userId)
-    .lte("next_due_at", nowIso)
+    .lte("next_due_at", cutoffIso)
     .order("next_due_at", { ascending: true })
     .limit(limit);
   if (error) throw error;
@@ -203,19 +205,21 @@ export async function getOxSrsCounts(
   client: SupabaseClient<Database>,
   userId: string,
 ): Promise<OxSrsCounts> {
-  const nowIso = new Date().toISOString();
-  const sevenDays = new Date(Date.now() + 7 * 86_400_000).toISOString();
+  const cutoffIso = reviewDueCutoffIso();
+  const sevenDays = new Date(
+    reviewDueCutoffMs() + 7 * 86_400_000,
+  ).toISOString();
   const [dueRes, upcomingRes, totalRes, lapsesRes] = await Promise.all([
     client
       .from("user_ox_ref_srs")
       .select("ref_id", { head: true, count: "exact" })
       .eq("user_id", userId)
-      .lte("next_due_at", nowIso),
+      .lte("next_due_at", cutoffIso),
     client
       .from("user_ox_ref_srs")
       .select("ref_id", { head: true, count: "exact" })
       .eq("user_id", userId)
-      .gt("next_due_at", nowIso)
+      .gt("next_due_at", cutoffIso)
       .lte("next_due_at", sevenDays),
     client
       .from("user_ox_ref_srs")

@@ -12,7 +12,7 @@ import {
   SaveIcon,
   ScrollIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFetcher } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
@@ -28,8 +28,9 @@ import type {
 
 import {
   RECITATION_PASS_THRESHOLD,
-  computeSimilarity,
+  computeSimilarityNormalized,
   isRecitationComplete,
+  normalizeForComparison,
 } from "../lib/similarity";
 
 interface RecitationBlock {
@@ -37,6 +38,8 @@ interface RecitationBlock {
   label: string; // ① / 1. / 가. 등
   subtitle: string | null;
   expectedText: string;
+  /** 비교용 정규화 정답 — 키 입력마다 재정규화하지 않도록 1회 계산해 보관. */
+  expectedNorm: string;
   depth: number;
 }
 
@@ -116,6 +119,7 @@ export function RecitationView({ articleId, articleLabel, body }: Props) {
               label: block.label,
               subtitle: block.subtitle ?? null,
               expectedText: expected,
+              expectedNorm: normalizeForComparison(expected),
               depth,
             },
           });
@@ -133,6 +137,7 @@ export function RecitationView({ articleId, articleLabel, body }: Props) {
                 label: "본문",
                 subtitle: null,
                 expectedText: expected,
+                expectedNorm: normalizeForComparison(expected),
                 depth,
               },
             });
@@ -204,6 +209,22 @@ export function RecitationView({ articleId, articleLabel, body }: Props) {
     [voice, activeVoiceIdx],
   );
 
+  // memo 행이 리렌더를 건너뛸 수 있도록 안정 참조 콜백 — toggleVoice 는 voice 상태에 따라
+  // 매 렌더 새로 만들어지므로 ref 로 감싼다.
+  const toggleVoiceRef = useRef(toggleVoice);
+  toggleVoiceRef.current = toggleVoice;
+  const stableToggleVoice = useCallback(
+    (blockIndex: number) => toggleVoiceRef.current(blockIndex),
+    [],
+  );
+  const registerTextarea = useCallback(
+    (blockIndex: number, el: HTMLTextAreaElement | null) => {
+      if (el) textareaRefs.current.set(blockIndex, el);
+      else textareaRefs.current.delete(blockIndex);
+    },
+    [],
+  );
+
   // 음성 세션이 자동으로 끝나면 (timeout / error) activeVoiceIdx 정리.
   useEffect(() => {
     if (!voice.listening && activeVoiceIdx !== null) {
@@ -213,12 +234,23 @@ export function RecitationView({ articleId, articleLabel, body }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [voice.listening]);
 
-  // 각 block 의 유사도 — input 변경마다 즉시 갱신.
+  // 각 block 의 유사도 — 입력이 바뀐 block 만 재계산(Levenshtein 은 본문 길이 제곱 비용이라
+  // 키 입력마다 전 블록을 다시 돌리면 큰 조문에서 타이핑이 밀린다 — iPad 신고).
+  const simCache = useRef<Map<number, { input: string; sim: number }>>(
+    new Map(),
+  );
   const similarities = useMemo<Record<number, number>>(() => {
     const out: Record<number, number> = {};
     for (const rb of recitationBlocks) {
       const input = inputs[rb.blockIndex] ?? "";
-      out[rb.blockIndex] = computeSimilarity(input, rb.expectedText);
+      const cached = simCache.current.get(rb.blockIndex);
+      if (cached && cached.input === input) {
+        out[rb.blockIndex] = cached.sim;
+        continue;
+      }
+      const sim = computeSimilarityNormalized(input, rb.expectedNorm);
+      simCache.current.set(rb.blockIndex, { input, sim });
+      out[rb.blockIndex] = sim;
     }
     return out;
   }, [inputs, recitationBlocks]);
@@ -339,81 +371,21 @@ export function RecitationView({ articleId, articleLabel, body }: Props) {
             return <RefSectionCard key={it.ref.key} section={it.ref} />;
           }
           const rb = it.block;
-          const sim = similarities[rb.blockIndex] ?? 0;
-          const complete = isRecitationComplete(sim);
-          const input = inputs[rb.blockIndex] ?? "";
           const voiceActive = activeVoiceIdx === rb.blockIndex;
           return (
-            <div
+            <ReciteRow
               key={rb.blockIndex}
-              style={{ paddingLeft: `${rb.depth * 16}px` }}
-              className="space-y-1.5"
-            >
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-link text-sm font-semibold">
-                  {rb.label}
-                </span>
-                {rb.subtitle ? (
-                  <span className="bg-primary/10 text-link rounded px-1.5 py-0.5 text-xs font-semibold">
-                    ({rb.subtitle})
-                  </span>
-                ) : null}
-                <SimilarityChip similarity={sim} hasInput={input.length > 0} />
-              </div>
-
-              <div className="flex items-start gap-2">
-                <textarea
-                  ref={(el) => {
-                    if (el) textareaRefs.current.set(rb.blockIndex, el);
-                    else textareaRefs.current.delete(rb.blockIndex);
-                  }}
-                  value={input}
-                  onChange={(e) => setInputAt(rb.blockIndex, e.target.value)}
-                  rows={Math.max(2, Math.ceil(rb.expectedText.length / 60))}
-                  placeholder="여기에 외운 본문을 입력하거나 마이크로 말하세요."
-                  className={cn(
-                    "border-input bg-background flex-1 resize-y rounded-md border px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary/40",
-                    complete
-                      ? "border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/30"
-                      : sim > 0.5
-                        ? "border-amber-400"
-                        : "",
-                  )}
-                />
-                {voice.isSupported ? (
-                  <Button
-                    type="button"
-                    variant={voiceActive ? "default" : "outline"}
-                    size="icon"
-                    onClick={() => toggleVoice(rb.blockIndex)}
-                    aria-label={voiceActive ? "음성 인식 중지" : "음성 인식 시작"}
-                    title={voiceActive ? "음성 인식 중지" : "음성 입력 (ko-KR)"}
-                    className={cn(
-                      "size-9 shrink-0",
-                      voiceActive && "animate-pulse",
-                    )}
-                  >
-                    {voiceActive ? (
-                      <MicIcon className="size-4" />
-                    ) : (
-                      <MicOffIcon className="size-4" />
-                    )}
-                  </Button>
-                ) : null}
-              </div>
-
-              {voiceActive && voice.interim ? (
-                <p className="text-muted-foreground italic px-3 text-xs">
-                  …{voice.interim}
-                </p>
-              ) : null}
-
-              {reveal ? (
-                <div className="rounded-md border border-emerald-500/30 bg-emerald-50/60 dark:bg-emerald-950/20 px-3 py-2 text-sm leading-relaxed">
-                  {rb.expectedText}
-                </div>
-              ) : null}
-            </div>
+              rb={rb}
+              input={inputs[rb.blockIndex] ?? ""}
+              sim={similarities[rb.blockIndex] ?? 0}
+              reveal={reveal}
+              voiceActive={voiceActive}
+              voiceSupported={voice.isSupported}
+              interim={voiceActive ? voice.interim : ""}
+              onInput={setInputAt}
+              onToggleVoice={stableToggleVoice}
+              registerRef={registerTextarea}
+            />
           );
         })}
       </div>
@@ -428,9 +400,103 @@ export function RecitationView({ articleId, articleLabel, body }: Props) {
   );
 }
 
+// 암기 입력 행 — memo: 타이핑 중인 행만 리렌더되고 나머지 행(긴 정답 미리보기 포함)은
+// 건너뛴다. 콜백 props 는 부모에서 안정 참조로 내려온다.
+const ReciteRow = memo(function ReciteRow({
+  rb,
+  input,
+  sim,
+  reveal,
+  voiceActive,
+  voiceSupported,
+  interim,
+  onInput,
+  onToggleVoice,
+  registerRef,
+}: {
+  rb: RecitationBlock;
+  input: string;
+  sim: number;
+  reveal: boolean;
+  voiceActive: boolean;
+  voiceSupported: boolean;
+  interim: string;
+  onInput: (blockIndex: number, value: string) => void;
+  onToggleVoice: (blockIndex: number) => void;
+  registerRef: (blockIndex: number, el: HTMLTextAreaElement | null) => void;
+}) {
+  const complete = isRecitationComplete(sim);
+  return (
+    <div
+      style={{ paddingLeft: `${rb.depth * 16}px` }}
+      className="space-y-1.5"
+    >
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-link text-sm font-semibold">{rb.label}</span>
+        {rb.subtitle ? (
+          <span className="bg-primary/10 text-link rounded px-1.5 py-0.5 text-xs font-semibold">
+            ({rb.subtitle})
+          </span>
+        ) : null}
+        <SimilarityChip similarity={sim} hasInput={input.length > 0} />
+      </div>
+
+      <div className="flex items-start gap-2">
+        <textarea
+          ref={(el) => registerRef(rb.blockIndex, el)}
+          value={input}
+          onChange={(e) => onInput(rb.blockIndex, e.target.value)}
+          rows={Math.max(2, Math.ceil(rb.expectedText.length / 60))}
+          placeholder="여기에 외운 본문을 입력하거나 마이크로 말하세요."
+          className={cn(
+            "border-input bg-background flex-1 resize-y rounded-md border px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary/40",
+            complete
+              ? "border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/30"
+              : sim > 0.5
+                ? "border-amber-400"
+                : "",
+          )}
+        />
+        {voiceSupported ? (
+          <Button
+            type="button"
+            variant={voiceActive ? "default" : "outline"}
+            size="icon"
+            onClick={() => onToggleVoice(rb.blockIndex)}
+            aria-label={voiceActive ? "음성 인식 중지" : "음성 인식 시작"}
+            title={voiceActive ? "음성 인식 중지" : "음성 입력 (ko-KR)"}
+            className={cn("size-9 shrink-0", voiceActive && "animate-pulse")}
+          >
+            {voiceActive ? (
+              <MicIcon className="size-4" />
+            ) : (
+              <MicOffIcon className="size-4" />
+            )}
+          </Button>
+        ) : null}
+      </div>
+
+      {voiceActive && interim ? (
+        <p className="text-muted-foreground italic px-3 text-xs">…{interim}</p>
+      ) : null}
+
+      {reveal ? (
+        <div className="rounded-md border border-emerald-500/30 bg-emerald-50/60 dark:bg-emerald-950/20 px-3 py-2 text-sm leading-relaxed">
+          {rb.expectedText}
+        </div>
+      ) : null}
+    </div>
+  );
+});
+
 // "함께 공부할 조문"(시행령·시행규칙 등) 참고 카드 — 암기 대상이 아니라 내용을 그대로 보여 준다.
 // 본문 뷰어의 초록 박스와 동일한 정체성(색·라벨)을 유지해 학생이 같은 자료임을 인지하게 한다.
-function RefSectionCard({ section }: { section: RefSection }) {
+// memo: 내용이 정적(section 은 items memo 산출물)이라 타이핑 리렌더에서 제외.
+const RefSectionCard = memo(function RefSectionCard({
+  section,
+}: {
+  section: RefSection;
+}) {
   return (
     <aside className="relative rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 dark:border-emerald-700/40 dark:bg-emerald-950/10">
       <div className="mb-2.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-2.5 py-0.5 text-[10.5px] font-extrabold tracking-[0.06em] text-white uppercase dark:bg-emerald-600">
@@ -461,7 +527,7 @@ function RefSectionCard({ section }: { section: RefSection }) {
       </p>
     </aside>
   );
-}
+});
 
 // 참고 조문 본문을 읽기 전용으로 렌더 — 조/항/호/목 라벨 + 텍스트. 입력창 없음.
 function RefBlocks({

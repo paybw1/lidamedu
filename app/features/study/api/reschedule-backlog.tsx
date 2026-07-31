@@ -4,7 +4,10 @@
 import { data } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
-import { DAILY_REVIEW_BUDGET } from "~/features/study/lib/srs";
+import {
+  DAILY_REVIEW_BUDGET,
+  reviewDueCutoffIso,
+} from "~/features/study/lib/srs";
 
 // overdue 를 최대 이만큼만 재배치(안전 상한). 그 이상이면 앞부분만 스프레드.
 const MAX_RESCHEDULE = 1000;
@@ -28,13 +31,12 @@ export async function action({ request }: { request: Request }) {
   } = await client.auth.getUser();
   if (!user) return data({ ok: false, error: "Unauthorized" }, { status: 401 });
 
-  // 누적 overdue(오래된 것 우선). RLS 로 본인 것만.
-  const nowIso = new Date().toISOString();
+  // 누적 overdue(오래된 것 우선). RLS 로 본인 것만. due 판정은 목록과 동일 기준(일 절사).
   const { data: rows, error } = await client
     .from("user_problem_srs")
     .select("problem_id")
     .eq("user_id", user.id)
-    .lte("next_due_at", nowIso)
+    .lte("next_due_at", reviewDueCutoffIso())
     .order("next_due_at", { ascending: true })
     .limit(MAX_RESCHEDULE);
   if (error) return data({ ok: false, error: error.message }, { status: 500 });
