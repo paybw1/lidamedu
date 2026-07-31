@@ -3346,7 +3346,19 @@ export async function getProblemForReview(
 //   "## Ⅱ. 설문(1)…" 헤딩 단위로 그룹핑 — 설문 헤딩이 없는 섹션·채점기준 인용은 '공통'.
 //   뷰어에서 배지 → 팝업(요지 학습) / 학습화면(판례 뷰어 이동) 두 동선 제공.
 
-const ANSWER_CASE_NUM_RE = /\d{2,4}(?:다|후|허|마|도|누|두)\d+/g;
+const ANSWER_CASE_NUM_RE = /\d{2,4}(?:다|나|후|허|마|도|누|두)\d+/g;
+
+// '2008후934로 오인용 시 감점'·'취지 불일치로 감점'처럼 잘못된 인용을 경고하는 문맥의
+// 사건번호는 관련 판례가 아니므로 배지에서 제외한다.
+function extractCaseNums(text: string): string[] {
+  const out: string[] = [];
+  for (const m of text.matchAll(ANSWER_CASE_NUM_RE)) {
+    const ctx = text.slice(Math.max(0, (m.index ?? 0) - 40), (m.index ?? 0) + m[0].length + 40);
+    if (/오인용|잘못\s*인용|취지 불일치|오인용?하면 감점/.test(ctx)) continue;
+    out.push(m[0]);
+  }
+  return [...new Set(out)];
+}
 
 export async function getAnswerCitedCaseGroups(
   client: SupabaseClient<Database>,
@@ -3369,7 +3381,7 @@ export async function getAnswerCitedCaseGroups(
     for (const part of parts) {
       const heading = part.match(/^##\s+([^\n]+)/)?.[1] ?? "";
       const m = heading.match(/설문\s*\(?([\d①-⑨]+)\)?/);
-      const nums = [...new Set([...part.matchAll(ANSWER_CASE_NUM_RE)].map((x) => x[0]))];
+      const nums = extractCaseNums(part);
       if (!nums.length) continue;
       if (m) {
         groups.push({ label: `설문(${m[1]})`, nums });
@@ -3379,14 +3391,14 @@ export async function getAnswerCitedCaseGroups(
       }
     }
     // 채점기준 인용도 '공통'에 합류(설문 그룹에 이미 있으면 제외).
-    const rubricNums = [
-      ...new Set([...(problem.gradingRubricMd ?? "").matchAll(ANSWER_CASE_NUM_RE)].map((x) => x[0])),
-    ].filter((n) => !seenInSetmun.has(n));
+    const rubricNums = extractCaseNums(problem.gradingRubricMd ?? "").filter(
+      (n) => !seenInSetmun.has(n),
+    );
     if (rubricNums.length) groups.push({ label: "공통", nums: rubricNums });
   } else {
     // 객관식 — 종합해설 + 선지/박스 해설의 인용 판례를 '해설' 단일 그룹으로.
     const all = [problem.explanationMd ?? "", ...(problem.choiceExplanations ?? [])].join("\n");
-    const nums = [...new Set([...all.matchAll(ANSWER_CASE_NUM_RE)].map((x) => x[0]))];
+    const nums = extractCaseNums(all);
     if (!nums.length) return [];
     groups.push({ label: "해설", nums });
   }
@@ -3466,7 +3478,7 @@ export async function getExplanationCaseRefsByItem(
   for (const it of items) {
     const t = it.explanationMd ?? "";
     if (!t) continue;
-    const nums = [...new Set([...t.matchAll(ANSWER_CASE_NUM_RE)].map((x) => x[0]))].filter(
+    const nums = extractCaseNums(t).filter(
       (n) => !(it.linkedCaseNumber ?? "").includes(n),
     );
     if (!nums.length) continue;
