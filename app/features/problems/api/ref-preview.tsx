@@ -58,16 +58,26 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (type === "case") {
     const { data: row } = await client
       .from("cases")
-      .select("case_number, case_title, summary_title, summary_body_md, is_en_banc")
+      .select("case_number, case_title, summary_title, summary_body_md, summary_items, is_en_banc")
       .eq("case_id", id)
       .is("deleted_at", null)
       .maybeSingle();
     if (!row) return data({ error: "Not found" }, { status: 404 });
+    // 다중 쟁점([1][2]…) 판례는 summary_items 전체를 합성 — summary_body_md 는 [1]만 담고 있음.
+    const items = Array.isArray(row.summary_items)
+      ? (row.summary_items as Array<{ title?: string; body?: string }>)
+      : [];
+    const multi = items.length > 1;
+    const bodyMd = multi
+      ? items
+          .map((it, i) => `**[${i + 1}] ${(it.title ?? "").trim()}**\n\n${(it.body ?? "").trim()}`)
+          .join("\n\n")
+      : (row.summary_body_md ?? "");
     return data({
       kind: "case" as const,
       heading: `대법원 ${row.case_number}${row.is_en_banc ? " 전원합의체" : ""}`,
-      title: row.summary_title ?? row.case_title ?? row.case_number,
-      bodyMd: (row.summary_body_md ?? "").slice(0, 8000),
+      title: multi ? null : (row.summary_title ?? row.case_title ?? row.case_number),
+      bodyMd: bodyMd.slice(0, 10000),
     });
   }
 

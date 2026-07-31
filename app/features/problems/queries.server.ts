@@ -3408,17 +3408,33 @@ export async function getAnswerCitedCaseGroups(
   for (const num of uniq) {
     const { data } = await client
       .from("cases")
-      .select("case_id, case_number, case_title, summary_title, summary_body_md, subject_laws")
+      .select(
+        "case_id, case_number, case_title, summary_title, summary_body_md, summary_items, subject_laws",
+      )
       .ilike("case_number", `%${num}%`)
       .is("deleted_at", null)
       .limit(1);
     const row = data?.[0];
     if (!row) continue;
+    // 다중 쟁점([1][2]…) 판례는 summary_items 전체 합성 — summary_body_md 는 [1]만 담고 있음.
+    const items = Array.isArray(row.summary_items)
+      ? (row.summary_items as Array<{ title?: string; body?: string }>)
+      : [];
+    const multi = items.length > 1;
+    const summaryMd = multi
+      ? items
+          .map(
+            (it, i) => `**[${i + 1}] ${(it.title ?? "").trim()}**\n\n${(it.body ?? "").trim()}`,
+          )
+          .join("\n\n")
+      : (row.summary_body_md ?? "");
     byNum.set(num, {
       caseId: row.case_id,
       caseNumber: row.case_number,
-      title: row.summary_title ?? row.case_title ?? row.case_number,
-      summaryMd: (row.summary_body_md ?? "").slice(0, 6000),
+      title: multi
+        ? (row.case_title ?? row.case_number)
+        : (row.summary_title ?? row.case_title ?? row.case_number),
+      summaryMd: summaryMd.slice(0, 8000),
       subjectSlug: (row.subject_laws as string[] | null)?.[0] ?? fallbackSubject,
     });
   }
