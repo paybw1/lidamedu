@@ -5,6 +5,7 @@ import {
   BellIcon,
   CalendarClockIcon,
   CheckCheckIcon,
+  ChevronDownIcon,
   ClipboardCheckIcon,
   MegaphoneIcon,
   MessageCircleIcon,
@@ -12,6 +13,7 @@ import {
   TriangleAlertIcon,
   WrenchIcon,
 } from "lucide-react";
+import { useState } from "react";
 import { Form, Link, data, useFetcher } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
@@ -60,6 +62,13 @@ const KIND_LABEL: Partial<Record<NotificationKind, string>> = {
   bug_report_resolved: "오류신고 처리",
   staff_message: "강사 쪽지",
 };
+
+// 답변/쪽지 내용이 알림 본문에만 있는 종류 — 클릭 시 이동 대신 제자리에서 펼쳐
+// 전체 내용을 읽게 한다(목록은 2줄로 잘려 긴 답변을 볼 방법이 없던 문제).
+const EXPAND_IN_PLACE_KINDS: ReadonlySet<NotificationKind> = new Set([
+  "bug_report_resolved",
+  "staff_message",
+] as NotificationKind[]);
 
 const KIND_ICON: Partial<Record<NotificationKind, typeof BellIcon>> = {
   subjective_review_completed: ClipboardCheckIcon,
@@ -149,7 +158,12 @@ export default function StudentInbox({ loaderData }: Route.ComponentProps) {
         </div>
       ) : (
         <ul className="space-y-2" data-testid="student-inbox-list">
-          {items.map((it) => (
+          {items.map((it) =>
+            EXPAND_IN_PLACE_KINDS.has(it.kind) ? (
+              <li key={it.notificationId}>
+                <ExpandableNotificationCard item={it} />
+              </li>
+            ) : (
             <li key={it.notificationId}>
               <Card
                 className={cn(
@@ -185,14 +199,78 @@ export default function StudentInbox({ loaderData }: Route.ComponentProps) {
                 </Form>
               </Card>
             </li>
-          ))}
+            ),
+          )}
         </ul>
       )}
     </div>
   );
 }
 
-function NotificationBody({ item }: { item: NotificationItem }) {
+// 펼침형 카드 — 클릭하면 이동 대신 본문 전체를 펼치고 읽음 처리(답변·쪽지가
+// 알림 본문에만 있는 종류). 펼친 상태에서 관련 화면 링크를 따로 노출한다.
+// 읽음 처리는 raw fetch + 로컬 상태 — fetcher revalidation 을 쓰면 '안 읽음'
+// 필터에서 카드가 읽는 도중 목록에서 사라진다.
+function ExpandableNotificationCard({ item }: { item: NotificationItem }) {
+  const [expanded, setExpanded] = useState(false);
+  const [readAt, setReadAt] = useState(item.readAt);
+
+  function handleToggle() {
+    if (!expanded && readAt === null) {
+      const fd = new FormData();
+      fd.set("notificationId", item.notificationId);
+      void fetch("/api/notifications/mark-read", { method: "POST", body: fd });
+      setReadAt(new Date().toISOString());
+    }
+    setExpanded((v) => !v);
+  }
+
+  return (
+    <Card
+      className={cn(
+        "hover:border-primary transition-colors",
+        readAt === null && "border-primary/40 bg-primary/5",
+      )}
+    >
+      <button
+        type="button"
+        onClick={handleToggle}
+        className="w-full text-left"
+        data-testid="inbox-item"
+        aria-expanded={expanded}
+      >
+        <NotificationBody
+          item={{ ...item, readAt }}
+          expanded={expanded}
+          expandable
+        />
+      </button>
+      {expanded && item.href ? (
+        <div className="px-4 pb-3">
+          <Link
+            to={item.href}
+            className="text-link inline-flex items-center gap-1 text-xs font-semibold hover:underline"
+          >
+            {item.kind === "bug_report_resolved"
+              ? "신고했던 화면 열기"
+              : "관련 화면 열기"}{" "}
+            <ArrowRightIcon className="size-3.5" />
+          </Link>
+        </div>
+      ) : null}
+    </Card>
+  );
+}
+
+function NotificationBody({
+  item,
+  expanded = false,
+  expandable = false,
+}: {
+  item: NotificationItem;
+  expanded?: boolean;
+  expandable?: boolean;
+}) {
   const Icon = KIND_ICON[item.kind] ?? BellIcon;
   const label = KIND_LABEL[item.kind] ?? item.kind;
   const isUnread = item.readAt === null;
@@ -210,12 +288,25 @@ function NotificationBody({ item }: { item: NotificationItem }) {
           <span className="text-muted-foreground ml-auto tabular-nums">
             {formatRelative(item.createdAt)}
           </span>
+          {expandable ? (
+            <ChevronDownIcon
+              className={cn(
+                "text-muted-foreground size-4 shrink-0 transition-transform",
+                expanded && "rotate-180",
+              )}
+            />
+          ) : null}
         </div>
       </CardHeader>
       <CardContent className="px-4 pb-3">
         <p className="text-sm font-medium leading-snug">{item.title}</p>
         {item.body ? (
-          <p className="text-muted-foreground mt-1 line-clamp-2 text-xs leading-relaxed">
+          <p
+            className={cn(
+              "text-muted-foreground mt-1 text-xs leading-relaxed",
+              expanded ? "whitespace-pre-line" : "line-clamp-2",
+            )}
+          >
             {item.body}
           </p>
         ) : null}

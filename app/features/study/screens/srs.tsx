@@ -156,13 +156,15 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
   //   밀린 규모는 볼 수 있게 하되, 압박은 주지 않는다.
   const problemToday = Math.min(counts.due, DAILY_REVIEW_BUDGET);
   const blankToday = Math.min(blankCounts.dueSets, DAILY_REVIEW_BUDGET);
-  const oxToday = Math.min(oxCounts.due, DAILY_REVIEW_BUDGET);
+  // 정오문제는 원시 due 카운트 대신 eligibility 필터를 거친 목록 길이 기준
+  // — 부적격 항목만 남은 상태에서 "복습 시작"이 빈 러너로 이어지는 것 방지.
+  const oxToday = Math.min(oxItems.length, DAILY_REVIEW_BUDGET);
   const articleToday = Math.min(articleCounts.due, DAILY_REVIEW_BUDGET);
   const backlogTotal =
     counts.due -
     problemToday +
     (blankCounts.dueSets - blankToday) +
-    (oxCounts.due - oxToday) +
+    (oxItems.length - oxToday) +
     (articleCounts.due - articleToday);
   return (
     <StudentShell width="wide">
@@ -182,7 +184,7 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
 
       {/* feat-2-026 Stage 3 ① — 복습 한눈에(통합 진입): 종류별 due 합 + 정오문제 묶음 러너 바로가기.
           객관식·빈칸은 과목별이라 아래 섹션 버튼, 정오문제는 단일 러너라 여기서 바로 시작. */}
-      {counts.due + blankCounts.dueSets + oxCounts.due + articleCounts.due >
+      {counts.due + blankCounts.dueSets + oxItems.length + articleCounts.due >
       0 ? (
         <Card className="ring-primary/10 mb-6 ring-1">
           <CardContent className="py-4">
@@ -202,7 +204,7 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
                   </p>
                 ) : null}
               </div>
-              {oxCounts.due > 0 ? (
+              {oxItems.length > 0 ? (
                 <Button asChild size="sm" className="rounded-full">
                   <Link to="/study/srs/ox" viewTransition>
                     정오문제 복습 시작 <ArrowRightIcon className="size-3.5" />

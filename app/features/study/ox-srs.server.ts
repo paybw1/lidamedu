@@ -81,6 +81,8 @@ export interface DueOxRefItem {
 /**
  * 본인 OX ref SRS due 항목.
  * choice / box_item 별로 부모 problem 조인을 따로 해서 합친다.
+ * SRS 등록 뒤 ox_ineligible/ox_truth 회수·문제 삭제로 풀 수 없게 된 ref 는 제외
+ * — 러너(getOxQuestionsForRefs)와 동일 기준. 안 맞으면 목록엔 있는데 러너가 빈 화면.
  */
 export async function getDueOxRefs(
   client: SupabaseClient<Database>,
@@ -115,10 +117,13 @@ export async function getDueOxRefs(
     const { data: choices } = await client
       .from("problem_choices")
       .select(
-        "choice_id, body_md, problem_id, problems!inner(year, problem_number, laws!inner(law_code))",
+        "choice_id, body_md, problem_id, problems!inner(year, problem_number, deleted_at, laws!inner(law_code))",
       )
-      .in("choice_id", choiceIds);
+      .in("choice_id", choiceIds)
+      .eq("ox_ineligible", false)
+      .not("ox_truth", "is", null);
     for (const c of choices ?? []) {
+      if (c.problems.deleted_at) continue;
       choiceMap.set(c.choice_id, {
         problemId: c.problem_id,
         lawCode: (c.problems.laws.law_code as LawSubjectSlug) ?? "patent",
@@ -143,10 +148,13 @@ export async function getDueOxRefs(
     const { data: boxes } = await client
       .from("problem_box_items")
       .select(
-        "box_item_id, body_md, problem_id, problems!inner(year, problem_number, laws!inner(law_code))",
+        "box_item_id, body_md, problem_id, problems!inner(year, problem_number, deleted_at, laws!inner(law_code))",
       )
-      .in("box_item_id", boxItemIds);
+      .in("box_item_id", boxItemIds)
+      .eq("ox_ineligible", false)
+      .not("ox_truth", "is", null);
     for (const b of boxes ?? []) {
+      if (b.problems.deleted_at) continue;
       boxMap.set(b.box_item_id, {
         problemId: b.problem_id,
         lawCode: (b.problems.laws.law_code as LawSubjectSlug) ?? "patent",
@@ -158,17 +166,20 @@ export async function getDueOxRefs(
   }
 
   const now = Date.now();
-  const items: DueOxRefItem[] = rows.map((r) => {
+  const items: DueOxRefItem[] = [];
+  for (const r of rows) {
     const parent =
       r.ref_type === "choice" ? choiceMap.get(r.ref_id) : boxMap.get(r.ref_id);
-    return {
+    // parent 없음 = eligibility 필터 탈락(부적격/삭제) — 러너에서 못 푸는 항목이라 목록에서도 제외.
+    if (!parent) continue;
+    items.push({
       refType: r.ref_type as OxRefType,
       refId: r.ref_id,
-      problemId: parent?.problemId ?? null,
-      lawCode: parent?.lawCode ?? null,
-      year: parent?.year ?? null,
-      problemNumber: parent?.problemNumber ?? null,
-      refSnippet: parent?.snippet ?? "",
+      problemId: parent.problemId,
+      lawCode: parent.lawCode,
+      year: parent.year,
+      problemNumber: parent.problemNumber,
+      refSnippet: parent.snippet,
       nextDueAt: r.next_due_at,
       intervalDays: r.interval_days,
       reps: r.reps,
@@ -176,8 +187,8 @@ export async function getDueOxRefs(
       daysUntilDue: Math.floor(
         (new Date(r.next_due_at).getTime() - now) / 86_400_000,
       ),
-    };
-  });
+    });
+  }
   return items;
 }
 
