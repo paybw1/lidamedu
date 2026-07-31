@@ -2078,7 +2078,10 @@ function SubjectivePanel({
     const secs = parts.map((part) => {
       const heading = part.match(/^##\s+([^\n]+)/)?.[1] ?? "";
       const m = heading.match(/설문\s*\(?([\d①-⑨]+)\)?/);
-      return { md: part, cases: m ? (byLabel.get(`설문(${m[1]})`) ?? []) : [] };
+      // 섹션 끝의 '---' 구분선은 떼어내고 배지 행 아래에 자체 밑줄로 렌더
+      // (내용 → 관련판례 → 밑줄 → 다음 설문 순서 보장).
+      const body = part.replace(/\n-{3,}\s*$/, "").trimEnd();
+      return { md: body, cases: m ? (byLabel.get(`설문(${m[1]})`) ?? []) : [] };
     });
     const common = byLabel.get("공통") ?? [];
     if (common.length && secs.length) {
@@ -2606,6 +2609,9 @@ function SubjectivePanel({
                     className={SUBJECTIVE_MD_CLASS}
                   />
                   <CaseBadgeRow cases={sec.cases} />
+                  {i < answerSections.length - 1 ? (
+                    <div className="border-border/60 my-6 border-t" />
+                  ) : null}
                 </Fragment>
               ))
             ) : (

@@ -47,7 +47,7 @@ export function AnswerCaseBadges({ groups }: { groups: AnswerCaseGroup[] }) {
 export function CaseBadgeRow({ cases }: { cases: AnswerCitedCase[] }) {
   if (!cases.length) return null;
   return (
-    <div className="border-border/40 mt-3 mb-6 flex flex-wrap items-center gap-1.5 border-t border-b py-2.5">
+    <div className="mt-4 flex flex-wrap items-center gap-1.5">
       <span className="text-muted-foreground inline-flex items-center gap-1 text-[11px] font-semibold">
         <ScaleIcon className="size-3 opacity-60" /> 관련 판례
       </span>
