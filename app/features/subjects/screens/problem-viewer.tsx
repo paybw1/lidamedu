@@ -2078,20 +2078,32 @@ function SubjectivePanel({
     attempt?: SubjectiveAttempt;
     error?: string;
   }>();
-  // 모범답안 섹션 분할 — 각 설문(## 헤딩) 답이 끝난 지점에 관련 판례 인라인 배지 행 삽입.
-  //   '공통'(채점기준 인용 등) 그룹은 마지막 섹션(결론) 뒤에 붙인다.
+  // 모범답안 섹션 분할 — 각 설문 답이 끝난 지점에 관련 판례 인라인 배지 행 삽입.
+  //   설문 라벨은 상태 추적으로 상속('# 설문 (1)' h1 제목 + '## Ⅰ.' 하위 목차 구조 대응),
+  //   배지는 그 설문에 속한 마지막 섹션 뒤에 붙인다. '공통' 그룹은 문서 마지막 섹션 뒤.
   const answerSections = useMemo(() => {
     const md = modelAnswerMd ?? "";
     if (!md.trim()) return [];
     const byLabel = new Map(answerCaseGroups.map((g) => [g.label, g.cases]));
-    const parts = md.split(/^(?=##\s)/m).filter((p) => p.trim().length);
-    const secs = parts.map((part) => {
-      const heading = part.match(/^##\s+([^\n]+)/)?.[1] ?? "";
+    const parts = md.split(/^(?=#{1,2}\s)/m).filter((p) => p.trim().length);
+    let currentLabel: string | null = null;
+    const labeled = parts.map((part) => {
+      const heading = part.match(/^#{1,2}\s+([^\n]+)/)?.[1] ?? "";
       const m = heading.match(/설문\s*\(?([\d①-⑨]+)\)?/);
+      if (m) currentLabel = `설문(${m[1]})`;
       // 섹션 끝의 '---' 구분선은 떼어내고 배지 행 아래에 자체 밑줄로 렌더
       // (내용 → 관련판례 → 밑줄 → 다음 설문 순서 보장).
       const body = part.replace(/\n-{3,}\s*$/, "").trimEnd();
-      return { md: body, cases: m ? (byLabel.get(`설문(${m[1]})`) ?? []) : [] };
+      return { md: body, label: currentLabel };
+    });
+    const secs = labeled.map((sec, i) => {
+      const isLastOfLabel =
+        sec.label !== null &&
+        (i === labeled.length - 1 || labeled[i + 1].label !== sec.label);
+      return {
+        md: sec.md,
+        cases: isLastOfLabel ? (byLabel.get(sec.label!) ?? []) : [],
+      };
     });
     const common = byLabel.get("공통") ?? [];
     if (common.length && secs.length) {

@@ -3376,19 +3376,26 @@ export async function getAnswerCitedCaseGroups(
   if (problem.format === "subjective") {
     const answer = problem.modelAnswerMd ?? "";
     if (!answer.trim()) return [];
-    // 섹션 분할 — '## ' 헤딩. 헤딩에서 설문 번호를 뽑아 라벨링.
-    const parts = answer.split(/^(?=##\s)/m);
+    // 섹션 분할 — '#'/'##' 헤딩. 설문 라벨은 상태 추적으로 상속:
+    // '# 설문 (1)…'(h1 설문 제목 + ## 하위 목차 구조)처럼 개별 섹션 헤딩에 설문 번호가
+    // 없어도, 직전 설문 헤딩의 라벨을 이어받아 그 설문 그룹으로 귀속시킨다.
+    const parts = answer.split(/^(?=#{1,2}\s)/m);
+    let currentLabel: string | null = null;
+    const numsByLabel = new Map<string, string[]>();
     for (const part of parts) {
-      const heading = part.match(/^##\s+([^\n]+)/)?.[1] ?? "";
+      const heading = part.match(/^#{1,2}\s+([^\n]+)/)?.[1] ?? "";
       const m = heading.match(/설문\s*\(?([\d①-⑨]+)\)?/);
+      if (m) currentLabel = `설문(${m[1]})`;
       const nums = extractCaseNums(part);
       if (!nums.length) continue;
-      if (m) {
-        groups.push({ label: `설문(${m[1]})`, nums });
-        for (const n of nums) seenInSetmun.add(n);
-      } else {
-        groups.push({ label: "공통", nums });
-      }
+      const label = currentLabel ?? "공통";
+      const list = numsByLabel.get(label) ?? [];
+      for (const n of nums) if (!list.includes(n)) list.push(n);
+      numsByLabel.set(label, list);
+    }
+    for (const [label, nums] of numsByLabel) {
+      groups.push({ label, nums });
+      if (label !== "공통") for (const n of nums) seenInSetmun.add(n);
     }
     // 채점기준 인용도 '공통'에 합류(설문 그룹에 이미 있으면 제외).
     const rubricNums = extractCaseNums(problem.gradingRubricMd ?? "").filter(
