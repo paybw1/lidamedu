@@ -60,12 +60,14 @@ export function RefPreviewBadge({
         {kind === "article" ? "조문" : "판례"} {label}
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
+        {/* 헤더(제목·X)·하단 버튼 고정, 본문만 스크롤 */}
+        <DialogContent className="flex max-h-[80vh] max-w-2xl flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle className="pr-6 text-base leading-snug">
               {d?.heading ?? (kind === "article" ? `조문 ${label}` : `판례 ${label}`)}
             </DialogTitle>
           </DialogHeader>
+          <div className="-mr-2 flex-1 space-y-4 overflow-y-auto pr-2">
           {!d && fetcher.state !== "idle" ? (
             <p className="text-muted-foreground text-sm">불러오는 중…</p>
           ) : d?.error ? (
@@ -97,7 +99,8 @@ export function RefPreviewBadge({
           ) : d ? (
             <p className="text-muted-foreground text-sm">등록된 내용이 없습니다.</p>
           ) : null}
-          <div className="flex justify-end">
+          </div>
+          <div className="flex justify-end pt-1">
             <Button asChild size="sm" className="gap-1">
               <Link to={studyHref}>
                 공부하러 가기 <ArrowRightIcon className="size-3.5" />

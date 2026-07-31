@@ -58,12 +58,14 @@ function CaseBadge({ c }: { c: AnswerCitedCase }) {
         {c.caseNumber}
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
+        {/* 헤더(사건번호·X)·하단 버튼 고정, 본문만 스크롤 */}
+        <DialogContent className="flex max-h-[80vh] max-w-2xl flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle className="pr-6 text-base leading-snug">
               대법원 {c.caseNumber}
             </DialogTitle>
           </DialogHeader>
+          <div className="-mr-2 flex-1 overflow-y-auto pr-2">
           {/* 판결요지 — 쟁점 제목(박스) + 내용 */}
           {c.items.length ? (
             <div className="space-y-4">
@@ -87,7 +89,8 @@ function CaseBadge({ c }: { c: AnswerCitedCase }) {
               요지가 등록되지 않은 판례입니다.
             </p>
           )}
-          <div className="flex justify-end">
+          </div>
+          <div className="flex justify-end pt-1">
             <Button asChild size="sm" className="gap-1">
               <Link to={studyHref}>
                 공부하러 가기 <ArrowRightIcon className="size-3.5" />
