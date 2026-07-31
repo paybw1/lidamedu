@@ -3416,27 +3416,28 @@ export async function getAnswerCitedCaseGroups(
       .limit(1);
     const row = data?.[0];
     if (!row) continue;
-    // 다중 쟁점([1][2]…) 판례는 summary_items 전체 합성 — summary_body_md 는 [1]만 담고 있음.
-    const items = Array.isArray(row.summary_items)
+    // 판결요지 쟁점 단위 구조화 — 다중 쟁점([1][2]…)은 summary_items 전체(재번호), 없으면 단일.
+    const stripNo = (s: string) => s.replace(/^\[\d+\]\s*/, "").trim();
+    const raw = Array.isArray(row.summary_items)
       ? (row.summary_items as Array<{ title?: string; body?: string }>)
       : [];
-    const multi = items.length > 1;
-    const summaryMd = multi
-      ? items
-          .map((it, i) => {
-            // title 에 "[1] " 접두가 이미 있는 경우 제거 후 재번호(중복 방지).
-            const t = (it.title ?? "").replace(/^\[\d+\]\s*/, "").trim();
-            return `**[${i + 1}] ${t}**\n\n${(it.body ?? "").trim()}`;
-          })
-          .join("\n\n")
-      : (row.summary_body_md ?? "");
+    const items = (
+      raw.length > 0
+        ? raw.map((it, i) => ({
+            title: `${raw.length > 1 ? `[${i + 1}] ` : ""}${stripNo(it.title ?? "")}`,
+            body: ((it.body ?? "").trim()).slice(0, 6000),
+          }))
+        : [
+            {
+              title: stripNo(row.summary_title ?? row.case_title ?? row.case_number),
+              body: (row.summary_body_md ?? "").trim().slice(0, 6000),
+            },
+          ]
+    ).filter((it) => it.title || it.body);
     byNum.set(num, {
       caseId: row.case_id,
       caseNumber: row.case_number,
-      title: multi
-        ? (row.case_title ?? row.case_number)
-        : (row.summary_title ?? row.case_title ?? row.case_number),
-      summaryMd: summaryMd.slice(0, 8000),
+      items,
       subjectSlug: (row.subject_laws as string[] | null)?.[0] ?? fallbackSubject,
     });
   }

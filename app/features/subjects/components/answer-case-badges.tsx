@@ -52,7 +52,7 @@ function CaseBadge({ c }: { c: AnswerCitedCase }) {
         type="button"
         onClick={() => setOpen(true)}
         className="border-border bg-muted/40 text-foreground/80 hover:bg-muted inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium tabular-nums"
-        title={c.title}
+        title={c.items[0]?.title}
       >
         <ScaleIcon className="size-3 opacity-60" />
         {c.caseNumber}
@@ -64,14 +64,24 @@ function CaseBadge({ c }: { c: AnswerCitedCase }) {
               대법원 {c.caseNumber}
             </DialogTitle>
           </DialogHeader>
-          {/* 판례 제목 박스 */}
-          <div className="border-border bg-muted/30 -mt-1 rounded-lg border px-4 py-3">
-            <p className="text-foreground text-sm leading-relaxed font-medium">
-              {c.title}
-            </p>
-          </div>
-          {c.summaryMd ? (
-            <MarkdownView text={c.summaryMd} className="text-sm leading-[1.8]" />
+          {/* 판결요지 — 쟁점 제목(박스) + 내용 */}
+          {c.items.length ? (
+            <div className="space-y-4">
+              {c.items.map((it, i) => (
+                <div key={i} className="space-y-2">
+                  {it.title ? (
+                    <div className="border-border bg-muted/30 rounded-lg border px-4 py-3">
+                      <p className="text-foreground text-sm leading-relaxed font-medium">
+                        {it.title}
+                      </p>
+                    </div>
+                  ) : null}
+                  {it.body ? (
+                    <MarkdownView text={it.body} className="text-sm leading-[1.8]" />
+                  ) : null}
+                </div>
+              ))}
+            </div>
           ) : (
             <p className="text-muted-foreground text-sm">
               요지가 등록되지 않은 판례입니다.

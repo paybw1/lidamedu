@@ -18,6 +18,8 @@ interface PreviewData {
   heading?: string;
   title?: string | null;
   bodyMd?: string;
+  // 판례 — 판결요지 쟁점 단위: 제목(박스) + 내용.
+  items?: Array<{ title: string; body: string }>;
   error?: string;
 }
 
@@ -64,17 +66,28 @@ export function RefPreviewBadge({
               {d?.heading ?? (kind === "article" ? `조문 ${label}` : `판례 ${label}`)}
             </DialogTitle>
           </DialogHeader>
-          {d?.title ? (
-            <div className="border-border bg-muted/30 -mt-1 rounded-lg border px-4 py-3">
-              <p className="text-foreground text-sm leading-relaxed font-medium">
-                {d.title}
-              </p>
-            </div>
-          ) : null}
           {!d && fetcher.state !== "idle" ? (
             <p className="text-muted-foreground text-sm">불러오는 중…</p>
           ) : d?.error ? (
             <p className="text-muted-foreground text-sm">내용을 불러오지 못했습니다.</p>
+          ) : d?.items?.length ? (
+            // 판례 — 판결요지: 쟁점 제목(박스) + 내용.
+            <div className="space-y-4">
+              {d.items.map((it, i) => (
+                <div key={i} className="space-y-2">
+                  {it.title ? (
+                    <div className="border-border bg-muted/30 rounded-lg border px-4 py-3">
+                      <p className="text-foreground text-sm leading-relaxed font-medium">
+                        {it.title}
+                      </p>
+                    </div>
+                  ) : null}
+                  {it.body ? (
+                    <MarkdownView text={it.body} className="text-sm leading-[1.8]" />
+                  ) : null}
+                </div>
+              ))}
+            </div>
           ) : d?.bodyMd ? (
             kind === "article" ? (
               <div className="text-sm leading-[1.9] whitespace-pre-line">{d.bodyMd}</div>

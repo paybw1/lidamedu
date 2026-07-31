@@ -271,8 +271,8 @@ export interface ProblemListItem {
 export interface AnswerCitedCase {
   caseId: string;
   caseNumber: string;
-  title: string;
-  summaryMd: string;
+  // 판결요지 쟁점 단위(제목 박스 + 내용). 다중 쟁점은 [1] [2] 재번호.
+  items: Array<{ title: string; body: string }>;
   subjectSlug: string;
 }
 export interface AnswerCaseGroup {

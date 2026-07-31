@@ -63,25 +63,31 @@ export async function loader({ request }: Route.LoaderArgs) {
       .is("deleted_at", null)
       .maybeSingle();
     if (!row) return data({ error: "Not found" }, { status: 404 });
-    // 다중 쟁점([1][2]…) 판례는 summary_items 전체를 합성 — summary_body_md 는 [1]만 담고 있음.
-    const items = Array.isArray(row.summary_items)
+    // 판결요지를 쟁점 단위로 구조화 — 쟁점 제목(박스) + 내용으로 렌더.
+    //   다중 쟁점([1][2]…)은 summary_items 전체(summary_body_md 는 [1]만 담고 있음).
+    const stripNo = (s: string) => s.replace(/^\[\d+\]\s*/, "").trim();
+    const raw = Array.isArray(row.summary_items)
       ? (row.summary_items as Array<{ title?: string; body?: string }>)
       : [];
-    const multi = items.length > 1;
-    const bodyMd = multi
-      ? items
-          .map((it, i) => {
-            // title 에 "[1] " 접두가 이미 있는 경우 제거 후 재번호(중복 방지).
-            const t = (it.title ?? "").replace(/^\[\d+\]\s*/, "").trim();
-            return `**[${i + 1}] ${t}**\n\n${(it.body ?? "").trim()}`;
-          })
-          .join("\n\n")
-      : (row.summary_body_md ?? "");
+    const items = (
+      raw.length > 0
+        ? raw.map((it, i) => ({
+            title: `${raw.length > 1 ? `[${i + 1}] ` : ""}${stripNo(it.title ?? "")}`,
+            body: (it.body ?? "").trim(),
+          }))
+        : [
+            {
+              title: stripNo(row.summary_title ?? row.case_title ?? row.case_number),
+              body: (row.summary_body_md ?? "").trim(),
+            },
+          ]
+    ).filter((it) => it.title || it.body);
     return data({
       kind: "case" as const,
       heading: `대법원 ${row.case_number}${row.is_en_banc ? " 전원합의체" : ""}`,
-      title: multi ? null : (row.summary_title ?? row.case_title ?? row.case_number),
-      bodyMd: bodyMd.slice(0, 10000),
+      title: null,
+      bodyMd: "",
+      items: items.map((it) => ({ title: it.title, body: it.body.slice(0, 6000) })),
     });
   }
 
