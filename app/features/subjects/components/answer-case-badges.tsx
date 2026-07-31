@@ -43,7 +43,22 @@ export function AnswerCaseBadges({ groups }: { groups: AnswerCaseGroup[] }) {
   );
 }
 
-function CaseBadge({ c }: { c: AnswerCitedCase }) {
+// 모범답안 설문 섹션 끝에 붙는 인라인 배지 행.
+export function CaseBadgeRow({ cases }: { cases: AnswerCitedCase[] }) {
+  if (!cases.length) return null;
+  return (
+    <div className="border-border/40 mt-3 mb-5 flex flex-wrap items-center gap-1.5 border-t pt-2.5">
+      <span className="text-muted-foreground inline-flex items-center gap-1 text-[11px] font-semibold">
+        <ScaleIcon className="size-3 opacity-60" /> 관련 판례
+      </span>
+      {cases.map((c) => (
+        <CaseBadge key={c.caseId} c={c} />
+      ))}
+    </div>
+  );
+}
+
+export function CaseBadge({ c }: { c: AnswerCitedCase }) {
   const [open, setOpen] = useState(false);
   const studyHref = `/subjects/${c.subjectSlug}/cases/${c.caseId}`;
   return (

@@ -104,7 +104,10 @@ import {
   useLeftPanelCollapse,
   useRightPanelCollapse,
 } from "~/features/subjects/components/left-panel-collapse";
-import { AnswerCaseBadges } from "~/features/subjects/components/answer-case-badges";
+import {
+  AnswerCaseBadges,
+  CaseBadgeRow,
+} from "~/features/subjects/components/answer-case-badges";
 import { RefPreviewBadge } from "~/features/subjects/components/ref-preview-badge";
 import { MobileNavDrawer } from "~/features/subjects/components/mobile-nav-drawer";
 import { ProblemSystematicTree } from "~/features/subjects/components/problem-systematic-tree";
@@ -2065,6 +2068,29 @@ function SubjectivePanel({
     attempt?: SubjectiveAttempt;
     error?: string;
   }>();
+  // 모범답안 섹션 분할 — 각 설문(## 헤딩) 답이 끝난 지점에 관련 판례 인라인 배지 행 삽입.
+  //   '공통'(채점기준 인용 등) 그룹은 마지막 섹션(결론) 뒤에 붙인다.
+  const answerSections = useMemo(() => {
+    const md = modelAnswerMd ?? "";
+    if (!md.trim()) return [];
+    const byLabel = new Map(answerCaseGroups.map((g) => [g.label, g.cases]));
+    const parts = md.split(/^(?=##\s)/m).filter((p) => p.trim().length);
+    const secs = parts.map((part) => {
+      const heading = part.match(/^##\s+([^\n]+)/)?.[1] ?? "";
+      const m = heading.match(/설문\s*\(?([\d①-⑨]+)\)?/);
+      return { md: part, cases: m ? (byLabel.get(`설문(${m[1]})`) ?? []) : [] };
+    });
+    const common = byLabel.get("공통") ?? [];
+    if (common.length && secs.length) {
+      const last = secs[secs.length - 1];
+      const seen = new Set(last.cases.map((c) => c.caseId));
+      secs[secs.length - 1] = {
+        ...last,
+        cases: [...last.cases, ...common.filter((c) => !seen.has(c.caseId))],
+      };
+    }
+    return secs;
+  }, [modelAnswerMd, answerCaseGroups]);
   // 검수완료 토글 (staff) — 모범답안 심층 리뷰 진행 표시.
   const reviewFetcher = useFetcher<{
     ok?: true;
@@ -2350,9 +2376,6 @@ function SubjectivePanel({
         </div>
       </div>
 
-      {/* 설문별 관련 판례 배지 — 팝업 학습/학습화면 이동. 시험 모드 중엔 숨김(모범답안과 동일 잠금). */}
-      {!timedActive ? <AnswerCaseBadges groups={answerCaseGroups} /> : null}
-
       <div className="flex flex-wrap gap-2">
         <Button
           variant={revealedModel ? "outline" : "default"}
@@ -2573,11 +2596,25 @@ function SubjectivePanel({
             ) : null}
           </div>
           <div className="px-5 py-4">
-            <MarkdownView
-              text={modelAnswerMd ?? ""}
-              breaks
-              className={SUBJECTIVE_MD_CLASS}
-            />
+            {/* 설문 섹션별 렌더 — 각 설문 답이 끝난 지점에 관련 판례 인라인 배지. */}
+            {answerSections.length ? (
+              answerSections.map((sec, i) => (
+                <Fragment key={i}>
+                  <MarkdownView
+                    text={sec.md}
+                    breaks
+                    className={SUBJECTIVE_MD_CLASS}
+                  />
+                  <CaseBadgeRow cases={sec.cases} />
+                </Fragment>
+              ))
+            ) : (
+              <MarkdownView
+                text={modelAnswerMd ?? ""}
+                breaks
+                className={SUBJECTIVE_MD_CLASS}
+              />
+            )}
           </div>
         </div>
       ) : null}
