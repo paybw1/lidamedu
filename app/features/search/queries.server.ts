@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
 import { articleDisplayPrefix, articleSlug } from "~/features/laws/lib/identifier";
+import { getStaffRole } from "~/features/laws/queries.server";
 
 export interface SearchHit {
   group: "article" | "case" | "problem" | "qna" | "memo" | "bookmark";
@@ -150,6 +151,8 @@ export async function runGlobalSearch(
   };
   if (q.length < MIN_QUERY_LEN) return empty;
   const pattern = `%${escapeForIlike(q)}%`;
+  // 주관식(2차)은 고도화 전까지 staff 전용 — 검색 결과에서도 학생에겐 제외.
+  const viewerIsStaff = userId ? (await getStaffRole(client, userId)) !== null : false;
 
   // articles — similarity ranked. RPC 가 조문 ID 만 반환 → label/href hydration.
   async function fetchArticles(): Promise<SearchHit[]> {
@@ -240,14 +243,14 @@ export async function runGlobalSearch(
       const { data: exact } = await client
         .from("problems")
         .select(
-          "problem_id, display_no, year, problem_number, body_md, laws!inner(law_code)",
+          "problem_id, display_no, year, problem_number, body_md, format, laws!inner(law_code)",
         )
         .eq("display_no", Number(dn[1]))
         .eq("review_status", "approved")
         .is("deleted_at", null)
         .limit(1)
         .maybeSingle();
-      if (exact) {
+      if (exact && (viewerIsStaff || exact.format !== "subjective")) {
         seen.add(exact.problem_id);
         hits.push({
           group: "problem",
@@ -272,12 +275,14 @@ export async function runGlobalSearch(
       .map((r) => r.problem_id)
       .filter((id) => !seen.has(id));
     if (ids.length === 0) return hits;
-    const { data: rows } = await client
+    let rowsQuery = client
       .from("problems")
       .select(
         "problem_id, year, problem_number, body_md, explanation_md, laws!inner(law_code)",
       )
       .in("problem_id", ids);
+    if (!viewerIsStaff) rowsQuery = rowsQuery.neq("format", "subjective");
+    const { data: rows } = await rowsQuery;
     // full 범위 — 발문에 없는 매칭(선지·박스 지문)의 문맥 스니펫용으로 함께 조회.
     const choiceTextByProblem = new Map<string, string[]>();
     if (scope === "full") {

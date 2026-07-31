@@ -216,6 +216,16 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     throw data("Unauthorized", { status: 401 });
   }
 
+  // 주관식(2차)은 고도화 전까지 staff 전용 — 허브 탭·레일 숨김에 더해 직접 URL 접근도
+  // 서버에서 차단(역할 게이트는 서버 권위). 학생은 과목 홈으로 보낸다.
+  if (problem.format === "subjective") {
+    const role = await getStaffRole(client, user.id);
+    if (!role) {
+      await Promise.allSettled([lawPromise, nodeSeqPromise]);
+      throw redirect(`/subjects/${lawCode}`);
+    }
+  }
+
   const nodeSequence = await nodeSeqPromise;
 
   // 세션 처리:
