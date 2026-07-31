@@ -3423,9 +3423,11 @@ export async function getAnswerCitedCaseGroups(
     const multi = items.length > 1;
     const summaryMd = multi
       ? items
-          .map(
-            (it, i) => `**[${i + 1}] ${(it.title ?? "").trim()}**\n\n${(it.body ?? "").trim()}`,
-          )
+          .map((it, i) => {
+            // title 에 "[1] " 접두가 이미 있는 경우 제거 후 재번호(중복 방지).
+            const t = (it.title ?? "").replace(/^\[\d+\]\s*/, "").trim();
+            return `**[${i + 1}] ${t}**\n\n${(it.body ?? "").trim()}`;
+          })
           .join("\n\n")
       : (row.summary_body_md ?? "");
     byNum.set(num, {
