@@ -7,7 +7,10 @@ import { data } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
-import { upsertSubjectiveAttempt } from "~/features/study/queries.server";
+import {
+  cancelSubjectiveAttempt,
+  upsertSubjectiveAttempt,
+} from "~/features/study/queries.server";
 
 // rubric_self_check 는 JSON 인코딩된 number[] 로 전달.
 const rubricCheckSchema = z
@@ -98,6 +101,16 @@ export async function action({ request }: Route.ActionArgs) {
       },
     );
     return data({ ok: true, attempt });
+  }
+
+  // 작성 취소 — 답안 soft delete + 상태 초기화(첨삭 이력 있으면 거부).
+  if (intent === "cancel") {
+    const problemId = String(fd.get("problemId") ?? "");
+    if (!z.string().uuid().safeParse(problemId).success)
+      return data({ error: "Invalid input" }, { status: 400 });
+    const result = await cancelSubjectiveAttempt(client, user.id, problemId);
+    if (!result.ok) return data({ error: result.error }, { status: 400 });
+    return data({ ok: true, canceled: true });
   }
 
   return data({ error: "Unknown intent" }, { status: 400 });

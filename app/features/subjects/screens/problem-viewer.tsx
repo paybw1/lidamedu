@@ -2078,6 +2078,12 @@ function SubjectivePanel({
     attempt?: SubjectiveAttempt;
     error?: string;
   }>();
+  // 작성 취소 — 답안·자기채점 기록을 지우고 '미작성' 상태로 되돌림(첨삭 이력 있으면 서버가 거부).
+  const cancelFetcher = useFetcher<{
+    ok?: true;
+    canceled?: boolean;
+    error?: string;
+  }>();
   // 모범답안 섹션 분할 — 각 설문 답이 끝난 지점에 관련 판례 인라인 배지 행 삽입.
   //   설문 라벨은 상태 추적으로 상속('# 설문 (1)' h1 제목 + '## Ⅰ.' 하위 목차 구조 대응),
   //   배지는 그 설문에 속한 마지막 섹션 뒤에 붙인다. '공통' 그룹은 문서 마지막 섹션 뒤.
@@ -2239,6 +2245,38 @@ function SubjectivePanel({
     }
   }, [submitFetcher.state, submitFetcher.data]);
 
+  // 취소 응답 → 로컬 상태 전부 초기화. lastSentRef 를 먼저 비워 빈 답안이 다시
+  // autosave 되며 row 가 되살아나는 것을 막는다.
+  useEffect(() => {
+    if (cancelFetcher.state === "idle" && cancelFetcher.data?.canceled) {
+      lastSentRef.current = "";
+      setDraft("");
+      setLastSaved(null);
+      setScoreDraft("");
+      setScoreNote("");
+      setCheckedIdx(new Set());
+      setShowScoreForm(false);
+      setTimedResult(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cancelFetcher.state, cancelFetcher.data]);
+
+  const handleCancelAttempt = () => {
+    if (
+      !window.confirm(
+        "작성한 답안과 자기채점 기록을 모두 지우고 처음 상태로 되돌립니다. 계속할까요?",
+      )
+    )
+      return;
+    const fd = new FormData();
+    fd.set("intent", "cancel");
+    fd.set("problemId", problemId);
+    cancelFetcher.submit(fd, {
+      method: "post",
+      action: "/api/study/subjective-attempt",
+    });
+  };
+
   const hasModel = (modelAnswerMd ?? "").trim().length > 0;
   const hasRubric = (gradingRubricMd ?? "").trim().length > 0;
   const isDirty = draft !== (lastSaved?.answerMd ?? "");
@@ -2380,11 +2418,29 @@ function SubjectivePanel({
           <p className="text-muted-foreground text-[11px] font-bold tracking-widest uppercase">
             답안 작성 (자동 저장)
           </p>
-          <SavingStatus
-            isSaving={isSaving}
-            isDirty={isDirty}
-            updatedAt={lastSaved?.updatedAt ?? null}
-          />
+          <div className="flex items-center gap-3">
+            {cancelFetcher.data?.error ? (
+              <span className="text-[11px] text-rose-600 dark:text-rose-400">
+                {cancelFetcher.data.error}
+              </span>
+            ) : null}
+            {lastSaved ? (
+              <button
+                type="button"
+                onClick={handleCancelAttempt}
+                disabled={cancelFetcher.state !== "idle"}
+                className="text-muted-foreground text-[11px] underline underline-offset-2 hover:text-rose-600 disabled:opacity-50 dark:hover:text-rose-400"
+                data-testid="subjective-cancel"
+              >
+                작성 취소
+              </button>
+            ) : null}
+            <SavingStatus
+              isSaving={isSaving}
+              isDirty={isDirty}
+              updatedAt={lastSaved?.updatedAt ?? null}
+            />
+          </div>
         </div>
         <div className="p-4">
           <textarea

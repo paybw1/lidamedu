@@ -951,6 +951,8 @@ export async function upsertSubjectiveAttempt(
         ? { rubric_self_check: input.rubricSelfCheck }
         : {}),
     };
+  // 작성 취소로 soft delete 된 row 위에 다시 쓰면 자동 복구(취소 시 상태 필드는 초기화됨).
+  row.deleted_at = null;
   const { data, error } = await client
     .from("user_subjective_attempts")
     .upsert(row, {
@@ -960,6 +962,43 @@ export async function upsertSubjectiveAttempt(
     .single();
   if (error) throw error;
   return rowToAttempt(data);
+}
+
+// 답안 작성 취소 — 본인 답안을 soft delete 하고 상태 필드를 초기화해 '미작성'으로 되돌린다.
+// 첨삭 이력(요청 중·완료)이 있으면 강사 기록 보존을 위해 거부.
+export async function cancelSubjectiveAttempt(
+  client: SupabaseClient<Database>,
+  userId: string,
+  problemId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const existing = await getSubjectiveAttempt(client, userId, problemId);
+  if (!existing) return { ok: false, error: "취소할 답안이 없습니다." };
+  if (existing.reviewRequestedAt || existing.reviewCompletedAt) {
+    return {
+      ok: false,
+      error: "첨삭 이력이 있는 답안은 취소할 수 없습니다.",
+    };
+  }
+  const { error } = await client
+    .from("user_subjective_attempts")
+    .update({
+      deleted_at: new Date().toISOString(),
+      answer_md: "",
+      self_score: null,
+      self_score_note: null,
+      submitted_at: null,
+      rubric_self_check: [],
+      ai_overall_score: null,
+      ai_axis_scores: null,
+      ai_feedback_md: null,
+      ai_graded_at: null,
+      timed_limit_min: null,
+      timed_elapsed_sec: null,
+    })
+    .eq("user_id", userId)
+    .eq("problem_id", problemId);
+  if (error) throw error;
+  return { ok: true };
 }
 
 // 한 세션 안에서 사용자가 이미 응답한 attempts — problemId → 최신 응답 1건 매핑.
