@@ -47,9 +47,9 @@ export function AnswerCaseBadges({ groups }: { groups: AnswerCaseGroup[] }) {
 export function CaseBadgeRow({ cases }: { cases: AnswerCitedCase[] }) {
   if (!cases.length) return null;
   return (
-    <div className="mt-4 flex flex-wrap items-center gap-1.5">
-      <span className="text-muted-foreground inline-flex items-center gap-1 text-[11px] font-semibold">
-        <ScaleIcon className="size-3 opacity-60" /> 관련 판례
+    <div className="mt-4 flex flex-wrap items-center gap-1.5 rounded-lg bg-violet-50/70 px-3 py-2 dark:bg-violet-950/25">
+      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-violet-700 dark:text-violet-300">
+        <ScaleIcon className="size-3 opacity-70" /> 관련 판례
       </span>
       {cases.map((c) => (
         <CaseBadge key={c.caseId} c={c} />
@@ -66,7 +66,7 @@ export function CaseBadge({ c }: { c: AnswerCitedCase }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="border-border bg-muted/40 text-foreground/80 hover:bg-muted inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium tabular-nums"
+        className="bg-card text-foreground/85 inline-flex items-center gap-1 rounded-full border border-violet-300/60 px-2 py-0.5 text-[11px] font-medium tabular-nums hover:bg-violet-100 dark:border-violet-700/50 dark:hover:bg-violet-900/40"
         title={c.items[0]?.title}
       >
         <ScaleIcon className="size-3 opacity-60" />
