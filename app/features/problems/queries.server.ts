@@ -3422,6 +3422,8 @@ export async function getAnswerCitedCaseGroups(
   if (!merged.length) return [];
 
   // DB 매칭 — 사건번호 부분일치(병합 사건 "2005다71659·71666" 대응).
+  // 같은 사건번호가 법률별로 별도 row 로 존재할 수 있으므로(예: 2018후11360 특허·상표)
+  // 문제의 과목(fallbackSubject)과 일치하는 판례를 우선 선택한다.
   const uniq = [...new Set(merged.flatMap((g) => g.nums))].slice(0, 20);
   const byNum = new Map<string, AnswerCitedCase>();
   for (const num of uniq) {
@@ -3432,8 +3434,11 @@ export async function getAnswerCitedCaseGroups(
       )
       .ilike("case_number", `%${num}%`)
       .is("deleted_at", null)
-      .limit(1);
-    const row = data?.[0];
+      .limit(5);
+    const row =
+      data?.find((r) =>
+        ((r.subject_laws as string[] | null) ?? []).includes(fallbackSubject),
+      ) ?? data?.[0];
     if (!row) continue;
     // 판결요지 쟁점 단위 구조화 — 다중 쟁점([1][2]…)은 summary_items 전체(재번호), 없으면 단일.
     const stripNo = (s: string) => s.replace(/^\[\d+\]\s*/, "").trim();
@@ -3500,8 +3505,12 @@ export async function getExplanationCaseRefsByItem(
       .select("case_id, case_number, subject_laws")
       .ilike("case_number", `%${num}%`)
       .is("deleted_at", null)
-      .limit(1);
-    const row = data?.[0];
+      .limit(5);
+    // 법률별 동일 사건번호 row 중 문제 과목 우선(getAnswerCitedCaseGroups 와 동일 규칙).
+    const row =
+      data?.find((r) =>
+        ((r.subject_laws as string[] | null) ?? []).includes(fallbackSubject),
+      ) ?? data?.[0];
     if (!row) continue;
     byNum.set(num, {
       caseId: row.case_id,
