@@ -10,6 +10,7 @@ import {
   ListTreeIcon,
   PanelRightIcon,
   PencilIcon,
+  PrinterIcon,
   ScrollTextIcon,
   SearchIcon,
   TimerIcon,
@@ -1249,6 +1250,24 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                       >
                         <PencilIcon className="size-3" /> 수정
                       </Link>
+                    </Button>
+                  ) : null}
+                  {/* 운영자 — 주관식 강의자료 PDF (문제·체크리스트·채점기준·모범답안 인쇄본) */}
+                  {canEditComment && problem.format === "subjective" ? (
+                    <Button
+                      asChild
+                      variant="outline"
+                      size="sm"
+                      className="h-7 gap-1 text-xs"
+                    >
+                      <a
+                        href={`/subjects/${subject.slug}/problems/${problem.problemId}/handout`}
+                        target="_blank"
+                        rel="noreferrer"
+                        data-testid="subjective-handout-pdf"
+                      >
+                        <PrinterIcon className="size-3" /> 강의자료 PDF
+                      </a>
                     </Button>
                   ) : null}
                 </div>

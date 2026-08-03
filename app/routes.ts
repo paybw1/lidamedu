@@ -535,6 +535,11 @@ export default [
         route("/book-updates", "features/latest/screens/book-updates.tsx"),
       ]),
 
+      // 주관식 강의자료 인쇄본 (staff 전용) — 과목 게이트 밖, loader 에서 staff 검사.
+      route(
+        "/subjects/:subject/problems/:problemId/handout",
+        "features/subjects/screens/problem-handout-print.tsx",
+      ),
       // feat-8-008 학습과목 영역 게이트 — area_subjects 미보유 시 /pricing redirect.
       layout("features/subjects/layouts/subjects.layout.tsx", [
         ...prefix("/subjects", [
