@@ -152,7 +152,7 @@ export const meta: Route.MetaFunction = ({ data: loaderData }) => {
     return [{ title: "문제 | 리담변리사학원" }];
   return [
     {
-      title: `${loaderData.subject.name} 객관식 #${loaderData.problem.problemNumber ?? "?"} | 리담변리사학원`,
+      title: `${loaderData.subject.name} ${loaderData.problem.format === "subjective" ? "주관식" : "객관식"} #${loaderData.problem.problemNumber ?? "?"} | 리담변리사학원`,
     },
   ];
 };
