@@ -6,6 +6,7 @@ import { Link, useLocation } from "react-router";
 
 import { cn } from "~/core/lib/utils";
 import {
+  EXTERNAL_LECTURE_URL,
   PLATFORMS,
   PLATFORM_ORDER,
   type PlatformId,
@@ -18,9 +19,8 @@ const ICONS: Record<PlatformId, typeof BookOpenIcon> = {
   lecture: MonitorPlayIcon,
 };
 
-// ★현재 운영 중인 (구) 강의 플랫폼. 우리 강의 플랫폼(/lecture)은 개발 중이라, 학생이 강의
-//   토글을 누르면 이 운영 사이트로 보낸다. staff 는 개발 중 /lecture 로 진입(내부).
-const EXTERNAL_LECTURE_URL = "https://lidamedu.com";
+// 비-staff 의 '강의' 클릭 = 외부 운영 사이트(EXTERNAL_LECTURE_URL, platforms.ts 단일 소스).
+//   staff 는 개발 중 /lecture 로 진입(내부). 딥링크 차단은 lecture.layout 게이트가 담당.
 
 export function PlatformSwitch({
   className,

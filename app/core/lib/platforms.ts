@@ -21,6 +21,10 @@ export const PLATFORMS: Record<PlatformId, PlatformDef> = {
 
 export const PLATFORM_ORDER: PlatformId[] = ["lecture", "study"];
 
+// ★현재 운영 중인 (구) 강의 플랫폼. 내부 강의 플랫폼(/lecture)은 개발 중이라 비-staff 는
+//   전부 이 운영 사이트로 보낸다 — 스위처(platform-switch)와 lecture.layout 게이트가 공유.
+export const EXTERNAL_LECTURE_URL = "https://lidamedu.com";
+
 // 강의 플랫폼 소속 경로 판별. ★"/lectures/:itemId"(학습 플랫폼의 콘텐츠 연결 영상)와
 // "/lecture-note"(구 강의노트)는 세그먼트가 달라 매칭되지 않는다 — 정확히 "/lecture" 및
 // 그 자식만 강의 플랫폼.

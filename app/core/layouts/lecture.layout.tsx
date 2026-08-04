@@ -1,12 +1,13 @@
 // 강의 플랫폼 전용 레이아웃(feat-11) — 학습 플랫폼(navigation.layout)과 별개 화면.
 //   자체 상단 바: 브랜드 + 플랫폼 스위처(강의 활성) + 강의 네비 + 계정.
 //   학습 nav(사이드바·하단탭·드롭다운)를 재사용하지 않아 서로 간섭 없음.
-// 인증: 이 레이아웃은 하드 게이트하지 않는다(카탈로그 등 공개 가능). 보호가 필요한
-//   화면(내 강의실)은 각 loader 가 자체 redirect 로 게이트한다(my-courses 참조).
+// ★게이트(2026-08-04 원장 결정): 내부 강의 플랫폼은 개발 중 — 비-staff(비로그인 포함)는
+//   어떤 딥링크로 들어와도 운영 사이트(EXTERNAL_LECTURE_URL)로 보낸다. 스위처의
+//   "학생 강의 클릭 = lidamedu.com" 정책과 동일 소스. 오픈 시 이 게이트만 제거하면 된다.
 import type { Route } from "./+types/lecture.layout";
 
 import { BellIcon, SearchIcon } from "lucide-react";
-import { Link, Outlet, data, useLocation } from "react-router";
+import { Link, Outlet, data, redirect, useLocation } from "react-router";
 
 import {
   CommandPalette,
@@ -15,7 +16,11 @@ import {
 import Footer from "../components/footer";
 import { LectureNav, LectureNavMobile } from "../components/lecture-nav";
 import { LectureSubNav } from "../components/lecture-sub-nav";
-import { LECTURE_GUIDE_LINKS, LECTURE_MYPAGE_LINKS } from "../lib/platforms";
+import {
+  EXTERNAL_LECTURE_URL,
+  LECTURE_GUIDE_LINKS,
+  LECTURE_MYPAGE_LINKS,
+} from "../lib/platforms";
 import { PlatformSwitch } from "../components/platform-switch";
 import ThemeSwitcher from "../components/theme-switcher";
 import { CartClearOnPurchase } from "~/features/lms/components/cart-clear-on-purchase";
@@ -31,13 +36,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   const {
     data: { user },
   } = await client.auth.getUser();
-  if (!user) {
-    return data(
-      { user: null, inboxUnread: 0, inboxHref: "/inbox", isStaff: false },
-      { headers },
-    );
-  }
+  if (!user) throw redirect(EXTERNAL_LECTURE_URL, { headers });
   const role = await getStaffRole(client, user.id);
+  if (!role) throw redirect(EXTERNAL_LECTURE_URL, { headers });
   const unread = await getUnreadCount(
     client,
     user.id,
