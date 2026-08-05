@@ -9533,6 +9533,7 @@ export type Database = {
           created_at: string
           explanation_md: string | null
           is_correct: boolean
+          ox_body_md: string | null
           ox_hidden_at: string | null
           ox_hidden_by: string | null
           ox_ineligible: boolean
@@ -9554,6 +9555,7 @@ export type Database = {
           created_at?: string
           explanation_md?: string | null
           is_correct?: boolean
+          ox_body_md?: string | null
           ox_hidden_at?: string | null
           ox_hidden_by?: string | null
           ox_ineligible?: boolean
@@ -9575,6 +9577,7 @@ export type Database = {
           created_at?: string
           explanation_md?: string | null
           is_correct?: boolean
+          ox_body_md?: string | null
           ox_hidden_at?: string | null
           ox_hidden_by?: string | null
           ox_ineligible?: boolean

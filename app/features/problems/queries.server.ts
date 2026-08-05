@@ -643,6 +643,8 @@ export interface OxReviewItem {
   relatedArticleLabel: string | null;
   relatedArticleNumber: string | null;
   isCorrect: boolean | null; // choice 만 (auto 추론 참고)
+  // OX 표시 전용 지문 오버라이드 존재 여부(choice 만) — bodyMd 는 이미 오버라이드 반영값.
+  oxBodyOverridden: boolean;
 }
 
 export async function listOxItemsForReview(
@@ -671,7 +673,7 @@ export async function listOxItemsForReview(
   let choiceQuery = client
     .from("problem_choices")
     .select(
-      "choice_id, problem_id, body_md, ox_truth, ox_ineligible, ox_hidden_at, related_article_id, is_correct, problems!inner(year, problem_number, origin, deleted_at, law_id)",
+      "choice_id, problem_id, body_md, ox_body_md, ox_truth, ox_ineligible, ox_hidden_at, related_article_id, is_correct, problems!inner(year, problem_number, origin, deleted_at, law_id)",
     )
     .eq("problems.law_id", law.law_id)
     .limit(limit);
@@ -691,7 +693,7 @@ export async function listOxItemsForReview(
       problemNumber: r.problems.problem_number,
       year: r.problems.year,
       origin: r.problems.origin,
-      bodyMd: r.body_md,
+      bodyMd: r.ox_body_md ?? r.body_md,
       marker: null,
       oxTruth: r.ox_truth as OxTruth | null,
       oxIneligible: r.ox_ineligible ?? false,
@@ -700,6 +702,7 @@ export async function listOxItemsForReview(
       relatedArticleLabel: null,
       relatedArticleNumber: null,
       isCorrect: r.is_correct ?? null,
+      oxBodyOverridden: r.ox_body_md != null,
     });
   }
 
@@ -736,6 +739,7 @@ export async function listOxItemsForReview(
       relatedArticleLabel: null,
       relatedArticleNumber: null,
       isCorrect: null,
+      oxBodyOverridden: false,
     });
   }
 
@@ -826,6 +830,8 @@ export async function updateOxReviewItem(
   patch: {
     oxTruth?: OxTruth | null;
     oxIneligible?: boolean;
+    // OX 패널 표시 전용 지문 오버라이드 — null 로 해제(원문 body_md 표시). choice 전용 컬럼.
+    oxBodyMd?: string | null;
     // 스태프 수동 숨김 — true 면 ox_hidden_at=now·ox_hidden_by=hiddenBy, false 면 둘 다 null.
     hidden?: boolean;
     hiddenBy?: string | null;
@@ -843,6 +849,8 @@ export async function updateOxReviewItem(
   const update: Record<string, unknown> = {};
   if (truth !== undefined) update.ox_truth = truth;
   if (ineligible !== undefined) update.ox_ineligible = ineligible;
+  if (patch.oxBodyMd !== undefined && refType === "choice")
+    update.ox_body_md = patch.oxBodyMd;
   if (patch.hidden !== undefined) {
     update.ox_hidden_at = patch.hidden
       ? (patch.nowIso ?? new Date().toISOString())
@@ -1024,7 +1032,7 @@ export async function listMyOxWrongNoteItems(
     const { data: rows } = await client
       .from("problem_choices")
       .select(
-        "choice_id, problem_id, body_md, ox_truth, explanation_md, problems!inner(year, problem_number, origin, deleted_at)",
+        "choice_id, problem_id, body_md, ox_body_md, ox_truth, explanation_md, problems!inner(year, problem_number, origin, deleted_at)",
       )
       .in("choice_id", choiceIds)
       .not("ox_truth", "is", null);
@@ -1036,7 +1044,7 @@ export async function listMyOxWrongNoteItems(
         refType: "choice",
         refId: r.choice_id,
         problemId: r.problem_id,
-        bodyMd: r.body_md,
+        bodyMd: r.ox_body_md ?? r.body_md,
         oxTruth: r.ox_truth as OxTruth,
         explanationMd: r.explanation_md,
         year: r.problems.year,
@@ -1130,7 +1138,7 @@ export async function getOxQuestionsForPack(
   const { data: choiceRows } = await client
     .from("problem_choices")
     .select(
-      "choice_id, problem_id, body_md, ox_truth, explanation_md, problems!inner(year, problem_number, origin, deleted_at)",
+      "choice_id, problem_id, body_md, ox_body_md, ox_truth, explanation_md, problems!inner(year, problem_number, origin, deleted_at)",
     )
     .in("problem_id", problemIds)
     .eq("ox_ineligible", false)
@@ -1141,7 +1149,7 @@ export async function getOxQuestionsForPack(
       refType: "choice",
       refId: r.choice_id,
       problemId: r.problem_id,
-      bodyMd: r.body_md,
+      bodyMd: r.ox_body_md ?? r.body_md,
       oxTruth: r.ox_truth as OxTruth,
       explanationMd: r.explanation_md,
       year: r.problems.year,
@@ -1197,7 +1205,7 @@ export async function getOxQuestionsForRefs(
     const { data: choiceRows } = await client
       .from("problem_choices")
       .select(
-        "choice_id, problem_id, body_md, ox_truth, explanation_md, problems!inner(year, problem_number, origin, deleted_at)",
+        "choice_id, problem_id, body_md, ox_body_md, ox_truth, explanation_md, problems!inner(year, problem_number, origin, deleted_at)",
       )
       .in("choice_id", choiceIds)
       .eq("ox_ineligible", false)
@@ -1208,7 +1216,7 @@ export async function getOxQuestionsForRefs(
         refType: "choice",
         refId: r.choice_id,
         problemId: r.problem_id,
-        bodyMd: r.body_md,
+        bodyMd: r.ox_body_md ?? r.body_md,
         oxTruth: r.ox_truth as OxTruth,
         explanationMd: r.explanation_md,
         year: r.problems.year,
@@ -1309,7 +1317,7 @@ export async function getOxQuestionsForSubject(
   let choiceQuery = client
     .from("problem_choices")
     .select(
-      "choice_id, problem_id, body_md, ox_truth, explanation_md, problems!inner(year, problem_number, origin, deleted_at, law_id)",
+      "choice_id, problem_id, body_md, ox_body_md, ox_truth, explanation_md, problems!inner(year, problem_number, origin, deleted_at, law_id)",
     )
     .eq("problems.law_id", law.law_id)
     .eq("ox_ineligible", false)
@@ -1326,7 +1334,7 @@ export async function getOxQuestionsForSubject(
       refType: "choice",
       refId: r.choice_id,
       problemId: r.problem_id,
-      bodyMd: r.body_md,
+      bodyMd: r.ox_body_md ?? r.body_md,
       oxTruth: r.ox_truth as OxTruth,
       explanationMd: r.explanation_md,
       year: r.problems.year,
@@ -1422,7 +1430,7 @@ export async function getOxQuestionsForArticle(
     let q = client
       .from("problem_choices")
       .select(
-        "choice_id, problem_id, body_md, ox_truth, explanation_md, related_node_id, ox_hidden_at, problems!inner(year, problem_number, origin, review_status, deleted_at, primary_article_id, primary_node_id)",
+        "choice_id, problem_id, body_md, ox_body_md, ox_truth, explanation_md, related_node_id, ox_hidden_at, problems!inner(year, problem_number, origin, review_status, deleted_at, primary_article_id, primary_node_id)",
       )
       .eq("related_article_id", articleId)
       .eq("ox_ineligible", false)
@@ -1457,7 +1465,7 @@ export async function getOxQuestionsForArticle(
         refType: "choice",
         refId: r.choice_id,
         problemId: r.problem_id,
-        bodyMd: r.body_md,
+        bodyMd: r.ox_body_md ?? r.body_md,
         oxTruth: r.ox_truth as OxTruth,
         explanationMd: r.explanation_md,
         year: r.problems.year,

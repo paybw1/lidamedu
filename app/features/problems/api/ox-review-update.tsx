@@ -22,6 +22,8 @@ const schema = z.object({
   oxIneligible: z.union([z.literal("true"), z.literal("false")]).optional(),
   // 스태프 수동 숨김 토글(OX 패널·검수 공용). "true"=숨김, "false"=복원.
   oxHidden: z.union([z.literal("true"), z.literal("false")]).optional(),
+  // OX 표시 전용 지문 오버라이드(choice 전용) — "" = 해제(원문 표시).
+  oxBodyMd: z.string().max(2000).optional(),
   // 조문 연결 — 숫자(의N 포함) 형식, "" = 해제. subject 와 함께 와야 한다.
   relatedArticleNumber: z
     .string()
@@ -54,6 +56,8 @@ export async function action({ request }: Route.ActionArgs) {
       fd.get("oxIneligible") == null ? undefined : String(fd.get("oxIneligible")),
     oxHidden:
       fd.get("oxHidden") == null ? undefined : String(fd.get("oxHidden")),
+    oxBodyMd:
+      fd.get("oxBodyMd") == null ? undefined : String(fd.get("oxBodyMd")),
     relatedArticleNumber:
       fd.get("relatedArticleNumber") == null
         ? undefined
@@ -118,6 +122,12 @@ export async function action({ request }: Route.ActionArgs) {
   await updateOxReviewItem(client, parsed.data.refType, parsed.data.refId, {
     oxTruth: truth,
     oxIneligible: ineligible,
+    oxBodyMd:
+      parsed.data.oxBodyMd === undefined
+        ? undefined
+        : parsed.data.oxBodyMd.trim() === ""
+          ? null
+          : parsed.data.oxBodyMd,
     hidden,
     hiddenBy: hidden ? user.id : null,
   });

@@ -440,6 +440,12 @@ create table public.problem_choices (
 create index pc_problem on problem_choices(problem_id);
 create index pc_article on problem_choices(related_article_id) where related_article_id is not null;
 create index pc_case on problem_choices(related_case_id) where related_case_id is not null;
+
+-- 2026-08-05 추가: OX(정오문제) 패널 표시 전용 지문 오버라이드.
+-- 사례형 선지가 OX 로 단독 노출될 때 판단 술어가 없는 문제를 해결 —
+-- 원문제 선지(body_md)는 불변, OX fetcher 가 coalesce(ox_body_md, body_md) 로 표시.
+-- 편집: /admin/problems/ox 'OX 지문 수정'(빈 값 저장 = 해제).
+alter table public.problem_choices add column ox_body_md text;
 ```
 
 ### 7.2 problem_keywords (2차 키워드)

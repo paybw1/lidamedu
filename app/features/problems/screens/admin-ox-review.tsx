@@ -383,6 +383,30 @@ function OxReviewRow({
             (원본 객관식: {item.isCorrect ? "정답 보기" : "오답 보기"})
           </p>
         ) : null}
+        {item.refType === "choice" ? (
+          <div className="mt-1 flex items-center gap-1.5">
+            {item.oxBodyOverridden ? (
+              <Chip tone="amber">지문 수정됨</Chip>
+            ) : null}
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => {
+                // 사례형 선지 등 판단 술어가 없는 지문을 OX 노출용으로만 다듬는다
+                // (원문제 선지 원문은 불변). 빈 값 저장 = 오버라이드 해제.
+                const next = window.prompt(
+                  "OX 패널 표시용 지문 (비우면 원문으로 복원):",
+                  item.bodyMd,
+                );
+                if (next == null) return;
+                submit({ oxBodyMd: next });
+              }}
+              className="text-link text-[11px] hover:underline disabled:opacity-50"
+            >
+              OX 지문 수정
+            </button>
+          </div>
+        ) : null}
       </TD>
       <TD className={cn(ineligible && "opacity-60")}>
         {item.relatedArticleId && item.relatedArticleNumber ? (
