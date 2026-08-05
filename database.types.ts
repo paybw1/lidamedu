@@ -9886,6 +9886,7 @@ export type Database = {
           grading_rubric_md: string | null
           importance: number | null
           law_id: string | null
+          main_case_number: string | null
           mismatch_flagged_at: string | null
           mismatch_flagged_by: string | null
           model_answer_md: string | null
@@ -9939,6 +9940,7 @@ export type Database = {
           grading_rubric_md?: string | null
           importance?: number | null
           law_id?: string | null
+          main_case_number?: string | null
           mismatch_flagged_at?: string | null
           mismatch_flagged_by?: string | null
           model_answer_md?: string | null
@@ -9996,6 +9998,7 @@ export type Database = {
           grading_rubric_md?: string | null
           importance?: number | null
           law_id?: string | null
+          main_case_number?: string | null
           mismatch_flagged_at?: string | null
           mismatch_flagged_by?: string | null
           model_answer_md?: string | null

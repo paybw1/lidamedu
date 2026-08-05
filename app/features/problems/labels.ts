@@ -274,6 +274,8 @@ export interface AnswerCitedCase {
   // 판결요지 쟁점 단위(제목 박스 + 내용). 다중 쟁점은 [1] [2] 재번호.
   items: Array<{ title: string; body: string }>;
   subjectSlug: string;
+  // 메인 판례(problems.main_case_number 지정) — 그룹 내 맨 앞 정렬 + ★ 강조.
+  isMain?: boolean;
 }
 export interface AnswerCaseGroup {
   label: string; // "설문(1)" | "공통"
@@ -340,6 +342,8 @@ export interface ProblemDetail extends ProblemListItem {
   displayNo: number;
   choices: ProblemChoice[];
   boxItems: ProblemBoxItem[];
+  /** 주관식 관련판례 메인 지정(사건번호) — null=미지정. */
+  mainCaseNumber: string | null;
 }
 
 // ── 운영자 기출문제 판례 매칭 (feat-8-024) ──────────────────────────────

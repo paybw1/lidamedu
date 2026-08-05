@@ -210,6 +210,8 @@ export default [
       route("/ox-review-update", "features/problems/api/ox-review-update.tsx"),
       route("/ox-user-hide", "features/problems/api/ox-user-hide.tsx"),
       route("/rubric-review", "features/problems/api/rubric-review.tsx"),
+      // 주관식 관련판례 메인 지정 (staff)
+      route("/main-case", "features/problems/api/main-case.tsx"),
       route("/ref-preview", "features/problems/api/ref-preview.tsx"),
     ]),
     ...prefix("/study", [

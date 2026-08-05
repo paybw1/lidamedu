@@ -310,6 +310,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
         // 객관식 상단 카드는 종합해설 인용만 — 선지 인용은 선지 행의 조문 배지 옆 인라인 배지로.
         explanationMd: problem.explanationMd,
         choiceExplanations: [],
+        mainCaseNumber: problem.mainCaseNumber,
       },
       lawCode,
     ),
@@ -2705,7 +2706,10 @@ function SubjectivePanel({
                     breaks
                     className={SUBJECTIVE_MD_CLASS}
                   />
-                  <CaseBadgeRow cases={sec.cases} />
+                  <CaseBadgeRow
+                    cases={sec.cases}
+                    mainControl={viewerIsStaff ? { problemId } : undefined}
+                  />
                   {i < answerSections.length - 1 ? (
                     <div className="border-border/60 my-6 border-t" />
                   ) : null}
