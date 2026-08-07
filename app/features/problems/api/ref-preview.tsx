@@ -4,6 +4,7 @@
 import { data } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { COURT_LABELS } from "~/features/cases/labels";
 
 import type { Route } from "./+types/ref-preview";
 
@@ -58,7 +59,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (type === "case") {
     const { data: row } = await client
       .from("cases")
-      .select("case_number, case_title, summary_title, summary_body_md, summary_items, is_en_banc")
+      .select("case_number, case_title, summary_title, summary_body_md, summary_items, is_en_banc, court")
       .eq("case_id", id)
       .is("deleted_at", null)
       .maybeSingle();
@@ -84,7 +85,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     ).filter((it) => it.title || it.body);
     return data({
       kind: "case" as const,
-      heading: `대법원 ${row.case_number}${row.is_en_banc ? " 전원합의체" : ""}`,
+      heading: `${COURT_LABELS[row.court] ?? "법원"} ${row.case_number}${row.is_en_banc ? " 전원합의체" : ""}`,
       title: null,
       bodyMd: "",
       items: items.map((it) => ({ title: it.title, body: it.body.slice(0, 6000) })),
