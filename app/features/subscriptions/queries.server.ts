@@ -18,6 +18,10 @@ import {
   listActiveDiscounts,
 } from "~/features/subscriptions/discounts.server";
 import { getMembershipAccess } from "~/features/subscriptions/membership.server";
+import {
+  type DetailSections,
+  toDetailSections,
+} from "~/features/lms/lib/detail-sections";
 import { discountAppliesAtRenewal, effectivePriceKrw } from "./labels";
 
 import type {
@@ -39,7 +43,7 @@ export type {
 } from "./labels";
 
 const PLAN_COLUMNS =
-  "plan_id, code, name, description, price_krw, duration_days, features, subject_codes, product_kind, available_from, display_order, is_active, sale_status, lecture_category, category_id, detail_image_url, detail_html";
+  "plan_id, code, name, description, price_krw, duration_days, features, subject_codes, product_kind, available_from, display_order, is_active, sale_status, lecture_category, category_id, detail_image_url, detail_html, detail_sections";
 
 function rowToPlan(r: {
   plan_id: string;
@@ -59,6 +63,7 @@ function rowToPlan(r: {
   category_id: string | null;
   detail_image_url: string | null;
   detail_html: string | null;
+  detail_sections?: unknown;
 }): SubscriptionPlan {
   return {
     planId: r.plan_id,
@@ -81,6 +86,7 @@ function rowToPlan(r: {
     categoryId: r.category_id,
     detailImageUrl: r.detail_image_url,
     detailHtml: r.detail_html,
+    detailSections: toDetailSections(r.detail_sections),
   };
 }
 
@@ -141,6 +147,8 @@ export interface UpsertPlanInput {
   // 수강신청 상세 본문(이미지 URL / HTML). 미설정=null.
   detailImageUrl: string | null;
   detailHtml: string | null;
+  // feat-11-008 P5 — 상세페이지 섹션별 HTML(9영역). 섹션 모드가 아니면 빈 객체.
+  detailSections: DetailSections;
 }
 
 // 상품 생성/수정. code 는 생성 시에만 지정(수정 시 불변 키). adminClient.
@@ -164,6 +172,7 @@ export async function upsertPlan(
     category_id: input.categoryId,
     detail_image_url: input.detailImageUrl,
     detail_html: input.detailHtml,
+    detail_sections: input.detailSections as never,
     // is_active 는 sale_status 의 파생(단일 소유자) — 기존 소비처(pricing·catalog·resolver) 무변경.
     is_active: input.saleStatus === "on_sale",
   };

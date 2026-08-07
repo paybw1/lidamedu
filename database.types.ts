@@ -3865,6 +3865,57 @@ export type Database = {
           },
         ]
       }
+      content_group_items: {
+        Row: {
+          content_id: string
+          created_at: string
+          group_id: string
+          is_preview: boolean
+          is_public: boolean
+          item_id: string
+          lesson_no: number | null
+          seq: number
+          title: string | null
+        }
+        Insert: {
+          content_id: string
+          created_at?: string
+          group_id: string
+          is_preview?: boolean
+          is_public?: boolean
+          item_id?: string
+          lesson_no?: number | null
+          seq?: number
+          title?: string | null
+        }
+        Update: {
+          content_id?: string
+          created_at?: string
+          group_id?: string
+          is_preview?: boolean
+          is_public?: boolean
+          item_id?: string
+          lesson_no?: number | null
+          seq?: number
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_group_items_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "video_contents"
+            referencedColumns: ["content_id"]
+          },
+          {
+            foreignKeyName: "content_group_items_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "content_groups"
+            referencedColumns: ["group_id"]
+          },
+        ]
+      }
       content_groups: {
         Row: {
           book_title: string | null
@@ -3875,6 +3926,8 @@ export type Database = {
           exam_track: string | null
           group_id: string
           instructor_id: string | null
+          is_active: boolean
+          linked_course_id: string | null
           name: string
           staff_memo: string | null
           subject_code: string | null
@@ -3890,6 +3943,8 @@ export type Database = {
           exam_track?: string | null
           group_id?: string
           instructor_id?: string | null
+          is_active?: boolean
+          linked_course_id?: string | null
           name: string
           staff_memo?: string | null
           subject_code?: string | null
@@ -3905,6 +3960,8 @@ export type Database = {
           exam_track?: string | null
           group_id?: string
           instructor_id?: string | null
+          is_active?: boolean
+          linked_course_id?: string | null
           name?: string
           staff_memo?: string | null
           subject_code?: string | null
@@ -3939,6 +3996,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "public_profiles"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "content_groups_linked_course_id_fkey"
+            columns: ["linked_course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["course_id"]
           },
         ]
       }
@@ -11489,6 +11553,7 @@ export type Database = {
           description: string | null
           detail_html: string | null
           detail_image_url: string | null
+          detail_sections: Json
           display_order: number
           duration_days: number
           features: Json
@@ -11510,6 +11575,7 @@ export type Database = {
           description?: string | null
           detail_html?: string | null
           detail_image_url?: string | null
+          detail_sections?: Json
           display_order?: number
           duration_days: number
           features?: Json
@@ -11531,6 +11597,7 @@ export type Database = {
           description?: string | null
           detail_html?: string | null
           detail_image_url?: string | null
+          detail_sections?: Json
           display_order?: number
           duration_days?: number
           features?: Json

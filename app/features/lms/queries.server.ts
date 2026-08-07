@@ -7,6 +7,10 @@ import type { Database } from "database.types";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
 import {
+  type DetailSections,
+  toDetailSections,
+} from "~/features/lms/lib/detail-sections";
+import {
   type LectureCategory,
   toLectureCategory,
 } from "~/features/lms/lib/lecture-category";
@@ -845,6 +849,8 @@ export interface LectureProduct {
   // 수강신청 상세 본문(이미지 또는 HTML) — /lecture/catalog/:code 렌더.
   detailImageUrl: string | null;
   detailHtml: string | null;
+  // feat-11-008 P5 — 섹션별 상세(9영역). 값이 있으면 섹션 렌더가 우선.
+  detailSections: DetailSections;
 }
 
 export interface LectureCategoryRow {
@@ -902,7 +908,7 @@ export async function listSellableLectureProducts(
   const { data: plans, error } = await client
     .from("subscription_plans")
     .select(
-      "plan_id, code, name, description, price_krw, duration_days, product_kind, lecture_category, category_id, detail_image_url, detail_html",
+      "plan_id, code, name, description, price_krw, duration_days, product_kind, lecture_category, category_id, detail_image_url, detail_html, detail_sections",
     )
     .in("product_kind", ["course", "tpass"])
     .eq("is_active", true)
@@ -1053,5 +1059,6 @@ export async function listSellableLectureProducts(
     owned: ownedPlanIds.has(p.plan_id),
     detailImageUrl: p.detail_image_url,
     detailHtml: p.detail_html,
+    detailSections: toDetailSections(p.detail_sections),
   }));
 }

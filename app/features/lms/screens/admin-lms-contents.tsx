@@ -10,7 +10,7 @@ import {
   RefreshCwIcon,
   SearchIcon,
 } from "lucide-react";
-import { Form, data, useFetcher, useSearchParams } from "react-router";
+import { Form, Link, data, useFetcher, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -42,10 +42,8 @@ import {
 } from "~/features/lms/lib/kollus-sync.server";
 import { buildKollusWebTokenUrl } from "~/features/lms/lib/kollus-token.server";
 import {
-  type ContentGroupRow,
   type SyncLogRow,
   type VideoContentRow,
-  listContentGroups,
   listContentSyncLogs,
   listVideoContents,
 } from "~/features/lms/queries.server";
@@ -135,25 +133,32 @@ export async function loader({ request }: Route.LoaderArgs) {
   const q = (url.searchParams.get("q") ?? "").trim().toLowerCase();
   const status = url.searchParams.get("status") ?? "all";
 
-  const [allContents, groups, syncLogs, instructorsRes] = await Promise.all([
+  const [allContents, syncLogs] = await Promise.all([
     listVideoContents(client),
-    listContentGroups(client),
     listContentSyncLogs(client),
-    adminClient
-      .from("profiles")
-      .select("profile_id, name")
-      .in("role", ["instructor", "admin"])
-      .order("name"),
   ]);
+
+  // feat-11-008 P5 — 그룹 연결은 정션(content_group_items) 기준(M:N). 목록 표시·미연결 필터 공용.
+  const groupLinks: Record<string, string[]> = {};
+  {
+    const { data: links } = await adminClient
+      .from("content_group_items")
+      .select("content_id, group:content_groups(name, deleted_at)");
+    for (const l of links ?? []) {
+      const g = l.group as { name: string; deleted_at: string | null } | null;
+      if (!g || g.deleted_at) continue;
+      (groupLinks[l.content_id] ??= []).push(g.name);
+    }
+  }
 
   const contents = allContents.filter((c) => {
     if (q) {
-      const hay = `${c.title} ${c.originalFilename ?? ""} ${c.contentKey} ${c.groupName ?? ""}`.toLowerCase();
+      const hay = `${c.title} ${c.originalFilename ?? ""} ${c.contentKey} ${(groupLinks[c.contentId] ?? []).join(" ")}`.toLowerCase();
       if (!hay.includes(q)) return false;
     }
     switch (status) {
       case "unassigned":
-        return c.groupId === null;
+        return (groupLinks[c.contentId] ?? []).length === 0;
       case "available":
         return c.encodingStatus === "available";
       case "encoding":
@@ -169,23 +174,13 @@ export async function loader({ request }: Route.LoaderArgs) {
     }
   });
 
-  const groupCounts: Record<string, number> = {};
-  for (const c of allContents) {
-    if (c.groupId) groupCounts[c.groupId] = (groupCounts[c.groupId] ?? 0) + 1;
-  }
-
   return {
     role,
     contents,
-    groups,
-    groupCounts,
+    groupLinks,
     syncLogs,
     total: allContents.length,
     kollusConfigured: isKollusApiConfigured(),
-    instructors: (instructorsRes.data ?? []).map((i) => ({
-      profileId: i.profile_id,
-      name: i.name ?? "(이름 없음)",
-    })),
   };
 }
 
@@ -198,23 +193,10 @@ const contentSchema = z.object({
   originalFilename: z.string().trim().max(300).nullable(),
   durationSeconds: z.coerce.number().int().min(0).nullable(),
   encodingStatus: z.string().trim().min(1),
-  groupId: z.string().uuid().nullable(),
   completionThreshold: z.coerce.number().min(0.01).max(1),
   useStatus: z.enum(["in_use", "stopped"]),
   isActive: z.boolean(),
   adminMemo: z.string().trim().max(1000).nullable(),
-});
-
-const groupSchema = z.object({
-  groupId: z.string().uuid().nullable(),
-  name: z.string().trim().min(1).max(150),
-  year: z.coerce.number().int().min(2000).max(2100).nullable(),
-  subjectCode: z.string().trim().nullable(),
-  instructorId: z.string().uuid().nullable(),
-  examTrack: z.string().trim().max(20).nullable(),
-  courseType: z.string().trim().max(50).nullable(),
-  bookTitle: z.string().trim().max(200).nullable(),
-  staffMemo: z.string().trim().max(1000).nullable(),
 });
 
 function emptyToNull(v: FormDataEntryValue | null): string | null {
@@ -254,7 +236,6 @@ export async function action({ request }: Route.ActionArgs) {
       originalFilename: emptyToNull(fd.get("originalFilename")),
       durationSeconds: emptyToNull(fd.get("durationSeconds")),
       encodingStatus: fd.get("encodingStatus") || "available",
-      groupId: emptyToNull(fd.get("groupId")),
       completionThreshold: fd.get("completionThreshold") || "0.9",
       useStatus: fd.get("useStatus") || "in_use",
       isActive: fd.get("isActive") === "on",
@@ -270,7 +251,6 @@ export async function action({ request }: Route.ActionArgs) {
       original_filename: p.originalFilename,
       duration_seconds: p.durationSeconds,
       encoding_status: p.encodingStatus,
-      group_id: p.groupId,
       completion_threshold: p.completionThreshold,
       use_status: p.useStatus,
       is_active: p.isActive,
@@ -296,82 +276,6 @@ export async function action({ request }: Route.ActionArgs) {
           { status: 400 },
         );
     }
-    return data({ ok: true as const });
-  }
-
-  if (intent === "assign_group") {
-    const contentId = z.string().uuid().safeParse(fd.get("contentId"));
-    if (!contentId.success)
-      return data({ error: "대상을 확인해 주세요." }, { status: 400 });
-    const groupId = emptyToNull(fd.get("groupId"));
-    const { error } = await client
-      .from("video_contents")
-      .update({ group_id: groupId })
-      .eq("content_id", contentId.data);
-    if (error) return data({ error: error.message }, { status: 400 });
-    return data({ ok: true as const });
-  }
-
-  if (intent === "save_group") {
-    const parsed = groupSchema.safeParse({
-      groupId: emptyToNull(fd.get("groupId")),
-      name: fd.get("name"),
-      year: emptyToNull(fd.get("year")),
-      subjectCode: emptyToNull(fd.get("subjectCode")),
-      instructorId: emptyToNull(fd.get("instructorId")),
-      examTrack: emptyToNull(fd.get("examTrack")),
-      courseType: emptyToNull(fd.get("courseType")),
-      bookTitle: emptyToNull(fd.get("bookTitle")),
-      staffMemo: emptyToNull(fd.get("staffMemo")),
-    });
-    if (!parsed.success)
-      return data({ error: "입력을 확인해 주세요." }, { status: 400 });
-    const g = parsed.data;
-    const row = {
-      name: g.name,
-      year: g.year,
-      subject_code: g.subjectCode,
-      instructor_id: g.instructorId,
-      exam_track: g.examTrack,
-      course_type: g.courseType,
-      book_title: g.bookTitle,
-      staff_memo: g.staffMemo,
-    };
-    if (g.groupId) {
-      const { error } = await client
-        .from("content_groups")
-        .update(row)
-        .eq("group_id", g.groupId);
-      if (error) return data({ error: error.message }, { status: 400 });
-    } else {
-      const { error } = await client
-        .from("content_groups")
-        .insert({ ...row, created_by: user.id });
-      if (error) return data({ error: error.message }, { status: 400 });
-    }
-    return data({ ok: true as const });
-  }
-
-  if (intent === "delete_group") {
-    const groupId = z.string().uuid().safeParse(fd.get("groupId"));
-    if (!groupId.success)
-      return data({ error: "대상을 확인해 주세요." }, { status: 400 });
-    // 삭제 제한 — 연결된 콘텐츠가 있으면 막는다.
-    const { count } = await client
-      .from("video_contents")
-      .select("content_id", { count: "exact", head: true })
-      .eq("group_id", groupId.data)
-      .is("deleted_at", null);
-    if ((count ?? 0) > 0)
-      return data(
-        { error: `콘텐츠 ${count}개가 연결돼 있어 삭제할 수 없습니다. 먼저 그룹을 옮겨 주세요.` },
-        { status: 400 },
-      );
-    const { error } = await client
-      .from("content_groups")
-      .update({ deleted_at: new Date().toISOString() })
-      .eq("group_id", groupId.data);
-    if (error) return data({ error: error.message }, { status: 400 });
     return data({ ok: true as const });
   }
 
@@ -401,7 +305,7 @@ export async function action({ request }: Route.ActionArgs) {
 
 // ── 화면 ─────────────────────────────────────────────────────────────────
 export default function AdminLmsContents({ loaderData }: Route.ComponentProps) {
-  const { role, contents, groups, groupCounts, syncLogs, total, instructors, kollusConfigured } =
+  const { role, contents, groupLinks, syncLogs, total, kollusConfigured } =
     loaderData;
   const [searchParams] = useSearchParams();
   const activeStatus = searchParams.get("status") ?? "all";
@@ -433,9 +337,6 @@ export default function AdminLmsContents({ loaderData }: Route.ComponentProps) {
   }, [syncFetcher.state, syncFetcher.data]);
 
   const [editContent, setEditContent] = useState<VideoContentRow | "new" | null>(
-    null,
-  );
-  const [editGroup, setEditGroup] = useState<ContentGroupRow | "new" | null>(
     null,
   );
 
@@ -483,39 +384,17 @@ export default function AdminLmsContents({ loaderData }: Route.ComponentProps) {
       {/* 동기화 이력 */}
       <SyncHistory logs={syncLogs} />
 
-      {/* 강의그룹 */}
-      <section className="mb-6">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-sm font-bold">강의그룹</h2>
-          <Button size="sm" variant="outline" onClick={() => setEditGroup("new")}>
-            <FolderIcon className="size-3.5" /> 그룹 생성
-          </Button>
-        </div>
-        {groups.length === 0 ? (
-          <p className="text-muted-foreground rounded-lg border border-dashed px-4 py-6 text-sm">
-            강의그룹이 없습니다. 콜러스 영상을 촬영/과정 단위로 묶어 관리합니다.
-          </p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {groups.map((g) => (
-              <button
-                key={g.groupId}
-                type="button"
-                onClick={() => setEditGroup(g)}
-                className="border-border hover:bg-muted/40 rounded-lg border px-3 py-2 text-left transition-colors"
-              >
-                <div className="text-sm font-semibold">{g.name}</div>
-                <div className="text-muted-foreground text-[11px]">
-                  {[g.year, g.instructorName, g.examTrack]
-                    .filter(Boolean)
-                    .join(" · ")}
-                  {" · "}
-                  콘텐츠 {groupCounts[g.groupId] ?? 0}개
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
+      {/* feat-11-008 P5 — 그룹 관리는 강의그룹 메뉴로 분리(라이브러리=원본 보관·검색 전담). */}
+      <section className="border-border bg-muted/30 mb-6 flex items-center justify-between rounded-lg border px-4 py-3">
+        <p className="text-sm">
+          <span className="font-bold">강의그룹</span>
+          <span className="text-muted-foreground ml-2 text-[13px]">
+            회차 구성·개설 강의 연결은 강의그룹 메뉴에서 관리합니다.
+          </span>
+        </p>
+        <Button asChild size="sm" variant="outline">
+          <Link to="/admin/lms/groups">강의그룹 관리 →</Link>
+        </Button>
       </section>
 
       {/* 검색·필터 */}
@@ -609,7 +488,19 @@ export default function AdminLmsContents({ loaderData }: Route.ComponentProps) {
                 {c.contentKey}
               </TD>
               <TD>
-                <AssignGroup content={c} groups={groups} />
+                {(groupLinks[c.contentId] ?? []).length > 0 ? (
+                  <span
+                    className="cursor-help text-xs"
+                    title={(groupLinks[c.contentId] ?? []).join("\n")}
+                  >
+                    {(groupLinks[c.contentId] ?? [])[0]}
+                    {(groupLinks[c.contentId] ?? []).length > 1
+                      ? ` 외 ${(groupLinks[c.contentId] ?? []).length - 1}`
+                      : ""}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground text-xs">미연결</span>
+                )}
               </TD>
               <TD align="center">{fmtDuration(c.durationSeconds)}</TD>
               <TD align="center">
@@ -654,18 +545,8 @@ export default function AdminLmsContents({ loaderData }: Route.ComponentProps) {
 
       <ContentEditorSheet
         target={editContent}
-        groups={groups}
         onClose={() => setEditContent(null)}
       />
-      <GroupEditorSheet
-        target={editGroup}
-        instructors={instructors}
-        contentCount={
-          editGroup && editGroup !== "new" ? groupCounts[editGroup.groupId] ?? 0 : 0
-        }
-        onClose={() => setEditGroup(null)}
-      />
-
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
@@ -768,42 +649,11 @@ function SyncHistory({ logs }: { logs: SyncLogRow[] }) {
 }
 
 // 행 내 그룹 지정(빠른 이동) — onChange 자동 제출.
-function AssignGroup({
-  content,
-  groups,
-}: {
-  content: VideoContentRow;
-  groups: ContentGroupRow[];
-}) {
-  const fetcher = useFetcher();
-  return (
-    <fetcher.Form method="post">
-      <input type="hidden" name="intent" value="assign_group" />
-      <input type="hidden" name="contentId" value={content.contentId} />
-      <select
-        name="groupId"
-        defaultValue={content.groupId ?? ""}
-        onChange={(e) => fetcher.submit(e.currentTarget.form)}
-        className="border-border bg-background h-8 w-full max-w-[220px] rounded-md border px-2 text-xs"
-      >
-        <option value="">미분류</option>
-        {groups.map((g) => (
-          <option key={g.groupId} value={g.groupId}>
-            {g.name}
-          </option>
-        ))}
-      </select>
-    </fetcher.Form>
-  );
-}
-
 function ContentEditorSheet({
   target,
-  groups,
   onClose,
 }: {
   target: VideoContentRow | "new" | null;
-  groups: ContentGroupRow[];
   onClose: () => void;
 }) {
   const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
@@ -877,20 +727,6 @@ function ContentEditorSheet({
               </select>
             </Field>
           </div>
-          <Field label="강의그룹">
-            <select
-              name="groupId"
-              defaultValue={c?.groupId ?? ""}
-              className="border-border bg-background h-9 w-full rounded-md border px-2 text-sm"
-            >
-              <option value="">미분류</option>
-              {groups.map((g) => (
-                <option key={g.groupId} value={g.groupId}>
-                  {g.name}
-                </option>
-              ))}
-            </select>
-          </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="진도율 인정 기준">
               <select
@@ -954,121 +790,6 @@ function ContentEditorSheet({
             <Button type="submit" disabled={fetcher.state !== "idle"}>
               저장
             </Button>
-          </div>
-        </fetcher.Form>
-      </SheetContent>
-    </Sheet>
-  );
-}
-
-function GroupEditorSheet({
-  target,
-  instructors,
-  contentCount,
-  onClose,
-}: {
-  target: ContentGroupRow | "new" | null;
-  instructors: Array<{ profileId: string; name: string }>;
-  contentCount: number;
-  onClose: () => void;
-}) {
-  const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
-  useEffect(() => {
-    if (fetcher.state === "idle" && fetcher.data) {
-      if (fetcher.data.error) toast.error(fetcher.data.error);
-      else if (fetcher.data.ok) {
-        toast.success("저장했습니다.");
-        onClose();
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetcher.state, fetcher.data]);
-
-  const g = target === "new" ? null : target;
-  const open = target !== null;
-
-  return (
-    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-md">
-        <SheetHeader>
-          <SheetTitle>{g ? "강의그룹 수정" : "강의그룹 생성"}</SheetTitle>
-        </SheetHeader>
-        <fetcher.Form
-          method="post"
-          key={g?.groupId ?? "new"}
-          className="mt-4 space-y-3 px-4 pb-6"
-        >
-          <input type="hidden" name="intent" value="save_group" />
-          <input type="hidden" name="groupId" value={g?.groupId ?? ""} />
-          <Field label="그룹명" required hint="예: 김인배 디자인보호법 기본강의 15판">
-            <Input name="name" required defaultValue={g?.name ?? ""} />
-          </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="연도">
-              <Input name="year" type="number" defaultValue={g?.year ?? ""} />
-            </Field>
-            <Field label="과목">
-              <select
-                name="subjectCode"
-                defaultValue={g?.subjectCode ?? ""}
-                className="border-border bg-background h-9 w-full rounded-md border px-2 text-sm"
-              >
-                <option value="">선택</option>
-                {SUBJECT_OPTIONS.map((s) => (
-                  <option key={s.value} value={s.value}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </div>
-          <Field label="강사">
-            <select
-              name="instructorId"
-              defaultValue={g?.instructorId ?? ""}
-              className="border-border bg-background h-9 w-full rounded-md border px-2 text-sm"
-            >
-              <option value="">선택</option>
-              {instructors.map((i) => (
-                <option key={i.profileId} value={i.profileId}>
-                  {i.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="시험구분">
-              <Input name="examTrack" defaultValue={g?.examTrack ?? ""} placeholder="1차/2차" />
-            </Field>
-            <Field label="과정유형">
-              <Input name="courseType" defaultValue={g?.courseType ?? ""} placeholder="기본이론 등" />
-            </Field>
-          </div>
-          <Field label="교재명">
-            <Input name="bookTitle" defaultValue={g?.bookTitle ?? ""} />
-          </Field>
-          <Field label="관리자 메모">
-            <textarea
-              name="staffMemo"
-              defaultValue={g?.staffMemo ?? ""}
-              rows={2}
-              className="border-border bg-background w-full rounded-md border px-2 py-1.5 text-sm"
-            />
-          </Field>
-          <div className="flex items-center justify-between pt-2">
-            {g ? (
-              <DeleteGroupButton groupId={g.groupId} contentCount={contentCount} />
-            ) : (
-              <span />
-            )}
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={onClose}>
-                취소
-              </Button>
-              <Button type="submit" disabled={fetcher.state !== "idle"}>
-                저장
-              </Button>
-            </div>
           </div>
         </fetcher.Form>
       </SheetContent>

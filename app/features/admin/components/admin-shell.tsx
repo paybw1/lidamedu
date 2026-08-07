@@ -210,7 +210,9 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "강의 콘텐츠", to: "/admin/lms/courses" },
       // feat-11-008 P3 — 강의·상품 공용 분류 관리(카탈로그 탭 SSOT).
       { label: "강의 카테고리", to: "/admin/lecture-categories" },
+      // feat-11-008 P5 — 콘텐츠관리 분리: 라이브러리(원본 동기화·검색) / 강의그룹(회차 구성).
       { label: "콘텐츠 라이브러리", to: "/admin/lms/contents" },
+      { label: "강의그룹", to: "/admin/lms/groups" },
       // 수강 후기 일단 숨김(REVIEWS_ENABLED) — 재오픈 시 자동 복원.
       ...(REVIEWS_ENABLED
         ? [{ label: "수강평·교재평", to: "/admin/lms/reviews" }]

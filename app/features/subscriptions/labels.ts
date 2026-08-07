@@ -92,6 +92,8 @@ export interface SubscriptionPlan {
   lectureCategory: "round1" | "round2" | "package" | "onsite" | null;
   // feat-11-008 P3 — 강의 카테고리 테이블 연결(카탈로그 탭·검색 SSOT). 구 enum 은 통계 축 호환.
   categoryId: string | null;
+  // feat-11-008 P5 — 상세페이지 섹션별 HTML(키=DETAIL_SECTIONS).
+  detailSections: import("~/features/lms/lib/detail-sections").DetailSections;
   /** 수강신청 상세(/lecture/catalog/:code) 본문 — 히어로 배너와 동일하게 이미지 또는 HTML. */
   detailImageUrl: string | null;
   detailHtml: string | null;

@@ -13,6 +13,11 @@ import { roleAtLeast } from "~/core/lib/roles";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { HtmlEditor } from "~/features/lms/components/html-editor";
+import {
+  DETAIL_SECTIONS,
+  type DetailSectionKey,
+  hasAnyDetailSection,
+} from "~/features/lms/lib/detail-sections";
 import { PlanPolicyFields } from "~/features/subscriptions/components/plan-policy-fields";
 import {
   Chip,
@@ -306,8 +311,20 @@ function PlanForm({
     (plan?.productKind ?? "subject") as ProductKind,
   );
   const showPolicy = productKind === "course" || productKind === "tpass";
-  const [detailKind, setDetailKind] = useState<"none" | "image" | "html">(
-    plan?.detailImageUrl ? "image" : plan?.detailHtml ? "html" : "none",
+  const [detailKind, setDetailKind] = useState<
+    "none" | "image" | "html" | "sections"
+  >(
+    // feat-11-008 P5 — 섹션(9영역) 저장분이 있으면 섹션 모드 우선.
+    hasAnyDetailSection(plan?.detailSections ?? {})
+      ? "sections"
+      : plan?.detailImageUrl
+        ? "image"
+        : plan?.detailHtml
+          ? "html"
+          : "none",
+  );
+  const [sectionTab, setSectionTab] = useState<DetailSectionKey>(
+    DETAIL_SECTIONS[0].key,
   );
 
   useEffect(() => {
@@ -563,6 +580,7 @@ function PlanForm({
             {(
               [
                 ["none", "미사용"],
+                ["sections", "섹션별 작성"],
                 ["image", "이미지"],
                 ["html", "HTML"],
               ] as const
@@ -618,6 +636,49 @@ function PlanForm({
                 uploadUrl="/api/lms/editor-image"
               />
             </FormField>
+          ) : detailKind === "sections" ? (
+            // feat-11-008 P5 — 9개 입력 영역을 탭으로 전환하며 각각 통합 에디터로 작성.
+            //   숨긴 탭도 DOM 에 유지해야 폼 제출 시 함께 전송된다(값 유실 방지).
+            <div className="space-y-2">
+              <div className="flex flex-wrap gap-1">
+                {DETAIL_SECTIONS.map((sec) => {
+                  const filled = Boolean(plan?.detailSections?.[sec.key]);
+                  return (
+                    <button
+                      key={sec.key}
+                      type="button"
+                      onClick={() => setSectionTab(sec.key)}
+                      className={
+                        "rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors " +
+                        (sectionTab === sec.key
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border text-muted-foreground hover:text-foreground")
+                      }
+                    >
+                      {sec.label}
+                      {filled ? " ●" : ""}
+                    </button>
+                  );
+                })}
+              </div>
+              {DETAIL_SECTIONS.map((sec) => (
+                <div
+                  key={sec.key}
+                  className={sectionTab === sec.key ? "" : "hidden"}
+                >
+                  <HtmlEditor
+                    name={`section_${sec.key}`}
+                    defaultValue={plan?.detailSections?.[sec.key] ?? ""}
+                    uploadUrl="/api/lms/editor-image"
+                    minHeight={260}
+                  />
+                </div>
+              ))}
+              <p className="text-muted-foreground/70 text-[11px]">
+                작성한 섹션만 상세페이지에 순서대로 표시됩니다. 강의명·가격 등 한 줄 항목은
+                위 기본 정보에서 입력합니다.
+              </p>
+            </div>
           ) : null}
         </div>
       ) : null}

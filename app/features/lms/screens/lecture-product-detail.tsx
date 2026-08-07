@@ -19,6 +19,7 @@ import {
   LECTURE_CATEGORY_LABEL,
 } from "~/features/lms/lib/lecture-category";
 import { ReviewsSection } from "~/features/lms/components/reviews-section";
+import { DETAIL_SECTIONS } from "~/features/lms/lib/detail-sections";
 import { listSellableLectureProducts } from "~/features/lms/queries.server";
 import {
   getMyReview,
@@ -78,7 +79,10 @@ export default function LectureProductDetail({
     );
   };
 
-  const hasBody = Boolean(product.detailImageUrl || product.detailHtml);
+  const sections = DETAIL_SECTIONS.filter((sec) => product.detailSections[sec.key]);
+  const hasBody = Boolean(
+    sections.length > 0 || product.detailImageUrl || product.detailHtml,
+  );
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 pt-8 pb-28 md:px-6">
@@ -127,8 +131,21 @@ export default function LectureProductDetail({
         </div>
       </div>
 
-      {/* 본문 — 운영자 입력 이미지 또는 HTML */}
-      {product.detailImageUrl ? (
+      {/* 본문 — feat-11-008 P5: 섹션(9영역) 우선, 없으면 기존 이미지/HTML 폴백 */}
+      {sections.length > 0 ? (
+        <div className="mt-6 space-y-8">
+          {sections.map((sec) => (
+            <section key={sec.key}>
+              <h2 className="mb-2 text-lg font-bold tracking-tight">{sec.label}</h2>
+              {/* 운영자(staff) 작성 신뢰 HTML — HtmlEditor 원본 보존 정책과 짝. */}
+              <div
+                className="lecture-detail-html"
+                dangerouslySetInnerHTML={{ __html: product.detailSections[sec.key] ?? "" }}
+              />
+            </section>
+          ))}
+        </div>
+      ) : product.detailImageUrl ? (
         <img
           src={product.detailImageUrl}
           alt={product.name}

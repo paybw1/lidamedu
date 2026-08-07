@@ -9,6 +9,7 @@ import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { DETAIL_SECTIONS } from "~/features/lms/lib/detail-sections";
 import { FEATURE_LABEL } from "~/features/subscriptions/labels";
 import {
   syncPlanBookLinks,
@@ -158,6 +159,14 @@ export async function action({ request }: Route.ActionArgs) {
     const htmlText = String(fd.get("detailHtml") ?? "").trim();
     detailHtml = htmlText === "" ? null : htmlText;
   }
+  // feat-11-008 P5 — 섹션(9영역) 수집. 섹션 모드일 때만 저장(다른 모드 선택 시 비운다).
+  const detailSections: Record<string, string> = {};
+  if (detailKind === "sections") {
+    for (const sec of DETAIL_SECTIONS) {
+      const html = String(fd.get(`section_${sec.key}`) ?? "").trim();
+      if (html) detailSections[sec.key] = html;
+    }
+  }
 
   const res = await upsertPlan(
     {
@@ -176,6 +185,7 @@ export async function action({ request }: Route.ActionArgs) {
       categoryId: parsed.data.categoryId,
       detailImageUrl,
       detailHtml,
+      detailSections,
     },
     parsed.data.intent,
   );
