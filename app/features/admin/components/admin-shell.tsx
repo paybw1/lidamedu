@@ -398,6 +398,8 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "감사 기록", to: "/admin/audit-logs" },
       { label: "받은 알림함", to: "/admin/inbox" },
       { label: "이용 가이드 관리", to: "/admin/guides" },
+      // feat-11-008 P2 — 이벤트·소개용 풀페이지 제작(/page/:code).
+      { label: "페이지관리", to: "/admin/pages" },
       { label: "버그 리포트", to: "/admin/bug-reports" },
     ],
   },

@@ -927,6 +927,17 @@ export default [
         "features/admin/screens/admin-popup-notices.tsx",
       ),
       route("/admin/guides", "features/admin/screens/admin-guides.tsx"),
+      // feat-11-008 P2 — 페이지관리(풀페이지 CMS) + 공개 라우트.
+      route("/admin/pages", "features/pages/screens/admin-pages.tsx"),
+      route("/admin/pages/new", "features/pages/screens/admin-page-edit.tsx", {
+        id: "admin-page-new",
+      }),
+      route(
+        "/admin/pages/:pageId/edit",
+        "features/pages/screens/admin-page-edit.tsx",
+        { id: "admin-page-edit" },
+      ),
+      route("/page/:code", "features/pages/screens/page-view.tsx"),
       route(
         "/admin/membership-test",
         "features/admin/screens/admin-membership-test.tsx",

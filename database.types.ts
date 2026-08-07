@@ -5010,6 +5010,98 @@ export type Database = {
           },
         ]
       }
+      custom_page_revisions: {
+        Row: {
+          body_html: string
+          edited_at: string
+          edited_by: string | null
+          page_id: string
+          revision_id: string
+          status: string
+          title: string
+        }
+        Insert: {
+          body_html: string
+          edited_at?: string
+          edited_by?: string | null
+          page_id: string
+          revision_id?: string
+          status: string
+          title: string
+        }
+        Update: {
+          body_html?: string
+          edited_at?: string
+          edited_by?: string | null
+          page_id?: string
+          revision_id?: string
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custom_page_revisions_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "custom_pages"
+            referencedColumns: ["page_id"]
+          },
+        ]
+      }
+      custom_pages: {
+        Row: {
+          admin_memo: string | null
+          body_html: string
+          code: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          page_id: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          admin_memo?: string | null
+          body_html?: string
+          code: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          page_id?: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          admin_memo?: string | null
+          body_html?: string
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          page_id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custom_pages_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "custom_pages_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       device_reset_logs: {
         Row: {
           actor_id: string | null
