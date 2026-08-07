@@ -61,13 +61,19 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ error: "유효기간은 필수입니다." }, { status: 400 });
 
   const usableRaw = String(fd.get("usable_days") ?? "").trim();
+  const discountType = str(fd, "discount_type") ?? "fixed";
+  // feat-11-008 P1 — 정률 쿠폰의 최대할인 상한 배선(기존엔 항상 null 로 저장돼 dead 였음).
+  const maxDiscountRaw = str(fd, "max_discount");
   const row = {
     name: str(fd, "name") ?? "",
     scope: str(fd, "scope") ?? "all",
     min_amount: int(fd, "min_amount"),
-    discount_type: str(fd, "discount_type") ?? "fixed",
+    discount_type: discountType,
     discount_value: int(fd, "discount_value"),
-    max_discount: null as number | null,
+    max_discount:
+      discountType === "percent" && maxDiscountRaw
+        ? int(fd, "max_discount")
+        : null,
     is_shared: fd.get("is_shared") !== "individual",
     issue_count: int(fd, "issue_count"),
     valid_from: validFrom,

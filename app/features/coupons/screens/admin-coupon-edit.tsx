@@ -1,6 +1,6 @@
 // feat-13 쿠폰 등록/수정 — /admin/coupons/new · /:couponId/edit.
 import { useState } from "react";
-import { Form, Link, data, redirect, useActionData } from "react-router";
+import { Form, Link, data, redirect, useActionData, useFetcher } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Input } from "~/core/components/ui/input";
@@ -52,13 +52,28 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   const fd = await request.formData();
   const intent = String(fd.get("intent") ?? "");
-  if (intent === "grant") {
-    const email = String(fd.get("email") ?? "").trim();
-    if (!email) return data({ error: "이메일을 입력해 주세요." }, { status: 400 });
-    const { grantCouponToEmail } = await import("../grants.server");
-    const r = await grantCouponToEmail({ couponId, email, grantedBy: user.id });
+  // feat-11-008 P1 — 회원 검색(이름·이메일·전화·회원번호). 결과는 fetcher 로 소비.
+  if (intent === "search") {
+    const q = String(fd.get("q") ?? "");
+    const { searchMembersForGrant } = await import("../grants.server");
+    const members = await searchMembersForGrant(q);
+    return data({ members });
+  }
+  // feat-11-008 P1 — 검색·선택한 복수 회원에게 일괄 발급(+발급 사유 메모).
+  if (intent === "grant_bulk") {
+    const userIds = fd.getAll("userIds").map(String).filter(Boolean);
+    if (userIds.length === 0)
+      return data({ error: "발급할 회원을 선택해 주세요." }, { status: 400 });
+    const note = String(fd.get("note") ?? "").trim() || null;
+    const { grantCouponToUsers } = await import("../grants.server");
+    const r = await grantCouponToUsers({
+      couponId,
+      userIds,
+      grantedBy: user.id,
+      note,
+    });
     if (!r.ok) return data({ error: r.error }, { status: 400 });
-    return redirect(`/admin/coupons/${couponId}/edit`);
+    return data({ bulk: r.result });
   }
   if (intent === "revoke") {
     const grantId = String(fd.get("grantId") ?? "");
@@ -73,6 +88,170 @@ export async function action({ request, params }: Route.ActionArgs) {
 
 const IN = "h-9 text-sm";
 const REQ = <span className="text-rose-500"> *</span>;
+
+// feat-11-008 P1 — 회원 검색 → 체크박스 선택 → 일괄 발급 패널 (260807 요청서).
+function GrantSearchPanel({ grantedUserIds }: { grantedUserIds: string[] }) {
+  const searchFetcher = useFetcher<typeof action>();
+  const grantFetcher = useFetcher<typeof action>();
+  const [selected, setSelected] = useState<string[]>([]);
+  const [note, setNote] = useState("");
+  const grantedSet = new Set(grantedUserIds);
+  const members =
+    searchFetcher.data && "members" in searchFetcher.data
+      ? searchFetcher.data.members
+      : [];
+  const bulk =
+    grantFetcher.data && "bulk" in grantFetcher.data
+      ? grantFetcher.data.bulk
+      : null;
+  const grantError =
+    grantFetcher.data && "error" in grantFetcher.data
+      ? grantFetcher.data.error
+      : null;
+  const nameById = new Map(members.map((m) => [m.userId, m.name]));
+
+  const toggle = (id: string) =>
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+
+  const submitGrant = () => {
+    const dup = selected.filter((id) => grantedSet.has(id));
+    if (
+      dup.length > 0 &&
+      !window.confirm(
+        `이미 발급된 회원 ${dup.length}명이 포함되어 있습니다(중복 발급은 건너뜁니다). 계속할까요?`,
+      )
+    )
+      return;
+    const fd = new FormData();
+    fd.set("intent", "grant_bulk");
+    fd.set("note", note);
+    for (const id of selected) fd.append("userIds", id);
+    grantFetcher.submit(fd, { method: "post" });
+    setSelected([]);
+  };
+
+  return (
+    <div className="mt-3 space-y-3">
+      <searchFetcher.Form method="post" className="flex gap-2">
+        <input type="hidden" name="intent" value="search" />
+        <Input
+          name="q"
+          placeholder="회원명 · 이메일 · 휴대폰 번호 · 회원번호"
+          className={`${IN} max-w-sm`}
+        />
+        <Button type="submit" variant="outline" className="h-9 shrink-0">
+          {searchFetcher.state !== "idle" ? "검색 중…" : "회원 검색"}
+        </Button>
+      </searchFetcher.Form>
+
+      {searchFetcher.data && "members" in searchFetcher.data ? (
+        members.length === 0 ? (
+          <p className="text-muted-foreground text-xs">
+            검색 결과가 없습니다. (2자 이상 입력)
+          </p>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border">
+            <table className="w-full text-left text-[13px]">
+              <thead className="bg-muted/60">
+                <tr>
+                  <th className="w-8 px-2 py-1.5" />
+                  <th className="px-2 py-1.5 font-semibold">회원번호</th>
+                  <th className="px-2 py-1.5 font-semibold">이름</th>
+                  <th className="px-2 py-1.5 font-semibold">이메일</th>
+                  <th className="px-2 py-1.5 font-semibold">휴대폰</th>
+                  <th className="px-2 py-1.5 font-semibold">상태</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {members.map((m) => (
+                  <tr key={m.userId} className="hover:bg-muted/30">
+                    <td className="px-2 py-1.5">
+                      <input
+                        type="checkbox"
+                        checked={selected.includes(m.userId)}
+                        onChange={() => toggle(m.userId)}
+                        aria-label={`${m.name} 선택`}
+                      />
+                    </td>
+                    <td className="px-2 py-1.5 tabular-nums">
+                      {m.memberNo ?? "-"}
+                    </td>
+                    <td className="px-2 py-1.5 font-medium">{m.name}</td>
+                    <td className="text-muted-foreground px-2 py-1.5">
+                      {m.email ?? "-"}
+                    </td>
+                    <td className="text-muted-foreground px-2 py-1.5 tabular-nums">
+                      {m.phone ?? "-"}
+                    </td>
+                    <td className="px-2 py-1.5">
+                      {grantedSet.has(m.userId) ? (
+                        <span className="text-amber-600 dark:text-amber-400 text-xs font-semibold">
+                          발급됨
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">미발급</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      ) : null}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="발급 사유 메모(선택)"
+          className={`${IN} max-w-sm`}
+        />
+        <Button
+          type="button"
+          className="h-9 shrink-0"
+          disabled={selected.length === 0 || grantFetcher.state !== "idle"}
+          onClick={submitGrant}
+        >
+          선택회원 쿠폰 발급 ({selected.length}명)
+        </Button>
+      </div>
+
+      {grantError ? (
+        <p className="text-destructive text-xs">{grantError}</p>
+      ) : null}
+      {bulk ? (
+        <div className="rounded-lg border px-3 py-2 text-[13px]">
+          발급 완료 <b>{bulk.granted}</b>명
+          {bulk.already.length > 0 ? (
+            <span className="text-amber-600 dark:text-amber-400">
+              {" "}
+              · 중복 건너뜀 {bulk.already.length}명(
+              {bulk.already
+                .map((id) => nameById.get(id) ?? id.slice(0, 8))
+                .join(", ")}
+              )
+            </span>
+          ) : null}
+          {bulk.failed.length > 0 ? (
+            <span className="text-destructive">
+              {" "}
+              · 실패 {bulk.failed.length}명(
+              {bulk.failed
+                .map(
+                  (f) => `${nameById.get(f.userId) ?? f.userId.slice(0, 8)}: ${f.error}`,
+                )
+                .join(" / ")}
+              )
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 function Field({
   label,
@@ -215,6 +394,20 @@ export default function AdminCouponEdit({ loaderData }: Route.ComponentProps) {
               <span className="text-muted-foreground text-sm">
                 {discountType === "percent" ? "%" : "원"}
               </span>
+              {discountType === "percent" ? (
+                <>
+                  <span className="text-muted-foreground text-sm">최대할인</span>
+                  <Input
+                    type="number"
+                    name="max_discount"
+                    defaultValue={c?.max_discount ?? ""}
+                    className={`${IN} w-40`}
+                    min={0}
+                    placeholder="상한 없음"
+                  />
+                  <span className="text-muted-foreground text-sm">원</span>
+                </>
+              ) : null}
             </div>
           </Field>
 
@@ -346,20 +539,10 @@ export default function AdminCouponEdit({ loaderData }: Route.ComponentProps) {
               발급받은 회원만 결제 시 이 쿠폰을 사용할 수 있습니다. (번호당 1회 사용)
             </p>
 
-            <Form method="post" className="mt-3 flex gap-2">
-              <input type="hidden" name="intent" value="grant" />
-              <Input
-                name="email"
-                type="email"
-                required
-                placeholder="회원 이메일"
-                className={`${IN} max-w-xs`}
-              />
-              <Button type="submit" variant="outline" className="h-9 shrink-0">
-                발급
-              </Button>
-            </Form>
-            {actionData?.error ? (
+            <GrantSearchPanel
+              grantedUserIds={grants.filter((g) => !g.revokedAt).map((g) => g.userId)}
+            />
+            {actionData && "error" in actionData && actionData.error ? (
               <p className="text-destructive mt-1.5 text-xs">{actionData.error}</p>
             ) : null}
 
@@ -375,6 +558,11 @@ export default function AdminCouponEdit({ loaderData }: Route.ComponentProps) {
                       <span className="text-muted-foreground ml-2 text-xs">
                         {g.email ?? g.userId.slice(0, 8)}
                       </span>
+                      {g.note ? (
+                        <p className="text-muted-foreground mt-0.5 truncate text-xs">
+                          메모: {g.note}
+                        </p>
+                      ) : null}
                     </div>
                     <span className="text-muted-foreground text-xs tabular-nums">
                       {g.grantedAt.slice(0, 10)}

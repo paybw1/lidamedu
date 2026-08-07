@@ -4009,6 +4009,7 @@ export type Database = {
           grant_id: string
           granted_at: string
           granted_by: string | null
+          note: string | null
           revoked_at: string | null
           user_id: string
         }
@@ -4018,6 +4019,7 @@ export type Database = {
           grant_id?: string
           granted_at?: string
           granted_by?: string | null
+          note?: string | null
           revoked_at?: string | null
           user_id: string
         }
@@ -4027,6 +4029,7 @@ export type Database = {
           grant_id?: string
           granted_at?: string
           granted_by?: string | null
+          note?: string | null
           revoked_at?: string | null
           user_id?: string
         }
