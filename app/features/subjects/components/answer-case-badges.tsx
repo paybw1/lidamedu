@@ -1,7 +1,8 @@
 // 주관식 모범답안 인용 판례 배지(설문별) — 배지 클릭 → 요지 팝업(문제 화면 유지),
 // 팝업의 [공부하러 가기] → 판례 학습화면(하이라이트·메모).
 // 메인 판례(problems.main_case_number): 그룹 내 맨 앞 정렬(서버) + ★ 강조.
-//   staff 는 팝업 하단에서 지정/해제(POST /api/problems/main-case).
+//   설문별로 복수 지정 가능(", " 구분 목록) — staff 는 팝업 하단에서 배지별 토글
+//   (POST /api/problems/main-case).
 import { ArrowRightIcon, ScaleIcon, StarIcon } from "lucide-react";
 import { useState } from "react";
 import { Link, useFetcher } from "react-router";
@@ -88,17 +89,18 @@ export function CaseBadge({
   const [open, setOpen] = useState(false);
   const fetcher = useFetcher<{ ok?: true; mainCaseNumber?: string | null; error?: string }>();
   const studyHref = `/subjects/${c.subjectSlug}/cases/${c.caseId}`;
-  // 낙관적 표시 — 제출 중이면 폼 값 기준.
+  // 낙관적 표시 — 서버가 같은 사건번호를 토글(추가/제거)하므로, 이 배지에 대한 제출
+  // 중에는 현재 상태를 뒤집어 보여준다. (메인 판례는 복수 지정 가능)
   const submitted = fetcher.formData?.get("caseNumber");
   const isMain =
-    submitted !== undefined && submitted !== null
-      ? String(submitted) === c.caseNumber
+    submitted != null && String(submitted) === c.caseNumber
+      ? !(c.isMain ?? false)
       : (c.isMain ?? false);
   const toggleMain = () => {
     if (!mainControl) return;
     const fd = new FormData();
     fd.set("problemId", mainControl.problemId);
-    fd.set("caseNumber", isMain ? "" : c.caseNumber);
+    fd.set("caseNumber", c.caseNumber);
     fetcher.submit(fd, { method: "post", action: "/api/problems/main-case" });
   };
   return (

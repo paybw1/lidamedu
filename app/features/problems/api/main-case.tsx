@@ -1,5 +1,6 @@
 // 주관식 관련판례 '메인 판례' 지정/해제 (staff 전용) — 문제 뷰어 판례 배지 팝업의 지정 버튼.
-// caseNumber="" → 해제(null). 지정 시 배지 그룹에서 맨 앞 정렬 + ★ 강조 표시.
+// 메인 판례는 설문별로 복수 지정 가능 — main_case_number 에 ", " 구분 목록으로 저장하고
+// 같은 사건번호 재요청 시 토글(있으면 제거, 없으면 추가). caseNumber="" → 전체 해제(null).
 
 import { data } from "react-router";
 import { z } from "zod";
@@ -33,14 +34,35 @@ export async function action({ request }: Route.ActionArgs) {
   });
   if (!parsed.success) return data({ error: "Invalid input" }, { status: 400 });
 
-  const caseNumber = parsed.data.caseNumber.trim() || null;
+  const caseNumber = parsed.data.caseNumber.trim();
+  const { data: row, error: readError } = await client
+    .from("problems")
+    .select("main_case_number")
+    .eq("problem_id", parsed.data.problemId)
+    .single();
+  if (readError) return data({ error: readError.message }, { status: 400 });
+
+  let next: string | null;
+  if (!caseNumber) {
+    next = null; // 전체 해제
+  } else {
+    const list = (row.main_case_number ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const merged = list.includes(caseNumber)
+      ? list.filter((n) => n !== caseNumber)
+      : [...list, caseNumber];
+    next = merged.length ? merged.join(", ") : null;
+  }
+
   const { error } = await client
     .from("problems")
-    .update({ main_case_number: caseNumber })
+    .update({ main_case_number: next })
     .eq("problem_id", parsed.data.problemId);
   if (error) return data({ error: error.message }, { status: 400 });
 
-  return data({ ok: true, mainCaseNumber: caseNumber });
+  return data({ ok: true, mainCaseNumber: next });
 }
 
 // GET(브라우저 직접 접근) — POST 전용 안내(405).

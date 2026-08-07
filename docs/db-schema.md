@@ -402,7 +402,7 @@ create table public.problems (
   rubric_ai_generated_at timestamptz, -- 2026-07: 채점기준·모범답안이 강사 해설 없이 AI 생성된 시각(뷰어 'AI 생성' 배지·비교분석용). null=강사 해설 기반
   rubric_reviewed_at  timestamptz,  -- 2026-07: 주관식 채점기준·모범답안 운영자 심층 검수완료 시각(뷰어 토글·목록 배지). null=미검수
   rubric_reviewed_by  uuid,         -- 검수한 운영자 user id
-  main_case_number    text          -- 2026-08: 주관식 관련판례 메인 지정(사건번호). 배지 그룹 맨 앞+★ 강조. 지정=뷰어 배지 팝업(staff)
+  main_case_number    text          -- 2026-08: 주관식 관련판례 메인 지정. 복수 가능(", " 구분 사건번호 목록, 설문별 메인). 배지 그룹 맨 앞+★ 강조. 지정=뷰어 배지 팝업 토글(staff)
 );
 
 create index problems_law on problems(law_id);

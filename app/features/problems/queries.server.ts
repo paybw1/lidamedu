@@ -3479,7 +3479,11 @@ export async function getAnswerCitedCaseGroups(
     });
   }
 
-  const main = problem.mainCaseNumber?.trim() || null;
+  // 메인 판례는 복수 지정 가능 — ", " 구분 목록. 각 항목과의 부분일치로 판정.
+  const mains = (problem.mainCaseNumber ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
   return merged
     .map((g) => {
       const cases = g.nums
@@ -3488,9 +3492,9 @@ export async function getAnswerCitedCaseGroups(
         .map((c) => ({
           ...c,
           // 추출 사건번호 또는 DB 사건번호(병합 표기)와의 부분일치로 판정.
-          isMain:
-            main != null &&
-            (c.caseNumber.includes(main) || main.includes(c.caseNumber)),
+          isMain: mains.some(
+            (m) => c.caseNumber.includes(m) || m.includes(c.caseNumber),
+          ),
         }));
       // 메인 판례는 그룹 내 맨 앞으로(안정 정렬 — 나머지 순서 유지).
       cases.sort((a, b) => Number(b.isMain) - Number(a.isMain));
