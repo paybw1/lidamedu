@@ -93,7 +93,7 @@ export const DUTY_META: Record<StaffDuty, DutyMeta> = {
   },
   lms_video_admin: {
     label: "강의 영상·도서 등록",
-    desc: "강의 시리즈·에디션·회차·영상 등록과 도서 관리 화면 접근.",
+    desc: "강의 개설·회차·영상 등록과 도서 관리 화면 접근.",
     kind: "access",
     fallbackRoles: ["admin"],
   },

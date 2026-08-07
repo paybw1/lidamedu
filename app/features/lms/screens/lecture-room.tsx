@@ -75,8 +75,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
         title: l.title,
         completed: p?.completed ?? false,
         progressRatio: p?.progressRatio ?? 0,
-        maxPlays,
-        playsUsed: used,
+        // feat-11-008 P0 — 수강생 화면은 강의(초)·학습(초)·진도율만 표시(횟수 비노출, 260807 요청서).
+        durationSeconds: p?.durationSeconds ?? 0,
+        watchedSeconds: p?.watchedSeconds ?? 0,
+        // 재생 가능 여부 판정용(서버 내부 값) — 숫자는 화면에 노출하지 않는다.
         playsLeft: Math.max(0, maxPlays - used),
       };
     }),
@@ -93,8 +95,7 @@ export default function LectureRoom({ loaderData }: Route.ComponentProps) {
         </Link>
         <h1 className="text-xl font-extrabold tracking-tight">{courseLabel}</h1>
         <p className="text-muted-foreground text-[13px]">
-          수강할 회차를 선택하세요. 회차마다 정해진 횟수만큼 재생할 수 있으며, 재생 횟수는{" "}
-          <strong>하루 1회</strong> 기준으로 차감됩니다(같은 날 여러 번 봐도 1회).
+          수강할 회차를 선택하세요.
         </p>
       </div>
 
@@ -135,19 +136,14 @@ export default function LectureRoom({ loaderData }: Route.ComponentProps) {
                         ) : null}
                       </p>
                       <p className="text-muted-foreground mt-0.5 text-[12px] tabular-nums">
-                        재생 {l.playsUsed}/{l.maxPlays}회
-                        {exhausted ? (
-                          <span className="ml-1 font-semibold text-rose-600 dark:text-rose-400">
-                            · 소진
-                          </span>
-                        ) : (
-                          <span className="ml-1">· 남은 {l.playsLeft}회</span>
-                        )}
+                        강의 {l.durationSeconds.toLocaleString("ko-KR")}초 · 학습{" "}
+                        {l.watchedSeconds.toLocaleString("ko-KR")}초 · 진도율{" "}
+                        {Math.round(l.progressRatio * 100)}%
                       </p>
                     </div>
                     {exhausted ? (
                       <span className="text-muted-foreground inline-flex h-8 shrink-0 items-center gap-1 px-2 text-[12px]">
-                        <LockIcon className="size-3.5" /> 소진
+                        <LockIcon className="size-3.5" /> 재생 제한
                       </span>
                     ) : (
                       <Button asChild size="sm" className="shrink-0">

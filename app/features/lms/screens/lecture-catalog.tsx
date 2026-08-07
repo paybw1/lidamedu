@@ -233,10 +233,10 @@ function ProductCard({
   tossClientKey: string | null;
 }) {
   const isTpass = product.productKind === "tpass";
-  const { addPlan, addBook, has } = useCart();
+  const { addPlan, has } = useCart();
   const inCart = has(`plan:${product.code}`);
   return (
-    <Card className="flex flex-col">
+    <Card className="flex h-full flex-col">
       <CardContent className="flex flex-1 flex-col gap-3 p-5">
         <Link
           to={`/lecture/catalog/${product.code}`}
@@ -288,48 +288,8 @@ function ProductCard({
         )}
         </Link>
 
-        {product.books.length > 0 ? (
-          <div className="border-t pt-2.5">
-            <p className="text-muted-foreground mb-1 text-[11px] font-semibold">
-              교재
-            </p>
-            <ul className="space-y-1">
-              {product.books.map((b) => {
-                const inBookCart = has(`book:${b.bookId}`);
-                return (
-                  <li
-                    key={b.bookId}
-                    className="flex items-center gap-2 text-xs"
-                  >
-                    <span className="min-w-0 flex-1 truncate">{b.title}</span>
-                    <span className="tabular-nums shrink-0">
-                      {b.priceKrw.toLocaleString("ko-KR")}원
-                    </span>
-                    {isAuthed ? (
-                      inBookCart ? (
-                        <Link
-                          to="/lecture/cart"
-                          className="text-link shrink-0 text-[11px] font-semibold hover:underline"
-                        >
-                          담김
-                        </Link>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => addBook(b.bookId, 1)}
-                          className="border-border hover:bg-muted/50 shrink-0 rounded border px-1.5 py-0.5 text-[11px] font-medium"
-                        >
-                          담기
-                        </button>
-                      )
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        ) : null}
-
+        {/* feat-11-008 P0 — 수강신청 카드 간소화(260807 요청서): 교재 정보(교재명·가격·담기)는
+            카드에서 제거하고 상세페이지에서만 표시. 카드는 강의 비교용 핵심 정보만. */}
         <div className="mt-2 flex items-center justify-between border-t pt-3">
           <span className="text-lg font-bold tabular-nums">
             {product.priceKrw.toLocaleString("ko-KR")}

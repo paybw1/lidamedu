@@ -37,7 +37,7 @@ import {
 import type { Route } from "./+types/admin-lms-courses";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "강의 시리즈·에디션 | 리담변리사학원" },
+  { title: "강의개설 | 리담변리사학원" },
 ];
 
 const SUBJECT_OPTIONS = [
@@ -464,8 +464,8 @@ export default function AdminLmsCourses({ loaderData }: Route.ComponentProps) {
     <AdminShell
       cluster="lms"
       role={role}
-      title="강의 시리즈·에디션"
-      desc="강의 영상의 시리즈(정체성)와 연도판 에디션을 관리합니다. 전면 개편은 새 에디션으로, 소규모 수정은 에디션 상세에서 영상 교체로 처리합니다."
+      title="강의개설"
+      desc="강의를 등록·개설하고 연도판을 관리합니다. 전면 개편은 새 연도판으로, 소규모 수정은 강의 상세에서 영상 교체로 처리합니다."
     >
       <CreateSeriesForm instructors={instructors} />
       <CategoryManager categories={categories} />

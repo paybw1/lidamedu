@@ -28,7 +28,7 @@ import {
   UserCogIcon,
   UsersIcon,
 } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Link, useLocation } from "react-router";
 
 import { ROLE_LABEL, roleAtLeast, type UserRole } from "~/core/lib/roles";
@@ -204,7 +204,8 @@ export const ADMIN_NAV: NavCluster[] = [
     label: "강의·도서몰",
     Icon: ClapperboardIcon,
     screens: [
-      { label: "강의 시리즈·에디션", to: "/admin/lms/courses" },
+      // feat-11-008 P0 — 운영자 노출 명칭은 '강의개설'(시리즈·에디션 용어 비노출, 260807 요청서).
+      { label: "강의개설", to: "/admin/lms/courses" },
       { label: "콘텐츠 라이브러리", to: "/admin/lms/contents" },
       // 수강 후기 일단 숨김(REVIEWS_ENABLED) — 재오픈 시 자동 복원.
       ...(REVIEWS_ENABLED
@@ -406,6 +407,18 @@ function clusterById(id: AdminClusterId): NavCluster {
   return ADMIN_NAV.find((c) => c.id === id) ?? ADMIN_NAV[0];
 }
 
+// 사이드바 클러스터 접힘 상태(사용자가 접은 것만 기억) — feat-11-008 P0.
+function readAdminNavOpen(): Record<string, boolean> {
+  if (typeof window === "undefined") return {};
+  try {
+    return JSON.parse(
+      window.localStorage.getItem("adminNavOpen") ?? "{}",
+    ) as Record<string, boolean>;
+  } catch {
+    return {};
+  }
+}
+
 // 역할 맞춤 내비 — 각 클러스터의 화면을 minRole 로 필터하고, 남은 화면이 없는
 // 클러스터는 제거. hub(섹션 없음)는 항상 유지. 사이드바·허브 그리드 공용.
 export function visibleAdminNav(role: UserRole | null | undefined): NavCluster[] {
@@ -429,7 +442,27 @@ function ClusterGroup({
   collapsed: boolean;
 }) {
   const isActiveCluster = cluster.id === activeCluster;
-  const [open, setOpen] = useState(isActiveCluster);
+  // 펼침 상태 — 기본 전체 펼침 유지(요청서: 하위 메뉴 이동 시 다른 메뉴가 사라지지 않아야 함).
+  // 라우트 이동마다 AdminShell 이 재마운트되므로 사용자가 접은 클러스터만 localStorage 로 기억.
+  // SSR 결정성(hydration)을 위해 초기값은 항상 true, 저장된 접힘은 mount 후 적용.
+  // 활성 클러스터는 저장값과 무관하게 펼침 유지.
+  const [open, setOpen] = useState(true);
+  useEffect(() => {
+    if (isActiveCluster) return;
+    if (readAdminNavOpen()[cluster.id] === false) setOpen(false);
+  }, [isActiveCluster, cluster.id]);
+  const toggleOpen = () =>
+    setOpen((v) => {
+      const next = !v;
+      try {
+        const m = readAdminNavOpen();
+        m[cluster.id] = next;
+        window.localStorage.setItem("adminNavOpen", JSON.stringify(m));
+      } catch {
+        // localStorage 불가 환경(사파리 프라이빗 등) — 상태만 토글
+      }
+      return next;
+    });
   const onlyOne = cluster.screens.length === 1;
   const { Icon } = cluster;
 
@@ -468,7 +501,7 @@ function ClusterGroup({
       ) : (
         <button
           type="button"
-          onClick={() => setOpen((v) => !v)}
+          onClick={toggleOpen}
           aria-expanded={open}
           className={cn(
             "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors",
@@ -490,7 +523,8 @@ function ClusterGroup({
       {!onlyOne && open ? (
         <ul className="mt-0.5 flex flex-col gap-0.5 pl-[34px]">
           {cluster.screens.map((s) => {
-            const isActive = pathname === s.to;
+            // 상세 경로(/admin/settlements/:id 등)에서도 소속 메뉴가 활성으로 표시되도록 prefix 매칭.
+            const isActive = pathname === s.to || pathname.startsWith(s.to + "/");
             return (
               <li key={s.to}>
                 <Link
