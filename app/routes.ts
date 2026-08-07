@@ -928,6 +928,8 @@ export default [
       ),
       route("/admin/guides", "features/admin/screens/admin-guides.tsx"),
       // feat-11-008 P2 — 페이지관리(풀페이지 CMS) + 공개 라우트.
+      // feat-11-008 P4 — 강의개설 통합 목록(판매 상품 기준 검색·관리).
+      route("/admin/lectures", "features/lms/screens/admin-lectures.tsx"),
       // feat-11-008 P3 — 강의 카테고리 관리(course_categories SSOT).
       route(
         "/admin/lecture-categories",

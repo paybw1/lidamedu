@@ -204,8 +204,10 @@ export const ADMIN_NAV: NavCluster[] = [
     label: "강의·도서몰",
     Icon: ClapperboardIcon,
     screens: [
-      // feat-11-008 P0 — 운영자 노출 명칭은 '강의개설'(시리즈·에디션 용어 비노출, 260807 요청서).
-      { label: "강의개설", to: "/admin/lms/courses" },
+      // feat-11-008 P4 — 강의개설(판매 상품 통합 목록: 검색·수정·목차·수강생 진입점).
+      { label: "강의개설", to: "/admin/lectures" },
+      // 강의 콘텐츠(회차·영상 심화) — 내부 구조는 시리즈/연도판 유지, 용어만 운영 용어.
+      { label: "강의 콘텐츠", to: "/admin/lms/courses" },
       // feat-11-008 P3 — 강의·상품 공용 분류 관리(카탈로그 탭 SSOT).
       { label: "강의 카테고리", to: "/admin/lecture-categories" },
       { label: "콘텐츠 라이브러리", to: "/admin/lms/contents" },
