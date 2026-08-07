@@ -8,15 +8,11 @@
 //     코드 배포 없이 Vercel 환경변수 `ENFORCE_DEVICE=true` 로 즉시 켠다.
 //     (fingerprint 없이 켜도 ensureDeviceForPlayback 이 통과 처리하므로 안전하나 실효 없음
 //     — 반드시 플레이어 fingerprint 배선 후 켤 것.)
-// ★시간(배수) 제한 폐지(2026-07-22) — 회차별 재생 "횟수" 제한(course_lessons.max_plays)으로 대체.
-//   watch_ledger/used_seconds 추적은 통계용으로 남기되, 재생 차단은 하지 않는다.
+// ★시간(배수) 제한 폐지(2026-07-22). ★재생 제한 재정의(feat-11-008 P6, 2026-08-07 원장 확정):
+//   강의 단위 courses.max_plays(null=무제한, 기본 2)를 각 회차에 동일 적용하고,
+//   차감은 실제 학습시간 비례 — 학습초 >= max_plays × 회차 길이면 차단("하루 1회" 규칙 폐지).
 const ENFORCE_MULTIPLIER = false;
 const ENFORCE_DEVICE = process.env.ENFORCE_DEVICE === "true";
-// 재생 "1회" 정의 = **하루 단위(KST 달력일)**. 같은 회차를 같은 날에 여러 번 봐도 1회,
-//   다른 날에 재생하면 새 1회 차감. (하루 안의 재개·새로고침·이어보기는 무차감)
-function kstDateStr(ms: number): string {
-  return new Date(ms + 9 * 3600_000).toISOString().slice(0, 10);
-}
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
@@ -28,7 +24,10 @@ import {
   ensureDeviceForPlayback,
 } from "~/features/lms/devices.server";
 import { buildKollusWebTokenUrl } from "~/features/lms/lib/kollus-token.server";
-import { getRemainingSeconds } from "~/features/lms/watch.server";
+import {
+  getRemainingSeconds,
+  getWatchedSecondsForLesson,
+} from "~/features/lms/watch.server";
 
 const GRANT_TTL_MINUTES = 10;
 // 재생 URL(JWT expt) 유효기간 — 긴 강의도 끊기지 않게 구간 보고 창(6h)에 맞춘다.
@@ -87,8 +86,8 @@ export async function requestPlaybackGrant(
 
   let enrollmentId: string | null = null;
   let deviceId: string | null = null;
-  // 이 재생이 새 세션(1회 차감) 인지 — 학생 정규 재생일 때만 true 가능(맛보기·스태프 무차감).
-  let countsAsPlay = false;
+  // (구) 세션 차감 플래그 — 시간 비례 판정으로 대체돼 항상 false. grant 이력 컬럼 호환용.
+  const countsAsPlay = false;
 
   // 운영 스태프(강사·매니저·원장) 여부 — 검수·모니터링 목적으로 수강권·배수·기기
   // 게이트를 면제한다(강의 자료 다운로드 material-download 와 동일 기준). enrollment_id 는
@@ -138,27 +137,28 @@ export async function requestPlaybackGrant(
     }
     enrollmentId = usable.enrollment_id;
 
-    // 4) 재생 횟수 — 회차별 max_plays. "1회" = 새 재생 세션(직전 재생과 gap 이상).
-    //   같은 세션 내 재개/새로고침은 무차감. 소진 후 새 세션 시작만 차단.
+    // 4) 재생 제한 — feat-11-008 P6(원장 확정 2026-08-07): "하루 1회 차감" 폐지.
+    //   강의(에디션) 단위 max_plays(null=무제한, 기본 2)를 소속 각 회차에 동일 적용하고,
+    //   차감은 횟수가 아니라 **실제 학습시간 비례** — 회차 허용량 = max_plays × 강의 길이(초).
+    //   누적 학습시간(watch_ledger)이 허용량 이상이면 차단. 길이 미확인 회차는 fail-open.
     {
-      const maxPlays = lesson.max_plays ?? 2;
-      const { data: prior } = await adminClient
-        .from("playback_grants")
-        .select("granted_at, counts_as_play")
-        .eq("user_id", input.userId)
-        .eq("lesson_id", input.lessonId)
-        .order("granted_at", { ascending: false })
-        .limit(500);
-      const playsUsed = (prior ?? []).filter((g) => g.counts_as_play).length;
-      // 하루 단위 — 직전 재생이 오늘(KST)이면 같은 날 재생이라 무차감, 다른 날/최초면 새 1회.
-      const lastKst = prior?.[0]?.granted_at
-        ? kstDateStr(Date.parse(prior[0].granted_at))
-        : null;
-      const isNewSession = lastKst == null || lastKst < kstDateStr(now);
-      if (isNewSession && playsUsed >= maxPlays) {
-        return { ok: false, reason: "play_limit_exhausted" };
+      const { data: course } = await adminClient
+        .from("courses")
+        .select("max_plays")
+        .eq("course_id", lesson.course_id)
+        .maybeSingle();
+      const maxPlays = course?.max_plays ?? null; // null = 무제한
+      const durationSeconds = video.duration_seconds ?? 0;
+      if (maxPlays != null && durationSeconds > 0) {
+        const watched = await getWatchedSecondsForLesson(
+          input.userId,
+          input.lessonId,
+        );
+        if (watched >= maxPlays * durationSeconds) {
+          return { ok: false, reason: "play_limit_exhausted" };
+        }
       }
-      countsAsPlay = isNewSession;
+      // grant 는 이력으로만 남긴다(횟수 차감 판정에는 더 이상 쓰지 않음).
     }
     // (배수/시간 제한 폐지 — ENFORCE_MULTIPLIER=false)
     if (ENFORCE_MULTIPLIER) {

@@ -198,20 +198,6 @@ export async function action({ request, params }: Route.ActionArgs) {
     return data({ ok: true as const });
   }
 
-  if (intent === "set_lesson_max_plays") {
-    const lessonId = String(fd.get("lessonId") ?? "");
-    const maxPlays = Math.trunc(Number(fd.get("maxPlays") ?? NaN));
-    if (!lessonId || !Number.isFinite(maxPlays) || maxPlays < 1 || maxPlays > 99) {
-      return data({ error: "재생 횟수는 1~99 사이로 입력해 주세요." }, { status: 400 });
-    }
-    const { error } = await client
-      .from("course_lessons")
-      .update({ max_plays: maxPlays })
-      .eq("lesson_id", lessonId);
-    if (error) return data({ error: error.message }, { status: 400 });
-    return data({ ok: true as const });
-  }
-
   if (intent === "move_lesson") {
     // 노출 순서 교환 — 인접 회차와 sort_order swap
     const lessonId = String(fd.get("lessonId") ?? "");
@@ -506,6 +492,11 @@ export async function action({ request, params }: Route.ActionArgs) {
       editionLabel: fd.get("editionLabel"),
       editionYear: fd.get("editionYear"),
     });
+    // feat-11-008 P6 — 강의 단위 최대 재생횟수(1/2/3/무제한). ""=무제한(null).
+    const maxPlaysRaw = String(fd.get("maxPlays") ?? "2").trim();
+    const maxPlays = maxPlaysRaw === "" ? null : Math.trunc(Number(maxPlaysRaw));
+    if (maxPlays != null && (!Number.isFinite(maxPlays) || maxPlays < 1 || maxPlays > 99))
+      return data({ error: "최대 재생횟수를 확인해 주세요." }, { status: 400 });
     if (!parsed.success)
       return data({ error: "입력을 확인해 주세요. (에디션명·연도 확인)" }, { status: 400 });
     const p = parsed.data;
@@ -519,6 +510,7 @@ export async function action({ request, params }: Route.ActionArgs) {
         is_visible: p.isVisible,
         edition_label: p.editionLabel,
         edition_year: p.editionYear,
+        max_plays: maxPlays,
       })
       .eq("course_id", courseId);
     if (error) return data({ error: error.message }, { status: 400 });
@@ -860,6 +852,28 @@ function BasicInfoTab({
               defaultValue={course.editionYear}
               className="border-input bg-background h-9 rounded-lg border px-2 text-sm tabular-nums"
             />
+          </label>
+        </div>
+        {/* feat-11-008 P6 — 강의 단위 최대 재생횟수. 소속 각 회차에 동일 적용(1강 2회, 2강 2회…). */}
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-muted-foreground text-[11px] font-semibold">
+              최대 재생횟수
+            </span>
+            <select
+              name="maxPlays"
+              defaultValue={course.maxPlays == null ? "" : String(course.maxPlays)}
+              className="border-input bg-background h-9 rounded-lg border px-2 text-sm"
+            >
+              <option value="1">1회</option>
+              <option value="2">2회</option>
+              <option value="3">3회</option>
+              <option value="">무제한</option>
+            </select>
+            <span className="text-muted-foreground/70 text-[10px]">
+              회차마다 각각 적용되며, 실제 학습시간(회차 길이 × 횟수) 기준으로 소진됩니다.
+              수강생 화면에는 횟수를 표시하지 않습니다.
+            </span>
           </label>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -1540,25 +1554,6 @@ function LessonCard({
             className="border-border hover:bg-muted/50 h-6 rounded-md border px-2 text-[11px] font-medium">
             {lesson.isPublished ? "비공개로" : "공개로"}
           </button>
-          <fetcher.Form method="post" className="flex items-center gap-1">
-            <input type="hidden" name="intent" value="set_lesson_max_plays" />
-            <input type="hidden" name="lessonId" value={lesson.lessonId} />
-            <span className="text-muted-foreground text-[11px]">재생</span>
-            <input
-              type="number"
-              name="maxPlays"
-              min={1}
-              max={99}
-              defaultValue={lesson.maxPlays}
-              className="border-input bg-background h-6 w-12 rounded-md border px-1.5 text-center text-[11px] tabular-nums"
-              title="회차별 재생 가능 횟수"
-            />
-            <span className="text-muted-foreground text-[11px]">회</span>
-            <button type="submit"
-              className="border-border hover:bg-muted/50 h-6 rounded-md border px-1.5 text-[11px] font-medium">
-              저장
-            </button>
-          </fetcher.Form>
           <button type="button" onClick={() => setEditing((v) => !v)}
             className="border-border hover:bg-muted/50 h-6 rounded-md border px-2 text-[11px] font-medium">
             {editing ? "수정 취소" : "수정"}

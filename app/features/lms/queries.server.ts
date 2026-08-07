@@ -167,6 +167,8 @@ export interface CourseDetail {
   adminMemo: string | null;
   isVisible: boolean;
   publicNo: number | null;
+  // feat-11-008 P6 — 강의 단위 최대 재생횟수(null=무제한). 각 회차에 동일 적용.
+  maxPlays: number | null;
   instructors: CourseInstructorRow[];
   lessons: Array<{
     lessonId: string;
@@ -197,7 +199,7 @@ export async function getCourseDetail(
   const { data: course, error } = await client
     .from("courses")
     .select(
-      "course_id, series_id, edition_label, edition_year, is_current, status, course_type, category_id, admin_memo, is_visible, public_no, series:course_series!courses_series_id_fkey(title, subject_code)",
+      "course_id, series_id, edition_label, edition_year, is_current, status, course_type, category_id, admin_memo, is_visible, public_no, max_plays, series:course_series!courses_series_id_fkey(title, subject_code)",
     )
     .eq("course_id", courseId)
     .is("deleted_at", null)
@@ -256,6 +258,7 @@ export async function getCourseDetail(
     adminMemo: course.admin_memo,
     isVisible: course.is_visible,
     publicNo: course.public_no,
+    maxPlays: course.max_plays ?? null,
     instructors,
     lessons: (lessons ?? []).map((l) => {
       const vids = (videosRes.data ?? []).filter((v) => v.lesson_id === l.lesson_id);

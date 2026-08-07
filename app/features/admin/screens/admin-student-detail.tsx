@@ -3174,7 +3174,8 @@ function WatchHistorySection({ courses }: { courses: UserWatchCourse[] }) {
             <div className="flex items-center justify-between gap-2">
               <p className="text-[13px] font-semibold">{c.courseLabel}</p>
               <span className="text-muted-foreground text-[11px]">
-                총 {fmtWatchDur(c.totalWatchedSeconds)} · {c.lessons.length}개 회차
+                총 {fmtWatchDur(c.totalWatchedSeconds)} · {c.lessons.length}개 회차 ·
+                최대 재생 {c.maxPlays == null ? "무제한" : `${c.maxPlays}회`}
               </span>
             </div>
             <div className="overflow-x-auto">
@@ -3183,6 +3184,7 @@ function WatchHistorySection({ courses }: { courses: UserWatchCourse[] }) {
                   <tr className="text-muted-foreground border-b text-left">
                     <th className="py-1 pr-2 font-medium">회차</th>
                     <th className="py-1 pr-2 text-right font-medium">시청</th>
+                    <th className="py-1 pr-2 text-right font-medium">사용</th>
                     <th className="py-1 pr-2 text-right font-medium">진도</th>
                     <th className="py-1 pr-2 font-medium">최초</th>
                     <th className="py-1 font-medium">마지막</th>
@@ -3199,6 +3201,19 @@ function WatchHistorySection({ courses }: { courses: UserWatchCourse[] }) {
                       </td>
                       <td className="py-1 pr-2 text-right tabular-nums">
                         {fmtWatchDur(l.watchedSeconds)}
+                      </td>
+                      {/* feat-11-008 P6 — 시간 비례 소진: 학습시간 ÷ 회차 길이 = 환산 사용 횟수 */}
+                      <td
+                        className={
+                          "py-1 pr-2 text-right tabular-nums " +
+                          (c.maxPlays != null && l.usedPlays >= c.maxPlays
+                            ? "font-semibold text-rose-600 dark:text-rose-400"
+                            : "")
+                        }
+                        title={`학습 ${fmtWatchDur(l.usedSeconds)} / 회차 ${fmtWatchDur(l.durationSeconds)}`}
+                      >
+                        {l.usedPlays.toFixed(1)}
+                        {c.maxPlays == null ? "" : ` / ${c.maxPlays}`}회
                       </td>
                       <td className="py-1 pr-2 text-right tabular-nums">
                         {Math.round(l.progressRatio * 100)}%

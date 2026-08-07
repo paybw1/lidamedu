@@ -298,12 +298,17 @@ export interface UserWatchLesson {
   progressRatio: number;
   firstAt: string | null;
   lastAt: string | null;
+  // feat-11-008 P6 — 시간 비례 재생 제한 CS 조회용.
+  usedSeconds: number; // 실제 학습(반복 포함) 누적 초
+  usedPlays: number; // 환산 사용 횟수 = 학습초 / 회차 길이
 }
 export interface UserWatchCourse {
   courseId: string;
   courseLabel: string;
   lessons: UserWatchLesson[];
   totalWatchedSeconds: number;
+  // feat-11-008 P6 — 강의에 설정된 최대 재생횟수(null=무제한).
+  maxPlays: number | null;
 }
 
 // 회원의 강의별·회차별 시청 상세. 시청 활동(구간 보고)이 있는 회차만 포함.
@@ -322,9 +327,11 @@ export async function getUserWatchHistory(
   const { data: courses } = await adminClient
     .from("courses")
     .select(
-      "course_id, edition_label, series:course_series!courses_series_id_fkey(title)",
+      "course_id, edition_label, max_plays, series:course_series!courses_series_id_fkey(title)",
     )
     .in("course_id", courseIds);
+  const courseMaxPlays = new Map<string, number | null>();
+  for (const c of courses ?? []) courseMaxPlays.set(c.course_id, c.max_plays ?? null);
   const courseLabel = new Map<string, string>();
   for (const c of courses ?? []) {
     const title = (c.series as { title: string } | null)?.title ?? "";
@@ -346,6 +353,8 @@ export async function getUserWatchHistory(
   if (lessonIds.length === 0) return [];
 
   const progress = await getLessonProgressForUser(userId, lessonIds);
+  // feat-11-008 P6 — 실제 학습시간(반복 포함) — 환산 사용 횟수 산출용.
+  const usedByLesson = await getWatchedSecondsByLesson(userId, lessonIds);
 
   // 회차별 최초/마지막 재생일 — watch_events reported_at min/max(JS 집계).
   const firstAt = new Map<string, string>();
@@ -383,6 +392,11 @@ export async function getUserWatchHistory(
       progressRatio: p?.progressRatio ?? 0,
       firstAt: first,
       lastAt: lastAt.get(l.lesson_id) ?? null,
+      usedSeconds: usedByLesson.get(l.lesson_id) ?? 0,
+      usedPlays:
+        (p?.durationSeconds ?? 0) > 0
+          ? (usedByLesson.get(l.lesson_id) ?? 0) / (p?.durationSeconds ?? 1)
+          : 0,
     });
     byCourse.set(l.course_id, arr);
   }
@@ -396,7 +410,51 @@ export async function getUserWatchHistory(
       courseLabel: courseLabel.get(cid) ?? cid,
       lessons: ls,
       totalWatchedSeconds: ls.reduce((s, l) => s + l.watchedSeconds, 0),
+      maxPlays: courseMaxPlays.get(cid) ?? null,
     });
+  }
+  return out;
+}
+
+/** 회차별 실제 학습(재생) 누적 초 — feat-11-008 P6 시간 비례 재생 제한 판정용.
+ *  watch_events 의 보고 구간 합계(중복 구간 포함 — 반복 시청도 소비로 계산).
+ *  진도율(getLessonProgressForUser)의 union 병합과 목적이 다르다(그쪽은 중복 제외). */
+export async function getWatchedSecondsForLesson(
+  userId: string,
+  lessonId: string,
+): Promise<number> {
+  const { data } = await adminClient
+    .from("watch_events")
+    .select("from_seconds, to_seconds")
+    .eq("user_id", userId)
+    .eq("lesson_id", lessonId)
+    .limit(20000);
+  let total = 0;
+  for (const e of data ?? []) {
+    const span = (e.to_seconds ?? 0) - (e.from_seconds ?? 0);
+    if (span > 0) total += span;
+  }
+  return total;
+}
+
+/** 여러 회차의 학습 누적 초 — 관리자 CS 조회(회차별 사용 현황)용. */
+export async function getWatchedSecondsByLesson(
+  userId: string,
+  lessonIds: string[],
+): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  if (lessonIds.length === 0) return out;
+  for (let i = 0; i < lessonIds.length; i += 150) {
+    const { data } = await adminClient
+      .from("watch_events")
+      .select("lesson_id, from_seconds, to_seconds")
+      .eq("user_id", userId)
+      .in("lesson_id", lessonIds.slice(i, i + 150))
+      .limit(20000);
+    for (const e of data ?? []) {
+      const span = (e.to_seconds ?? 0) - (e.from_seconds ?? 0);
+      if (span > 0) out.set(e.lesson_id, (out.get(e.lesson_id) ?? 0) + span);
+    }
   }
   return out;
 }

@@ -4642,6 +4642,7 @@ export type Database = {
           edition_year: number
           is_current: boolean
           is_visible: boolean
+          max_plays: number | null
           public_no: number | null
           series_id: string
           status: string
@@ -4660,6 +4661,7 @@ export type Database = {
           edition_year: number
           is_current?: boolean
           is_visible?: boolean
+          max_plays?: number | null
           public_no?: number | null
           series_id: string
           status?: string
@@ -4678,6 +4680,7 @@ export type Database = {
           edition_year?: number
           is_current?: boolean
           is_visible?: boolean
+          max_plays?: number | null
           public_no?: number | null
           series_id?: string
           status?: string
