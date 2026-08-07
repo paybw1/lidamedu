@@ -90,6 +90,8 @@ export interface SubscriptionPlan {
   saleStatus: SaleStatus;
   /** 강의 카탈로그 분류(course/tpass 상품). null=미분류. */
   lectureCategory: "round1" | "round2" | "package" | "onsite" | null;
+  // feat-11-008 P3 — 강의 카테고리 테이블 연결(카탈로그 탭·검색 SSOT). 구 enum 은 통계 축 호환.
+  categoryId: string | null;
   /** 수강신청 상세(/lecture/catalog/:code) 본문 — 히어로 배너와 동일하게 이미지 또는 HTML. */
   detailImageUrl: string | null;
   detailHtml: string | null;

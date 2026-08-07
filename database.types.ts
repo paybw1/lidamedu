@@ -11483,6 +11483,7 @@ export type Database = {
       subscription_plans: {
         Row: {
           available_from: string | null
+          category_id: string | null
           code: string
           created_at: string
           description: string | null
@@ -11503,6 +11504,7 @@ export type Database = {
         }
         Insert: {
           available_from?: string | null
+          category_id?: string | null
           code: string
           created_at?: string
           description?: string | null
@@ -11523,6 +11525,7 @@ export type Database = {
         }
         Update: {
           available_from?: string | null
+          category_id?: string | null
           code?: string
           created_at?: string
           description?: string | null
@@ -11541,7 +11544,15 @@ export type Database = {
           subject_codes?: Json
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "subscription_plans_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "course_categories"
+            referencedColumns: ["category_id"]
+          },
+        ]
       }
       support_faqs: {
         Row: {

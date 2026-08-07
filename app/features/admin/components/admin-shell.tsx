@@ -206,6 +206,8 @@ export const ADMIN_NAV: NavCluster[] = [
     screens: [
       // feat-11-008 P0 — 운영자 노출 명칭은 '강의개설'(시리즈·에디션 용어 비노출, 260807 요청서).
       { label: "강의개설", to: "/admin/lms/courses" },
+      // feat-11-008 P3 — 강의·상품 공용 분류 관리(카탈로그 탭 SSOT).
+      { label: "강의 카테고리", to: "/admin/lecture-categories" },
       { label: "콘텐츠 라이브러리", to: "/admin/lms/contents" },
       // 수강 후기 일단 숨김(REVIEWS_ENABLED) — 재오픈 시 자동 복원.
       ...(REVIEWS_ENABLED

@@ -15,10 +15,6 @@ import { AdminShell } from "~/features/admin/components/admin-shell";
 import { HtmlEditor } from "~/features/lms/components/html-editor";
 import { PlanPolicyFields } from "~/features/subscriptions/components/plan-policy-fields";
 import {
-  LECTURE_CATEGORIES,
-  LECTURE_CATEGORY_LABEL,
-} from "~/features/lms/lib/lecture-category";
-import {
   Chip,
   IndexTable,
   TD,
@@ -73,14 +69,16 @@ export async function loader({ request }: Route.LoaderArgs) {
   const coursePlanIds = plans
     .filter((p) => p.productKind === "course" || p.productKind === "tpass")
     .map((p) => p.planId);
-  const [policies, courseLinks, editions, bookLinks, books] = await Promise.all([
+  const [policies, courseLinks, editions, bookLinks, books, categoryOptions] = await Promise.all([
     getPlanPolicies(coursePlanIds),
     getPlanCourseLinks(coursePlanIds),
     listCourseEditionsForPicker(client),
     getPlanBookLinks(coursePlanIds),
     listBooksForPicker(),
+    // feat-11-008 P3 — 강의 카테고리 테이블 선택지(상위+하위).
+    import("~/features/lms/queries.server").then((m) => m.listLectureCategoryOptions(client)),
   ]);
-  return { plans, policies, courseLinks, editions, bookLinks, books, role };
+  return { plans, policies, courseLinks, editions, bookLinks, books, categoryOptions, role };
 }
 
 const SALE_STATUS_TONE: Record<
@@ -107,7 +105,7 @@ function isoToLocalInput(iso: string | null): string {
 }
 
 export default function AdminPlans({ loaderData }: Route.ComponentProps) {
-  const { plans, policies, courseLinks, editions, bookLinks, books, role } =
+  const { plans, policies, courseLinks, editions, bookLinks, books, categoryOptions, role } =
     loaderData;
   const [adding, setAdding] = useState(false);
   const coursePlans = plans
@@ -135,6 +133,7 @@ export default function AdminPlans({ loaderData }: Route.ComponentProps) {
             linkedCourseIds={[]}
             books={books}
             linkedBooks={[]}
+            categoryOptions={categoryOptions}
             onClose={() => setAdding(false)}
           />
         </div>
@@ -162,6 +161,7 @@ export default function AdminPlans({ loaderData }: Route.ComponentProps) {
             linkedCourseIds={courseLinks[p.planId] ?? []}
             books={books}
             linkedBooks={bookLinks[p.planId] ?? []}
+            categoryOptions={categoryOptions}
           />
         ))}
       </IndexTable>
@@ -179,6 +179,7 @@ function PlanRow({
   linkedCourseIds,
   books,
   linkedBooks,
+  categoryOptions,
 }: {
   plan: SubscriptionPlan;
   policy?: PlanPolicy;
@@ -187,6 +188,7 @@ function PlanRow({
   linkedCourseIds: string[];
   books: BookPickerItem[];
   linkedBooks: PlanBookLink[];
+  categoryOptions: Array<{ categoryId: string; label: string }>;
 }) {
   const [editing, setEditing] = useState(false);
   return (
@@ -243,6 +245,7 @@ function PlanRow({
               linkedCourseIds={linkedCourseIds}
               books={books}
               linkedBooks={linkedBooks}
+              categoryOptions={categoryOptions}
               onClose={() => setEditing(false)}
             />
           </td>
@@ -280,6 +283,7 @@ function PlanForm({
   linkedCourseIds,
   books,
   linkedBooks,
+  categoryOptions,
   onClose,
 }: {
   mode: "create" | "update";
@@ -290,6 +294,7 @@ function PlanForm({
   linkedCourseIds: string[];
   books: BookPickerItem[];
   linkedBooks: PlanBookLink[];
+  categoryOptions: Array<{ categoryId: string; label: string }>;
   onClose: () => void;
 }) {
   const fetcher = useFetcher<{ ok?: true; error?: string }>();
@@ -516,21 +521,29 @@ function PlanForm({
       ) : null}
 
       {showPolicy ? (
-        <FormField label="강의 카탈로그 분류">
-          <select
+        <FormField label="강의 카테고리">
+          {/* feat-11-008 P3 — 관리자 등록 카테고리(course_categories) 선택. 구 enum 값은
+              매출 통계 축 호환을 위해 hidden 으로 보존(쓰기 중단·덮어쓰기 방지). */}
+          <input
+            type="hidden"
             name="lectureCategory"
-            defaultValue={plan?.lectureCategory ?? ""}
+            value={plan?.lectureCategory ?? ""}
+          />
+          <select
+            name="categoryId"
+            defaultValue={plan?.categoryId ?? ""}
             className="border-input bg-background h-8 w-full rounded-md border px-2 text-xs sm:w-56"
           >
             <option value="">미분류 (전체 탭에만 노출)</option>
-            {LECTURE_CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {LECTURE_CATEGORY_LABEL[c]}
+            {categoryOptions.map((c) => (
+              <option key={c.categoryId} value={c.categoryId}>
+                {c.label}
               </option>
             ))}
           </select>
           <span className="text-muted-foreground/70 text-[10px]">
-            수강신청(/lecture/catalog) 카테고리 탭 분류입니다.
+            수강신청(/lecture/catalog) 카테고리 탭 분류입니다. 카테고리는 운영·시스템 {'>'}
+            강의 카테고리에서 관리합니다.
           </span>
         </FormField>
       ) : null}

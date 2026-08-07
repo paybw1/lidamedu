@@ -10,11 +10,6 @@ import { Card, CardContent } from "~/core/components/ui/card";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
 import { useCart } from "~/features/lms/lib/cart";
-import {
-  LECTURE_CATEGORIES,
-  LECTURE_CATEGORY_LABEL,
-  type LectureCategory,
-} from "~/features/lms/lib/lecture-category";
 import { PRODUCT_KIND_LABEL } from "~/features/subscriptions/labels";
 import {
   cancelPendingCheckout,
@@ -22,6 +17,7 @@ import {
 } from "~/features/subscriptions/lib/cancel-pending-checkout.client";
 import {
   type LectureProduct,
+  listActiveLectureCategories,
   listSellableLectureProducts,
 } from "~/features/lms/queries.server";
 
@@ -36,9 +32,14 @@ export async function loader({ request }: Route.LoaderArgs) {
   const {
     data: { user },
   } = await client.auth.getUser();
-  const products = await listSellableLectureProducts(client, user?.id ?? null);
+  const [products, categories] = await Promise.all([
+    listSellableLectureProducts(client, user?.id ?? null),
+    // feat-11-008 P3 — 탭은 관리자 등록 카테고리(course_categories) 파생.
+    listActiveLectureCategories(client),
+  ]);
   return {
     products,
+    categories,
     isAuthed: Boolean(user),
     tossClientKey: process.env.TOSS_CLIENT_KEY ?? null,
   };
@@ -91,26 +92,25 @@ async function startLectureCheckout(
 }
 
 export default function LectureCatalog({ loaderData }: Route.ComponentProps) {
-  const { products, isAuthed, tossClientKey } = loaderData;
+  const { products, categories, isAuthed, tossClientKey } = loaderData;
   const [searchParams, setSearchParams] = useSearchParams();
   const catParam = searchParams.get("cat");
-  const activeCat: LectureCategory | null =
-    catParam && (LECTURE_CATEGORIES as readonly string[]).includes(catParam)
-      ? (catParam as LectureCategory)
+  const activeCat: string | null =
+    catParam && categories.some((c) => c.categoryId === catParam)
+      ? catParam
       : null;
 
-  const counts = LECTURE_CATEGORIES.reduce(
-    (acc, c) => {
-      acc[c] = products.filter((p) => p.category === c).length;
-      return acc;
-    },
-    {} as Record<LectureCategory, number>,
+  const counts = new Map(
+    categories.map((c) => [
+      c.categoryId,
+      products.filter((p) => p.categoryId === c.categoryId).length,
+    ]),
   );
   const filtered = activeCat
-    ? products.filter((p) => p.category === activeCat)
+    ? products.filter((p) => p.categoryId === activeCat)
     : products;
 
-  const setCat = (c: LectureCategory | null) => {
+  const setCat = (c: string | null) => {
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
@@ -137,13 +137,13 @@ export default function LectureCatalog({ loaderData }: Route.ComponentProps) {
           active={activeCat === null}
           onClick={() => setCat(null)}
         />
-        {LECTURE_CATEGORIES.map((c) => (
+        {categories.map((c) => (
           <CatTab
-            key={c}
-            label={LECTURE_CATEGORY_LABEL[c]}
-            count={counts[c]}
-            active={activeCat === c}
-            onClick={() => setCat(c)}
+            key={c.categoryId}
+            label={c.name}
+            count={counts.get(c.categoryId) ?? 0}
+            active={activeCat === c.categoryId}
+            onClick={() => setCat(c.categoryId)}
           />
         ))}
       </div>
@@ -251,9 +251,9 @@ function ProductCard({
             )}
             {PRODUCT_KIND_LABEL[product.productKind]}
           </Badge>
-          {product.category ? (
+          {product.categoryName ? (
             <Badge variant="outline" className="text-[11px]">
-              {LECTURE_CATEGORY_LABEL[product.category]}
+              {product.categoryName}
             </Badge>
           ) : null}
           {product.durationDays > 0 ? (

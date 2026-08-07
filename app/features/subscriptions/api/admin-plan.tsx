@@ -70,6 +70,8 @@ const schema = z.object({
   lectureCategory: z
     .enum(["round1", "round2", "package", "onsite"])
     .nullable(),
+  // feat-11-008 P3 — 강의 카테고리 테이블(course_categories) 연결. 미선택=null.
+  categoryId: z.string().uuid().nullable(),
 });
 
 export async function action({ request }: Route.ActionArgs) {
@@ -103,6 +105,10 @@ export async function action({ request }: Route.ActionArgs) {
     saleStatus: fd.get("saleStatus"),
     lectureCategory: (() => {
       const s = String(fd.get("lectureCategory") ?? "").trim();
+      return s === "" ? null : s;
+    })(),
+    categoryId: (() => {
+      const s = String(fd.get("categoryId") ?? "").trim();
       return s === "" ? null : s;
     })(),
   });
@@ -167,6 +173,7 @@ export async function action({ request }: Route.ActionArgs) {
       displayOrder: parsed.data.displayOrder,
       saleStatus: parsed.data.saleStatus,
       lectureCategory: parsed.data.lectureCategory,
+      categoryId: parsed.data.categoryId,
       detailImageUrl,
       detailHtml,
     },

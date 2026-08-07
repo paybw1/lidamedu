@@ -835,12 +835,64 @@ export interface LectureProduct {
   productKind: "course" | "tpass";
   durationDays: number;
   category: LectureCategory | null;
+  // feat-11-008 P3 — 카탈로그 탭 SSOT 는 course_categories 테이블(categoryId 기준).
+  // 구 enum(category)은 매출 통계 등 레거시 축 호환용으로 병존.
+  categoryId: string | null;
+  categoryName: string | null;
   courses: LectureProductCourse[];
   books: LectureProductBook[];
   owned: boolean;
   // 수강신청 상세 본문(이미지 또는 HTML) — /lecture/catalog/:code 렌더.
   detailImageUrl: string | null;
   detailHtml: string | null;
+}
+
+export interface LectureCategoryRow {
+  categoryId: string;
+  name: string;
+  sortOrder: number;
+}
+
+/** 상품·강의 폼 선택지 — 사용 중 카테고리 전체(하위는 "상위 > 하위" 라벨). feat-11-008 P3. */
+export async function listLectureCategoryOptions(
+  client: Client,
+): Promise<Array<{ categoryId: string; label: string }>> {
+  const { data } = await client
+    .from("course_categories")
+    .select("category_id, parent_id, name, sort_order")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+  const rows = data ?? [];
+  const nameById = new Map(rows.map((r) => [r.category_id, r.name]));
+  const tops = rows.filter((r) => !r.parent_id);
+  const out: Array<{ categoryId: string; label: string }> = [];
+  for (const t of tops) {
+    out.push({ categoryId: t.category_id, label: t.name });
+    for (const c of rows.filter((r) => r.parent_id === t.category_id)) {
+      out.push({
+        categoryId: c.category_id,
+        label: `${t.name} > ${nameById.get(c.category_id) ?? c.name}`,
+      });
+    }
+  }
+  return out;
+}
+
+/** 카탈로그 탭용 — 최상위·사용 중 카테고리(feat-11-008 P3, course_categories 파생). */
+export async function listActiveLectureCategories(
+  client: Client,
+): Promise<LectureCategoryRow[]> {
+  const { data } = await client
+    .from("course_categories")
+    .select("category_id, name, sort_order")
+    .is("parent_id", null)
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+  return (data ?? []).map((c) => ({
+    categoryId: c.category_id,
+    name: c.name,
+    sortOrder: c.sort_order,
+  }));
 }
 
 export async function listSellableLectureProducts(
@@ -850,7 +902,7 @@ export async function listSellableLectureProducts(
   const { data: plans, error } = await client
     .from("subscription_plans")
     .select(
-      "plan_id, code, name, description, price_krw, duration_days, product_kind, lecture_category, detail_image_url, detail_html",
+      "plan_id, code, name, description, price_krw, duration_days, product_kind, lecture_category, category_id, detail_image_url, detail_html",
     )
     .in("product_kind", ["course", "tpass"])
     .eq("is_active", true)
@@ -858,6 +910,17 @@ export async function listSellableLectureProducts(
   if (error) throw error;
   const planRows = plans ?? [];
   if (planRows.length === 0) return [];
+
+  // 카테고리명 해석(feat-11-008 P3) — 하위 카테고리 연결 상품도 이름 표시.
+  const catIds = [...new Set(planRows.map((p) => p.category_id).filter(Boolean))] as string[];
+  const catNameById = new Map<string, string>();
+  if (catIds.length > 0) {
+    const { data: cats } = await client
+      .from("course_categories")
+      .select("category_id, name")
+      .in("category_id", catIds);
+    for (const c of cats ?? []) catNameById.set(c.category_id, c.name);
+  }
 
   const planIds = planRows.map((p) => p.plan_id);
   const { data: links } = await client
@@ -983,6 +1046,8 @@ export async function listSellableLectureProducts(
     productKind: p.product_kind as "course" | "tpass",
     durationDays: p.duration_days,
     category: toLectureCategory(p.lecture_category),
+    categoryId: p.category_id,
+    categoryName: p.category_id ? (catNameById.get(p.category_id) ?? null) : null,
     courses: coursesByPlan.get(p.plan_id) ?? [],
     books: booksByPlan.get(p.plan_id) ?? [],
     owned: ownedPlanIds.has(p.plan_id),
