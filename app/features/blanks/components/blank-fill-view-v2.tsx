@@ -120,6 +120,42 @@ let lastNavAt = 0;
 let lastInputAt = 0;
 let composingNavAt = 0;
 
+// ★실문자 키 최근 입력 시각(모듈 공유) — 이월 strip 오발동 방지 게이트(2026-08-07 신고).
+//   실제 이월(carryover)은 키 입력 없이 IME 가 자발적으로 뱉는 반면, 사용자의 정상 타이핑은
+//   직전에 문자 keydown 이 반드시 선행한다(하드웨어 키보드=문자키, 소프트 키보드=keyCode 229
+//   "Unidentified"도 문자로 취급). "변경" 입력 후 다음 칸에 ㄱ→겨→'경'을 치는 순간 carried
+//   꼬리("경")와 우연히 겹쳐 정상 입력이 지워지던 오발동을 이 게이트로 차단한다.
+//   Enter/Tab/Backspace/화살표 등 비문자 키는 제외 — 이동 키 직후 도착하는 진짜 이월과
+//   backspace 로 튀어나온 직전 답 조각(nukeFrag)은 여전히 strip 대상이어야 하기 때문.
+let lastCharKeyAt = 0;
+const CHAR_KEY_STRIP_GATE_MS = 300;
+const NON_CHAR_KEYS = new Set([
+  "Enter",
+  "Tab",
+  "Backspace",
+  "Delete",
+  "Escape",
+  "Shift",
+  "Control",
+  "Alt",
+  "Meta",
+  "CapsLock",
+  "ArrowLeft",
+  "ArrowRight",
+  "ArrowUp",
+  "ArrowDown",
+  "Home",
+  "End",
+  "PageUp",
+  "PageDown",
+]);
+function markCharKey(key: string): void {
+  if (!NON_CHAR_KEYS.has(key)) lastCharKeyAt = Date.now();
+}
+function withinCharKeyGate(): boolean {
+  return Date.now() - lastCharKeyAt < CHAR_KEY_STRIP_GATE_MS;
+}
+
 // carried 의 접미사와 val 의 접두사가 겹치는 최장 구간을 찾아 val 앞에서 제거.
 //   전체 이월("사회질서")·부분 이월(마지막 음절 "명")을 모두 처리. 겹침 없으면 null.
 function stripLeadingOverlap(val: string, carried: string): string | null {
@@ -612,6 +648,13 @@ export function BlankFillViewV2({
     //    채운 칸이 잘리던 버그 방지.) 가드는 해제하고 no-op.
     const answer = slot.dataset.answer ?? "";
     if (answer && normalizeAnswer(val) === normalizeAnswer(answer)) {
+      crossClear = null;
+      return false;
+    }
+    // ★직전 300ms 내 실문자 keydown = 사용자가 직접 치는 중 — 이월이 아니므로 strip 하지
+    //   않고 가드 해제(input.strip 게이트와 동일 근거, 2026-08-07 신고).
+    if (withinCharKeyGate()) {
+      pushDbg("cc.strip.skip", `${slotIdxOf(slot)} "${val}" (user key)`);
       crossClear = null;
       return false;
     }
@@ -1341,23 +1384,32 @@ export function BlankFillViewV2({
     ) {
       const carried = crossClear.carried;
       const val = readSlot(slot);
-      const overlap = val ? stripLeadingOverlap(val, carried) : null;
-      if (overlap !== null) {
-        pushDbg("input.strip", `${slotIdxOf(slot)} "${val}"→"${overlap}" carried="${carried}"`);
-        slot.textContent = overlap.length ? overlap : ZWSP;
-        setCaretEnd(slot);
+      // ★직전 300ms 내 실문자 keydown 이 있었으면 이 값은 사용자가 직접 친 것 — 이월이 아니다.
+      //   carried 꼬리와 우연히 겹쳐도 strip 하지 않고 가드만 해제한다(2026-08-07 신고:
+      //   "변경" 다음 칸에서 정상 입력 '경'이 지워짐). 진짜 이월은 키 입력 없이 도착하므로
+      //   게이트에 걸리지 않는다.
+      if (withinCharKeyGate()) {
+        pushDbg("input.strip.skip", `${slotIdxOf(slot)} "${val}" carried="${carried}" (user key)`);
         crossClear = null;
-        judgeSlot(slot, false);
-        maybeCompleteTier();
-        return;
-      }
-      if (isDelete && val && carried.startsWith(val)) {
-        // backspace 로 튀어나온 직전 답 조각 — 사용자 눈엔 빈 칸이었으므로 통째로 제거.
-        pushDbg("input.nukeFrag", `${slotIdxOf(slot)} "${val}" carried="${carried}"`);
-        slot.textContent = ZWSP;
-        setCaretEnd(slot);
-        crossClear = null;
-        return;
+      } else {
+        const overlap = val ? stripLeadingOverlap(val, carried) : null;
+        if (overlap !== null) {
+          pushDbg("input.strip", `${slotIdxOf(slot)} "${val}"→"${overlap}" carried="${carried}"`);
+          slot.textContent = overlap.length ? overlap : ZWSP;
+          setCaretEnd(slot);
+          crossClear = null;
+          judgeSlot(slot, false);
+          maybeCompleteTier();
+          return;
+        }
+        if (isDelete && val && carried.startsWith(val)) {
+          // backspace 로 튀어나온 직전 답 조각 — 사용자 눈엔 빈 칸이었으므로 통째로 제거.
+          pushDbg("input.nukeFrag", `${slotIdxOf(slot)} "${val}" carried="${carried}"`);
+          slot.textContent = ZWSP;
+          setCaretEnd(slot);
+          crossClear = null;
+          return;
+        }
       }
     }
     judgeSlot(slot, !composing);
@@ -1445,6 +1497,8 @@ export function BlankFillViewV2({
     }
   };
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    // ★실문자 키 시각 기록 — 이월 strip 오발동 게이트용(withinCharKeyGate).
+    markCharKey(e.key);
     // 조합 중 Enter/Tab 으로 예약해 둔 이동은, 그 사이 '다른 키'(글자·삭제 등)를 누르면 취소한다 —
     //   사용자가 계속 입력 중이면 이동 의도가 아니고, compositionend 지연으로 캐럿이 늦게 튀는 것 방지.
     //   Enter/Tab 은 예약을 설정/유지하므로 제외.
@@ -1569,6 +1623,14 @@ export function BlankFillViewV2({
   //       시 flush input 에 잠깐 포커스를 옮겨 버퍼를 직전 칸에 확정·종료시키고, 다음
   //       프레임에 목표 칸 끝으로 착지한다. 마우스는 칸 중간 클릭 캐럿 배치 보존을 위해 제외.
   const onPointerDownCapture = (e: React.PointerEvent<HTMLDivElement>) => {
+    // ★포인터 = 명시적 캐럿 지정 — 조합 중 Enter 로 걸어둔 이동 예약(pendingMove)을 취소한다.
+    //   키보드는 '다른 키 입력 시 취소'가 있었지만 클릭/탭 취소가 없어, 다른 칸을 클릭한 직후
+    //   compositionend 가 뒤늦게 예약 이동을 실행해 커서가 예약된 다음 칸으로 튀었다
+    //   ("첫 칸을 클릭해 입력하려 하면 다음 칸으로 이동", 2026-08-07 신고).
+    if (pendingMoveRef.current) {
+      pushDbg("pmCancel@pointer", slotIdxOf(pendingMoveRef.current.target));
+      pendingMoveRef.current = null;
+    }
     const tgtSlot =
       e.target instanceof Element
         ? e.target.closest<HTMLElement>(`.${SLOT_CLASS}`)
