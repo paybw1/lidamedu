@@ -38,7 +38,7 @@
 - **D4 에디터 섹션 = plans.detail_sections jsonb.** 9개 입력영역(기본설명/상세설명/소개/수강대상/특징/커리큘럼/교재안내/유의사항/환불안내)을 컬럼 9개가 아니라 `subscription_plans.detail_sections jsonb`({key: html})로. 섹션 키 SSOT 상수 파일(비-server lib). 관리자=탭형 HtmlEditor, 상세페이지=값 있는 섹션만 순서 렌더. 기존 detail_html은 '상세설명' 섹션으로 읽기 폴백(마이그레이션 없이 호환).
 - **D5 페이지관리 = 신규 `custom_pages`.** page_id, title, **code(unique, 영문·숫자·하이픈)**, body_html, status(use/stopped), admin_memo, created_by, deleted_at + `custom_page_revisions`(수정 전후 스냅샷·수정자). 공개 라우트 `/page/:code` — stopped는 404가 아닌 "준비 중" 안내+noindex, 사용 상태만 렌더(.lecture-detail-html 재사용). 관리자 `/admin/pages`(운영·시스템 하위): 목록(검색·상태·기간·정렬)+등록(코드 중복확인 버튼)+HtmlEditor(PC/모바일 미리보기·전체화면)+복사(코드 재입력)+미리보기(중지 상태도 staff 열람)+삭제(admin 전용). RLS: 공개 읽기=status 'use' AND deleted_at null, 쓰기=staff.
 - **D6 쿠폰 = 진단 먼저.** 운영 DB에서 해당 30,000원 쿠폰 row(discount_type·discount_value)와 영향 주문의 coupon_discount_krw를 **읽기 전용으로 먼저 확인**한 뒤 원인별 수정(값이 29999로 저장→데이터 정정+입력 검증 / percent 오등록→쿠폰 정정 / eligible clamp→표시·정책 문제로 보고). 동시 수정: max_discount 하드코딩 null(admin-coupon.tsx:70) 배선, grants.server의 listUsers 1000명 캡 제거(회원 검색은 adminClient profiles/이메일 질의로 재작성). 개별 발급 UI=회원 검색(이름·이메일·전화)→체크박스 복수 선택→쿠폰 확인→일괄 발급+중복 발급 경고, 발급 이력(발급자·사유 메모) 저장.
-- **D7 내강의실 = 표시 변경 즉시, 차감 정책은 확인 대기.** 표시: 회차 행을 `강의(초)·학습(초)·진도율`로 교체(강의초=lesson_videos→video_contents duration, 학습초=watch_ledger 회차 누적, 진도율=학습/강의 캡 100%), 재생·남은·최대 횟수 전부 비노출, "하루 1회" 문구 삭제. 관리자: 에디션 레벨 `courses.default_max_plays` 신설(회차 생성 시 기본값, 기존 회차 일괄 적용 버튼=명확한 기준 제공) + 수강생별 사용 현황 유지. **차감 단위 변경(일별 dedupe 폐지→무엇으로?)은 기본안 "재생 grant 1건=1회 차감, 단 동일 회차 30분 내 재진입은 동일 세션(무차감)"** — 단 기본 max 2회에서 당일 복습만으로 소진되는 정책 후퇴 위험이 있어 **원장 확인 전 코드 변경 보류**(P6b). 확인 질문: "차감 단위(세션 정의)와 기본 최대횟수(현 2회) 상향 여부".
+- **D7 내강의실 = 표시 변경 + 시간 비례 차감 (★원장 확정 2026-08-07 저녁 — 게이트 해제).** 표시: 회차 행을 `강의(초)·학습(초)·진도율`로 교체(강의초=lesson_videos→video_contents duration, 학습초=watch_ledger 회차 누적, 진도율=학습/강의 캡 100%), 재생·남은·최대 횟수 전부 비노출, "하루 1회" 문구 삭제. **차감 정책(확정)**: ①"하루 1회 차감"(KST 달력일 dedupe) 폐지 ②관리자가 **강의(에디션) 단위** 최대 재생횟수 설정(선택지 1회/2회/3회/무제한, 기본 2회 유지) — 신설 `courses.max_plays`(int, null=무제한, default 2), 설정값은 소속 **각 회차에 동일 적용**(예: 기본강의 2회 → 1강 2회·2강 2회…) ③차감 단위=grant/세션이 아니라 **실제 학습시간 비례**: 회차별 허용량 = max_plays × 해당 회차 전체 재생시간(초), 소비량 = watch_ledger 누적 학습시간(초), `학습초 ≥ max_plays × 강의초` 이면 재생 차단(무제한이면 항상 허용). "재생 시작 1회=1차감"·"30분 재진입 무차감" 기본안은 **적용 안 함**(원장 명시). 구현: `playback.server.ts` 의 KST-일 dedupe·counts_as_play 판정 로직을 시간 비례 판정으로 교체(하트비트 누적 조회 기준), 기존 회차별 `course_lessons.max_plays` 는 쓰기 중단(에디션 설정이 권위 — 회차별 설정 UI `set_lesson_max_plays` 제거·컬럼 보존), duration 미확인 회차는 차단하지 않음(fail-open). 관리자 CS: 에디션 상세(또는 수강생 관리)에서 **회차별 사용 시간·환산 사용 횟수(학습초/강의초)·설정 최대횟수** 조회 유지.
 
 ## 3. Phase 계획 (자정 착수, 안전한 것부터)
 
@@ -65,9 +65,10 @@ DDL(is_active·plans.category_id·시드·백필) → `/admin/lecture-categories
 2. DDL(content_group_items) + 기존 group_id 백필 → `/admin/lms/groups`: 그룹 목록(검색·리스트·관리버튼), 그룹 상세=콘텐츠 선택창(라이브러리 검색·복수선택·일괄추가·중복 경고·미리보기)+회차 번호/제목/공개/미리보기 편집+순서(순서값 입력, DnD는 여력 시)+개설 강의 연결(course_lessons 가져오기)+운영정보(콘텐츠 수·총 재생시간). 삭제 가드(연결 강의·수강기록 시 불가, admin 전용, 원본 콘텐츠 보존).
 3. DDL(plans.detail_sections) + admin-plans 탭형 섹션 에디터 + 상세페이지 섹션 렌더(detail_html 폴백).
 
-### P6 — 내강의실 차감 정책 (D7 나머지)
-- P6a: `courses.default_max_plays` DDL + 에디션 화면 설정 + 회차 일괄 적용.
-- P6b(**보류 게이트**): 일별 dedupe 폐지 → 세션 단위 차감. 원장 확인 후에만.
+### P6 — 내강의실 차감 정책 (D7 나머지 — ★게이트 해제, 확정안대로 진행)
+- P6a: `courses.max_plays`(int null=무제한, default 2) DDL + 강의 등록·수정 화면 설정(1/2/3/무제한 선택) + 회차별 설정 UI 제거(쓰기 중단).
+- P6b: `playback.server.ts` 차감 판정을 시간 비례로 교체 — 학습초(watch_ledger 회차 누적) ≥ max_plays × 강의초(duration) 이면 `play_limit_exhausted`, 무제한·duration 미확인은 허용. KST-일 dedupe·counts_as_play 로직 제거(grant 기록 자체는 이력용 유지).
+- P6c: 관리자 CS 조회 — 회차별 사용 시간·환산 사용 횟수·설정 최대횟수 표시(수강생 화면에는 계속 비노출).
 
 ### 검증 (매 Phase)
 - typecheck+build, 핵심 화면 수동 스모크(비로그인 카탈로그 / staff 관리자 / 학생 내강의실), P1은 운영 데이터 재확인 쿼리로 30,000원 표시 검증.
