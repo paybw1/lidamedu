@@ -77,6 +77,8 @@ export interface SubscriptionPlan {
   name: string;
   description: string | null;
   priceKrw: number;
+  /** 정상가(원). null 이거나 판매가 이하이면 할인 표시를 하지 않는다(취소선·할인율 생략). */
+  listPriceKrw: number | null;
   durationDays: number;
   features: string[];
   /** feat-8-028 — 부여 학습과목 slug 배열(개별/번들). 결제 시 열리는 과목. */

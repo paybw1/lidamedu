@@ -173,23 +173,61 @@ export async function insertLedgerAdjustment(input: {
   if (error) throw error;
 }
 
-/** 관리자 초기화 — 현재 사용량 전체를 상쇄하는 reset 행 1개(§4.4). 사용량 0 이면 no-op. */
+/** 회차별 현재 사용 초(원장 SUM) — 상쇄 대상 산출용. lesson_id 가 없는 행은 키 "" 로 모은다. */
+async function currentUsageByLesson(
+  enrollmentId: string,
+): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  const { data } = await adminClient
+    .from("watch_ledger")
+    .select("lesson_id, seconds")
+    .eq("enrollment_id", enrollmentId);
+  for (const r of data ?? []) {
+    const key = r.lesson_id ?? "";
+    out.set(key, (out.get(key) ?? 0) + r.seconds);
+  }
+  return out;
+}
+
+/** 관리자 초기화 — 사용량을 상쇄하는 reset 행 기록(§4.4). 사용량 0 이면 no-op.
+ *  ★회차 단위로 기록한다 — 재생 제한 판정이 회차별 원장 합계이므로, 수강권 전체를 묶어
+ *  reset 행 1개만 넣으면 회차 합계가 그대로 남아 초기화해도 차단이 풀리지 않는다. */
 export async function resetWatchUsage(input: {
   enrollmentId: string;
   reason: string;
   actorId: string;
 }): Promise<{ offsetSeconds: number }> {
-  const { data } = await adminClient
-    .from("v_enrollment_watch_balance")
-    .select("used_seconds")
-    .eq("enrollment_id", input.enrollmentId)
-    .maybeSingle();
-  const used = data?.used_seconds ?? 0;
-  if (used === 0) return { offsetSeconds: 0 };
+  const byLesson = await currentUsageByLesson(input.enrollmentId);
+  let offset = 0;
+  for (const [lessonKey, used] of byLesson) {
+    if (used <= 0) continue;
+    await insertLedgerAdjustment({
+      enrollmentId: input.enrollmentId,
+      kind: "reset",
+      seconds: -used,
+      lessonId: lessonKey === "" ? null : lessonKey,
+      reason: input.reason,
+      actorId: input.actorId,
+    });
+    offset += used;
+  }
+  return { offsetSeconds: offset };
+}
+
+/** 회차 하나만 초기화 — CS 에서 가장 잦은 요청("이 강의만 다시 열어 주세요"). */
+export async function resetLessonUsage(input: {
+  enrollmentId: string;
+  lessonId: string;
+  reason: string;
+  actorId: string;
+}): Promise<{ offsetSeconds: number }> {
+  const used = (await currentUsageByLesson(input.enrollmentId)).get(input.lessonId) ?? 0;
+  if (used <= 0) return { offsetSeconds: 0 };
   await insertLedgerAdjustment({
     enrollmentId: input.enrollmentId,
     kind: "reset",
     seconds: -used,
+    lessonId: input.lessonId,
     reason: input.reason,
     actorId: input.actorId,
   });
@@ -318,11 +356,14 @@ export async function getUserWatchHistory(
   // 대상 강의 = 회원의 수강권 강의.
   const { data: enrolls } = await adminClient
     .from("enrollments")
-    .select("course_id")
+    .select("enrollment_id, course_id")
     .eq("user_id", userId)
     .is("revoked_at", null);
   const courseIds = [...new Set((enrolls ?? []).map((e) => e.course_id))];
   if (courseIds.length === 0) return [];
+  // 사용량 원장은 수강권 단위 — 강의별 수강권 id 를 확보해 둔다(같은 강의 재수강 시 최신 1건).
+  const enrollmentByCourse = new Map<string, string>();
+  for (const e of enrolls ?? []) enrollmentByCourse.set(e.course_id, e.enrollment_id);
 
   const { data: courses } = await adminClient
     .from("courses")
@@ -353,8 +394,16 @@ export async function getUserWatchHistory(
   if (lessonIds.length === 0) return [];
 
   const progress = await getLessonProgressForUser(userId, lessonIds);
-  // feat-11-008 P6 — 실제 학습시간(반복 포함) — 환산 사용 횟수 산출용.
-  const usedByLesson = await getWatchedSecondsByLesson(userId, lessonIds);
+  // feat-11-008 P6 — 재생 사용량(원장 기준, 관리자 조정·초기화 반영) — 환산 사용 횟수 산출용.
+  // 재생 제한 판정과 같은 값이어야 CS 조회가 실제 차단 여부와 일치한다.
+  const usedByLesson = new Map<string, number>();
+  for (const [courseId, enrollmentId] of enrollmentByCourse) {
+    const ids = lessonRows.filter((l) => l.course_id === courseId).map((l) => l.lesson_id);
+    if (ids.length === 0) continue;
+    for (const [lessonId, sec] of await getLessonUsageSeconds(enrollmentId, ids)) {
+      usedByLesson.set(lessonId, sec);
+    }
+  }
 
   // 회차별 최초/마지막 재생일 — watch_events reported_at min/max(JS 집계).
   const firstAt = new Map<string, string>();
@@ -416,45 +465,32 @@ export async function getUserWatchHistory(
   return out;
 }
 
-/** 회차별 실제 학습(재생) 누적 초 — feat-11-008 P6 시간 비례 재생 제한 판정용.
- *  watch_events 의 보고 구간 합계(중복 구간 포함 — 반복 시청도 소비로 계산).
- *  진도율(getLessonProgressForUser)의 union 병합과 목적이 다르다(그쪽은 중복 제외). */
-export async function getWatchedSecondsForLesson(
-  userId: string,
-  lessonId: string,
-): Promise<number> {
-  const { data } = await adminClient
-    .from("watch_events")
-    .select("from_seconds, to_seconds")
-    .eq("user_id", userId)
-    .eq("lesson_id", lessonId)
-    .limit(20000);
-  let total = 0;
-  for (const e of data ?? []) {
-    const span = (e.to_seconds ?? 0) - (e.from_seconds ?? 0);
-    if (span > 0) total += span;
-  }
-  return total;
-}
-
-/** 여러 회차의 학습 누적 초 — 관리자 CS 조회(회차별 사용 현황)용. */
-export async function getWatchedSecondsByLesson(
-  userId: string,
+/** 회차별 재생 사용 초 — feat-11-008 P6 시간 비례 재생 제한 판정·관리자 CS 조회 공용.
+ *  집계 대상은 **watch_ledger**(설계 SSOT D7·P6b) — 하트비트 debit 에 관리자 조정(credit)·
+ *  초기화(reset)가 함께 반영되므로, 초기화하면 제한이 실제로 풀린다.
+ *  합계는 DB(RPC)에서 계산한다 — 클라이언트 행 상한으로 인한 과소집계가 없다.
+ *  진도율(getLessonProgressForUser)의 union 병합과는 목적이 다르다(그쪽은 중복 제외). */
+export async function getLessonUsageSeconds(
+  enrollmentId: string,
   lessonIds: string[],
 ): Promise<Map<string, number>> {
   const out = new Map<string, number>();
   if (lessonIds.length === 0) return out;
   for (let i = 0; i < lessonIds.length; i += 150) {
-    const { data } = await adminClient
-      .from("watch_events")
-      .select("lesson_id, from_seconds, to_seconds")
-      .eq("user_id", userId)
-      .in("lesson_id", lessonIds.slice(i, i + 150))
-      .limit(20000);
-    for (const e of data ?? []) {
-      const span = (e.to_seconds ?? 0) - (e.from_seconds ?? 0);
-      if (span > 0) out.set(e.lesson_id, (out.get(e.lesson_id) ?? 0) + span);
-    }
+    const { data, error } = await adminClient.rpc("lms_lesson_usage_seconds", {
+      p_enrollment_id: enrollmentId,
+      p_lesson_ids: lessonIds.slice(i, i + 150),
+    });
+    if (error) throw error;
+    for (const r of data ?? []) out.set(r.lesson_id, r.seconds);
   }
   return out;
+}
+
+/** 회차 하나의 재생 사용 초. */
+export async function getLessonUsageForLesson(
+  enrollmentId: string,
+  lessonId: string,
+): Promise<number> {
+  return (await getLessonUsageSeconds(enrollmentId, [lessonId])).get(lessonId) ?? 0;
 }

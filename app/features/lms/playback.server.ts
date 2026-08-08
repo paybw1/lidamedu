@@ -25,8 +25,8 @@ import {
 } from "~/features/lms/devices.server";
 import { buildKollusWebTokenUrl } from "~/features/lms/lib/kollus-token.server";
 import {
+  getLessonUsageForLesson,
   getRemainingSeconds,
-  getWatchedSecondsForLesson,
 } from "~/features/lms/watch.server";
 
 const GRANT_TTL_MINUTES = 10;
@@ -141,6 +141,7 @@ export async function requestPlaybackGrant(
     //   강의(에디션) 단위 max_plays(null=무제한, 기본 2)를 소속 각 회차에 동일 적용하고,
     //   차감은 횟수가 아니라 **실제 학습시간 비례** — 회차 허용량 = max_plays × 강의 길이(초).
     //   누적 학습시간(watch_ledger)이 허용량 이상이면 차단. 길이 미확인 회차는 fail-open.
+    //   ★소비량은 watch_ledger 기준 — 관리자 '사용량 초기화'(reset 행)가 그대로 반영된다.
     {
       const { data: course } = await adminClient
         .from("courses")
@@ -150,11 +151,8 @@ export async function requestPlaybackGrant(
       const maxPlays = course?.max_plays ?? null; // null = 무제한
       const durationSeconds = video.duration_seconds ?? 0;
       if (maxPlays != null && durationSeconds > 0) {
-        const watched = await getWatchedSecondsForLesson(
-          input.userId,
-          input.lessonId,
-        );
-        if (watched >= maxPlays * durationSeconds) {
+        const used = await getLessonUsageForLesson(enrollmentId, input.lessonId);
+        if (used >= maxPlays * durationSeconds) {
           return { ok: false, reason: "play_limit_exhausted" };
         }
       }

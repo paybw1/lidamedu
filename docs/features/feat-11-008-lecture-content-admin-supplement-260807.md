@@ -76,3 +76,28 @@ DDL(is_active·plans.category_id·시드·백필) → `/admin/lecture-categories
 ## 4. 문서 정정 (착수 시 함께)
 - feat-11-007 문서 §0 현황표에 "착수 전 감사 스냅샷, 코드 우선" 주석 + 결정6(plan_books 일원화)은 **미채택 — plan_book_links 확장이 현행** 명기.
 - SPEC.md: feat-11-007 행 등록(✅), feat-11-008 행 등록(🟡→진행), 완료 시 상태 갱신.
+
+---
+
+## 5. 실전 검증 및 보완 (2026-08-08)
+
+### 5.1 E2E 실전 검증
+- `tmp/e2e-import-lessons.mjs` — P5 강의그룹 '회차 가져오기' (생성→가져오기 2회→검증→정리). ★확정 버그 수정: `course_lessons(course_id, lesson_no)` UNIQUE 는 **soft-delete 행도 점유**하므로 삭제분 포함 번호를 모아 빈 번호를 배정한다(부분 실패 보고, 영상 연결 실패 시 회차 롤백).
+- `tmp/e2e-feat11008-rest.mjs` — P1~P4·P6 (PASS 31 / FAIL 0). 검증 항목: 쿠폰 회원검색 4경로·granted/already/failed·만료일·회수 후 재발급 / 페이지 공개·중지 RLS·코드 중복·이력·soft-delete / 카테고리 활성 4종·is_active 필터·백필 / 동일 정렬키 페이징 무결 / 재생 제한 경계값·무제한·회차 독립·**초기화 후 해제**.
+- 미검증: **P0(사이드바 접힘 = localStorage)** 및 브라우저 UI 왕복 전반 — 서버에서 확인 불가.
+
+### 5.2 보완 반영
+1. **재생 제한 판정을 watch_ledger 기준으로 환원** — 구현이 `watch_events` 직접 합산이어서 관리자 '사용량 초기화'(ledger reset 행)가 반영되지 않던 문제. 설계 SSOT(D7·P6b)가 정한 정의로 되돌렸다. `resetWatchUsage` 는 **회차 단위 reset 행**을 기록하고(수강권 단위 1행이면 회차 합계가 남아 차단이 안 풀린다), 회차 하나만 여는 `resetLessonUsage` 를 추가했다. 관리자 CS 표(회차별 사용 시간·환산 횟수)도 같은 값을 쓴다.
+2. **집계를 DB 로 이관** — `lms_lesson_usage_seconds(uuid, uuid[])` RPC(SECURITY DEFINER, anon·authenticated 실행 취소). 클라이언트 행 상한(20,000행)으로 인한 과소집계 제거.
+3. **쿠폰 개별 발급 시 학생 알림** — 알림 종류 `coupon_granted` 신설, 인박스 라벨·아이콘 등록, `grantCouponToUsers`/`grantCouponToEmail` 에서 **새로 발급된 회원에게만** 발송(중복·실패 제외, 운영자 메모 note 는 본문에 넣지 않는다), 이동 경로 `/lecture/coupons`.
+4. **강의개설 목록 강사 열** — `course_instructors` → `profiles` 조인. 연결 데이터가 없으면 "-".
+5. **정상가/할인가 이원 표시** — `subscription_plans.list_price_krw`(null=할인 표시 없음, `>= price_krw` CHECK). 상품 편집 폼에 "정상가(선택)" 입력 + 서버 검증, 카탈로그·상세·관리자 목록에 취소선과 할인율. 표시 규칙 SSOT = `app/features/lms/lib/price.ts`.
+
+### 5.3 동작 변화 (알아 둘 것)
+- 재생 허용량은 **수강권 단위** — 재구매·새 수강권이면 사용량이 새로 시작된다.
+- **맛보기 재생은 허용량을 소비하지 않는다**(수강권 없는 재생은 원장에 기록되지 않으므로).
+- 회차 단위 초기화가 쌓이면 수강권 전체 사용량 합계가 음수가 될 수 있어 관리자 화면 표시에서 0 으로 막았다.
+
+### 5.4 잔여 (원장 확인 대기)
+- 비교표를 쓰는 답안 9문항의 서술형 전환(콘텐츠 작업, 이 문서 범위 밖).
+- 강의 실데이터가 1건뿐이라 카탈로그·페이징의 실사용 규모 확인 불가.

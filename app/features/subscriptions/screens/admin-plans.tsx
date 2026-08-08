@@ -395,7 +395,7 @@ function PlanForm({
             <option value="tpass">T-PASS (강의 플랫폼)</option>
           </select>
         </FormField>
-        <FormField label="가격 (원)">
+        <FormField label="판매가 (원)">
           <Input
             name="priceKrw"
             type="number"
@@ -404,6 +404,19 @@ function PlanForm({
             defaultValue={plan?.priceKrw ?? 0}
             className="h-8 text-xs"
           />
+        </FormField>
+        <FormField label="정상가 (원, 선택)">
+          <Input
+            name="listPriceKrw"
+            type="number"
+            min={0}
+            placeholder="비우면 할인 표시 없음"
+            defaultValue={plan?.listPriceKrw ?? ""}
+            className="h-8 text-xs"
+          />
+          <p className="text-muted-foreground mt-1 text-[11px]">
+            판매가보다 크게 넣으면 카탈로그·상세에 취소선과 할인율이 함께 표시됩니다.
+          </p>
         </FormField>
         <FormField label="이용 기간 (일)">
           <Input

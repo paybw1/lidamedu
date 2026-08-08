@@ -11562,6 +11562,7 @@ export type Database = {
           features: Json
           is_active: boolean
           lecture_category: string | null
+          list_price_krw: number | null
           name: string
           plan_id: string
           price_krw: number
@@ -11584,6 +11585,7 @@ export type Database = {
           features?: Json
           is_active?: boolean
           lecture_category?: string | null
+          list_price_krw?: number | null
           name: string
           plan_id?: string
           price_krw: number
@@ -11606,6 +11608,7 @@ export type Database = {
           features?: Json
           is_active?: boolean
           lecture_category?: string | null
+          list_price_krw?: number | null
           name?: string
           plan_id?: string
           price_krw?: number
@@ -13902,6 +13905,13 @@ export type Database = {
         Args: { p_announcement_id: string; p_user_id: string }
         Returns: boolean
       }
+      lms_lesson_usage_seconds: {
+        Args: { p_enrollment_id: string; p_lesson_ids: string[] }
+        Returns: {
+          lesson_id: string
+          seconds: number
+        }[]
+      }
       match_content_chunks: {
         Args: {
           doc_type_filter?: Database["public"]["Enums"]["chunk_source_type"][]
@@ -14228,6 +14238,7 @@ export type Database = {
         | "subscription_lapsed"
         | "security_alert"
         | "broadcast_message"
+        | "coupon_granted"
       student_note_visibility: "staff_only" | "share_with_student"
       subjective_kind: "case_based" | "theory" | "mixed"
       subscription_status: "pending" | "active" | "expired" | "cancelled"
@@ -14524,6 +14535,7 @@ export const Constants = {
         "subscription_lapsed",
         "security_alert",
         "broadcast_message",
+        "coupon_granted",
       ],
       student_note_visibility: ["staff_only", "share_with_student"],
       subjective_kind: ["case_based", "theory", "mixed"],

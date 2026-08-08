@@ -839,6 +839,8 @@ export interface LectureProduct {
   name: string;
   description: string | null;
   priceKrw: number;
+  /** 정상가(원). 판매가보다 클 때만 취소선·할인율로 표시한다. null=할인 표시 없음. */
+  listPriceKrw: number | null;
   productKind: "course" | "tpass";
   durationDays: number;
   category: LectureCategory | null;
@@ -911,7 +913,7 @@ export async function listSellableLectureProducts(
   const { data: plans, error } = await client
     .from("subscription_plans")
     .select(
-      "plan_id, code, name, description, price_krw, duration_days, product_kind, lecture_category, category_id, detail_image_url, detail_html, detail_sections",
+      "plan_id, code, name, description, price_krw, list_price_krw, duration_days, product_kind, lecture_category, category_id, detail_image_url, detail_html, detail_sections",
     )
     .in("product_kind", ["course", "tpass"])
     .eq("is_active", true)
@@ -1052,6 +1054,7 @@ export async function listSellableLectureProducts(
     name: p.name,
     description: p.description,
     priceKrw: p.price_krw,
+    listPriceKrw: p.list_price_krw,
     productKind: p.product_kind as "course" | "tpass",
     durationDays: p.duration_days,
     category: toLectureCategory(p.lecture_category),

@@ -10,6 +10,7 @@ import { Card, CardContent } from "~/core/components/ui/card";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
 import { useCart } from "~/features/lms/lib/cart";
+import { getDiscountDisplay } from "~/features/lms/lib/price";
 import { PRODUCT_KIND_LABEL } from "~/features/subscriptions/labels";
 import {
   cancelPendingCheckout,
@@ -291,10 +292,25 @@ function ProductCard({
         {/* feat-11-008 P0 — 수강신청 카드 간소화(260807 요청서): 교재 정보(교재명·가격·담기)는
             카드에서 제거하고 상세페이지에서만 표시. 카드는 강의 비교용 핵심 정보만. */}
         <div className="mt-2 flex items-center justify-between border-t pt-3">
-          <span className="text-lg font-bold tabular-nums">
-            {product.priceKrw.toLocaleString("ko-KR")}
-            <span className="text-muted-foreground ml-0.5 text-xs font-normal">
-              원
+          <span className="flex items-baseline gap-1.5">
+            {(() => {
+              const d = getDiscountDisplay(product.priceKrw, product.listPriceKrw);
+              return d.listPriceKrw != null ? (
+                <>
+                  <span className="text-muted-foreground text-xs line-through tabular-nums">
+                    {d.listPriceKrw.toLocaleString("ko-KR")}
+                  </span>
+                  <span className="text-xs font-semibold text-rose-600 dark:text-rose-400">
+                    {d.percentOff}%
+                  </span>
+                </>
+              ) : null;
+            })()}
+            <span className="text-lg font-bold tabular-nums">
+              {product.priceKrw.toLocaleString("ko-KR")}
+              <span className="text-muted-foreground ml-0.5 text-xs font-normal">
+                원
+              </span>
             </span>
           </span>
           {product.owned ? (

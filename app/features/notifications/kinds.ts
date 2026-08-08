@@ -45,6 +45,8 @@ export const STUDENT_KINDS: NotificationKind[] = [
   // feat-8-030 dunning — 자동결제 실패 재시도 안내 / 최종 만료.
   "payment_failed",
   "subscription_lapsed",
+  // feat-11-008 보완 — 운영자가 개별 발급한 쿠폰(쿠폰함에서 확인).
+  "coupon_granted",
 ];
 
 export function isStaffKind(k: NotificationKind): boolean {

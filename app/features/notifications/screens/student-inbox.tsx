@@ -10,6 +10,7 @@ import {
   MegaphoneIcon,
   MessageCircleIcon,
   MessageSquareTextIcon,
+  TicketIcon,
   TriangleAlertIcon,
   WrenchIcon,
 } from "lucide-react";
@@ -61,6 +62,7 @@ const KIND_LABEL: Partial<Record<NotificationKind, string>> = {
   cohort_upgrade_processed: "종합반 등업",
   bug_report_resolved: "오류신고 처리",
   staff_message: "강사 쪽지",
+  coupon_granted: "쿠폰 발급",
 };
 
 // 답변/쪽지 내용이 알림 본문에만 있는 종류 — 클릭 시 이동 대신 제자리에서 펼쳐
@@ -80,6 +82,7 @@ const KIND_ICON: Partial<Record<NotificationKind, typeof BellIcon>> = {
   trial_ended: TriangleAlertIcon,
   bug_report_resolved: WrenchIcon,
   staff_message: MessageSquareTextIcon,
+  coupon_granted: TicketIcon,
 };
 
 function formatRelative(iso: string): string {

@@ -651,7 +651,8 @@ function EnrollmentRowView({
       </TD>
       <TD align="right" mono>
         <span title={row.multiplierSnapshot != null ? `배수 ×${row.multiplierSnapshot}` : "배수 미적용"}>
-          {fmtHours(row.balance?.usedSeconds ?? 0)} /{" "}
+          {/* 회차 단위 초기화가 쌓이면 원장 합계가 음수가 될 수 있어 표시에서 0 으로 막는다. */}
+          {fmtHours(Math.max(0, row.balance?.usedSeconds ?? 0))} /{" "}
           {fmtHours(row.balance?.allowedSeconds ?? null)}
         </span>
         {row.balance?.remainingSeconds != null && row.balance.remainingSeconds <= 0 ? (

@@ -34,6 +34,7 @@ interface LectureRow {
   code: string;
   name: string;
   priceKrw: number;
+  listPriceKrw: number | null; // 정상가 — 판매가보다 크면 취소선+할인율 표시
   productKind: string;
   saleStatus: string;
   isActive: boolean;
@@ -42,6 +43,7 @@ interface LectureRow {
   updatedAt: string;
   categoryName: string | null;
   courseTitles: string[];
+  instructorNames: string[];
   firstCourseId: string | null;
   thumbnailUrl: string | null;
   enrollCount: number;
@@ -71,7 +73,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   let query = adminClient
     .from("subscription_plans")
     .select(
-      "plan_id, code, name, price_krw, product_kind, sale_status, is_active, available_from, created_at, updated_at, category_id",
+      "plan_id, code, name, price_krw, list_price_krw, product_kind, sale_status, is_active, available_from, created_at, updated_at, category_id",
       { count: "exact" },
     )
     .in("product_kind", ["course", "tpass"]);
@@ -129,6 +131,25 @@ export async function loader({ request }: Route.LoaderArgs) {
   ]);
   const catName = new Map(cats.map((c) => [c.category_id, c.name]));
   const courseIds = [...new Set(links.map((l) => l.course_id))];
+  // 강의별 강사명 — 목록의 '강사' 열(요청서: 강사명 표시). 데이터 없으면 빈 배열.
+  const instructorsByCourse = new Map<string, string[]>();
+  if (courseIds.length) {
+    const { data: ins } = await adminClient
+      .from("course_instructors")
+      .select(
+        "course_id, sort_order, profiles!course_instructors_instructor_id_fkey(name)",
+      )
+      .in("course_id", courseIds)
+      .order("sort_order", { ascending: true });
+    for (const r of ins ?? []) {
+      const name = (r.profiles as { name: string } | null)?.name;
+      if (!name) continue;
+      instructorsByCourse.set(r.course_id, [
+        ...(instructorsByCourse.get(r.course_id) ?? []),
+        name,
+      ]);
+    }
+  }
   const courseMeta = new Map<string, { title: string; thumbnail: string | null }>();
   if (courseIds.length) {
     const { data: courses } = await adminClient
@@ -168,6 +189,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       code: p.code,
       name: p.name,
       priceKrw: p.price_krw,
+      listPriceKrw: p.list_price_krw,
       productKind: p.product_kind,
       saleStatus: p.sale_status,
       isActive: p.is_active,
@@ -176,6 +198,9 @@ export async function loader({ request }: Route.LoaderArgs) {
       updatedAt: p.updated_at,
       categoryName: p.category_id ? (catName.get(p.category_id) ?? null) : null,
       courseTitles: titles,
+      instructorNames: [
+        ...new Set(linked.flatMap((l) => instructorsByCourse.get(l.course_id) ?? [])),
+      ],
       firstCourseId: linked[0]?.course_id ?? null,
       thumbnailUrl: thumb,
       enrollCount: enrollCount.get(p.plan_id) ?? 0,
@@ -360,6 +385,7 @@ export default function AdminLectures({ loaderData, actionData }: Route.Componen
             <thead className="bg-muted/60">
               <tr>
                 <th className="px-3 py-2 font-semibold">강의</th>
+                <th className="px-3 py-2 font-semibold">강사</th>
                 <th className="px-3 py-2 font-semibold">카테고리</th>
                 <th className="px-3 py-2 font-semibold">구분</th>
                 <th className="px-3 py-2 font-semibold">신청 시작</th>
@@ -373,7 +399,7 @@ export default function AdminLectures({ loaderData, actionData }: Route.Componen
             <tbody className="divide-y">
               {lectures.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="text-muted-foreground px-3 py-8 text-center">
+                  <td colSpan={10} className="text-muted-foreground px-3 py-8 text-center">
                     조건에 맞는 강의가 없습니다.
                   </td>
                 </tr>
@@ -405,6 +431,13 @@ export default function AdminLectures({ loaderData, actionData }: Route.Componen
                         </div>
                       </div>
                     </td>
+                    <td className="px-3 py-2 text-xs">
+                      {l.instructorNames.length > 0 ? (
+                        l.instructorNames.join(" · ")
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </td>
                     <td className="px-3 py-2 text-xs">{l.categoryName ?? "-"}</td>
                     <td className="px-3 py-2 text-xs">
                       {l.productKind === "tpass" ? "T-PASS" : "온라인"}
@@ -413,6 +446,12 @@ export default function AdminLectures({ loaderData, actionData }: Route.Componen
                       {l.availableFrom ? l.availableFrom.slice(0, 10) : "-"}
                     </td>
                     <td className="px-3 py-2 text-xs tabular-nums">
+                      {/* 정상가가 판매가보다 크면 취소선으로 병기(할인 표시) */}
+                      {l.listPriceKrw != null && l.listPriceKrw > l.priceKrw ? (
+                        <span className="text-muted-foreground mr-1 line-through">
+                          {l.listPriceKrw.toLocaleString("ko-KR")}
+                        </span>
+                      ) : null}
                       {l.priceKrw.toLocaleString("ko-KR")}원
                     </td>
                     <td className="px-3 py-2 text-xs">

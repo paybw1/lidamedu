@@ -4,8 +4,34 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
+import { createUserNotifications } from "~/features/notifications/queries.server";
 
 const admin = adminClient as SupabaseClient<Database>;
+
+// 쿠폰함 — 발급 알림의 이동 경로.
+const COUPON_BOX_HREF = "/lecture/coupons";
+
+/** 발급받은 회원에게 인박스 알림 — 쿠폰함을 열어보기 전엔 받은 사실을 알 수 없던 문제. */
+async function notifyCouponGranted(input: {
+  recipientIds: string[];
+  couponId: string;
+  couponName: string;
+  expiresAt: string | null;
+}): Promise<void> {
+  if (input.recipientIds.length === 0) return;
+  const until = input.expiresAt
+    ? `${input.expiresAt.slice(0, 10)}까지 사용할 수 있습니다.`
+    : "사용 기한이 따로 없습니다.";
+  await createUserNotifications({
+    recipientIds: input.recipientIds,
+    kind: "coupon_granted",
+    entityType: "coupon",
+    entityId: input.couponId,
+    title: `쿠폰이 발급되었습니다 — ${input.couponName}`,
+    body: `쿠폰함에서 확인하실 수 있습니다. ${until}`,
+    href: COUPON_BOX_HREF,
+  });
+}
 
 export type CouponGrantRow = {
   grantId: string;
@@ -138,12 +164,18 @@ export async function listCouponGrants(couponId: string): Promise<CouponGrantRow
 
 type GrantOutcome = "granted" | "already" | "error";
 
+interface GrantableCoupon {
+  coupon_id: string;
+  name: string;
+  usable_days: number | null;
+}
+
 async function grantToUser(input: {
-  coupon: { coupon_id: string; usable_days: number | null };
+  coupon: GrantableCoupon;
   userId: string;
   grantedBy: string;
   note: string | null;
-}): Promise<{ status: GrantOutcome; error?: string }> {
+}): Promise<{ status: GrantOutcome; error?: string; expiresAt?: string | null }> {
   const expiresAt = input.coupon.usable_days
     ? new Date(Date.now() + input.coupon.usable_days * 86400_000).toISOString()
     : null;
@@ -166,7 +198,9 @@ async function grantToUser(input: {
         note: input.note,
       })
       .eq("grant_id", existing.grant_id);
-    return error ? { status: "error", error: error.message } : { status: "granted" };
+    return error
+      ? { status: "error", error: error.message }
+      : { status: "granted", expiresAt };
   }
   const { error } = await admin.from("coupon_grants").insert({
     coupon_id: input.coupon.coupon_id,
@@ -175,18 +209,17 @@ async function grantToUser(input: {
     expires_at: expiresAt,
     note: input.note,
   });
-  return error ? { status: "error", error: error.message } : { status: "granted" };
+  return error
+    ? { status: "error", error: error.message }
+    : { status: "granted", expiresAt };
 }
 
 async function loadGrantableCoupon(
   couponId: string,
-): Promise<
-  | { ok: true; coupon: { coupon_id: string; usable_days: number | null } }
-  | { ok: false; error: string }
-> {
+): Promise<{ ok: true; coupon: GrantableCoupon } | { ok: false; error: string }> {
   const { data: coupon } = await admin
     .from("coupons")
-    .select("coupon_id, is_shared, usable_days")
+    .select("coupon_id, name, is_shared, usable_days")
     .eq("coupon_id", couponId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -213,6 +246,14 @@ export async function grantCouponToEmail(input: {
     note: null,
   });
   if (r.status === "error") return { ok: false, error: r.error ?? "발급 실패" };
+  if (r.status === "granted") {
+    await notifyCouponGranted({
+      recipientIds: [userId],
+      couponId: loaded.coupon.coupon_id,
+      couponName: loaded.coupon.name,
+      expiresAt: r.expiresAt ?? null,
+    });
+  }
   return { ok: true };
 }
 
@@ -232,6 +273,8 @@ export async function grantCouponToUsers(input: {
   const loaded = await loadGrantableCoupon(input.couponId);
   if (!loaded.ok) return loaded;
   const result: BulkGrantResult = { granted: 0, already: [], failed: [] };
+  const notifyIds: string[] = [];
+  let expiresAt: string | null = null;
   for (const userId of [...new Set(input.userIds)]) {
     const r = await grantToUser({
       coupon: loaded.coupon,
@@ -239,10 +282,20 @@ export async function grantCouponToUsers(input: {
       grantedBy: input.grantedBy,
       note: input.note,
     });
-    if (r.status === "granted") result.granted++;
-    else if (r.status === "already") result.already.push(userId);
+    if (r.status === "granted") {
+      result.granted++;
+      notifyIds.push(userId); // 새로 발급된 회원만 알린다(이미 보유·실패는 제외)
+      expiresAt = r.expiresAt ?? null;
+    } else if (r.status === "already") result.already.push(userId);
     else result.failed.push({ userId, error: r.error ?? "알 수 없는 오류" });
   }
+  // note 는 운영자 메모라 학생 알림 본문에 넣지 않는다.
+  await notifyCouponGranted({
+    recipientIds: notifyIds,
+    couponId: loaded.coupon.coupon_id,
+    couponName: loaded.coupon.name,
+    expiresAt,
+  });
   return { ok: true, result };
 }
 

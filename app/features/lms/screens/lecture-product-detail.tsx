@@ -20,6 +20,7 @@ import {
 } from "~/features/lms/lib/lecture-category";
 import { ReviewsSection } from "~/features/lms/components/reviews-section";
 import { DETAIL_SECTIONS } from "~/features/lms/lib/detail-sections";
+import { getDiscountDisplay } from "~/features/lms/lib/price";
 import { listSellableLectureProducts } from "~/features/lms/queries.server";
 import {
   getMyReview,
@@ -66,6 +67,7 @@ export default function LectureProductDetail({
   const { product, isAuthed, tossClientKey, reviews, summary, myReview, canWrite } =
     loaderData;
   const { addPlan, addBook, has } = useCart();
+  const discount = getDiscountDisplay(product.priceKrw, product.listPriceKrw);
   const isTpass = product.productKind === "tpass";
   const inCart = has(`plan:${product.code}`);
   const failPath = `/lecture/catalog/${product.code}?failed=1`;
@@ -118,10 +120,20 @@ export default function LectureProductDetail({
         <h1 className="mt-3 text-2xl leading-snug font-bold tracking-tight text-balance">
           {product.name}
         </h1>
-        <div className="mt-4 flex items-baseline gap-2">
+        <div className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-1">
           <span className="text-muted-foreground text-xs font-semibold">
             수강료
           </span>
+          {discount.listPriceKrw != null ? (
+            <>
+              <span className="text-muted-foreground text-sm line-through tabular-nums">
+                {discount.listPriceKrw.toLocaleString("ko-KR")}원
+              </span>
+              <span className="text-sm font-semibold text-rose-600 dark:text-rose-400">
+                {discount.percentOff}% 할인
+              </span>
+            </>
+          ) : null}
           <span className="text-2xl font-bold tabular-nums">
             {product.priceKrw.toLocaleString("ko-KR")}
             <span className="text-muted-foreground ml-0.5 text-sm font-normal">
@@ -291,6 +303,11 @@ export default function LectureProductDetail({
             <span className="text-muted-foreground text-xs font-semibold">
               수강료
             </span>
+            {discount.listPriceKrw != null ? (
+              <span className="text-muted-foreground text-xs line-through tabular-nums">
+                {discount.listPriceKrw.toLocaleString("ko-KR")}
+              </span>
+            ) : null}
             <span className="text-lg font-bold tabular-nums">
               {product.priceKrw.toLocaleString("ko-KR")}원
             </span>

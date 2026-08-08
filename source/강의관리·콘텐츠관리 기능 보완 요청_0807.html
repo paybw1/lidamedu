@@ -1,0 +1,1290 @@
+<p>&nbsp;</p>
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--text:#172033;--muted:#657086;--line:#e6eaf1;--primary:#315efb;--primary-soft:#eef3ff;--danger:#d64545;--danger-soft:#fff0f0;--success:#138a5b;--success-soft:#ebf8f2;--warning-soft:#fff8e8;--shadow:0 18px 45px rgba(30,45,80,.08);--radius:22px}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;font-family:Pretendard,"Noto Sans KR",Arial,sans-serif;background:radial-gradient(circle at top left,rgba(49,94,251,.10),transparent 30%),linear-gradient(180deg,#fbfcff 0%,var(--bg) 100%);color:var(--text);line-height:1.72;word-break:keep-all}.wrap{width:min(1180px,calc(100% - 32px));margin:0 auto;padding:56px 0 90px}.hero{position:relative;overflow:hidden;padding:52px;border-radius:30px;background:linear-gradient(135deg,#17233f 0%,#284dcc 58%,#6d8cff 100%);color:#fff;box-shadow:0 28px 70px rgba(35,68,175,.26)}.hero:after{content:"";position:absolute;width:280px;height:280px;right:-80px;top:-90px;border-radius:50%;background:rgba(255,255,255,.12)}.hero>*{position:relative;z-index:1}.hero .eyebrow{display:inline-flex;padding:7px 12px;border:1px solid rgba(255,255,255,.25);border-radius:999px;background:rgba(255,255,255,.10);font-size:13px;font-weight:700}.hero h1{margin:18px 0 12px;font-size:clamp(30px,5vw,48px);line-height:1.18;letter-spacing:-.04em}.hero p{margin:0;max-width:820px;color:rgba(255,255,255,.84);font-size:16px}.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:24px 0 38px}.summary .item{background:rgba(255,255,255,.95);border:1px solid rgba(255,255,255,.7);border-radius:18px;padding:20px;box-shadow:var(--shadow)}.summary strong{display:block;font-size:21px;color:var(--primary);margin-bottom:3px}.summary span{display:block;color:var(--muted);font-size:14px}.section-title{margin:54px 0 18px;display:flex;align-items:flex-end;justify-content:space-between;gap:16px}.section-title h2{margin:0;font-size:28px;letter-spacing:-.03em}.section-title p{margin:0;color:var(--muted);font-size:14px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:26px;box-shadow:var(--shadow)}.card.full{grid-column:1/-1}.card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:14px}.card h3{margin:0;font-size:20px;line-height:1.35;letter-spacing:-.025em}.badge{flex:none;padding:7px 10px;border-radius:999px;font-size:12px;font-weight:800;white-space:nowrap}.badge.required{background:var(--danger-soft);color:var(--danger)}.badge.ops{background:var(--success-soft);color:var(--success)}.card p{margin:0 0 12px;color:#3f4b61}ul{margin:12px 0 0;padding-left:20px}li{margin:6px 0}.flow{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.flow span{padding:9px 13px;border-radius:12px;background:#f7f9fd;border:1px solid var(--line);font-size:14px;font-weight:700}.flow span:not(:last-child):after{content:"→";margin-left:10px;color:#8a94a8}.notice{margin-top:16px;padding:14px 16px;border-radius:14px;background:var(--warning-soft);border:1px solid #f3dfab;color:#6f5410;font-size:14px}.important{margin-top:16px;padding:15px 16px;border-left:4px solid var(--primary);background:var(--primary-soft);border-radius:10px;font-size:14px}.table-wrap{overflow:auto;margin-top:14px;border:1px solid var(--line);border-radius:16px}table{width:100%;border-collapse:collapse;min-width:760px;background:#fff}th,td{padding:14px 16px;border-bottom:1px solid var(--line);text-align:left;font-size:14px;vertical-align:top}th{background:#f7f9fc;color:#445067;font-weight:800}tr:last-child td{border-bottom:0}.mini-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:18px}.mini-box{padding:18px;border:1px solid var(--line);border-radius:16px;background:#f9fbff}.mini-box strong{display:block;margin-bottom:7px;color:var(--primary);font-size:16px}.mini-box p{margin:0;color:var(--muted);font-size:14px}.rename{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:center;margin-top:16px}.rename-box{border:1px solid var(--line);border-radius:16px;padding:18px;background:#f9fbff}.rename-box span{display:block;font-size:12px;font-weight:800;color:var(--muted);margin-bottom:5px}.rename-box strong{display:block;font-size:18px}.rename-arrow{font-size:24px;color:var(--primary);font-weight:900}.footer{margin-top:48px;padding:24px;border-radius:18px;background:#17233f;color:#dce4ff;text-align:center;font-size:14px}@media(max-width:820px){.wrap{width:min(100% - 20px,1180px);padding:20px 0 55px}.hero{padding:30px 22px;border-radius:22px}.summary,.grid,.mini-grid{grid-template-columns:1fr}.card.full{grid-column:auto}.section-title{align-items:flex-start;flex-direction:column}.card{padding:22px}.flow{display:block}.flow span{display:block;margin-bottom:8px}.flow span:not(:last-child):after{float:right}.rename{grid-template-columns:1fr}.rename-arrow{text-align:center;transform:rotate(90deg)}table{min-width:680px}}
+</style>
+<main class="wrap">
+<section class="hero">
+<div class="eyebrow">추가 수정 개발 요청서</div>
+<h1>강의관리&middot;콘텐츠관리 메뉴 및<br />운영 기능 보완 요청</h1>
+<p>기존 개발요청서를 기준으로 기능이 반영되었으나 실제 운영 테스트 결과 강의 카테고리, 강의개설 메뉴 구조, 강의 검색&middot;수정, 강의 기본정보 에디터 및 콘텐츠관리 구조에 추가 보완이 필요합니다.&nbsp;</p>
+</section>
+<section class="summary">
+<div class="item"><strong>강의 카테고리</strong>관리자 등록&middot;강의 연결&middot;홈페이지 출력 연동</div>
+<div class="item"><strong>강의개설</strong>검색 영역과 등록 강의 리스트 중심으로 재구성</div>
+</section>
+<div class="section-title">
+<h2>관리자 메뉴 구조 변경</h2>
+<p>&nbsp;</p>
+</div>
+<section class="grid">
+<article class="card full">
+<div class="card-head">
+<h3>강의 카테고리 메뉴 추가</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>관리자가 강의 카테고리를 직접 등록하고 관리할 수 있는 별도의 <strong>강의 카테고리</strong> 메뉴를 추가해 주세요.</p>
+<p>등록한 카테고리는 강의 개설&middot;수정 시 선택할 수 있어야 하며, 관리자 검색과 사용자 홈페이지 강의 출력에도 동일하게 연동되어야 합니다.</p>
+<div class="mini-grid">
+<div class="mini-box"><strong>카테고리 관리</strong>
+<p>등록, 수정, 사용 여부, 노출 순서 및 삭제 조건을 관리합니다.</p>
+</div>
+<div class="mini-box"><strong>강의 등록 연동</strong>
+<p>강의 개설 및 수정 화면에서 등록된 카테고리를 선택합니다.</p>
+</div>
+<div class="mini-box"><strong>홈페이지 출력</strong>
+<p>선택된 카테고리를 기준으로 강의 목록과 필터를 출력합니다.</p>
+</div>
+</div>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>관리 항목</th>
+<th>요청 기능</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>카테고리 등록</td>
+<td>관리자가 카테고리명을 직접 입력하여 추가</td>
+</tr>
+<tr>
+<td>카테고리 수정</td>
+<td>카테고리명과 상위&middot;하위 구조 수정</td>
+</tr>
+<tr>
+<td>사용 여부</td>
+<td>사용 / 미사용 설정 및 미사용 카테고리 선택 제한</td>
+</tr>
+<tr>
+<td>노출 순서</td>
+<td>UID 또는 별도 순서값으로 관리자와 홈페이지 노출 순서 설정</td>
+</tr>
+<tr>
+<td>등록 강의 수</td>
+<td>각 카테고리에 연결된 강의 개수 표시</td>
+</tr>
+<tr>
+<td>삭제 조건</td>
+<td>연결된 강의가 있는 카테고리는 즉시 삭제하지 않고 이동 또는 연결 해제 안내</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="important">카테고리 구성은 특정 과목에 고정하지 않고 관리자가 자유롭게 추가&middot;수정할 수 있는 구조로 개발해 주세요.</div>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>강의 시리즈&middot;에디션 메뉴명 변경</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>현재 관리자 메뉴의 <strong>강의 시리즈&middot;에디션</strong> 명칭은 실제 운영자가 기능을 이해하기 어렵고 강의 등록 구조도 직관적이지 않습니다.</p>
+<div class="rename">
+<div class="rename-box">기존 메뉴명<strong>강의 시리즈&middot;에디션</strong></div>
+<div class="rename-arrow">&rarr;</div>
+<div class="rename-box">변경 메뉴명<strong>강의개설</strong></div>
+</div>
+<ul>
+<li>관리자 화면에서는 시리즈&middot;에디션이라는 용어를 가급적 사용하지 않음</li>
+<li>내부 데이터 구조상 필요하면 기존 구조를 유지해도 무관</li>
+<li>관리자 화면의 등록&middot;수정&middot;목록 명칭은 실제 강의 운영 용어로 통일</li>
+</ul>
+<div class="notice">관리자에게 노출되는 메뉴명과 버튼명은 &lsquo;강의개설&rsquo;, &lsquo;강의등록&rsquo;, &lsquo;강의수정&rsquo;으로 표시해 주세요.</div>
+</article>
+</section>
+<div class="section-title">
+<h2>강의개설 목록 화면</h2>
+<p>상단 검색&middot;등록 기능과 하단 강의 리스트 구성</p>
+</div>
+<section class="grid">
+<article class="card full">
+<div class="card-head">
+<h3>강의개설 메뉴 기본 구성</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>강의개설 메뉴에 들어가면 상단에는 강의등록 버튼과 검색 영역이 표시되고 하단에는 등록된 강의가 리스트 형태로 표시되어야 합니다.</p>
+<div class="flow">강의개설 메뉴검색 및 필터등록 강의 리스트강의 상세&middot;수정</div>
+<div class="important">신규 강의는 &lsquo;강의등록&rsquo; 버튼으로 개설하고 기존 강의는 하단 리스트에서 선택하여 수정할 수 있어야 합니다.</div>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>강의 검색 및 필터 기능</h3>
+<span class="badge required">★★★ 필수</span></div>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>검색 항목</th>
+<th>검색 조건</th>
+<th>처리 방식</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>카테고리</td>
+<td>전체 / 상위 / 하위 카테고리</td>
+<td>강의 카테고리 메뉴와 연동</td>
+</tr>
+<tr>
+<td>강의 구분</td>
+<td>전체 / 온라인 / 현장강의 / 패키지</td>
+<td>강의 등록 시 지정한 구분값으로 검색</td>
+</tr>
+<tr>
+<td>수강신청 기간</td>
+<td>시작일 / 종료일 / 신청 예정 / 신청중 / 신청 종료</td>
+<td>직접 기간 설정 포함</td>
+</tr>
+<tr>
+<td>판매 여부</td>
+<td>전체 / 판매중 / 판매중지</td>
+<td>현재 결제 가능 여부 기준</td>
+</tr>
+<tr>
+<td>상태</td>
+<td>전체 / 작성중 / 운영중 / 종료 / 비활성</td>
+<td>실제 강의 운영 상태 기준</td>
+</tr>
+<tr>
+<td>노출 여부</td>
+<td>전체 / 노출 / 비노출</td>
+<td>사용자 홈페이지 노출 상태 기준</td>
+</tr>
+<tr>
+<td>종료 여부</td>
+<td>전체 / 진행중 / 종료</td>
+<td>강의 종료 처리값 기준</td>
+</tr>
+<tr>
+<td>개별 검색</td>
+<td>강의명 / 강사명 / 강의 UID / 카테고리명</td>
+<td>검색어 입력 후 엔터 또는 검색 버튼으로 조회</td>
+</tr>
+</tbody>
+</table>
+</div>
+<ul>
+<li>복수 검색 조건 동시 적용</li>
+<li>검색 및 검색 조건 초기화 버튼 제공</li>
+<li>검색 결과 건수 표시</li>
+<li>강의 수정 후 목록 복귀 시 기존 검색 조건 유지</li>
+</ul>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>등록 강의 리스트 구성</h3>
+<span class="badge required">★★★ 필수</span></div>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>구분</th>
+<th>리스트 표시 항목</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>기본정보</td>
+<td>선택 체크박스, 강의 UID, 썸네일, 강의명, 카테고리, 강사명</td>
+</tr>
+<tr>
+<td>판매정보</td>
+<td>강의 구분, 수강신청 기간, 판매가격, 판매 여부</td>
+</tr>
+<tr>
+<td>운영정보</td>
+<td>상태, 노출 여부, 종료 여부, 등록일, 수정일</td>
+</tr>
+<tr>
+<td>관리기능</td>
+<td>상세보기, 강의수정, 강의복사, 목차관리, 수강생관리</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="important">강의명 또는 &lsquo;강의수정&rsquo; 버튼을 누르면 해당 강의의 등록 정보를 불러와 수정할 수 있어야 합니다.</div>
+</article>
+<article class="card">
+<div class="card-head">
+<h3>강의 리스트 정렬</h3>
+<span class="badge ops">★★ 운영필수</span></div>
+<ul>
+<li>최근 등록순</li>
+<li>최근 수정순</li>
+<li>강의명순</li>
+<li>강의 UID순</li>
+<li>수강신청 시작일순</li>
+<li>노출 순서순</li>
+</ul>
+</article>
+<article class="card">
+<div class="card-head">
+<h3>페이지 표시 개수</h3>
+<span class="badge ops">★★ 운영필수</span></div>
+<ul>
+<li>20개 보기</li>
+<li>50개 보기</li>
+<li>100개 보기</li>
+<li>현재 페이지와 전체 페이지 수 표시</li>
+</ul>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>삭제 및 중요 관리 권한</h3>
+<span class="badge required">★★★ 필수</span></div>
+<ul>
+<li>수강생이 있는 강의는 삭제 불가</li>
+<li>주문 또는 결제 이력이 있는 강의는 삭제 불가</li>
+<li>삭제 가능한 강의도 최고관리자만 삭제 가능</li>
+<li>일반관리자는 비노출, 판매중지 또는 종료 처리만 가능</li>
+<li>삭제 전 경고창과 최종 확인 절차 제공</li>
+</ul>
+</article>
+</section>
+<div class="section-title">
+<h2>강의 등록 및 수정</h2>
+<p>신규 개설과 기존 강의 수정 기능 통합</p>
+</div>
+<section class="grid">
+<article class="card full">
+<div class="card-head">
+<h3>강의등록 및 강의수정 기능</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>강의등록 버튼을 누르면 신규 강의를 개설할 수 있어야 하며 등록 강의 리스트에서 강의를 선택하면 기존 정보를 불러와 수정할 수 있어야 합니다.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>구분</th>
+<th>입력 및 설정 항목</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>강의 식별정보</td>
+<td>강의명, 부제목, 강사, 강의 UID</td>
+</tr>
+<tr>
+<td>분류정보</td>
+<td>강의 카테고리, 강의 구분(온라인&middot;현장&middot;패키지)</td>
+</tr>
+<tr>
+<td>판매정보</td>
+<td>정상가격, 판매가격, 수강신청 기간, 수강기간, 판매 여부</td>
+</tr>
+<tr>
+<td>운영정보</td>
+<td>노출 여부, 상태, 종료 여부, 노출 순서</td>
+</tr>
+<tr>
+<td>콘텐츠 연결</td>
+<td>강의 썸네일, 샘플영상, 목차, 콜러스 콘텐츠</td>
+</tr>
+<tr>
+<td>교재 연결</td>
+<td>주교재, 부교재, 필수&middot;선택 구매 여부</td>
+</tr>
+<tr>
+<td>상세 안내</td>
+<td>강의 기본설명, 상세설명, 수강대상, 특징, 커리큘럼, 유의사항</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="important">강의를 수정하더라도 기존 목차, 콘텐츠, 수강생, 수강기록, 교재 연결, 결제 및 주문정보가 유지되어야 합니다.</div>
+</article>
+</section>
+<div class="section-title">
+<h2>강의 기본정보 에디터</h2>
+<p>공지사항과 동일한 수준의 일반&middot;HTML 편집 기능 적용</p>
+</div>
+<section class="grid">
+<article class="card full">
+<div class="card-head">
+<h3>강의 기본정보 통합 에디터 적용</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>강의 기본정보 입력 영역에 공지사항 게시판과 동일한 수준의 에디터가 적용되지 않았습니다. 강의 상세페이지 내용을 자유롭게 작성할 수 있도록 통합 에디터를 적용해 주세요.</p>
+<div class="mini-grid">
+<div class="mini-box"><strong>일반 편집모드</strong>
+<p>워드프로세서처럼 글자, 이미지, 표, 링크를 편집합니다.</p>
+</div>
+<div class="mini-box"><strong>HTML 편집모드</strong>
+<p>HTML 소스와 허용된 인라인 스타일을 직접 입력합니다.</p>
+</div>
+<div class="mini-box"><strong>미리보기</strong>
+<p>사용자 홈페이지에서 출력될 화면을 저장 전에 확인합니다.</p>
+</div>
+</div>
+</article>
+<article class="card">
+<div class="card-head">
+<h3>기본 편집 기능</h3>
+<span class="badge required">★★★ 필수</span></div>
+<ul>
+<li>글꼴 및 글자 크기</li>
+<li>굵기, 밑줄, 취소선</li>
+<li>글자색 및 배경색</li>
+<li>문단 정렬 및 들여쓰기</li>
+<li>글머리표 및 번호 목록</li>
+<li>구분선 삽입</li>
+<li>실행 취소 및 다시 실행</li>
+</ul>
+</article>
+<article class="card">
+<div class="card-head">
+<h3>콘텐츠 삽입 기능</h3>
+<span class="badge required">★★★ 필수</span></div>
+<ul>
+<li>이미지 업로드 및 본문 삽입</li>
+<li>표 삽입 및 수정</li>
+<li>내부&middot;외부 링크 삽입</li>
+<li>유튜브 영상 삽입</li>
+<li>iframe 소스 삽입</li>
+<li>HTML 코드 직접 입력</li>
+<li>전체화면 편집</li>
+</ul>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>에디터 적용 입력 영역</h3>
+<span class="badge required">★★★ 필수</span></div>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>입력 영역</th>
+<th>적용 여부</th>
+<th>비고</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>강의 기본설명</td>
+<td>적용</td>
+<td>강의 목록 또는 상세 상단 활용</td>
+</tr>
+<tr>
+<td>강의 상세설명</td>
+<td>적용</td>
+<td>HTML 및 반응형 콘텐츠 입력</td>
+</tr>
+<tr>
+<td>강의 소개</td>
+<td>적용</td>
+<td>이미지&middot;표&middot;영상 삽입</td>
+</tr>
+<tr>
+<td>수강대상</td>
+<td>적용</td>
+<td>서식 및 목록 기능 사용</td>
+</tr>
+<tr>
+<td>강의특징</td>
+<td>적용</td>
+<td>강조 문구와 이미지 사용</td>
+</tr>
+<tr>
+<td>커리큘럼 안내</td>
+<td>적용</td>
+<td>표 형태 입력 가능</td>
+</tr>
+<tr>
+<td>교재 안내</td>
+<td>적용</td>
+<td>추가 설명 입력</td>
+</tr>
+<tr>
+<td>수강 유의사항</td>
+<td>적용</td>
+<td>중요 안내 서식 유지</td>
+</tr>
+<tr>
+<td>환불 및 이용 안내</td>
+<td>적용</td>
+<td>표&middot;링크&middot;강조 문구 입력</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="notice">강의명, 부제목, 가격 등 한 줄 입력 항목에는 에디터를 적용하지 않아도 됩니다.</div>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>HTML 저장 및 보안 처리</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>HTML 편집모드에서 입력한 정상적인 콘텐츠와 스타일이 저장 과정에서 임의로 삭제되거나 변경되지 않도록 처리해 주세요.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>유지 대상</th>
+<th>제한 대상</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>인라인 스타일, 표, 이미지, 링크, iframe, 반응형 CSS, 모바일 미디어쿼리, 허용된 HTML 태그</td>
+<td>JavaScript 실행 코드, 악성 이벤트 속성, 위험한 외부 실행 코드</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="important">일반 편집모드와 HTML 편집모드를 전환하더라도 기존 HTML 구조와 반응형 스타일이 손상되지 않아야 합니다.</div>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>에디터 이미지 기능</h3>
+<span class="badge ops">★★ 운영필수</span></div>
+<ul>
+<li>이미지 파일 업로드</li>
+<li>본문 내 이미지 크기 조절</li>
+<li>좌측&middot;중앙&middot;우측 정렬</li>
+<li>이미지 링크 설정</li>
+<li>대체텍스트 입력</li>
+<li>원본 비율 유지</li>
+<li>모바일 화면에서 자동 축소</li>
+</ul>
+</article>
+</section>
+<div class="section-title">
+<h2>콘텐츠관리 메뉴 분리</h2>
+<p>콜러스 원본 콘텐츠와 강의그룹 관리 기능을 명확하게 구분</p>
+</div>
+<section class="grid">
+<article class="card full">
+<div class="card-head">
+<h3>콘텐츠관리 하위 메뉴 분리</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>현재 <strong>콘텐츠 라이브러리</strong> 안에 콜러스에서 동기화된 개별 콘텐츠와 강의그룹이 함께 표시되고 있어 원본 영상과 그룹별 강의 구성을 구분하여 관리하기 어렵습니다.</p>
+<p>왼쪽 관리자 메뉴의 <strong>콘텐츠관리</strong> 하위 메뉴를 다음과 같이 분리해 주세요.</p>
+<div class="rename">
+<div class="rename-box">현재 구조<strong>콘텐츠 라이브러리 안에서 콘텐츠&middot;강의그룹 통합 관리</strong></div>
+<div class="rename-arrow">&rarr;</div>
+<div class="rename-box">변경 구조<strong>콘텐츠관리 &gt; 라이브러리 / 강의그룹</strong></div>
+</div>
+<div class="mini-grid">
+<div class="mini-box"><strong>라이브러리</strong>
+<p>콜러스에서 동기화된 개별 원본 영상 콘텐츠를 검색하고 관리합니다.</p>
+</div>
+<div class="mini-box"><strong>강의그룹</strong>
+<p>라이브러리 콘텐츠를 불러와 회차와 순서를 구성하고 실제 강의와 연결합니다.</p>
+</div>
+<div class="mini-box"><strong>역할 분리</strong>
+<p>원본 콘텐츠 관리와 강의 구성 관리를 각각 독립된 메뉴에서 처리합니다.</p>
+</div>
+</div>
+<div class="important">라이브러리 목록에서 강의그룹을 직접 지정하는 기존 방식은 제거하고, 강의그룹 메뉴 안에서 라이브러리 콘텐츠를 불러오는 방식으로 변경해 주세요.</div>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>라이브러리 메뉴</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>라이브러리 메뉴에서는 콜러스에서 동기화한 개별 영상 콘텐츠만 관리할 수 있어야 합니다. 이 메뉴는 원본 콘텐츠의 동기화&middot;검색&middot;상태 확인&middot;미리보기를 담당합니다.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>구분</th>
+<th>요청 기능</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>콜러스 동기화</td>
+<td>자동 또는 수동 동기화, 최근 동기화 일시, 동기화 결과 및 오류 확인</td>
+</tr>
+<tr>
+<td>콘텐츠 검색</td>
+<td>콘텐츠명, 미디어 콘텐츠키, 콜러스 카테고리, 등록일, 인코딩 상태, 그룹 연결 여부</td>
+</tr>
+<tr>
+<td>콘텐츠 상태</td>
+<td>인코딩중 / 사용가능 / 오류 / 사용중지 상태 표시</td>
+</tr>
+<tr>
+<td>상세정보</td>
+<td>재생시간, 파일정보, 미디어 콘텐츠키, 등록일, 수정일 확인</td>
+</tr>
+<tr>
+<td>영상 확인</td>
+<td>관리자 미리보기 및 재생 가능 여부 확인</td>
+</tr>
+<tr>
+<td>연결정보</td>
+<td>현재 연결된 강의그룹 수와 연결 그룹명 확인</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="notice">동기화 기준값은 업로드 파일키가 아니라 실제 영상 연결에 사용하는 <strong>미디어 콘텐츠키</strong>로 유지해 주세요.</div>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>라이브러리 리스트 표시 항목</h3>
+<span class="badge ops">★★ 운영필수</span></div>
+<ul>
+<li>선택 체크박스</li>
+<li>콘텐츠 UID</li>
+<li>콘텐츠명</li>
+<li>미디어 콘텐츠키</li>
+<li>재생시간</li>
+<li>콜러스 카테고리</li>
+<li>인코딩 상태</li>
+<li>동기화 상태</li>
+<li>강의그룹 연결 여부 및 연결 그룹 수</li>
+<li>등록일&middot;수정일</li>
+<li>미리보기 및 상세보기 버튼</li>
+</ul>
+<div class="important">라이브러리는 개별 원본 콘텐츠를 보관하고 확인하는 공간으로 사용하며, 이 목록에서 직접 강의그룹을 설정하는 기능은 제공하지 않아도 됩니다.</div>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>강의그룹 메뉴</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>강의그룹 메뉴에서는 새로운 그룹을 생성한 후 라이브러리에 동기화된 콘텐츠를 불러와 하나의 강의 또는 과정 단위로 구성할 수 있어야 합니다.</p>
+<div class="flow">강의그룹 등록라이브러리 콘텐츠 검색콘텐츠 선택&middot;추가회차&middot;순서 설정개설 강의 연결</div>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>구분</th>
+<th>입력 및 관리 항목</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>그룹 기본정보</td>
+<td>강의그룹명, 그룹 설명, 담당 강사, 카테고리, 사용 여부</td>
+</tr>
+<tr>
+<td>강의 연결</td>
+<td>강의개설 메뉴에 등록된 강의 검색 및 연결</td>
+</tr>
+<tr>
+<td>콘텐츠 구성</td>
+<td>라이브러리 콘텐츠 불러오기, 복수 선택, 일괄 추가</td>
+</tr>
+<tr>
+<td>회차 관리</td>
+<td>회차 번호, 회차 제목, 공개 여부, 무료 미리보기 여부</td>
+</tr>
+<tr>
+<td>순서 관리</td>
+<td>드래그 앤드 드롭 또는 순서값으로 콘텐츠 정렬</td>
+</tr>
+<tr>
+<td>운영정보</td>
+<td>등록 콘텐츠 수, 총 재생시간, 등록일, 수정일</td>
+</tr>
+</tbody>
+</table>
+</div>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>강의그룹 검색 및 리스트</h3>
+<span class="badge required">★★★ 필수</span></div>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>영역</th>
+<th>요청 항목</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>검색 조건</td>
+<td>강의그룹명, 연결 강의명, 강사명, 카테고리, 사용 여부, 등록일, 수정일</td>
+</tr>
+<tr>
+<td>리스트 정보</td>
+<td>그룹 UID, 그룹명, 연결 강의명, 강사명, 카테고리, 콘텐츠 수, 총 재생시간, 사용 여부</td>
+</tr>
+<tr>
+<td>관리 버튼</td>
+<td>그룹 상세, 그룹 수정, 콘텐츠 관리, 순서 관리, 그룹 복사, 사용중지, 삭제</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="important">강의그룹명을 클릭하거나 &lsquo;콘텐츠 관리&rsquo; 버튼을 누르면 해당 그룹 안에서 라이브러리 콘텐츠를 검색하고 추가&middot;교체&middot;정렬할 수 있어야 합니다.</div>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>강의그룹 내 콘텐츠 불러오기</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>강의그룹 상세 또는 수정 화면에서 별도의 콘텐츠 선택창을 열어 라이브러리에 동기화된 영상을 검색하고 불러올 수 있도록 해 주세요.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>기능</th>
+<th>요청사항</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>라이브러리 검색</td>
+<td>콘텐츠명, 미디어 콘텐츠키, 콜러스 카테고리, 등록일, 그룹 연결 여부로 검색</td>
+</tr>
+<tr>
+<td>콘텐츠 선택</td>
+<td>복수 선택 및 선택 콘텐츠 일괄 추가</td>
+</tr>
+<tr>
+<td>사전 확인</td>
+<td>추가 전 영상 미리보기, 재생시간 및 인코딩 상태 확인</td>
+</tr>
+<tr>
+<td>회차 편집</td>
+<td>추가 후 회차 번호와 제목을 강의그룹 안에서 수정</td>
+</tr>
+<tr>
+<td>순서 변경</td>
+<td>드래그 앤드 드롭 또는 순서값 입력 방식 지원</td>
+</tr>
+<tr>
+<td>연결 해제</td>
+<td>그룹에서 제거하더라도 라이브러리의 원본 콘텐츠는 유지</td>
+</tr>
+</tbody>
+</table>
+</div>
+<ul>
+<li>하나의 콘텐츠를 여러 강의그룹에 연결 가능</li>
+<li>동일 그룹에 같은 콘텐츠를 중복 추가할 경우 경고 표시</li>
+<li>콘텐츠 교체 시 기존 수강기록 처리 기준 확인 및 경고 표시</li>
+<li>무료 미리보기, 공개&middot;비공개 여부를 회차별로 설정</li>
+</ul>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>권장 콘텐츠 관리 흐름</h3>
+<span class="badge required">★★★ 필수</span></div>
+<div class="flow">콜러스 동기화라이브러리 저장강의그룹 생성콘텐츠 불러오기회차&middot;순서 설정개설 강의 연결</div>
+<div class="important">라이브러리는 원본 영상을 보관&middot;검색하는 공간으로, 강의그룹은 실제 강의에 사용할 영상을 묶고 목차와 순서를 구성하는 공간으로 명확히 구분해 주세요.</div>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>삭제 조건 및 권한</h3>
+<span class="badge required">★★★ 필수</span></div>
+<ul>
+<li>강의에 연결되어 사용 중인 강의그룹은 즉시 삭제 불가</li>
+<li>수강생이 이용 중이거나 수강기록이 존재하는 강의그룹은 삭제 불가</li>
+<li>강의그룹 삭제 시 라이브러리 원본 콘텐츠는 유지</li>
+<li>라이브러리 콘텐츠 삭제 전 연결된 강의그룹과 개설 강의 확인</li>
+<li>삭제 권한은 최고관리자만 보유</li>
+<li>일반관리자는 사용중지 또는 연결 해제만 가능</li>
+<li>삭제 전 영향 범위와 연결 데이터를 표시하고 최종 확인 진행</li>
+</ul>
+</article>
+</section>
+<div class="section-title">
+<h2>수강신청 강의카드 구성</h2>
+<p>강의 비교에 필요한 핵심 정보만 간결하게 표시</p>
+</div>
+<section class="grid">
+<article class="card full">
+<div class="card-head">
+<h3>강의페이지 &gt; 수강신청 강의카드 간소화</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>현재 수강신청 페이지의 강의카드에 교재 정보가 함께 노출되어 카드 높이가 길어지고, 강의보다 교재 정보가 더 강조되는 문제가 있습니다.</p>
+<p>수강신청 페이지는 강의를 빠르게 비교하고 선택하는 화면이므로, 강의카드에는 아래 핵심 정보만 표시해 주세요.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>표시 항목</th>
+<th>처리 기준</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>강의명</td>
+<td>강의의 공식 명칭을 가장 우선적으로 표시</td>
+</tr>
+<tr>
+<td>강사명</td>
+<td>담당 강사명을 강의명 하단에 표시</td>
+</tr>
+<tr>
+<td>수강기간</td>
+<td>예: 180일 수강과 같이 간단하게 표시</td>
+</tr>
+<tr>
+<td>정상가격</td>
+<td>할인 전 가격을 취소선 또는 보조 텍스트로 표시</td>
+</tr>
+<tr>
+<td>할인가격</td>
+<td>실제 결제금액을 강조하여 표시</td>
+</tr>
+<tr>
+<td>상세보기 또는 수강신청</td>
+<td>강의 상세페이지 이동 또는 수강신청 기능 제공</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="important">강의카드는 가능한 한 동일한 높이를 유지하여 여러 강의를 한눈에 비교할 수 있도록 정렬해 주세요.</div>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>강의카드 교재정보 제거</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>다음 교재 관련 정보는 수강신청 강의카드에서 표시하지 않습니다.</p>
+<ul>
+<li>주교재&middot;부교재 목록</li>
+<li>교재명 및 교재 가격</li>
+<li>교재 이미지</li>
+<li>교재 장바구니 또는 담기 버튼</li>
+<li>교재 상세설명</li>
+</ul>
+<div class="notice">강의카드에서는 강의 선택에 필요한 정보만 보여주고, 교재정보는 강의 상세페이지에서 확인하도록 화면 역할을 분리해 주세요.</div>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>강의 상세페이지 교재정보 표시</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>사용자가 강의명 또는 상세보기 버튼을 클릭하여 강의 상세페이지로 이동하면, 관리자에서 연결한 주교재와 부교재 정보를 확인할 수 있어야 합니다.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>상세페이지 표시 항목</th>
+<th>처리 방식</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>교재 구분</td>
+<td>주교재와 부교재를 구분하여 표시</td>
+</tr>
+<tr>
+<td>교재 이미지</td>
+<td>도서몰에 등록된 대표 이미지를 자동 표시</td>
+</tr>
+<tr>
+<td>교재명</td>
+<td>도서몰의 최신 교재명 자동 반영</td>
+</tr>
+<tr>
+<td>판매가격</td>
+<td>현재 도서몰 판매가격 표시</td>
+</tr>
+<tr>
+<td>간단한 교재 안내</td>
+<td>교재 선택에 필요한 간략한 설명만 표시</td>
+</tr>
+<tr>
+<td>교재 상세보기</td>
+<td>도서몰 상세페이지로 이동</td>
+</tr>
+<tr>
+<td>강의와 함께 구매</td>
+<td>강의 결제 시 선택한 교재를 함께 결제할 수 있도록 연결</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="important">도서몰에서 교재 가격, 재고, 품절 상태 또는 이미지가 변경되면 강의 상세페이지에도 동일하게 반영되어야 합니다.</div>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>수강신청 페이지와 상세페이지 역할 구분</h3>
+<span class="badge ops">★★ 운영필수</span></div>
+<div class="rename">
+<div class="rename-box">수강신청 목록<strong>강의명 &middot; 강사명 &middot; 수강기간 &middot; 정상가 &middot; 할인가</strong></div>
+<div class="rename-arrow">&rarr;</div>
+<div class="rename-box">강의 상세페이지<strong>강의소개 &middot; 목차 &middot; 샘플영상 &middot; 사용교재 &middot; 수강후기</strong></div>
+</div>
+<div class="important">수강신청 목록은 강의를 빠르게 비교하는 화면으로, 상세페이지는 강의와 교재의 상세정보를 확인하고 최종 구매하는 화면으로 구성해 주세요.</div>
+</article>
+</section>
+<div class="section-title">
+<h2>쿠폰관리 기능 수정</h2>
+<p>쿠폰 금액 표시 오류와 회원 개별 발급 방식 개선</p>
+</div>
+<section class="grid">
+<article class="card full">
+<div class="card-head">
+<h3>쿠폰 금액 표시 오류 수정</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>매출&middot;정산관리 &gt; 쿠폰관리에서 30,000원으로 등록한 쿠폰 금액이 사용자 및 관리자 화면에서 <strong>29,999원</strong>으로 표시되는 오류가 있습니다.</p>
+<p>쿠폰 등록값과 실제 표시값 및 할인 적용금액이 일치하도록 수정해 주세요.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>확인 항목</th>
+<th>수정 요청사항</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>쿠폰 등록금액</td>
+<td>관리자가 입력한 정액 쿠폰 금액을 원 단위 정수값으로 정확하게 저장</td>
+</tr>
+<tr>
+<td>관리자 화면 표시</td>
+<td>30,000원으로 등록한 쿠폰은 쿠폰 목록과 상세 화면에서 30,000원으로 표시</td>
+</tr>
+<tr>
+<td>사용자 화면 표시</td>
+<td>보유쿠폰, 결제창 및 쿠폰 선택 화면에서도 30,000원으로 동일하게 표시</td>
+</tr>
+<tr>
+<td>할인 적용금액</td>
+<td>실제 주문 할인금액도 29,999원이 아닌 30,000원으로 적용</td>
+</tr>
+<tr>
+<td>기존 쿠폰 데이터</td>
+<td>이미 등록된 쿠폰 중 금액이 잘못 표시되는 데이터가 있는지 함께 점검</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="important">쿠폰 금액 계산 과정에서 소수점, 부가세, 비율 환산 또는 자료형 변환으로 1원이 차감되지 않도록 원 단위 정수 기준으로 처리해 주세요.</div>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>회원 개별 쿠폰 발급 검색 기능</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>쿠폰관리 &gt; 회원 개별 발급 화면에서 회원을 직접 검색하고 선택하여 쿠폰을 발급할 수 있어야 합니다.</p>
+<p>관리자가 회원 전체 목록을 일일이 확인하지 않고, 검색 결과에서 발급 대상 회원을 선택하는 방식으로 개선해 주세요.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>기능</th>
+<th>요청사항</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>회원 검색</td>
+<td>회원명, 아이디, 휴대폰 번호, 이메일로 검색</td>
+</tr>
+<tr>
+<td>검색 결과</td>
+<td>회원 UID, 이름, 아이디, 휴대폰 번호, 이메일, 회원상태를 목록으로 표시</td>
+</tr>
+<tr>
+<td>회원 선택</td>
+<td>검색 결과에서 체크박스로 1명 또는 여러 명을 선택</td>
+</tr>
+<tr>
+<td>쿠폰 선택</td>
+<td>발급할 쿠폰을 검색하거나 쿠폰 목록에서 선택</td>
+</tr>
+<tr>
+<td>발급 정보</td>
+<td>쿠폰명, 할인금액, 사용기간, 사용 가능 상품 및 발급 사유 확인</td>
+</tr>
+<tr>
+<td>개별 발급</td>
+<td>선택한 회원에게 쿠폰을 즉시 발급</td>
+</tr>
+<tr>
+<td>복수 발급</td>
+<td>여러 회원을 선택하여 동일 쿠폰 일괄 발급 가능</td>
+</tr>
+<tr>
+<td>중복 확인</td>
+<td>동일 회원에게 동일 쿠폰이 이미 발급된 경우 경고 또는 중복 발급 여부 확인</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="important">검색 결과에서 회원을 선택한 뒤 &lsquo;선택회원 쿠폰 발급&rsquo; 버튼을 눌러 발급하는 흐름으로 구성해 주세요.</div>
+<div class="flow">회원 검색검색 결과 확인회원 선택쿠폰 선택발급 확인쿠폰 발급</div>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>쿠폰 발급 이력 및 권한</h3>
+<span class="badge ops">★★ 운영필수</span></div>
+<ul>
+<li>발급 대상 회원, 쿠폰명, 쿠폰 금액, 발급일시를 이력으로 저장</li>
+<li>발급 관리자명과 관리자 계정 기록</li>
+<li>발급 사유 또는 관리자 메모 입력</li>
+<li>사용 전 쿠폰의 회수 또는 사용중지 기능</li>
+<li>발급 실패 또는 일부 실패 시 대상 회원과 실패 사유 표시</li>
+<li>쿠폰 발급 권한을 보유한 관리자만 개별&middot;일괄 발급 가능</li>
+</ul>
+<div class="notice">쿠폰을 이미 사용한 경우에는 단순 회수하지 않고 주문 및 할인 이력과 연결하여 확인할 수 있도록 해 주세요.</div>
+</article>
+</section>
+<div class="section-title">
+<h2>운영관리 메뉴 및 페이지관리</h2>
+<p>매출정산관리 메뉴 유지 오류 수정과 풀페이지 제작 기능 추가</p>
+</div>
+<section class="grid">
+<article class="card full">
+<div class="card-head">
+<h3>매출정산관리 하위 메뉴 유지 오류 수정</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>현재 <strong>운영관리 &gt; 매출정산관리</strong> 안에 있는 하위 메뉴를 클릭하면, 매출정산관리 아래에 표시되던 다른 메뉴들이 사라지는 문제가 있습니다.</p>
+<p>매출정산관리의 어떤 하위 메뉴로 이동하더라도 왼쪽 메뉴의 전체 하위 메뉴가 계속 표시되고, 현재 선택한 메뉴만 활성 상태로 구분되도록 수정해 주세요.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>구분</th>
+<th>수정 요청사항</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>메뉴 유지</td>
+<td>매출정산관리의 하위 메뉴를 클릭해도 다른 하위 메뉴가 사라지지 않도록 처리</td>
+</tr>
+<tr>
+<td>현재 위치 표시</td>
+<td>현재 접속한 메뉴만 배경색, 글자색 또는 아이콘으로 활성 표시</td>
+</tr>
+<tr>
+<td>펼침 상태 유지</td>
+<td>페이지 이동 후에도 매출정산관리 메뉴가 펼쳐진 상태로 유지</td>
+</tr>
+<tr>
+<td>새로고침 처리</td>
+<td>브라우저 새로고침 후에도 현재 메뉴와 펼침 상태가 정상 표시</td>
+</tr>
+<tr>
+<td>권한별 표시</td>
+<td>관리자 권한이 있는 하위 메뉴는 모두 유지하고, 권한이 없는 메뉴만 숨김 처리</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="important">매출정산관리의 특정 메뉴를 선택했을 때 다른 메뉴가 사라지는 방식이 아니라, 전체 메뉴는 유지하고 현재 선택한 메뉴만 활성화되어야 합니다.</div>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>운영&middot;시스템 &gt; 페이지관리 메뉴 추가</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>관리자 페이지의 <strong>운영관리 &gt; 운영&middot;시스템</strong> 하위 메뉴에 <strong>페이지관리</strong> 메뉴를 추가해 주세요.</p>
+<p>페이지관리는 이벤트 페이지, T-PASS 소개 페이지, 패키지 상품 소개 페이지 등 별도의 풀페이지를 관리자가 직접 제작하고 수정하기 위한 기능입니다.</p>
+<div class="flow">페이지관리페이지 등록일반&middot;HTML 편집주소 생성사용&middot;중지홈페이지 출력</div>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>페이지관리 목록 화면</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>페이지관리 메뉴는 게시판 관리와 유사한 목록형 구조로 구성하고, 상단에 페이지 등록 및 검색 기능을 제공해 주세요.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>목록 항목</th>
+<th>처리 기준</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>페이지 UID</td>
+<td>시스템에서 자동 생성되는 내부 관리번호</td>
+</tr>
+<tr>
+<td>페이지명</td>
+<td>관리자가 입력한 제목을 목록에 표시</td>
+</tr>
+<tr>
+<td>코드명</td>
+<td>페이지 주소에 사용되는 중복 불가 고유값</td>
+</tr>
+<tr>
+<td>페이지 주소</td>
+<td>코드명을 기준으로 생성된 실제 접근 URL 표시 및 복사 기능</td>
+</tr>
+<tr>
+<td>상태</td>
+<td>사용 / 중지 상태 표시</td>
+</tr>
+<tr>
+<td>등록일&middot;수정일</td>
+<td>최초 등록일과 최근 수정일 표시</td>
+</tr>
+<tr>
+<td>관리</td>
+<td>미리보기, 수정, 복사, 사용중지, 삭제 버튼 제공</td>
+</tr>
+</tbody>
+</table>
+</div>
+<ul>
+<li>페이지명 또는 코드명으로 검색</li>
+<li>사용&middot;중지 상태별 검색</li>
+<li>등록일 또는 수정일 기간 검색</li>
+<li>최근 등록순&middot;최근 수정순&middot;페이지명순 정렬</li>
+</ul>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>페이지 등록 기본정보</h3>
+<span class="badge required">★★★ 필수</span></div>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>입력 항목</th>
+<th>요청 기능</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>페이지명</td>
+<td>게시글 제목처럼 관리자 목록과 브라우저 제목에 사용할 페이지명을 입력</td>
+</tr>
+<tr>
+<td>코드명</td>
+<td>페이지 주소에 사용될 영문&middot;숫자&middot;하이픈 기반의 고유 코드 입력</td>
+</tr>
+<tr>
+<td>코드 중복 확인</td>
+<td>저장 전 동일한 코드명이 존재하는지 실시간 또는 버튼 방식으로 확인</td>
+</tr>
+<tr>
+<td>페이지 주소</td>
+<td>예: /page/코드명 형태로 자동 생성하고 관리자에게 미리 표시</td>
+</tr>
+<tr>
+<td>페이지 내용</td>
+<td>일반 에디터 또는 HTML 소스 모드로 본문 작성</td>
+</tr>
+<tr>
+<td>활성 상태</td>
+<td>사용 / 중지 중 하나를 선택</td>
+</tr>
+<tr>
+<td>관리자 메모</td>
+<td>이벤트 기간, 연결 상품, 수정 내용 등 내부 메모 입력</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="important">코드명은 페이지 URL과 연결되는 고유값이므로 중복 등록이 불가능해야 하며, 저장 전 반드시 중복 여부를 확인해 주세요.</div>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>페이지 본문 통합 에디터</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>페이지 본문은 공지사항과 동일하게 일반 편집모드와 HTML 소스 편집모드를 모두 지원해야 하며, 두 모드 간 자유로운 전환이 가능해야 합니다.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>기능 구분</th>
+<th>요청사항</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>일반 편집모드</td>
+<td>글자, 이미지, 표, 링크 등을 일반 문서처럼 작성</td>
+</tr>
+<tr>
+<td>HTML 편집모드</td>
+<td>풀페이지 HTML 소스와 인라인 CSS를 직접 입력</td>
+</tr>
+<tr>
+<td>모드 전환</td>
+<td>일반 편집과 HTML 편집을 전환해도 기존 코드와 레이아웃 유지</td>
+</tr>
+<tr>
+<td>미리보기</td>
+<td>PC&middot;모바일 화면에서 실제 출력 형태를 저장 전 확인</td>
+</tr>
+<tr>
+<td>전체화면 편집</td>
+<td>긴 이벤트&middot;패키지 페이지를 편리하게 작성할 수 있도록 전체화면 제공</td>
+</tr>
+<tr>
+<td>이미지 등록</td>
+<td>이미지 업로드, 본문 삽입, 크기 및 정렬 설정</td>
+</tr>
+<tr>
+<td>링크&middot;미디어</td>
+<td>내부&middot;외부 링크, 유튜브, iframe 등 허용된 콘텐츠 삽입</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="important">HTML 모드에 입력한 인라인 스타일, 표, 이미지, 링크, iframe, 반응형 CSS와 모바일 미디어쿼리가 저장 과정에서 임의로 삭제되거나 변경되지 않아야 합니다.</div>
+<div class="notice">JavaScript 실행 코드, 악성 이벤트 속성 등 보안상 위험한 코드는 제한해도 되지만, 이벤트 풀페이지 제작에 필요한 정상적인 HTML&middot;CSS는 유지해 주세요.</div>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>페이지 사용&middot;중지 및 사용자 접근 기준</h3>
+<span class="badge required">★★★ 필수</span></div>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>상태</th>
+<th>사용자 접근</th>
+<th>관리 기준</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>사용</td>
+<td>생성된 페이지 주소로 정상 접근 가능</td>
+<td>이벤트&middot;T-PASS&middot;패키지 페이지로 운영</td>
+</tr>
+<tr>
+<td>중지</td>
+<td>사용자 접근 차단 또는 준비중 안내페이지 표시</td>
+<td>관리자에서는 내용 수정 및 미리보기 가능</td>
+</tr>
+</tbody>
+</table>
+</div>
+<ul>
+<li>중지 상태 페이지는 검색엔진 및 홈페이지 메뉴에서 노출되지 않도록 처리</li>
+<li>관리자는 중지 상태에서도 관리자 미리보기 가능</li>
+<li>기존에 공유된 URL이 있을 경우 404 대신 페이지 중지 안내를 표시하는 방식 권장</li>
+</ul>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>페이지 복사&middot;변경이력 및 삭제 권한</h3>
+<span class="badge ops">★★ 운영필수</span></div>
+<ul>
+<li>기존 이벤트 페이지를 복사하여 신규 이벤트 페이지 생성</li>
+<li>복사 시 코드명은 새로 입력하고 중복 확인</li>
+<li>페이지명, 본문, 상태 변경 전후 값을 이력으로 저장</li>
+<li>수정 관리자명과 수정일시 기록</li>
+<li>사용 중인 페이지는 삭제 전 사용중지 처리 권장</li>
+<li>삭제 권한은 최고관리자에게만 부여</li>
+</ul>
+</article>
+</section>
+<div class="section-title">
+<h2>사용자 홈페이지 연동</h2>
+<p>관리자 등록값을 기준으로 강의 목록과 상세페이지 출력</p>
+</div>
+<section class="grid">
+<article class="card full">
+<div class="card-head">
+<h3>카테고리 및 상태별 강의 출력</h3>
+<span class="badge required">★★★ 필수</span></div>
+<ul>
+<li>노출 여부가 &lsquo;노출&rsquo;인 강의만 사용자 화면에 표시</li>
+<li>판매 여부가 &lsquo;판매중&rsquo;인 강의만 수강신청 가능</li>
+<li>수강신청 기간에 따라 신청 예정&middot;신청중&middot;마감 표시</li>
+<li>종료된 강의는 관리자 설정에 따라 숨김 또는 종료 표시</li>
+<li>강의 카테고리별 목록 출력 및 필터 제공</li>
+<li>온라인&middot;현장&middot;패키지 강의별 목록 출력</li>
+<li>관리자가 지정한 노출 순서 적용</li>
+</ul>
+<div class="important">강의 카테고리를 선택하면 해당 카테고리에 연결된 강의만 출력되어야 하며 에디터에서 작성한 상세 내용은 입력한 서식과 반응형 구조를 유지하여 표시해야 합니다.</div>
+</article>
+</section>
+<div class="section-title">
+<h2>내강의실 표시 및 재생 횟수 기준</h2>
+<p>수강생 화면 정보 단순화와 관리자 설정값 기준 적용</p>
+</div>
+<section class="grid">
+<article class="card full">
+<div class="card-head">
+<h3>내강의실 학습정보 표시 방식 변경</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>현재 내강의실에서 각 회차에 <strong>재생 0/2회 &middot; 남은 2회</strong>와 같이 재생 횟수와 잔여 횟수가 표시되고 있습니다. 수강생 화면에서는 해당 횟수 정보를 노출하지 않고 학습시간과 진도율만 간결하게 표시해 주세요.</p>
+<div class="rename">
+<div class="rename-box">현재 표시 예시<strong>재생 0/2회 &middot; 남은 2회</strong></div>
+<div class="rename-arrow">&rarr;</div>
+<div class="rename-box">변경 표시 항목<strong>강의(초) &middot; 학습(초) &middot; 진도율</strong></div>
+</div>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>표시 항목</th>
+<th>처리 기준</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>강의(초)</td>
+<td>해당 회차 영상의 전체 재생시간을 초 단위로 표시</td>
+</tr>
+<tr>
+<td>학습(초)</td>
+<td>수강생이 실제로 학습한 누적 시간을 초 단위로 표시</td>
+</tr>
+<tr>
+<td>진도율</td>
+<td>강의시간과 학습시간을 기준으로 계산된 진도율 표시</td>
+</tr>
+<tr>
+<td>재생 횟수</td>
+<td>수강생 화면에는 표시하지 않음</td>
+</tr>
+<tr>
+<td>남은 횟수</td>
+<td>수강생 화면에는 표시하지 않음</td>
+</tr>
+<tr>
+<td>최대 횟수</td>
+<td>수강생 화면에는 별도로 명시하지 않음</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="important">내강의실의 회차 목록은 재생 가능 횟수보다 실제 학습 현황을 확인할 수 있도록 <strong>강의(초) &middot; 학습(초) &middot; 진도율</strong>만 표시해 주세요.</div>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>재생 횟수 차감 기준 수정</h3>
+<span class="badge required">★★★ 필수</span></div>
+<p>현재 안내된 <strong>&ldquo;재생 횟수는 하루 1회 기준으로 차감됩니다(같은 날 여러 번 봐도 1회)&rdquo;</strong> 문구와 차감 방식은 실제 운영 기준과 다르므로 삭제해 주세요.</p>
+<p>재생 제한은 일별 차감 방식이 아니라 관리자가 해당 강의에 설정한 최대 재생 횟수를 기준으로 적용되어야 합니다.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>구분</th>
+<th>수정 요청사항</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>기존 기준</td>
+<td>하루 1회 기준으로 차감하고 같은 날 여러 번 재생하면 1회만 차감하는 방식 삭제</td>
+</tr>
+<tr>
+<td>변경 기준</td>
+<td>관리자가 강의별로 설정한 최대 재생 횟수를 해당 강의 전체에 적용</td>
+</tr>
+<tr>
+<td>차감 처리</td>
+<td>시스템은 관리자 설정값을 기준으로 재생 횟수를 계산하고 제한</td>
+</tr>
+<tr>
+<td>수강생 안내</td>
+<td>최대 횟수와 남은 횟수는 내강의실 및 회차 목록에 별도로 표시하지 않음</td>
+</tr>
+<tr>
+<td>관리자 확인</td>
+<td>관리자 페이지에서는 강의별 설정값과 수강생별 사용 현황을 확인할 수 있도록 유지</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="notice">최대 재생 횟수의 정확한 차감 시점과 중복 재생 처리 방식은 현재 관리자 설정 및 플레이어 정책과 일치하도록 적용하되, &lsquo;하루 1회 차감&rsquo;이라는 별도 규칙은 적용하지 않습니다.</div>
+</article>
+<article class="card full">
+<div class="card-head">
+<h3>관리자 강의별 재생 횟수 설정</h3>
+<span class="badge ops">★★ 운영필수</span></div>
+<ul>
+<li>강의 등록&middot;수정 화면에서 강의별 최대 재생 횟수 설정</li>
+<li>설정값은 해당 강의의 수강생에게 동일하게 적용</li>
+<li>필요한 경우 특정 수강생에게 별도 횟수 조정 권한 제공</li>
+<li>관리자 페이지에서 사용 횟수 및 제한 상태 확인</li>
+<li>설정값 변경 시 기존 수강생 적용 여부를 선택하거나 명확한 기준으로 일괄 적용</li>
+</ul>
+<div class="important">재생 횟수 제한 기능은 관리자 운영용 기능으로 유지하되, 수강생 화면에는 최대 횟수&middot;사용 횟수&middot;남은 횟수를 노출하지 않는 방식으로 수정해 주세요.</div>
+</article>
+</section>
+</main>

@@ -62,6 +62,11 @@ const schema = z.object({
   name: z.string().trim().min(1).max(100),
   description: z.string().trim().max(500).nullable().optional(),
   priceKrw: z.coerce.number().int().min(0).max(100_000_000),
+  // 정상가 — 비우면 할인 표시 없음. 판매가 미만이면 DB 제약에 걸리므로 여기서 먼저 막는다.
+  listPriceKrw: z
+    .union([z.literal(""), z.coerce.number().int().min(0).max(100_000_000)])
+    .transform((v) => (v === "" ? null : v))
+    .nullable(),
   durationDays: z.coerce.number().int().min(0).max(3650),
   productKind: z.enum(["subject", "bundle", "membership", "course", "tpass"]),
   availableFrom: z.string().datetime().nullable(),
@@ -99,6 +104,7 @@ export async function action({ request }: Route.ActionArgs) {
       return s === "" ? null : s;
     })(),
     priceKrw: fd.get("priceKrw"),
+    listPriceKrw: fd.get("listPriceKrw") ?? "",
     durationDays: fd.get("durationDays"),
     productKind: fd.get("productKind"),
     availableFrom: toIso(fd.get("availableFrom")),
@@ -168,12 +174,24 @@ export async function action({ request }: Route.ActionArgs) {
     }
   }
 
+  // 정상가는 판매가 이상이어야 한다(취소선 표시가 의미를 가지려면 정상가 ≥ 판매가). DB 제약과 동일.
+  if (
+    parsed.data.listPriceKrw != null &&
+    parsed.data.listPriceKrw < parsed.data.priceKrw
+  ) {
+    return data(
+      { error: "정상가는 판매가보다 작을 수 없습니다." },
+      { status: 400 },
+    );
+  }
+
   const res = await upsertPlan(
     {
       code: parsed.data.code,
       name: parsed.data.name,
       description: parsed.data.description ?? null,
       priceKrw: parsed.data.priceKrw,
+      listPriceKrw: parsed.data.listPriceKrw,
       durationDays: parsed.data.durationDays,
       productKind: parsed.data.productKind,
       subjectCodes,
