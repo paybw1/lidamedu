@@ -272,15 +272,26 @@ export async function action({ request, params }: Route.ActionArgs) {
       .order("seq", { ascending: true });
     if (!(items ?? []).length)
       return data({ error: "가져올 콘텐츠가 없습니다." }, { status: 400 });
-    // 기존 회차와 겹치지 않게 마지막 회차 번호 뒤에 이어붙인다(재실행 안전).
-    const { data: lastLesson } = await adminClient
+    // 회차 번호 배정 — course_lessons 는 (course_id, lesson_no) UNIQUE 이고 이 제약은
+    // soft-delete(deleted_at) 행도 점유한다. 따라서 **삭제분 포함** 전체 번호를 모아
+    // 비어 있는 번호만 배정한다(중복 insert 실패·부분 생성 방지).
+    const { data: existingLessons } = await adminClient
       .from("course_lessons")
       .select("lesson_no")
-      .eq("course_id", courseId)
-      .is("deleted_at", null)
-      .order("lesson_no", { ascending: false })
-      .limit(1);
-    let no = lastLesson?.[0]?.lesson_no ?? 0;
+      .eq("course_id", courseId);
+    const taken = new Set<number>((existingLessons ?? []).map((l) => l.lesson_no));
+    let cursor = taken.size > 0 ? Math.max(...taken) : 0;
+    const nextFreeNo = (preferred: number | null): number => {
+      if (preferred != null && preferred > 0 && !taken.has(preferred)) {
+        taken.add(preferred);
+        return preferred;
+      }
+      do {
+        cursor++;
+      } while (taken.has(cursor));
+      taken.add(cursor);
+      return cursor;
+    };
     let created = 0;
     for (const it of items ?? []) {
       const c = it.content as {
@@ -289,7 +300,7 @@ export async function action({ request, params }: Route.ActionArgs) {
         drm_provider: string;
         content_key: string;
       } | null;
-      no = it.lesson_no && it.lesson_no > no ? it.lesson_no : no + 1;
+      const no = nextFreeNo(it.lesson_no);
       const { data: lesson, error: le } = await adminClient
         .from("course_lessons")
         .insert({
@@ -302,7 +313,12 @@ export async function action({ request, params }: Route.ActionArgs) {
         })
         .select("lesson_id")
         .single();
-      if (le) return data({ error: le.message }, { status: 400 });
+      // 실패 시 앞서 생성된 회차는 남는다(트랜잭션 없음) — 몇 개까지 생성됐는지 함께 알린다.
+      if (le)
+        return data(
+          { error: `회차 생성 실패(${created}개 생성 후 중단): ${le.message}` },
+          { status: 400 },
+        );
       const { error: ve } = await adminClient.from("lesson_videos").insert({
         lesson_id: lesson.lesson_id,
         drm_provider: c?.drm_provider ?? "kollus",
@@ -312,7 +328,17 @@ export async function action({ request, params }: Route.ActionArgs) {
         is_active: true,
         created_by: user.id,
       });
-      if (ve) return data({ error: ve.message }, { status: 400 });
+      if (ve) {
+        // 영상 연결 실패 → 방금 만든 빈 회차를 되돌려 반쪽 상태를 남기지 않는다.
+        await adminClient
+          .from("course_lessons")
+          .delete()
+          .eq("lesson_id", lesson.lesson_id);
+        return data(
+          { error: `영상 연결 실패(${created}개 생성 후 중단): ${ve.message}` },
+          { status: 400 },
+        );
+      }
       created++;
     }
     return data({ imported: { count: created } });
