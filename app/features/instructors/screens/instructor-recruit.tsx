@@ -164,11 +164,6 @@ export default function InstructorRecruit() {
           </p>
         </div>
 
-        <div style={{ marginTop: 26 }}>
-          <Link to="/about/instructors" className="i-btn ghost">
-            ← 강사소개로
-          </Link>
-        </div>
       </main>
     </div>
   );

@@ -1,5 +1,6 @@
 // 현장강의 상세 하단 sticky 구매 바 — 장바구니 + 수강신청(바로구매).
 //   연결 상품(plan)이 있으면 실제 담기/결제, 없으면 카탈로그로 유도. *.server import 금지.
+//   수강료는 본문 결제금액(.sd-price)에서 이미 보여주므로 바에는 버튼만 둔다.
 import { ShoppingCartIcon } from "lucide-react";
 import { Link } from "react-router";
 
@@ -9,13 +10,11 @@ import { useCart } from "~/features/lms/lib/cart";
 
 export function ScheduleBuyBar({
   planCode,
-  priceKrw,
   buyable,
   tossClientKey,
   failPath,
 }: {
   planCode: string | null;
-  priceKrw: number | null;
   buyable: boolean;
   tossClientKey: string | null;
   failPath: string;
@@ -31,16 +30,6 @@ export function ScheduleBuyBar({
   return (
     <div className="sbuy">
       <div className="sbuy-in">
-        <div className="sbuy-price">
-          {priceKrw !== null ? (
-            <>
-              <span className="w">수강료</span>
-              <b className="tnum">{priceKrw.toLocaleString("ko-KR")}원</b>
-            </>
-          ) : (
-            <span className="w">가격 문의</span>
-          )}
-        </div>
         <div className="sbuy-btns">
           {planCode && buyable ? (
             <>

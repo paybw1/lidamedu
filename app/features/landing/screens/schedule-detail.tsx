@@ -162,7 +162,6 @@ export default function ScheduleDetail({ loaderData }: Route.ComponentProps) {
 
       <ScheduleBuyBar
         planCode={plan?.code ?? null}
-        priceKrw={plan?.priceKrw ?? null}
         buyable={plan?.buyable ?? false}
         tossClientKey={tossClientKey}
         failPath={`/lecture/schedule/${s.schedule_id}?failed=1`}
@@ -203,14 +202,10 @@ function DetailStyle() {
 .llx .sd-note p{font-size:14px;color:var(--soft);line-height:1.75;white-space:pre-wrap}
 /* 하단 sticky 구매 바 */
 .llx .sbuy{position:sticky;bottom:0;left:0;right:0;z-index:20;background:color-mix(in srgb,var(--lsurface) 92%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--line2);box-shadow:0 -8px 24px -16px rgba(22,41,74,.5)}
-.llx .sbuy-in{max-width:820px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px}
-.llx .sbuy-price{display:flex;align-items:baseline;gap:8px;min-width:0}
-.llx .sbuy-price .w{font-size:12px;font-weight:800;color:var(--faint)}
-.llx .sbuy-price b{font-size:20px;font-weight:900;letter-spacing:-.02em;color:var(--ink)}
+.llx .sbuy-in{max-width:820px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;justify-content:flex-end;gap:16px}
 .llx .sbuy-btns{display:flex;gap:8px;flex-shrink:0}
 @media (max-width:560px){
   .llx .sd-meta{grid-template-columns:1fr}
-  .llx .sbuy-price b{font-size:17px}
 }
 `}</style>
   );
