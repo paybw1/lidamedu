@@ -56,6 +56,7 @@ import {
   listProblemYears,
   listProblemsBySubject,
 } from "~/features/problems/queries.server";
+import { redactSubjectiveAnswer } from "~/features/problems/lib/answer-visibility";
 import type {
   DifficultyBucket,
   ProblemAggregateStats,
@@ -988,7 +989,11 @@ export async function loadSubjectHub(
     casesTotal,
     caseFilters,
     caseTreeCounts,
-    problems: displayedProblems,
+    // 주관식 목록은 "모범답안" 배지 하나에 존재 여부만 쓰는데도 본문 전체가 응답에
+    // 실려 나갔다. staff 가 아니면 걷어낸다(answer-visibility) — 배지도 함께 사라진다.
+    problems: displayedProblems.map((p) =>
+      redactSubjectiveAnswer(p, staffRole !== null),
+    ),
     recentRevisionDate,
     progress,
     bookmarkLevels,

@@ -10,6 +10,7 @@ import { getStaffRole } from "~/features/laws/queries.server";
 import { Pill } from "~/features/latest/components/latest-list";
 import { MarkdownView } from "~/features/problems/components/markdown-view";
 import { SUBJECTIVE_KIND_LABEL } from "~/features/problems/labels";
+import { redactSubjectiveAnswer } from "~/features/problems/lib/answer-visibility";
 import { getProblemById } from "~/features/problems/queries.server";
 
 import type { Route } from "./+types/latest-essay-viewer";
@@ -36,21 +37,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const role = await getStaffRole(client, user.id);
   const isStaff = role !== null;
 
-  // 해설·모범답안·채점기준은 staff 전용 — 수험생에게는 서버에서 아예 실어 보내지 않는다.
-  // JSX 조건부 렌더만으로 가리면 loader 응답(SSR 페이로드·.data 요청)에 원문이 그대로
-  // 남아 네트워크 탭에서 읽힌다.
-  return {
-    problem: isStaff
-      ? problem
-      : {
-          ...problem,
-          explanationMd: null,
-          modelAnswerMd: null,
-          gradingRubricMd: null,
-          rubricItems: null,
-        },
-    isStaff,
-  };
+  // 해설·모범답안·채점기준은 staff 전용 — 서버에서 걷어낸다(answer-visibility).
+  return { problem: redactSubjectiveAnswer(problem, isStaff), isStaff };
 }
 
 export default function LatestEssayViewer({

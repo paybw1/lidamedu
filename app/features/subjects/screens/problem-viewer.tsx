@@ -70,6 +70,7 @@ import {
   deriveDisplayChoiceOx,
   stripLeadingOxMark,
 } from "~/features/problems/lib/auto-ox";
+import { redactSubjectiveAnswer } from "~/features/problems/lib/answer-visibility";
 import {
   type AdjacentProblem,
   type SystematicNodeProblemStat,
@@ -548,10 +549,13 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     adjacentQuery = sp.toString() ? `?${sp.toString()}` : "";
   }
 
+  // 주관식 해설·모범답안·채점기준은 staff 전용 — 서버에서 걷어낸다(answer-visibility).
+  // answerCaseGroups 는 모범답안·채점기준에서 뽑은 인용 판례라 함께 비운다.
+  const viewerIsStaff = staffRole !== null;
   return {
     subject: LAW_SUBJECTS[lawCode],
     axisCounts,
-    problem,
+    problem: redactSubjectiveAnswer(problem, viewerIsStaff),
     qnaThreads,
     systematicNodes,
     bookmark,
@@ -579,7 +583,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     problemNodeStats,
     activeNodeId: nodeId,
     placementNodeId,
-    answerCaseGroups,
+    answerCaseGroups:
+      viewerIsStaff || problem.format !== "subjective" ? answerCaseGroups : [],
     explanationCaseRefs,
   };
 }
