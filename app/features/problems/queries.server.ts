@@ -3444,7 +3444,7 @@ export async function getAnswerCitedCaseGroups(
     const { data } = await client
       .from("cases")
       .select(
-        "case_id, case_number, case_title, summary_title, summary_body_md, summary_items, subject_laws",
+        "case_id, case_number, court, case_title, summary_title, summary_body_md, summary_items, subject_laws",
       )
       .ilike("case_number", `%${num}%`)
       .is("deleted_at", null)
@@ -3475,6 +3475,7 @@ export async function getAnswerCitedCaseGroups(
     byNum.set(num, {
       caseId: row.case_id,
       caseNumber: row.case_number,
+      court: row.court,
       items,
       subjectSlug: (row.subject_laws as string[] | null)?.[0] ?? fallbackSubject,
     });

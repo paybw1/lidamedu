@@ -271,6 +271,8 @@ export interface ProblemListItem {
 export interface AnswerCitedCase {
   caseId: string;
   caseNumber: string;
+  // 팝업 제목의 법원명 — 특허법원·고등법원 판결을 "대법원"으로 오표기하지 않도록 실값을 싣는다.
+  court: Database["public"]["Enums"]["case_court"];
   // 판결요지 쟁점 단위(제목 박스 + 내용). 다중 쟁점은 [1] [2] 재번호.
   items: Array<{ title: string; body: string }>;
   subjectSlug: string;

@@ -41,13 +41,6 @@ export type SubjectiveAttemptStatus = Record<
   { submitted: boolean; reviewed: boolean }
 >;
 
-// 출처 표시 — 기출변형도 "기출"로 묶어 노출(객관식 탭과 동일 정책).
-function mergedOriginLabel(origin: ProblemOrigin): string {
-  return origin === "past_exam_variant"
-    ? ORIGIN_LABEL.past_exam
-    : ORIGIN_LABEL[origin];
-}
-
 interface YearGroup {
   /** null = 연도 미상(예상문제 등) — 목록 맨 뒤. */
   year: number | null;
@@ -350,7 +343,7 @@ function SubjectiveCard({
             </Badge>
           ) : null}
           <Badge variant="secondary" className="text-xs">
-            {mergedOriginLabel(item.origin)}
+            {ORIGIN_LABEL[item.origin]}
           </Badge>
           {item.problemNumber ? (
             <Badge variant="outline" className="text-xs tabular-nums">

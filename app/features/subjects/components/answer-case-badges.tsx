@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/core/components/ui/dialog";
+import { COURT_LABELS } from "~/features/cases/labels";
 import type { AnswerCaseGroup, AnswerCitedCase } from "~/features/problems/labels";
 import { MarkdownView } from "~/features/problems/components/markdown-view";
 import { cn } from "~/core/lib/utils";
@@ -131,7 +132,7 @@ export function CaseBadge({
               {isMain ? (
                 <StarIcon className="size-4 shrink-0 fill-amber-500 text-amber-500" />
               ) : null}
-              대법원 {c.caseNumber}
+              {COURT_LABELS[c.court] ?? "법원"} {c.caseNumber}
             </DialogTitle>
           </DialogHeader>
           <div className="-mr-2 flex-1 overflow-y-auto pr-2">

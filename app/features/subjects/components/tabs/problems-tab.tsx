@@ -83,15 +83,9 @@ import {
 } from "../subject-study-status";
 import { stripSystematicNumber } from "../systematic-node-label";
 
-// 학습과목 문제탭: "기출"은 기출 + 기출변형을 한 묶음으로(필터·칩 모두). 출처 옵션에서 변형 제외.
+// 학습과목 문제탭: 필터의 "기출"은 기출 + 기출변형을 한 묶음으로 조회한다(출처 옵션에서 변형 제외).
+// 다만 행에 붙는 출처 칩은 문제 상세와 어긋나지 않도록 실제 origin 을 그대로 보인다.
 const ORIGIN_OPTS: ProblemOrigin[] = ["past_exam", "mock", "expected"];
-
-// 출처 표시 — 기출변형도 "기출"로 묶어 노출(필터와 일관). 전역 ORIGIN_LABEL 은 불변(admin·essay 유지).
-function mergedOriginLabel(origin: ProblemOrigin): string {
-  return origin === "past_exam_variant"
-    ? ORIGIN_LABEL.past_exam
-    : ORIGIN_LABEL[origin];
-}
 const FORMAT_OPTS: ProblemFormat[] = ["mc_short", "mc_box", "mc_case"];
 const POLARITY_OPTS: ProblemPolarity[] = ["positive", "negative"];
 const SCOPE_OPTS: ProblemScope[] = ["unit", "comprehensive"];
@@ -932,7 +926,7 @@ function ProblemRow({
       <TableCell className="hidden md:table-cell">
         {/* origin chip */}
         <span className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium">
-          {mergedOriginLabel(item.origin)}
+          {ORIGIN_LABEL[item.origin]}
         </span>
       </TableCell>
       <TableCell className="hidden md:table-cell">
