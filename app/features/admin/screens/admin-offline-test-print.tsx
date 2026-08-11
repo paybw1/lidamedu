@@ -2,7 +2,7 @@
 // 브라우저 인쇄 대화상자에서 "PDF로 저장" — study-print-shell 과 같은 @media print 패턴.
 
 import { PrinterIcon, XIcon } from "lucide-react";
-import { type CSSProperties, useEffect } from "react";
+import { useEffect } from "react";
 import { data } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
@@ -307,23 +307,10 @@ export default function AdminOfflineTestPrint({
     return () => clearTimeout(t);
   }, []);
 
+  // paper-light — 인쇄는 테마와 무관하게 항상 라이트. 다크 모드 사용자도 흰 종이에
+  // MarkdownView(text-foreground 토큰) 본문이 진하게 나오도록 팔레트를 고정한다(app.css).
   return (
-    <div
-      className="min-h-screen bg-white text-neutral-800"
-      // 인쇄는 테마와 무관하게 항상 라이트(어두운 글씨). 다크 모드 사용자도 흰 종이에
-      // MarkdownView(text-foreground 토큰) 본문이 진하게 나오도록 토큰을 라이트 값으로 고정.
-      style={
-        {
-          "--background": "#ffffff",
-          "--foreground": "#1f1f1f",
-          "--muted": "#eef2f7",
-          "--muted-foreground": "#475569",
-          "--border": "#d4d4d8",
-          "--link": "#1e3a8a",
-          colorScheme: "light",
-        } as CSSProperties
-      }
-    >
+    <div className="paper-light min-h-screen bg-white text-neutral-800">
       <style>{`
         @media print {
           .no-print { display: none !important; }

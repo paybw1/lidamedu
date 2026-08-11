@@ -128,7 +128,7 @@ export default function ProblemHandoutPrint({
   const itemSum = rubricItems.reduce((s, it) => s + (it.points ?? 0), 0);
 
   return (
-    <div className="min-h-screen bg-white text-neutral-800">
+    <div className="paper-light min-h-screen bg-white text-neutral-800">
       <style>{`
         .print-watermark, .print-footer { display: none; }
         @media print {
@@ -220,7 +220,7 @@ export default function ProblemHandoutPrint({
 
         {/* Ⅱ. 자기점검 체크리스트 */}
         {rubricItems.length > 0 ? (
-          <section className="page-break">
+          <section className="page-break mt-10">
             <SectionTitle
               no="Ⅱ"
               title="자기점검 체크리스트"
@@ -262,7 +262,7 @@ export default function ProblemHandoutPrint({
 
         {/* Ⅲ. 채점기준 */}
         {gradingRubricMd.trim() ? (
-          <section className="page-break">
+          <section className="page-break mt-10">
             <SectionTitle
               no="Ⅲ"
               title="채점기준"
@@ -274,7 +274,7 @@ export default function ProblemHandoutPrint({
 
         {/* Ⅳ. 모범답안 */}
         {modelAnswerMd.trim() ? (
-          <section className="page-break">
+          <section className="page-break mt-10">
             <SectionTitle no="Ⅳ" title="모범답안" />
             <MarkdownView text={modelAnswerMd} className={MD} />
           </section>

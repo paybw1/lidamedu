@@ -76,7 +76,7 @@ export default function AdminCohortMonthlyReport({
   const studentQs = onlyProfileId ? `&student=${onlyProfileId}` : "";
 
   return (
-    <div className="min-h-screen bg-white text-neutral-800">
+    <div className="paper-light min-h-screen bg-white text-neutral-800">
       <style>{`
         @media print {
           .no-print { display: none !important; }

@@ -66,7 +66,7 @@ export function StudyPrintShell({
   }, []);
 
   return (
-    <div className="min-h-screen bg-white text-neutral-800">
+    <div className="paper-light min-h-screen bg-white text-neutral-800">
       <style>{`
         .print-watermark { display: none; }
         @media print {

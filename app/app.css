@@ -24,7 +24,18 @@ body {
   @apply dark:bg-background bg-white;
 }
 
-:root {
+/* .paper-light — 인쇄·PDF 표면(강의자료·시험지·오답노트 등)에 붙이는 클래스.
+   인쇄본은 흰 종이를 전제로 조판(bg-white)하는데, 본문을 그리는 MarkdownView 등은
+   text-foreground·bg-muted 같은 테마 토큰을 쓴다. 뷰어가 다크 모드면 흰 종이 위에
+   밝은 글자가 얹혀 PDF 에서 글자가 보이지 않으므로, 이 클래스를 붙인 서브트리는
+   .dark 여부와 무관하게 라이트 팔레트로 고정한다(값은 아래 :root 정의를 그대로 공유).
+   color-scheme 은 :root 에 걸면 다크 모드가 깨지므로 이 클래스에만 따로 준다. */
+.paper-light {
+  color-scheme: light;
+}
+
+:root,
+.paper-light {
   --radius: 0.65rem;
 
   /* 학습 내용(문제 발문·지문·해설) 글자 크기 배율 — 학생 3단계 조절(problem-viewer). 기본 1. */
@@ -111,7 +122,8 @@ body {
 }
 
 /* 빈칸 '함께 공부할 조문' 카드 — emerald 테마 변수(라이트/다크 대응, 인라인 hex 대신 사용) */
-:root {
+:root,
+.paper-light {
   --bk-em-card-bg: #f0fdf4;
   --bk-em-box-bg: #ecfdf5;
   --bk-em-border: #a7f3d0;
