@@ -114,8 +114,11 @@ export function PopupNoticeModal({
   };
 
   return (
+    // print:hidden — 인쇄·PDF 저장에서 제외. position:fixed 요소는 크롬 인쇄에서
+    // 페이지마다 반복 렌더되어, 강의자료·시험지 PDF 전 페이지에 팝업이 찍혔다.
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4"
+      data-popup-notice
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4 print:hidden"
       role="dialog"
       aria-modal="true"
       aria-label={current.title}
