@@ -34,7 +34,23 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   if (!problem) throw data("문제를 찾을 수 없습니다.", { status: 404 });
 
   const role = await getStaffRole(client, user.id);
-  return { problem, isStaff: role !== null };
+  const isStaff = role !== null;
+
+  // 해설·모범답안·채점기준은 staff 전용 — 수험생에게는 서버에서 아예 실어 보내지 않는다.
+  // JSX 조건부 렌더만으로 가리면 loader 응답(SSR 페이로드·.data 요청)에 원문이 그대로
+  // 남아 네트워크 탭에서 읽힌다.
+  return {
+    problem: isStaff
+      ? problem
+      : {
+          ...problem,
+          explanationMd: null,
+          modelAnswerMd: null,
+          gradingRubricMd: null,
+          rubricItems: null,
+        },
+    isStaff,
+  };
 }
 
 export default function LatestEssayViewer({
