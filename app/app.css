@@ -24,6 +24,16 @@ body {
   @apply dark:bg-background bg-white;
 }
 
+/* 인쇄·PDF 는 흰 종이가 전제다. 다크 모드에서는 body 배경이 var(--background)(#252525)
+   이어서, 내용이 페이지를 다 채우지 못한 마지막 장의 아래쪽 여백이 통째로 검게 찍혔다.
+   (.paper-light 는 인쇄본 루트 div 의 토큰만 되돌릴 뿐 그 바깥의 body 에는 닿지 않는다.) */
+@media print {
+  html,
+  body {
+    background: #fff !important;
+  }
+}
+
 /* .paper-light — 인쇄·PDF 표면(강의자료·시험지·오답노트 등)에 붙이는 클래스.
    인쇄본은 흰 종이를 전제로 조판(bg-white)하는데, 본문을 그리는 MarkdownView 등은
    text-foreground·bg-muted 같은 테마 토큰을 쓴다. 뷰어가 다크 모드면 흰 종이 위에
