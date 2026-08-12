@@ -141,6 +141,12 @@ const MD_IMAGE_RE = /!\[[^\]]*\]\([^)]*\)|<(img|table|div)\b|\|[\s:]*-{3,}/i;
 // 종합해설 마크다운 서식 감지 — **굵게**·헤더·별표 감싼 줄(민법 해설 "*관련 조문·판례*").
 const MD_FORMAT_RE = /\*\*[^*\n]+\*\*|(?:^|\n)#{1,6}\s+\S|(?:^|\n)\*[^*\n]+\*(?=\n|$)/;
 
+// 지문별·박스항목별 해설도 같은 규칙 — 표(HTML/파이프)·이미지·서식이 있으면 MarkdownView,
+// 없으면 기존 plain span. 원시 HTML 이 코드 문자열 그대로 노출되던 문제의 방지책.
+function hasMarkdownFormat(md: string): boolean {
+  return MD_IMAGE_RE.test(md) || MD_FORMAT_RE.test(md);
+}
+
 // 주관식 본문 — 사실관계와 설문((1)…) 사이에 구분선(hr)을 렌더 시점에 삽입.
 // 원문(body_md)은 무변경. 첫 "(1) " 문단 앞에만 삽입하며, 본문이 (1)로 시작하거나
 // 설문 마커가 없으면 no-op.
@@ -1730,7 +1736,10 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                                           <span className="font-semibold">
                                             {truth ?? "—"}
                                           </span>
-                                          {bi.explanationMd ? (
+                                          {bi.explanationMd &&
+                                          !hasMarkdownFormat(
+                                            bi.explanationMd,
+                                          ) ? (
                                             <span className="text-muted-foreground ml-2">
                                               {truth
                                                 ? stripLeadingOxMark(
@@ -1740,6 +1749,19 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                                             </span>
                                           ) : null}
                                         </p>
+                                        {bi.explanationMd &&
+                                        hasMarkdownFormat(bi.explanationMd) ? (
+                                          <MarkdownView
+                                            text={
+                                              truth
+                                                ? stripLeadingOxMark(
+                                                    bi.explanationMd,
+                                                  )
+                                                : bi.explanationMd
+                                            }
+                                            className="text-muted-foreground text-[length:calc(15px*var(--study-fs))] leading-[1.7]"
+                                          />
+                                        ) : null}
                                         {(explanationCaseRefs[bi.boxItemId] ??
                                           []).length > 0 ? (
                                           <div className="flex flex-wrap gap-1.5">
@@ -1816,7 +1838,8 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                                       <span className="font-semibold">
                                         {label || "—"}
                                       </span>
-                                      {c.explanationMd ? (
+                                      {c.explanationMd &&
+                                      !hasMarkdownFormat(c.explanationMd) ? (
                                         <span className="text-muted-foreground ml-2">
                                           {label
                                             ? stripLeadingOxMark(
@@ -1826,6 +1849,19 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                                         </span>
                                       ) : null}
                                     </p>
+                                    {c.explanationMd &&
+                                    hasMarkdownFormat(c.explanationMd) ? (
+                                      <MarkdownView
+                                        text={
+                                          label
+                                            ? stripLeadingOxMark(
+                                                c.explanationMd,
+                                              )
+                                            : c.explanationMd
+                                        }
+                                        className="text-muted-foreground text-[length:calc(15px*var(--study-fs))] leading-[1.7]"
+                                      />
+                                    ) : null}
                                     <div className="flex flex-wrap gap-1.5">
                                       {(() => {
                                         const articleRef = c.relatedArticleId
