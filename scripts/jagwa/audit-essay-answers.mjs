@@ -217,9 +217,21 @@ function checkUngrounded(md) {
 function checkLength(p, md) {
   const out = [];
   const pts = [...(p.body_md || "").matchAll(/\*\*\((\d+)점\)\*\*/g)].map((m) => Number(m[1]));
-  const secs = md.split(/\n---\n/).filter((s) => /^## [ⅠⅡⅢⅣⅤ]+\.\s*설문/m.test(s));
+  // 설문 분할 = '## Ⅰ. 설문' 헤딩 기준 (--- 구분자 유무 무관 — 구분자 없는 답안이 다수라
+  // --- split 방식은 전체가 설문(1)로 뭉쳐 허위 FAIL 을 만들었다).
+  const heads = [...md.matchAll(/^## [ⅠⅡⅢⅣⅤⅥⅦ]+\.\s*설문.*$/gm)];
+  const secs = heads.map((m, i) =>
+    md.slice(m.index, i + 1 < heads.length ? heads[i + 1].index : md.length),
+  );
+  // 배점 = 설문 헤딩 자체의 "(N점)" 우선. 없으면 발문 배점 마커와 개수가 일치할 때만
+  // 순서 짝짓기 — 발문에 소문항 배점이 섞이면(개수 불일치) 잘못 짝짓지 말고 건너뛴다.
+  const headPts = heads.map((m) => {
+    const mm = m[0].match(/\((\d+)점\)/);
+    return mm ? Number(mm[1]) : null;
+  });
+  const positionalOk = secs.length === pts.length;
   secs.forEach((s, i) => {
-    const pt = pts[i];
+    const pt = headPts[i] ?? (positionalOk ? pts[i] : null);
     if (!pt) return;
     const per = s.length / pt;
     out.push({
