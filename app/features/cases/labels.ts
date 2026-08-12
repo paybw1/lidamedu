@@ -67,6 +67,15 @@ export interface CaseListItem {
   // 2차 주관식 메인 판례로 지정된 연도(problems.main_case_number 파생) —
   // 해당 연도의 2차 칩을 ★ 앰버로 강조. 목록 쿼리(listCasesBySubject)에서만 채움.
   exam2ndMainYears?: number[];
+  // 이 판례를 인용·메인 지정한 2차 주관식 기출문제(모범답안 파생) — 2차 칩의
+  // 미리보기 팝업 대상. listCasesBySubject/getCaseById 에서만 채움.
+  exam2ndProblems?: Array<{
+    problemId: string;
+    lawCode: string;
+    year: number;
+    problemNumber: number | null;
+    isMain: boolean;
+  }>;
 }
 
 export interface SummaryItem {

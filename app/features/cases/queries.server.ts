@@ -17,7 +17,10 @@ import {
 
 import { fetchAllIn, fetchAllPages } from "~/core/lib/supa-batch.server";
 import type { ExamProblemRef } from "~/features/problems/labels";
-import { getExamProblemsByCase } from "~/features/problems/queries.server";
+import {
+  extractAnswerCaseNums,
+  getExamProblemsByCase,
+} from "~/features/problems/queries.server";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
 export type {
@@ -190,35 +193,76 @@ export interface CaseListPage {
 // 초과 시 list 는 상한까지만, total(count)은 실제 건수라 누락이 드러난다.
 const CASE_LIST_MAX = 2000;
 
-// 2차 주관식 메인 판례(problems.main_case_number) — 사건번호별 지정 연도 목록.
-// 판례 목록의 "2차 y" 칩 중 메인 지정 연도를 ★ 강조하기 위한 파생값.
-async function getSubjectiveMainCaseYears(
+// 2차 주관식 기출 참조 — 사건번호별 {인용·메인 지정한 문제들}. 모범답안 인용
+// (extractAnswerCaseNums — 문제 뷰어 관련판례 배지와 동일 규칙) + main_case_number 파생.
+// 판례 목록·뷰어의 "2차 y" 칩(미리보기 팝업)과 메인 ★ 강조의 데이터원.
+interface Subjective2ndRef {
+  problemId: string;
+  lawCode: string;
+  year: number;
+  problemNumber: number | null;
+  isMain: boolean;
+}
+async function getSubjective2ndRefs(
   client: SupabaseClient<Database>,
-  lawCode: LawSubjectSlug,
-): Promise<Array<{ num: string; years: number[] }>> {
+  lawCodes: string[],
+): Promise<Array<{ num: string; refs: Subjective2ndRef[] }>> {
+  if (lawCodes.length === 0) return [];
   const { data } = await client
     .from("problems")
-    .select("year, main_case_number, laws!inner(law_code)")
-    .eq("laws.law_code", lawCode)
+    .select(
+      "problem_id, year, problem_number, main_case_number, model_answer_md, laws!inner(law_code)",
+    )
+    .in("laws.law_code", lawCodes)
     .eq("format", "subjective")
     .is("deleted_at", null)
-    .not("main_case_number", "is", null)
     .not("year", "is", null);
-  const byNum = new Map<string, Set<number>>();
+  const byNum = new Map<string, Map<string, Subjective2ndRef>>();
   for (const r of data ?? []) {
-    for (const num of (r.main_case_number ?? "")
+    const mains = (r.main_case_number ?? "")
       .split(",")
       .map((s) => s.trim())
-      .filter(Boolean)) {
-      const set = byNum.get(num) ?? new Set<number>();
-      set.add(r.year!);
-      byNum.set(num, set);
+      .filter(Boolean);
+    const cites = extractAnswerCaseNums(r.model_answer_md ?? "");
+    for (const num of new Set([...cites, ...mains])) {
+      const refs = byNum.get(num) ?? new Map<string, Subjective2ndRef>();
+      refs.set(r.problem_id, {
+        problemId: r.problem_id,
+        lawCode: r.laws.law_code,
+        year: r.year!,
+        problemNumber: r.problem_number,
+        isMain: mains.includes(num),
+      });
+      byNum.set(num, refs);
     }
   }
-  return [...byNum].map(([num, years]) => ({
-    num,
-    years: [...years].sort((a, b) => a - b),
-  }));
+  return [...byNum].map(([num, refs]) => ({ num, refs: [...refs.values()] }));
+}
+
+// 사건번호(병합 표기 포함) 매칭으로 판례 항목에 2차 기출 참조·메인 연도를 부착.
+function attach2ndRefs(
+  item: CaseListItem,
+  refsByNum: Array<{ num: string; refs: Subjective2ndRef[] }>,
+): void {
+  const matched = refsByNum
+    .filter((m) => item.caseNumber === m.num || item.caseNumber.includes(m.num))
+    .flatMap((m) => m.refs);
+  if (matched.length === 0) return;
+  // 같은 문제가 여러 번호로 매칭돼도 1회.
+  const byProblem = new Map(matched.map((r) => [r.problemId, r]));
+  // isMain 은 어느 번호로든 메인이면 true 로 승격.
+  for (const r of matched) {
+    if (r.isMain) byProblem.get(r.problemId)!.isMain = true;
+  }
+  item.exam2ndProblems = [...byProblem.values()].sort(
+    (a, b) => a.year - b.year || (a.problemNumber ?? 0) - (b.problemNumber ?? 0),
+  );
+  const mainYears = [
+    ...new Set(
+      item.exam2ndProblems.filter((r) => r.isMain).map((r) => r.year),
+    ),
+  ].sort((a, b) => a - b);
+  if (mainYears.length > 0) item.exam2ndMainYears = mainYears;
 }
 
 export async function listCasesBySubject(
@@ -226,9 +270,9 @@ export async function listCasesBySubject(
   lawCode: LawSubjectSlug,
   options: ListCasesBySubjectOptions = {},
 ): Promise<CaseListPage> {
-  const [examProblemsByCase, mainCaseYears] = await Promise.all([
+  const [examProblemsByCase, subjective2ndRefs] = await Promise.all([
     getExamProblemsByCase(client),
-    getSubjectiveMainCaseYears(client, lawCode),
+    getSubjective2ndRefs(client, [lawCode]),
   ]);
 
   // case_id 제한 — 트리 필터, 그리고 exam_1st/exam_both 면 기출-연결 판례로 한정.
@@ -361,15 +405,7 @@ export async function listCasesBySubject(
   }
   const items = rows.map((r) => {
     const item = rowToListItem(r as CaseListRow, examProblemsByCase);
-    // 메인 지정 연도 — 병합 사건번호("A, B(병합)")도 잡히게 includes 매칭.
-    const mainYears = mainCaseYears
-      .filter(
-        (m) => item.caseNumber === m.num || item.caseNumber.includes(m.num),
-      )
-      .flatMap((m) => m.years);
-    if (mainYears.length > 0) {
-      item.exam2ndMainYears = [...new Set(mainYears)].sort((a, b) => a - b);
-    }
+    attach2ndRefs(item, subjective2ndRefs);
     return item;
   });
   return { items, total };
@@ -990,30 +1026,11 @@ export async function getCaseById(
   if (error) throw error;
   if (!data) return null;
 
-  // 2차 주관식 메인 판례 연도 — 이 사건번호를 main_case_number 에 지정한 문제의 연도.
-  // (병합 사건번호 대응: case_number 가 지정 번호를 포함하면 매칭)
-  const { data: mainRows } = await client
-    .from("problems")
-    .select("year, main_case_number")
-    .eq("format", "subjective")
-    .is("deleted_at", null)
-    .not("main_case_number", "is", null)
-    .not("year", "is", null);
-  const mainYears = new Set<number>();
-  for (const r of mainRows ?? []) {
-    const nums = (r.main_case_number ?? "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    if (nums.some((n) => data.case_number === n || data.case_number.includes(n)))
-      mainYears.add(r.year!);
-  }
+  // 2차 주관식 기출 칩(미리보기)·메인 ★ 강조 — 이 판례의 과목 주관식 인용·메인 파생.
+  const refsByNum = await getSubjective2ndRefs(client, data.subject_laws ?? []);
 
-  return {
+  const detail: CaseDetail = {
     ...rowToListItem(data as CaseListRow),
-    ...(mainYears.size > 0
-      ? { exam2ndMainYears: [...mainYears].sort((a, b) => a - b) }
-      : {}),
     summaryBodyMd: data.summary_body_md,
     summaryItems: parseSummaryItems(data.summary_items),
     reasoningMd: data.reasoning_md,
@@ -1033,6 +1050,8 @@ export async function getCaseById(
     officialTextPdfPath: data.official_text_pdf_path,
     bookSections: parseBookSections(data.book_sections),
   };
+  attach2ndRefs(detail, refsByNum);
+  return detail;
 }
 
 // soft-deleted case 에 진입한 경우 — 같은 사건번호로 재등록된 활성 row 가 있으면

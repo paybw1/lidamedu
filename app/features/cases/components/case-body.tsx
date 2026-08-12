@@ -23,7 +23,7 @@ import { CaseReferencesPanel } from "~/features/cases/components/case-references
 import { CiteCopyButton } from "~/features/cases/components/cite-copy";
 import { ReadingControls } from "~/features/study/components/study-font-control";
 import {
-  ExamYearChip,
+  merge2ndRoundChips,
   mergeFirstRoundChips,
 } from "~/features/cases/components/exam-year-chip";
 import {
@@ -316,16 +316,11 @@ export function CaseBody({
         0 ? (
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             {mergeFirstRoundChips(examProblems, kase.exam1stExtraYears)}
-            {[...kase.exam2ndYears]
-              .sort((a, b) => a - b)
-              .map((y) => (
-                <ExamYearChip
-                  key={`2-${y}`}
-                  round="second"
-                  year={y}
-                  main={(kase.exam2ndMainYears ?? []).includes(y)}
-                />
-              ))}
+            {merge2ndRoundChips(
+              kase.exam2ndYears,
+              kase.exam2ndProblems ?? [],
+              kase.exam2ndMainYears ?? [],
+            )}
             {references.map((r) =>
               r.url ? (
                 <a

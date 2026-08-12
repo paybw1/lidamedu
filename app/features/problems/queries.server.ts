@@ -3519,6 +3519,10 @@ const ANSWER_CASE_NUM_RE = /\d{2,4}(?:가합|가단|가소|카합|카단|고합|
 
 // '2008후934로 오인용 시 감점'·'취지 불일치로 감점'처럼 잘못된 인용을 경고하는 문맥의
 // 사건번호는 관련 판례가 아니므로 배지에서 제외한다.
+// export — 판례 목록의 2차 기출 칩(문제 매칭)도 같은 규칙을 쓴다(cases/queries.server).
+export function extractAnswerCaseNums(text: string): string[] {
+  return extractCaseNums(text);
+}
 function extractCaseNums(text: string): string[] {
   const out: string[] = [];
   for (const m of text.matchAll(ANSWER_CASE_NUM_RE)) {

@@ -1,6 +1,7 @@
-// 조문·판례 팝업 미리보기 (문제 해설의 배지 클릭 시 lazy 로드).
+// 조문·판례·문제 팝업 미리보기 (배지 클릭 시 lazy 로드).
 //   GET /api/problems/ref-preview?type=article&id=<articleId>
 //   GET /api/problems/ref-preview?type=case&id=<caseId>
+//   GET /api/problems/ref-preview?type=problem&id=<problemId>  — 판례 화면 기출 칩용
 import { data } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
@@ -89,6 +90,53 @@ export async function loader({ request }: Route.LoaderArgs) {
       title: null,
       bodyMd: "",
       items: items.map((it) => ({ title: it.title, body: it.body.slice(0, 6000) })),
+    });
+  }
+
+  if (type === "problem") {
+    // 판례 화면 기출 칩 → 문제 발문 미리보기. 정답·해설·모범답안은 내리지 않는다.
+    const { data: row } = await client
+      .from("problems")
+      .select(
+        "problem_id, format, origin, exam_round, year, exam_round_no, problem_number, total_points, subjective_topic, body_md, released_at, review_status, laws(law_code)",
+      )
+      .eq("problem_id", id)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (!row || row.review_status !== "approved")
+      return data({ error: "Not found" }, { status: 404 });
+    if (row.origin === "mock" && !row.released_at)
+      return data({ error: "Not found" }, { status: 404 });
+    const isSubjective = row.format === "subjective";
+    // 객관식은 선지까지 — 발문만으로는 지문형 문제 내용 파악이 어렵다.
+    let choices: Array<{ index: number; body: string }> = [];
+    if (!isSubjective && row.format !== "blank") {
+      const { data: ch } = await client
+        .from("problem_choices")
+        .select("choice_index, body_md")
+        .eq("problem_id", id)
+        .order("choice_index");
+      choices = (ch ?? []).map((c) => ({
+        index: c.choice_index,
+        body: c.body_md ?? "",
+      }));
+    }
+    const roundLabel = row.exam_round === "second" ? "2차" : "1차";
+    const heading = [
+      row.year != null ? `${row.year}년` : null,
+      row.exam_round_no != null ? `제${row.exam_round_no}회` : null,
+      `${roundLabel} 문제${row.problem_number ?? "?"}`,
+      row.total_points != null ? `(${row.total_points}점)` : null,
+    ]
+      .filter(Boolean)
+      .join(" ");
+    return data({
+      kind: "problem" as const,
+      heading,
+      title: row.subjective_topic,
+      bodyMd: (row.body_md ?? "").slice(0, 12000),
+      choices,
+      lawCode: row.laws?.law_code ?? null,
     });
   }
 

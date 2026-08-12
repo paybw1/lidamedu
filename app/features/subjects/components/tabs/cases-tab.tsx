@@ -43,7 +43,7 @@ import {
 } from "~/core/components/ui/table";
 import {
   ExamProblemChip,
-  ExamYearChip,
+  merge2ndRoundChips,
   mergeFirstRoundChips,
 } from "~/features/cases/components/exam-year-chip";
 import { COURT_LABELS, type CaseListItem } from "~/features/cases/labels";
@@ -897,14 +897,11 @@ function CaseRow({
               item.exam1stProblems,
               item.exam1stExtraYears,
             )}
-            {sorted2nd.map((y) => (
-              <ExamYearChip
-                key={`2-${y}`}
-                round="second"
-                year={y}
-                main={(item.exam2ndMainYears ?? []).includes(y)}
-              />
-            ))}
+            {merge2ndRoundChips(
+              sorted2nd,
+              item.exam2ndProblems ?? [],
+              item.exam2ndMainYears ?? [],
+            )}
           </div>
         ) : null}
       </TableCell>
