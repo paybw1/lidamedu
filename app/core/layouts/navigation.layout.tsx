@@ -293,14 +293,18 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
           {({ data: { user } }) => (user ? <CommandPalette /> : null)}
         </Await>
       </Suspense>
-      {/* 팝업 공지 — 활성 공지가 있으면 모달. 닫기 상태는 localStorage(컴포넌트 소유). */}
-      <Suspense fallback={null}>
-        <Await resolve={popupNoticesPromise}>
-          {(notices) =>
-            notices.length > 0 ? <PopupNoticeModal notices={notices} /> : null
-          }
-        </Await>
-      </Suspense>
+      {/* 팝업 공지 — 활성 공지가 있으면 모달. 닫기 상태는 localStorage(컴포넌트 소유).
+          운영(/admin) 화면에서는 제외 — 마운트 직후 뜨는 오버레이가 관리자 조작
+          (특히 모바일 인박스 행 탭)을 가로채고, 마케팅 팝업의 대상도 아니다. */}
+      {!isAdminArea ? (
+        <Suspense fallback={null}>
+          <Await resolve={popupNoticesPromise}>
+            {(notices) =>
+              notices.length > 0 ? <PopupNoticeModal notices={notices} /> : null
+            }
+          </Await>
+        </Suspense>
+      ) : null}
     </div>
   );
 }
