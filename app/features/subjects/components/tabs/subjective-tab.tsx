@@ -2,16 +2,21 @@
 // "2차 주관식" 섹션을 독립 탭으로 승격한 것. 고도화 전까지 staff 전용(학생 비활성).
 //
 // 레이아웃은 객관식 탭과 같은 2-패널: 좌측=체계도 트리 패널, 우측=연도별 그룹 목록.
-// 주관식은 아직 체계도 노드 매핑이 없어(전부 미배정) 트리 카운트는 비어 있다 —
-// 고도화(노드 매핑) 시 객관식 탭과 같은 노드 필터 흐름이 그대로 붙는다.
-import type { ProblemFiltersApplied } from "../../lib/loader.server";
+// 체계도 배치는 problem_systematic_links(설문별 논점 → 노드, 복수 배치) 기반 —
+// 트리 카운트·?node= 필터·카드 배지가 이 링크를 공유한다.
+import type {
+  ProblemFiltersApplied,
+  ProblemNodeFilter,
+} from "../../lib/loader.server";
 import type { LawSubjectMeta } from "../../lib/subjects";
 
 import {
   ArrowRightIcon,
   ListTreeIcon,
+  MapPinIcon,
   PencilIcon,
   StarIcon,
+  XIcon,
 } from "lucide-react";
 import { Link, useSearchParams } from "react-router";
 
@@ -30,10 +35,15 @@ import {
   type ProblemOrigin,
   SUBJECTIVE_KIND_LABEL,
 } from "~/features/problems/labels";
+import type {
+  ProblemPlacement,
+  SystematicNodeProblemStat,
+} from "~/features/problems/queries.server";
 
 import { MobileNavDrawer } from "../mobile-nav-drawer";
 import { ProblemSystematicTree } from "../problem-systematic-tree";
 import { SortAxisProvider, SortAxisToggle } from "../sort-axis";
+import { stripSystematicNumber } from "../systematic-node-label";
 
 /** 문항별 답안 작성/제출(자기채점)/첨삭 완료 상태 — user_subjective_attempts 파생. */
 export type SubjectiveAttemptStatus = Record<
@@ -68,6 +78,9 @@ export function SubjectiveTab({
   appliedFilters,
   attemptStatus,
   systematicNodes,
+  nodeStats = {},
+  nodeFilter = null,
+  placements = {},
   isStaff = false,
 }: {
   subject: LawSubjectMeta;
@@ -75,6 +88,12 @@ export function SubjectiveTab({
   appliedFilters: ProblemFiltersApplied;
   attemptStatus: SubjectiveAttemptStatus;
   systematicNodes: SystematicNode[];
+  // 체계도 노드별 {문제 수, 첫 문제} — problem_systematic_links subtree 합산.
+  nodeStats?: Record<string, SystematicNodeProblemStat>;
+  // ?tab=subjective&node= 필터 (무효 노드면 null).
+  nodeFilter?: ProblemNodeFilter | null;
+  // 문항별 배치 노드 목록 (카드 배지).
+  placements?: Record<string, ProblemPlacement[]>;
   // AI 생성 배지(비교분석용)는 운영자에게만 노출.
   isStaff?: boolean;
 }) {
@@ -83,12 +102,24 @@ export function SubjectiveTab({
   const filterActive =
     appliedFilters.origin != null ||
     appliedFilters.year != null ||
+    nodeFilter != null ||
     (appliedFilters.search != null && appliedFilters.search.length > 0);
+  // "전체 보기" — node 만 제거하고 나머지 파라미터 보존.
+  const clearNodeHref = (() => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("node");
+    next.set("tab", "subjective");
+    return `?${next.toString()}`;
+  })();
 
   // 문제 클릭 시 색인 컨텍스트를 실어 보낸다(객관식 탭과 동일 규약 — list=1).
+  // ★node 는 제거 — 뷰어 list 모드의 노드 해석(listDisplayedProblems)은 객관식
+  //   조문 파생 시맨틱이라 링크 기반 주관식 필터와 어긋난다. prev/next 는 주관식
+  //   전체 목록 순서로 폴백(뷰어 배치 배지가 허브 노드 필터로 복귀 경로 제공).
   const problemLinkQuery = (() => {
     const sp = new URLSearchParams(searchParams);
     sp.delete("tab");
+    sp.delete("node");
     sp.set("list", "1");
     const s = sp.toString();
     return s ? `?${s}` : "";
@@ -108,7 +139,7 @@ export function SubjectiveTab({
   const progressPct = total > 0 ? Math.round((attempted / total) * 100) : 0;
 
   // 좌측 체계도 트리 패널 — 객관식 탭과 동일 마크업(데스크톱 사이드바/모바일 드로어 공용).
-  // 주관식은 아직 노드 매핑이 없어 카운트는 비어 있다(고도화 시 nodeStats 배선).
+  // 카운트=링크 배치 subtree 합산, 노드 클릭 → ?tab=subjective&node= 필터.
   const treePanel = (
     <SortAxisProvider forced="systematic">
       <div className="border-border bg-muted/30 overflow-hidden rounded-xl border lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
@@ -116,7 +147,12 @@ export function SubjectiveTab({
           <SortAxisToggle size="sm" disabledAxes={["statutory"]} />
         </div>
         <div className="p-2">
-          <ProblemSystematicTree nodes={systematicNodes} nodeStats={{}} />
+          <ProblemSystematicTree
+            nodes={systematicNodes}
+            nodeStats={nodeStats}
+            activeNodeId={nodeFilter?.nodeId}
+            tab="subjective"
+          />
         </div>
       </div>
     </SortAxisProvider>
@@ -155,6 +191,27 @@ export function SubjectiveTab({
             <div className="px-3 py-3">{treePanel}</div>
           </MobileNavDrawer>
         </div>
+
+        {/* 체계도 노드 필터 배너 — 객관식 탭과 동일 규약 */}
+        {nodeFilter ? (
+          <div className="border-border bg-primary/[0.04] flex flex-wrap items-center gap-2 rounded-xl border px-4 py-2.5 text-xs">
+            <MapPinIcon className="text-link size-3.5 shrink-0" />
+            <span className="text-muted-foreground">체계도 필터</span>
+            <Badge variant="secondary" className="max-w-[260px] truncate">
+              {stripSystematicNumber(nodeFilter.label)}
+            </Badge>
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="ml-auto h-7 px-2"
+            >
+              <Link to={clearNodeHref} preventScrollReset>
+                <XIcon className="size-3" /> 전체 보기
+              </Link>
+            </Button>
+          </div>
+        ) : null}
 
         {/* 주관식 학습 현황 — 답안 작성(진행률)·자기채점 제출·첨삭 완료 */}
         <div className="grid gap-3 sm:grid-cols-4">
@@ -232,6 +289,7 @@ export function SubjectiveTab({
                     item={p}
                     linkQuery={problemLinkQuery}
                     status={attemptStatus[p.problemId] ?? null}
+                    placements={placements[p.problemId] ?? []}
                     isStaff={isStaff}
                   />
                 ))}
@@ -305,12 +363,14 @@ function SubjectiveCard({
   item,
   linkQuery,
   status,
+  placements = [],
   isStaff = false,
 }: {
   subjectSlug: LawSubjectMeta["slug"];
   item: ProblemListItem;
   linkQuery: string;
   status: { submitted: boolean; reviewed: boolean } | null;
+  placements?: ProblemPlacement[];
   isStaff?: boolean;
 }) {
   // 카드 미리보기 — 본문의 HTML(case-box)·표·이미지·강조 마크업을 걷어낸 평문.
@@ -394,6 +454,22 @@ function SubjectiveCard({
         {item.subjectiveTopic ? (
           <p className="text-muted-foreground mb-1 text-xs">
             논점 — {item.subjectiveTopic}
+          </p>
+        ) : null}
+        {placements.length > 0 ? (
+          <p className="mb-1.5 flex flex-wrap items-center gap-1">
+            {placements.map((pl) => (
+              <span
+                key={pl.linkId}
+                title={pl.note ?? undefined}
+                className="border-border bg-muted/60 text-muted-foreground inline-flex max-w-[240px] items-center gap-1 truncate rounded-full border px-2 py-0.5 text-[11px]"
+              >
+                <MapPinIcon className="text-link size-3 shrink-0" />
+                <span className="truncate">
+                  {stripSystematicNumber(pl.label)}
+                </span>
+              </span>
+            ))}
           </p>
         ) : null}
         <p className="line-clamp-2 text-sm leading-snug">{snippet}</p>

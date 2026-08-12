@@ -8,6 +8,7 @@ import {
   CircleXIcon,
   FlagIcon,
   ListTreeIcon,
+  MapPinIcon,
   PanelRightIcon,
   PencilIcon,
   PrinterIcon,
@@ -73,6 +74,7 @@ import {
 import { redactSubjectiveAnswer } from "~/features/problems/lib/answer-visibility";
 import {
   type AdjacentProblem,
+  type ProblemPlacement,
   type SystematicNodeProblemStat,
   getAdjacentProblems,
   getAnswerCitedCaseGroups,
@@ -80,6 +82,7 @@ import {
   getExplanationCaseRefsByItem,
   getChoiceLinkRefs,
   getProblemById,
+  getProblemPlacementsBulk,
   getRelatedProblems,
   getSystematicNodeProblemSequence,
   getSystematicNodeProblemStats,
@@ -282,6 +285,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     lectureResources,
     problemNodeStats,
     placementNodeId,
+    placementsByProblem,
     answerCaseGroups,
     explanationCaseRefs,
   ] = await Promise.all([
@@ -308,6 +312,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       ? getSystematicNodeProblemStats(client, lawCode)
       : Promise.resolve<Record<string, SystematicNodeProblemStat>>({}),
     getProblemPlacementNodeId(client, params.problemId),
+    // 주관식 체계도 복수 배치(problem_systematic_links) — 뷰어 배지용.
+    problem.format === "subjective"
+      ? getProblemPlacementsBulk(client, [problem.problemId])
+      : Promise.resolve<Record<string, ProblemPlacement[]>>({}),
     getAnswerCitedCaseGroups(
       client,
       {
@@ -589,6 +597,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     problemNodeStats,
     activeNodeId: nodeId,
     placementNodeId,
+    subjectivePlacements: placementsByProblem[problem.problemId] ?? [],
     answerCaseGroups:
       viewerIsStaff || problem.format !== "subjective" ? answerCaseGroups : [],
     explanationCaseRefs,
@@ -728,6 +737,7 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
     adjacentQuery,
     lectureResources,
     placementNodeId,
+    subjectivePlacements,
     answerCaseGroups,
     explanationCaseRefs,
   } = loaderData;
@@ -1188,6 +1198,36 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                         </Link>
                       </Fragment>
                     ))}
+                  </div>
+                ) : null}
+                {/* 주관식 체계도 배치 — 설문별 논점 기준 복수 노드. 클릭 시 주관식 탭 노드 필터. */}
+                {isSubjectiveProblem && subjectivePlacements.length > 0 ? (
+                  <div
+                    className="mb-2 flex flex-wrap items-center gap-1"
+                    data-testid="problem-subjective-placements"
+                  >
+                    {subjectivePlacements.map((pl) => (
+                      <Link
+                        key={pl.linkId}
+                        to={`/subjects/${subject.slug}?tab=subjective&node=${pl.nodeId}`}
+                        className="border-border/60 bg-muted/40 text-foreground/80 hover:bg-muted inline-flex max-w-[280px] items-center gap-1 truncate rounded-full border px-2 py-0.5 text-xs font-medium"
+                        title={pl.note ?? `체계도 — ${pl.label}`}
+                      >
+                        <MapPinIcon className="text-link size-3 flex-none" />
+                        <span className="truncate">
+                          {stripSystematicNumber(pl.label)}
+                        </span>
+                      </Link>
+                    ))}
+                    {isStaff ? (
+                      <Link
+                        to={`/admin/problems/${problem.problemId}?returnTo=${encodeURIComponent(`/subjects/${subject.slug}/problems/${problem.problemId}`)}`}
+                        className="text-muted-foreground hover:text-foreground text-[11px] font-semibold underline-offset-2 hover:underline"
+                        title="배치 추가·삭제는 문제 편집 화면에서"
+                      >
+                        배치 수정
+                      </Link>
+                    ) : null}
                   </div>
                 ) : null}
                 {/* Chips row */}

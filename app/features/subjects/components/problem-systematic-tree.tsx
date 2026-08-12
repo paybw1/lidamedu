@@ -62,6 +62,7 @@ export function ProblemSystematicTree({
   emptyHint,
   linkBase = "",
   searchVisible = false,
+  tab = "problems",
 }: {
   nodes: SystematicNode[];
   nodeStats: Record<string, SystematicNodeProblemStat>;
@@ -72,6 +73,8 @@ export function ProblemSystematicTree({
   linkBase?: string;
   /** 헤더 돋보기 토글 — true 면 검색 입력 노출, 닫으면 질의 초기화. */
   searchVisible?: boolean;
+  /** 노드 클릭이 유지할 탭 — 주관식 탭 트리는 "subjective" 로 지정. */
+  tab?: "problems" | "subjective";
 }) {
   const [searchParams] = useSearchParams();
   // 문제 트리는 판례 전용 노드(caseOnly)를 제외 — 판례 체계도에만 존재하는
@@ -147,6 +150,7 @@ export function ProblemSystematicTree({
               forceOpen={forceOpen}
               searchParams={searchParams}
               linkBase={linkBase}
+              tab={tab}
             />
           ))}
         </ul>
@@ -163,6 +167,7 @@ function NodeItem({
   forceOpen,
   searchParams,
   linkBase,
+  tab,
 }: {
   node: TreeNode;
   depth: number;
@@ -171,6 +176,7 @@ function NodeItem({
   forceOpen: Set<string>;
   searchParams: URLSearchParams;
   linkBase: string;
+  tab: "problems" | "subjective";
 }) {
   const [open, setOpen] = useState(forceOpen.has(node.nodeId) || depth === 0);
   // forceOpen 이 (활성 노드 변경 등으로) 갱신되면 마운트된 노드도 펼침.
@@ -188,10 +194,10 @@ function NodeItem({
   // 다른 검색·필터(p_*)는 보존.
   const href = (() => {
     // linkBase 지정(문제 뷰어 등 → 허브 문제 탭) 시 절대 경로 + 깨끗한 파라미터만.
-    if (linkBase) return `${linkBase}?tab=problems&node=${node.nodeId}`;
+    if (linkBase) return `${linkBase}?tab=${tab}&node=${node.nodeId}`;
     // 같은 페이지(허브) — 기존 검색·필터(p_*) 보존하며 tab/node 만 갱신.
     const next = new URLSearchParams(searchParams);
-    next.set("tab", "problems");
+    next.set("tab", tab);
     next.set("node", node.nodeId);
     return `?${next.toString()}`;
   })();
@@ -280,6 +286,7 @@ function NodeItem({
               forceOpen={forceOpen}
               searchParams={searchParams}
               linkBase={linkBase}
+              tab={tab}
             />
           ))}
         </ul>

@@ -3075,6 +3075,131 @@ export async function getSystematicNodeProblemStats(
   return out;
 }
 
+// ── 주관식 ↔ 체계도 복수 배치 (problem_systematic_links) ─────────────────
+// 주관식은 설문별 메인 논점이 여러 주제 노드에 걸리므로 primary_node_id(단일)
+// 대신 링크 테이블로 복수 배치한다. 객관식 통계(getSystematicNodeProblemStats)와
+// 분리 — 링크는 주관식 탭 트리에만 합산한다.
+
+export interface ProblemPlacement {
+  linkId: string;
+  nodeId: string;
+  label: string;
+  note: string | null;
+  seq: number | null;
+}
+
+// 문제별 배치 목록 (목록 배지·뷰어·편집 화면 공용). 노드 라벨 포함, seq 순.
+export async function getProblemPlacementsBulk(
+  client: SupabaseClient<Database>,
+  problemIds: string[],
+): Promise<Record<string, ProblemPlacement[]>> {
+  if (problemIds.length === 0) return {};
+  const rows = await fetchAllIn(problemIds, (slice) =>
+    client
+      .from("problem_systematic_links")
+      .select("link_id, problem_id, node_id, note, seq, systematic_nodes(display_label)")
+      .in("problem_id", slice)
+      .order("seq", { ascending: true, nullsFirst: false }),
+  );
+  const out: Record<string, ProblemPlacement[]> = {};
+  for (const r of rows) {
+    (out[r.problem_id] ??= []).push({
+      linkId: r.link_id,
+      nodeId: r.node_id,
+      label: r.systematic_nodes?.display_label ?? "",
+      note: r.note,
+      seq: r.seq,
+    });
+  }
+  return out;
+}
+
+// 주관식 탭 좌측 트리용 — 노드별 subtree {문제 수, 첫 문제, 별점 수} 합산.
+// 링크(problem_systematic_links) 기반. 한 문제가 subtree 안 여러 노드에 걸려도 1회만 센다.
+export async function getSubjectiveNodeProblemStats(
+  client: SupabaseClient<Database>,
+  lawCode: LawSubjectSlug,
+): Promise<Record<string, SystematicNodeProblemStat>> {
+  const { data: nodes } = await client
+    .from("systematic_nodes")
+    .select("node_id, path")
+    .eq("law_code", lawCode);
+  if (!nodes || nodes.length === 0) return {};
+  const nodeIds = nodes.map((n) => n.node_id);
+  const links = await fetchAllIn(nodeIds, (slice) =>
+    client
+      .from("problem_systematic_links")
+      .select("node_id, problem_id, problems!inner(problem_id, year, problem_number, importance, deleted_at)")
+      .in("node_id", slice)
+      .is("problems.deleted_at", null),
+  );
+  if (links.length === 0) return {};
+  // 표시 순서(연도 DESC, 문제번호 ASC) — firstProblemId 판정용.
+  const metaById = new Map<
+    string,
+    { year: number | null; problemNumber: number | null; starred: boolean }
+  >();
+  for (const l of links) {
+    metaById.set(l.problem_id, {
+      year: l.problems.year,
+      problemNumber: l.problems.problem_number,
+      starred: (l.problems.importance ?? 0) >= 1,
+    });
+  }
+  const order = [...metaById.keys()].sort((a, b) => {
+    const x = metaById.get(a)!;
+    const y = metaById.get(b)!;
+    if ((y.year ?? 0) !== (x.year ?? 0)) return (y.year ?? 0) - (x.year ?? 0);
+    return (x.problemNumber ?? 0) - (y.problemNumber ?? 0);
+  });
+  const orderOf = new Map(order.map((id, i) => [id, i]));
+  const problemsByNode = new Map<string, string[]>();
+  for (const l of links) {
+    const arr = problemsByNode.get(l.node_id) ?? [];
+    arr.push(l.problem_id);
+    problemsByNode.set(l.node_id, arr);
+  }
+  const out: Record<string, SystematicNodeProblemStat> = {};
+  for (const node of nodes) {
+    const nodePath = String(node.path);
+    const seen = new Set<string>();
+    for (const n of nodes) {
+      const p = String(n.path);
+      if (p !== nodePath && !p.startsWith(nodePath + ".")) continue;
+      for (const pid of problemsByNode.get(n.node_id) ?? []) seen.add(pid);
+    }
+    if (seen.size === 0) continue;
+    let firstProblemId: string | null = null;
+    let firstOrder = Infinity;
+    let starredCount = 0;
+    for (const pid of seen) {
+      const o = orderOf.get(pid) ?? Infinity;
+      if (o < firstOrder) {
+        firstOrder = o;
+        firstProblemId = pid;
+      }
+      if (metaById.get(pid)?.starred) starredCount += 1;
+    }
+    out[node.node_id] = { problemCount: seen.size, firstProblemId, starredCount };
+  }
+  return out;
+}
+
+// 노드 subtree 에 배치된 주관식 문제 ID 집합 — 주관식 탭 ?node= 필터용.
+export async function getSubjectiveNodeProblemIds(
+  client: SupabaseClient<Database>,
+  subtreeNodeIds: string[],
+): Promise<Set<string>> {
+  if (subtreeNodeIds.length === 0) return new Set();
+  const links = await fetchAllIn(subtreeNodeIds, (slice) =>
+    client
+      .from("problem_systematic_links")
+      .select("problem_id")
+      .in("node_id", slice),
+  );
+  return new Set(links.map((l) => l.problem_id));
+}
+
 // 출제된 연도 distinct (필터 dropdown 용).
 export async function listProblemYears(
   client: SupabaseClient<Database>,

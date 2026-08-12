@@ -483,6 +483,30 @@ create table public.problem_model_answers (
 );
 ```
 
+### 7.4 problem_systematic_links (주관식 ↔ 체계도 복수 배치, 2026-08-12)
+
+주관식은 설문별 메인 논점이 여러 주제 노드(권리범위확인심판·침해에 대한 조치 등)에
+걸리므로 `problems.primary_node_id`(단일)와 별개로 링크 테이블에 복수 배치한다.
+주관식 탭의 트리 카운트·`?node=` 필터·카드/뷰어 배지가 이 테이블 기반이며, 편집은
+`/admin/problems/:id` 의 "체계도 배치" 섹션(add_placement/remove_placement intent).
+배치 대상은 비(非) `case_only` 노드만(문제 트리가 case_only 를 숨김).
+객관식 통계(`getSystematicNodeProblemStats`)에는 합산하지 않는다 — 주관식 전용
+`getSubjectiveNodeProblemStats` 로 분리. 마이그레이션: `scripts/sql/20260812_problem_systematic_links.sql`.
+
+```sql
+create table public.problem_systematic_links (
+  link_id     uuid primary key default gen_random_uuid(),
+  problem_id  uuid not null references problems(problem_id) on delete cascade,
+  node_id     uuid not null references systematic_nodes(node_id) on delete cascade,
+  note        text,          -- 설문 라벨·논점 메모 (예: "설문(2) — §128 손해배상")
+  seq         smallint,      -- 문항 내 노출 순서
+  created_by  uuid references profiles(profile_id),
+  created_at  timestamptz not null default now(),
+  unique (problem_id, node_id)
+);
+-- RLS: select 전체 공개 / write staff (private.is_staff)
+```
+
 ---
 
 ## 8. user_problem_attempts (객관식 시도)

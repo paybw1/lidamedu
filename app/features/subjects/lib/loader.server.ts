@@ -49,8 +49,12 @@ import {
 } from "~/features/problems/labels";
 import {
   type ProblemListItem,
+  type ProblemPlacement,
   type SystematicNodeProblemStat,
   attachProblemOverallNo,
+  getProblemPlacementsBulk,
+  getSubjectiveNodeProblemIds,
+  getSubjectiveNodeProblemStats,
   getSystematicNodeProblemSequence,
   getSystematicNodeProblemStats,
   listProblemYears,
@@ -163,6 +167,12 @@ export interface SubjectHubData {
     string,
     { submitted: boolean; reviewed: boolean }
   >;
+  // 주관식 탭 좌측 트리 — problem_systematic_links 기반 노드별 {문제 수, 첫 문제}.
+  subjectiveNodeStats: Record<string, SystematicNodeProblemStat>;
+  // 주관식 탭 체계도 노드 필터 (?tab=subjective&node=) — 미적용/무효 노드면 null.
+  subjectiveNodeFilter: ProblemNodeFilter | null;
+  // 주관식 문항별 배치 노드(카드 배지용) — problemId → 배치 목록.
+  subjectivePlacements: Record<string, ProblemPlacement[]>;
 }
 
 const CASE_SORTS: readonly CaseSubjectSort[] = [
@@ -650,6 +660,9 @@ export async function loadSubjectHub(
   const caseQuery = caseFilters.q;
   const problemFilters = parseProblemFilters(url);
   const problemNodeId = url.searchParams.get("node")?.trim() || null;
+  // 주관식 탭이면 ?node= 는 링크(problem_systematic_links) 기반 필터로 해석한다
+  // — 객관식의 조문 파생 시퀀스(getSystematicNodeProblemSequence)와 모수가 다르다.
+  const subjectiveTabActive = url.searchParams.get("tab") === "subjective";
   // case 트리 필터(case_node/case_article/case_chapter) 는 cases 탭에 있을
   // 때만 cases 목록·총카운트에 적용한다. articles/problems 탭으로 전환하면
   // 책갈피 레일의 "판례 N" 카운트가 그 노드의 필터된 수에 갇혀 stale 처럼
@@ -691,6 +704,9 @@ export async function loadSubjectHub(
       axisCounts: { articles: 0, cases: 0, problems: 0, subjective: 0 },
       isStaff: false,
       subjectiveAttemptStatus: {},
+      subjectiveNodeStats: {},
+      subjectiveNodeFilter: null,
+      subjectivePlacements: {},
     };
   }
   // 1단계 — 트리/판례 카운트 등 case-filter 결정에 선행해야 하는 데이터.
@@ -803,6 +819,7 @@ export async function loadSubjectHub(
     problemYears,
     systematicNodeProblemStats,
     problemNodeSeq,
+    subjectiveNodeStats,
   ] = await Promise.all([
     listCasesBySubject(client, lawCode, {
       query: caseFilters.q || undefined,
@@ -816,9 +833,13 @@ export async function loadSubjectHub(
     getLatestPublishedRevisionDate(client, law.lawId),
     listProblemYears(client, lawCode),
     getSystematicNodeProblemStats(client, lawCode),
-    problemNodeId
+    problemNodeId && !subjectiveTabActive
       ? getSystematicNodeProblemSequence(client, problemNodeId)
       : Promise.resolve(null),
+    // 주관식 탭 트리 카운트 — staff 전용 탭이라 staff 일 때만 계산.
+    staffRole
+      ? getSubjectiveNodeProblemStats(client, lawCode)
+      : Promise.resolve<Record<string, SystematicNodeProblemStat>>({}),
   ]);
   // 체계도 전체 순번(overallNo) — 노드 필터/정렬 전, 전과목 기준 1회 부여(파생값).
   await attachProblemOverallNo(client, lawCode, problems);
@@ -960,9 +981,22 @@ export async function loadSubjectHub(
       : [];
     bookmarkedIds = new Set(refs.map((r) => r.problemId));
   }
+  // 주관식 탭 노드 필터 — subtree 링크 배치 문제 집합. 무효 노드면 null(미적용).
+  let subjectiveFilterIds: Set<string> | null = null;
+  const subjectiveFilterNode =
+    subjectiveTabActive && problemNodeId && staffRole
+      ? (systematicNodes.find((n) => n.nodeId === problemNodeId) ?? null)
+      : null;
+  if (subjectiveFilterNode) {
+    subjectiveFilterIds = await getSubjectiveNodeProblemIds(
+      client,
+      systematicSubtreeNodeIds(systematicNodes, subjectiveFilterNode.nodeId),
+    );
+  }
+
   const nodeProblemIds = problemNodeSeq
     ? new Set(problemNodeSeq.problems.map((p) => p.problemId))
-    : null;
+    : subjectiveFilterIds;
   const displayedProblems = applyProblemListView(
     problems,
     problemAggStats,
@@ -978,6 +1012,25 @@ export async function loadSubjectHub(
         firstProblemId: problemNodeSeq.problems[0]?.problemId ?? null,
       }
     : null;
+  const subjectiveNodeFilter: ProblemNodeFilter | null = subjectiveFilterNode
+    ? {
+        nodeId: subjectiveFilterNode.nodeId,
+        label: subjectiveFilterNode.displayLabel,
+        firstProblemId:
+          displayedProblems.find((p) => p.examRound === "second")?.problemId ??
+          null,
+      }
+    : null;
+
+  // 주관식 카드 배지 — 표시되는 주관식 문항의 배치 노드 목록 (staff 전용 탭).
+  const subjectivePlacements = staffRole
+    ? await getProblemPlacementsBulk(
+        client,
+        displayedProblems
+          .filter((p) => p.examRound === "second")
+          .map((p) => p.problemId),
+      )
+    : {};
 
   return {
     law,
@@ -1007,6 +1060,9 @@ export async function loadSubjectHub(
     },
     isStaff: staffRole !== null,
     subjectiveAttemptStatus,
+    subjectiveNodeStats,
+    subjectiveNodeFilter,
+    subjectivePlacements,
     problemYears,
     problemFilters,
     problemStats,

@@ -280,6 +280,20 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     primaryNodeId = pn?.primary_node_id ?? null;
   }
 
+  // 주관식 체계도 복수 배치(problem_systematic_links) — 설문별 논점 → 노드.
+  const { data: placementRows } = await client
+    .from("problem_systematic_links")
+    .select("link_id, node_id, note, seq")
+    .eq("problem_id", problemId)
+    .order("seq", { ascending: true, nullsFirst: false });
+  const nodeLabelById = new Map(allNodeOptions.map((o) => [o.nodeId, o.label]));
+  const placements = (placementRows ?? []).map((r) => ({
+    linkId: r.link_id,
+    nodeId: r.node_id,
+    label: nodeLabelById.get(r.node_id) ?? r.node_id,
+    note: r.note,
+  }));
+
   // feat-2-032 — 강사 채점평·예시답안(source=instructor). examiner(실제 채점위원)는 참고용 개수만.
   const { data: gradingNotes } = await client
     .from("problem_grading_notes")
@@ -304,6 +318,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     subNodeOptions,
     allNodeOptions,
     primaryNodeId,
+    placements,
     instructorNotes,
     examinerNoteCount,
   };
@@ -447,6 +462,45 @@ export async function action({ params, request }: Route.ActionArgs) {
       .eq("source", "instructor");
     if (error) return { ok: false, error: error.message } as const;
     return { ok: true, kind: "delete_grading_note" } as const;
+  }
+
+  // 주관식 체계도 복수 배치(problem_systematic_links) 추가/삭제 — 배치 수정 시
+  // 주관식 탭 트리 카운트·노드 필터·카드 배지에 즉시 반영된다(loader 재계산).
+  if (intent === "add_placement") {
+    const nodeId = String(fd.get("nodeId") ?? "").trim();
+    if (!nodeId) return { ok: false, error: "배치할 노드를 선택하세요." } as const;
+    const note = String(fd.get("placementNote") ?? "").trim() || null;
+    const { data: existing } = await client
+      .from("problem_systematic_links")
+      .select("seq")
+      .eq("problem_id", problemId);
+    const nextSeq =
+      Math.max(0, ...(existing ?? []).map((r) => r.seq ?? 0)) + 1;
+    const { error } = await client.from("problem_systematic_links").insert({
+      problem_id: problemId,
+      node_id: nodeId,
+      note,
+      seq: nextSeq,
+      created_by: user.id,
+    });
+    if (error)
+      return {
+        ok: false,
+        error:
+          error.code === "23505" ? "이미 배치된 노드입니다." : error.message,
+      } as const;
+    return { ok: true, kind: "add_placement" } as const;
+  }
+  if (intent === "remove_placement") {
+    const linkId = String(fd.get("linkId") ?? "");
+    if (!linkId) return { ok: false, error: "linkId 누락" } as const;
+    const { error } = await client
+      .from("problem_systematic_links")
+      .delete()
+      .eq("link_id", linkId)
+      .eq("problem_id", problemId);
+    if (error) return { ok: false, error: error.message } as const;
+    return { ok: true, kind: "remove_placement" } as const;
   }
 
   // primary_article_id 변경: articleNumber 텍스트 ("29" / "28의2" / "" )를 받아 같은 law 의 articles 조회.
@@ -716,6 +770,7 @@ function AdminProblemEditInner({
     subNodeOptions,
     allNodeOptions,
     primaryNodeId,
+    placements,
     instructorNotes,
     examinerNoteCount,
   } = loaderData;
@@ -820,6 +875,23 @@ function AdminProblemEditInner({
     else if (r.ok && r.kind === "unflag_mismatch") toast.success("재검토 표시를 취소했습니다");
     else if (r.error) toast.error(r.error);
   }, [mismatchFetcher.data]);
+  // 주관식 체계도 배치 추가/삭제 fetcher.
+  const placementFetcher = useFetcher<{
+    ok?: boolean;
+    kind?: string;
+    error?: string;
+  }>();
+  const placementFormRef = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    const r = placementFetcher.data;
+    if (!r || placementFetcher.state !== "idle") return;
+    if (r.ok && r.kind === "add_placement") {
+      toast.success("체계도 배치를 추가했습니다");
+      placementFormRef.current?.reset();
+    } else if (r.ok && r.kind === "remove_placement")
+      toast.success("배치를 삭제했습니다");
+    else if (r.error) toast.error(r.error);
+  }, [placementFetcher.data, placementFetcher.state]);
   const [selectedCorrect, setSelectedCorrect] = useState<Set<number>>(
     () => new Set(correctIndexes),
   );
@@ -1356,6 +1428,95 @@ function AdminProblemEditInner({
           </Button>
         </div>
       </Form>
+
+      {format === "subjective" ? (
+        <div className="border-border mt-8 rounded-xl border p-5">
+          <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
+            <h3 className="text-sm font-bold">체계도 배치 (설문별 논점)</h3>
+            <p className="text-muted-foreground text-[11px]">
+              주관식은 설문별 메인 논점 기준으로 여러 노드에 배치됩니다. 수정
+              즉시 주관식 탭 트리 카운트·노드 필터·카드 배지에 반영됩니다.
+            </p>
+          </div>
+
+          {placements.length > 0 ? (
+            <ul className="mb-4 space-y-1.5">
+              {placements.map((pl) => (
+                <li
+                  key={pl.linkId}
+                  className="border-border bg-muted/20 flex items-center gap-2 rounded-lg border px-3 py-2"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{pl.label}</p>
+                    {pl.note ? (
+                      <p className="text-muted-foreground truncate text-[11px]">
+                        {pl.note}
+                      </p>
+                    ) : null}
+                  </div>
+                  <placementFetcher.Form method="post">
+                    <input
+                      type="hidden"
+                      name="intent"
+                      value="remove_placement"
+                    />
+                    <input type="hidden" name="linkId" value={pl.linkId} />
+                    <button
+                      type="submit"
+                      className="text-muted-foreground hover:text-destructive text-[11px] font-semibold"
+                      title="이 배치 삭제"
+                      disabled={placementFetcher.state !== "idle"}
+                    >
+                      삭제
+                    </button>
+                  </placementFetcher.Form>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-muted-foreground mb-4 rounded-lg border border-dashed py-4 text-center text-xs">
+              배치된 체계도 노드가 없습니다.
+            </p>
+          )}
+
+          <placementFetcher.Form
+            method="post"
+            ref={placementFormRef}
+            className="flex flex-wrap items-center gap-2"
+          >
+            <input type="hidden" name="intent" value="add_placement" />
+            <AdminSelect
+              name="nodeId"
+              defaultValue=""
+              required
+              className="min-w-0 flex-1"
+              aria-label="배치할 체계도 노드"
+            >
+              <option value="" disabled>
+                배치할 노드 선택…
+              </option>
+              {allNodeOptions.map((o) => (
+                <option key={o.nodeId} value={o.nodeId}>
+                  {o.label}
+                </option>
+              ))}
+            </AdminSelect>
+            <Input
+              name="placementNote"
+              maxLength={200}
+              placeholder="메모(선택) — 예: 설문(2) — §128 손해배상"
+              className="w-64"
+            />
+            <Button
+              type="submit"
+              size="sm"
+              disabled={placementFetcher.state !== "idle"}
+            >
+              배치 추가
+            </Button>
+          </placementFetcher.Form>
+        </div>
+      ) : null}
 
       {format === "subjective" ? (
         <div className="border-border mt-8 rounded-xl border p-5">

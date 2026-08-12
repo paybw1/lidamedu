@@ -25,6 +25,7 @@ import type {
 } from "~/features/laws/queries.server";
 import type {
   ProblemListItem,
+  ProblemPlacement,
   SystematicNodeProblemStat,
 } from "~/features/problems/queries.server";
 import type { ProblemAggregateStats } from "~/features/study/lib/difficulty";
@@ -80,6 +81,10 @@ interface SubjectHubProps {
     string,
     { submitted: boolean; reviewed: boolean }
   >;
+  // 주관식 탭 체계도 — 노드별 카운트 / ?node= 필터 / 문항별 배치(카드 배지).
+  subjectiveNodeStats?: Record<string, SystematicNodeProblemStat>;
+  subjectiveNodeFilter?: ProblemNodeFilter | null;
+  subjectivePlacements?: Record<string, ProblemPlacement[]>;
 }
 
 export function SubjectHub(props: SubjectHubProps) {
@@ -120,6 +125,9 @@ function SubjectHubInner({
   axisCounts,
   isStaff = false,
   subjectiveAttemptStatus,
+  subjectiveNodeStats,
+  subjectiveNodeFilter,
+  subjectivePlacements,
 }: SubjectHubProps) {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -270,6 +278,9 @@ function SubjectHubInner({
                 appliedFilters={problemFilters ?? {}}
                 attemptStatus={subjectiveAttemptStatus ?? {}}
                 systematicNodes={systematicNodes ?? []}
+                nodeStats={subjectiveNodeStats ?? {}}
+                nodeFilter={subjectiveNodeFilter ?? null}
+                placements={subjectivePlacements ?? {}}
                 isStaff={isStaff}
               />
             </TabsContent>

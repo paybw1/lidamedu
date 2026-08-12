@@ -9957,6 +9957,65 @@ export type Database = {
           },
         ]
       }
+      problem_systematic_links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          link_id: string
+          node_id: string
+          note: string | null
+          problem_id: string
+          seq: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          link_id?: string
+          node_id: string
+          note?: string | null
+          problem_id: string
+          seq?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          link_id?: string
+          node_id?: string
+          note?: string | null
+          problem_id?: string
+          seq?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "problem_systematic_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "problem_systematic_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "problem_systematic_links_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "systematic_nodes"
+            referencedColumns: ["node_id"]
+          },
+          {
+            foreignKeyName: "problem_systematic_links_problem_id_fkey"
+            columns: ["problem_id"]
+            isOneToOne: false
+            referencedRelation: "problems"
+            referencedColumns: ["problem_id"]
+          },
+        ]
+      }
       problem_text_drafts: {
         Row: {
           choice_top_frac: number | null
