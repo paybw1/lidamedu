@@ -26,6 +26,7 @@ import type {
 import type {
   ProblemListItem,
   ProblemPlacement,
+  SubjectiveNodeLeaf,
   SystematicNodeProblemStat,
 } from "~/features/problems/queries.server";
 import type { ProblemAggregateStats } from "~/features/study/lib/difficulty";
@@ -81,8 +82,9 @@ interface SubjectHubProps {
     string,
     { submitted: boolean; reviewed: boolean }
   >;
-  // 주관식 탭 체계도 — 노드별 카운트 / ?node= 필터 / 문항별 배치(카드 배지).
+  // 주관식 탭 체계도 — 노드별 카운트 / ?node= 필터 / 문항별 배치(카드 배지) / 기출 leaf.
   subjectiveNodeStats?: Record<string, SystematicNodeProblemStat>;
+  subjectiveNodeLeaves?: Record<string, SubjectiveNodeLeaf[]>;
   subjectiveNodeFilter?: ProblemNodeFilter | null;
   subjectivePlacements?: Record<string, ProblemPlacement[]>;
 }
@@ -126,6 +128,7 @@ function SubjectHubInner({
   isStaff = false,
   subjectiveAttemptStatus,
   subjectiveNodeStats,
+  subjectiveNodeLeaves,
   subjectiveNodeFilter,
   subjectivePlacements,
 }: SubjectHubProps) {
@@ -279,6 +282,7 @@ function SubjectHubInner({
                 attemptStatus={subjectiveAttemptStatus ?? {}}
                 systematicNodes={systematicNodes ?? []}
                 nodeStats={subjectiveNodeStats ?? {}}
+                nodeLeaves={subjectiveNodeLeaves ?? {}}
                 nodeFilter={subjectiveNodeFilter ?? null}
                 placements={subjectivePlacements ?? {}}
                 isStaff={isStaff}

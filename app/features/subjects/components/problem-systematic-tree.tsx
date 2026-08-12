@@ -3,7 +3,12 @@
 // 문제 탭 배너의 "이 체계 풀기" 버튼이 담당한다.
 // 체계도 노드만 표시(조문 leaf 없음). 데이터 유무와 무관하게 조문·판례·문제 탭이
 // 같은 목차를 보여야 하므로 문제 0건 노드도 숨기지 않는다.
-import { ChevronRightIcon, ListChecksIcon, SearchIcon } from "lucide-react";
+import {
+  ChevronRightIcon,
+  ListChecksIcon,
+  PencilLineIcon,
+  SearchIcon,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 
@@ -55,9 +60,17 @@ function ancestorIds(
   return out;
 }
 
+// 노드 아래 붙는 기출 leaf 표시 항목 — 라벨("2015년 제52회 문제2") + 이동 경로.
+export interface TreeProblemLeaf {
+  key: string;
+  label: string;
+  to: string;
+}
+
 export function ProblemSystematicTree({
   nodes,
   nodeStats,
+  nodeLeaves = {},
   activeNodeId,
   emptyHint,
   linkBase = "",
@@ -66,6 +79,8 @@ export function ProblemSystematicTree({
 }: {
   nodes: SystematicNode[];
   nodeStats: Record<string, SystematicNodeProblemStat>;
+  /** 노드 직접 배치 기출 leaf — 펼치면 노드 아래 회차·연도로 표시(주관식 탭). */
+  nodeLeaves?: Record<string, TreeProblemLeaf[]>;
   activeNodeId?: string;
   emptyHint?: string;
   // 지정 시 노드 링크를 절대 경로(`{linkBase}?tab=problems&node=`)로 — 문제 뷰어 등
@@ -146,6 +161,7 @@ export function ProblemSystematicTree({
               node={n}
               depth={0}
               nodeStats={nodeStats}
+              nodeLeaves={nodeLeaves}
               activeNodeId={activeNodeId}
               forceOpen={forceOpen}
               searchParams={searchParams}
@@ -163,6 +179,7 @@ function NodeItem({
   node,
   depth,
   nodeStats,
+  nodeLeaves,
   activeNodeId,
   forceOpen,
   searchParams,
@@ -172,6 +189,7 @@ function NodeItem({
   node: TreeNode;
   depth: number;
   nodeStats: Record<string, SystematicNodeProblemStat>;
+  nodeLeaves: Record<string, TreeProblemLeaf[]>;
   activeNodeId: string | undefined;
   forceOpen: Set<string>;
   searchParams: URLSearchParams;
@@ -184,7 +202,8 @@ function NodeItem({
     if (forceOpen.has(node.nodeId)) setOpen(true);
   }, [forceOpen, node.nodeId]);
 
-  const hasChildren = node.children.length > 0;
+  const leaves = nodeLeaves[node.nodeId] ?? [];
+  const hasChildren = node.children.length > 0 || leaves.length > 0;
   const stat = nodeStats[node.nodeId];
   const count = stat?.problemCount ?? 0;
   const starredCount = stat?.starredCount ?? 0;
@@ -282,12 +301,27 @@ function NodeItem({
               node={c}
               depth={depth + 1}
               nodeStats={nodeStats}
+              nodeLeaves={nodeLeaves}
               activeNodeId={activeNodeId}
               forceOpen={forceOpen}
               searchParams={searchParams}
               linkBase={linkBase}
               tab={tab}
             />
+          ))}
+          {/* 기출 leaf — 이 노드에 직접 배치된 문항의 회차·연도. 클릭 → 문제 뷰어. */}
+          {leaves.map((leaf) => (
+            <li key={leaf.key}>
+              <Link
+                to={leaf.to}
+                className="text-muted-foreground hover:bg-accent hover:text-foreground flex items-center gap-1.5 rounded-md py-1 pr-2 text-xs transition-colors"
+                style={{ paddingLeft: `${(depth + 1) * 12 + 11}px` }}
+                title={`${leaf.label} 문제로 이동`}
+              >
+                <PencilLineIcon className="text-link/70 size-3 shrink-0" />
+                <span className="truncate tabular-nums">{leaf.label}</span>
+              </Link>
+            </li>
           ))}
         </ul>
       ) : null}

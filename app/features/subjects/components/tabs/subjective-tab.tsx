@@ -37,6 +37,7 @@ import {
 } from "~/features/problems/labels";
 import type {
   ProblemPlacement,
+  SubjectiveNodeLeaf,
   SystematicNodeProblemStat,
 } from "~/features/problems/queries.server";
 
@@ -79,6 +80,7 @@ export function SubjectiveTab({
   attemptStatus,
   systematicNodes,
   nodeStats = {},
+  nodeLeaves = {},
   nodeFilter = null,
   placements = {},
   isStaff = false,
@@ -90,6 +92,8 @@ export function SubjectiveTab({
   systematicNodes: SystematicNode[];
   // 체계도 노드별 {문제 수, 첫 문제} — problem_systematic_links subtree 합산.
   nodeStats?: Record<string, SystematicNodeProblemStat>;
+  // 노드 직접 배치 기출 leaf — "2015년 제52회 문제2" 표기.
+  nodeLeaves?: Record<string, SubjectiveNodeLeaf[]>;
   // ?tab=subjective&node= 필터 (무효 노드면 null).
   nodeFilter?: ProblemNodeFilter | null;
   // 문항별 배치 노드 목록 (카드 배지).
@@ -138,6 +142,23 @@ export function SubjectiveTab({
   ).length;
   const progressPct = total > 0 ? Math.round((attempted / total) * 100) : 0;
 
+  // 트리 기출 leaf — 노드 아래 "2015년 제52회 문제2" 표기 + 뷰어 링크.
+  const treeLeaves = (() => {
+    const out: Record<string, { key: string; label: string; to: string }[]> =
+      {};
+    for (const [nodeId, items] of Object.entries(nodeLeaves)) {
+      out[nodeId] = items.map((l) => ({
+        key: l.problemId,
+        label:
+          l.year != null
+            ? `${l.year}년${l.examRoundNo != null ? ` 제${l.examRoundNo}회` : ""}${l.problemNumber != null ? ` 문제${l.problemNumber}` : ""}`
+            : "연도 미상",
+        to: `/subjects/${subject.slug}/problems/${l.problemId}${problemLinkQuery}`,
+      }));
+    }
+    return out;
+  })();
+
   // 좌측 체계도 트리 패널 — 객관식 탭과 동일 마크업(데스크톱 사이드바/모바일 드로어 공용).
   // 카운트=링크 배치 subtree 합산, 노드 클릭 → ?tab=subjective&node= 필터.
   const treePanel = (
@@ -150,6 +171,7 @@ export function SubjectiveTab({
           <ProblemSystematicTree
             nodes={systematicNodes}
             nodeStats={nodeStats}
+            nodeLeaves={treeLeaves}
             activeNodeId={nodeFilter?.nodeId}
             tab="subjective"
           />

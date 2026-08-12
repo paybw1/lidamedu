@@ -50,6 +50,7 @@ import {
 import {
   type ProblemListItem,
   type ProblemPlacement,
+  type SubjectiveNodeLeaf,
   type SystematicNodeProblemStat,
   attachProblemOverallNo,
   getProblemPlacementsBulk,
@@ -169,6 +170,8 @@ export interface SubjectHubData {
   >;
   // 주관식 탭 좌측 트리 — problem_systematic_links 기반 노드별 {문제 수, 첫 문제}.
   subjectiveNodeStats: Record<string, SystematicNodeProblemStat>;
+  // 트리 노드 직접 배치 기출 leaf ("2015년 제52회 문제2") — nodeId → 배치 문항 메타.
+  subjectiveNodeLeaves: Record<string, SubjectiveNodeLeaf[]>;
   // 주관식 탭 체계도 노드 필터 (?tab=subjective&node=) — 미적용/무효 노드면 null.
   subjectiveNodeFilter: ProblemNodeFilter | null;
   // 주관식 문항별 배치 노드(카드 배지용) — problemId → 배치 목록.
@@ -705,6 +708,7 @@ export async function loadSubjectHub(
       isStaff: false,
       subjectiveAttemptStatus: {},
       subjectiveNodeStats: {},
+      subjectiveNodeLeaves: {},
       subjectiveNodeFilter: null,
       subjectivePlacements: {},
     };
@@ -819,7 +823,7 @@ export async function loadSubjectHub(
     problemYears,
     systematicNodeProblemStats,
     problemNodeSeq,
-    subjectiveNodeStats,
+    subjectiveNodeTree,
   ] = await Promise.all([
     listCasesBySubject(client, lawCode, {
       query: caseFilters.q || undefined,
@@ -836,10 +840,13 @@ export async function loadSubjectHub(
     problemNodeId && !subjectiveTabActive
       ? getSystematicNodeProblemSequence(client, problemNodeId)
       : Promise.resolve(null),
-    // 주관식 탭 트리 카운트 — staff 전용 탭이라 staff 일 때만 계산.
+    // 주관식 탭 트리 카운트·기출 leaf — staff 전용 탭이라 staff 일 때만 계산.
     staffRole
       ? getSubjectiveNodeProblemStats(client, lawCode)
-      : Promise.resolve<Record<string, SystematicNodeProblemStat>>({}),
+      : Promise.resolve<{
+          stats: Record<string, SystematicNodeProblemStat>;
+          leaves: Record<string, SubjectiveNodeLeaf[]>;
+        }>({ stats: {}, leaves: {} }),
   ]);
   // 체계도 전체 순번(overallNo) — 노드 필터/정렬 전, 전과목 기준 1회 부여(파생값).
   await attachProblemOverallNo(client, lawCode, problems);
@@ -1060,7 +1067,8 @@ export async function loadSubjectHub(
     },
     isStaff: staffRole !== null,
     subjectiveAttemptStatus,
-    subjectiveNodeStats,
+    subjectiveNodeStats: subjectiveNodeTree.stats,
+    subjectiveNodeLeaves: subjectiveNodeTree.leaves,
     subjectiveNodeFilter,
     subjectivePlacements,
     problemYears,

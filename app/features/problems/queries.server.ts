@@ -3114,34 +3114,54 @@ export async function getProblemPlacementsBulk(
   return out;
 }
 
-// 주관식 탭 좌측 트리용 — 노드별 subtree {문제 수, 첫 문제, 별점 수} 합산.
-// 링크(problem_systematic_links) 기반. 한 문제가 subtree 안 여러 노드에 걸려도 1회만 센다.
+// 트리 노드 아래에 붙는 기출 leaf — "2015년 제52회 문제2" 표기용 메타.
+export interface SubjectiveNodeLeaf {
+  problemId: string;
+  year: number | null;
+  examRoundNo: number | null;
+  problemNumber: number | null;
+}
+
+// 주관식 탭 좌측 트리용 — 노드별 subtree {문제 수, 첫 문제, 별점 수} 합산 +
+// 노드 직접 배치 기출 leaf 목록. 링크(problem_systematic_links) 기반.
+// 한 문제가 subtree 안 여러 노드에 걸려도 카운트는 1회만 센다.
 export async function getSubjectiveNodeProblemStats(
   client: SupabaseClient<Database>,
   lawCode: LawSubjectSlug,
-): Promise<Record<string, SystematicNodeProblemStat>> {
+): Promise<{
+  stats: Record<string, SystematicNodeProblemStat>;
+  // 노드 직접 배치 기출 leaf — 트리에서 노드 아래 "2015년 제52회 문제2" 로 표시.
+  leaves: Record<string, SubjectiveNodeLeaf[]>;
+}> {
+  const empty = { stats: {}, leaves: {} };
   const { data: nodes } = await client
     .from("systematic_nodes")
     .select("node_id, path")
     .eq("law_code", lawCode);
-  if (!nodes || nodes.length === 0) return {};
+  if (!nodes || nodes.length === 0) return empty;
   const nodeIds = nodes.map((n) => n.node_id);
   const links = await fetchAllIn(nodeIds, (slice) =>
     client
       .from("problem_systematic_links")
-      .select("node_id, problem_id, problems!inner(problem_id, year, problem_number, importance, deleted_at)")
+      .select("node_id, problem_id, problems!inner(problem_id, year, exam_round_no, problem_number, importance, deleted_at)")
       .in("node_id", slice)
       .is("problems.deleted_at", null),
   );
-  if (links.length === 0) return {};
+  if (links.length === 0) return empty;
   // 표시 순서(연도 DESC, 문제번호 ASC) — firstProblemId 판정용.
   const metaById = new Map<
     string,
-    { year: number | null; problemNumber: number | null; starred: boolean }
+    {
+      year: number | null;
+      examRoundNo: number | null;
+      problemNumber: number | null;
+      starred: boolean;
+    }
   >();
   for (const l of links) {
     metaById.set(l.problem_id, {
       year: l.problems.year,
+      examRoundNo: l.problems.exam_round_no,
       problemNumber: l.problems.problem_number,
       starred: (l.problems.importance ?? 0) >= 1,
     });
@@ -3182,7 +3202,19 @@ export async function getSubjectiveNodeProblemStats(
     }
     out[node.node_id] = { problemCount: seen.size, firstProblemId, starredCount };
   }
-  return out;
+
+  // 노드 직접 배치 leaf — 연도 ASC(오래된→최신), 같은 연도는 문제번호 ASC.
+  const leaves: Record<string, SubjectiveNodeLeaf[]> = {};
+  for (const [nid, pids] of problemsByNode) {
+    leaves[nid] = [...new Set(pids)]
+      .map((pid) => ({ problemId: pid, ...metaById.get(pid)! }))
+      .map(({ starred: _s, ...leaf }) => leaf)
+      .sort((a, b) => {
+        if ((a.year ?? 0) !== (b.year ?? 0)) return (a.year ?? 0) - (b.year ?? 0);
+        return (a.problemNumber ?? 0) - (b.problemNumber ?? 0);
+      });
+  }
+  return { stats: out, leaves };
 }
 
 // 노드 subtree 에 배치된 주관식 문제 ID 집합 — 주관식 탭 ?node= 필터용.

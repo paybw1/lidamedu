@@ -41,6 +41,7 @@ export default function SubjectDesign({ loaderData }: Route.ComponentProps) {
       isStaff={loaderData.isStaff}
       subjectiveAttemptStatus={loaderData.subjectiveAttemptStatus}
       subjectiveNodeStats={loaderData.subjectiveNodeStats}
+      subjectiveNodeLeaves={loaderData.subjectiveNodeLeaves}
       subjectiveNodeFilter={loaderData.subjectiveNodeFilter}
       subjectivePlacements={loaderData.subjectivePlacements}
     />
