@@ -898,7 +898,12 @@ function CaseRow({
               item.exam1stExtraYears,
             )}
             {sorted2nd.map((y) => (
-              <ExamYearChip key={`2-${y}`} round="second" year={y} />
+              <ExamYearChip
+                key={`2-${y}`}
+                round="second"
+                year={y}
+                main={(item.exam2ndMainYears ?? []).includes(y)}
+              />
             ))}
           </div>
         ) : null}

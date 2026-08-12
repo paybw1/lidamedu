@@ -319,7 +319,12 @@ export function CaseBody({
             {[...kase.exam2ndYears]
               .sort((a, b) => a - b)
               .map((y) => (
-                <ExamYearChip key={`2-${y}`} round="second" year={y} />
+                <ExamYearChip
+                  key={`2-${y}`}
+                  round="second"
+                  year={y}
+                  main={(kase.exam2ndMainYears ?? []).includes(y)}
+                />
               ))}
             {references.map((r) =>
               r.url ? (

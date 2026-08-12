@@ -190,12 +190,46 @@ export interface CaseListPage {
 // 초과 시 list 는 상한까지만, total(count)은 실제 건수라 누락이 드러난다.
 const CASE_LIST_MAX = 2000;
 
+// 2차 주관식 메인 판례(problems.main_case_number) — 사건번호별 지정 연도 목록.
+// 판례 목록의 "2차 y" 칩 중 메인 지정 연도를 ★ 강조하기 위한 파생값.
+async function getSubjectiveMainCaseYears(
+  client: SupabaseClient<Database>,
+  lawCode: LawSubjectSlug,
+): Promise<Array<{ num: string; years: number[] }>> {
+  const { data } = await client
+    .from("problems")
+    .select("year, main_case_number, laws!inner(law_code)")
+    .eq("laws.law_code", lawCode)
+    .eq("format", "subjective")
+    .is("deleted_at", null)
+    .not("main_case_number", "is", null)
+    .not("year", "is", null);
+  const byNum = new Map<string, Set<number>>();
+  for (const r of data ?? []) {
+    for (const num of (r.main_case_number ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)) {
+      const set = byNum.get(num) ?? new Set<number>();
+      set.add(r.year!);
+      byNum.set(num, set);
+    }
+  }
+  return [...byNum].map(([num, years]) => ({
+    num,
+    years: [...years].sort((a, b) => a - b),
+  }));
+}
+
 export async function listCasesBySubject(
   client: SupabaseClient<Database>,
   lawCode: LawSubjectSlug,
   options: ListCasesBySubjectOptions = {},
 ): Promise<CaseListPage> {
-  const examProblemsByCase = await getExamProblemsByCase(client);
+  const [examProblemsByCase, mainCaseYears] = await Promise.all([
+    getExamProblemsByCase(client),
+    getSubjectiveMainCaseYears(client, lawCode),
+  ]);
 
   // case_id 제한 — 트리 필터, 그리고 exam_1st/exam_both 면 기출-연결 판례로 한정.
   let restrictIds: string[] | null = options.filterCaseIds
@@ -325,10 +359,20 @@ export async function listCasesBySubject(
     rows.push(...batch);
     if (batch.length < to - offset + 1) break;
   }
-  return {
-    items: rows.map((r) => rowToListItem(r as CaseListRow, examProblemsByCase)),
-    total,
-  };
+  const items = rows.map((r) => {
+    const item = rowToListItem(r as CaseListRow, examProblemsByCase);
+    // 메인 지정 연도 — 병합 사건번호("A, B(병합)")도 잡히게 includes 매칭.
+    const mainYears = mainCaseYears
+      .filter(
+        (m) => item.caseNumber === m.num || item.caseNumber.includes(m.num),
+      )
+      .flatMap((m) => m.years);
+    if (mainYears.length > 0) {
+      item.exam2ndMainYears = [...new Set(mainYears)].sort((a, b) => a - b);
+    }
+    return item;
+  });
+  return { items, total };
 }
 
 // 조문별 case 개수 — 판례 트리 진입 (feat-4-A-210) 의 leaf 카운트.
@@ -945,8 +989,31 @@ export async function getCaseById(
 
   if (error) throw error;
   if (!data) return null;
+
+  // 2차 주관식 메인 판례 연도 — 이 사건번호를 main_case_number 에 지정한 문제의 연도.
+  // (병합 사건번호 대응: case_number 가 지정 번호를 포함하면 매칭)
+  const { data: mainRows } = await client
+    .from("problems")
+    .select("year, main_case_number")
+    .eq("format", "subjective")
+    .is("deleted_at", null)
+    .not("main_case_number", "is", null)
+    .not("year", "is", null);
+  const mainYears = new Set<number>();
+  for (const r of mainRows ?? []) {
+    const nums = (r.main_case_number ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (nums.some((n) => data.case_number === n || data.case_number.includes(n)))
+      mainYears.add(r.year!);
+  }
+
   return {
     ...rowToListItem(data as CaseListRow),
+    ...(mainYears.size > 0
+      ? { exam2ndMainYears: [...mainYears].sort((a, b) => a - b) }
+      : {}),
     summaryBodyMd: data.summary_body_md,
     summaryItems: parseSummaryItems(data.summary_items),
     reasoningMd: data.reasoning_md,

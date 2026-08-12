@@ -77,11 +77,28 @@ export function mergeFirstRoundChips(
 export function ExamYearChip({
   round,
   year,
+  main = false,
 }: {
   round: ExamRound;
   year: number;
+  // 2차 주관식 메인 판례로 지정된 연도 — ★ 앰버 강조(문제 뷰어 메인 배지와 동일 시각 언어).
+  main?: boolean;
 }) {
   const label = `${round === "first" ? "1차" : "2차"} ${year}`;
+  if (main) {
+    return (
+      <Badge
+        variant="outline"
+        className="border-amber-400 bg-amber-50 text-[10px] font-semibold text-amber-900 dark:border-amber-600/60 dark:bg-amber-950/40 dark:text-amber-200"
+        title={`${year}년 2차 메인 판례`}
+      >
+        <span aria-hidden className="text-amber-500">
+          ★
+        </span>
+        {label}
+      </Badge>
+    );
+  }
   return (
     <Badge
       variant="outline"

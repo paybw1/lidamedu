@@ -64,6 +64,9 @@ export interface CaseListItem {
   // 기록 또는 누락분을 운영자가 채울 수 있게 한다.
   exam1stExtraYears: number[];
   exam2ndYears: number[];
+  // 2차 주관식 메인 판례로 지정된 연도(problems.main_case_number 파생) —
+  // 해당 연도의 2차 칩을 ★ 앰버로 강조. 목록 쿼리(listCasesBySubject)에서만 채움.
+  exam2ndMainYears?: number[];
 }
 
 export interface SummaryItem {
