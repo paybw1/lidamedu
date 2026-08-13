@@ -220,19 +220,8 @@ function coverOf(p, node) {
   return m ? { chapterNo: Number(m[1]) } : null;
 }
 
-// ── 장 제목 (PDF 목차에서 추출 예정 — 우선 간지 순번) ──
-// 목차 실측(제20판): 아래 9개. PDF 매핑 단계에서 대조 검증한다.
-const CHAPTER_TITLES = {
-  1: "총칙 및 보칙",
-  2: "특허요건",
-  3: "특허출원",
-  4: "심사",
-  5: "특허권",
-  6: "심판 및 소송",
-  7: "특허료 및 특허공보 등",
-  8: "국제출원",
-  9: "실용신안법",
-};
+// ── 장 제목 — PDF 러닝헤더("제N장 ○○ · 쪽")에서 추출(매핑 단계에서 채움) ──
+const CHAPTER_TITLES = {};
 
 // ── 순회: 장/주제/참고자료 경계 + 블록 수집 ──
 const chapters = [];
@@ -369,23 +358,73 @@ let cursor = 35; // 본문 시작(제1장 간지) 이전은 목차·머리말
 let unmapped = 0;
 const ns = (s) => s.replace(/\s+/g, "");
 const pageNs = pageTexts.map(ns);
+
+// 장 제목 — 러닝헤더 "제N장 ○○ · 쪽" 추출(다수결).
+{
+  const tally = new Map(); // chNo → Map<title, count>
+  for (let p = 35; p < pageTexts.length; p++) {
+    const m = /제(\d)장\s*([가-힣ㆍ·\s]+?)\s*[·∙]\s*\d/.exec(pageTexts[p]);
+    if (!m) continue;
+    const chNo = Number(m[1]);
+    const title = m[2].trim();
+    const t = tally.get(chNo) ?? new Map();
+    t.set(title, (t.get(title) ?? 0) + 1);
+    tally.set(chNo, t);
+  }
+  for (const [chNo, t] of tally) {
+    const best = [...t.entries()].sort((a, b) => b[1] - a[1])[0][0];
+    CHAPTER_TITLES[chNo] = best;
+  }
+  for (const ch of chapters) ch.title = CHAPTER_TITLES[ch.no] ?? "";
+  console.log("장 제목(러닝헤더):", JSON.stringify(CHAPTER_TITLES));
+}
+
+// 유닛 제목 무공백 집합 — "나열 페이지"(비교표 등) 판정용.
+const allTitleNs = units.map((u) => ns(u.title)).filter((t) => t.length >= 6);
+function isListPage(t, selfTitle) {
+  let others = 0;
+  for (const tt of allTitleNs) {
+    if (tt === selfTitle) continue;
+    if (t.includes(tt) && ++others >= 3) return true;
+  }
+  return false;
+}
+// 간지 사이드바 시그니처 — "번호+제목" 인접형이 2개 이상(주제 수 적은 장 대응).
+// 본문 헤더 페이지는 자기 것 1개뿐, 비교표는 번호 없이 제목만 인용 → 정확 판별.
+const sidebarForms = units
+  .filter((u) => u.kind === "topic")
+  .map((u) => String(u.no).padStart(2, "0") + ns(u.title));
+function isCoverPage(t) {
+  let n = 0;
+  for (const f of sidebarForms) if (t.includes(f) && ++n >= 2) return true;
+  return false;
+}
+
 for (const u of units) {
   const label = u.kind === "topic" ? u.title : `${u.refNo} ${u.title}`;
-  // 본문 헤더는 "제목 … 번호" 순(사이드바·목차는 "번호 제목" 순) — 무공백 비교(줄바꿈·자간 유동 흡수).
-  const needle =
+  // 본문 헤더의 제목·번호는 텍스트 스트림 순서가 페이지마다 달라("제목 NN" / "NN 제목")
+  // 순서 불문 — 제목 포함 + 나열 페이지(타 유닛 제목 3개 이상) 제외로 판정한다.
+  const selfNs = u.kind === "topic" ? ns(u.title) : ns(`${u.refNo} ${u.title}`);
+  // 1차: 헤더 인접형 — 본문 헤더의 텍스트 스트림 순서가 페이지마다 달라
+  //   "제목+번호"/"번호+제목" 양쪽을 인정. 간지 사이드바·비교표(타 유닛 제목 3개+)는
+  //   topic 에 한해 제외(참고자료 본문은 자체가 비교표라 적용 불가·목차는 cursor 로 배제).
+  // 2차: 완화 — 제목 포함(참고자료는 번호+제목 앞 8자도) + 동일 제외 규칙.
+  const nn = u.kind === "topic" ? String(u.no).padStart(2, "0") : null;
+  const adjacency =
     u.kind === "topic"
-      ? ns(u.title) + String(u.no).padStart(2, "0")
-      : ns(`${u.refNo} ${u.title}`);
-  const sidebarForm = u.kind === "topic" ? String(u.no).padStart(2, "0") + ns(u.title) : null;
+      ? [ns(u.title) + nn, nn + ns(u.title)]
+      : [ns(u.refNo) + ns(u.title), ns(u.refNo) + ns(u.title).slice(0, 8)];
+  const loose = [selfNs, ...(u.kind === "reference" ? [ns(u.refNo) + ns(u.title).slice(0, 8)] : [])];
   let found = -1;
-  for (let p = cursor; p < pageNs.length; p++) {
-    const t = pageNs[p];
-    if (t.includes(needle)) { found = p + 1; break; }
-    // 폴백: 제목 단독 매치 — 단 사이드바형("NN제목")으로만 등장한 페이지는 제외.
-    if (u.kind === "topic" && t.includes(ns(u.title)) && !(sidebarForm && t.includes(sidebarForm))) {
+  for (const needles of [adjacency, loose]) {
+    for (let p = cursor; p < pageNs.length && found < 0; p++) {
+      const t = pageNs[p];
+      if (!needles.some((x) => t.includes(x))) continue;
+      if (isCoverPage(t)) continue;
+      if (u.kind === "topic" && isListPage(t, ns(u.title))) continue;
       found = p + 1;
-      break;
     }
+    if (found > 0) break;
   }
   if (found > 0) {
     u.pdfPage = found;
