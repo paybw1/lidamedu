@@ -23,6 +23,7 @@ import { Input } from "~/core/components/ui/input";
 import { Label } from "~/core/components/ui/label";
 import { Separator } from "~/core/components/ui/separator";
 import { Textarea } from "~/core/components/ui/textarea";
+import { diffLines } from "~/core/lib/diff-lines";
 import { cn } from "~/core/lib/utils";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Chip } from "~/features/admin/components/admin-ui";
@@ -673,43 +674,7 @@ function bodyToTextLines(body: unknown): string[] {
   return lines;
 }
 
-type DiffLine = { kind: "same" | "removed" | "added"; text: string };
-
-// 간단한 LCS 기반 line diff (Myers 풍 단순화).
-function diffLines(before: string[], after: string[]): DiffLine[] {
-  const n = before.length;
-  const m = after.length;
-  // LCS DP
-  const dp: number[][] = Array.from({ length: n + 1 }, () =>
-    new Array<number>(m + 1).fill(0),
-  );
-  for (let i = n - 1; i >= 0; i--) {
-    for (let j = m - 1; j >= 0; j--) {
-      dp[i][j] = before[i] === after[j]
-        ? dp[i + 1][j + 1] + 1
-        : Math.max(dp[i + 1][j], dp[i][j + 1]);
-    }
-  }
-  const out: DiffLine[] = [];
-  let i = 0;
-  let j = 0;
-  while (i < n && j < m) {
-    if (before[i] === after[j]) {
-      out.push({ kind: "same", text: before[i] });
-      i++;
-      j++;
-    } else if (dp[i + 1][j] >= dp[i][j + 1]) {
-      out.push({ kind: "removed", text: before[i] });
-      i++;
-    } else {
-      out.push({ kind: "added", text: after[j] });
-      j++;
-    }
-  }
-  while (i < n) out.push({ kind: "removed", text: before[i++] });
-  while (j < m) out.push({ kind: "added", text: after[j++] });
-  return out;
-}
+// diffLines 는 errata Phase 3 에서 공용 추출 — ~/core/lib/diff-lines (동작 동일).
 
 function BodyDiffView({
   before,

@@ -9,6 +9,7 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import { runAfterResponse } from "~/core/lib/wait-until.server";
 import { reindexCases } from "~/features/ai-qna/lib/source-chunker.server";
 import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
+import { getUnpublishedRevisions } from "~/features/errata/queries.server";
 import {
   CASE_IMAGE_POSITIONS,
   parseCaseImages,
@@ -1063,6 +1064,13 @@ export async function action({ request }: Route.ActionArgs) {
   });
   // feat-9-001 RAG dirty hook — 판례 본문 변경 청크 재생성.
   runAfterResponse(reindexCases([caseId]));
+  // errata Phase 3 — [저장+발행] 경로: redirect 를 보류하고 방금 생성된 원장
+  // revision 묶음을 돌려준다(클라이언트가 발행 모달을 띄운 뒤 이동). diff 의
+  // 권위는 원장 스냅샷이므로 폼 상태가 아니라 revision_id 로 프리필한다.
+  if (fd.get("publishIntent") === "1") {
+    const revisions = await getUnpublishedRevisions(client, ["precedent"], caseId);
+    return data({ ok: true, revisionIds: revisions.map((r) => r.revisionId) });
+  }
   // 저장 후 본래 화면(returnTo)으로 복귀 — case-viewer 의 "수정" 버튼으로 진입한
   // 경우 그 case-viewer 로, admin-cases 목록에서 진입한 경우 그 목록으로 복귀.
   // resource route(/api/admin/case)는 컴포넌트가 없어 data() 만 돌리면 non-JS

@@ -41,6 +41,7 @@ import {
   getStaffRole,
   getSystematicSkeleton,
 } from "~/features/laws/queries.server";
+import { getUnpublishedRevisions } from "~/features/errata/queries.server";
 import { BoxItemEditor } from "~/features/problems/components/box-item-editor";
 import { ChoiceEditor } from "~/features/problems/components/choice-editor";
 import { ExplanationEditor } from "~/features/problems/components/explanation-editor";
@@ -736,6 +737,21 @@ export async function action({ params, request }: Route.ActionArgs) {
 
   // feat-9-001 RAG dirty hook — 문제 본문/보기/박스 변경 청크 재생성.
   runAfterResponse(reindexProblems([problemId]));
+  // errata Phase 3 — [저장+발행] 경로: redirect 를 보류하고 원장 revision 묶음 반환.
+  // ★문제 저장은 problems + 선지(problem_choices)가 각각 revision 을 만들므로
+  //   복수 건을 전부 돌려준다(단건만 돌리면 정답 정정이 발행에서 누락된다 — 지시서 §3.3).
+  if (fd.get("publishIntent") === "1") {
+    const revisions = await getUnpublishedRevisions(
+      client,
+      ["mcq", "essay"],
+      problemId,
+    );
+    return {
+      ok: true,
+      kind: "save_for_publish",
+      revisionIds: revisions.map((r) => r.revisionId),
+    } as const;
+  }
   // viewer "수정" 등 외부에서 진입한 경우 returnTo 가 form 에 carry 됨 — 저장 후
   // 본래 화면으로 복귀. 없으면 기존 동작 그대로 (같은 페이지 + toast).
   const returnToRaw = fd.get("returnTo");
