@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { getUnpublishedRevisions } from "~/features/errata/queries.server";
 import { articleBodySchema } from "~/features/laws/lib/article-body";
 import {
   getStaffRole,
@@ -79,6 +80,21 @@ export async function action({ request }: Route.ActionArgs) {
     importance: parsed.data.importance,
   });
   if (!result.ok) return { ok: false, error: result.error } as const;
+
+  // errata Phase 3 — [저장+발행] 경로: 방금 트리거가 만든 원장(content_revisions)
+  // revision 묶음을 함께 반환한다(발행 모달의 diff 프리필은 원장이 권위).
+  if (fd.get("publishIntent") === "1") {
+    const revisions = await getUnpublishedRevisions(
+      client,
+      ["statute"],
+      article.article_id,
+    );
+    return {
+      ok: true,
+      revisionId: result.revisionId,
+      ledgerRevisionIds: revisions.map((r) => r.revisionId),
+    } as const;
+  }
   return { ok: true, revisionId: result.revisionId } as const;
 }
 

@@ -4042,6 +4042,8 @@ export type Database = {
           source_ref: Json | null
           subject_code: string | null
           subject_ref: Json | null
+          withdrawn_at: string | null
+          withdraws_revision_id: string | null
         }
         Insert: {
           after_snapshot?: Json | null
@@ -4078,6 +4080,8 @@ export type Database = {
           source_ref?: Json | null
           subject_code?: string | null
           subject_ref?: Json | null
+          withdrawn_at?: string | null
+          withdraws_revision_id?: string | null
         }
         Update: {
           after_snapshot?: Json | null
@@ -4114,8 +4118,25 @@ export type Database = {
           source_ref?: Json | null
           subject_code?: string | null
           subject_ref?: Json | null
+          withdrawn_at?: string | null
+          withdraws_revision_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "content_revisions_withdraws_revision_id_fkey"
+            columns: ["withdraws_revision_id"]
+            isOneToOne: false
+            referencedRelation: "content_revisions"
+            referencedColumns: ["revision_id"]
+          },
+          {
+            foreignKeyName: "content_revisions_withdraws_revision_id_fkey"
+            columns: ["withdraws_revision_id"]
+            isOneToOne: false
+            referencedRelation: "v_revision_recent"
+            referencedColumns: ["revision_id"]
+          },
+        ]
       }
       content_sync_logs: {
         Row: {
@@ -10637,6 +10658,7 @@ export type Database = {
           page_no: number | null
           page_no_end: number | null
           sort_key: number | null
+          source_discrepancy: Json | null
           toc_path: string | null
         }
         Insert: {
@@ -10650,6 +10672,7 @@ export type Database = {
           page_no?: number | null
           page_no_end?: number | null
           sort_key?: number | null
+          source_discrepancy?: Json | null
           toc_path?: string | null
         }
         Update: {
@@ -10663,6 +10686,7 @@ export type Database = {
           page_no?: number | null
           page_no_end?: number | null
           sort_key?: number | null
+          source_discrepancy?: Json | null
           toc_path?: string | null
         }
         Relationships: [
@@ -14668,9 +14692,25 @@ export type Database = {
         Returns: string
       }
       fn_problem_content_type: { Args: { p_format: string }; Returns: string }
+      fn_publish_errata: {
+        Args: {
+          p_errata_kind: string
+          p_errata_payload: Json
+          p_errata_reason: string
+          p_errata_severity: string
+          p_errata_title: string
+          p_revision_ids: string[]
+          p_source_edition_id?: string
+        }
+        Returns: string[]
+      }
       fn_revision_suppressed: {
         Args: { p_content_type: string }
         Returns: boolean
+      }
+      fn_withdraw_errata: {
+        Args: { p_reason: string; p_revision_id: string }
+        Returns: string
       }
       get_problem_stats: {
         Args: { p_ids: string[] }

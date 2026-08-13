@@ -157,6 +157,8 @@ export default [
     route("/guide-help", "features/guide/api/help.tsx"),
     // "?" 버튼 노출 판정 — staff 상시 / 학생은 구독 시작 3개월까지.
     route("/guide-help-visibility", "features/guide/api/help-visibility.tsx"),
+    // errata Phase 3 — 추록·정오표 발행 모달 데이터 + 발행 액션.
+    route("/errata/publish", "features/errata/api/publish.tsx"),
     ...prefix("/laws", [
       route("/admin-edit-article", "features/laws/api/admin-edit-article.tsx"),
       route("/article-children", "features/laws/api/article-children.tsx"),

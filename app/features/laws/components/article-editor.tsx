@@ -3,13 +3,16 @@ import {
   Code2Icon,
   CheckCircle2Icon,
   Loader2Icon,
+  MegaphoneIcon,
   WandSparklesIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFetcher, useRevalidator } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { cn } from "~/core/lib/utils";
+import { ErrataPublishModal } from "~/features/errata/components/errata-publish-modal";
+import { DEFAULT_KIND_BY_CONTEXT } from "~/features/errata/labels";
 import { ArticleBlockEditor } from "~/features/laws/components/article-block-editor";
 import { articleBodySchema } from "~/features/laws/lib/article-body";
 import {
@@ -23,6 +26,8 @@ interface ActionResponse {
   ok: boolean;
   error?: string;
   revisionId?: string;
+  // [저장+발행] 경로에서만 — 원장(content_revisions) revision 묶음.
+  ledgerRevisionIds?: string[];
 }
 
 type EditMode = "easy" | "json";
@@ -108,15 +113,27 @@ export function ArticleEditor({
     }
   }, [computedJsonText]);
 
+  // errata Phase 3 — [저장+발행] 흐름. 저장은 무조건 먼저 커밋되고(모달에서 취소해도
+  // 저장·원장 기록은 유지, notice_status='none'), 발행 여부만 모달에서 결정한다.
+  const [publishRevisionIds, setPublishRevisionIds] = useState<string[] | null>(null);
+  const publishRequestedRef = useRef(false);
+
   // 저장 성공 시 article-viewer loader 를 재실행해 새 본문을 즉시 반영.
+  // [저장+발행] 경로면 에디터를 닫지 않고 발행 모달을 연다(원장 revision 묶음 수신).
   useEffect(() => {
     if (fetcher.state === "idle" && fetcher.data?.ok) {
       revalidator.revalidate();
+      if (publishRequestedRef.current && fetcher.data.ledgerRevisionIds?.length) {
+        publishRequestedRef.current = false;
+        setPublishRevisionIds(fetcher.data.ledgerRevisionIds);
+        return; // 모달 완료/취소 시 onCancel 호출
+      }
+      publishRequestedRef.current = false;
       onCancel();
     }
   }, [fetcher.state, fetcher.data, revalidator, onCancel]);
 
-  const handleSave = () => {
+  const handleSave = (publish: boolean) => {
     if (!validation.ok) return;
     const trimmedLabel = displayLabel.trim();
     if (trimmedLabel.length === 0) return;
@@ -128,6 +145,10 @@ export function ArticleEditor({
     }
     if (importance !== initialImportance) {
       fd.set("importance", String(importance));
+    }
+    if (publish) {
+      fd.set("publishIntent", "1");
+      publishRequestedRef.current = true;
     }
     fetcher.submit(fd, {
       method: "post",
@@ -330,18 +351,43 @@ export function ArticleEditor({
           </Button>
           <Button
             type="button"
+            variant="outline"
             size="sm"
-            onClick={handleSave}
+            onClick={() => handleSave(false)}
             disabled={!dirty || !validation.ok || labelEmpty || submitting}
             className="gap-1"
           >
             {submitting ? (
               <Loader2Icon className="size-3.5 animate-spin" />
             ) : null}
-            새 개정으로 저장
+            내부 수정으로 저장
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => handleSave(true)}
+            disabled={!dirty || !validation.ok || labelEmpty || submitting}
+            className="gap-1"
+            title="저장 후 추록·정오표 발행 모달이 열립니다 (모달에서 취소해도 저장은 유지)"
+          >
+            <MegaphoneIcon className="size-3.5" />
+            저장 + 추록·정오표 발행
           </Button>
         </div>
       </div>
+
+      {publishRevisionIds ? (
+        <ErrataPublishModal
+          open
+          onOpenChange={() => {}}
+          revisionIds={publishRevisionIds}
+          defaultKind={DEFAULT_KIND_BY_CONTEXT.article_quick_edit}
+          onDone={() => {
+            setPublishRevisionIds(null);
+            onCancel();
+          }}
+        />
+      ) : null}
     </div>
   );
 }
