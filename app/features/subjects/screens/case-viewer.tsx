@@ -20,6 +20,7 @@ import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
 import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
+import { MemoMarksOverlay } from "~/features/annotations/components/memo-marks-overlay";
 import { SrsReturnBar } from "~/features/srs/components/srs-return-bar";
 import {
   getBookmark,
@@ -655,17 +656,20 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
 
               {/* ── 판례 본문(원문) / 단계별 암기 뷰 ── (암기 미개방 과목/학생은 항상 원문) */}
               {!memEnabled || memMode === "off" ? (
-                <CaseBody
-                  kase={kase}
-                  examProblems={examProblems}
-                  references={references}
-                  highlights={highlights}
-                  viewerIsStaff={canEditComment}
-                  canEditCase={canEditCase}
-                  canEditReferences={canEditReferences}
-                  prevNext={prevNext}
-                  showAskAi={false}
-                />
+                // 포스트잇이 붙은 문구를 본문에 표시(amber 점선 밑줄) — 조문 뷰어와 동톤.
+                <MemoMarksOverlay memos={memos}>
+                  <CaseBody
+                    kase={kase}
+                    examProblems={examProblems}
+                    references={references}
+                    highlights={highlights}
+                    viewerIsStaff={canEditComment}
+                    canEditCase={canEditCase}
+                    canEditReferences={canEditReferences}
+                    prevNext={prevNext}
+                    showAskAi={false}
+                  />
+                </MemoMarksOverlay>
               ) : memMode === "blanks" ? (
                 <div className="space-y-2">
                   {/* 판례 식별 메타 — 원문 헤더와 동일 정보(사건번호·사건명 등) */}

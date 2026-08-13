@@ -70,9 +70,10 @@ function getHighlightRegistry() {
 }
 
 // highlight name 별 공유 entry — 모든 인스턴스가 함께 사용한다. 처음 사용될 때 lazy 생성 + registry 등록.
+// memo-marks-overlay(포스트잇 문구 표시)도 같은 registry 를 쓰므로 export.
 const sharedEntries = new Map<string, Highlight>();
 
-function getOrCreateSharedEntry(name: string): Highlight | null {
+export function getOrCreateSharedEntry(name: string): Highlight | null {
   if (typeof window === "undefined") return null;
   const HighlightCtor = getHighlightCtor();
   const registry = getHighlightRegistry();

@@ -369,6 +369,15 @@ body {
     color: inherit;
   }
 
+  /* 포스트잇 앵커 문구 (memo-marks-overlay) — 조문 뷰어 MemoSnippetMark 와 동톤:
+     옅은 amber 배경 + amber 점선 밑줄. 하이라이트와 겹쳐도 구분되는 조합. */
+  ::highlight(lidam-memo) {
+    background-color: rgba(254, 243, 199, 0.7); /* amber-100 */
+    color: inherit;
+    text-decoration: underline rgb(245, 158, 11) dotted 2px; /* amber-500 */
+    text-underline-offset: 3px;
+  }
+
   /* 강사·원장 작성 하이라이트 (feat-8-023) — 모든 수험생에게 노출.
      수험생 본인 하이라이트(lidam-hl-*)와 구분은 진한 틴트만으로. underline 데코는
      5번째 옵션(lidam-hl-staff-underline) 에서만 명시적으로 사용한다 —
@@ -478,6 +487,11 @@ body {
   html.dark ::highlight(lidam-hl-underline_blue_thick),
   html.dark ::highlight(lidam-hl-staff-underline_blue_thick) {
     text-decoration-color: rgb(56, 189, 248); /* sky-400 */
+  }
+  /* 다크 — 포스트잇 앵커: 밝은 amber 배경 대신 어두운 반투명 틴트. */
+  html.dark ::highlight(lidam-memo) {
+    background-color: rgba(217, 119, 6, 0.26); /* amber-600 */
+    text-decoration-color: rgb(251, 191, 36); /* amber-400 */
   }
 }
 
