@@ -11,6 +11,7 @@ import { Button } from "~/core/components/ui/button";
 import { Input } from "~/core/components/ui/input";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import adminClient from "~/core/lib/supa-admin-client.server";
 import { roleAtLeast } from "~/core/lib/roles";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Chip } from "~/features/admin/components/admin-ui";
@@ -75,11 +76,15 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   if (!roleAtLeast(role, "manager") && cohort.ownerId !== user.id) {
     throw data("본인 소유 반만 접근 가능", { status: 403 });
   }
-  const { data: student } = await client
-    .from("profiles")
-    .select("profile_id, name")
+  // profiles RLS 는 staff 도 본인 행만 허용 — 학생 이름은 반 멤버십으로 스코프를
+  // 한정한 adminClient 조회로 읽는다 (listCohortMembers 와 동일 패턴).
+  const { data: member } = await adminClient
+    .from("cohort_members")
+    .select("profile_id, profiles!cohort_members_profile_id_fkey(profile_id, name)")
+    .eq("cohort_id", params.cohortId)
     .eq("profile_id", params.profileId)
     .maybeSingle();
+  const student = member?.profiles ?? null;
   if (!student) throw data("Student not found", { status: 404 });
 
   const { periodStart, periodEnd } = currentMonthPeriod();
