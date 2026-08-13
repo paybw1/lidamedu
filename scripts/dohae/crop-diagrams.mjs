@@ -109,6 +109,30 @@ for (let ui = 0; ui < data.units.length; ui++) {
     const yBotHead = nextH ? headingY(items, nextH.text) : null;
     let topY = yTopHead !== null ? yTopHead - 6 : TOP_Y;
     let botY = yBotHead !== null && yBotHead < topY ? yBotHead + 16 : BOT_Y;
+    // 다이어그램 바로 뒤가 도형 프레임 안 표(fromShape)면 그 표는 HTML 로 별도
+    // 렌더되므로 크롭에서 제외 — 표 첫 행의 y좌표 위에서 끊는다(중복 방지).
+    const nextB = u.blocks[bi + 1];
+    if (nextB?.type === "table" && nextB.fromShape) {
+      const sigs = (nextB.cells[0] ?? [])
+        .map((c) => ns((c.text ?? "").split("\n")[0]))
+        .filter((s) => s.length >= 2);
+      const groups = new Map();
+      for (const it of items) {
+        if (it.y >= topY - 10) continue;
+        const s = ns(it.str);
+        if (!s) continue;
+        if (sigs.some((sig) => sig.includes(s) || s.includes(sig))) {
+          const k = Math.round(it.y);
+          groups.set(k, (groups.get(k) ?? 0) + 1);
+        }
+      }
+      let bestY = null, bestN = 0;
+      for (const [y, n] of groups)
+        if (n > bestN || (n === bestN && (bestY === null || y > bestY))) { bestY = y; bestN = n; }
+      if (bestY !== null && bestN >= Math.min(2, sigs.length) && bestY + 14 > botY) {
+        botY = bestY + 14;
+      }
+    }
     // 좌표 오탐 가드 — 구간이 너무 얇으면(40pt 미만) 페이지 본문 전체로 폴백.
     if (topY - botY < 40) { topY = TOP_Y; botY = BOT_Y; }
 
