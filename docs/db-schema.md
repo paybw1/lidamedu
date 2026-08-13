@@ -1241,3 +1241,12 @@ create table public.popup_notices (
 - **revision_suppress_windows**: 대량 배치 중 기록 억제 창(최대 2h 자동 만료, 이력=감사 자료·삭제 금지). `fn_open_suppress_window(reason,min,scope)`/`fn_close_*` — **staff/service_role 전용**. GUC `lidam.skip_revision_log`(SQL 직결 보조)와 OR 판정.
 - **트리거 4종**: problem_choices(①최우선, 정답 정정)·problems(②, format 파생 mcq/essay)·article_revisions(③ INSERT만 — before=시행 순서 직전 리비전, effective_date 미래면 apply_status='scheduled')·cases(④ precedent, 제외컬럼 6종: updated_at·search_tsv·official_text_*·pending_primary_node_id). ★articles 본체 트리거 없음(Phase 2 재판단). ★대량 배치 전 억제 창 필수 — 원장은 지울 수 없다.
 - 뷰: v_revision_recent / v_revision_merge_pending (security_invoker).
+
+## 추록/정오표 판본·매핑 (errata Phase 2 — 특허 한정 시드)  ✅ 적용됨 (2026-08-13)
+
+> 상세: `docs/errata/phase2-patent-matching.md` · DDL `scripts/sql/20260814_phase2_patent_publications.sql`
+
+- **publications / publication_editions**: 교재·판본. editions=`edition_seq` unique(판·쇄), `frozen_at`=판권지 인쇄일(books.published_on 유래 — frozen 후 불변 트리거), `target_exam_date`(확정 전 null — **estimate 를 판정에 쓰지 말 것**, 결정서 §7.1). 특허 4종 시드(조문정리 제5판 3-20·판례 제10판 7-01·객관식Ⅰ 3-20·객관식Ⅱ 3-27, 전부 frozen).
+- **publication_content_map**: 콘텐츠↔책 위치. unique(edition, content_type, content_id). 특허 1,739건: statute 268(★page_no+편/장/조 toc_path 전량)·precedent 364(제10판 수록 순번 sort_key+색인 page_no 360 — ★cases.source_seq 는 제9판 흔적으로 비파괴 보존)·mcq 1,107. ★교재 오기 2건은 실제 판례로 매핑(2017다245789→245798, 사건번호 낙자=2009허351).
+- **v_current_editions**(security_invoker): 판본별 최신 frozen/printed 1행. RLS 전부 staff(`private.is_staff`) — 수험생 노출은 Phase 4 별도 정책.
+- 최신판례 10건(제10판 완고 후 등록)은 `content_revisions`에 수동 삽입(`created_by_label='system:phase2_backfill'`, merge pending) — 축C 추록 대기열의 첫 실물. 상표·디자인 시드는 추후, 민법·자연과학 제외(사용자 스코프 지시).

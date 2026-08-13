@@ -10625,6 +10625,143 @@ export type Database = {
         }
         Relationships: []
       }
+      publication_content_map: {
+        Row: {
+          content_id: string
+          content_type: string
+          created_at: string
+          edition_id: string
+          line_hint: string | null
+          map_id: string
+          node_id: string | null
+          page_no: number | null
+          page_no_end: number | null
+          sort_key: number | null
+          toc_path: string | null
+        }
+        Insert: {
+          content_id: string
+          content_type: string
+          created_at?: string
+          edition_id: string
+          line_hint?: string | null
+          map_id?: string
+          node_id?: string | null
+          page_no?: number | null
+          page_no_end?: number | null
+          sort_key?: number | null
+          toc_path?: string | null
+        }
+        Update: {
+          content_id?: string
+          content_type?: string
+          created_at?: string
+          edition_id?: string
+          line_hint?: string | null
+          map_id?: string
+          node_id?: string | null
+          page_no?: number | null
+          page_no_end?: number | null
+          sort_key?: number | null
+          toc_path?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "publication_content_map_edition_id_fkey"
+            columns: ["edition_id"]
+            isOneToOne: false
+            referencedRelation: "publication_editions"
+            referencedColumns: ["edition_id"]
+          },
+          {
+            foreignKeyName: "publication_content_map_edition_id_fkey"
+            columns: ["edition_id"]
+            isOneToOne: false
+            referencedRelation: "v_current_editions"
+            referencedColumns: ["edition_id"]
+          },
+        ]
+      }
+      publication_editions: {
+        Row: {
+          created_at: string
+          edition_id: string
+          edition_label: string
+          edition_seq: number
+          frozen_at: string | null
+          isbn: string | null
+          print_date: string | null
+          publication_id: string
+          status: string
+          target_exam_date: string | null
+          target_exam_date_estimate: string | null
+          target_exam_year: number | null
+        }
+        Insert: {
+          created_at?: string
+          edition_id?: string
+          edition_label: string
+          edition_seq: number
+          frozen_at?: string | null
+          isbn?: string | null
+          print_date?: string | null
+          publication_id: string
+          status?: string
+          target_exam_date?: string | null
+          target_exam_date_estimate?: string | null
+          target_exam_year?: number | null
+        }
+        Update: {
+          created_at?: string
+          edition_id?: string
+          edition_label?: string
+          edition_seq?: number
+          frozen_at?: string | null
+          isbn?: string | null
+          print_date?: string | null
+          publication_id?: string
+          status?: string
+          target_exam_date?: string | null
+          target_exam_date_estimate?: string | null
+          target_exam_year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "publication_editions_publication_id_fkey"
+            columns: ["publication_id"]
+            isOneToOne: false
+            referencedRelation: "publications"
+            referencedColumns: ["publication_id"]
+          },
+        ]
+      }
+      publications: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          publication_id: string
+          subject_code: string
+          title: string
+          track: string | null
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          publication_id?: string
+          subject_code: string
+          title: string
+          track?: string | null
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          publication_id?: string
+          subject_code?: string
+          title?: string
+          track?: string | null
+        }
+        Relationships: []
+      }
       qna_answerer_assignments: {
         Row: {
           answerer_id: string
@@ -14097,6 +14234,31 @@ export type Database = {
           stock?: never
         }
         Relationships: []
+      }
+      v_current_editions: {
+        Row: {
+          created_at: string | null
+          edition_id: string | null
+          edition_label: string | null
+          edition_seq: number | null
+          frozen_at: string | null
+          isbn: string | null
+          print_date: string | null
+          publication_id: string | null
+          status: string | null
+          target_exam_date: string | null
+          target_exam_date_estimate: string | null
+          target_exam_year: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "publication_editions_publication_id_fkey"
+            columns: ["publication_id"]
+            isOneToOne: false
+            referencedRelation: "publications"
+            referencedColumns: ["publication_id"]
+          },
+        ]
       }
       v_enrollment_watch_balance: {
         Row: {
