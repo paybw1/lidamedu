@@ -7,6 +7,7 @@ import {
   ExternalLinkIcon,
   FileTextIcon,
   ImageIcon,
+  MegaphoneIcon,
   NetworkIcon,
   PlusIcon,
   SaveIcon,
@@ -16,8 +17,11 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { Link, data, useFetcher, useRevalidator } from "react-router";
+import { Link, data, useFetcher, useNavigate, useRevalidator } from "react-router";
 import { toast } from "sonner";
+
+import { ErrataPublishModal } from "~/features/errata/components/errata-publish-modal";
+import { DEFAULT_KIND_BY_CONTEXT } from "~/features/errata/labels";
 
 import { reflowNumbering } from "~/features/cases/lib/reflow-numbering";
 import {
@@ -200,12 +204,29 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
   // 저장은 fetcher 제출 — 검증 실패 등 오류 응답이 와도 편집 화면에 머물며 토스트로
   // 사유를 보여준다(navigation Form 은 오류 시 /api/admin/case 로 이동해 좌초).
   // 성공(redirect) 시에는 fetcher 가 returnTo 로 페이지를 이동시킨다.
-  const saveFetcher = useFetcher<{ error?: string }>();
+  const saveFetcher = useFetcher<{
+    error?: string;
+    ok?: boolean;
+    revisionIds?: string[];
+  }>();
   const saveError =
     saveFetcher.state === "idle" ? saveFetcher.data?.error : undefined;
   useEffect(() => {
     if (saveError) toast.error(`저장 실패: ${saveError}`);
   }, [saveError]);
+  // errata Phase 3 — [저장+발행]: 저장은 이미 커밋됨. redirect 를 보류하고 발행 모달을
+  // 연 뒤, 완료/취소 시 본래 복귀 경로(returnTo)로 이동한다(§3.2).
+  const navigate = useNavigate();
+  const [publishRevisionIds, setPublishRevisionIds] = useState<string[] | null>(null);
+  useEffect(() => {
+    if (
+      saveFetcher.state === "idle" &&
+      saveFetcher.data?.ok &&
+      saveFetcher.data.revisionIds?.length
+    ) {
+      setPublishRevisionIds(saveFetcher.data.revisionIds);
+    }
+  }, [saveFetcher.state, saveFetcher.data]);
   const isNew = kase === null;
   // 체계도 최상위 '최신판례'(case_only) 노드 — 2026년 이후 선고 특허·상표·디자인
   // 판례는 DB 트리거가 이 노드로 primary_node_id 를 강제 배치한다(승인 카드 노출 판정용).
@@ -670,14 +691,33 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
           ) : (
             <span />
           )}
-          <Button type="submit" size="sm" disabled={saveFetcher.state !== "idle"}>
-            <SaveIcon className="size-3.5" />{" "}
-            {saveFetcher.state !== "idle"
-              ? "저장 중…"
-              : isNew
-                ? "등록"
-                : "변경 저장"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              type="submit"
+              variant={isNew ? "default" : "outline"}
+              size="sm"
+              disabled={saveFetcher.state !== "idle"}
+            >
+              <SaveIcon className="size-3.5" />{" "}
+              {saveFetcher.state !== "idle"
+                ? "저장 중…"
+                : isNew
+                  ? "등록"
+                  : "내부 수정으로 저장"}
+            </Button>
+            {!isNew ? (
+              <Button
+                type="submit"
+                name="publishIntent"
+                value="1"
+                size="sm"
+                disabled={saveFetcher.state !== "idle"}
+                title="저장 후 추록·정오표 발행 모달이 열립니다 (모달에서 취소해도 저장은 유지)"
+              >
+                <MegaphoneIcon className="size-3.5" /> 저장 + 추록·정오표 발행
+              </Button>
+            ) : null}
+          </div>
         </div>
         {saveError ? (
           <p className="text-right text-xs text-rose-600">
@@ -685,6 +725,19 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
           </p>
         ) : null}
       </saveFetcher.Form>
+
+      {publishRevisionIds ? (
+        <ErrataPublishModal
+          open
+          onOpenChange={() => {}}
+          revisionIds={publishRevisionIds}
+          defaultKind={DEFAULT_KIND_BY_CONTEXT.case_edit}
+          onDone={() => {
+            setPublishRevisionIds(null);
+            navigate(returnTo);
+          }}
+        />
+      ) : null}
 
       {!isNew ? (
         <>

@@ -7,6 +7,7 @@ import {
   CheckCircleIcon,
   CircleSlashIcon,
   ListIcon,
+  MegaphoneIcon,
   SaveIcon,
   Trash2Icon,
 } from "lucide-react";
@@ -17,10 +18,14 @@ import {
   data,
   redirect,
   useFetcher,
+  useNavigate,
   useNavigation,
   useSearchParams,
 } from "react-router";
 import { toast } from "sonner";
+
+import { ErrataPublishModal } from "~/features/errata/components/errata-publish-modal";
+import { DEFAULT_KIND_BY_CONTEXT } from "~/features/errata/labels";
 
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
@@ -852,8 +857,15 @@ function AdminProblemEditInner({
     navigation.state === "submitting"
       ? String(navigation.formData?.get("intent") ?? "")
       : null;
-  const isSaving = submittingIntent === "save";
+  // [저장+발행] 버튼은 intent 미지정(기본 save) + publishIntent=1 로 제출된다.
+  const isPublishSaving =
+    navigation.state === "submitting" &&
+    navigation.formData?.get("publishIntent") === "1";
+  const isSaving = submittingIntent === "save" || isPublishSaving;
   const isSavingAndReviewing = submittingIntent === "save_and_review";
+  // errata Phase 3 — 저장이 만든 원장 revision 묶음(복수 가능)으로 발행 모달을 연다.
+  const [publishRevisionIds, setPublishRevisionIds] = useState<string[] | null>(null);
+  const navigate = useNavigate();
   const deleteFetcher = useFetcher();
   const isDeleting = deleteFetcher.state !== "idle";
   const reviewFetcher = useFetcher<{ ok?: boolean; kind?: string; error?: string }>();
@@ -928,6 +940,16 @@ function AdminProblemEditInner({
       else if (kind === "flag_mismatch") toast.success("재검토 필요로 표시했습니다");
       else if (kind === "unflag_mismatch") toast.success("재검토 표시를 취소했습니다");
       else if (kind === "save_and_review") toast.success("저장하고 검토 완료로 표시했습니다");
+      else if (kind === "save_for_publish") {
+        // 저장 커밋 완료 — 원장 revision 묶음으로 발행 모달을 연다.
+        const ids = "revisionIds" in actionData ? actionData.revisionIds : [];
+        if (ids && ids.length > 0) {
+          toast.success("저장되었습니다 — 발행 내용을 확인하세요");
+          setPublishRevisionIds([...ids]);
+        } else {
+          toast.success("저장되었습니다 (변경 없음 — 발행할 기록이 없습니다)");
+        }
+      }
       else toast.success("저장되었습니다");
     } else if (actionData.error) {
       toast.error(actionData.error);
@@ -1438,12 +1460,41 @@ function AdminProblemEditInner({
         </Card>
         ) : null}
 
-        <div className="flex items-center justify-end">
-          <Button type="submit" name="intent" value="save" disabled={isSaving}>
-            <SaveIcon className="size-4" /> {isSaving ? "저장 중…" : "저장"}
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            type="submit"
+            name="intent"
+            value="save"
+            variant="outline"
+            disabled={isSaving}
+          >
+            <SaveIcon className="size-4" /> {isSaving ? "저장 중…" : "내부 수정으로 저장"}
+          </Button>
+          <Button
+            type="submit"
+            name="publishIntent"
+            value="1"
+            disabled={isSaving}
+            title="저장 후 추록·정오표 발행 모달이 열립니다 (모달에서 취소해도 저장은 유지). 선택지·정답 변경은 여러 기록으로 묶여 함께 발행됩니다."
+          >
+            <MegaphoneIcon className="size-4" /> 저장 + 추록·정오표 발행
           </Button>
         </div>
       </Form>
+
+      {publishRevisionIds ? (
+        <ErrataPublishModal
+          open
+          onOpenChange={() => {}}
+          revisionIds={publishRevisionIds}
+          defaultKind={DEFAULT_KIND_BY_CONTEXT.problem_edit}
+          onDone={() => {
+            setPublishRevisionIds(null);
+            // returnTo 는 [저장+발행] 경로에서 redirect 를 보류했으므로 여기서 이동.
+            if (returnTo) navigate(safeReturnTo(returnTo));
+          }}
+        />
+      ) : null}
 
       {format === "subjective" ? (
         <div className="border-border mt-8 rounded-xl border p-5">

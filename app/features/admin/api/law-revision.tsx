@@ -410,7 +410,48 @@ export async function action({ request }: Route.ActionArgs) {
         if (ids.length > 0) await reindexArticles(ids);
       })(),
     );
-    return data({ ok: true });
+
+    // errata Phase 3 §6 — 발행 연동: 개정 반영이 만든 원장(statute) 기록을 곧바로
+    // 추록으로 발행한다(kind=law_amend 고정). apply_status(applied/scheduled)는
+    // 원장 트리거가 시행일 기준으로 이미 판정했다.
+    // ★발행은 원장·관리자 전용(§2) — instructor 반영이면 기존 흐름 그대로 두고
+    //   원장 기록은 none 으로 남긴다(이후 수동 발행). 기존 apply 동작은 불변.
+    let errataPublished = 0;
+    if (role === "manager" || role === "admin") {
+      const { data: ledger } = await client
+        .from("content_revisions")
+        .select("revision_id")
+        .eq("content_type", "statute")
+        .eq("notice_status", "none")
+        .filter(
+          "after_snapshot->>law_revision_id",
+          "eq",
+          parsed.data.lawRevisionId,
+        );
+      const ledgerIds = (ledger ?? []).map((r) => r.revision_id);
+      if (ledgerIds.length > 0) {
+        const { data: published, error: pubErr } = await client.rpc(
+          "fn_publish_errata",
+          {
+            p_revision_ids: ledgerIds,
+            p_errata_kind: "law_amend",
+            p_errata_severity: "normal",
+            p_errata_title: `법령개정 반영 (시행 ${parsed.data.effectiveDate})`,
+            p_errata_payload: {
+              comparison_table: {
+                source: "law_revision",
+                law_revision_id: parsed.data.lawRevisionId,
+                promulgated_at: parsed.data.promulgatedAt,
+                effective_date: parsed.data.effectiveDate,
+              },
+            },
+            p_errata_reason: `공포 ${parsed.data.promulgatedAt} · 시행 ${parsed.data.effectiveDate}`,
+          },
+        );
+        if (!pubErr) errataPublished = (published ?? []).length;
+      }
+    }
+    return data({ ok: true, errataPublished });
   }
 
   return data({ error: "Unknown intent" }, { status: 400 });
