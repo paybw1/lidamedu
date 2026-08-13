@@ -12,6 +12,7 @@ export const ANNOTATION_TARGET_TYPES: AnnotationTargetType[] = [
   "problem",
   "problem_choice",
   "problem_box_item",
+  "dohae_unit",
 ];
 
 export const annotationTargetTypeSchema = z.enum([
@@ -20,6 +21,7 @@ export const annotationTargetTypeSchema = z.enum([
   "problem",
   "problem_choice",
   "problem_box_item",
+  "dohae_unit",
 ]);
 
 // step_notes: 키는 "1"~"5" (문자열), 값은 markdown 메모.

@@ -1198,6 +1198,8 @@ export default [
           ),
         ],
       ),
+      // 도해특허법 팝업 콘텐츠 — ★staff 전용(RLS + loader 게이트).
+      route("/api/dohae/unit", "features/dohae/api/unit.tsx"),
       // Phase 3 — 계획 학생 액션 + 노드 선택기 데이터.
       route("/api/study-plan", "features/study-plans/api/study-plan.tsx"),
       route(
@@ -1443,6 +1445,8 @@ export default [
         "/admin/lecture-locations",
         "features/lectures/screens/admin-lecture-locations.tsx",
       ),
+      // 도해특허법 전체 열람·검수 — ★staff 전용(수험생 비노출).
+      route("/admin/dohae", "features/dohae/screens/admin-dohae.tsx"),
       // feat-7-041 — 전체 학습현황(학원 전체 집계·익명, manager+).
       route(
         "/admin/analytics/students",

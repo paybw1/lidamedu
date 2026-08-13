@@ -112,6 +112,8 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "법령 허브", to: "/admin/laws" },
       { label: "단원 체계도", to: "/admin/systematic-tree" },
       { label: "강의노트 위치 확인", to: "/admin/lecture-locations" },
+      // 도해특허법 열람·검수 — staff 전용(수험생 비노출).
+      { label: "도해특허법", to: "/admin/dohae" },
     ],
   },
   {

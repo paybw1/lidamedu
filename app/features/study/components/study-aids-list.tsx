@@ -21,13 +21,14 @@ type ContentType =
   | "case"
   | "problem"
   | "problem_choice"
-  | "problem_box_item";
+  | "problem_box_item"
+  | "dohae_unit";
 
 // CardHeaderRow / TypeBadge 가 받는 타입 — DB target type 또는 정규화된 "ox".
 type DisplayType = ContentType | "ox";
 
 const TYPE_META: Record<
-  "article" | "case" | "problem" | "ox",
+  "article" | "case" | "problem" | "ox" | "dohae_unit",
   { label: string; cls: string }
 > = {
   article: { label: "조문", cls: "bg-primary/10 text-link" },
@@ -40,11 +41,16 @@ const TYPE_META: Record<
     cls: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
   },
   ox: { label: "정오문제", cls: "bg-rose-500/15 text-rose-600 dark:text-rose-400" },
+  // 도해특허법 — staff 전용 콘텐츠(학생 목록에는 등장하지 않음).
+  dohae_unit: {
+    label: "도해",
+    cls: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+  },
 };
 
 function normalizeType(
   t: DisplayType,
-): "article" | "case" | "problem" | "ox" {
+): "article" | "case" | "problem" | "ox" | "dohae_unit" {
   return t === "problem_choice" || t === "problem_box_item" ? "ox" : t;
 }
 

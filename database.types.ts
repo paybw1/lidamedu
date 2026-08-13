@@ -5434,6 +5434,87 @@ export type Database = {
         }
         Relationships: []
       }
+      dohae_unit_articles: {
+        Row: {
+          article_id: string
+          unit_id: string
+        }
+        Insert: {
+          article_id: string
+          unit_id: string
+        }
+        Update: {
+          article_id?: string
+          unit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dohae_unit_articles_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["article_id"]
+          },
+          {
+            foreignKeyName: "dohae_unit_articles_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "dohae_units"
+            referencedColumns: ["unit_id"]
+          },
+        ]
+      }
+      dohae_units: {
+        Row: {
+          blocks: Json
+          book_code: string
+          chapter_no: number
+          chapter_title: string
+          created_at: string
+          kind: string
+          law_refs: Json
+          pdf_page: number | null
+          ref_no: string | null
+          title: string
+          unit_id: string
+          unit_key: string
+          unit_no: number | null
+          updated_at: string
+        }
+        Insert: {
+          blocks: Json
+          book_code?: string
+          chapter_no: number
+          chapter_title?: string
+          created_at?: string
+          kind: string
+          law_refs?: Json
+          pdf_page?: number | null
+          ref_no?: string | null
+          title: string
+          unit_id?: string
+          unit_key: string
+          unit_no?: number | null
+          updated_at?: string
+        }
+        Update: {
+          blocks?: Json
+          book_code?: string
+          chapter_no?: number
+          chapter_title?: string
+          created_at?: string
+          kind?: string
+          law_refs?: Json
+          pdf_page?: number | null
+          ref_no?: string | null
+          title?: string
+          unit_id?: string
+          unit_key?: string
+          unit_no?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       enrollment_admin_logs: {
         Row: {
           action: string
@@ -15196,6 +15277,7 @@ export type Database = {
         | "problem"
         | "problem_choice"
         | "problem_box_item"
+        | "dohae_unit"
       announcement_audience_kind: "all" | "cohort" | "user"
       announcement_audience_target: "cohort" | "user"
       article_level: "part" | "chapter" | "section" | "article"
@@ -15482,6 +15564,7 @@ export const Constants = {
         "problem",
         "problem_choice",
         "problem_box_item",
+        "dohae_unit",
       ],
       announcement_audience_kind: ["all", "cohort", "user"],
       announcement_audience_target: ["cohort", "user"],

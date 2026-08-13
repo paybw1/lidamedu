@@ -1,0 +1,266 @@
+// 도해특허법 팝업 — 조문 뷰어 "도해" 칩에서 열림. ★staff 전용(진입 칩 자체가 RLS 로 숨음).
+// 표=HTML(선택 가능 — 하이라이트·포스트잇 작동), 다이어그램=서명 URL 이미지(편집 불가).
+// 학습 툴: HighlightOverlay(dohae_unit)+MemoMarksOverlay+우측 MemoList. 선택 툴바는
+// 조문 뷰어의 prop-less HighlightToolbar 가 컨테이너 dataset 으로 대상 판별.
+
+import { BookOpenIcon, ChevronLeftIcon, Loader2Icon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useFetcher, useFetchers } from "react-router";
+
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "~/core/components/ui/dialog";
+import { cn } from "~/core/lib/utils";
+import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
+import { MemoList } from "~/features/annotations/components/memo-list";
+import { MemoMarksOverlay } from "~/features/annotations/components/memo-marks-overlay";
+
+import {
+  dohaeUnitLabel,
+  type DohaeBlock,
+  type DohaeCell,
+  type DohaeUnitSummary,
+} from "../labels";
+import type { loader as unitLoader } from "../api/unit";
+
+type UnitPayload = Awaited<ReturnType<typeof unitLoader>>;
+
+function DohaeTable({ cells }: { cells: DohaeCell[][] }) {
+  if (cells.length === 0) return null;
+  const hasHeader = cells.length > 1;
+  return (
+    <div className="overflow-x-auto">
+      <table className="border-border w-full border-collapse text-[length:calc(13.5px*var(--study-fs,1))]">
+        <tbody>
+          {cells.map((row, ri) => (
+            <tr key={ri}>
+              {row.map((c, ci) => {
+                const isHead = hasHeader && ri === 0;
+                const Tag = isHead ? "th" : "td";
+                // 라벨 셀 — 첫 열의 짧은 텍스트(구 분/요 건 등)는 헤더 톤.
+                const isLabel =
+                  !isHead && ci === 0 && row.length > 1 && c.text.replace(/\s/g, "").length <= 12;
+                return (
+                  <Tag
+                    key={ci}
+                    colSpan={c.colSpan > 1 ? c.colSpan : undefined}
+                    rowSpan={c.rowSpan > 1 ? c.rowSpan : undefined}
+                    className={cn(
+                      "border-border border px-2.5 py-1.5 text-left align-middle leading-[1.65] whitespace-pre-wrap",
+                      isHead && "bg-muted/60 text-center font-bold",
+                      isLabel && "bg-muted/40 text-center font-semibold whitespace-nowrap",
+                    )}
+                  >
+                    {c.text}
+                    {(c.tables ?? []).map((t, ti) => (
+                      <DohaeTable key={ti} cells={t} />
+                    ))}
+                  </Tag>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function DohaeBlocks({ blocks }: { blocks: DohaeBlock[] }) {
+  return (
+    <div className="space-y-3">
+      {blocks.map((b, i) => {
+        if (b.type === "h")
+          return (
+            <h3 key={i} className="mt-5 flex items-center gap-2 text-[15px] font-bold first:mt-0">
+              <span className="bg-primary text-primary-foreground inline-flex size-5 shrink-0 items-center justify-center rounded-full text-[11px]">
+                {b.numeral}
+              </span>
+              {b.text}
+            </h3>
+          );
+        if (b.type === "p")
+          return (
+            <p key={i} className="text-[length:calc(14px*var(--study-fs,1))] leading-[1.75] whitespace-pre-wrap">
+              {b.text}
+            </p>
+          );
+        if (b.type === "table") {
+          // 1셀 박스 표 + 조문 원문 → 조문 박스 스타일.
+          const single = b.cells.length === 1 && b.cells[0]?.length === 1;
+          if (single && /^제\d+조/.test(b.cells[0][0].text)) {
+            return (
+              <div
+                key={i}
+                className="border-primary/50 bg-primary/[0.04] rounded-lg border px-4 py-3 text-[length:calc(14px*var(--study-fs,1))] leading-[1.75] whitespace-pre-wrap"
+              >
+                {b.cells[0][0].text}
+              </div>
+            );
+          }
+          return <DohaeTable key={i} cells={b.cells} />;
+        }
+        if (b.type === "diagram")
+          return b.signedUrl ? (
+            <img
+              key={i}
+              src={b.signedUrl}
+              alt="도해 다이어그램"
+              className="border-border/60 w-full rounded-lg border dark:brightness-[.92]"
+              loading="lazy"
+            />
+          ) : (
+            <p key={i} className="text-muted-foreground text-xs">
+              [다이어그램 이미지를 불러오지 못했습니다]
+            </p>
+          );
+        return null;
+      })}
+    </div>
+  );
+}
+
+export function DohaePopup({
+  units,
+  open,
+  onOpenChange,
+  viewerIsStaff,
+}: {
+  units: DohaeUnitSummary[];
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  viewerIsStaff: boolean;
+}) {
+  const [activeUnitId, setActiveUnitId] = useState<string | null>(null);
+  const fetcher = useFetcher<UnitPayload>();
+  const fetchers = useFetchers();
+
+  // 열릴 때 유닛 1개면 자동 선택.
+  useEffect(() => {
+    if (open && activeUnitId === null && units.length === 1) {
+      setActiveUnitId(units[0].unitId);
+    }
+    if (!open) setActiveUnitId(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  useEffect(() => {
+    if (activeUnitId) fetcher.load(`/api/dohae/unit?unitId=${activeUnitId}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeUnitId]);
+
+  // 하이라이트/포스트잇 저장 완료 감지 → 유닛 데이터 재조회(마킹 즉시 반영).
+  const annotationBusy = fetchers.some(
+    (f) =>
+      f.state !== "idle" &&
+      typeof f.formAction === "string" &&
+      /\/api\/annotations\/(highlight|memo)/.test(f.formAction),
+  );
+  useEffect(() => {
+    if (!annotationBusy && activeUnitId && fetcher.state === "idle" && fetcher.data) {
+      // busy → idle 전환 직후 1회 재조회. (busy 동안은 스킵)
+      fetcher.load(`/api/dohae/unit?unitId=${activeUnitId}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [annotationBusy]);
+
+  const payload = fetcher.data;
+  const unit = activeUnitId && payload?.unit.unitId === activeUnitId ? payload.unit : null;
+  const activeSummary = units.find((u) => u.unitId === activeUnitId) ?? null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[88vh] w-[96vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl lg:max-w-5xl">
+        <DialogHeader className="border-border shrink-0 border-b px-5 py-3.5">
+          <DialogTitle className="flex flex-wrap items-center gap-2 text-[15px]">
+            <BookOpenIcon className="text-primary size-4" />
+            도해특허법 <span className="text-muted-foreground text-xs font-normal">제20판 · 강사 전용</span>
+            {activeSummary ? (
+              <span className="text-muted-foreground min-w-0 flex-1 truncate text-[13px] font-medium">
+                — 제{activeSummary.chapterNo}장 {activeSummary.chapterTitle} ·{" "}
+                {dohaeUnitLabel(activeSummary)} {activeSummary.title}
+              </span>
+            ) : null}
+          </DialogTitle>
+        </DialogHeader>
+
+        {activeUnitId === null ? (
+          // 유닛 선택 목록 (한 조문에 여러 주제가 연결된 경우)
+          <ul className="divide-border divide-y overflow-y-auto px-2 py-1">
+            {units.map((u) => (
+              <li key={u.unitId}>
+                <button
+                  type="button"
+                  onClick={() => setActiveUnitId(u.unitId)}
+                  className="hover:bg-muted/60 flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left"
+                >
+                  <span className="bg-primary/10 text-link inline-flex h-6 min-w-9 items-center justify-center rounded-md px-1.5 text-xs font-bold tabular-nums">
+                    {dohaeUnitLabel(u)}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">{u.title}</span>
+                    <span className="text-muted-foreground text-[11px]">
+                      제{u.chapterNo}장 {u.chapterTitle}
+                    </span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[1fr_280px]">
+            <div className="min-h-0 overflow-y-auto px-5 py-4">
+              {units.length > 1 ? (
+                <button
+                  type="button"
+                  onClick={() => setActiveUnitId(null)}
+                  className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
+                >
+                  <ChevronLeftIcon className="size-3.5" /> 목록으로
+                </button>
+              ) : null}
+              {!unit ? (
+                <p className="text-muted-foreground flex items-center gap-2 py-16 text-center text-sm">
+                  <Loader2Icon className="mx-auto size-4 animate-spin" /> 불러오는 중…
+                </p>
+              ) : (
+                <MemoMarksOverlay memos={payload?.memos ?? []}>
+                  <HighlightOverlay
+                    fieldPath={`dohae.${unit.unitKey}`}
+                    targetType="dohae_unit"
+                    targetId={unit.unitId}
+                    highlights={payload?.highlights ?? []}
+                    viewerIsStaff={viewerIsStaff}
+                  >
+                    <DohaeBlocks blocks={unit.blocks} />
+                  </HighlightOverlay>
+                </MemoMarksOverlay>
+              )}
+            </div>
+            {/* 우측 학습 툴 — 포스트잇/메모. 하이라이트는 본문 드래그 → 색상 툴바. */}
+            <aside className="border-border bg-muted/20 hidden min-h-0 overflow-y-auto border-l px-3 py-4 lg:block">
+              <p className="text-muted-foreground mb-2 text-[11px] font-semibold tracking-wide uppercase">
+                포스트잇 · 메모
+              </p>
+              {unit ? (
+                <MemoList
+                  targetType="dohae_unit"
+                  targetId={unit.unitId}
+                  initial={payload?.memos ?? []}
+                  viewerIsStaff={viewerIsStaff}
+                />
+              ) : null}
+              <p className="text-muted-foreground mt-4 text-[11px] leading-relaxed">
+                본문 문구를 드래그하면 하이라이트·포스트잇 툴바가 뜹니다. 표 텍스트에도
+                동일하게 작동합니다. 다이어그램(이미지) 안 문구는 대상이 아닙니다.
+              </p>
+            </aside>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}

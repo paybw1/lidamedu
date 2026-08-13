@@ -33,6 +33,7 @@ const TARGET_NOUN: Record<AnnotationTargetType, string> = {
   problem: "문제",
   problem_choice: "문제",
   problem_box_item: "문제",
+  dohae_unit: "도해",
 };
 
 export function MemoList({
