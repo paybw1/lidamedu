@@ -12,7 +12,7 @@ import {
   SendIcon,
   Trash2Icon,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { data, useFetcher, useLocation, useNavigate } from "react-router";
 
 import { AreaEyebrow, StudentShell } from "~/core/components/student";
@@ -236,8 +236,12 @@ export default function StudyPlanScreen({ loaderData }: Route.ComponentProps) {
   );
 
   // 캘린더 — 날짜별 기대 부하(파생) + 승인 상태면 달성 점.
-  const [calendarHighlight, setCalendarHighlight] =
-    useState<CalendarHighlight | null>(null);
+  // itemId 포함 — 터치(탭 토글)에서 같은 항목 재탭 = 해제 판정용.
+  const [calendarHighlight, setCalendarHighlight] = useState<
+    (CalendarHighlight & { itemId: string }) | null
+  >(null);
+  // 항목 편집·삭제로 목록이 바뀌면 하이라이트의 기간이 낡을 수 있어 초기화.
+  useEffect(() => setCalendarHighlight(null), [items]);
   const calendarDays = useMemo(
     () =>
       buildCalendarDays(
@@ -439,7 +443,7 @@ export default function StudyPlanScreen({ loaderData }: Route.ComponentProps) {
             ) : (
               <ul className="divide-border divide-y">
                 {items.map((it) => (
-                  <ItemRow key={it.itemId} item={it} editable={editable} planId={plan.planId} weakNodes={pickerWeakNodes} recentNodes={recentNodes} lessons={lessons} onHover={setCalendarHighlight} />
+                  <ItemRow key={it.itemId} item={it} editable={editable} planId={plan.planId} weakNodes={pickerWeakNodes} recentNodes={recentNodes} lessons={lessons} highlighted={calendarHighlight?.itemId === it.itemId} onHighlight={setCalendarHighlight} />
                 ))}
               </ul>
             )}
@@ -600,7 +604,8 @@ function ItemRow({
   weakNodes,
   recentNodes,
   lessons,
-  onHover,
+  highlighted,
+  onHighlight,
 }: {
   item: LoaderItem;
   editable: boolean;
@@ -608,11 +613,20 @@ function ItemRow({
   weakNodes: Array<{ nodeId: string; displayLabel: string; sub?: string | null }>;
   recentNodes: Array<{ nodeId: string; displayLabel: string }>;
   lessons: LessonOption[];
-  onHover: (h: CalendarHighlight | null) => void;
+  highlighted: boolean;
+  onHighlight: (h: (CalendarHighlight & { itemId: string }) | null) => void;
 }) {
   const fetcher = useFetcher<{ ok?: true; error?: string }>();
   const reload = useReload();
   const [editing, setEditing] = useState(false);
+  // 터치 판별 — 탭은 토글, 마우스는 hover 만 (탭이 mouseenter 를 흉내내는 충돌 방지).
+  const lastPointerType = useRef<string>("mouse");
+  const itemHighlight = () => ({
+    itemId: item.itemId,
+    start: item.startDate,
+    end: item.endDate,
+    scope: item.dayScope,
+  });
   useEffect(() => {
     if (fetcher.state === "idle" && fetcher.data && "ok" in fetcher.data && fetcher.data.ok) {
       setEditing(false);
@@ -640,11 +654,23 @@ function ItemRow({
 
   return (
     <li
-      className="flex items-center gap-2 px-4 py-2.5 text-xs"
-      onMouseEnter={() =>
-        onHover({ start: item.startDate, end: item.endDate, scope: item.dayScope })
-      }
-      onMouseLeave={() => onHover(null)}
+      className={cn(
+        "flex items-center gap-2 px-4 py-2.5 text-xs transition-colors",
+        highlighted && "bg-primary/5",
+      )}
+      onPointerDown={(e) => {
+        lastPointerType.current = e.pointerType;
+      }}
+      onPointerEnter={(e) => {
+        if (e.pointerType === "mouse") onHighlight(itemHighlight());
+      }}
+      onPointerLeave={(e) => {
+        if (e.pointerType === "mouse") onHighlight(null);
+      }}
+      onClick={() => {
+        if (lastPointerType.current !== "mouse")
+          onHighlight(highlighted ? null : itemHighlight());
+      }}
     >
       {item.priority !== null ? (
         <span className="bg-muted text-foreground/70 inline-flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold tabular-nums">
