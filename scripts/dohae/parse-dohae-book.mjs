@@ -304,13 +304,10 @@ function parseLawRefs(title) {
     const tokens = rest.split(/[,、]|\s및\s/).map((t) => t.trim()).filter(Boolean);
     const articles = [];
     for (const tok of tokens) {
-      // 범위: "20~24" / "132의2~132의15" (의N 범위는 시작·끝만 기록)
-      const range = /^(\d+)(?:의(\d+))?\s*~\s*(\d+)(?:의(\d+))?/.exec(tok);
-      if (range && !range[2] && !range[4]) {
-        for (let a = Number(range[1]); a <= Number(range[3]); a++) articles.push(String(a));
-        continue;
-      }
-      if (range) { articles.push(`${range[1]}의${range[2] ?? ""}~${range[3]}의${range[4] ?? ""}`); continue; }
+      // 범위는 전개하지 않고 원형 보존("20~24"·"215~224의5") — 해소 단계(resolve-articles)가
+      // DB 조문 목록 기반으로 전개한다(범위 안 "103의2" 같은 곁가지 조문 포함 목적).
+      const range = /^(\d+(?:의\d+)?)\s*~\s*(\d+(?:의\d+)?)/.exec(tok);
+      if (range) { articles.push(`${range[1]}~${range[2]}`); continue; }
       const single = /^(\d+(?:의\d+)?)/.exec(tok);
       if (single) articles.push(single[1]);
     }
