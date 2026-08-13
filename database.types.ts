@@ -8419,6 +8419,7 @@ export type Database = {
           deleted_at: string | null
           duration_min: number | null
           instructions_md: string | null
+          is_diagnostic: boolean
           law_code: string | null
           published_at: string | null
           science_subject: string | null
@@ -8438,6 +8439,7 @@ export type Database = {
           deleted_at?: string | null
           duration_min?: number | null
           instructions_md?: string | null
+          is_diagnostic?: boolean
           law_code?: string | null
           published_at?: string | null
           science_subject?: string | null
@@ -8457,6 +8459,7 @@ export type Database = {
           deleted_at?: string | null
           duration_min?: number | null
           instructions_md?: string | null
+          is_diagnostic?: boolean
           law_code?: string | null
           published_at?: string | null
           science_subject?: string | null
@@ -11397,6 +11400,78 @@ export type Database = {
           },
         ]
       }
+      student_diagnostics: {
+        Row: {
+          attempt_type: string
+          cohort_id: string
+          created_at: string
+          note: string | null
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+          weekday_minutes: number
+          weekend_minutes: number
+        }
+        Insert: {
+          attempt_type: string
+          cohort_id: string
+          created_at?: string
+          note?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+          weekday_minutes: number
+          weekend_minutes: number
+        }
+        Update: {
+          attempt_type?: string
+          cohort_id?: string
+          created_at?: string
+          note?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+          weekday_minutes?: number
+          weekend_minutes?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_diagnostics_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["cohort_id"]
+          },
+          {
+            foreignKeyName: "student_diagnostics_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "student_diagnostics_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "student_diagnostics_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "student_diagnostics_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       student_notes: {
         Row: {
           author_id: string
@@ -11459,6 +11534,90 @@ export type Database = {
           {
             foreignKeyName: "student_notes_student_id_fkey"
             columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      student_subject_status: {
+        Row: {
+          completed_lectures: string | null
+          diagnostic_test_id: string | null
+          direction: string | null
+          lecture_stage: string | null
+          science_score: number | null
+          science_tier: string | null
+          science_total: number | null
+          subject_code: string
+          subject_kind: string
+          tier_source: string | null
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_lectures?: string | null
+          diagnostic_test_id?: string | null
+          direction?: string | null
+          lecture_stage?: string | null
+          science_score?: number | null
+          science_tier?: string | null
+          science_total?: number | null
+          subject_code: string
+          subject_kind: string
+          tier_source?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_lectures?: string | null
+          diagnostic_test_id?: string | null
+          direction?: string | null
+          lecture_stage?: string | null
+          science_score?: number | null
+          science_tier?: string | null
+          science_total?: number | null
+          subject_code?: string
+          subject_kind?: string
+          tier_source?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_subject_status_diagnostic_test_id_fkey"
+            columns: ["diagnostic_test_id"]
+            isOneToOne: false
+            referencedRelation: "offline_tests"
+            referencedColumns: ["test_id"]
+          },
+          {
+            foreignKeyName: "student_subject_status_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "student_subject_status_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "student_subject_status_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "student_subject_status_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "public_profiles"
             referencedColumns: ["profile_id"]
@@ -11538,6 +11697,334 @@ export type Database = {
             foreignKeyName: "study_goals_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: true
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      study_logs: {
+        Row: {
+          activity_type: string
+          completion: string
+          created_at: string
+          lesson_id: string | null
+          log_date: string
+          log_id: string
+          minutes: number
+          node_id: string | null
+          node_resolved_from: string | null
+          plan_item_id: string | null
+          reverses_log_id: string | null
+          self_difficulty: number | null
+          source: string
+          user_id: string
+        }
+        Insert: {
+          activity_type: string
+          completion?: string
+          created_at?: string
+          lesson_id?: string | null
+          log_date: string
+          log_id?: string
+          minutes: number
+          node_id?: string | null
+          node_resolved_from?: string | null
+          plan_item_id?: string | null
+          reverses_log_id?: string | null
+          self_difficulty?: number | null
+          source: string
+          user_id: string
+        }
+        Update: {
+          activity_type?: string
+          completion?: string
+          created_at?: string
+          lesson_id?: string | null
+          log_date?: string
+          log_id?: string
+          minutes?: number
+          node_id?: string | null
+          node_resolved_from?: string | null
+          plan_item_id?: string | null
+          reverses_log_id?: string | null
+          self_difficulty?: number | null
+          source?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_logs_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "course_lessons"
+            referencedColumns: ["lesson_id"]
+          },
+          {
+            foreignKeyName: "study_logs_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "systematic_nodes"
+            referencedColumns: ["node_id"]
+          },
+          {
+            foreignKeyName: "study_logs_plan_item_id_fkey"
+            columns: ["plan_item_id"]
+            isOneToOne: false
+            referencedRelation: "study_plan_items"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "study_logs_reverses_log_id_fkey"
+            columns: ["reverses_log_id"]
+            isOneToOne: false
+            referencedRelation: "study_logs"
+            referencedColumns: ["log_id"]
+          },
+          {
+            foreignKeyName: "study_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "study_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      study_plan_checkpoints: {
+        Row: {
+          actual_minutes_to_date: number
+          checkpoint_date: string
+          checkpoint_id: string
+          created_at: string
+          created_by: string | null
+          item_breakdown: Json
+          note: string | null
+          plan_id: string
+          planned_minutes_to_date: number
+        }
+        Insert: {
+          actual_minutes_to_date: number
+          checkpoint_date: string
+          checkpoint_id?: string
+          created_at?: string
+          created_by?: string | null
+          item_breakdown?: Json
+          note?: string | null
+          plan_id: string
+          planned_minutes_to_date: number
+        }
+        Update: {
+          actual_minutes_to_date?: number
+          checkpoint_date?: string
+          checkpoint_id?: string
+          created_at?: string
+          created_by?: string | null
+          item_breakdown?: Json
+          note?: string | null
+          plan_id?: string
+          planned_minutes_to_date?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_plan_checkpoints_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "study_plan_checkpoints_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "study_plan_checkpoints_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "study_plans"
+            referencedColumns: ["plan_id"]
+          },
+        ]
+      }
+      study_plan_items: {
+        Row: {
+          activity_type: string
+          created_at: string
+          daily_minutes: number
+          day_scope: string
+          end_date: string
+          is_locked: boolean
+          item_id: string
+          lesson_id: string | null
+          node_id: string | null
+          plan_id: string
+          priority: number | null
+          start_date: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          activity_type: string
+          created_at?: string
+          daily_minutes: number
+          day_scope: string
+          end_date: string
+          is_locked?: boolean
+          item_id?: string
+          lesson_id?: string | null
+          node_id?: string | null
+          plan_id: string
+          priority?: number | null
+          start_date: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string
+          daily_minutes?: number
+          day_scope?: string
+          end_date?: string
+          is_locked?: boolean
+          item_id?: string
+          lesson_id?: string | null
+          node_id?: string | null
+          plan_id?: string
+          priority?: number | null
+          start_date?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_plan_items_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "course_lessons"
+            referencedColumns: ["lesson_id"]
+          },
+          {
+            foreignKeyName: "study_plan_items_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "systematic_nodes"
+            referencedColumns: ["node_id"]
+          },
+          {
+            foreignKeyName: "study_plan_items_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "study_plans"
+            referencedColumns: ["plan_id"]
+          },
+        ]
+      }
+      study_plans: {
+        Row: {
+          baseline_locked_at: string | null
+          cohort_id: string
+          created_at: string
+          period_end: string
+          period_start: string
+          plan_id: string
+          planned_weekday_minutes: number | null
+          planned_weekend_minutes: number | null
+          review_comment: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          root_plan_id: string | null
+          status: string
+          submitted_at: string | null
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          baseline_locked_at?: string | null
+          cohort_id: string
+          created_at?: string
+          period_end: string
+          period_start: string
+          plan_id?: string
+          planned_weekday_minutes?: number | null
+          planned_weekend_minutes?: number | null
+          review_comment?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          root_plan_id?: string | null
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+          user_id: string
+          version?: number
+        }
+        Update: {
+          baseline_locked_at?: string | null
+          cohort_id?: string
+          created_at?: string
+          period_end?: string
+          period_start?: string
+          plan_id?: string
+          planned_weekday_minutes?: number | null
+          planned_weekend_minutes?: number | null
+          review_comment?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          root_plan_id?: string | null
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_plans_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["cohort_id"]
+          },
+          {
+            foreignKeyName: "study_plans_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "study_plans_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "study_plans_root_plan_id_fkey"
+            columns: ["root_plan_id"]
+            isOneToOne: false
+            referencedRelation: "study_plans"
+            referencedColumns: ["plan_id"]
+          },
+          {
+            foreignKeyName: "study_plans_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "study_plans_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "public_profiles"
             referencedColumns: ["profile_id"]
           },
@@ -13769,6 +14256,10 @@ export type Database = {
       approve_explanation_draft: {
         Args: { p_draft_id: string }
         Returns: undefined
+      }
+      approve_study_plan: {
+        Args: { p_comment?: string; p_plan_id: string }
+        Returns: Json
       }
       approve_text_draft: { Args: { p_draft_id: string }; Returns: undefined }
       backfill_article_article_links_from_body: {

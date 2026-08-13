@@ -135,7 +135,12 @@ export async function createOfflineTest(
 export async function updateOfflineTest(
   client: SupabaseClient<Database>,
   testId: string,
-  patch: { title?: string; durationMin?: number | null; instructionsMd?: string | null },
+  patch: {
+    title?: string;
+    durationMin?: number | null;
+    instructionsMd?: string | null;
+    isDiagnostic?: boolean;
+  },
 ): Promise<void> {
   const { error } = await client
     .from("offline_tests")
@@ -145,6 +150,7 @@ export async function updateOfflineTest(
       ...(patch.instructionsMd !== undefined
         ? { instructions_md: patch.instructionsMd }
         : {}),
+      ...(patch.isDiagnostic !== undefined ? { is_diagnostic: patch.isDiagnostic } : {}),
       updated_at: new Date().toISOString(),
     })
     .eq("test_id", testId);
@@ -172,7 +178,7 @@ export async function getOfflineTestWithQuestions(
   const { data: t, error } = await client
     .from("offline_tests")
     .select(
-      "test_id, assignment_id, cohort_id, title, status, law_code, science_subject, duration_min, instructions_md, series_id, series_round_no",
+      "test_id, assignment_id, cohort_id, title, status, is_diagnostic, law_code, science_subject, duration_min, instructions_md, series_id, series_round_no",
     )
     .eq("test_id", testId)
     .is("deleted_at", null)
@@ -291,6 +297,7 @@ export async function getOfflineTestWithQuestions(
     cohortId: t.cohort_id,
     title: t.title,
     status: t.status as OfflineTestStatus,
+    isDiagnostic: t.is_diagnostic,
     lawCode: t.law_code as LawSubjectSlug | null,
     scienceSubject: t.science_subject as ScienceSubjectSlug | null,
     durationMin: t.duration_min,

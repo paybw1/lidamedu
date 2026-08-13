@@ -158,6 +158,8 @@ export const NAV_GROUP_POOL = {
     items: [
       { label: "반별 게시판", to: "/cohort-boards", feature: "cohort_curriculum" },
       { label: "과제", to: "/assignments", feature: "cohort_curriculum" },
+      // Phase 3 — 월간 학습계획 (작성·제출·승인 확인).
+      { label: "월간 계획", to: "/study/plan", feature: "cohort_curriculum" },
       { label: "상담", to: "/me/consult", feature: "one_on_one_consult" },
       { label: "1차 모의고사", to: "/latest/mcq/exams" },
       { label: "2차 모의고사", to: "/gs/issues" },

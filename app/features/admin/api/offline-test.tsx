@@ -159,6 +159,7 @@ export async function action({ request }: Route.ActionArgs) {
     const title = fd.get("title") ? String(fd.get("title")).trim().slice(0, 200) : undefined;
     const durationRaw = fd.get("durationMin");
     const instructionsRaw = fd.get("instructionsMd");
+    const diagnosticRaw = fd.get("isDiagnostic"); // Phase 3 G3 — 진단 테스트 지정
     await updateOfflineTest(client, testId, {
       ...(title !== undefined ? { title } : {}),
       ...(durationRaw !== null
@@ -166,6 +167,9 @@ export async function action({ request }: Route.ActionArgs) {
         : {}),
       ...(instructionsRaw !== null
         ? { instructionsMd: String(instructionsRaw).trim().slice(0, 2000) || null }
+        : {}),
+      ...(diagnosticRaw !== null
+        ? { isDiagnostic: String(diagnosticRaw) === "true" }
         : {}),
     });
     return data({ ok: true });

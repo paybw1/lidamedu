@@ -154,6 +154,11 @@ export default function AdminCohortDetail({
               </Link>
             </Button>
             <Button asChild size="sm" variant="outline">
+              <Link to={`/admin/cohorts/${cohort.cohortId}/plans`}>
+                <ClipboardCheckIcon className="size-3.5" /> 월간 계획
+              </Link>
+            </Button>
+            <Button asChild size="sm" variant="outline">
               <Link to={`/admin/cohorts/${cohort.cohortId}/test-series`}>
                 <LineChartIcon className="size-3.5" /> 시험 추이
               </Link>

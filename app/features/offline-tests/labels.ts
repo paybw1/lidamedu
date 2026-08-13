@@ -90,6 +90,8 @@ export interface OfflineTestDetail extends OfflineTestSubject {
   cohortId: string;
   title: string;
   status: OfflineTestStatus;
+  // Phase 3 G3 — 자연과학 진단 테스트 지정 (성적 저장 시 tier 자동 갱신).
+  isDiagnostic: boolean;
   durationMin: number | null;
   instructionsMd: string | null;
   // feat-7-044 — 시리즈(주간 테스트 묶음) 소속.

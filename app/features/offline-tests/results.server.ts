@@ -21,6 +21,7 @@ import {
   applyProblemSrsBulk,
   type ProblemSrsOutcome,
 } from "~/features/study/srs.server";
+import { deriveScienceTier } from "~/features/study-plans/labels";
 
 import type { CohortOfflineTestStat } from "./labels";
 import { getOfflineTestPrintData } from "./queries.server";
@@ -330,6 +331,9 @@ export interface SaveOfflineResultsSummary {
   absent: number;
   // Phase 1 S1 — SRS 축 부분 실패 경고 (스탬프 미기록 → 재저장 시 해당 축만 자동 재적용).
   srsWarnings: string[];
+  // Phase 3 G3 — 진단 테스트 tier 자동 갱신 결과 (운영자 화면 가시화).
+  tierUpdates: Array<{ userId: string; tier: string; score: number; total: number }>;
+  tierRetractedCount: number;
 }
 
 // 결과 upsert 후 문항별 정오 스냅샷 교체 (offline_test_answers).
@@ -362,6 +366,14 @@ export async function saveOfflineTestResults(
   const test = await getOfflineTestPrintData(admin, input.testId);
   if (!test) throw new Error("테스트를 찾을 수 없습니다");
   const maxScore = test.totalPoints;
+  // Phase 3 G3 — 진단 테스트 여부 (자연과학 tier 자동 갱신).
+  const { data: testMeta } = await admin
+    .from("offline_tests")
+    .select("is_diagnostic, science_subject")
+    .eq("test_id", input.testId)
+    .maybeSingle();
+  const isDiagnostic = Boolean(testMeta?.is_diagnostic && testMeta?.science_subject);
+  const diagnosticSubject = testMeta?.science_subject ?? null;
   // 시험일 정오(KST) 시각으로 기록 — "가장 최근 시도" 규칙과 실제 응시일 정합.
   const attemptedAt = `${input.takenAt}T12:00:00+09:00`;
 
@@ -479,6 +491,10 @@ export async function saveOfflineTestResults(
   const oxOutcomes: OxRefSrsOutcome[] = [];
   const problemStampUsers: string[] = [];
   const oxStampUsers: string[] = [];
+  // G3 — 진단 tier 갱신 수집 (taken 전원). tier 는 SRS 와 달리 현재 상태 스냅샷이라
+  //   재저장 시에도 항상 최신 결과로 갱신한다(승인 1-3). absent 철회는 아래에서 표시.
+  const tierTaken: Array<{ userId: string; score: number; total: number }> = [];
+  const tierAbsentUsers: string[] = [];
 
   for (const entry of input.entries) {
     const wrongSet = new Set(
@@ -489,6 +505,19 @@ export async function saveOfflineTestResults(
       question_id: q.question_id,
       is_correct: !wrongSet.has(q.question_id),
     }));
+
+    // G3 — 진단 테스트 tier 수집 (온라인 프리필·지필 공통, absent 는 철회 표시).
+    if (isDiagnostic) {
+      if (entry.status === "taken") {
+        tierTaken.push({
+          userId: entry.userId,
+          score: answerRows.filter((r) => r.is_correct).length,
+          total: answerRows.length,
+        });
+      } else {
+        tierAbsentUsers.push(entry.userId);
+      }
+    }
 
     // 온라인 응시 불러오기 행 — 스냅샷만 기록 (시도는 학생 세션에 이미 존재).
     // SRS 도 응시 시점에 정규 경로(recordProblemAttempt)로 이미 갱신 → 두 축 스탬프만
@@ -758,5 +787,51 @@ export async function saveOfflineTestResults(
     );
   }
 
-  return { saved, absent, srsWarnings };
+  // ── Phase 3 G3 — 진단 테스트 → 자연과학 tier 자동 갱신 ─────────────────────
+  // tier 는 현재 상태 스냅샷 — 진단 결과가 수기(manual)보다 우선하며(승인 1-3),
+  // 갱신 내역은 summary 로 반환해 운영자 화면에 표시한다.
+  const tierUpdates: SaveOfflineResultsSummary["tierUpdates"] = [];
+  let tierRetractedCount = 0;
+  if (isDiagnostic && diagnosticSubject) {
+    if (tierTaken.length > 0) {
+      const nowIso = new Date().toISOString();
+      const rows = tierTaken.map((t) => {
+        const tier = deriveScienceTier(t.score, t.total);
+        tierUpdates.push({ userId: t.userId, tier, score: t.score, total: t.total });
+        return {
+          user_id: t.userId,
+          subject_kind: "science",
+          subject_code: diagnosticSubject,
+          science_tier: tier,
+          science_score: t.score,
+          science_total: t.total,
+          tier_source: "diagnostic_test",
+          diagnostic_test_id: input.testId,
+          updated_by: input.enteredBy,
+          updated_at: nowIso,
+        };
+      });
+      const { error } = await admin
+        .from("student_subject_status")
+        .upsert(rows, { onConflict: "user_id,subject_kind,subject_code" });
+      if (error) throw error;
+    }
+    // 철회(taken→absent) — 자동 복원 없음(이전 값을 덮어썼으므로 복원 대상 부재).
+    // 값은 유지하고 출처만 '진단 철회'로 바꿔 재확인 경고를 노출한다(승인 2.4).
+    if (tierAbsentUsers.length > 0) {
+      const { data: retracted, error } = await admin
+        .from("student_subject_status")
+        .update({ tier_source: "diagnostic_retracted", updated_at: new Date().toISOString() })
+        .eq("subject_kind", "science")
+        .eq("subject_code", diagnosticSubject)
+        .eq("diagnostic_test_id", input.testId)
+        .eq("tier_source", "diagnostic_test")
+        .in("user_id", tierAbsentUsers)
+        .select("user_id");
+      if (error) throw error;
+      tierRetractedCount = (retracted ?? []).length;
+    }
+  }
+
+  return { saved, absent, srsWarnings, tierUpdates, tierRetractedCount };
 }

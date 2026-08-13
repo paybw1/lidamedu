@@ -182,6 +182,8 @@ export default function AdminOfflineTestResults({
     saved?: number;
     absent?: number;
     srsWarnings?: string[];
+    tierUpdates?: Array<{ userId: string; tier: string; score: number; total: number }>;
+    tierRetractedCount?: number;
     error?: string;
   }>();
 
@@ -360,6 +362,19 @@ export default function AdminOfflineTestResults({
             </p>
           ))
         : null}
+      {/* Phase 3 G3 — 진단 테스트 tier 자동 갱신 내역 (가시화). */}
+      {fetcher.data?.ok && (fetcher.data.tierUpdates?.length ?? 0) > 0 ? (
+        <p className="mb-3 text-xs text-emerald-700 dark:text-emerald-400">
+          진단 반영 — 자연과학 수준 {fetcher.data.tierUpdates!.length}명 자동
+          갱신됨
+        </p>
+      ) : null}
+      {fetcher.data?.ok && (fetcher.data.tierRetractedCount ?? 0) > 0 ? (
+        <p className="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+          ⚠ 진단 철회 {fetcher.data.tierRetractedCount}명 — 해당 학생의 자연과학
+          수준이 "재확인 필요" 상태가 되었습니다. 상담 화면에서 수기로 정정하세요.
+        </p>
+      ) : null}
 
       {/* 4단계 — 저장된 결과 기준 테스트 통계 */}
       <TestStatsBlock questions={gridQuestions} maxScore={maxScore} results={results} />

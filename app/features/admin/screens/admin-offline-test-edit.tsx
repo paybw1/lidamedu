@@ -289,6 +289,8 @@ export default function AdminOfflineTestEdit({
           title={test.title}
           durationMin={test.durationMin}
           instructionsMd={test.instructionsMd}
+          scienceSubject={test.scienceSubject}
+          isDiagnostic={test.isDiagnostic}
         />
         <SeriesForm
           testId={test.testId}
@@ -473,11 +475,15 @@ function TestMetaForm({
   title,
   durationMin,
   instructionsMd,
+  scienceSubject,
+  isDiagnostic,
 }: {
   testId: string;
   title: string;
   durationMin: number | null;
   instructionsMd: string | null;
+  scienceSubject: string | null;
+  isDiagnostic: boolean;
 }) {
   const fetcher = useFetcher<{ ok?: true; error?: string }>();
   const reload = useReload();
@@ -533,6 +539,21 @@ function TestMetaForm({
           className="border-input bg-background mt-1 w-full rounded-md border px-2 py-1 text-xs"
         />
       </div>
+      {/* Phase 3 G3 — 자연과학 진단 테스트 지정 (성적 저장 시 응시 학생 tier 자동 갱신) */}
+      {scienceSubject ? (
+        <label className="flex items-center gap-2 text-xs">
+          <input
+            type="checkbox"
+            name="isDiagnostic"
+            value="true"
+            defaultChecked={isDiagnostic}
+            className="size-3.5"
+          />
+          진단 테스트 — 성적 저장 시 응시 학생의 자연과학 수준(상/중/하)을 자동
+          갱신합니다
+          <input type="hidden" name="isDiagnostic" value="false" />
+        </label>
+      ) : null}
       {fetcher.data && "error" in fetcher.data ? (
         <p className="text-xs text-rose-600">{fetcher.data.error}</p>
       ) : null}

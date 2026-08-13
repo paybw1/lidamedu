@@ -995,6 +995,16 @@ export default [
         "features/admin/screens/admin-attendance-check.tsx",
       ),
       route("/api/admin/attendance", "features/admin/api/attendance.tsx"),
+      // Phase 3 — 월간 계획 현황·상담(진단+계획 검토+승인).
+      route(
+        "/admin/cohorts/:cohortId/plans",
+        "features/admin/screens/admin-cohort-plans.tsx",
+      ),
+      route(
+        "/admin/cohorts/:cohortId/plans/:profileId",
+        "features/admin/screens/admin-student-plan-review.tsx",
+      ),
+      route("/api/admin/study-plan", "features/admin/api/study-plan.tsx"),
       // feat-7-044 — 테스트 시리즈 성적 추이.
       route(
         "/admin/cohorts/:cohortId/test-series",
@@ -1167,7 +1177,18 @@ export default [
             "/assignments/:assignmentId",
             "features/assignments/screens/student-assignment-detail.tsx",
           ),
+          // Phase 3 — 학생 월간 계획 작성·제출.
+          route(
+            "/study/plan",
+            "features/study-plans/screens/study-plan.tsx",
+          ),
         ],
+      ),
+      // Phase 3 — 계획 학생 액션 + 노드 선택기 데이터.
+      route("/api/study-plan", "features/study-plans/api/study-plan.tsx"),
+      route(
+        "/api/study-plan/nodes",
+        "features/study-plans/api/plan-nodes.tsx",
       ),
       // 응시 결과·정오문제 이력은 모의고사 그룹에서 편입 제외(허브·약점 탭) → 모의고사
       // area 토글(mock.layout) 미부착. 평범한 leaf 라우트(화면이 자체 "뒤로" 제공).
