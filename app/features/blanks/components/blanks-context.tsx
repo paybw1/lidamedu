@@ -55,6 +55,35 @@ function markBlankCarryTail(el: Element | null): void {
 function takeBlankCarryTail(): string {
   return Date.now() < blankCarryTailUntil ? blankCarryTail : "";
 }
+// ★iPad 가상키보드 재센터 (2026-08-13 신고) — 빈칸을 '탭'해 focus 하면 브라우저 기본
+//   스크롤이 키보드가 올라오기 전 뷰포트 기준으로 수행되고, 직후 키보드가 가시 영역을
+//   절반으로 줄이면 빈칸이 키보드 뒤로 숨는다. Enter 로 다음 칸 이동할 때는 키보드가
+//   이미 떠 있어 정상(신고 재현과 일치). focus 직후 짧은 창 동안 visualViewport resize
+//   (=키보드 등장)를 감시해, 줄어든 가시 영역의 세로 중앙으로 재스크롤한다.
+//   데스크톱은 focus 로 뷰포트가 줄지 않아 리스너가 그냥 만료된다(동작 불변).
+function recenterAfterKeyboard(el: HTMLElement): void {
+  if (typeof window === "undefined") return;
+  const vv = window.visualViewport;
+  if (!vv) return;
+  let raf = 0;
+  const center = () => {
+    if (document.activeElement !== el) return; // 이미 떠났으면 스크롤하지 않음
+    const rect = el.getBoundingClientRect();
+    // rect 는 레이아웃 뷰포트 기준 — 가시 영역(키보드 제외) 세로 중앙과의 차이만큼 이동.
+    const delta = rect.top + rect.height / 2 - (vv.offsetTop + vv.height / 2);
+    if (Math.abs(delta) > 8) window.scrollBy({ top: delta, behavior: "smooth" });
+  };
+  const onResize = () => {
+    // 키보드 애니메이션 중 여러 번 발생 — 프레임당 한 번만 최종 좌표로.
+    if (raf) cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(center);
+  };
+  vv.addEventListener("resize", onResize);
+  window.setTimeout(() => {
+    vv.removeEventListener("resize", onResize);
+    if (raf) cancelAnimationFrame(raf);
+  }, 1200);
+}
 // ★터치(iOS/iPad)는 blur 로 IME flush 가 안 돼 잔여 음절 재조합이 데스크톱보다 늦게 시작될 수
 //   있다 → 이월 감지 윈도우를 넓혀야 새는 걸 막는다. 데스크톱은 좁게 유지(빠른 사용자의 '진짜'
 //   새 조합을 이월로 오폐기하지 않도록). iPadOS 는 데스크톱 Safari UA 라 pointer:coarse/터치로 감지.
@@ -871,6 +900,7 @@ function BlankInputInline({
           sawCompositionStartRef.current = false;
           residualRef.current = false;
           focusAtRef.current = Date.now();
+          recenterAfterKeyboard(e.currentTarget); // iPad 가상키보드 등장 시 가시 중앙 재정렬
           onFocusInput();
         }}
         onCompositionStart={(e) => {
