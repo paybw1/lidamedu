@@ -102,6 +102,23 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
       window.localStorage.setItem("bottomNavCollapsed", next ? "1" : "0");
       return next;
     });
+  // ★모바일 시트/모달 잔존물 안전망 — Radix 모달이 내비게이션과 경합해 언마운트
+  //   정리가 끊기면 body 의 pointer-events:none / overflow:hidden 이 남아 도착한
+  //   화면 전체가 '탭해도 안 열리는' 상태가 된다(인박스 등). 경로가 바뀐 뒤 닫힘
+  //   애니메이션 여유를 두고, 열린 다이얼로그가 없는데 잠금이 남아 있으면 해제한다.
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      const anyOpenDialog = document.querySelector(
+        '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]',
+      );
+      if (anyOpenDialog) return;
+      if (document.body.style.pointerEvents === "none")
+        document.body.style.pointerEvents = "";
+      if (document.body.style.overflow === "hidden")
+        document.body.style.overflow = "";
+    }, 500);
+    return () => window.clearTimeout(t);
+  }, [pathname]);
   return (
     <div
       className={cn(

@@ -702,7 +702,9 @@ function AdminBreadcrumb({
   title: ReactNode;
 }) {
   return (
-    <div className="border-border bg-background/90 sticky top-14 z-10 flex items-center gap-1.5 border-b px-5 py-2.5 text-xs backdrop-blur md:px-8">
+    // 모바일은 상단 nav 가 숨어(topbar hidden md:flex) sticky 기준점이 없다 —
+    // top-14 로 고정하면 허공에 떠서 스크롤을 따라다닌다 → md 미만은 문서 흐름대로.
+    <div className="border-border bg-background/90 z-10 flex items-center gap-1.5 border-b px-5 py-2.5 text-xs backdrop-blur md:sticky md:top-14 md:px-8">
       <Link to="/admin" className="text-muted-foreground hover:text-foreground">
         운영관리
       </Link>

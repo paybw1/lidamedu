@@ -15,7 +15,7 @@ import {
   WrenchIcon,
 } from "lucide-react";
 import { useState } from "react";
-import { Form, Link, data, useFetcher } from "react-router";
+import { Form, Link, data, useFetcher, useNavigate } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
@@ -102,6 +102,7 @@ export default function StudentInbox({ loaderData }: Route.ComponentProps) {
   // 리소스 라우트(action-only)로의 일반 Form 내비게이션은 제출 후 화면 없는
   // /api/... 로 이동해 오류가 되므로 fetcher 로 제출(완료 시 loader 자동 재검증).
   const markAll = useFetcher();
+  const navigate = useNavigate();
 
   return (
     <div className="mx-auto w-full max-w-screen-lg px-5 py-6 md:px-10 md:py-8">
@@ -180,11 +181,15 @@ export default function StudentInbox({ loaderData }: Route.ComponentProps) {
                   onSubmit={(e) => {
                     e.preventDefault();
                     const fd = new FormData(e.currentTarget);
-                    fetch("/api/notifications/mark-read", {
+                    void fetch("/api/notifications/mark-read", {
                       method: "POST",
                       body: fd,
+                      keepalive: true,
                     });
-                    window.location.href = it.href;
+                    // 전체 리로드 대신 클라이언트 내비게이션 — 읽음 POST 절단·모바일
+                    // '탭했는데 안 열림' 방지 (staff-inbox 와 동일 수정).
+                    if (/^https?:\/\//.test(it.href)) window.location.href = it.href;
+                    else void navigate(it.href);
                   }}
                 >
                   <input

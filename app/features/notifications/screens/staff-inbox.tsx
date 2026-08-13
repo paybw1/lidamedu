@@ -14,7 +14,7 @@ import {
   MessageCircleQuestionIcon,
   ShieldAlertIcon,
 } from "lucide-react";
-import { Link, data, useFetcher } from "react-router";
+import { Link, data, useFetcher, useNavigate } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { cn } from "~/core/lib/utils";
@@ -254,6 +254,7 @@ function InboxRow({ item }: { item: StaffNotificationItem }) {
   const isUnread = item.readAt === null;
   const kindLabel = KIND_LABEL[item.kind] ?? item.kind;
   const fetcher = useFetcher();
+  const navigate = useNavigate();
   // 낙관적 표시 — 읽음 버튼 제출 즉시 읽음 상태로.
   const optimisticRead = fetcher.state !== "idle";
   const showUnread = isUnread && !optimisticRead;
@@ -262,7 +263,10 @@ function InboxRow({ item }: { item: StaffNotificationItem }) {
     const fd = new FormData();
     fd.set("notificationId", item.notificationId);
     fetcher.submit(fd, { method: "post", action: "/api/notifications/mark-read" });
-    window.location.href = item.href;
+    // ★window.location.href(전체 리로드)를 쓰면 위 읽음 POST 가 언로드에 잘리고,
+    //   모바일에서 리로드 지연이 '탭했는데 안 열림'으로 보인다 — 클라이언트 내비게이션으로.
+    if (/^https?:\/\//.test(item.href)) window.location.href = item.href;
+    else void navigate(item.href);
   };
 
   const handleMarkRead = (e: MouseEvent<HTMLButtonElement>) => {
