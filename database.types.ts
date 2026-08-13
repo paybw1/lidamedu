@@ -4133,6 +4133,13 @@ export type Database = {
             foreignKeyName: "content_revisions_withdraws_revision_id_fkey"
             columns: ["withdraws_revision_id"]
             isOneToOne: false
+            referencedRelation: "v_errata_sheet"
+            referencedColumns: ["revision_id"]
+          },
+          {
+            foreignKeyName: "content_revisions_withdraws_revision_id_fkey"
+            columns: ["withdraws_revision_id"]
+            isOneToOne: false
             referencedRelation: "v_revision_recent"
             referencedColumns: ["revision_id"]
           },
@@ -10712,6 +10719,9 @@ export type Database = {
           edition_id: string
           edition_label: string
           edition_seq: number
+          errata_sheet_item_count: number
+          errata_sheet_updated_at: string | null
+          errata_sheet_url: string | null
           frozen_at: string | null
           isbn: string | null
           print_date: string | null
@@ -10726,6 +10736,9 @@ export type Database = {
           edition_id?: string
           edition_label: string
           edition_seq: number
+          errata_sheet_item_count?: number
+          errata_sheet_updated_at?: string | null
+          errata_sheet_url?: string | null
           frozen_at?: string | null
           isbn?: string | null
           print_date?: string | null
@@ -10740,6 +10753,9 @@ export type Database = {
           edition_id?: string
           edition_label?: string
           edition_seq?: number
+          errata_sheet_item_count?: number
+          errata_sheet_updated_at?: string | null
+          errata_sheet_url?: string | null
           frozen_at?: string | null
           isbn?: string | null
           print_date?: string | null
@@ -14339,6 +14355,70 @@ export type Database = {
           },
         ]
       }
+      v_errata_sheet: {
+        Row: {
+          content_id: string | null
+          content_type: string | null
+          edition_id: string | null
+          edition_label: string | null
+          effective_date: string | null
+          errata_kind: string | null
+          errata_payload: Json | null
+          errata_reason: string | null
+          errata_severity: string | null
+          errata_title: string | null
+          exam_scope: string | null
+          line_hint: string | null
+          notice_status: string | null
+          page_no: number | null
+          page_no_end: number | null
+          publication_title: string | null
+          published_at: string | null
+          revision_id: string | null
+          sort_key: number | null
+          target_exam_date: string | null
+          toc_path: string | null
+          withdrawn_at: string | null
+          withdraws_revision_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_revisions_withdraws_revision_id_fkey"
+            columns: ["withdraws_revision_id"]
+            isOneToOne: false
+            referencedRelation: "content_revisions"
+            referencedColumns: ["revision_id"]
+          },
+          {
+            foreignKeyName: "content_revisions_withdraws_revision_id_fkey"
+            columns: ["withdraws_revision_id"]
+            isOneToOne: false
+            referencedRelation: "v_errata_sheet"
+            referencedColumns: ["revision_id"]
+          },
+          {
+            foreignKeyName: "content_revisions_withdraws_revision_id_fkey"
+            columns: ["withdraws_revision_id"]
+            isOneToOne: false
+            referencedRelation: "v_revision_recent"
+            referencedColumns: ["revision_id"]
+          },
+          {
+            foreignKeyName: "publication_content_map_edition_id_fkey"
+            columns: ["edition_id"]
+            isOneToOne: false
+            referencedRelation: "publication_editions"
+            referencedColumns: ["edition_id"]
+          },
+          {
+            foreignKeyName: "publication_content_map_edition_id_fkey"
+            columns: ["edition_id"]
+            isOneToOne: false
+            referencedRelation: "v_current_editions"
+            referencedColumns: ["edition_id"]
+          },
+        ]
+      }
       v_revision_merge_pending: {
         Row: {
           cnt: number | null
@@ -14709,7 +14789,7 @@ export type Database = {
         Returns: boolean
       }
       fn_withdraw_errata: {
-        Args: { p_reason: string; p_revision_id: string }
+        Args: { p_notify?: boolean; p_reason: string; p_revision_id: string }
         Returns: string
       }
       get_problem_stats: {

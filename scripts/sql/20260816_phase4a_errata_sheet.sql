@@ -42,13 +42,10 @@ alter table publication_editions
   add column errata_sheet_item_count int not null default 0;
 
 -- ── 3. 수험생 RLS (§5 — 최소) ──
--- [검토 D1] revision_student_select: 지시서 명세 그대로. 단, 이 정책은 PostgREST
---   직접 조회로 published 행의 before/after_snapshot(행 전체 스냅샷)까지 열게 된다
---   — RLS 는 행 단위라 컬럼을 못 가린다. 4a 의 수험생 경로(목록=editions 3컬럼,
---   PDF=서버 렌더)에는 이 정책이 필요 없어, 승인 판단을 위해 보고서에 명시한다.
-create policy revision_student_select on content_revisions
-  for select using (notice_status in ('published','withdrawn'));
-
+-- [D1 제외 — 사용자 결정 2026-08-13] content_revisions 수험생 정책은 넣지 않는다:
+--   RLS 는 컬럼을 못 가려 published 행의 스냅샷(정답·모범답안 포함)이 PostgREST
+--   직접 조회로 노출된다. 4a 수험생 경로(목록=editions 캐시 3컬럼·PDF=서버 렌더)에
+--   불필요. Phase 4b 웹 렌더링 시 스냅샷 제외 공개 뷰로 연다.
 create policy pcm_student_select on publication_content_map
   for select using (true);
 

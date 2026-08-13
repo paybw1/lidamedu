@@ -1,7 +1,6 @@
 -- Phase 4a 롤백 — 뷰·컬럼·정책·p_notify 원복 (버킷·업로드 파일은 보존)
 begin;
 drop view if exists v_errata_sheet;
-drop policy if exists revision_student_select on content_revisions;
 drop policy if exists pcm_student_select on publication_content_map;
 drop policy if exists edition_student_select on publication_editions;
 drop policy if exists publication_student_select on publications;
