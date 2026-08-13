@@ -85,17 +85,18 @@ function accuracyTone(pct: number | null): string {
 }
 
 // 저장된 결과 기준 테스트 통계 — 평균·최고/최저·미응시 + 문항별 정답률(변별 낮은 문항 식별).
+// Phase 1 T1(B안) — 정오 키 = question_id (표시 번호는 ord+1).
 function TestStatsBlock({
-  ords,
+  questions,
   maxScore,
   results,
 }: {
-  ords: number[];
+  questions: Array<{ questionId: string; ord: number }>;
   maxScore: number;
   results: Array<{
     status: "taken" | "absent";
     score: number | null;
-    wrongOrds: number[];
+    wrongQuestionIds: string[];
   }>;
 }) {
   const taken = results.filter((r) => r.status === "taken" && r.score !== null);
@@ -103,10 +104,10 @@ function TestStatsBlock({
   const scores = taken.map((r) => r.score as number);
   const avg = Math.round((scores.reduce((s, v) => s + v, 0) / scores.length) * 10) / 10;
   const absent = results.filter((r) => r.status === "absent").length;
-  const wrongCountByOrd = new Map<number, number>();
+  const wrongCountByQuestion = new Map<string, number>();
   for (const r of taken) {
-    for (const o of r.wrongOrds) {
-      wrongCountByOrd.set(o, (wrongCountByOrd.get(o) ?? 0) + 1);
+    for (const id of r.wrongQuestionIds) {
+      wrongCountByQuestion.set(id, (wrongCountByQuestion.get(id) ?? 0) + 1);
     }
   }
   return (
@@ -135,12 +136,12 @@ function TestStatsBlock({
           문항별 정답률
         </p>
         <div className="flex flex-wrap gap-1">
-          {ords.map((o) => {
-            const wrong = wrongCountByOrd.get(o) ?? 0;
+          {questions.map(({ questionId, ord: o }) => {
+            const wrong = wrongCountByQuestion.get(questionId) ?? 0;
             const pct = Math.round(((taken.length - wrong) / taken.length) * 100);
             return (
               <span
-                key={o}
+                key={questionId}
                 title={`${o + 1}번 — 정답률 ${pct}% (오답 ${wrong}명)`}
                 className={cn(
                   "inline-flex h-6 min-w-10 items-center justify-center gap-0.5 rounded border px-1 text-[10px] tabular-nums",
@@ -162,7 +163,8 @@ type RowStatus = "none" | "taken" | "absent";
 
 interface RowState {
   status: RowStatus;
-  wrong: Set<number>;
+  // Phase 1 T1(B안) — 오답 키 = question_id.
+  wrong: Set<string>;
   // 온라인 응시 결과에서 불러온 행 — 저장 시 스냅샷만 기록(시도 재기록 없음).
   onlineSessionId?: string | null;
 }
@@ -179,15 +181,18 @@ export default function AdminOfflineTestResults({
     ok?: true;
     saved?: number;
     absent?: number;
+    srsWarnings?: string[];
     error?: string;
   }>();
 
-  const ords = test.questions.map((q) => q.ord);
-  const pointsByOrd = useMemo(
-    () => new Map(test.questions.map((q) => [q.ord, q.points] as const)),
-    [test.questions],
-  );
+  const gridQuestions = test.questions.map((q) => ({
+    questionId: q.questionId,
+    ord: q.ord,
+    points: q.points,
+  }));
   const maxScore = test.questions.reduce((s, q) => s + q.points, 0);
+  // Phase 1 T2 — 결과 입력은 published 에서만 (서버 게이트의 미러).
+  const canEnterResults = test.status === "published";
 
   const [takenAt, setTakenAt] = useState(
     results.find((r) => r.takenAt)?.takenAt ?? today,
@@ -199,7 +204,7 @@ export default function AdminOfflineTestResults({
       const r = byUser.get(member.profileId);
       m.set(member.profileId, {
         status: r ? (r.status as RowStatus) : "none",
-        wrong: new Set(r?.wrongOrds ?? []),
+        wrong: new Set(r?.wrongQuestionIds ?? []),
       });
     }
     return m;
@@ -235,7 +240,7 @@ export default function AdminOfflineTestResults({
       for (const p of applicablePrefill) {
         next.set(p.userId, {
           status: "taken",
-          wrong: new Set(p.wrongOrds),
+          wrong: new Set(p.wrongQuestionIds),
           onlineSessionId: p.sessionId,
         });
       }
@@ -252,7 +257,7 @@ export default function AdminOfflineTestResults({
         return {
           userId: m.profileId,
           status: r.status,
-          wrongOrds: r.status === "taken" ? [...r.wrong].sort((a, b) => a - b) : [],
+          wrongQuestionIds: r.status === "taken" ? [...r.wrong].sort() : [],
           ...(r.status === "taken" && r.onlineSessionId
             ? { onlineSessionId: r.onlineSessionId }
             : {}),
@@ -296,7 +301,7 @@ export default function AdminOfflineTestResults({
           <Button
             size="sm"
             onClick={save}
-            disabled={entryCount === 0 || fetcher.state !== "idle"}
+            disabled={!canEnterResults || entryCount === 0 || fetcher.state !== "idle"}
           >
             <SaveIcon className="size-3.5" /> {entryCount}명 저장
           </Button>
@@ -328,6 +333,13 @@ export default function AdminOfflineTestResults({
         </p>
       </div>
 
+      {!canEnterResults ? (
+        <p className="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+          {test.status === "draft"
+            ? "초안 상태입니다 — 시험지를 배포한 후에만 결과를 입력할 수 있습니다."
+            : "마감된 시험지입니다 — 결과 입력이 잠겼습니다."}
+        </p>
+      ) : null}
       {fetcher.data && "error" in fetcher.data && fetcher.data.error ? (
         <p className="mb-3 text-xs text-rose-600">{fetcher.data.error}</p>
       ) : null}
@@ -337,9 +349,20 @@ export default function AdminOfflineTestResults({
           {fetcher.data.absent ?? 0}명
         </p>
       ) : null}
+      {/* Phase 1 S1 — SRS 축 부분 실패 경고 (조용한 미반영 금지). */}
+      {fetcher.data?.ok && (fetcher.data.srsWarnings?.length ?? 0) > 0
+        ? fetcher.data.srsWarnings!.map((w) => (
+            <p
+              key={w}
+              className="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
+            >
+              ⚠ {w}
+            </p>
+          ))
+        : null}
 
       {/* 4단계 — 저장된 결과 기준 테스트 통계 */}
-      <TestStatsBlock ords={ords} maxScore={maxScore} results={results} />
+      <TestStatsBlock questions={gridQuestions} maxScore={maxScore} results={results} />
 
 
       {test.questions.length === 0 ? (
@@ -369,13 +392,12 @@ export default function AdminOfflineTestResults({
               {members.map((m) => {
                 const r = rows.get(m.profileId) ?? {
                   status: "none" as RowStatus,
-                  wrong: new Set<number>(),
+                  wrong: new Set<string>(),
                 };
                 const score =
                   r.status === "taken"
-                    ? ords.reduce(
-                        (s, o) =>
-                          s + (r.wrong.has(o) ? 0 : (pointsByOrd.get(o) ?? 0)),
+                    ? gridQuestions.reduce(
+                        (s, q) => s + (r.wrong.has(q.questionId) ? 0 : q.points),
                         0,
                       )
                     : null;
@@ -415,16 +437,16 @@ export default function AdminOfflineTestResults({
                     <td className="px-2 py-2">
                       {r.status === "taken" ? (
                         <div className="flex flex-wrap gap-1">
-                          {ords.map((o) => {
-                            const wrong = r.wrong.has(o);
+                          {gridQuestions.map(({ questionId, ord: o }) => {
+                            const wrong = r.wrong.has(questionId);
                             return (
                               <button
-                                key={o}
+                                key={questionId}
                                 type="button"
                                 onClick={() => {
                                   const next = new Set(r.wrong);
-                                  if (wrong) next.delete(o);
-                                  else next.add(o);
+                                  if (wrong) next.delete(questionId);
+                                  else next.add(questionId);
                                   setRow(m.profileId, { ...r, wrong: next });
                                 }}
                                 title={`${o + 1}번 ${wrong ? "오답 → 정답으로" : "정답 → 오답으로"}`}

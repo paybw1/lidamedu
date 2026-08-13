@@ -8162,6 +8162,39 @@ export type Database = {
           },
         ]
       }
+      offline_test_answers: {
+        Row: {
+          is_correct: boolean
+          question_id: string
+          result_id: string
+        }
+        Insert: {
+          is_correct: boolean
+          question_id: string
+          result_id: string
+        }
+        Update: {
+          is_correct?: boolean
+          question_id?: string
+          result_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offline_test_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "offline_test_questions"
+            referencedColumns: ["question_id"]
+          },
+          {
+            foreignKeyName: "offline_test_answers_result_id_fkey"
+            columns: ["result_id"]
+            isOneToOne: false
+            referencedRelation: "offline_test_results"
+            referencedColumns: ["result_id"]
+          },
+        ]
+      }
       offline_test_questions: {
         Row: {
           blank_set_id: string | null
@@ -8242,6 +8275,8 @@ export type Database = {
           result_id: string
           score: number | null
           session_id: string | null
+          srs_ox_applied_at: string | null
+          srs_problem_applied_at: string | null
           status: string
           taken_at: string | null
           test_id: string
@@ -8256,6 +8291,8 @@ export type Database = {
           result_id?: string
           score?: number | null
           session_id?: string | null
+          srs_ox_applied_at?: string | null
+          srs_problem_applied_at?: string | null
           status?: string
           taken_at?: string | null
           test_id: string
@@ -8270,6 +8307,8 @@ export type Database = {
           result_id?: string
           score?: number | null
           session_id?: string | null
+          srs_ox_applied_at?: string | null
+          srs_problem_applied_at?: string | null
           status?: string
           taken_at?: string | null
           test_id?: string
@@ -8373,6 +8412,7 @@ export type Database = {
       offline_tests: {
         Row: {
           assignment_id: string
+          closed_at: string | null
           cohort_id: string
           created_at: string
           created_by: string | null
@@ -8380,15 +8420,18 @@ export type Database = {
           duration_min: number | null
           instructions_md: string | null
           law_code: string | null
+          published_at: string | null
           science_subject: string | null
           series_id: string | null
           series_round_no: number | null
+          status: string
           test_id: string
           title: string
           updated_at: string
         }
         Insert: {
           assignment_id: string
+          closed_at?: string | null
           cohort_id: string
           created_at?: string
           created_by?: string | null
@@ -8396,15 +8439,18 @@ export type Database = {
           duration_min?: number | null
           instructions_md?: string | null
           law_code?: string | null
+          published_at?: string | null
           science_subject?: string | null
           series_id?: string | null
           series_round_no?: number | null
+          status?: string
           test_id?: string
           title: string
           updated_at?: string
         }
         Update: {
           assignment_id?: string
+          closed_at?: string | null
           cohort_id?: string
           created_at?: string
           created_by?: string | null
@@ -8412,9 +8458,11 @@ export type Database = {
           duration_min?: number | null
           instructions_md?: string | null
           law_code?: string | null
+          published_at?: string | null
           science_subject?: string | null
           series_id?: string | null
           series_round_no?: number | null
+          status?: string
           test_id?: string
           title?: string
           updated_at?: string

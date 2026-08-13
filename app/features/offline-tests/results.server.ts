@@ -13,6 +13,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
 import { fetchAllIn } from "~/core/lib/supa-batch.server";
+import {
+  applyOxRefSrsBulk,
+  type OxRefSrsOutcome,
+} from "~/features/study/ox-srs.server";
+import {
+  applyProblemSrsBulk,
+  type ProblemSrsOutcome,
+} from "~/features/study/srs.server";
 
 import type { CohortOfflineTestStat } from "./labels";
 import { getOfflineTestPrintData } from "./queries.server";
@@ -22,7 +30,8 @@ export interface OfflineResultRow {
   status: "taken" | "absent";
   score: number | null;
   maxScore: number | null;
-  wrongOrds: number[];
+  // Phase 1 T1(B안) — 오답 스냅샷 키 = question_id (offline_test_answers).
+  wrongQuestionIds: string[];
   takenAt: string | null;
   note: string | null;
   enteredAt: string;
@@ -35,16 +44,35 @@ export async function listOfflineTestResults(
   const { data, error } = await client
     .from("offline_test_results")
     .select(
-      "user_id, status, score, max_score, wrong_ords, taken_at, note, entered_at",
+      "result_id, user_id, status, score, max_score, taken_at, note, entered_at",
     )
     .eq("test_id", testId);
   if (error) throw error;
-  return (data ?? []).map((r) => ({
+  const rows = data ?? [];
+  const wrongByResult = new Map<string, string[]>();
+  if (rows.length > 0) {
+    const answers = await fetchAllIn(
+      rows.map((r) => r.result_id),
+      (slice) =>
+        client
+          .from("offline_test_answers")
+          .select("result_id, question_id, is_correct")
+          .in("result_id", slice)
+          .eq("is_correct", false)
+          .order("question_id"),
+    );
+    for (const a of answers) {
+      const arr = wrongByResult.get(a.result_id) ?? [];
+      arr.push(a.question_id);
+      wrongByResult.set(a.result_id, arr);
+    }
+  }
+  return rows.map((r) => ({
     userId: r.user_id,
     status: r.status as "taken" | "absent",
     score: r.score === null ? null : Number(r.score),
     maxScore: r.max_score === null ? null : Number(r.max_score),
-    wrongOrds: r.wrong_ords ?? [],
+    wrongQuestionIds: wrongByResult.get(r.result_id) ?? [],
     takenAt: r.taken_at,
     note: r.note,
     enteredAt: r.entered_at,
@@ -197,11 +225,11 @@ export async function listMyOfflineTestsForAssignment(
 
 // ── 온라인 응시 결과 프리필 (결과 입력 그리드) ──────────────────────────────
 // 학생이 온라인 응시(source='offline_test_online')한 완료 세션의 문항별 정오를
-// 오답 ord 로 환산 — 운영자가 그리드에 불러와 검토 후 저장(스냅샷만, 시도 재기록 없음).
+// 오답 question_id 로 환산 — 운영자가 그리드에 불러와 검토 후 저장(스냅샷만, 시도 재기록 없음).
 export interface OnlinePrefillEntry {
   userId: string;
   sessionId: string;
-  wrongOrds: number[];
+  wrongQuestionIds: string[];
   completedAt: string;
 }
 
@@ -230,20 +258,20 @@ export async function getOnlineSessionPrefill(
   }
   if (latestByUser.size === 0) return [];
 
-  // 문항 ord ↔ 문제 매핑 (온라인 응시는 전부 객관식).
+  // 문항 question_id ↔ 문제 매핑 (온라인 응시는 전부 객관식).
   const { data: qs, error: qErr } = await admin
     .from("offline_test_questions")
-    .select("ord, problem_id")
+    .select("question_id, problem_id")
     .eq("test_id", testId)
     .eq("question_type", "mcq")
     .order("ord");
   if (qErr) throw qErr;
-  const ordByProblem = new Map(
+  const questionIdByProblem = new Map(
     (qs ?? [])
       .filter((q) => q.problem_id)
-      .map((q) => [q.problem_id as string, q.ord] as const),
+      .map((q) => [q.problem_id as string, q.question_id] as const),
   );
-  const allOrds = (qs ?? []).map((q) => q.ord);
+  const totalQuestions = (qs ?? []).length;
 
   const sessionIds = [...latestByUser.values()].map((v) => v.sessionId);
   const attempts = await fetchAllIn(sessionIds, (slice) =>
@@ -264,15 +292,15 @@ export async function getOnlineSessionPrefill(
 
   const out: OnlinePrefillEntry[] = [];
   for (const [userId, { sessionId, completedAt }] of latestByUser) {
-    const wrong: number[] = [];
-    for (const [problemId, ord] of ordByProblem) {
+    const wrong: string[] = [];
+    for (const [problemId, questionId] of questionIdByProblem) {
       const correct = latestBySessionProblem.get(`${sessionId}:${problemId}`);
       // 미응답도 오답 처리(시험 관행).
-      if (correct !== true) wrong.push(ord);
+      if (correct !== true) wrong.push(questionId);
     }
     // 전 문항 미응답(=사실상 미응시)은 프리필에서 제외.
-    if (wrong.length >= allOrds.length && allOrds.length > 0) {
-      const answered = [...ordByProblem].some(([pid]) =>
+    if (wrong.length >= totalQuestions && totalQuestions > 0) {
+      const answered = [...questionIdByProblem].some(([pid]) =>
         latestBySessionProblem.has(`${sessionId}:${pid}`),
       );
       if (!answered) continue;
@@ -280,7 +308,7 @@ export async function getOnlineSessionPrefill(
     out.push({
       userId,
       sessionId,
-      wrongOrds: wrong.sort((a, b) => a - b),
+      wrongQuestionIds: wrong.sort(),
       completedAt,
     });
   }
@@ -290,7 +318,8 @@ export async function getOnlineSessionPrefill(
 export interface OfflineResultEntry {
   userId: string;
   status: "taken" | "absent";
-  wrongOrds: number[];
+  // Phase 1 T1(B안) — 오답 문항 question_id 목록.
+  wrongQuestionIds: string[];
   // 온라인 응시 결과를 불러온 행 — 시도는 이미 학생 세션에 있으므로
   // 스냅샷(offline_test_results)만 기록하고 시도 재기록은 하지 않는다.
   onlineSessionId?: string | null;
@@ -299,6 +328,26 @@ export interface OfflineResultEntry {
 export interface SaveOfflineResultsSummary {
   saved: number;
   absent: number;
+  // Phase 1 S1 — SRS 축 부분 실패 경고 (스탬프 미기록 → 재저장 시 해당 축만 자동 재적용).
+  srsWarnings: string[];
+}
+
+// 결과 upsert 후 문항별 정오 스냅샷 교체 (offline_test_answers).
+async function replaceAnswers(
+  admin: SupabaseClient<Database>,
+  resultId: string,
+  rows: Array<{ question_id: string; is_correct: boolean }>,
+): Promise<void> {
+  const { error: dErr } = await admin
+    .from("offline_test_answers")
+    .delete()
+    .eq("result_id", resultId);
+  if (dErr) throw dErr;
+  if (rows.length === 0) return;
+  const { error: iErr } = await admin
+    .from("offline_test_answers")
+    .insert(rows.map((r) => ({ result_id: resultId, ...r })));
+  if (iErr) throw iErr;
 }
 
 export async function saveOfflineTestResults(
@@ -313,7 +362,6 @@ export async function saveOfflineTestResults(
   const test = await getOfflineTestPrintData(admin, input.testId);
   if (!test) throw new Error("테스트를 찾을 수 없습니다");
   const maxScore = test.totalPoints;
-  const validOrds = new Set(test.questions.map((q) => q.ord));
   // 시험일 정오(KST) 시각으로 기록 — "가장 최근 시도" 규칙과 실제 응시일 정합.
   const attemptedAt = `${input.takenAt}T12:00:00+09:00`;
 
@@ -321,12 +369,13 @@ export async function saveOfflineTestResults(
   const { data: qRows, error: qErr } = await admin
     .from("offline_test_questions")
     .select(
-      "ord, points, question_type, problem_id, ox_ref_type, ox_ref_id, ox_problem_id, blank_set_id",
+      "question_id, ord, points, question_type, problem_id, ox_ref_type, ox_ref_id, ox_problem_id, blank_set_id",
     )
     .eq("test_id", input.testId)
     .order("ord");
   if (qErr) throw qErr;
   const questions = qRows ?? [];
+  const validQuestionIds = new Set(questions.map((q) => q.question_id));
   // 세션 problem_ids — 객관식 + OX 소속 문제 (빈칸은 조문 세트라 세션 밖).
   const problemIdsInTest = [
     ...new Set(
@@ -382,11 +431,12 @@ export async function saveOfflineTestResults(
     }
   }
 
-  // 기존 결과(세션 재사용) 로드. ★재사용·철회는 이 흐름이 만든 오프라인 세션
-  // (source='offline_test')만 — 온라인 응시 세션은 학생의 실제 기록이라 건드리지 않는다.
+  // 기존 결과(세션 재사용 + SRS 축별 스탬프) 로드. ★재사용·철회는 이 흐름이 만든
+  // 오프라인 세션(source='offline_test')만 — 온라인 응시 세션은 학생의 실제 기록이라
+  // 건드리지 않는다.
   const { data: sessRows } = await admin
     .from("offline_test_results")
-    .select("user_id, session_id")
+    .select("user_id, session_id, srs_problem_applied_at, srs_ox_applied_at")
     .eq("test_id", input.testId);
   const linkedSessionIds = (sessRows ?? [])
     .map((r) => r.session_id)
@@ -410,42 +460,75 @@ export async function saveOfflineTestResults(
       .filter((r) => r.session_id && offlineSessionIds.has(r.session_id))
       .map((r) => [r.user_id, r.session_id as string] as const),
   );
+  const srsStampByUser = new Map(
+    (sessRows ?? []).map(
+      (r) =>
+        [
+          r.user_id,
+          { problem: r.srs_problem_applied_at, ox: r.srs_ox_applied_at },
+        ] as const,
+    ),
+  );
 
   let saved = 0;
   let absent = 0;
+  // S1 — 축별 SRS outcome 수집. 축별 스탬프가 NULL 인 결과에서만 수집(멱등:
+  //   result 당 축별 1회. 성적 정정·철회에도 재적용/되돌림 없음 — SRS 는 성적이
+  //   아니라 복습 스케줄이고, 재적용 허용 시 reps 부풀리기가 비가역이기 때문).
+  const problemOutcomes: ProblemSrsOutcome[] = [];
+  const oxOutcomes: OxRefSrsOutcome[] = [];
+  const problemStampUsers: string[] = [];
+  const oxStampUsers: string[] = [];
 
   for (const entry of input.entries) {
-    const wrongSet = new Set(entry.wrongOrds.filter((o) => validOrds.has(o)));
+    const wrongSet = new Set(
+      entry.wrongQuestionIds.filter((id) => validQuestionIds.has(id)),
+    );
     let sessionId = sessionByUser.get(entry.userId) ?? null;
+    const answerRows = questions.map((q) => ({
+      question_id: q.question_id,
+      is_correct: !wrongSet.has(q.question_id),
+    }));
 
     // 온라인 응시 불러오기 행 — 스냅샷만 기록 (시도는 학생 세션에 이미 존재).
+    // SRS 도 응시 시점에 정규 경로(recordProblemAttempt)로 이미 갱신 → 두 축 스탬프만
+    // 채워 이후 재저장의 이중 적용을 차단한다.
     if (entry.status === "taken" && entry.onlineSessionId) {
       let score = 0;
       for (const q of questions) {
-        if (!wrongSet.has(q.ord)) score += Number(q.points ?? 0);
+        if (!wrongSet.has(q.question_id)) score += Number(q.points ?? 0);
       }
-      const { error: upErr } = await admin.from("offline_test_results").upsert(
-        {
-          test_id: input.testId,
-          user_id: entry.userId,
-          status: "taken",
-          score,
-          max_score: maxScore,
-          wrong_ords: [...wrongSet].sort((a, b) => a - b),
-          session_id: entry.onlineSessionId,
-          taken_at: input.takenAt,
-          entered_by: input.enteredBy,
-          entered_at: new Date().toISOString(),
-        },
-        { onConflict: "test_id,user_id" },
-      );
+      const stamp = srsStampByUser.get(entry.userId);
+      const nowIso = new Date().toISOString();
+      const { data: up, error: upErr } = await admin
+        .from("offline_test_results")
+        .upsert(
+          {
+            test_id: input.testId,
+            user_id: entry.userId,
+            status: "taken",
+            score,
+            max_score: maxScore,
+            session_id: entry.onlineSessionId,
+            taken_at: input.takenAt,
+            entered_by: input.enteredBy,
+            entered_at: nowIso,
+            srs_problem_applied_at: stamp?.problem ?? nowIso,
+            srs_ox_applied_at: stamp?.ox ?? nowIso,
+          },
+          { onConflict: "test_id,user_id" },
+        )
+        .select("result_id")
+        .single();
       if (upErr) throw upErr;
+      await replaceAnswers(admin, up.result_id, answerRows);
       saved++;
       continue;
     }
 
     if (entry.status === "absent") {
-      // 이전에 taken 으로 기록했던 세션 시도는 철회.
+      // 이전에 taken 으로 기록했던 세션 시도는 철회. SRS 는 되돌리지 않는다(정책)
+      // — 스탬프 컬럼은 upsert 에 미포함이라 기존 값이 보존된다.
       if (sessionId) {
         const { error } = await admin
           .from("user_problem_attempts")
@@ -454,22 +537,26 @@ export async function saveOfflineTestResults(
           .eq("user_id", entry.userId);
         if (error) throw error;
       }
-      const { error: upErr } = await admin.from("offline_test_results").upsert(
-        {
-          test_id: input.testId,
-          user_id: entry.userId,
-          status: "absent",
-          score: null,
-          max_score: maxScore,
-          wrong_ords: [],
-          session_id: sessionId,
-          taken_at: input.takenAt,
-          entered_by: input.enteredBy,
-          entered_at: new Date().toISOString(),
-        },
-        { onConflict: "test_id,user_id" },
-      );
+      const { data: up, error: upErr } = await admin
+        .from("offline_test_results")
+        .upsert(
+          {
+            test_id: input.testId,
+            user_id: entry.userId,
+            status: "absent",
+            score: null,
+            max_score: maxScore,
+            session_id: sessionId,
+            taken_at: input.takenAt,
+            entered_by: input.enteredBy,
+            entered_at: new Date().toISOString(),
+          },
+          { onConflict: "test_id,user_id" },
+        )
+        .select("result_id")
+        .single();
       if (upErr) throw upErr;
+      await replaceAnswers(admin, up.result_id, []);
       absent++;
       continue;
     }
@@ -513,9 +600,13 @@ export async function saveOfflineTestResults(
       [];
     const blankInserts: Database["public"]["Tables"]["user_blank_attempts"]["Insert"][] =
       [];
+    // S1 — 축별 스탬프가 NULL 일 때만 SRS outcome 수집.
+    const stamp = srsStampByUser.get(entry.userId);
+    const collectProblemSrs = !stamp?.problem;
+    const collectOxSrs = !stamp?.ox;
     let score = 0;
     for (const q of questions) {
-      const correct = !wrongSet.has(q.ord);
+      const correct = !wrongSet.has(q.question_id);
       if (correct) score += Number(q.points ?? 0);
 
       if (q.question_type === "mcq" && q.problem_id) {
@@ -531,6 +622,13 @@ export async function saveOfflineTestResults(
           mode: "exam",
           attempted_at: attemptedAt,
         });
+        if (collectProblemSrs) {
+          problemOutcomes.push({
+            userId: entry.userId,
+            problemId: q.problem_id,
+            isCorrect: correct,
+          });
+        }
       } else if (q.question_type === "ox" && q.ox_problem_id && q.ox_ref_id) {
         const truth = oxTruthByOrd.get(q.ord) ?? "O";
         const answer: "O" | "X" = correct ? truth : truth === "O" ? "X" : "O";
@@ -545,6 +643,15 @@ export async function saveOfflineTestResults(
           mode: "exam",
           attempted_at: attemptedAt,
         });
+        if (collectOxSrs) {
+          oxOutcomes.push({
+            userId: entry.userId,
+            // 컬럼 값 'box' ↔ SRS refType 'box_item' 매핑 (attempt insert 와 동일 대응).
+            refType: q.ox_ref_type === "box" ? "box_item" : "choice",
+            refId: q.ox_ref_id,
+            isCorrect: correct,
+          });
+        }
       } else if (q.question_type === "blank" && q.blank_set_id) {
         const idxs = blankIdxsByOrd.get(q.ord) ?? [];
         const answers = blankAnswersByOrd.get(q.ord);
@@ -588,24 +695,68 @@ export async function saveOfflineTestResults(
       .eq("user_id", entry.userId);
     if (sessUpErr) throw sessUpErr;
 
-    const { error: upErr } = await admin.from("offline_test_results").upsert(
-      {
-        test_id: input.testId,
-        user_id: entry.userId,
-        status: "taken",
-        score,
-        max_score: maxScore,
-        wrong_ords: [...wrongSet].sort((a, b) => a - b),
-        session_id: sessionId,
-        taken_at: input.takenAt,
-        entered_by: input.enteredBy,
-        entered_at: new Date().toISOString(),
-      },
-      { onConflict: "test_id,user_id" },
-    );
+    const { data: up, error: upErr } = await admin
+      .from("offline_test_results")
+      .upsert(
+        {
+          test_id: input.testId,
+          user_id: entry.userId,
+          status: "taken",
+          score,
+          max_score: maxScore,
+          session_id: sessionId,
+          taken_at: input.takenAt,
+          entered_by: input.enteredBy,
+          entered_at: new Date().toISOString(),
+          // 스탬프 컬럼은 미포함 — 기존 값 보존(축별 1회 정책).
+        },
+        { onConflict: "test_id,user_id" },
+      )
+      .select("result_id")
+      .single();
     if (upErr) throw upErr;
+    await replaceAnswers(admin, up.result_id, answerRows);
+    if (collectProblemSrs) problemStampUsers.push(entry.userId);
+    if (collectOxSrs) oxStampUsers.push(entry.userId);
     saved++;
   }
 
-  return { saved, absent };
+  // ── S1 — SRS 축별 일괄 적용 + 스탬프 ────────────────────────────────────────
+  // 축 내부는 bulk upsert 라 원자적. 축 간 원자성은 축별 스탬프가 대체 —
+  // 한 축이 실패하면 그 축 스탬프만 NULL 로 남아, 재저장 시 그 축만 재적용된다
+  // (자가 치유). 실패는 경고로 반환해 운영자 화면에 표시한다(조용한 미반영 금지).
+  const srsWarnings: string[] = [];
+  const stampAxis = async (
+    column: "srs_problem_applied_at" | "srs_ox_applied_at",
+    userIds: string[],
+  ) => {
+    if (userIds.length === 0) return;
+    const { error } = await admin
+      .from("offline_test_results")
+      .update({ [column]: new Date().toISOString() })
+      .eq("test_id", input.testId)
+      .in("user_id", userIds)
+      .is(column, null);
+    if (error) throw error;
+  };
+  try {
+    await applyProblemSrsBulk(admin, problemOutcomes);
+    await stampAxis("srs_problem_applied_at", problemStampUsers);
+  } catch (err) {
+    console.error("[offline-tests] problem SRS bulk failed:", err);
+    srsWarnings.push(
+      "문제 복습(SRS) 반영에 실패했습니다 — 같은 성적을 다시 저장하면 실패한 축만 재적용됩니다.",
+    );
+  }
+  try {
+    await applyOxRefSrsBulk(admin, oxOutcomes);
+    await stampAxis("srs_ox_applied_at", oxStampUsers);
+  } catch (err) {
+    console.error("[offline-tests] ox SRS bulk failed:", err);
+    srsWarnings.push(
+      "OX 복습(SRS) 반영에 실패했습니다 — 같은 성적을 다시 저장하면 실패한 축만 재적용됩니다.",
+    );
+  }
+
+  return { saved, absent, srsWarnings };
 }

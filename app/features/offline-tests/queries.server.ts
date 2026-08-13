@@ -21,6 +21,7 @@ import type {
   OfflineQuestionType,
   OfflineTestDetail,
   OfflineTestQuestion,
+  OfflineTestStatus,
   OfflineTestSubject,
   OfflineTestSummary,
   OxCandidate,
@@ -34,6 +35,7 @@ export type {
   OfflineQuestionType,
   OfflineTestDetail,
   OfflineTestQuestion,
+  OfflineTestStatus,
   OfflineTestSummary,
   OxCandidate,
 } from "./labels";
@@ -50,7 +52,7 @@ export async function listOfflineTests(
   const { data: tests, error } = await client
     .from("offline_tests")
     .select(
-      "test_id, assignment_id, cohort_id, title, law_code, science_subject, duration_min, created_at",
+      "test_id, assignment_id, cohort_id, title, status, law_code, science_subject, duration_min, created_at",
     )
     .eq("assignment_id", assignmentId)
     .is("deleted_at", null)
@@ -93,6 +95,7 @@ export async function listOfflineTests(
     assignmentId: t.assignment_id,
     cohortId: t.cohort_id,
     title: t.title,
+    status: t.status as OfflineTestStatus,
     lawCode: t.law_code as LawSubjectSlug | null,
     scienceSubject: t.science_subject as ScienceSubjectSlug | null,
     durationMin: t.duration_min,
@@ -169,7 +172,7 @@ export async function getOfflineTestWithQuestions(
   const { data: t, error } = await client
     .from("offline_tests")
     .select(
-      "test_id, assignment_id, cohort_id, title, law_code, science_subject, duration_min, instructions_md, series_id, series_round_no",
+      "test_id, assignment_id, cohort_id, title, status, law_code, science_subject, duration_min, instructions_md, series_id, series_round_no",
     )
     .eq("test_id", testId)
     .is("deleted_at", null)
@@ -287,6 +290,7 @@ export async function getOfflineTestWithQuestions(
     assignmentId: t.assignment_id,
     cohortId: t.cohort_id,
     title: t.title,
+    status: t.status as OfflineTestStatus,
     lawCode: t.law_code as LawSubjectSlug | null,
     scienceSubject: t.science_subject as ScienceSubjectSlug | null,
     durationMin: t.duration_min,
@@ -295,6 +299,74 @@ export async function getOfflineTestWithQuestions(
     seriesRoundNo: t.series_round_no,
     questions,
   };
+}
+
+// ── Phase 1 T2 — 상태 전이 (배포 게이트) ────────────────────────────────────
+// draft → published → closed. revert(published→draft)는 결과 0건일 때만 —
+// 잘못 배포한 시험지 회수 경로. 문항 편집은 draft 에서만(API 게이트).
+
+export async function setOfflineTestStatus(
+  client: SupabaseClient<Database>,
+  testId: string,
+  action: "publish" | "close" | "revert",
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { data: t, error } = await client
+    .from("offline_tests")
+    .select("test_id, status")
+    .eq("test_id", testId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error) throw error;
+  if (!t) return { ok: false, error: "테스트를 찾을 수 없습니다" };
+  const status = t.status as OfflineTestStatus;
+
+  if (action === "publish") {
+    if (status !== "draft") return { ok: false, error: "초안 상태에서만 배포할 수 있습니다" };
+    const { error: e } = await client
+      .from("offline_tests")
+      .update({
+        status: "published",
+        published_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("test_id", testId);
+    if (e) throw e;
+    return { ok: true };
+  }
+  if (action === "close") {
+    if (status !== "published") return { ok: false, error: "배포된 시험지만 마감할 수 있습니다" };
+    const { error: e } = await client
+      .from("offline_tests")
+      .update({
+        status: "closed",
+        closed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("test_id", testId);
+    if (e) throw e;
+    return { ok: true };
+  }
+  // revert — published → draft, 결과 0건 게이트.
+  if (status !== "published") return { ok: false, error: "배포된 시험지만 초안으로 되돌릴 수 있습니다" };
+  const { count, error: cErr } = await client
+    .from("offline_test_results")
+    .select("result_id", { head: true, count: "exact" })
+    .eq("test_id", testId);
+  if (cErr) throw cErr;
+  if ((count ?? 0) > 0) {
+    return { ok: false, error: "결과가 입력된 시험지는 초안으로 되돌릴 수 없습니다" };
+  }
+  const { error: e } = await client
+    .from("offline_tests")
+    .update({
+      status: "draft",
+      published_at: null,
+      closed_at: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("test_id", testId);
+  if (e) throw e;
+  return { ok: true };
 }
 
 // ── 문항 추가/삭제/순서/배점 ─────────────────────────────────────────────────

@@ -14,6 +14,98 @@ import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
 export type OxRefType = "choice" | "box_item";
 
+export interface OxRefSrsOutcome {
+  userId: string;
+  refType: OxRefType;
+  refId: string;
+  isCorrect: boolean;
+}
+
+const SRS_IN_BATCH = 150; // ★대량 .in() URL 초과 방지
+const SRS_UPSERT_BATCH = 500;
+
+/**
+ * 여러 (user, ref) 의 OX SRS 를 일괄 갱신 — 계산은 computeNextSrsState 공유.
+ * 동일 ref 복수 출현 시 "하나라도 오답이면 오답"으로 집계(오프라인 시험 ref 집계 규칙).
+ * 실패는 throw — best-effort 가 필요한 호출자는 applyOxRefSrsUpdate 를 쓴다.
+ */
+export async function applyOxRefSrsBulk(
+  client: SupabaseClient<Database>,
+  outcomes: OxRefSrsOutcome[],
+): Promise<void> {
+  const byKey = new Map<string, OxRefSrsOutcome>();
+  for (const o of outcomes) {
+    const key = `${o.userId}|${o.refType}|${o.refId}`;
+    const cur = byKey.get(key);
+    byKey.set(key, cur ? { ...cur, isCorrect: cur.isCorrect && o.isCorrect } : { ...o });
+  }
+  const items = [...byKey.values()];
+  if (items.length === 0) return;
+
+  const userIds = [...new Set(items.map((i) => i.userId))];
+  const refIds = [...new Set(items.map((i) => i.refId))];
+  const prevByKey = new Map<
+    string,
+    { interval_days: number; ease: number; reps: number; lapses: number }
+  >();
+  for (let from = 0; from < refIds.length; from += SRS_IN_BATCH) {
+    const slice = refIds.slice(from, from + SRS_IN_BATCH);
+    const { data, error } = await client
+      .from("user_ox_ref_srs")
+      .select("user_id, ref_type, ref_id, interval_days, ease, reps, lapses")
+      .in("user_id", userIds)
+      .in("ref_id", slice);
+    if (error) throw error;
+    for (const r of data ?? []) {
+      prevByKey.set(`${r.user_id}|${r.ref_type}|${r.ref_id}`, {
+        interval_days: r.interval_days,
+        ease: Number(r.ease),
+        reps: r.reps,
+        lapses: r.lapses,
+      });
+    }
+  }
+
+  const now = new Date().toISOString();
+  const rows = items.map((i) => {
+    const prev = prevByKey.get(`${i.userId}|${i.refType}|${i.refId}`);
+    const prevState: SrsState | null = prev
+      ? {
+          intervalDays: prev.interval_days,
+          ease: prev.ease,
+          reps: prev.reps,
+          lapses: prev.lapses,
+        }
+      : null;
+    const next = computeNextSrsState({ prev: prevState, isCorrect: i.isCorrect });
+    return {
+      user_id: i.userId,
+      ref_type: i.refType,
+      ref_id: i.refId,
+      next_due_at: next.nextDueAt.toISOString(),
+      interval_days: next.intervalDays,
+      ease: next.ease,
+      last_quality: next.lastQuality,
+      last_reviewed_at: now,
+      lapses: next.lapses,
+      reps: next.reps,
+      updated_at: now,
+    };
+  });
+  for (let from = 0; from < rows.length; from += SRS_UPSERT_BATCH) {
+    const { error } = await client
+      .from("user_ox_ref_srs")
+      .upsert(rows.slice(from, from + SRS_UPSERT_BATCH), {
+        onConflict: "user_id,ref_type,ref_id",
+      });
+    if (error) throw error;
+  }
+}
+
+/**
+ * OX 채점 후 SRS upsert — applyOxRefSrsBulk 단일 원소 위임(쓰기 경로 일원화).
+ * 호출처 = recordProblemAttempt OX 분기. best-effort.
+ */
 export async function applyOxRefSrsUpdate(
   client: SupabaseClient<Database>,
   userId: string,
@@ -22,42 +114,7 @@ export async function applyOxRefSrsUpdate(
   isCorrect: boolean,
 ): Promise<void> {
   try {
-    const { data: prev } = await client
-      .from("user_ox_ref_srs")
-      .select("interval_days, ease, reps, lapses")
-      .eq("user_id", userId)
-      .eq("ref_type", refType)
-      .eq("ref_id", refId)
-      .maybeSingle();
-
-    const prevState: SrsState | null = prev
-      ? {
-          intervalDays: prev.interval_days,
-          ease: Number(prev.ease),
-          reps: prev.reps,
-          lapses: prev.lapses,
-        }
-      : null;
-
-    const next = computeNextSrsState({ prev: prevState, isCorrect });
-    const now = new Date().toISOString();
-
-    await client.from("user_ox_ref_srs").upsert(
-      {
-        user_id: userId,
-        ref_type: refType,
-        ref_id: refId,
-        next_due_at: next.nextDueAt.toISOString(),
-        interval_days: next.intervalDays,
-        ease: next.ease,
-        last_quality: next.lastQuality,
-        last_reviewed_at: now,
-        lapses: next.lapses,
-        reps: next.reps,
-        updated_at: now,
-      },
-      { onConflict: "user_id,ref_type,ref_id" },
-    );
+    await applyOxRefSrsBulk(client, [{ userId, refType, refId, isCorrect }]);
   } catch (err) {
     console.error("[ox-srs] applyOxRefSrsUpdate failed:", err);
   }

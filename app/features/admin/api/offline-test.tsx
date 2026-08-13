@@ -24,6 +24,7 @@ import {
   listScienceMcqCandidates,
   moveTestQuestion,
   removeTestQuestion,
+  setOfflineTestStatus,
   setTestQuestionPoints,
   softDeleteOfflineTest,
   updateOfflineTest,
@@ -175,6 +176,37 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ ok: true });
   }
 
+  // ── Phase 1 T2 — 배포 게이트 상태 전이 ──
+  if (intent === "publish_test" || intent === "close_test" || intent === "revert_test") {
+    const action =
+      intent === "publish_test" ? "publish" : intent === "close_test" ? "close" : "revert";
+    const res = await setOfflineTestStatus(client, testId, action);
+    if (!res.ok) return data({ error: res.error }, { status: 400 });
+    return data({ ok: true });
+  }
+
+  // Phase 1 T2 — 문항 편집은 draft 에서만 (published 이후 max_score 불변 보장).
+  const QUESTION_EDIT_INTENTS = new Set([
+    "add_questions",
+    "auto_pick",
+    "remove_question",
+    "move_question",
+    "set_points",
+  ]);
+  if (QUESTION_EDIT_INTENTS.has(intent)) {
+    const { data: t } = await adminClient
+      .from("offline_tests")
+      .select("status")
+      .eq("test_id", testId)
+      .maybeSingle();
+    if (t?.status !== "draft") {
+      return data(
+        { error: "배포된 시험지는 문항을 편집할 수 없습니다 (초안으로 되돌린 후 편집)" },
+        { status: 400 },
+      );
+    }
+  }
+
   if (intent === "add_questions") {
     const parsed = z
       .array(refSchema)
@@ -265,12 +297,25 @@ export async function action({ request }: Route.ActionArgs) {
   // adminClient 로 학생 명의 기록을 쓰는 의도적 예외 — 위 staff+반 소유권 게이트에
   // 더해, 대상 학생 전원이 이 반 멤버인지 재검증(fail-closed) 후에만 실행.
   if (intent === "save_results") {
+    // Phase 1 T2 — 결과 입력은 published 에서만 (draft=미배포, closed=마감).
+    const { data: t } = await adminClient
+      .from("offline_tests")
+      .select("status")
+      .eq("test_id", testId)
+      .maybeSingle();
+    if (t?.status !== "published") {
+      return data(
+        { error: "배포 상태의 시험지만 결과를 입력할 수 있습니다" },
+        { status: 400 },
+      );
+    }
     const entriesSchema = z
       .array(
         z.object({
           userId: z.string().uuid(),
           status: z.enum(["taken", "absent"]),
-          wrongOrds: z.array(z.number().int().min(0).max(998)).max(500),
+          // Phase 1 T1(B안) — 오답 스냅샷 키 = question_id.
+          wrongQuestionIds: z.array(z.string().uuid()).max(500),
           // 온라인 응시 불러오기 행 — 스냅샷만 기록(시도 재기록 없음).
           onlineSessionId: z.string().uuid().optional(),
         }),

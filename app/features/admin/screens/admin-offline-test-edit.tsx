@@ -5,10 +5,13 @@ import {
   ArrowDownIcon,
   ArrowUpIcon,
   ClipboardListIcon,
+  LockIcon,
   PencilIcon,
   PlusIcon,
   PrinterIcon,
+  SendIcon,
   Trash2Icon,
+  Undo2Icon,
   WandSparklesIcon,
   XIcon,
 } from "lucide-react";
@@ -34,12 +37,14 @@ import { getCohortById } from "~/features/cohorts/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   OFFLINE_QUESTION_TYPE_LABEL,
+  OFFLINE_TEST_STATUS_LABEL,
   offlineTestSubjectName,
   type BlankCandidate,
   type McqCandidate,
   type OfflineQuestionRef,
   type OfflineQuestionType,
   type OfflineTestQuestion,
+  type OfflineTestStatus,
   type OxCandidate,
 } from "~/features/offline-tests/labels";
 import {
@@ -237,6 +242,8 @@ export default function AdminOfflineTestEdit({
   } = loaderData;
   const basePath = `/admin/cohorts/${cohort.cohortId}/assignments/${test.assignmentId}`;
   const totalPoints = test.questions.reduce((s, q) => s + q.points, 0);
+  // Phase 1 T2 — draft 에서만 문항 편집 가능.
+  const isDraft = test.status === "draft";
 
   return (
     <AdminShell
@@ -247,6 +254,7 @@ export default function AdminOfflineTestEdit({
       desc={`${offlineTestSubjectName(test)} · ${test.questions.length}문항 · ${totalPoints}점${test.durationMin ? ` · ${test.durationMin}분` : ""}`}
       headerRight={
         <div className="flex items-center gap-2">
+          <TestStatusControls testId={test.testId} status={test.status} />
           <Button asChild size="sm" variant="outline">
             <Link to={`${basePath}/tests/${test.testId}/print`} target="_blank">
               <PrinterIcon className="size-3.5" /> 문제지
@@ -291,37 +299,47 @@ export default function AdminOfflineTestEdit({
         />
       </div>
 
+      {!isDraft ? (
+        <p className="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+          {test.status === "published"
+            ? "배포된 시험지입니다 — 문항 편집이 잠겼습니다(만점 불변 보장). 편집하려면 결과가 없는 상태에서 초안으로 되돌리세요."
+            : "마감된 시험지입니다 — 문항 편집이 잠겼습니다."}
+        </p>
+      ) : null}
+
       <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
-        {/* 좌: 후보 탐색 */}
-        <section className="border-border bg-card rounded-xl border shadow-sm">
-          <div className="border-b px-4 py-3">
-            <h2 className="text-sm font-bold tracking-tight">문항 후보</h2>
-            <p className="text-muted-foreground mt-0.5 text-xs">
-              유형·파트·중요도로 후보를 찾아 시험지에 담습니다.
-            </p>
-          </div>
-          <CandidateFilter
-            filter={filter}
-            nodes={nodes}
-            isScience={isScience}
-            candSubject={candSubject}
-            subjectOptions={subjectOptions}
-            candCount={candCount}
-            candCountOptions={candCountOptions}
-          />
-          <CandidatePanel
-            testId={test.testId}
-            type={filter.type}
-            mcqCands={mcqCands}
-            oxCands={oxCands}
-            blankCands={blankCands}
-          />
-          <AutoPickForm
-            testId={test.testId}
-            filter={filter}
-            candSubject={candSubject}
-          />
-        </section>
+        {/* 좌: 후보 탐색 — draft 에서만 (published 이후 문항 편집 금지) */}
+        {isDraft ? (
+          <section className="border-border bg-card rounded-xl border shadow-sm">
+            <div className="border-b px-4 py-3">
+              <h2 className="text-sm font-bold tracking-tight">문항 후보</h2>
+              <p className="text-muted-foreground mt-0.5 text-xs">
+                유형·파트·중요도로 후보를 찾아 시험지에 담습니다.
+              </p>
+            </div>
+            <CandidateFilter
+              filter={filter}
+              nodes={nodes}
+              isScience={isScience}
+              candSubject={candSubject}
+              subjectOptions={subjectOptions}
+              candCount={candCount}
+              candCountOptions={candCountOptions}
+            />
+            <CandidatePanel
+              testId={test.testId}
+              type={filter.type}
+              mcqCands={mcqCands}
+              oxCands={oxCands}
+              blankCands={blankCands}
+            />
+            <AutoPickForm
+              testId={test.testId}
+              filter={filter}
+              candSubject={candSubject}
+            />
+          </section>
+        ) : null}
 
         {/* 우: 담긴 문항 */}
         <section className="border-border bg-card rounded-xl border shadow-sm">
@@ -354,6 +372,7 @@ export default function AdminOfflineTestEdit({
                   q={q}
                   isFirst={i === 0}
                   isLast={i === test.questions.length - 1}
+                  locked={!isDraft}
                 />
               ))}
             </ul>
@@ -361,6 +380,91 @@ export default function AdminOfflineTestEdit({
         </section>
       </div>
     </AdminShell>
+  );
+}
+
+// Phase 1 T2 — 상태 뱃지 + 배포/마감/회수 액션 (서버 setOfflineTestStatus 미러).
+function TestStatusControls({
+  testId,
+  status,
+}: {
+  testId: string;
+  status: OfflineTestStatus;
+}) {
+  const fetcher = useFetcher<{ ok?: true; error?: string }>();
+  const reload = useReload();
+  useEffect(() => {
+    if (fetcher.state === "idle" && fetcher.data && "ok" in fetcher.data && fetcher.data.ok) {
+      reload();
+    }
+  }, [fetcher.state, fetcher.data, reload]);
+  const busy = fetcher.state !== "idle";
+  const post = (intent: "publish_test" | "close_test" | "revert_test") => {
+    const fd = new FormData();
+    fd.set("intent", intent);
+    fd.set("testId", testId);
+    fetcher.submit(fd, { method: "post", action: API });
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <Chip
+        tone={
+          status === "published" ? "emerald" : status === "closed" ? "amber" : "outline"
+        }
+      >
+        {OFFLINE_TEST_STATUS_LABEL[status]}
+      </Chip>
+      {fetcher.data && "error" in fetcher.data && fetcher.data.error ? (
+        <span className="text-[11px] text-rose-600">{fetcher.data.error}</span>
+      ) : null}
+      {status === "draft" ? (
+        <Button
+          size="sm"
+          disabled={busy}
+          onClick={() => {
+            if (
+              confirm(
+                "시험지를 배포하시겠습니까?\n배포하면 반 학생에게 노출되고, 문항 편집이 잠기며, 결과 입력이 열립니다.",
+              )
+            ) {
+              post("publish_test");
+            }
+          }}
+        >
+          <SendIcon className="size-3.5" /> 배포
+        </Button>
+      ) : null}
+      {status === "published" ? (
+        <>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={busy}
+            onClick={() => {
+              if (confirm("마감하시겠습니까? 결과 입력·온라인 응시가 잠깁니다.")) {
+                post("close_test");
+              }
+            }}
+          >
+            <LockIcon className="size-3.5" /> 마감
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={busy}
+            title="결과가 없는 시험지만 초안으로 되돌릴 수 있습니다"
+            onClick={() => {
+              if (confirm("초안으로 되돌리시겠습니까? 학생 노출이 해제됩니다.")) {
+                post("revert_test");
+              }
+            }}
+          >
+            <Undo2Icon className="size-3.5" /> 초안으로
+          </Button>
+        </>
+      ) : null}
+    </div>
   );
 }
 
@@ -905,11 +1009,14 @@ function QuestionRow({
   q,
   isFirst,
   isLast,
+  locked,
 }: {
   testId: string;
   q: OfflineTestQuestion;
   isFirst: boolean;
   isLast: boolean;
+  // Phase 1 T2 — draft 가 아니면 문항 편집 잠금 (서버 게이트의 미러).
+  locked: boolean;
 }) {
   const fetcher = useFetcher<{ ok?: true; error?: string }>();
   const reload = useReload();
@@ -918,7 +1025,7 @@ function QuestionRow({
       reload();
     }
   }, [fetcher.state, fetcher.data, reload]);
-  const busy = fetcher.state !== "idle";
+  const busy = fetcher.state !== "idle" || locked;
   const post = (fields: Record<string, string>) => {
     const fd = new FormData();
     fd.set("testId", testId);

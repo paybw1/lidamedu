@@ -43,6 +43,11 @@ export async function action({ request }: Route.ActionArgs) {
   if (!test || test.assignmentId !== parsed.data.assignmentId) {
     return data({ error: "테스트를 찾을 수 없습니다" }, { status: 404 });
   }
+  // Phase 1 T2 — draft 는 RLS 가 이미 가리지만, closed 는 결과 열람을 위해 노출이
+  // 유지되므로 응시 시작만 여기서 차단한다.
+  if (test.status !== "published") {
+    return data({ error: "마감된 시험지는 응시할 수 없습니다" }, { status: 400 });
+  }
   if (
     test.questions.length === 0 ||
     test.questions.some((q) => q.questionType !== "mcq")

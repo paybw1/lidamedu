@@ -38,6 +38,7 @@ import {
   listAssignmentProgress,
 } from "~/features/assignments/queries.server";
 import {
+  OFFLINE_TEST_STATUS_LABEL,
   offlineTestSubjectName,
   type OfflineTestSummary,
 } from "~/features/offline-tests/labels";
@@ -378,6 +379,18 @@ function OfflineTestsSection({
           {tests.map((t) => (
             <li key={t.testId} className="flex items-center gap-2 px-3 py-2">
               <Chip tone="outline">{offlineTestSubjectName(t)}</Chip>
+              {/* Phase 1 T2 — 배포 상태. draft 는 학생 비노출. */}
+              <Chip
+                tone={
+                  t.status === "published"
+                    ? "emerald"
+                    : t.status === "closed"
+                      ? "amber"
+                      : "outline"
+                }
+              >
+                {OFFLINE_TEST_STATUS_LABEL[t.status]}
+              </Chip>
               <Link
                 to={`/admin/cohorts/${cohortId}/assignments/${assignmentId}/tests/${t.testId}`}
                 className="hover:text-link min-w-0 flex-1 truncate text-xs font-medium"

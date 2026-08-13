@@ -13,6 +13,16 @@ import {
 
 export type OfflineQuestionType = "mcq" | "ox" | "blank";
 
+// Phase 1 T2 — 배포 게이트. draft(학생 비노출·편집 가능) / published(노출·문항 잠금·결과 입력)
+// / closed(결과 열람만). 학생 RLS 는 화이트리스트('published','closed').
+export type OfflineTestStatus = "draft" | "published" | "closed";
+
+export const OFFLINE_TEST_STATUS_LABEL: Record<OfflineTestStatus, string> = {
+  draft: "초안",
+  published: "배포됨",
+  closed: "마감",
+};
+
 export const OFFLINE_QUESTION_TYPE_LABEL: Record<OfflineQuestionType, string> = {
   mcq: "객관식",
   ox: "OX",
@@ -51,6 +61,7 @@ export interface OfflineTestSummary extends OfflineTestSubject {
   assignmentId: string;
   cohortId: string;
   title: string;
+  status: OfflineTestStatus;
   durationMin: number | null;
   questionCount: number;
   totalPoints: number;
@@ -78,6 +89,7 @@ export interface OfflineTestDetail extends OfflineTestSubject {
   assignmentId: string;
   cohortId: string;
   title: string;
+  status: OfflineTestStatus;
   durationMin: number | null;
   instructionsMd: string | null;
   // feat-7-044 — 시리즈(주간 테스트 묶음) 소속.

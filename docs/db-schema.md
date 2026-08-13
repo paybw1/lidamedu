@@ -1158,15 +1158,16 @@ create table public.popup_notices (
 **RLS**: select 는 노출 조건 행만(`is_active` + 기간내) 전체 공개 / 전체 열람·쓰기는 `manager`·`admin` (profiles role 서브쿼리). 적용 SQL: `scripts/sql/add_popup_notices.sql`.
 **학생 닫기 상태**: DB 아님 — localStorage(`popupNoticeHiddenUntil:<id>`, 닫기=10분·오늘 하루 보지 않기=자정까지).
 
-## offline_tests / offline_test_questions / offline_test_results  ✅ 적용됨 (2026-07-05, feat-7-042)
+## offline_tests / offline_test_questions / offline_test_results / offline_test_answers  ✅ 적용됨 (2026-07-05 feat-7-042 · 2026-08-13 Phase 1)
 
 오프라인 시험지 — 종합반 과제(assignment)에 붙는 빈칸·OX·객관식 조합 테스트.
 
-- **offline_tests**: test_id PK, assignment_id FK(cascade), cohort_id FK, title, law_code(5법 check, dash 표기 'civil-procedure'), duration_min, instructions_md, created_by, soft-delete(deleted_at).
-- **offline_test_questions**: test_id FK, ord, points numeric(5,1), question_type check('mcq'|'ox'|'blank') + **유형별 참조 XOR check** — mcq=problem_id / ox=ox_ref_type('choice'|'box')+ox_ref_id(폴리모픽, FK 없음)+ox_problem_id / blank=blank_set_id(article_blank_sets, 세트 전체=1문항).
-- **offline_test_results**: (test_id,user_id) unique, status('taken'|'absent'), score/max_score, wrong_ords int[](입력 당시 오답 ord 스냅샷 — 표시용), session_id(신호 합류로 만든 학생 명의 quiz_session, set null), taken_at date, entered_by.
-- **RLS**: 3테이블 staff(`private.is_staff`) 전체 CRUD. results 는 학생 본인 select 추가(과제 상세 결과 카드).
-- **문항별 정오의 원본은 이 테이블이 아니라** 학생별 quiz_session(scope_payload.source='offline_test') + user_problem_attempts/user_blank_attempts — 온라인 학습 신호와 통합 분석을 위해 backbone 에 합류시킨다. 상세: docs/features/feat-7-042-offline-test.md.
+- **offline_tests**: test_id PK, assignment_id FK(cascade), cohort_id FK, title, law_code(5법 check) XOR science_subject, **status check('draft'|'published'|'closed') default 'draft'** + published_at/closed_at(Phase 1 T2 배포 게이트 — draft=학생 비노출·편집 가능 / published=노출·문항 잠금·결과 입력 / closed=결과 열람만), duration_min, instructions_md, series_id/series_round_no(feat-7-044), created_by, soft-delete(deleted_at).
+- **offline_test_questions**: test_id FK, ord, points numeric(5,1), question_type check('mcq'|'ox'|'blank') + **유형별 참조 XOR check** — mcq=problem_id / ox=ox_ref_type('choice'|'box')+ox_ref_id(폴리모픽, FK 없음)+ox_problem_id / blank=blank_set_id(article_blank_sets, 세트 전체=1문항). ord 는 일반 인덱스(UNIQUE 아님 — 코드 규칙 유지).
+- **offline_test_results**: (test_id,user_id) unique, status('taken'|'absent'), score/max_score, session_id(신호 합류로 만든 학생 명의 quiz_session, set null), **srs_problem_applied_at/srs_ox_applied_at**(Phase 1 S1 — SRS 축별 1회 적용 마커, 정정·철회에도 재적용/되돌림 없음), taken_at date, entered_by. ※ wrong_ords int[] 는 Phase 1 T1 에서 offline_test_answers 로 대체(검증 후 제거 예정).
+- **offline_test_answers**(Phase 1 T1): PK(result_id FK cascade, question_id FK cascade) + is_correct — 문항별 정오 스냅샷, 키=question_id(불변)라 문항 편집이 스냅샷을 오염시키지 않음. N2(선택답·부분점수)는 컬럼 추가로 확장.
+- **RLS**: 4테이블 staff(`private.is_staff`) 전체 CRUD. 학생 select 는 **화이트리스트** — offline_tests/questions 는 반 멤버 + `status IN ('published','closed')`(상태값 추가 시 기본 비노출), results 는 본인, answers 는 부모 results 의 본인 소유 경유.
+- **문항별 정오의 원본은 이 테이블이 아니라** 학생별 quiz_session(scope_payload.source='offline_test') + user_problem_attempts/user_blank_attempts — 온라인 학습 신호와 통합 분석을 위해 backbone 에 합류시킨다. Phase 1 S1 로 mcq·ox 는 SRS(user_problem_srs/user_ox_ref_srs)에도 배치 합류(빈칸은 정책상 제외 — E3). 상세: docs/features/feat-7-042-offline-test.md §5c.
 
 ## LMS 시청 골격 (feat-11-001, M2)  ✅ 적용됨 (2026-07-08)
 
