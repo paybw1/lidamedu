@@ -2,6 +2,25 @@
 // 학습시간 SSOT = user_problem_attempts.time_spent_ms 합. 날짜는 KST "YYYY-MM-DD" 문자열 비교.
 import { mondayOf } from "./streak";
 
+// B1 — 문항 단위 시간 상한 (탭 방치 방어). 객관식 한 문항의 정상 최대치를 넉넉히
+// 잡은 값 — 기록 경로(OMR 시트 등)가 공유하는 단일 상수.
+export const PER_QUESTION_TIME_CAP_MS = 30 * 60_000;
+
+/**
+ * B1 — 문항별 소요시간 계산 (OMR 시트 등 "직전 조작 기준" 기록 경로 공용).
+ * - 시작점 = 직전 조작 시각(실제 조작 순서 기준 — 문항 순서 아님)
+ * - 이미 답한 문항의 수정 = 0ms (최초 응답까지의 시간 유지, 수정에 시간 미부과)
+ * - 상한 = PER_QUESTION_TIME_CAP_MS (탭 방치 방어)
+ */
+export function computePerQuestionTimeMs(
+  nowMs: number,
+  lastActionAtMs: number,
+  isRevision: boolean,
+): number {
+  if (isRevision) return 0;
+  return Math.min(PER_QUESTION_TIME_CAP_MS, Math.max(0, nowMs - lastActionAtMs));
+}
+
 export interface DayStudy {
   date: string; // KST YYYY-MM-DD
   timeMs: number;

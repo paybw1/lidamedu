@@ -40,6 +40,7 @@ import {
   isMockKind,
 } from "~/features/mcq-packs/labels";
 import { getPackById } from "~/features/mcq-packs/queries.server";
+import { computePerQuestionTimeMs } from "~/features/study/lib/study-volume";
 import { MarkdownView } from "~/features/problems/components/markdown-view";
 import { requireFeature } from "~/features/subscriptions/queries.server";
 import {
@@ -202,7 +203,14 @@ export default function McqPackSheet({ loaderData }: Route.ComponentProps) {
       // ignore quota / privacy errors
     }
   }, [graded, gradedStorageKey]);
-  const startedAtRef = useRef<number>(Date.now());
+  // B1 — 문항별 시간: 직전 조작 시각부터의 경과를 기록한다(실제 조작 순서 기준 —
+  // OMR 시트는 순서대로 풀지 않는다). 시트 진입 시각은 첫 조작의 시작점으로만 쓴다.
+  // ★구버그: 진입 시각 고정 → 조작마다 "진입 후 누적"이 문항별로 중복 기록(과대계상).
+  const lastActionAtRef = useRef<number>(Date.now());
+  // 이미 답한 문항의 수정은 최초 응답까지의 시간을 유지 — 수정 attempt 는 0ms
+  // (수정에 추가 시간을 붙이지 않는다). 시계는 조작마다 리셋해 다음 문항에
+  // 수정 체류시간이 전가되지 않게 한다.
+  const answeredRef = useRef<Set<string>>(new Set(Object.keys(initialSelected)));
   const attemptFetcher = useFetcher();
   const completeFetcher = useFetcher();
   // problemId:choiceIndex 형태로 중복 기록 방지 — 새로고침 시에도 기존 응답으로 채워둠.
@@ -221,13 +229,21 @@ export default function McqPackSheet({ loaderData }: Route.ComponentProps) {
     const key = `${problem.problemId}:${choiceIndex}`;
     if (recordedRef.current.has(key)) return;
     recordedRef.current.add(key);
+    const now = Date.now();
+    const timeSpentMs = computePerQuestionTimeMs(
+      now,
+      lastActionAtRef.current,
+      answeredRef.current.has(problem.problemId),
+    );
+    lastActionAtRef.current = now; // 이번 제출 시점 = 다음 문항의 시작시각
+    answeredRef.current.add(problem.problemId);
     const fd = new FormData();
     fd.set("problemId", problem.problemId);
     fd.set("selectedChoiceId", choice.choiceId);
     fd.set("selectedChoiceIndex", String(choiceIndex));
     fd.set("isCorrect", choice.isCorrect ? "true" : "false");
     fd.set("mode", mode);
-    fd.set("timeSpentMs", String(Math.max(0, Date.now() - startedAtRef.current)));
+    fd.set("timeSpentMs", String(timeSpentMs));
     fd.set("sessionId", session.sessionId);
     attemptFetcher.submit(fd, {
       method: "post",

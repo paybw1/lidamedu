@@ -1,57 +1,54 @@
-// feat-2-027 Phase 3 — 공부량 순수 계산 검산. 주별 합·증감·구간 버킷(순위 아님)·상위%.
-import { describe, expect, it } from "vitest";
+// B1 — 문항별 시간 계산(computePerQuestionTimeMs) 단위 검증 (Stage 1 C1~C4).
+import { describe, expect, test } from "vitest";
 
 import {
-  type DayStudy,
-  bandForTopPercent,
-  computeTopPercent,
-  studyDeltaPct,
-  weeklyStudyMs,
+  PER_QUESTION_TIME_CAP_MS,
+  computePerQuestionTimeMs,
 } from "./study-volume";
 
-describe("weeklyStudyMs", () => {
-  // 2024-01-08(월)~14(일) = 이번 주 기준 todayYmd=2024-01-10(수). 지난주 = 01-01~07.
-  const days: DayStudy[] = [
-    { date: "2024-01-06", timeMs: 1000 }, // 지난주 토
-    { date: "2024-01-07", timeMs: 2000 }, // 지난주 일
-    { date: "2024-01-08", timeMs: 3000 }, // 이번주 월
-    { date: "2024-01-10", timeMs: 500 }, // 이번주 수(오늘)
-    { date: "2024-01-12", timeMs: 9999 }, // 오늘 이후(제외)
-  ];
-  it("이번 주(월~오늘) / 지난 주(월~일) 분리 합산", () => {
-    const w = weeklyStudyMs(days, "2024-01-10");
-    expect(w.thisWeekMs).toBe(3500); // 08 + 10
-    expect(w.lastWeekMs).toBe(3000); // 06 + 07
-  });
-});
+// OMR 시트 recordAttempt 의 시계 동작을 그대로 시뮬레이션:
+// 조작마다 lastActionAt 리셋 + 답한 문항 집합 추적.
+function makeRecorder(entryAt: number) {
+  let lastActionAt = entryAt;
+  const answered = new Set<string>();
+  return (problemId: string, at: number): number => {
+    const ms = computePerQuestionTimeMs(at, lastActionAt, answered.has(problemId));
+    lastActionAt = at;
+    answered.add(problemId);
+    return ms;
+  };
+}
 
-describe("studyDeltaPct", () => {
-  it("증가/감소/지난주0", () => {
-    expect(studyDeltaPct(200, 100)).toBe(100);
-    expect(studyDeltaPct(50, 100)).toBe(-50);
-    expect(studyDeltaPct(500, 0)).toBeNull();
+describe("B1 문항별 시간 (누적 버그 수정)", () => {
+  test("C1 — 순차 응답: 누적이 아닌 개별 시간", () => {
+    const rec = makeRecorder(0);
+    expect(rec("q1", 20_000)).toBe(20_000);
+    expect(rec("q2", 50_000)).toBe(30_000); // 누적(50s)이 아니라 개별(30s)
+    expect(rec("q3", 60_000)).toBe(10_000);
   });
-});
 
-describe("bandForTopPercent (순위 아님·바닥도 격려)", () => {
-  it("경계별 구간", () => {
-    expect(bandForTopPercent(10).label).toBe("상위권");
-    expect(bandForTopPercent(25).label).toBe("상위권");
-    expect(bandForTopPercent(26).label).toBe("평균 이상");
-    expect(bandForTopPercent(50).label).toBe("평균 이상");
-    expect(bandForTopPercent(75).label).toBe("중위 그룹");
-    expect(bandForTopPercent(76).label).toBe("꾸준히 쌓는 중");
-    expect(bandForTopPercent(100).label).toBe("꾸준히 쌓는 중");
+  test("C2 — 건너뛰고 응답: 실제 조작 순서 기준", () => {
+    const rec = makeRecorder(0);
+    // 7번을 먼저 풀고 → 2번 → 다시 9번 (문항 순서 무관).
+    expect(rec("q7", 40_000)).toBe(40_000);
+    expect(rec("q2", 55_000)).toBe(15_000);
+    expect(rec("q9", 90_000)).toBe(35_000);
   });
-});
 
-describe("computeTopPercent", () => {
-  it("나보다 많은 멤버 비율(본인 포함 모집단)", () => {
-    // 본인 300, peers [100,200,400] → 1명(400) 더 많음, 모집단 4 → 25%
-    expect(computeTopPercent(300, [100, 200, 400])).toBe(25);
-    // 최다 → 0%
-    expect(computeTopPercent(500, [100, 200, 400])).toBe(0);
-    // 최저(동률 아님) → 3/4 = 75%
-    expect(computeTopPercent(50, [100, 200, 400])).toBe(75);
+  test("C3 — 이미 답한 문항 수정: 0ms + 수정 체류시간이 다음 문항에 전가되지 않음", () => {
+    const rec = makeRecorder(0);
+    expect(rec("q1", 20_000)).toBe(20_000);
+    expect(rec("q1", 80_000)).toBe(0); // 수정 — 최초 응답 시간 유지, 추가 시간 없음
+    // 수정 시점에 시계가 리셋되므로 다음 문항은 수정 이후 경과만.
+    expect(rec("q2", 95_000)).toBe(15_000);
+  });
+
+  test("C4 — 상한 클램프: 탭 방치", () => {
+    const rec = makeRecorder(0);
+    expect(rec("q1", PER_QUESTION_TIME_CAP_MS + 5_000_000)).toBe(
+      PER_QUESTION_TIME_CAP_MS,
+    );
+    // 클록 역행 방어.
+    expect(computePerQuestionTimeMs(10, 999, false)).toBe(0);
   });
 });
