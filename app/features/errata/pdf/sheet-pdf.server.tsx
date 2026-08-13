@@ -37,9 +37,9 @@ const s = StyleSheet.create({
     paddingHorizontal: 36,
     color: "#111",
   },
-  header: { borderBottomWidth: 1.5, borderBottomColor: "#111", paddingBottom: 8, marginBottom: 10 },
-  h1: { fontSize: 15 },
-  headMeta: { fontSize: 9, color: "#444", marginTop: 3 },
+  header: { borderBottomWidth: 1.5, borderBottomColor: "#111", paddingBottom: 10, marginBottom: 12 },
+  h1: { fontSize: 15, lineHeight: 1.4 },
+  headMeta: { fontSize: 9, color: "#444", marginTop: 7 },
   headRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" },
   brand: { fontSize: 9, color: "#444" },
 
