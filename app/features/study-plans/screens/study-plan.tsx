@@ -36,7 +36,9 @@ import {
 import {
   countPlanVersions,
   getActivePlan,
+  getPeriodCompliance,
   getStudentDiagnostics,
+  listLevelBasedNodeSuggestions,
   listPeriodAssignments,
   listPlanItems,
   listRecentPlanNodes,
@@ -97,6 +99,20 @@ export async function loader({ request }: Route.LoaderArgs) {
     for (const n of nodes ?? []) labelByNode.set(n.node_id, n.display_label);
   }
 
+  // Stage 3 — 신규 학생 빈 상태 폴백(승인 §1-1 권장안): 약점·최근이 모두 비면
+  // 과목별 수준(진단 직후 최신) 기반 상위 노드 제안.
+  const levelNodes =
+    weak.length === 0 && recentNodes.length === 0
+      ? await listLevelBasedNodeSuggestions(client, user.id)
+      : [];
+
+  // Stage 3 — 지표(승인 2.2: 현재 승인본 기준). 승인본이 있을 때만.
+  const todayISO = new Date(Date.now() + 9 * 3_600_000).toISOString().slice(0, 10);
+  const compliance =
+    plan?.status === "approved" || plan?.status === "submitted"
+      ? await getPeriodCompliance(client, user.id, periodStart, todayISO)
+      : null;
+
   return {
     cohortId,
     periodStart,
@@ -119,8 +135,22 @@ export async function loader({ request }: Route.LoaderArgs) {
       sub: `정답률 ${w.accuracyPct}%`,
     })),
     recentNodes,
+    levelNodes,
     assignments,
     lessons: lessonRows.map((l) => ({ lessonId: l.lesson_id, title: l.title })),
+    compliance: compliance?.noPlan
+      ? null
+      : compliance
+        ? {
+            totalExpectedMinutes: compliance.metrics!.totalExpectedMinutes,
+            totalActualMinutes: compliance.metrics!.totalActualMinutes,
+            unclassifiedRatio: compliance.metrics!.unclassifiedRatio,
+            items: compliance.metrics!.items.map((m) => ({
+              ...m,
+              title: compliance.itemTitles.get(m.itemId) ?? "",
+            })),
+          }
+        : null,
   };
 }
 
@@ -149,9 +179,13 @@ export default function StudyPlanScreen({ loaderData }: Route.ComponentProps) {
     diagnostics,
     weakNodes,
     recentNodes,
+    levelNodes,
     assignments,
     lessons,
+    compliance,
   } = loaderData;
+  // 빈 상태 폴백 — 약점·최근이 모두 비면 수준 기반 제안이 추천 자리를 채운다.
+  const pickerWeakNodes = weakNodes.length > 0 ? weakNodes : levelNodes;
   const fetcher = useFetcher<{ ok?: true; error?: string }>();
   const reload = useReload();
   useEffect(() => {
@@ -255,19 +289,39 @@ export default function StudyPlanScreen({ loaderData }: Route.ComponentProps) {
                   <SendIcon className="size-3.5" /> 제출
                 </Button>
               ) : null}
-              {plan.status === "approved" ? (
+              {/* Stage 3 — 제출 회수 (상담자 검토 전까지). */}
+              {plan.status === "submitted" ? (
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => {
-                    if (confirm("승인된 계획을 수정하려면 새 버전을 만들어 다시 승인받아야 합니다. 진행할까요?")) {
-                      post({ intent: "create_revision", planId: plan.planId });
+                    if (confirm("제출을 회수하고 다시 수정하시겠습니까?")) {
+                      post({ intent: "withdraw_plan", planId: plan.planId });
                     }
                   }}
                   disabled={fetcher.state !== "idle"}
                 >
-                  <PencilIcon className="size-3.5" /> 계획 수정 (새 버전)
+                  <PencilIcon className="size-3.5" /> 회수하고 수정
                 </Button>
+              ) : null}
+              {plan.status === "approved" ? (
+                <>
+                  <Button asChild size="sm">
+                    <a href="/study/plan/log">오늘 기록 →</a>
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      if (confirm("승인된 계획을 수정하려면 새 버전을 만들어 다시 승인받아야 합니다. 진행할까요?")) {
+                        post({ intent: "create_revision", planId: plan.planId });
+                      }
+                    }}
+                    disabled={fetcher.state !== "idle"}
+                  >
+                    <PencilIcon className="size-3.5" /> 계획 수정 (새 버전)
+                  </Button>
+                </>
               ) : null}
             </div>
           </div>
@@ -305,14 +359,58 @@ export default function StudyPlanScreen({ loaderData }: Route.ComponentProps) {
             ) : (
               <ul className="divide-border divide-y">
                 {items.map((it) => (
-                  <ItemRow key={it.itemId} item={it} editable={editable} planId={plan.planId} weakNodes={weakNodes} recentNodes={recentNodes} lessons={lessons} />
+                  <ItemRow key={it.itemId} item={it} editable={editable} planId={plan.planId} weakNodes={pickerWeakNodes} recentNodes={recentNodes} lessons={lessons} />
                 ))}
               </ul>
             )}
             {editable ? (
-              <ItemForm planId={plan.planId} periodStart={periodStart} periodEnd={periodEnd} weakNodes={weakNodes} recentNodes={recentNodes} lessons={lessons} />
+              <ItemForm planId={plan.planId} periodStart={periodStart} periodEnd={periodEnd} weakNodes={pickerWeakNodes} recentNodes={recentNodes} lessons={lessons} />
             ) : null}
           </section>
+
+          {/* Stage 3 — 지표 (승인 2.2: 현재 승인본 기준) */}
+          {compliance && plan.status === "approved" ? (
+            <section className="bg-card rounded-xl border shadow-sm">
+              <div className="flex items-center justify-between border-b px-4 py-3">
+                <h2 className="text-sm font-bold tracking-tight">이번 달 달성 현황</h2>
+                <span className="text-muted-foreground text-[11px] tabular-nums">
+                  전체 {compliance.totalActualMinutes}분 / 기대{" "}
+                  {compliance.totalExpectedMinutes}분
+                  {compliance.unclassifiedRatio !== null
+                    ? ` · 미분류 ${Math.round(compliance.unclassifiedRatio * 100)}%`
+                    : ""}
+                </span>
+              </div>
+              <ul className="divide-border divide-y">
+                {compliance.items.map((m) => {
+                  const pct =
+                    m.timeRatio === null ? null : Math.min(100, Math.round(m.timeRatio * 100));
+                  return (
+                    <li key={m.itemId} className="px-4 py-2 text-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="min-w-0 flex-1 truncate">{m.title}</span>
+                        <span className="text-muted-foreground tabular-nums">
+                          {m.actualMinutes}/{m.expectedMinutes}분 · 완료{" "}
+                          {m.fullDays}/{m.expectedDays}일
+                        </span>
+                      </div>
+                      {pct !== null ? (
+                        <div className="bg-muted mt-1 h-1.5 overflow-hidden rounded-full">
+                          <div
+                            className={cn(
+                              "h-full rounded-full",
+                              pct >= 70 ? "bg-emerald-500" : pct >= 40 ? "bg-amber-500" : "bg-rose-500",
+                            )}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ) : null}
 
           {/* F3 — 반 공통 과제 표시 (읽기 전용, 복제 없음) */}
           {assignments.length > 0 ? (

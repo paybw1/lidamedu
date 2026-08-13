@@ -35,8 +35,12 @@ import {
 import {
   computeReviewSignals,
   countPlanVersions,
+  ensureCheckpoints,
   getActivePlan,
+  getPeriodCompliance,
   getStudentDiagnostics,
+  listCheckpoints,
+  listPeriodAssignments,
   listPlanItems,
   listSubjectStatus,
 } from "~/features/study-plans/queries.server";
@@ -102,6 +106,73 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     for (const n of nodes ?? []) labelByNode.set(n.node_id, n.display_label);
   }
 
+  // Stage 3 — 체크포인트(지연 생성, checkpoint_date 소급 계산) + 지표 + 과제 이행률.
+  const todayISO = new Date(Date.now() + 9 * 3_600_000).toISOString().slice(0, 10);
+  const { data: approvedRow } = await client
+    .from("study_plans")
+    .select("plan_id")
+    .eq("user_id", params.profileId)
+    .eq("period_start", periodStart)
+    .eq("status", "approved")
+    .maybeSingle();
+  let checkpoints: Awaited<ReturnType<typeof listCheckpoints>> = [];
+  if (approvedRow) {
+    // 체크포인트는 승인본 기준 — 승인본 행 직접 조회(getActivePlan 은 in-flight 우선).
+    const { data: full } = await client
+      .from("study_plans")
+      .select(
+        "plan_id, user_id, cohort_id, period_start, period_end, version, root_plan_id, status, submitted_at, reviewed_by, reviewed_at, review_comment, baseline_locked_at, planned_weekday_minutes, planned_weekend_minutes",
+      )
+      .eq("plan_id", approvedRow.plan_id)
+      .single();
+    if (full) {
+      const approvedItems = await listPlanItems(client, full.plan_id);
+      await ensureCheckpoints(
+        client,
+        {
+          planId: full.plan_id,
+          userId: full.user_id,
+          cohortId: full.cohort_id,
+          periodStart: full.period_start,
+          periodEnd: full.period_end,
+          version: full.version,
+          rootPlanId: full.root_plan_id,
+          status: full.status as "approved",
+          submittedAt: full.submitted_at,
+          reviewedBy: full.reviewed_by,
+          reviewedAt: full.reviewed_at,
+          reviewComment: full.review_comment,
+          baselineLockedAt: full.baseline_locked_at,
+          plannedWeekdayMinutes: full.planned_weekday_minutes,
+          plannedWeekendMinutes: full.planned_weekend_minutes,
+        },
+        approvedItems,
+        user.id,
+        todayISO,
+      );
+      checkpoints = await listCheckpoints(client, full.plan_id);
+    }
+  }
+  const compliance = await getPeriodCompliance(client, params.profileId, periodStart, todayISO);
+
+  // F3 병기 — 과제 이행률 (합산 금지, 별도 지표).
+  const periodAssignments = await listPeriodAssignments(
+    client,
+    params.cohortId,
+    params.profileId,
+    periodStart,
+    periodEnd,
+  );
+  let assignmentDone = 0;
+  if (periodAssignments.length > 0) {
+    const { data: subs } = await client
+      .from("assignment_submissions")
+      .select("assignment_id, status")
+      .eq("user_id", params.profileId)
+      .in("assignment_id", periodAssignments.map((a) => a.assignmentId));
+    assignmentDone = (subs ?? []).filter((s) => s.status === "completed").length;
+  }
+
   return {
     cohort,
     role,
@@ -117,6 +188,23 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       nodeLabel: i.nodeId ? (labelByNode.get(i.nodeId) ?? null) : null,
     })),
     signals,
+    checkpoints,
+    compliance: compliance.noPlan
+      ? null
+      : {
+          totalExpectedMinutes: compliance.metrics!.totalExpectedMinutes,
+          totalActualMinutes: compliance.metrics!.totalActualMinutes,
+          plannedActualMinutes: compliance.metrics!.plannedActualMinutes,
+          unclassifiedRatio: compliance.metrics!.unclassifiedRatio,
+          items: compliance.metrics!.items.map((m) => ({
+            ...m,
+            title: compliance.itemTitles.get(m.itemId) ?? "",
+          })),
+        },
+    assignmentSummary: {
+      total: periodAssignments.length,
+      done: assignmentDone,
+    },
   };
 }
 
@@ -145,6 +233,9 @@ export default function AdminStudentPlanReview({ loaderData }: Route.ComponentPr
     versionCount,
     items,
     signals,
+    checkpoints,
+    compliance,
+    assignmentSummary,
   } = loaderData;
   const base = `/admin/cohorts/${cohort.cohortId}`;
 
@@ -174,15 +265,85 @@ export default function AdminStudentPlanReview({ loaderData }: Route.ComponentPr
           <SubjectStatusPanel userId={student.profileId} cohortId={cohort.cohortId} rows={subjectStatus} />
         </div>
 
-        {/* 우: 계획 검토·승인 */}
-        <PlanReviewPanel
-          cohortId={cohort.cohortId}
-          plan={plan}
-          versionCount={versionCount}
-          items={items}
-          signals={signals}
-          hasDiagnostics={diagnostics !== null}
-        />
+        {/* 우: 계획 검토·승인 + 진행 지표·체크포인트 */}
+        <div className="space-y-4">
+          <PlanReviewPanel
+            cohortId={cohort.cohortId}
+            plan={plan}
+            versionCount={versionCount}
+            items={items}
+            signals={signals}
+            hasDiagnostics={diagnostics !== null}
+          />
+          {compliance ? (
+            <section className="bg-card rounded-xl border shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3">
+                <h2 className="text-sm font-bold tracking-tight">진행 지표</h2>
+                <span className="text-muted-foreground text-[11px] tabular-nums">
+                  전체 {compliance.totalActualMinutes}분 / 기대{" "}
+                  {compliance.totalExpectedMinutes}분 · 미분류{" "}
+                  {compliance.unclassifiedRatio !== null
+                    ? `${Math.round(compliance.unclassifiedRatio * 100)}%`
+                    : "—"}
+                  {/* F3 — 과제 이행률은 계획 준수율과 합산하지 않고 병기 */}
+                  {" · 과제 "}
+                  {assignmentSummary.done}/{assignmentSummary.total}
+                </span>
+              </div>
+              <ul className="divide-border divide-y">
+                {compliance.items.map((m) => (
+                  <li key={m.itemId} className="flex items-center gap-2 px-4 py-1.5 text-[11px]">
+                    <span className="min-w-0 flex-1 truncate">{m.title}</span>
+                    <span className="text-muted-foreground tabular-nums">
+                      {m.actualMinutes}/{m.expectedMinutes}분 · 완료 {m.fullDays}/{m.expectedDays}일
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : (
+            <p className="text-muted-foreground rounded-xl border border-dashed px-4 py-3 text-[11px]">
+              이번 달 승인된 계획이 없어 준수율은 평가 제외(no_plan)입니다.
+              {assignmentSummary.total > 0
+                ? ` 과제 이행 ${assignmentSummary.done}/${assignmentSummary.total}.`
+                : ""}
+            </p>
+          )}
+          {checkpoints.length > 0 ? (
+            <section className="bg-card rounded-xl border shadow-sm">
+              <div className="border-b px-4 py-3">
+                <h2 className="text-sm font-bold tracking-tight">격주 체크포인트</h2>
+                <p className="text-muted-foreground mt-0.5 text-[11px]">
+                  각 시점의 스냅샷 — 이후 계획이 바뀌어도 그 날의 상태가 보존됩니다.
+                </p>
+              </div>
+              <ul className="divide-border divide-y">
+                {checkpoints.map((cp) => (
+                  <li key={cp.checkpointId} className="px-4 py-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold tabular-nums">{cp.checkpointDate}</span>
+                      <span className="text-muted-foreground tabular-nums">
+                        실제 {cp.actualMinutesToDate}분 / 계획 {cp.plannedMinutesToDate}분
+                      </span>
+                    </div>
+                    {cp.itemBreakdown.length > 0 ? (
+                      <ul className="text-muted-foreground mt-1 space-y-0.5 text-[11px]">
+                        {cp.itemBreakdown.map((b) => (
+                          <li key={b.itemId} className="flex justify-between gap-2">
+                            <span className="min-w-0 flex-1 truncate">{b.title}</span>
+                            <span className="tabular-nums">
+                              {b.actualMin}/{b.plannedMin}분 · {b.fullDays}/{b.expectedDays}일
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+        </div>
       </div>
     </AdminShell>
   );

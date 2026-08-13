@@ -1177,10 +1177,14 @@ export default [
             "/assignments/:assignmentId",
             "features/assignments/screens/student-assignment-detail.tsx",
           ),
-          // Phase 3 — 학생 월간 계획 작성·제출.
+          // Phase 3 — 학생 월간 계획 작성·제출 + 일일 기록.
           route(
             "/study/plan",
             "features/study-plans/screens/study-plan.tsx",
+          ),
+          route(
+            "/study/plan/log",
+            "features/study-plans/screens/study-plan-log.tsx",
           ),
         ],
       ),

@@ -7,7 +7,16 @@ import type { Database } from "database.types";
 
 import { sortSystematicTreeOrder } from "~/features/laws/lib/systematic-order";
 import { getWeakNodes } from "~/features/subjects/lib/weak-nodes.server";
-import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
+import {
+  LAW_SUBJECTS,
+  type LawSubjectSlug,
+} from "~/features/subjects/lib/subjects";
+
+import {
+  addDaysISO,
+  computePlanMetrics,
+  expectedDaysInRange,
+} from "./lib/expected-items";
 
 import {
   computeOverloadIndex,
@@ -507,6 +516,287 @@ export async function resolveLessonNode(
     .maybeSingle();
   if (error) throw error;
   return data?.node_id ?? null;
+}
+
+// ── Stage 3 — 일일 기록 (append-only 원장) ───────────────────────────────────
+
+export interface StudyLogRow {
+  logId: string;
+  logDate: string;
+  planItemId: string | null;
+  nodeId: string | null;
+  lessonId: string | null;
+  activityType: PlanActivityType;
+  minutes: number;
+  source: "plan_check" | "manual";
+  completion: "full" | "partial" | "none";
+  reversesLogId: string | null;
+}
+
+const LOG_SELECT =
+  "log_id, log_date, plan_item_id, node_id, lesson_id, activity_type, minutes, source, completion, reverses_log_id";
+
+function rowToLog(r: Record<string, unknown>): StudyLogRow {
+  return {
+    logId: r.log_id as string,
+    logDate: r.log_date as string,
+    planItemId: (r.plan_item_id as string | null) ?? null,
+    nodeId: (r.node_id as string | null) ?? null,
+    lessonId: (r.lesson_id as string | null) ?? null,
+    activityType: r.activity_type as PlanActivityType,
+    minutes: r.minutes as number,
+    source: r.source as "plan_check" | "manual",
+    completion: r.completion as "full" | "partial" | "none",
+    reversesLogId: (r.reverses_log_id as string | null) ?? null,
+  };
+}
+
+export async function listLogsForDate(
+  client: SupabaseClient<Database>,
+  userId: string,
+  dateISO: string,
+): Promise<StudyLogRow[]> {
+  const { data, error } = await client
+    .from("study_logs")
+    .select(LOG_SELECT)
+    .eq("user_id", userId)
+    .eq("log_date", dateISO)
+    .order("created_at");
+  if (error) throw error;
+  return (data ?? []).map((r) => rowToLog(r as Record<string, unknown>));
+}
+
+export async function listLogsForRange(
+  client: SupabaseClient<Database>,
+  userId: string,
+  fromISO: string,
+  toISO: string,
+): Promise<StudyLogRow[]> {
+  const { data, error } = await client
+    .from("study_logs")
+    .select(LOG_SELECT)
+    .eq("user_id", userId)
+    .gte("log_date", fromISO)
+    .lte("log_date", toISO)
+    .order("log_date");
+  if (error) throw error;
+  return (data ?? []).map((r) => rowToLog(r as Record<string, unknown>));
+}
+
+// ── Stage 3 — 격주 체크포인트 (checkpoint_date 기준 소급 계산, 승인 2.1) ─────
+
+export interface CheckpointRow {
+  checkpointId: string;
+  planId: string;
+  checkpointDate: string;
+  plannedMinutesToDate: number;
+  actualMinutesToDate: number;
+  itemBreakdown: Array<{
+    itemId: string;
+    title: string;
+    plannedMin: number;
+    actualMin: number;
+    fullDays: number;
+    expectedDays: number;
+  }>;
+  note: string | null;
+  createdAt: string;
+}
+
+export async function listCheckpoints(
+  client: SupabaseClient<Database>,
+  planId: string,
+): Promise<CheckpointRow[]> {
+  const { data, error } = await client
+    .from("study_plan_checkpoints")
+    .select(
+      "checkpoint_id, plan_id, checkpoint_date, planned_minutes_to_date, actual_minutes_to_date, item_breakdown, note, created_at",
+    )
+    .eq("plan_id", planId)
+    .order("checkpoint_date");
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    checkpointId: r.checkpoint_id,
+    planId: r.plan_id,
+    checkpointDate: r.checkpoint_date,
+    plannedMinutesToDate: r.planned_minutes_to_date,
+    actualMinutesToDate: r.actual_minutes_to_date,
+    itemBreakdown: (r.item_breakdown ?? []) as CheckpointRow["itemBreakdown"],
+    note: r.note,
+    createdAt: r.created_at,
+  }));
+}
+
+/** 계획의 격주 체크포인트 날짜 — period_start + 13일, + 27일 (기간 내). */
+export function checkpointDatesForPlan(periodStart: string, periodEnd: string): string[] {
+  return [addDaysISO(periodStart, 13), addDaysISO(periodStart, 27)].filter(
+    (d) => d <= periodEnd,
+  );
+}
+
+/**
+ * 도래한 체크포인트를 지연 생성(멱등 — unique(plan_id, date)).
+ * ★집계는 "현재"가 아니라 checkpoint_date 기준 소급 계산(승인 2.1) — 원장이
+ * append-only 라 언제 생성해도 동일 값이 재현된다. 기존 행은 재계산하지 않는다.
+ * 생성 주체 = 상담자 화면 로드(학생 뷰에 쓰기 부작용 없음).
+ */
+export async function ensureCheckpoints(
+  client: SupabaseClient<Database>,
+  plan: StudyPlan,
+  items: StudyPlanItem[],
+  createdBy: string,
+  todayISO: string,
+): Promise<void> {
+  if (plan.status !== "approved" && plan.status !== "superseded") return;
+  const due = checkpointDatesForPlan(plan.periodStart, plan.periodEnd).filter(
+    (d) => d <= todayISO,
+  );
+  if (due.length === 0) return;
+  const existing = await listCheckpoints(client, plan.planId);
+  const have = new Set(existing.map((c) => c.checkpointDate));
+  const missing = due.filter((d) => !have.has(d));
+  if (missing.length === 0) return;
+
+  const logs = await listLogsForRange(client, plan.userId, plan.periodStart, plan.periodEnd);
+  const titleByItem = new Map(items.map((i) => [i.itemId, i.title]));
+  const inputs = items.map((i) => ({
+    itemId: i.itemId,
+    dayScope: i.dayScope,
+    startDate: i.startDate,
+    endDate: i.endDate,
+    dailyMinutes: i.dailyMinutes,
+  }));
+
+  for (const cpDate of missing) {
+    // 소급 — cpDate 이하 로그만 (이후 로그가 있어도 그 시점 상태를 재현).
+    const metrics = computePlanMetrics(
+      inputs,
+      logs
+        .filter((l) => l.logDate <= cpDate)
+        .map((l) => ({
+          logId: l.logId,
+          planItemId: l.planItemId,
+          nodeId: l.nodeId,
+          logDate: l.logDate,
+          minutes: l.minutes,
+          completion: l.completion,
+          reversesLogId: l.reversesLogId,
+        })),
+      plan.periodStart,
+      cpDate,
+    );
+    const { error } = await client.from("study_plan_checkpoints").upsert(
+      {
+        plan_id: plan.planId,
+        checkpoint_date: cpDate,
+        planned_minutes_to_date: metrics.totalExpectedMinutes,
+        actual_minutes_to_date: metrics.totalActualMinutes,
+        item_breakdown: metrics.items.map((m) => ({
+          itemId: m.itemId,
+          title: titleByItem.get(m.itemId) ?? "",
+          plannedMin: m.expectedMinutes,
+          actualMin: m.actualMinutes,
+          fullDays: m.fullDays,
+          expectedDays: m.expectedDays,
+        })),
+        created_by: createdBy,
+      },
+      { onConflict: "plan_id,checkpoint_date", ignoreDuplicates: true }, // 스냅샷 불변
+    );
+    if (error) throw error;
+  }
+}
+
+// ── Stage 3 — 기간 지표 (준수율 = 현재 승인본 기준, 미제출 월 = null) ────────
+
+export interface PeriodCompliance {
+  noPlan: boolean;
+  metrics: ReturnType<typeof computePlanMetrics> | null;
+  itemTitles: Map<string, string>;
+  planVersionCount: number;
+}
+
+export async function getPeriodCompliance(
+  client: SupabaseClient<Database>,
+  userId: string,
+  periodStart: string,
+  toISO: string,
+): Promise<PeriodCompliance> {
+  const { data, error } = await client
+    .from("study_plans")
+    .select(PLAN_SELECT)
+    .eq("user_id", userId)
+    .eq("period_start", periodStart)
+    .eq("status", "approved")
+    .maybeSingle();
+  if (error) throw error;
+  const versionCount = await countPlanVersions(client, userId, periodStart);
+  if (!data) {
+    // 미제출/미승인 월 — 준수율 null (평가 제외, no_plan). 자동 승인 없음.
+    return { noPlan: true, metrics: null, itemTitles: new Map(), planVersionCount: versionCount };
+  }
+  const plan = rowToPlan(data as Record<string, unknown>);
+  const items = await listPlanItems(client, plan.planId);
+  const logs = await listLogsForRange(client, userId, plan.periodStart, toISO);
+  const metrics = computePlanMetrics(
+    items.map((i) => ({
+      itemId: i.itemId,
+      dayScope: i.dayScope,
+      startDate: i.startDate,
+      endDate: i.endDate,
+      dailyMinutes: i.dailyMinutes,
+    })),
+    logs.map((l) => ({
+      logId: l.logId,
+      planItemId: l.planItemId,
+      nodeId: l.nodeId,
+      logDate: l.logDate,
+      minutes: l.minutes,
+      completion: l.completion,
+      reversesLogId: l.reversesLogId,
+    })),
+    plan.periodStart,
+    toISO < plan.periodEnd ? toISO : plan.periodEnd,
+  );
+  return {
+    noPlan: false,
+    metrics,
+    itemTitles: new Map(items.map((i) => [i.itemId, i.title])),
+    planVersionCount: versionCount,
+  };
+}
+
+export { expectedDaysInRange };
+
+// ── Stage 3 — 노드 선택기 빈 상태 폴백 (Stage 2 승인 문서 §1-1 권장안) ───────
+// 신규 학생은 약점·최근이 모두 비어 전체 트리로 떨어진다 — student_subject_status
+// 의 수준 낮은 법과목(lecture_stage none/basic) 상위 노드를 제안한다.
+
+export async function listLevelBasedNodeSuggestions(
+  client: SupabaseClient<Database>,
+  userId: string,
+  limit = 8,
+): Promise<Array<{ nodeId: string; displayLabel: string; sub: string }>> {
+  const status = await listSubjectStatus(client, userId);
+  const lowLaw = status
+    .filter(
+      (s) =>
+        s.subjectKind === "law" &&
+        (s.lectureStage === "none" || s.lectureStage === "basic") &&
+        s.subjectCode !== "civil-procedure", // 체계도 없음
+    )
+    .map((s) => s.subjectCode as LawSubjectSlug);
+  if (lowLaw.length === 0) return [];
+  const out: Array<{ nodeId: string; displayLabel: string; sub: string }> = [];
+  for (const law of lowLaw) {
+    const nodes = await listPlanNodes(client, law);
+    const lawName = LAW_SUBJECTS[law]?.name ?? law;
+    for (const n of nodes.filter((x) => x.depth === 0).slice(0, 3)) {
+      out.push({ nodeId: n.nodeId, displayLabel: n.displayLabel, sub: lawName });
+      if (out.length >= limit) return out;
+    }
+  }
+  return out;
 }
 
 // ── F3 — 기간 겹침 반 과제 (표시 전용, 복제 금지) ────────────────────────────

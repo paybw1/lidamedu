@@ -538,6 +538,7 @@
 | feat-7-043 | **출결 대장** — 종합반 오프라인 수업 회차(`cohort_class_sessions`)별 출석(`cohort_attendance`: 출석/지각/결석/온라인 대체/공결). `/admin/cohorts/:id/attendance` 회차 관리+학생별 누계 출석률, 회차별 출석 체크 그리드(전원 출석 기본·예외만 변경). 학생 `/assignments` 출결 요약 카드 + at-risk "최근 결석" 신호 합류. 온·오프 병행 종합반 주간 리듬 P0-①. 상세: `docs/features/feat-7-043-attendance.md`. | P0 | ✅ |
 
 | feat-7-045 | **약점 개인 보충 과제 자동 생성** — assignments.target_profile_id(개인 과제, RLS member_read 개인 필터) + 학생별 약점(getWeakNodes)→picker seam→개인 과제 N문항. 반 과제 화면 [지금 생성]+자동 토글(cohorts.weak_assignment_auto), /api/cron/weak-assignments 주간. 주 1회 가드·최근 4주 출제 제외. 병행 종합반 P0-③(진단→처방 루프 폐쇄). 상세: `docs/features/feat-7-045-weak-personal-assignment.md`. | P0 | ✅ |
+| feat-7-047 | **오프라인 학습 통합 Phase 3 — 진단·월간 계획·승인·기록** — 종이 상담 루프의 플랫폼 이전. 학생 진단(초시/재시·가용시간·과목별 수준, 자연과학 상/중/하는 진단 테스트 `offline_tests.is_diagnostic` 정답률 자동 파생 0.7/0.4) + 월간 계획(`study_plans`/`study_plan_items`, 승인 워크플로우 `approve_study_plan` RPC 원자 전이, 과욕지수·약점회피 자동 신호, 제출 회수) + 일일 기록(`study_logs` **append-only**, 기대 항목 파생·계획 외 학습·역방향 취소) + 격주 체크포인트(`study_plan_checkpoints`, checkpoint_date 소급 계산 스냅샷) + 지표(달성률·미분류 비율·과제 이행률 병기, 준수율=현재 승인본, 미제출 월 null). 학생 `/study/plan`(+`/log`)·staff `/admin/cohorts/:id/plans`. 상세: `docs/plans/phase3-stage1-design.md`·`phase3-completion-report.md`. | P0 | ✅ |
 
 상세 스펙: `docs/spec-detail-5-7-admin.md` (작성 예정).
 

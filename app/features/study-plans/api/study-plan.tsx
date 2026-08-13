@@ -109,6 +109,132 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ ok: true });
   }
 
+  // Stage 3 — 제출 회수 (submitted → draft, reviewed_at IS NULL 한정).
+  // 상담자가 먼저 처리했으면 0행 — "이미 검토되었습니다".
+  if (intent === "withdraw_plan") {
+    const planId = String(fd.get("planId") ?? "");
+    const { data: updated, error } = await client
+      .from("study_plans")
+      .update({ status: "draft", submitted_at: null, updated_at: new Date().toISOString() })
+      .eq("plan_id", planId)
+      .eq("user_id", user.id)
+      .eq("status", "submitted")
+      .is("reviewed_at", null)
+      .select("plan_id");
+    if (error) return data({ error: "회수 실패" }, { status: 400 });
+    if (!updated?.length) {
+      return data({ error: "이미 검토가 시작되어 회수할 수 없습니다" }, { status: 400 });
+    }
+    return data({ ok: true });
+  }
+
+  // Stage 3 — 일일 기록 (append-only). 계획 항목 체크 or 계획 외 학습.
+  if (intent === "add_log") {
+    const logSchema = z.object({
+      logDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      minutes: z.coerce.number().int().min(1).max(1440),
+      completion: z.enum(["full", "partial", "none"]).default("full"),
+      activityType: z.enum([
+        "lecture",
+        "review",
+        "problem",
+        "memorize",
+        "reading",
+        "essay",
+        "other",
+      ]),
+      planItemId: z.string().uuid().optional(),
+      nodeId: z.string().uuid().optional(), // 계획 외 학습만 — 미분류 허용(E1)
+      lessonId: z.string().uuid().optional(),
+      selfDifficulty: z.coerce.number().int().min(1).max(5).optional(),
+    });
+    const parsed = logSchema.safeParse({
+      logDate: fd.get("logDate"),
+      minutes: fd.get("minutes"),
+      completion: fd.get("completion") || "full",
+      activityType: fd.get("activityType"),
+      planItemId: fd.get("planItemId") || undefined,
+      nodeId: fd.get("nodeId") || undefined,
+      lessonId: fd.get("lessonId") || undefined,
+      selfDifficulty: fd.get("selfDifficulty") || undefined,
+    });
+    if (!parsed.success) return data({ error: "입력을 확인해 주세요" }, { status: 400 });
+
+    // 노드 귀속 — 계획 항목이면 항목의 노드 상속, 아니면 직접/강의 resolver.
+    let nodeId = parsed.data.nodeId ?? null;
+    let resolvedFrom: "direct" | "lesson" | null = nodeId ? "direct" : null;
+    let lessonId = parsed.data.lessonId ?? null;
+    if (parsed.data.planItemId) {
+      const { data: item } = await client
+        .from("study_plan_items")
+        .select("node_id, lesson_id, activity_type")
+        .eq("item_id", parsed.data.planItemId)
+        .maybeSingle();
+      if (!item) return data({ error: "계획 항목을 찾을 수 없습니다" }, { status: 404 });
+      nodeId = item.node_id;
+      lessonId = item.lesson_id;
+      resolvedFrom = item.node_id ? "direct" : null;
+    }
+    if (!nodeId && lessonId) {
+      nodeId = await resolveLessonNode(client, lessonId);
+      if (nodeId) resolvedFrom = "lesson";
+    }
+
+    const { error } = await client.from("study_logs").insert({
+      user_id: user.id,
+      log_date: parsed.data.logDate,
+      plan_item_id: parsed.data.planItemId ?? null,
+      node_id: nodeId,
+      lesson_id: lessonId,
+      activity_type: parsed.data.activityType,
+      minutes: parsed.data.minutes,
+      source: parsed.data.planItemId ? "plan_check" : "manual",
+      completion: parsed.data.completion,
+      node_resolved_from: resolvedFrom,
+      self_difficulty: parsed.data.selfDifficulty ?? null,
+    });
+    if (error) return data({ error: "기록에 실패했습니다" }, { status: 400 });
+    return data({ ok: true });
+  }
+
+  // Stage 3 — 기록 취소 = 역방향 레코드 (UPDATE/DELETE 없음, append-only).
+  if (intent === "reverse_log") {
+    const logId = String(fd.get("logId") ?? "");
+    const { data: orig, error: oErr } = await client
+      .from("study_logs")
+      .select(
+        "log_id, user_id, log_date, plan_item_id, node_id, lesson_id, activity_type, minutes, source, completion",
+      )
+      .eq("log_id", logId)
+      .maybeSingle();
+    if (oErr || !orig || orig.user_id !== user.id) {
+      return data({ error: "기록을 찾을 수 없습니다" }, { status: 404 });
+    }
+    if (orig.minutes <= 0) {
+      return data({ error: "취소 레코드는 다시 취소할 수 없습니다" }, { status: 400 });
+    }
+    const { error } = await client.from("study_logs").insert({
+      user_id: user.id,
+      log_date: orig.log_date,
+      plan_item_id: orig.plan_item_id,
+      node_id: orig.node_id,
+      lesson_id: orig.lesson_id,
+      activity_type: orig.activity_type,
+      minutes: -orig.minutes,
+      source: orig.source,
+      completion: "none",
+      reverses_log_id: orig.log_id,
+    });
+    if (error) {
+      // reversal_uniq — 이미 취소된 기록.
+      if (error.code === "23505") {
+        return data({ error: "이미 취소된 기록입니다" }, { status: 409 });
+      }
+      return data({ error: "취소에 실패했습니다" }, { status: 400 });
+    }
+    return data({ ok: true });
+  }
+
   if (intent === "add_item" || intent === "update_item") {
     const planId = String(fd.get("planId") ?? "");
     const parsed = itemSchema.safeParse({

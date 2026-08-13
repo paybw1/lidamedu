@@ -1169,6 +1169,19 @@ create table public.popup_notices (
 - **RLS**: 4테이블 staff(`private.is_staff`) 전체 CRUD. 학생 select 는 **화이트리스트** — offline_tests/questions 는 반 멤버 + `status IN ('published','closed')`(상태값 추가 시 기본 비노출), results 는 본인, answers 는 부모 results 의 본인 소유 경유.
 - **문항별 정오의 원본은 이 테이블이 아니라** 학생별 quiz_session(scope_payload.source='offline_test') + user_problem_attempts/user_blank_attempts — 온라인 학습 신호와 통합 분석을 위해 backbone 에 합류시킨다. Phase 1 S1 로 mcq·ox 는 SRS(user_problem_srs/user_ox_ref_srs)에도 배치 합류(빈칸은 정책상 제외 — E3). 상세: docs/features/feat-7-042-offline-test.md §5c.
 
+## student_diagnostics / student_subject_status / study_plans / study_plan_items / study_logs / study_plan_checkpoints  ✅ 적용됨 (2026-08-13, feat-7-047 Phase 3)
+
+오프라인 종합반 진단·월간 계획·승인·일일 기록 — 설계 SSOT: `docs/plans/phase3-stage1-design.md`.
+
+- **student_diagnostics**: PK user_id, cohort_id FK, attempt_type('first'|'repeat'), weekday/weekend_minutes(0~1440 — 과욕 지수 분모), note, updated_by. 학생당 1행(현재 상태).
+- **student_subject_status**: PK(user_id, subject_kind, subject_code — 값 집합은 offline_tests CHECK 와 동일), lecture_stage(법)·science_tier/score/**total**(과학 — 비율 감사용 쌍 저장), tier_source('manual'|'diagnostic_test'|**'diagnostic_retracted'** = 진단 철회 후 재확인 필요), diagnostic_test_id FK. 파생 규칙: 정답률 ≥0.7 상 / ≥0.4 중 / 미만 하 (상수 `study-plans/labels.ts`).
+- **study_plans**: (user, period_start, version) unique + **파셜 유니크 2분할**(in-flight draft/submitted/revision_requested 1개 · approved 1개 — v1 승인 유지 중 v2 draft 공존 허용). status 머신 draft→submitted→approved→superseded(+revision_requested), **회수** = submitted→draft(학생, reviewed_at IS NULL 한정). 승인 = `approve_study_plan(p_plan_id, p_comment)` RPC(security definer — staff 역할·반 소유권 검증 + supersede→approve→baseline_locked_at·가용시간 스냅샷→항목 is_locked 원자 수행). root_plan_id = 변경 횟수 집계(★준수율은 최초 baseline 아닌 **현재 승인본** 기준 — 이력은 체크포인트가 보존).
+- **study_plan_items**: plan FK cascade, title(분량 자유 기술)+daily_minutes(필수)+day_scope('weekday'|'weekend'|'all')+start/end_date+activity_type(7종)+node_id nullable(E1 — 센티넬 없음, 분석은 IS NOT NULL 격리)+lesson_id(resolver 입력 원장). 일간 슬롯 테이블 없음 — 기대 항목은 (기간×요일범위) 파생(`study-plans/lib/expected-items.ts`).
+- **study_logs**: **append-only 원장** — 학생 SELECT+INSERT 만(UPDATE/DELETE 정책 자체 없음, staff 도 SELECT 만 = 대리 입력 금지). 취소 = reverses_log_id + 음수 분(역방향 레코드, reversal_uniq 로 이중 취소 차단, insert 시 본인 로그·본인 계획 항목 소유 검증). source('plan_check'|'manual' — 'timer'는 Phase 4). node_id NULL 허용(미분류 — 총 시간엔 포함, 노드 분석에서 격리).
+- **study_plan_checkpoints**: unique(plan_id, checkpoint_date — 지연 생성 멱등 키). ★집계는 **checkpoint_date 기준 소급 계산**(append-only 원장 전제 — 늦게 생성해도 그 시점 값 재현), 기존 행 재계산 금지. 생성 주체 = 상담자 화면 로드(학생 뷰 쓰기 부작용 없음). 날짜 = period_start+13일·+27일.
+- **offline_tests.is_diagnostic**(boolean default false): 진단 테스트 지정 — 성적 저장 시 응시(taken) 학생 전원의 science tier 자동 갱신(`offline_test_answers` 정답 수 기반), absent 철회 시 값 유지 + tier_source='diagnostic_retracted'.
+- **RLS**: staff 전체(is_staff — 반 소유권은 API 게이트) / 학생: 진단·수준 본인 read, 계획 본인 CRUD(편집 = draft·revision_requested·회수 화이트리스트, cohort 멤버십 재검증), 항목 부모 경유 + is_locked 차단, 로그 본인 read+insert, 체크포인트 부모 경유 read.
+
 ## LMS 시청 골격 (feat-11-001, M2)  ✅ 적용됨 (2026-07-08)
 
 영상 강의 LMS 1단계 — 설계 SSOT: `docs/features/lidamedu-이전-M1-설계.md`. 기존 `lecture_*`(강의노트 PDF 도메인)와 별개 — 신규는 `course_/lesson_/enrollment_` 접두어.
