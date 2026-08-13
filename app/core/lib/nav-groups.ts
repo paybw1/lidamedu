@@ -103,7 +103,8 @@ export const NAV_GROUP_POOL = {
       { label: "기출문제", to: "/latest/mcq?kind=past_exam" },
       // 논문·합격자 분석 = 오픈 준비 중 → 학생 숨김, staff 만 노출(staffOnly).
       { label: "논문", to: "/latest/papers", staffOnly: true },
-      { label: "추록·정오표", to: "/latest/book-updates" },
+      // errata Phase 4a — 교재별 누적 PDF 목록으로 교체(舊 book-updates 화면 대체).
+      { label: "추록·정오표", to: "/study/errata" },
       // 합격자 분석(추이·점수분포·선택과목) = 데이터. 합격 수기(서사)는 커뮤니티로 통합 —
       // 학습정보는 '분석', 커뮤니티는 '수기'로 역할 분리(중복 진입점 제거).
       { label: "합격자 분석", to: "/study/passer-trend", staffOnly: true },

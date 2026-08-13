@@ -539,6 +539,14 @@ export default [
         route("/book-updates", "features/latest/screens/book-updates.tsx"),
       ]),
 
+      // errata Phase 4a — 추록·정오표 PDF 목록 (nav 학습정보. 舊 /latest/book-updates 대체).
+      route("/study/errata", "features/errata/screens/errata-list.tsx"),
+      // errata Phase 4a §8-5 — 어드민 시트 관리 (수동 재렌더).
+      route(
+        "/admin/errata-sheets",
+        "features/errata/screens/admin-errata-sheets.tsx",
+      ),
+
       // 주관식 강의자료 인쇄본 (staff 전용) — 과목 게이트 밖, loader 에서 staff 검사.
       route(
         "/subjects/:subject/problems/:problemId/handout",

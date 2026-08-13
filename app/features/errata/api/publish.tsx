@@ -5,6 +5,8 @@ import { z } from "zod";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { runAfterResponse } from "~/core/lib/wait-until.server";
+import { regenerateForRevisions } from "~/features/errata/pdf/regenerate.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   ANSWER_FIELDS,
@@ -252,6 +254,10 @@ export async function action({ request }: Route.ActionArgs) {
       .update({ requires_regrade: true })
       .in("revision_id", publishedIds);
   }
+
+  // §3.3 — 영향 교재 시트 자동 재렌더. 발행은 이미 커밋 — 렌더 실패는 발행을
+  // 롤백하지 않는다(응답 후 실행 + 실패 로그, 어드민 수동 재렌더로 복구).
+  runAfterResponse(regenerateForRevisions(publishedIds));
 
   return data({ ok: true, publishedIds });
 }

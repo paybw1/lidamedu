@@ -6,6 +6,7 @@ import { z } from "zod";
 import { assertSubjectWritable } from "~/core/lib/staff-subject-guard.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { runAfterResponse } from "~/core/lib/wait-until.server";
+import { regenerateForRevisions } from "~/features/errata/pdf/regenerate.server";
 import { reindexArticles } from "~/features/ai-qna/lib/source-chunker.server";
 import { articleDisplayPrefix } from "~/features/laws/lib/identifier";
 import { getStaffRole } from "~/features/laws/queries.server";
@@ -448,7 +449,15 @@ export async function action({ request }: Route.ActionArgs) {
             p_errata_reason: `공포 ${parsed.data.promulgatedAt} · 시행 ${parsed.data.effectiveDate}`,
           },
         );
-        if (!pubErr) errataPublished = (published ?? []).length;
+        if (!pubErr) {
+          errataPublished = (published ?? []).length;
+          // §3.3 — 발행된 조문 원장 묶음의 영향 교재 시트 재렌더 (실패는 발행과 격리).
+          if (errataPublished > 0) {
+            runAfterResponse(
+              regenerateForRevisions((published ?? []) as string[]),
+            );
+          }
+        }
       }
     }
     return data({ ok: true, errataPublished });
