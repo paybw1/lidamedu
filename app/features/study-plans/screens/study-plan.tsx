@@ -23,6 +23,11 @@ import { cn } from "~/core/lib/utils";
 import { getWeakNodes } from "~/features/subjects/lib/weak-nodes.server";
 import { NodePicker } from "~/features/study-plans/components/node-picker";
 import {
+  PlanCalendar,
+  type CalendarHighlight,
+} from "~/features/study-plans/components/plan-calendar";
+import { buildCalendarDays } from "~/features/study-plans/lib/expected-items";
+import {
   DAY_SCOPE_LABEL,
   PLAN_ACTIVITY_LABEL,
   PLAN_ACTIVITY_TYPES,
@@ -39,6 +44,7 @@ import {
   getPeriodCompliance,
   getStudentDiagnostics,
   listLevelBasedNodeSuggestions,
+  listLogsForRange,
   listPeriodAssignments,
   listPlanItems,
   listRecentPlanNodes,
@@ -113,7 +119,25 @@ export async function loader({ request }: Route.LoaderArgs) {
       ? await getPeriodCompliance(client, user.id, periodStart, todayISO)
       : null;
 
+  // 캘린더 달성 점 — 승인본이 있을 때만 (초안 단계 '미기록' 소음 방지).
+  const monthLogs =
+    plan?.status === "approved"
+      ? (await listLogsForRange(client, user.id, periodStart, periodEnd)).map(
+          (l) => ({
+            logId: l.logId,
+            planItemId: l.planItemId,
+            nodeId: l.nodeId,
+            logDate: l.logDate,
+            minutes: l.minutes,
+            completion: l.completion,
+            reversesLogId: l.reversesLogId,
+          }),
+        )
+      : [];
+
   return {
+    todayISO,
+    monthLogs,
     cohortId,
     periodStart,
     periodEnd,
@@ -183,6 +207,8 @@ export default function StudyPlanScreen({ loaderData }: Route.ComponentProps) {
     assignments,
     lessons,
     compliance,
+    todayISO,
+    monthLogs,
   } = loaderData;
   // 빈 상태 폴백 — 약점·최근이 모두 비면 수준 기반 제안이 추천 자리를 채운다.
   const pickerWeakNodes = weakNodes.length > 0 ? weakNodes : levelNodes;
@@ -208,6 +234,38 @@ export default function StudyPlanScreen({ loaderData }: Route.ComponentProps) {
       ),
     [items, diagnostics],
   );
+
+  // 캘린더 — 날짜별 기대 부하(파생) + 승인 상태면 달성 점.
+  const [calendarHighlight, setCalendarHighlight] =
+    useState<CalendarHighlight | null>(null);
+  const calendarDays = useMemo(
+    () =>
+      buildCalendarDays(
+        items.map((i) => ({
+          itemId: i.itemId,
+          dayScope: i.dayScope,
+          startDate: i.startDate,
+          endDate: i.endDate,
+          dailyMinutes: i.dailyMinutes,
+        })),
+        monthLogs,
+        periodStart,
+        periodEnd,
+        todayISO,
+      ),
+    [items, monthLogs, periodStart, periodEnd, todayISO],
+  );
+  const overloadedDates = useMemo(() => {
+    const set = new Set<string>();
+    if (!diagnostics) return set;
+    for (const d of calendarDays) {
+      const avail = d.weekend
+        ? diagnostics.weekendMinutes
+        : diagnostics.weekdayMinutes;
+      if (avail && avail > 0 && d.expectedMinutes > avail) set.add(d.date);
+    }
+    return set;
+  }, [calendarDays, diagnostics]);
 
   const post = (fields: Record<string, string>) => {
     const fd = new FormData();
@@ -339,6 +397,28 @@ export default function StudyPlanScreen({ loaderData }: Route.ComponentProps) {
             hasDiagnostics={diagnostics !== null}
           />
 
+          {/* 월 캘린더 — 날짜별 부하 미리보기(작성 중) / 달성 현황(승인 후) */}
+          <section className="bg-card rounded-xl border p-3 shadow-sm sm:p-4">
+            <PlanCalendar
+              variant="full"
+              days={calendarDays}
+              todayISO={todayISO}
+              showStatus={plan.status === "approved"}
+              highlight={calendarHighlight}
+              overloadedDates={overloadedDates}
+              dayHref={
+                plan.status === "approved"
+                  ? (d) => `/study/plan/log?date=${d.date}`
+                  : undefined
+              }
+            />
+            <p className="text-muted-foreground mt-2 text-[11px]">
+              {plan.status === "approved"
+                ? "날짜를 누르면 그 날의 기록 화면으로 이동합니다."
+                : "항목에 마우스를 올리면 적용 기간이 파랗게 표시됩니다. 붉은 날은 계획 합계가 가용시간을 넘는 날입니다."}
+            </p>
+          </section>
+
           {/* 항목 목록 */}
           <section className="bg-card rounded-xl border shadow-sm">
             <div className="flex items-center justify-between border-b px-4 py-3">
@@ -359,7 +439,7 @@ export default function StudyPlanScreen({ loaderData }: Route.ComponentProps) {
             ) : (
               <ul className="divide-border divide-y">
                 {items.map((it) => (
-                  <ItemRow key={it.itemId} item={it} editable={editable} planId={plan.planId} weakNodes={pickerWeakNodes} recentNodes={recentNodes} lessons={lessons} />
+                  <ItemRow key={it.itemId} item={it} editable={editable} planId={plan.planId} weakNodes={pickerWeakNodes} recentNodes={recentNodes} lessons={lessons} onHover={setCalendarHighlight} />
                 ))}
               </ul>
             )}
@@ -520,6 +600,7 @@ function ItemRow({
   weakNodes,
   recentNodes,
   lessons,
+  onHover,
 }: {
   item: LoaderItem;
   editable: boolean;
@@ -527,6 +608,7 @@ function ItemRow({
   weakNodes: Array<{ nodeId: string; displayLabel: string; sub?: string | null }>;
   recentNodes: Array<{ nodeId: string; displayLabel: string }>;
   lessons: LessonOption[];
+  onHover: (h: CalendarHighlight | null) => void;
 }) {
   const fetcher = useFetcher<{ ok?: true; error?: string }>();
   const reload = useReload();
@@ -557,7 +639,13 @@ function ItemRow({
   }
 
   return (
-    <li className="flex items-center gap-2 px-4 py-2.5 text-xs">
+    <li
+      className="flex items-center gap-2 px-4 py-2.5 text-xs"
+      onMouseEnter={() =>
+        onHover({ start: item.startDate, end: item.endDate, scope: item.dayScope })
+      }
+      onMouseLeave={() => onHover(null)}
+    >
       {item.priority !== null ? (
         <span className="bg-muted text-foreground/70 inline-flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold tabular-nums">
           {item.priority}

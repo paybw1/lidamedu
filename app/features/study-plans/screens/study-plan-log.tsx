@@ -7,8 +7,6 @@ import type { Route } from "./+types/study-plan-log";
 
 import {
   CheckCircle2Icon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   PlusIcon,
   Undo2Icon,
 } from "lucide-react";
@@ -29,8 +27,10 @@ import {
   currentMonthPeriod,
   type PlanActivityType,
 } from "~/features/study-plans/labels";
+import { PlanCalendar } from "~/features/study-plans/components/plan-calendar";
 import {
   addDaysISO,
+  buildCalendarDays,
   expectedItemsForDate,
   isWeekendDate,
 } from "~/features/study-plans/lib/expected-items";
@@ -38,6 +38,7 @@ import {
   getActivePlan,
   listLevelBasedNodeSuggestions,
   listLogsForDate,
+  listLogsForRange,
   listPlanItems,
   listRecentPlanNodes,
 } from "~/features/study-plans/queries.server";
@@ -49,6 +50,17 @@ export const meta: Route.MetaFunction = () => [
 function todayKST(): string {
   const kst = new Date(Date.now() + 9 * 3_600_000);
   return kst.toISOString().slice(0, 10);
+}
+
+/** 날짜가 속한 달의 [1일, 말일]. */
+function monthRangeOf(dateISO: string): { monthStart: string; monthEnd: string } {
+  const y = Number(dateISO.slice(0, 4));
+  const m = Number(dateISO.slice(5, 7));
+  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return {
+    monthStart: `${dateISO.slice(0, 8)}01`,
+    monthEnd: `${dateISO.slice(0, 8)}${String(last).padStart(2, "0")}`,
+  };
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -77,8 +89,11 @@ export async function loader({ request }: Route.LoaderArgs) {
   const items = approvedRow ? await listPlanItems(client, approvedRow.plan_id) : [];
   const expected = expectedItemsForDate(items, date);
 
-  const [logs, weak, recentNodes, levelNodes] = await Promise.all([
+  // 미니 캘린더 — 보고 있는 날짜가 속한 달 전체의 달성 현황.
+  const { monthStart, monthEnd } = monthRangeOf(date);
+  const [logs, monthLogs, weak, recentNodes, levelNodes] = await Promise.all([
     listLogsForDate(client, user.id, date),
+    listLogsForRange(client, user.id, monthStart, monthEnd),
     getWeakNodes(client, user.id, ["patent", "trademark", "design", "civil"], 5),
     listRecentPlanNodes(client, user.id),
     listLevelBasedNodeSuggestions(client, user.id),
@@ -86,6 +101,25 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   return {
     date,
+    today: todayKST(),
+    monthStart,
+    monthEnd,
+    planItems: items.map((i) => ({
+      itemId: i.itemId,
+      dayScope: i.dayScope,
+      startDate: i.startDate,
+      endDate: i.endDate,
+      dailyMinutes: i.dailyMinutes,
+    })),
+    monthLogs: monthLogs.map((l) => ({
+      logId: l.logId,
+      planItemId: l.planItemId,
+      nodeId: l.nodeId,
+      logDate: l.logDate,
+      minutes: l.minutes,
+      completion: l.completion,
+      reversesLogId: l.reversesLogId,
+    })),
     isWeekend: isWeekendDate(date),
     hasApprovedPlan: Boolean(approvedRow),
     inflightStatus: activePlan?.status ?? null,
@@ -112,6 +146,11 @@ const API = "/api/study-plan";
 export default function StudyPlanLog({ loaderData }: Route.ComponentProps) {
   const {
     date,
+    today,
+    monthStart,
+    monthEnd,
+    planItems,
+    monthLogs,
     isWeekend,
     hasApprovedPlan,
     inflightStatus,
@@ -121,6 +160,11 @@ export default function StudyPlanLog({ loaderData }: Route.ComponentProps) {
     recentNodes,
     levelNodes,
   } = loaderData;
+
+  // 미니 캘린더 — 달성 현황 파생 + 월 이동 링크.
+  const calendarDays = buildCalendarDays(planItems, monthLogs, monthStart, monthEnd, today);
+  const prevMonthStart = `${addDaysISO(monthStart, -1).slice(0, 8)}01`;
+  const nextMonthStart = addDaysISO(monthEnd, 1);
 
   // 항목별 유효(비취소) 기록 — 부호 합.
   const reversedIds = new Set(logs.map((l) => l.reversesLogId).filter(Boolean));
@@ -146,24 +190,28 @@ export default function StudyPlanLog({ loaderData }: Route.ComponentProps) {
             월간 계획 →
           </Link>
         </div>
+        <div className="bg-card mt-3 rounded-xl border p-3 shadow-sm">
+          <PlanCalendar
+            variant="mini"
+            days={calendarDays}
+            todayISO={today}
+            selectedDate={date}
+            dayHref={(d) => `?date=${d.date}`}
+            prevHref={`?date=${prevMonthStart}`}
+            nextHref={`?date=${nextMonthStart}`}
+          />
+        </div>
         <div className="mt-2 flex items-center gap-2 text-sm">
-          <Link
-            to={`?date=${addDaysISO(date, -1)}`}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <ChevronLeftIcon className="size-4" />
-          </Link>
           <span className="font-medium tabular-nums">
             {date} ({isWeekend ? "주말" : "평일"})
           </span>
-          <Link
-            to={`?date=${addDaysISO(date, 1)}`}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <ChevronRightIcon className="size-4" />
-          </Link>
+          {date !== today ? (
+            <Link to={`?date=${today}`} className="text-link text-xs hover:underline">
+              오늘로
+            </Link>
+          ) : null}
           <span className="text-muted-foreground ml-auto text-xs tabular-nums">
-            오늘 합계 {totalMinutes}분
+            합계 {totalMinutes}분
           </span>
         </div>
       </header>

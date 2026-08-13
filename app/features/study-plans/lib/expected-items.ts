@@ -18,7 +18,7 @@ export function isWeekendDate(dateISO: string): boolean {
   return dow === 0 || dow === 6;
 }
 
-function scopeMatches(scope: DayScope, weekend: boolean): boolean {
+export function scopeMatches(scope: DayScope, weekend: boolean): boolean {
   return scope === "all" || (scope === "weekend") === weekend;
 }
 
@@ -84,6 +84,82 @@ export interface PlanMetrics {
   plannedActualMinutes: number; // 계획 항목 연결분
   unclassifiedMinutes: number; // node_id NULL (분석 격리 대상, 총 시간에는 포함)
   unclassifiedRatio: number | null;
+}
+
+// ── 월 캘린더 파생 (계획·기록 화면 공용) ─────────────────────────────────────
+// 일간 슬롯 테이블 없음 — 날짜별 기대·달성은 전부 여기서 파생한다.
+
+export type CalendarDayStatus =
+  | "done" // 기대 항목 전부 완료 기록
+  | "partial" // 일부만 기록 (부분 포함)
+  | "missed" // 지난 날인데 기록 없음
+  | "pending" // 오늘·미래 — 아직 기록 전
+  | "free"; // 그날 기대 항목 없음
+
+export interface CalendarDay {
+  date: string;
+  weekend: boolean;
+  expectedCount: number;
+  expectedMinutes: number;
+  /** 부호 합산(취소 상쇄) — 계획 외 기록 포함. */
+  loggedMinutes: number;
+  fullCount: number;
+  status: CalendarDayStatus;
+}
+
+export function buildCalendarDays(
+  items: readonly ExpectedItemInput[],
+  logs: readonly LogInput[],
+  fromISO: string,
+  toISO: string,
+  todayISO: string,
+): CalendarDay[] {
+  const reversed = new Set(
+    logs.map((l) => l.reversesLogId).filter((v): v is string => !!v),
+  );
+  const logsByDate = new Map<string, LogInput[]>();
+  for (const l of logs) {
+    const arr = logsByDate.get(l.logDate);
+    if (arr) arr.push(l);
+    else logsByDate.set(l.logDate, [l]);
+  }
+  const out: CalendarDay[] = [];
+  for (let d = fromISO; d <= toISO; d = addDaysISO(d, 1)) {
+    const weekend = isWeekendDate(d);
+    const expected = items.filter(
+      (i) => i.startDate <= d && d <= i.endDate && scopeMatches(i.dayScope, weekend),
+    );
+    const dayLogs = logsByDate.get(d) ?? [];
+    const loggedMinutes = dayLogs.reduce((s, l) => s + l.minutes, 0);
+    const fullItems = new Set(
+      dayLogs
+        .filter(
+          (l) =>
+            l.minutes > 0 &&
+            l.completion === "full" &&
+            l.planItemId &&
+            !reversed.has(l.logId),
+        )
+        .map((l) => l.planItemId as string),
+    );
+    const fullCount = expected.filter((i) => fullItems.has(i.itemId)).length;
+    let status: CalendarDayStatus;
+    if (expected.length === 0) status = "free";
+    else if (fullCount === expected.length) status = "done";
+    else if (loggedMinutes > 0) status = "partial";
+    else if (d < todayISO) status = "missed";
+    else status = "pending";
+    out.push({
+      date: d,
+      weekend,
+      expectedCount: expected.length,
+      expectedMinutes: expected.reduce((s, i) => s + i.dailyMinutes, 0),
+      loggedMinutes,
+      fullCount,
+      status,
+    });
+  }
+  return out;
 }
 
 /** [from, to] 구간 지표 — 준수율·달성률·미분류 비율 (승인 2.2: 현재 승인본 기준). */
