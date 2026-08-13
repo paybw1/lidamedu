@@ -4,8 +4,13 @@
 import type { Route } from "./+types/errata-list";
 
 import { DownloadIcon, FileTextIcon } from "lucide-react";
+import { useSearchParams } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import {
+  ERRATA_SUBJECT_TABS,
+  type ErrataSubjectCode,
+} from "~/features/errata/labels";
 
 export const meta: Route.MetaFunction = () => [
   { title: "추록·정오표 | 리담변리사학원" },
@@ -28,6 +33,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const books = (rows ?? [])
     .map((r) => ({
       editionId: r.edition_id,
+      subjectCode: r.publications?.subject_code ?? "",
       title: r.publications?.title ?? "?",
       editionLabel: r.edition_label,
       examYear: r.target_exam_year,
@@ -43,8 +49,25 @@ export async function loader({ request }: Route.LoaderArgs) {
   return { books };
 }
 
+const DEFAULT_SUBJECT: ErrataSubjectCode = "patent";
+
 export default function ErrataList({ loaderData }: Route.ComponentProps) {
   const { books } = loaderData;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawSubject = searchParams.get("subject");
+  const subject: ErrataSubjectCode = ERRATA_SUBJECT_TABS.some(
+    (t) => t.code === rawSubject,
+  )
+    ? (rawSubject as ErrataSubjectCode)
+    : DEFAULT_SUBJECT;
+  const visible = books.filter((b) => b.subjectCode === subject);
+  const newCounts = new Map(
+    ERRATA_SUBJECT_TABS.map((t) => [
+      t.code,
+      books.filter((b) => b.subjectCode === t.code && b.isNew).length,
+    ]),
+  );
+
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-8">
       <h1 className="flex items-center gap-2 text-xl font-bold">
@@ -54,13 +77,43 @@ export default function ErrataList({ loaderData }: Route.ComponentProps) {
         시험 대비 교재의 정오 안내입니다. 출력해서 교재에 끼워 사용하세요.
       </p>
 
-      <div className="mt-6 divide-y rounded-xl border">
-        {books.length === 0 ? (
+      <div className="mt-5 flex flex-wrap gap-1.5">
+        {ERRATA_SUBJECT_TABS.map((t) => {
+          const active = t.code === subject;
+          const hasNew = (newCounts.get(t.code) ?? 0) > 0;
+          return (
+            <button
+              key={t.code}
+              type="button"
+              onClick={() =>
+                setSearchParams(
+                  t.code === DEFAULT_SUBJECT ? {} : { subject: t.code },
+                  { replace: true, preventScrollReset: true },
+                )
+              }
+              className={`relative rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                active
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-input text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              {t.label}
+              {hasNew && !active ? (
+                <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-rose-500" />
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-4 divide-y rounded-xl border">
+        {visible.length === 0 ? (
           <p className="text-muted-foreground p-6 text-center text-sm">
-            등록된 교재가 없습니다.
+            아직 등록된 교재가 없습니다. 교재가 발간되면 이곳에서 정오 안내를
+            받을 수 있습니다.
           </p>
         ) : (
-          books.map((b) => {
+          visible.map((b) => {
             const hasSheet = b.itemCount > 0 && b.url;
             const href = hasSheet
               ? `${b.url}?v=${new Date(b.updatedAt!).getTime()}`

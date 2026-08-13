@@ -52,3 +52,15 @@ export const DEFAULT_KIND_BY_CONTEXT: Record<string, ErrataKind> = {
   case_edit: "precedent_change",
   problem_edit: "typo",
 };
+
+// 추록·정오표 목록의 과목 탭 — publications.subject_code 와 1:1.
+// 판본이 아직 없는 과목도 버튼은 항상 노출한다(빈 상태 안내).
+export const ERRATA_SUBJECT_TABS = [
+  { code: "patent", label: "특허법" },
+  { code: "trademark", label: "상표법" },
+  { code: "design", label: "디자인보호법" },
+  { code: "civil", label: "민법" },
+  { code: "civil_procedure", label: "민사소송법" },
+  { code: "science", label: "자연과학" },
+] as const;
+export type ErrataSubjectCode = (typeof ERRATA_SUBJECT_TABS)[number]["code"];
