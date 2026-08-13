@@ -1232,3 +1232,12 @@ create table public.popup_notices (
 - **refund_requests** (feat-8-029 P3): 사용자 개시 환불요청. order_item_id·user_id·reason·status(pending/approved/rejected)·resolved_by/at·resolve_note·refunded_krw. 항목당 대기중 1건 부분 유니크 인덱스. RLS: 학생 insert 본인·select 본인+staff, 승인/거절 UPDATE 는 service_role(adminClient). 승인=refundOrderItem(토스 부분취소·회수·CS 미러) 실행 후 approved 기록.
 - **v_sales_daily / v_sales_books**: 주문 기준 매출 파생 뷰(저장 아님, security_invoker).
 - **duty 확장**: staff_duty_assignments CHECK += lms_video_admin(시리즈·도서)/lms_cs(수강권·기기)/lms_orders_admin(주문·배송)/lms_stats_view — 6개 LMS 화면 access 게이트(원장 항상, 관리자 관리에서 배정).
+
+## 추록/정오표 개정 원장 (errata Phase 1)  ✅ 적용됨 (2026-08-13)
+
+> 상세: `docs/errata/errata-phase1-decisions-v1.2.1.md`(결정) · `docs/errata/phase1-completion.md`(설치·검증) · DDL `scripts/sql/20260813_errata_revision_ledger.sql`
+
+- **content_revisions**: 콘텐츠 개정 원장(append-only — 변경 실체 수정·삭제 트리거로 차단, TRUNCATE/DROP 금지). 3축 상태: notice_status(고지)/apply_status(콘텐츠)/merge_status(판본). content_type(statute/precedent/mcq/essay/theory)+content_id(text — 조문=article_id, 선지=부모 problem_id), source_ref/subject_ref(원본 참조 — subject_code 정규화는 Phase 3)/app_name(application_name 기록), before/after_snapshot·changed_fields. RLS: select/update=`private.is_staff()`, INSERT 정책 없음(security definer 트리거만).
+- **revision_suppress_windows**: 대량 배치 중 기록 억제 창(최대 2h 자동 만료, 이력=감사 자료·삭제 금지). `fn_open_suppress_window(reason,min,scope)`/`fn_close_*` — **staff/service_role 전용**. GUC `lidam.skip_revision_log`(SQL 직결 보조)와 OR 판정.
+- **트리거 4종**: problem_choices(①최우선, 정답 정정)·problems(②, format 파생 mcq/essay)·article_revisions(③ INSERT만 — before=시행 순서 직전 리비전, effective_date 미래면 apply_status='scheduled')·cases(④ precedent, 제외컬럼 6종: updated_at·search_tsv·official_text_*·pending_primary_node_id). ★articles 본체 트리거 없음(Phase 2 재판단). ★대량 배치 전 억제 창 필수 — 원장은 지울 수 없다.
+- 뷰: v_revision_recent / v_revision_merge_pending (security_invoker).

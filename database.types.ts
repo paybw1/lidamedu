@@ -4006,6 +4006,117 @@ export type Database = {
           },
         ]
       }
+      content_revisions: {
+        Row: {
+          after_snapshot: Json | null
+          app_name: string | null
+          applied_at: string | null
+          applies_from_exam_round: number | null
+          apply_status: string
+          before_snapshot: Json | null
+          changed_fields: string[]
+          content_id: string
+          content_type: string
+          created_at: string
+          created_by: string | null
+          created_by_label: string | null
+          effective_date: string | null
+          errata_kind: string | null
+          errata_payload: Json | null
+          errata_reason: string | null
+          errata_severity: string | null
+          errata_title: string | null
+          legal_basis: Json | null
+          merge_status: string
+          merged_at: string | null
+          merged_into_edition_id: string | null
+          node_id: string | null
+          notice_status: string
+          op: string
+          pending_payload: Json | null
+          published_at: string | null
+          requires_regrade: boolean
+          revision_id: string
+          scheduled_for: string | null
+          source_edition_id: string | null
+          source_ref: Json | null
+          subject_code: string | null
+          subject_ref: Json | null
+        }
+        Insert: {
+          after_snapshot?: Json | null
+          app_name?: string | null
+          applied_at?: string | null
+          applies_from_exam_round?: number | null
+          apply_status?: string
+          before_snapshot?: Json | null
+          changed_fields?: string[]
+          content_id: string
+          content_type: string
+          created_at?: string
+          created_by?: string | null
+          created_by_label?: string | null
+          effective_date?: string | null
+          errata_kind?: string | null
+          errata_payload?: Json | null
+          errata_reason?: string | null
+          errata_severity?: string | null
+          errata_title?: string | null
+          legal_basis?: Json | null
+          merge_status?: string
+          merged_at?: string | null
+          merged_into_edition_id?: string | null
+          node_id?: string | null
+          notice_status?: string
+          op: string
+          pending_payload?: Json | null
+          published_at?: string | null
+          requires_regrade?: boolean
+          revision_id?: string
+          scheduled_for?: string | null
+          source_edition_id?: string | null
+          source_ref?: Json | null
+          subject_code?: string | null
+          subject_ref?: Json | null
+        }
+        Update: {
+          after_snapshot?: Json | null
+          app_name?: string | null
+          applied_at?: string | null
+          applies_from_exam_round?: number | null
+          apply_status?: string
+          before_snapshot?: Json | null
+          changed_fields?: string[]
+          content_id?: string
+          content_type?: string
+          created_at?: string
+          created_by?: string | null
+          created_by_label?: string | null
+          effective_date?: string | null
+          errata_kind?: string | null
+          errata_payload?: Json | null
+          errata_reason?: string | null
+          errata_severity?: string | null
+          errata_title?: string | null
+          legal_basis?: Json | null
+          merge_status?: string
+          merged_at?: string | null
+          merged_into_edition_id?: string | null
+          node_id?: string | null
+          notice_status?: string
+          op?: string
+          pending_payload?: Json | null
+          published_at?: string | null
+          requires_regrade?: boolean
+          revision_id?: string
+          scheduled_for?: string | null
+          source_edition_id?: string | null
+          source_ref?: Json | null
+          subject_code?: string | null
+          subject_ref?: Json | null
+        }
+        Relationships: []
+      }
       content_sync_logs: {
         Row: {
           created_at: string
@@ -11052,6 +11163,36 @@ export type Database = {
           },
         ]
       }
+      revision_suppress_windows: {
+        Row: {
+          closed_at: string | null
+          created_by: string | null
+          expires_at: string
+          reason: string
+          scope: string[] | null
+          started_at: string
+          window_id: string
+        }
+        Insert: {
+          closed_at?: string | null
+          created_by?: string | null
+          expires_at: string
+          reason: string
+          scope?: string[] | null
+          started_at?: string
+          window_id?: string
+        }
+        Update: {
+          closed_at?: string | null
+          created_by?: string | null
+          expires_at?: string
+          reason?: string
+          scope?: string[] | null
+          started_at?: string
+          window_id?: string
+        }
+        Relationships: []
+      }
       science_sections: {
         Row: {
           code: string | null
@@ -14012,6 +14153,61 @@ export type Database = {
           },
         ]
       }
+      v_revision_merge_pending: {
+        Row: {
+          cnt: number | null
+          content_type: string | null
+          latest: string | null
+          oldest: string | null
+          subject_code: string | null
+        }
+        Relationships: []
+      }
+      v_revision_recent: {
+        Row: {
+          apply_status: string | null
+          changed_fields: string[] | null
+          content_id: string | null
+          content_type: string | null
+          created_at: string | null
+          created_by_label: string | null
+          merge_status: string | null
+          node_id: string | null
+          notice_status: string | null
+          op: string | null
+          revision_id: string | null
+          subject_code: string | null
+        }
+        Insert: {
+          apply_status?: string | null
+          changed_fields?: string[] | null
+          content_id?: string | null
+          content_type?: string | null
+          created_at?: string | null
+          created_by_label?: string | null
+          merge_status?: string | null
+          node_id?: string | null
+          notice_status?: string | null
+          op?: string | null
+          revision_id?: string | null
+          subject_code?: string | null
+        }
+        Update: {
+          apply_status?: string | null
+          changed_fields?: string[] | null
+          content_id?: string | null
+          content_type?: string | null
+          created_at?: string | null
+          created_by_label?: string | null
+          merge_status?: string | null
+          node_id?: string | null
+          notice_status?: string | null
+          op?: string | null
+          revision_id?: string | null
+          subject_code?: string | null
+        }
+        Relationships: []
+      }
       v_sales_books: {
         Row: {
           book_id: string | null
@@ -14301,6 +14497,19 @@ export type Database = {
       }
       delete_test_user: { Args: { p_email: string }; Returns: boolean }
       email_already_registered: { Args: { p_email: string }; Returns: boolean }
+      fn_close_suppress_window: {
+        Args: { p_window_id: string }
+        Returns: undefined
+      }
+      fn_open_suppress_window: {
+        Args: { p_minutes?: number; p_reason: string; p_scope?: string[] }
+        Returns: string
+      }
+      fn_problem_content_type: { Args: { p_format: string }; Returns: string }
+      fn_revision_suppressed: {
+        Args: { p_content_type: string }
+        Returns: boolean
+      }
       get_problem_stats: {
         Args: { p_ids: string[] }
         Returns: {
