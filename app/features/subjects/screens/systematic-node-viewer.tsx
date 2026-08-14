@@ -6,6 +6,7 @@ import {
   ChevronRightIcon,
   EyeIcon,
   EyeOffIcon,
+  ListChecksIcon,
   ListTreeIcon,
   MessageCircleQuestionIcon,
   PanelRightIcon,
@@ -21,7 +22,6 @@ import {
   Card,
   CardContent,
   CardHeader,
-  CardTitle,
 } from "~/core/components/ui/card";
 import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
 import makeServerClient from "~/core/lib/supa-client.server";
@@ -806,33 +806,25 @@ function Inner({
             <PeriodAmbiguousPanel cases={periodAmbiguousAll} />
           ) : null}
 
-          {/* 노드 배치 문제 — 조문 링크 없는 논점 노드(상표 §34 각호 등)도 문제로 진입. */}
+          {/* 노드 배치 문제 — 조문 링크 없는 논점 노드(상표 §34 각호 등)도 문제로 진입.
+              번호 나열은 제거(수십 개 pill 이 화면을 덮음 — 사용자 결정 2026-08-14),
+              첫 문제로 들어가면 ?node=&list=1 이 단원 목록 순회를 이어준다. */}
           {nodeProblems.length > 0 ? (
             <Card className="rounded-xl border shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-bold">
+              <CardContent className="flex flex-wrap items-center justify-between gap-3 py-3">
+                <p className="text-sm font-bold">
                   이 단원의 문제{" "}
                   <span className="text-muted-foreground font-normal">
                     {nodeProblems.length}문항
                   </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-wrap gap-1.5 pt-0">
-                {nodeProblems.map((p, i) => (
-                  <Button
-                    key={p.problemId}
-                    asChild
-                    variant="outline"
-                    size="sm"
-                    className="h-7 rounded-full text-xs tabular-nums"
+                </p>
+                <Button asChild size="sm" className="h-8">
+                  <Link
+                    to={`/subjects/${subject.slug}/problems/${nodeProblems[0].problemId}?node=${node.nodeId}&list=1`}
                   >
-                    <Link
-                      to={`/subjects/${subject.slug}/problems/${p.problemId}?node=${node.nodeId}&list=1`}
-                    >
-                      {i + 1}.{p.year ? ` ${p.year}년` : ""}
-                    </Link>
-                  </Button>
-                ))}
+                    <ListChecksIcon className="size-3.5" /> 이 단원 문제 풀기
+                  </Link>
+                </Button>
               </CardContent>
             </Card>
           ) : null}
