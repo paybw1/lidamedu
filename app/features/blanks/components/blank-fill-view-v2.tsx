@@ -693,6 +693,12 @@ export function BlankFillViewV2({
     arrivalSweepRef.current = id as unknown as number;
   };
 
+  // ★iPad IME 안정화 재검(2026-08-14 신고 57c9a6cc) — 조합 확정(compositionend)이
+  //   판정보다 늦게 끝나는 순서가 되면 화면엔 글자가 다 있는데 wrong 으로 굳는다.
+  //   wrong 판정 직후 짧게 기다려 DOM 을 다시 읽고, 그 사이 값이 정답으로 안정화됐으면
+  //   정정한다. 진짜 오답이면 재검도 오답이라 무해(기존 방어들과 독립·비파괴).
+  const wrongRecheckTimers = useRef(new Map<number, number>());
+
   const judgeSlot = (slot: HTMLElement, save: boolean) => {
     const idx = Number(slot.dataset.blankIdx);
     const answer = slot.dataset.answer ?? "";
@@ -746,9 +752,35 @@ export function BlankFillViewV2({
     }
     if (correct) {
       setSlotColor(slot, "correct");
+      const pending = wrongRecheckTimers.current.get(idx);
+      if (pending != null && typeof window !== "undefined") {
+        window.clearTimeout(pending);
+        wrongRecheckTimers.current.delete(idx);
+      }
       if (save) saveAttempt(slot, idx, val);
     } else {
       setSlotColor(slot, "wrong");
+      if (typeof window !== "undefined") {
+        const prev = wrongRecheckTimers.current.get(idx);
+        if (prev != null) window.clearTimeout(prev);
+        const timer = window.setTimeout(() => {
+          wrongRecheckTimers.current.delete(idx);
+          if (composingRef.current) return; // 아직 조합 중 — 이후 판정에 맡김
+          const settled = readSlot(slot);
+          if (
+            settled.length > 0 &&
+            normalizeAnswer(settled) === normalizeAnswer(answer)
+          ) {
+            valuesRef.current.set(idx, settled);
+            crossPrev = { slot, value: settled };
+            setSlotColor(slot, "correct");
+            pushDbg("settleRescue", `${slotIdxOf(slot)} "${settled}"`);
+            if (save) saveAttempt(slot, idx, settled);
+            maybeCompleteTier();
+          }
+        }, 220);
+        wrongRecheckTimers.current.set(idx, timer);
+      }
     }
   };
 
