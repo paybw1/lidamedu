@@ -154,6 +154,9 @@ export async function action({ request }: Route.ActionArgs) {
   return data({
     ok: true,
     isCorrect: choice.isCorrect,
+    // 어느 문제의 채점인지 함께 반환 — fetcher.data 는 문제 이동 후에도 남으므로
+    // 화면이 현재 문제의 결과인지 대조한다(다음 문제 정답 선공개 버그 방지).
+    problemId: parsed.data.problemId,
   });
 }
 
@@ -183,7 +186,11 @@ export default function ScienceProblemViewer({
     sessionMode === "study" &&
     !!aiData &&
     "ok" in aiData &&
-    aiData.ok === true;
+    aiData.ok === true &&
+    // ★fetcher.data 는 다음 문제로 이동해도 남는다 — 현재 문제의 채점일 때만 공개.
+    //   (이전 문제 결과가 남아 새 문제의 정답이 선공개되던 버그, 2026-08-14 신고)
+    "problemId" in aiData &&
+    aiData.problemId === problem.problemId;
   const isCorrect =
     showResult && "isCorrect" in aiData && aiData.isCorrect === true;
 
