@@ -18,9 +18,14 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 
-const problemPath = process.argv[2] ?? "source/_converted/problem.json";
-const answerPath = process.argv[3] ?? "source/_converted/answer.json";
-const outPath = process.argv[4] ?? "source/_converted/problems-merged.json";
+// --force: 아래 안전장치(단원명 오염·키매칭률)를 무시하고 강행. 산출물이 어긋날 수
+//   있음을 알고 쓰는 경우에만. 기본은 중단이다.
+const FORCE = process.argv.includes("--force");
+const positional = process.argv.slice(2).filter((a) => !a.startsWith("--"));
+
+const problemPath = positional[0] ?? "source/_converted/problem.json";
+const answerPath = positional[1] ?? "source/_converted/answer.json";
+const outPath = positional[2] ?? "source/_converted/problems-merged.json";
 
 const problemDoc = JSON.parse(readFileSync(problemPath, "utf8"));
 const answerDoc = JSON.parse(readFileSync(answerPath, "utf8"));
@@ -521,6 +526,47 @@ function parseAnswers(paragraphs) {
 const answers = parseAnswers(answerDoc.paragraphs);
 console.log(`✓ 답안집 파싱: ${answers.length} answers`);
 
+// ──────── 안전장치 1. 단원명 오염 검사 ────────
+//
+// 단원 heading 파싱이 실패하면 section 자리에 문제 헤더의 연도 표기(’15, ’07 변형)가
+// 남는다. 그러면 (장, 단원, 번호) 키가 성립하지 않아 전량 순번 fallback 으로 넘어가고,
+// 정답과 선지별 해설이 통째로 다른 문제 것으로 붙는다(2026-06-24 백필 사고).
+// 정상 산출물은 이 값이 0 이므로, 하나라도 있으면 중단한다.
+const YEAR_MARK_SECTION_RE = /^['’]?\s*\d{2}\s*(변형|모의|예상|종합|단원)?$/;
+function yearMarkSections(items) {
+  const bad = new Map();
+  for (const it of items) {
+    const s = (it.section ?? "").trim();
+    if (s && YEAR_MARK_SECTION_RE.test(s)) bad.set(s, (bad.get(s) ?? 0) + 1);
+  }
+  return bad;
+}
+function reportContamination(label, items) {
+  const bad = yearMarkSections(items);
+  if (bad.size === 0) return 0;
+  const n = [...bad.values()].reduce((a, b) => a + b, 0);
+  console.error(
+    `\n✗ ${label}: 단원명이 연도 표기로 잡힌 항목 ${n}건 (${bad.size}종) — 단원 heading 파싱 실패`,
+  );
+  console.error(
+    `   예: ${[...bad.keys()].slice(0, 8).map((s) => JSON.stringify(s)).join(", ")}`,
+  );
+  return n;
+}
+const contaminated =
+  reportContamination("문제집", problems) + reportContamination("답안집", answers);
+if (contaminated > 0) {
+  console.error(
+    "\n  이 상태로 만든 산출물은 정답·해설이 다른 문제 것으로 붙을 수 있어 적재하면 안 된다.",
+  );
+  console.error(
+    "  heading 정규식(SECTION_RE / SECTION_BULLET_RE / SECTION_TABLE_RE)이 이 판본의 형태를 못 잡는 것이니,",
+  );
+  console.error("  변환 원본(hwpx→json)부터 다시 확인할 것.");
+  if (!FORCE) process.exit(1);
+  console.error("  --force 지정됨 — 경고를 무시하고 계속한다.\n");
+}
+
 // ──────── 매칭 + 자동 분류 ────────
 
 // 답안의 per-choice 해설 텍스트로 choice_type 자동 분류.
@@ -574,6 +620,7 @@ for (const prob of problems) {
   if (a) {
     matchedKey++;
     applyAnswer(prob, a);
+    prob.answerMatch = "key";
   } else {
     probsToFallback.push(prob);
   }
@@ -589,6 +636,7 @@ for (const a of answers) {
   ansByChSeq.set(a.chapter, arr);
 }
 const probSeqIdx = new Map();
+const seqByChapter = new Map();
 let matchedSeq = 0;
 let unmatched = 0;
 for (const prob of probsToFallback) {
@@ -597,8 +645,10 @@ for (const prob of probsToFallback) {
   const a = arr[idx];
   if (a) {
     applyAnswer(prob, a);
+    prob.answerMatch = "seq";
     matchedSeq++;
     probSeqIdx.set(prob.chapter, idx + 1);
+    seqByChapter.set(prob.chapter, (seqByChapter.get(prob.chapter) ?? 0) + 1);
   } else {
     unmatched++;
   }
@@ -617,6 +667,37 @@ function applyAnswer(prob, a) {
 
 const matched = matchedKey + matchedSeq;
 console.log(`  · 답안 매칭: ${matched} / ${problems.length} (key=${matchedKey} + seq=${matchedSeq}, 미매칭 ${unmatched})`);
+
+// ──────── 안전장치 2. 순번 fallback 사용 경고 ────────
+//
+// 순번 fallback 은 "두 책이 같은 순서로 나온다"는 가정 위에서만 맞다. 한쪽에서 문항
+// 하나가 빠지거나 heading 하나를 놓치면 그 챕터 이후가 전부 한 칸씩 밀리고,
+// 정답과 해설이 세트로 다른 문제 것이 된다. 조용히 넘어가지 않도록 항상 알린다.
+if (matchedSeq > 0) {
+  const pct = ((matchedSeq / problems.length) * 100).toFixed(1);
+  console.warn(`\n⚠ 순번 fallback 으로 붙인 문항 ${matchedSeq}건 (${pct}%) — 챕터 내 N번째 ↔ N번째`);
+  const detail = [...seqByChapter.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([ch, n]) => `제${ch}장 ${n}`)
+    .join(" · ");
+  console.warn(`   ${detail}`);
+  console.warn("   이 문항들은 정답·해설이 인접 문제 것으로 밀렸을 수 있다. 산출물의 answerMatch:\"seq\" 로 추릴 수 있고,");
+  console.warn("   적재 후에는 `node scripts/mcq-audit/audit.mjs` 로 원본과 대조할 것.");
+}
+
+const keyRate = problems.length ? matchedKey / problems.length : 1;
+const KEY_RATE_FLOOR = 0.5;
+if (keyRate < KEY_RATE_FLOOR) {
+  console.error(
+    `\n✗ 키 매칭률 ${(keyRate * 100).toFixed(1)}% — 기준(${KEY_RATE_FLOOR * 100}%) 미만.`,
+  );
+  console.error(
+    "   대부분을 위치로만 붙였다는 뜻이라 정답·해설의 정합을 보장할 수 없다. 적재하면 안 된다.",
+  );
+  console.error("   단원 heading 파싱을 먼저 고칠 것. (알고 강행하려면 --force)");
+  if (!FORCE) process.exit(1);
+  console.error("   --force 지정됨 — 경고를 무시하고 계속한다.\n");
+}
 
 // 통계
 const byOrigin = problems.reduce((acc, p) => {
