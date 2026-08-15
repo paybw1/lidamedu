@@ -134,8 +134,19 @@ export async function listProblemsBySubject(
     if (filters.year != null) query = query.eq("year", filters.year);
     if (filters.search && filters.search.trim().length > 0) {
       // PostgREST .ilike() — % 와 _ 만 와일드카드로 escape 후 양쪽 % 추가.
-      const safe = filters.search.trim().replace(/[%_]/g, (m) => `\\${m}`);
-      query = query.ilike("body_md", `%${safe}%`);
+      const raw = filters.search.trim();
+      const safe = raw.replace(/[%_]/g, (m) => `\\${m}`);
+      // 문제 고유번호("P-5966" / "p 5966" / "5966")로도 찾게 한다 — 화면의 복사 칩이
+      //   P-번호를 주는데 검색이 본문만 훑어 0건이 되던 문제(2026-08-15 신고).
+      //   본문 검색과 OR 결합이라 기존 본문 검색 결과는 그대로 유지된다.
+      const noMatch = /^p?[-\s]?(\d{1,9})$/i.exec(raw);
+      if (noMatch) {
+        query = query.or(
+          `display_no.eq.${noMatch[1]},body_md.ilike.%${safe}%`,
+        );
+      } else {
+        query = query.ilike("body_md", `%${safe}%`);
+      }
     }
     if (filters.primaryArticleId)
       query = query.eq("primary_article_id", filters.primaryArticleId);

@@ -461,7 +461,8 @@ export function ProblemsTab({
                 type="text"
                 name="p_search"
                 defaultValue={appliedFilters.search ?? ""}
-                placeholder="키워드"
+                placeholder="키워드 · P-번호"
+                title="본문 키워드 또는 문제 고유번호(P-5966)로 검색"
                 maxLength={100}
                 data-testid="problem-search"
                 className="border-border bg-background focus:ring-primary h-8 w-36 rounded-lg border px-2.5 text-xs focus:ring-1 focus:outline-none"
