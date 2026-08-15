@@ -32,6 +32,7 @@ import {
   Surface,
 } from "~/core/components/student";
 import { Button } from "~/core/components/ui/button";
+import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { GuideHelpButton } from "~/features/guide/components/guide-help-button";
 import { runAfterResponse } from "~/core/lib/wait-until.server";
@@ -241,57 +242,112 @@ function RescheduleBacklogButton() {
 function RecommendationsCard({ summary }: { summary: TodaySummary }) {
   const items = summary.recommendations;
   if (items.length === 0) return null;
-  const totalMin = items.reduce((s, i) => s + i.estimatedMinutes, 0);
+  // 완료한 항목은 아래로 내리고 흐리게 — 남은 할 일이 위에 모인다(신고 7dcd9ed7).
+  const remaining = items.filter((i) => !i.done);
+  const doneItems = items.filter((i) => i.done);
+  const totalMin = remaining.reduce((s, i) => s + i.estimatedMinutes, 0);
+  const allDone = remaining.length === 0;
 
   return (
     <Surface tone="default" pad={6}>
       <div className="flex items-start gap-3">
-        <span className="bg-secondary text-secondary-foreground inline-flex size-10 shrink-0 items-center justify-center rounded-lg">
-          <SparklesIcon className="size-5" />
+        <span
+          className={cn(
+            "inline-flex size-10 shrink-0 items-center justify-center rounded-lg",
+            allDone
+              ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+              : "bg-secondary text-secondary-foreground",
+          )}
+        >
+          {allDone ? (
+            <CheckCircle2Icon className="size-5" />
+          ) : (
+            <SparklesIcon className="size-5" />
+          )}
         </span>
         <div className="min-w-0 flex-1">
           <h2 className="text-foreground text-lg font-semibold tracking-tight">
-            오늘의 학습 <span className="tabular-nums">{items.length}</span>개
+            {allDone ? (
+              "오늘의 학습 모두 완료"
+            ) : (
+              <>
+                오늘의 학습{" "}
+                <span className="tabular-nums">{remaining.length}</span>개
+              </>
+            )}
           </h2>
           <p className="text-ink-soft mt-1 inline-flex items-center gap-1 text-xs">
-            <ClockIcon className="size-3" /> 예상 {totalMin}분
+            {allDone ? (
+              <>추천 {doneItems.length}개를 모두 마쳤습니다.</>
+            ) : (
+              <>
+                <ClockIcon className="size-3" /> 예상 {totalMin}분
+                {doneItems.length > 0 ? ` · 완료 ${doneItems.length}개` : ""}
+              </>
+            )}
           </p>
         </div>
       </div>
       <div className="mt-4 space-y-2 pl-13">
-        {items.map((item, i) => (
+        {remaining.map((item, i) => (
           <DailyMenuRow key={`${item.kind}-${i}`} item={item} />
+        ))}
+        {doneItems.map((item, i) => (
+          <DailyMenuRow key={`done-${item.kind}-${i}`} item={item} />
         ))}
       </div>
     </Surface>
   );
 }
 
-function DailyMenuRow({ item }: { item: DailyMenuItem }) {
+function DailyMenuRow({ item }: { item: DailyMenuItem & { done?: boolean } }) {
   const Icon = KIND_ICON[item.kind];
   return (
     <Link
       to={item.ctaUrl}
       viewTransition
-      className="group border-border hover:border-primary hover:bg-surface-3 flex items-start gap-3 rounded-md border px-3 py-2.5 transition-colors"
+      className={cn(
+        "group border-border hover:border-primary hover:bg-surface-3 flex items-start gap-3 rounded-md border px-3 py-2.5 transition-colors",
+        item.done && "opacity-55",
+      )}
     >
-      <span className="bg-muted text-ink-soft group-hover:text-link inline-flex size-7 shrink-0 items-center justify-center rounded-md">
-        <Icon className="size-3.5" />
+      <span
+        className={cn(
+          "inline-flex size-7 shrink-0 items-center justify-center rounded-md",
+          item.done
+            ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+            : "bg-muted text-ink-soft group-hover:text-link",
+        )}
+      >
+        {item.done ? (
+          <CheckIcon className="size-3.5" />
+        ) : (
+          <Icon className="size-3.5" />
+        )}
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <Chip tone={PRIORITY_TONE[item.priority]}>
-            {PRIORITY_LABEL[item.priority]}
-          </Chip>
+          {item.done ? (
+            <Chip tone="positive">완료</Chip>
+          ) : (
+            <Chip tone={PRIORITY_TONE[item.priority]}>
+              {PRIORITY_LABEL[item.priority]}
+            </Chip>
+          )}
           <span className="text-ink-faint text-[10px] tabular-nums">
             {item.estimatedMinutes}분
           </span>
         </div>
-        <p className="text-foreground mt-1 text-sm leading-tight font-semibold">
+        <p
+          className={cn(
+            "text-foreground mt-1 text-sm leading-tight font-semibold",
+            item.done && "line-through decoration-1",
+          )}
+        >
           {item.title}
         </p>
         <p className="text-ink-soft mt-0.5 line-clamp-2 text-xs leading-relaxed">
-          {item.body}
+          {item.done ? "오늘 완료했습니다 — 다시 보려면 누르세요." : item.body}
         </p>
       </div>
       <ArrowRightIcon className="text-ink-faint group-hover:text-link mt-1 size-3.5 shrink-0" />

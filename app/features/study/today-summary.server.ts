@@ -19,7 +19,10 @@ import {
   getOrComposeDailyMenu,
   kstToday,
 } from "~/features/study/daily-menu.server";
-import type { DailyMenuItem } from "~/features/study/lib/daily-menu";
+import {
+  markDailyMenuDone,
+  type DailyMenuItemWithDone,
+} from "~/features/study/daily-menu-done.server";
 import {
   DAILY_REVIEW_BUDGET,
   splitReviewBudget,
@@ -84,7 +87,8 @@ export interface CardBacklogItem {
 export interface TodaySummary {
   date: string; // YYYY-MM-DD (KST)
   review: TodayReviewSummary;
-  recommendations: DailyMenuItem[];
+  /** 추천 항목 — 오늘 수행한 항목은 done=true (신고 7dcd9ed7). */
+  recommendations: DailyMenuItemWithDone[];
   assignments: TodayAssignmentSummary;
   /** 오늘 복습 진행률(완료/전체). total=0 이면 진행 바 숨김. */
   progress: TodayProgress;
@@ -151,7 +155,7 @@ export async function getTodaySummary(
   const [
     problemSrs,
     flashcardQueue,
-    recommendations,
+    menuSnapshot,
     assignments,
     cohortFlag,
     reviewedTodayProblem,
@@ -167,6 +171,15 @@ export async function getTodaySummary(
     checkHasStudiedBefore(client, userId),
     getDueCountsByType(client, userId),
   ]);
+
+  // 스냅샷은 고정(픽 안정성)하고 완료 여부만 오늘 활동으로 파생 — 수행한 항목이
+  // 그대로 남아 있던 문제(신고 7dcd9ed7).
+  const recommendations = await markDailyMenuDone(
+    client,
+    userId,
+    menuSnapshot,
+    date,
+  );
 
   // v2 큐는 maxReviewsPerDay 상한 적용 후 items[] 반환. backlog 는 누적 due > 상한 응답 합계.
   const flashcardDue = flashcardQueue.dueCount;
