@@ -680,10 +680,9 @@ export function BlanksRenderProvider({
             input: "",
             status: "empty" as const,
           };
-          const widthCh = Math.max(
-            5,
-            Math.min(40, (h.blank.answer.length || h.blank.length) * 2 + 2),
-          );
+          // ★칸 폭 고정 — 정답 길이에 비례하면 글자 수가 노출돼 답이 유추된다
+          //   (2026-08-15 신고 8a4583a8, 사용자 결정). V2(blank-fill-view-v2)와 동일 폭.
+          const widthCh = 7;
           const showRevealed = reveal && state.status !== "correct";
           // key++ 로 같은 idx 가 한 텍스트 안에 여러 번 등장하는 희귀 케이스에서도
           // key 충돌 방지.

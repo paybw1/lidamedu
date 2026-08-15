@@ -50,6 +50,8 @@ import type { AutoBlankMeta } from "./blanks-context";
 
 const ZWSP = "​";
 const SLOT_CLASS = "blank-slot-v2";
+// 빈칸 칸 폭 — 정답 길이와 무관한 고정값(길이 힌트 제거). 입력이 넘치면 자연 확장.
+const FIXED_SLOT_WIDTH = "7ch";
 
 const COLORS = {
   neutral: { border: "#94a3b8", bg: "transparent", fg: "" },
@@ -1045,7 +1047,10 @@ export function BlankFillViewV2({
             b.dataset.blockIndex = String(seg.blockIndex);
           if (seg.cumOffset != null) b.dataset.cumOffset = String(seg.cumOffset);
           b.style.display = "inline-block";
-          b.style.minWidth = `${Math.max(3, Math.min(30, (seg.answer.length || 2) * 1.6))}ch`;
+          // ★칸 폭은 정답 길이와 무관한 고정값 — 폭이 정답 글자 수를 알려줘 답이 유추되던
+          //   문제(2026-08-15 신고 8a4583a8, 사용자 결정: 모든 빈칸 고정 폭).
+          //   입력이 길어지면 inline-block 이 자연히 늘어나므로 긴 정답도 입력 가능.
+          b.style.minWidth = FIXED_SLOT_WIDTH;
           b.style.margin = "0 2px";
           b.style.padding = "0 4px";
           b.style.textAlign = "center";
