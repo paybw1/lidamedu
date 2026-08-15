@@ -18,6 +18,10 @@ export interface SheetItem {
   lineHint: string | null;
   tocPath: string | null;
   sortKey: number | null;
+  /** 원장 콘텐츠 종류(mcq/statute/precedent) — 위치 표기 방식 분기용. */
+  contentType?: string | null;
+  /** 객관식 지문 번호(①②③…) — 지문 단위 정오일 때만. */
+  choiceNo?: number | null;
   scope: SheetScope;
   isWithdrawalNotice: boolean; // 철회 고지 행 (§2.5 — 본문 대신 별도 표시)
 }
@@ -39,6 +43,14 @@ function payloadText(payload: unknown, key: "before_text" | "after_text"): strin
   if (payload == null || typeof payload !== "object") return "";
   const v = (payload as Record<string, unknown>)[key];
   return typeof v === "string" ? v : "";
+}
+
+/** source_ref.choice_no → 지문 번호. 문자열/숫자 모두 허용, 범위 밖은 null. */
+function choiceNoOf(sourceRef: unknown): number | null {
+  if (sourceRef == null || typeof sourceRef !== "object") return null;
+  const raw = (sourceRef as Record<string, unknown>).choice_no;
+  const n = typeof raw === "number" ? raw : Number(raw);
+  return Number.isInteger(n) && n >= 1 && n <= 20 ? n : null;
 }
 
 // 페이지순 정렬 (§3.2) — page_no nulls last → sort_key → published_at
@@ -84,6 +96,8 @@ export async function buildErrataSheetData(
     lineHint: r.line_hint,
     tocPath: r.toc_path,
     sortKey: r.sort_key,
+      contentType: r.content_type,
+      choiceNo: choiceNoOf(r.source_ref),
       scope: (r.exam_scope ?? "unknown") as SheetScope,
       isWithdrawalNotice: r.withdraws_revision_id != null,
     }));

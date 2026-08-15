@@ -14457,6 +14457,7 @@ export type Database = {
           published_at: string | null
           revision_id: string | null
           sort_key: number | null
+          source_ref: Json | null
           target_exam_date: string | null
           toc_path: string | null
           withdrawn_at: string | null

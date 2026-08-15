@@ -125,12 +125,24 @@ function fmtDate(iso: string | null): string {
   return iso ? iso.slice(0, 10) : "";
 }
 
+const CIRCLED = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩"];
+
 function locationOf(item: SheetItem): string {
   const parts: string[] = [];
   if (item.pageNo != null) parts.push(`p.${item.pageNo}`);
   if (item.lineHint) parts.push(item.lineHint);
-  if (item.pageNo == null && item.sortKey != null) parts.push(`수록순 ${item.sortKey}`);
-  if (parts.length === 0 && item.tocPath) parts.push(item.tocPath);
+  // 객관식 문제집은 쪽번호 매핑이 없다 — 대신 "단원 > 문제 N번 > 지문 ④" 로 짚어준다
+  // (2026-08-15 사용자 지시: 수험생이 교재에서 위치를 찾을 수 있어야 함).
+  if (item.contentType === "mcq") {
+    if (item.tocPath) parts.push(item.tocPath);
+    if (item.sortKey != null) parts.push(`문제 ${item.sortKey}번`);
+    if (item.choiceNo != null)
+      parts.push(`지문 ${CIRCLED[item.choiceNo - 1] ?? item.choiceNo}`);
+  } else {
+    if (item.pageNo == null && item.sortKey != null)
+      parts.push(`수록순 ${item.sortKey}`);
+    if (parts.length === 0 && item.tocPath) parts.push(item.tocPath);
+  }
   return parts.join(" · ") || "위치 미상";
 }
 
