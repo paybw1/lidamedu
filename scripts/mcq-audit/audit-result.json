@@ -20,26 +20,8 @@
   }
  ],
  "both": [],
- "allCorrect": 0,
+ "allCorrect": 2,
  "noMatch": [
-  {
-   "book": "gichul",
-   "unit": "특허권 > 침해에 대한 조치",
-   "no": 17,
-   "cands": 0,
-   "displayNo": 6034,
-   "year": 2019,
-   "pno": 17
-  },
-  {
-   "book": "gichul",
-   "unit": "특허권 > 이용저촉발명",
-   "no": 5,
-   "cands": 0,
-   "displayNo": 6008,
-   "year": 2021,
-   "pno": 5
-  },
   {
    "book": "gichul",
    "unit": "심판 > 정정심판/특허의 정정",

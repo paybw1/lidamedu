@@ -408,8 +408,12 @@ console.log(`  · 5지문 정상: ${fiveChoice} (불완전: ${problems.length - 
 
 // ──────── 답안집 파싱 ────────
 
-// 답안 entry 시작: "01 ③" / "02 ⑤" — number 2자리 + 공백 + 정답 마커
-const ANSWER_HEADER_RE = /^(\d{2})\s*([①②③④⑤])\s*$/;
+// 답안 entry 시작: "01 ③" / "02 ⑤" — number 2자리 + 공백 + 정답 마커.
+// `05 답없음` / `17 없음` = 출제오류로 정답취소된 문항의 머리글.
+// ★이걸 못 읽으면 그 항목이 생성되지 않아 해설이 앞 항목 끝에 들러붙는다.
+const ANSWER_HEADER_RE = /^(\d{2})\s*(?:([①②③④⑤])|(?:정?답?\s*없음))\s*$/;
+// 문항 전체를 마무리하는 문장 — 특정 선지의 해설이 아니므로 문제 단위 explanation 으로.
+const PROBLEM_LEVEL_TAIL_RE = /^(따라서|결국|그러므로|정답은)/;
 // per-choice explanation: "① 출원공개..." / "②④ ..." / "①⑤ ..."
 const ANSWER_CHOICE_RE = /^([①②③④⑤]+)\s*(.+)$/;
 
@@ -421,6 +425,7 @@ function parseAnswers(paragraphs) {
   let bookHeaderSeen = false;
   let inToc = true;
   let current = null; // currently building entry
+  let lastChoiceIdxs = null; // 직전 선지 마커의 선지 번호들 — 이어지는 문단을 붙일 대상
 
   const flush = () => {
     if (current) entries.push(current);
@@ -478,10 +483,13 @@ function parseAnswers(paragraphs) {
         section: currentSection,
         articleHint: currentArticleHint,
         problemNumber: parseInt(aHead[1], 10),
-        correctIndex: "①②③④⑤".indexOf(aHead[2]) + 1,
+        // `05 답없음` 형태(정답취소된 출제오류)는 correctIndex 를 두지 않는다.
+        correctIndex: aHead[2] ? "①②③④⑤".indexOf(aHead[2]) + 1 : null,
+        noAnswer: !aHead[2],
         explanation: "",
         perChoice: {},
       };
+      lastChoiceIdxs = null;
       continue;
     }
 
@@ -495,6 +503,7 @@ function parseAnswers(paragraphs) {
     if (haeSeolChoice) {
       const indices = [...haeSeolChoice[1]].map((c) => "①②③④⑤".indexOf(c) + 1);
       const body = haeSeolChoice[2].trim();
+      lastChoiceIdxs = indices;
       for (const idx of indices) {
         const cur = current.perChoice[idx] ?? "";
         current.perChoice[idx] = cur ? cur + " " + body : body;
@@ -505,6 +514,7 @@ function parseAnswers(paragraphs) {
     if (cMatch) {
       const indices = [...cMatch[1]].map((c) => "①②③④⑤".indexOf(c) + 1);
       const body = cMatch[2].trim();
+      lastChoiceIdxs = indices;
       for (const idx of indices) {
         const cur = current.perChoice[idx] ?? "";
         current.perChoice[idx] = cur ? cur + " " + body : body;
@@ -514,6 +524,18 @@ function parseAnswers(paragraphs) {
     // 해설 + 본문이 한 줄에 나오는 케이스 — "해설노하우는...":
     if (/^해설/.test(text)) {
       current.explanation += (current.explanation ? "\n" : "") + text.replace(/^해설\s*/, "");
+      continue;
+    }
+    // ★선지 마커로 시작하지 않는 문단 = 직전 선지 해설의 '이어지는 문단'.
+    //   (ⅰ)ⅱ)ⅲ) 나열, "참고로 …표로 정리하면 다음과 같다" 뒤의 표, 부연 설명 등)
+    //   예전에는 이게 전부 문제 단위 explanation 으로 흘러가 선지 해설이 잘렸다
+    //   — 교재엔 있는데 화면엔 안 나오던 원인(2026-08-15 발견, 57개 선지 보정).
+    //   단, 문항 전체를 마무리하는 문장은 종전대로 문제 단위 explanation 에 둔다.
+    if (lastChoiceIdxs && !PROBLEM_LEVEL_TAIL_RE.test(text)) {
+      for (const idx of lastChoiceIdxs) {
+        const cur = current.perChoice[idx] ?? "";
+        current.perChoice[idx] = cur ? cur + "\n" + text : text;
+      }
       continue;
     }
     // 그 외 본문은 explanation 에 누적.

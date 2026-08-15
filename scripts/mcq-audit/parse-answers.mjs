@@ -19,16 +19,36 @@ function sectionFromTable(firstLine) {
   if (!firstLine.startsWith("|")) return null;
   const cells = firstLine.split("|").slice(1, -1);
   const name = (cells[0] ?? "").trim();
+  if (name === "•" || name === "·") return "__TOC__"; // 목차 표(`| • | 특허권의 발생 | |`)
   if (!name || name.length > 25 || /[①②③④⑤]/.test(name)) return null;
   if (cells.length === 1) return name;
   if (cells.length === 3 && cells[1].trim() === "") return name;
   return null;
 }
-const ANSWER_HEADER_RE = /^(\d{2})\s*([①②③④⑤]+)\s*$/;
+// 괄호 없는 단원 헤딩 — "진보성29②", "벌칙225-232", "참가인155, 156", "절차의 정지20-24".
+// (괄호형 `신규성(29①각호)30` 은 SECTION_RE 가 잡는다.)
+// 해설 본문과 섞이지 않도록 좁게 판정한다: 짧고 · 문장부호가 없고 · 조문번호/페이지로 끝난다.
+//   "특허법 제100조제3항" 은 '항'(한글)으로 끝나 걸리지 않고,
+//   "특허법 제52조제2항제1호." 는 마침표가 있어 걸리지 않는다.
+function sectionFromPlain(text) {
+  if (text.length > 30) return null;
+  if (/[.。!?]/.test(text)) return null;
+  if (/^[①-⑳ⅰ-ⅹ]/.test(text)) return null;
+  // 조문번호 뒤에 한글 꼬리가 붙는 형태도 있다 — "신규성29①각호", "산업상 이용가능성29①본문".
+  const m = text.match(/^([가-힣A-Za-z][가-힣A-Za-z\s·・]*?)\s*\d[\d\s,\-–의①-⑳]*(각호|본문|단서|호|항)?$/);
+  if (!m) return null;
+  const name = m[1].trim();
+  return name.length >= 2 ? name : null;
+}
+
+// 항목 머리글. 정답이 있는 형태(`03 ⑤`)와 **정답 없음** 형태(`05 답없음`, `17 없음`) 둘 다.
+// ★후자를 못 읽으면 그 항목이 생성되지 않아 해설이 앞 항목 끝에 들러붙는다.
+const ANSWER_HEADER_RE = /^(\d{2})\s*(?:([①②③④⑤]+)|(?:정?답?\s*없음))\s*$/;
 
 function parseAnswers(paragraphs) {
   const entries = [];
   let chapter = null, section = null, inToc = true, seen = false, cur = null;
+  let lastIdxs = null; // 직전 선지 마커 문단의 선지 번호들 — 이어지는 문단을 붙일 대상
   const flush = () => { if (cur) entries.push(cur); cur = null; };
   for (const p of paragraphs) {
     const text = (p.text ?? "").trim();
@@ -40,15 +60,21 @@ function parseAnswers(paragraphs) {
     const b = text.match(SECTION_BULLET_RE);
     if (b && /[①-⑳\d]/.test(b[2])) { flush(); section = b[1].trim(); continue; }
     const t = sectionFromTable(text.split(/\n/)[0]);
+    // 목차 표는 단원을 바꾸지 않는다 — 진행 중 항목만 닫고 넘어간다.
+    if (t === "__TOC__") { flush(); lastIdxs = null; continue; }
     if (t) { flush(); section = t; continue; }
     const s = text.match(SECTION_RE);
     if (s && /[①-⑳\d]/.test(s[2])) { flush(); section = s[1].trim(); continue; }
+    const pl = sectionFromPlain(text);
+    if (pl) { flush(); section = pl; continue; }
     const h = text.match(ANSWER_HEADER_RE);
     if (h) {
       flush();
       cur = { chapter, section, number: +h[1],
-              correct: [...h[2]].map((c) => CIRCLED.indexOf(c) + 1).sort((a, z) => a - z),
-              perChoice: {} };
+              // 정답 없음 항목은 correct = [] (출제오류로 정답취소된 기출).
+              correct: h[2] ? [...h[2]].map((c) => CIRCLED.indexOf(c) + 1).sort((a, z) => a - z) : [],
+              perChoice: {}, cont: {} };
+      lastIdxs = null;
       continue;
     }
     if (!cur) continue;
@@ -56,10 +82,17 @@ function parseAnswers(paragraphs) {
     const m = text.match(/^(?:해설\s*)?([①②③④⑤]+)\s*(.+)$/s);
     if (m) {
       const body = m[2].trim();
-      for (const c of m[1]) {
-        const i = CIRCLED.indexOf(c) + 1;
+      lastIdxs = [...m[1]].map((c) => CIRCLED.indexOf(c) + 1);
+      for (const i of lastIdxs) {
         cur.perChoice[i] = cur.perChoice[i] ? cur.perChoice[i] + " " + body : body;
       }
+      continue;
+    }
+    // 선지 마커로 시작하지 않는 문단 = 직전 선지 해설의 '이어지는 문단'.
+    // 교재에는 있는데 적재 때 통째로 버려지던 부분(2026-08-15 발견). perChoice 는
+    // 기존 소비처(감사 대조)를 위해 그대로 두고 cont 에 따로 모은다.
+    if (lastIdxs) {
+      for (const i of lastIdxs) (cur.cont[i] ??= []).push(text);
     }
   }
   flush();

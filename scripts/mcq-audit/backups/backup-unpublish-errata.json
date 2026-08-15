@@ -1,0 +1,23 @@
+{
+ "revision": {
+  "revision_id": "8dfc76f5-688d-4284-bc47-569354938909",
+  "content_type": "mcq",
+  "content_id": "6d4bcd71-619f-4725-bd1f-6123eb00862f",
+  "errata_kind": "addendum",
+  "errata_title": "P-5966 · 2010년",
+  "notice_status": "published",
+  "published_at": "2026-08-15T05:45:58.660722+00:00"
+ },
+ "editions": [
+  {
+   "edition_id": "6a15bc2d-15f8-498c-a2c1-08332b79cf70",
+   "edition_label": "제20판",
+   "errata_sheet_url": "https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/errata/6a15bc2d-15f8-498c-a2c1-08332b79cf70.pdf",
+   "errata_sheet_updated_at": "2026-08-15T06:19:47.825+00:00",
+   "errata_sheet_item_count": 1,
+   "publications": {
+    "title": "리담특허법 객관식(Ⅰ) 기출문제"
+   }
+  }
+ ]
+}
