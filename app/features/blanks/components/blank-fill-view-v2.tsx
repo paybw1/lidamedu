@@ -430,6 +430,7 @@ export function BlankFillViewV2({
   enableTiers = false,
   completedTiers,
   chapterGate,
+  initialTier,
 }: {
   setId: string | null;
   autoMeta?: AutoBlankMeta;
@@ -442,6 +443,8 @@ export function BlankFillViewV2({
   completedTiers?: BlankTier[];
   // feat-2-030 S4-B — 장/편 단위 게이트(있으면 해금을 세트 아닌 장 단위로).
   chapterGate?: ChapterTierGate | null;
+  // 장 화면 상단의 일괄 난이도 선택(신고 280f5b4b) — 잠긴 단계면 무시하고 '하'로.
+  initialTier?: BlankTier;
 }) {
   const tiersOn = enableTiers && !!setId;
   const [completed, setCompleted] = useState<Set<BlankTier>>(
@@ -452,7 +455,18 @@ export function BlankFillViewV2({
   // ★기본은 항상 가장 낮은 단계(하) — 하는 언제나 해금. 상위 단계는 사용자가 직접 선택.
   //   (누적 완료 시 '상'이 기본으로 잡혀 시작하던 문제 + 상은 최상위라 완료해도 다음
   //    난이도 카운트가 안 오르던 문제를 함께 해소.)
-  const [currentTier, setCurrentTier] = useState<BlankTier>(1);
+  // 상단 일괄 선택(initialTier)이 있으면 그 단계로 시작 — 단 해금된 단계일 때만.
+  const [currentTier, setCurrentTier] = useState<BlankTier>(() =>
+    initialTier && (chapterGate?.unlocked ?? tierUnlockState(new Set(completedTiers ?? [])))[initialTier]
+      ? initialTier
+      : 1,
+  );
+  // 상단에서 단계를 바꾸면 각 조문 카드도 따라간다(잠긴 단계는 무시).
+  useEffect(() => {
+    if (!initialTier) return;
+    setCurrentTier((cur) => (unlocked[initialTier] && cur !== initialTier ? initialTier : cur));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTier]);
   const [justPassed, setJustPassed] = useState(false);
   const submittedTierRef = useRef<Set<BlankTier>>(new Set());
   // ★상(tier 3)은 단어가 아니라 "구간" 빈칸 — 단어 빈칸 위치에서 자동 도출(10어절 캡).

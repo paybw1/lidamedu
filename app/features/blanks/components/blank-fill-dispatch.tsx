@@ -14,6 +14,7 @@ export function BlankFill({
   enableTiers,
   completedTiers,
   chapterGate,
+  initialTier,
   ...rest
 }: {
   v2: boolean;
@@ -27,6 +28,8 @@ export function BlankFill({
   enableTiers?: boolean;
   completedTiers?: BlankTier[];
   chapterGate?: ChapterTierGate | null;
+  /** 장 화면 상단 일괄 난이도 선택(V2 전용). */
+  initialTier?: BlankTier;
 }) {
   return v2 ? (
     <BlankFillViewV2
@@ -34,6 +37,7 @@ export function BlankFill({
       enableTiers={enableTiers}
       completedTiers={completedTiers}
       chapterGate={chapterGate}
+      initialTier={initialTier}
     />
   ) : (
     <BlankFillView {...rest} />

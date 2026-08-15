@@ -51,7 +51,11 @@ import {
   listBlankSetsByArticle,
 } from "~/features/blanks/queries.server";
 import { getTierCompletionsBySet } from "~/features/blanks/tiers.server";
-import type { BlankTier as BlankTierC } from "~/features/blanks/lib/tiers";
+import {
+  BLANK_TIERS,
+  TIER_LABEL,
+  type BlankTier as BlankTierC,
+} from "~/features/blanks/lib/tiers";
 import { listCommentsBulk } from "~/features/comments/queries.server";
 import { ArticleBodyView } from "~/features/laws/components/article-body";
 import { ArticleRightPanel } from "~/features/laws/components/article-right-panel";
@@ -361,6 +365,9 @@ function Inner({
   const [blankMode, setBlankMode] = useState(false);
   const [subjectBlankMode, setSubjectBlankMode] = useState(false);
   const [periodBlankMode, setPeriodBlankMode] = useState(false);
+  // 상단 일괄 난이도(신고 280f5b4b) — 조문마다 따로 누르지 않고 장 전체를 한 번에.
+  //   해금 규칙은 그대로라, 잠긴 단계를 고르면 각 카드가 '하'로 남는다.
+  const [bulkTier, setBulkTier] = useState<BlankTierC>(1);
   const blankAvailableCount = useMemo(
     () =>
       chapter.articles.filter((a) => blankSetsByArticle[a.articleId]).length,
@@ -613,6 +620,31 @@ function Inner({
                         current={selectedBlankOwner}
                       />
                     ) : null}
+                    {/* 장 전체 난이도 일괄 선택 — 조문 카드마다 따로 누르던 번거로움 해소.
+                        잠긴 단계는 각 카드가 무시하고 '하'를 유지한다(해금 규칙 불변). */}
+                    {blankMode && blankTiersEnabled ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="text-muted-foreground text-xs">난이도 일괄</span>
+                        <span className="bg-muted inline-flex items-center rounded-lg p-[3px]">
+                          {BLANK_TIERS.map((t) => (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => setBulkTier(t)}
+                              aria-pressed={bulkTier === t}
+                              className={cn(
+                                "h-6 rounded-md px-2.5 text-xs font-semibold transition-colors",
+                                bulkTier === t
+                                  ? "bg-background text-link shadow-sm"
+                                  : "text-muted-foreground hover:text-foreground",
+                              )}
+                            >
+                              {TIER_LABEL[t]}
+                            </button>
+                          ))}
+                        </span>
+                      </span>
+                    ) : null}
                   </>
                 ) : null}
                 {subjectBlankAvailableCount > 0 ? (
@@ -799,6 +831,7 @@ function Inner({
                           completedTiers={
                             tierCompletionsBySet[blankSet.setId] ?? []
                           }
+                          initialTier={bulkTier}
                         />
                       ) : subjectBlankMode && body ? (
                         <BlankFill
