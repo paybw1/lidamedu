@@ -73,6 +73,25 @@ export function isOxEligible(
   return oxTruth != null && oxIneligible !== true;
 }
 
+// ★전항 정답 = "정답 없음" (사용자 결정 2026-08-15, 특허·상표·디자인 공통 규칙)
+//   출제 오류로 모든 지문이 정답 처리된 기출이 실재한다(예: 특허 2019년 17번,
+//   상표 2009년 1번). 데이터 오류가 아니므로 정정하지 않고, 학생 화면에는
+//   "정답 5번" 대신 "정답 없음(전항 정답 처리)"으로 표기한다.
+export function isAllChoicesCorrect(
+  choices: ReadonlyArray<{ isCorrect: boolean }>,
+): boolean {
+  return choices.length > 0 && choices.every((c) => c.isCorrect);
+}
+
+/** 정답 표기 문자열 — 전항 정답이면 "정답 없음", 아니면 "정답 N번". */
+export function answerLabelOf(
+  choices: ReadonlyArray<{ isCorrect: boolean; choiceIndex: number }>,
+): string {
+  if (isAllChoicesCorrect(choices)) return "정답 없음 (전항 정답 처리)";
+  const idx = choices.filter((c) => c.isCorrect).map((c) => c.choiceIndex);
+  return idx.length > 0 ? `정답 ${idx.join(", ")}번` : "";
+}
+
 export interface OxRefAnnotations {
   // 정오문제 = 지문 전체 대상 → 코멘트(content_comments). 포스트잇(문구 앵커) 아님.
   comments: ContentComment[];

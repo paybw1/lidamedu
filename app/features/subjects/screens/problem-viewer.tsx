@@ -62,7 +62,9 @@ import {
   POLARITY_LABEL,
   SCOPE_LABEL,
   SUBJECTIVE_KIND_LABEL,
+  answerLabelOf,
   compareSubjectiveDisplay,
+  isAllChoicesCorrect,
   isOxEligible,
   problemDisplayNumber,
 } from "~/features/problems/labels";
@@ -1654,14 +1656,9 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                     <div className="mt-7 space-y-4">
                       {/* Verdict pill — 채점(선택 있음)=정/오, 보기 모드(미선택)=정답만. */}
                       {(() => {
-                        // 복수정답 지원 — 정답 지문 전부 표시.
-                        const correctIndexes = problem.choices
-                          .filter((c) => c.isCorrect)
-                          .map((c) => c.choiceIndex);
-                        const answerSuffix =
-                          correctIndexes.length > 0
-                            ? `정답 ${correctIndexes.join(", ")}번`
-                            : "";
+                        // 복수정답 지원 + 전항 정답은 "정답 없음"으로 표기(SSOT).
+                        const answerSuffix = answerLabelOf(problem.choices);
+                        const allCorrect = isAllChoicesCorrect(problem.choices);
                         const judged = revealed && selected !== null;
                         if (!judged) {
                           // 보기 모드 — 정/오 판정 없이 정답만 안내.
@@ -1677,6 +1674,18 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                           problem.choices.find(
                             (c) => c.choiceIndex === selected,
                           )?.isCorrect ?? false;
+                        // 전항 정답 문항은 정/오를 가리지 않는다 — 무엇을 골라도 정답 처리라
+                        // "정답입니다"가 오해를 부른다(출제 오류 안내로 대체).
+                        if (allCorrect) {
+                          return (
+                            <div className="flex items-center gap-3">
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-sm font-bold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                                <CircleCheckIcon className="size-4" />
+                                {answerSuffix}
+                              </span>
+                            </div>
+                          );
+                        }
                         return (
                           <div className="flex items-center gap-3">
                             <span
