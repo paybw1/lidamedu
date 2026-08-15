@@ -1,0 +1,38 @@
+[
+ {
+  "displayNo": 8070,
+  "problemId": "0d2ce8dd-8c90-4c7c-b310-b9e8ab5d84df",
+  "choices": [
+   {
+    "choice_id": "8a68b049-30cd-457d-91d6-b13fbd9a0ed6",
+    "choice_index": 1,
+    "is_correct": false,
+    "explanation_md": "특허법 제202조제3항제3호."
+   },
+   {
+    "choice_id": "96af280d-6b85-4a73-a6cb-ae702687d1c7",
+    "choice_index": 2,
+    "is_correct": false,
+    "explanation_md": "특허법 제202조제2항 및 제3항."
+   },
+   {
+    "choice_id": "75505fa0-4613-4c29-b30e-bc77aa6250ef",
+    "choice_index": 3,
+    "is_correct": true,
+    "explanation_md": "선출원인 국제특허출원이 국내서면제출기간에 발명의 설명 및 청구범위에 대한 국어번역문을 제출하지 아니하여 취하된 것으로 보는 경우(法 201④)에도 확대된 선출원 적용 시 다른 출원의 지위가 인정된다(法 55⑥)."
+   },
+   {
+    "choice_id": "9aad84d9-fd5a-484e-8b01-593dd4bf2e78",
+    "choice_index": 4,
+    "is_correct": false,
+    "explanation_md": "특허법 제202조제2항 단서."
+   },
+   {
+    "choice_id": "42d78b4c-b113-4f5b-842e-01120678ed07",
+    "choice_index": 5,
+    "is_correct": false,
+    "explanation_md": "시행규칙 제106조의7."
+   }
+  ]
+ }
+]

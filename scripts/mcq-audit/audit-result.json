@@ -1,0 +1,397 @@
+{
+ "ok": 1080,
+ "answerOnly": [],
+ "explOnly": [
+  {
+   "book": "yesang",
+   "displayNo": 7944,
+   "year": null,
+   "no": 4,
+   "unit": "심판 > 본안심리",
+   "srcNo": 4,
+   "src": [
+    5
+   ],
+   "db": [
+    5
+   ],
+   "explHit": 0,
+   "explTot": 5
+  }
+ ],
+ "both": [],
+ "allCorrect": 0,
+ "noMatch": [
+  {
+   "book": "gichul",
+   "unit": "특허권 > 침해에 대한 조치",
+   "no": 17,
+   "cands": 0,
+   "displayNo": 6034,
+   "year": 2019,
+   "pno": 17
+  },
+  {
+   "book": "gichul",
+   "unit": "특허권 > 이용저촉발명",
+   "no": 5,
+   "cands": 0,
+   "displayNo": 6008,
+   "year": 2021,
+   "pno": 5
+  },
+  {
+   "book": "gichul",
+   "unit": "심판 > 정정심판/특허의 정정",
+   "no": 1,
+   "cands": 0,
+   "displayNo": 6156,
+   "year": 2003,
+   "pno": 1
+  },
+  {
+   "book": "gichul",
+   "unit": "특허권 > 벌칙",
+   "no": 11,
+   "cands": 0,
+   "displayNo": 5768,
+   "year": 2025,
+   "pno": 11
+  },
+  {
+   "book": "gichul",
+   "unit": "심판 > 정정심판/특허의 정정",
+   "no": 7,
+   "cands": 0,
+   "displayNo": 6143,
+   "year": 2015,
+   "pno": 7
+  },
+  {
+   "book": "gichul",
+   "unit": "총칙/보칙 > 대리인",
+   "no": 3,
+   "cands": 0,
+   "displayNo": 5753,
+   "year": 2006,
+   "pno": 3
+  },
+  {
+   "book": "gichul",
+   "unit": "국제조약",
+   "no": 1,
+   "cands": 0,
+   "displayNo": 6188,
+   "year": 1992,
+   "pno": 1
+  },
+  {
+   "book": "gichul",
+   "unit": "국제조약",
+   "no": 7,
+   "cands": 0,
+   "displayNo": 6194,
+   "year": 2008,
+   "pno": 7
+  },
+  {
+   "book": "yesang",
+   "unit": "특허권 > 벌칙",
+   "no": 3,
+   "cands": 0,
+   "displayNo": 7868,
+   "year": null,
+   "pno": 3
+  },
+  {
+   "book": "yesang",
+   "unit": "총칙/보칙 > 행위능력",
+   "no": 5,
+   "cands": 0,
+   "displayNo": 7517,
+   "year": null,
+   "pno": 5
+  },
+  {
+   "book": "yesang",
+   "unit": "심판 > 정정심판/특허의 정정",
+   "no": 3,
+   "cands": 0,
+   "displayNo": 7985,
+   "year": null,
+   "pno": 3
+  },
+  {
+   "book": "yesang",
+   "unit": "총칙/보칙 > 행위능력",
+   "no": 4,
+   "cands": 0,
+   "displayNo": 7516,
+   "year": null,
+   "pno": 4
+  },
+  {
+   "book": "yesang",
+   "unit": "심판 > 정정심판/특허의 정정",
+   "no": 10,
+   "cands": 0,
+   "displayNo": 8014,
+   "year": null,
+   "pno": 10
+  }
+ ],
+ "anchorUnitDiff": [
+  {
+   "book": "gichul",
+   "displayNo": 6157,
+   "dbUnit": "심판 > 정정심판/특허의 정정",
+   "dbNo": 2,
+   "srcSection": "정정청구",
+   "srcNo": 2,
+   "score": 5
+  },
+  {
+   "book": "gichul",
+   "displayNo": 6190,
+   "dbUnit": "국제조약",
+   "dbNo": 3,
+   "srcSection": "조약일반",
+   "srcNo": 3,
+   "score": 5
+  },
+  {
+   "book": "gichul",
+   "displayNo": 5756,
+   "dbUnit": "총칙/보칙 > 대리인",
+   "dbNo": 6,
+   "srcSection": "분 류",
+   "srcNo": 6,
+   "score": 5
+  },
+  {
+   "book": "gichul",
+   "displayNo": 6189,
+   "dbUnit": "국제조약",
+   "dbNo": 2,
+   "srcSection": "조약일반",
+   "srcNo": 2,
+   "score": 5
+  },
+  {
+   "book": "gichul",
+   "displayNo": 6193,
+   "dbUnit": "국제조약",
+   "dbNo": 6,
+   "srcSection": "조약일반",
+   "srcNo": 6,
+   "score": 5
+  },
+  {
+   "book": "gichul",
+   "displayNo": 6158,
+   "dbUnit": "심판 > 정정심판/특허의 정정",
+   "dbNo": 3,
+   "srcSection": "정정청구",
+   "srcNo": 3,
+   "score": 5
+  },
+  {
+   "book": "gichul",
+   "displayNo": 6198,
+   "dbUnit": "국제조약",
+   "dbNo": 11,
+   "srcSection": "조약일반",
+   "srcNo": 11,
+   "score": 5
+  },
+  {
+   "book": "gichul",
+   "displayNo": 5754,
+   "dbUnit": "총칙/보칙 > 대리인",
+   "dbNo": 4,
+   "srcSection": "분 류",
+   "srcNo": 4,
+   "score": 5
+  },
+  {
+   "book": "gichul",
+   "displayNo": 6191,
+   "dbUnit": "국제조약",
+   "dbNo": 4,
+   "srcSection": "조약일반",
+   "srcNo": 4,
+   "score": 5
+  },
+  {
+   "book": "gichul",
+   "displayNo": 6192,
+   "dbUnit": "국제조약",
+   "dbNo": 5,
+   "srcSection": "조약일반",
+   "srcNo": 5,
+   "score": 5
+  },
+  {
+   "book": "gichul",
+   "displayNo": 5755,
+   "dbUnit": "총칙/보칙 > 대리인",
+   "dbNo": 5,
+   "srcSection": "분 류",
+   "srcNo": 5,
+   "score": 5
+  },
+  {
+   "book": "gichul",
+   "displayNo": 6159,
+   "dbUnit": "심판 > 정정심판/특허의 정정",
+   "dbNo": 4,
+   "srcSection": "정정청구",
+   "srcNo": 4,
+   "score": 5
+  },
+  {
+   "book": "gichul",
+   "displayNo": 6197,
+   "dbUnit": "국제조약",
+   "dbNo": 10,
+   "srcSection": "조약일반",
+   "srcNo": 10,
+   "score": 5
+  },
+  {
+   "book": "gichul",
+   "displayNo": 6195,
+   "dbUnit": "국제조약",
+   "dbNo": 8,
+   "srcSection": "조약일반",
+   "srcNo": 8,
+   "score": 5
+  },
+  {
+   "book": "yesang",
+   "displayNo": 8007,
+   "dbUnit": "심판 > 정정심판/특허의 정정",
+   "dbNo": 3,
+   "srcSection": "정정청구",
+   "srcNo": 3,
+   "score": 5
+  },
+  {
+   "book": "yesang",
+   "displayNo": 8011,
+   "dbUnit": "심판 > 정정심판/특허의 정정",
+   "dbNo": 7,
+   "srcSection": "정정청구",
+   "srcNo": 7,
+   "score": 5
+  },
+  {
+   "book": "yesang",
+   "displayNo": 8012,
+   "dbUnit": "심판 > 정정심판/특허의 정정",
+   "dbNo": 8,
+   "srcSection": "정정청구",
+   "srcNo": 9,
+   "score": 5
+  },
+  {
+   "book": "yesang",
+   "displayNo": 8008,
+   "dbUnit": "심판 > 정정심판/특허의 정정",
+   "dbNo": 4,
+   "srcSection": "정정청구",
+   "srcNo": 4,
+   "score": 5
+  },
+  {
+   "book": "yesang",
+   "displayNo": 8009,
+   "dbUnit": "심판 > 정정심판/특허의 정정",
+   "dbNo": 5,
+   "srcSection": "정정청구",
+   "srcNo": 5,
+   "score": 5
+  },
+  {
+   "book": "yesang",
+   "displayNo": 7514,
+   "dbUnit": "총칙/보칙 > 행위능력",
+   "dbNo": 2,
+   "srcSection": "분 류",
+   "srcNo": 2,
+   "score": 5
+  },
+  {
+   "book": "yesang",
+   "displayNo": 8006,
+   "dbUnit": "심판 > 정정심판/특허의 정정",
+   "dbNo": 2,
+   "srcSection": "정정청구",
+   "srcNo": 2,
+   "score": 5
+  },
+  {
+   "book": "yesang",
+   "displayNo": 8010,
+   "dbUnit": "심판 > 정정심판/특허의 정정",
+   "dbNo": 6,
+   "srcSection": "정정청구",
+   "srcNo": 6,
+   "score": 5
+  },
+  {
+   "book": "yesang",
+   "displayNo": 7515,
+   "dbUnit": "총칙/보칙 > 행위능력",
+   "dbNo": 3,
+   "srcSection": "분 류",
+   "srcNo": 3,
+   "score": 5
+  },
+  {
+   "book": "yesang",
+   "displayNo": 7954,
+   "dbUnit": "심판 > 조정위원회 회부",
+   "dbNo": 1,
+   "srcSection": "조정위윈회 회부",
+   "srcNo": 1,
+   "score": 5
+  },
+  {
+   "book": "yesang",
+   "displayNo": 7519,
+   "dbUnit": "총칙/보칙 > 행위능력",
+   "dbNo": 7,
+   "srcSection": "분 류",
+   "srcNo": 7,
+   "score": 5
+  },
+  {
+   "book": "yesang",
+   "displayNo": 8013,
+   "dbUnit": "심판 > 정정심판/특허의 정정",
+   "dbNo": 9,
+   "srcSection": "정정청구",
+   "srcNo": 9,
+   "score": 5
+  },
+  {
+   "book": "yesang",
+   "displayNo": 7518,
+   "dbUnit": "총칙/보칙 > 행위능력",
+   "dbNo": 6,
+   "srcSection": "분 류",
+   "srcNo": 6,
+   "score": 5
+  },
+  {
+   "book": "yesang",
+   "displayNo": 8005,
+   "dbUnit": "심판 > 정정심판/특허의 정정",
+   "dbNo": 1,
+   "srcSection": "정정청구",
+   "srcNo": 1,
+   "score": 5
+  }
+ ]
+}
