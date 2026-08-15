@@ -600,6 +600,11 @@ export function BlankFillViewV2({
   const saveAttempt = (slot: HTMLElement, idx: number, input: string) => {
     if (savedRef.current.has(idx)) return;
     savedRef.current.add(idx);
+    postAttempt(slot, idx, input);
+  };
+
+  // 실제 전송부 — 정답 저장(saveAttempt)과 오답 기록(recordWrongOnLeave)이 공유.
+  const postAttempt = (slot: HTMLElement, idx: number, input: string) => {
     const fd = new FormData();
     let action: string | null = null;
     if (setId) {
@@ -622,6 +627,22 @@ export function BlankFillViewV2({
     }
     if (!action) return;
     void fetch(action, { method: "POST", body: fd }).catch(() => {});
+  };
+
+  // ★칸을 떠날 때 오답 1회 기록(2026-08-15 신고 b3ea9bc9, 사용자 결정).
+  //   지금까지는 정답일 때만 전송해서 '약점 빈칸'·복습 큐가 늘 비어 있었다.
+  //   빈 칸은 제외(시도로 보지 않음), 이미 정답으로 저장된 칸도 제외, 칸당 1회만.
+  const wrongLoggedRef = useRef<Set<number>>(new Set());
+  const recordWrongOnLeave = (slot: HTMLElement | null) => {
+    if (!slot) return;
+    const idx = Number(slot.dataset.blankIdx);
+    if (!Number.isFinite(idx)) return;
+    if (savedRef.current.has(idx) || wrongLoggedRef.current.has(idx)) return;
+    const val = readSlot(slot);
+    if (val.length === 0) return; // 안 푼 칸은 기록하지 않는다
+    if (normalizeAnswer(val) === normalizeAnswer(slot.dataset.answer ?? "")) return;
+    wrongLoggedRef.current.add(idx);
+    postAttempt(slot, idx, val); // 정답 판정은 서버가 재검증
   };
 
   const setCaretEnd = (slot: HTMLElement) => {
@@ -848,6 +869,9 @@ export function BlankFillViewV2({
     }
   };
   const focusViaSink = (target: HTMLElement) => {
+    // 떠나는 칸이 미완성/오답이면 여기서 1회 기록(약점 빈칸·복습 큐 반영).
+    const leaving = slotFromSelection();
+    if (leaving && leaving !== target) recordWrongOnLeave(leaving);
     const sink = sinkRef.current;
     const flush = flushInputRef.current;
     const land = () => {
@@ -1688,6 +1712,8 @@ export function BlankFillViewV2({
         : null;
     const curSlot = slotFromSelection();
     if (!tgtSlot || tgtSlot === curSlot) return;
+    // 클릭·탭으로 다른 칸에 갈 때도 떠나는 칸의 오답을 1회 기록.
+    if (curSlot) recordWrongOnLeave(curSlot);
     if (composingRef.current) {
       const sink = sinkRef.current;
       if (!sink) return;
