@@ -27,7 +27,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (!user) throw data("Unauthorized", { status: 401 });
 
   const [items, watermark] = await Promise.all([
-    listAllMemos(client, user.id),
+    listAllMemos(client, user.id, { fullText: true }),
     getPrintWatermark(client, user.id),
   ]);
   return data({ items, watermark }, { headers });

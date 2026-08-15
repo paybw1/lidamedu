@@ -517,7 +517,12 @@ export interface BookmarkListItem {
 export async function listAllBookmarks(
   client: SupabaseClient<Database>,
   userId: string,
+  // 인쇄 정리본은 전문이 필요하다 — 목록 카드용 축약(80/120자 + …)을 그대로 쓰면
+  // 지문·해설·메모 뒷부분이 잘려 나온다(신고 38217500). 화면 목록은 기본값 유지.
+  opts: { fullText?: boolean } = {},
 ): Promise<BookmarkListItem[]> {
+  const clip = (s: string, n: number) =>
+    opts.fullText || s.length <= n ? s : `${s.slice(0, n)}…`;
   const { data: rows, error } = await client
     .from("user_bookmarks")
     .select(
@@ -661,7 +666,7 @@ export async function listAllBookmarks(
       problemMap.set(p.problem_id, {
         year: p.year,
         problemNumber: p.problem_number,
-        bodySnippet: body.length > 80 ? `${body.slice(0, 80)}…` : body,
+        bodySnippet: clip(body, 80),
         lawCode: p.laws?.law_code ?? null,
         scienceSubject: p.science_subject,
       });
@@ -674,7 +679,7 @@ export async function listAllBookmarks(
   ): string | null {
     if (noteMd && noteMd.trim().length > 0) {
       const t = noteMd.trim().replace(/\s+/g, " ");
-      return t.length > 80 ? `${t.slice(0, 80)}…` : t;
+      return clip(t, 80);
     }
     if (
       stepNotes &&
@@ -686,7 +691,7 @@ export async function listAllBookmarks(
         const v = (stepNotes as Record<string, unknown>)[key];
         if (typeof v === "string" && v.trim().length > 0) {
           const t = v.trim().replace(/\s+/g, " ");
-          return t.length > 80 ? `${t.slice(0, 80)}…` : t;
+          return clip(t, 80);
         }
       }
     }
@@ -787,7 +792,7 @@ export async function listAllBookmarks(
           secondaryLabel: p.year
             ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
             : "문제",
-          bodySnippet: body.length > 120 ? `${body.slice(0, 120)}…` : body,
+          bodySnippet: clip(body, 120),
           href: `/subjects/${p.lawCode}/problems/${c.problemId}`,
           oxTruth: c.oxTruth,
         },
@@ -814,7 +819,7 @@ export async function listAllBookmarks(
           secondaryLabel: p.year
             ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
             : "문제",
-          bodySnippet: body.length > 120 ? `${body.slice(0, 120)}…` : body,
+          bodySnippet: clip(body, 120),
           href: `/subjects/${p.lawCode}/problems/${b.problemId}`,
           oxTruth: b.oxTruth,
         },
@@ -939,7 +944,11 @@ function resolveCaseIssue(
 export async function listAllMemos(
   client: SupabaseClient<Database>,
   userId: string,
+  // 인쇄 정리본은 전문(신고 38217500) — 화면 목록은 기본 축약 유지.
+  opts: { fullText?: boolean } = {},
 ): Promise<MemoListItem[]> {
+  const clip = (s: string, n: number) =>
+    opts.fullText || s.length <= n ? s : `${s.slice(0, n)}…`;
   const { data: rows, error } = await client
     .from("user_memos")
     .select(
@@ -1076,7 +1085,7 @@ export async function listAllMemos(
       problemMap.set(p.problem_id, {
         year: p.year,
         problemNumber: p.problem_number,
-        bodySnippet: body.length > 80 ? `${body.slice(0, 80)}…` : body,
+        bodySnippet: clip(body, 80),
         lawCode: p.laws?.law_code ?? null,
         scienceSubject: p.science_subject,
       });
@@ -1165,7 +1174,7 @@ export async function listAllMemos(
           secondaryLabel: p.year
             ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
             : "문제",
-          bodySnippet: body.length > 120 ? `${body.slice(0, 120)}…` : body,
+          bodySnippet: clip(body, 120),
           href: `/subjects/${p.lawCode}/problems/${c.problemId}`,
         },
       ];
@@ -1186,7 +1195,7 @@ export async function listAllMemos(
           secondaryLabel: p.year
             ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
             : "문제",
-          bodySnippet: body.length > 120 ? `${body.slice(0, 120)}…` : body,
+          bodySnippet: clip(body, 120),
           href: `/subjects/${p.lawCode}/problems/${b.problemId}`,
         },
       ];
@@ -1233,7 +1242,11 @@ export interface HighlightListItem {
 export async function listAllHighlights(
   client: SupabaseClient<Database>,
   userId: string,
+  // 인쇄 정리본은 전문(신고 38217500) — 화면 목록은 기본 축약 유지.
+  opts: { fullText?: boolean } = {},
 ): Promise<HighlightListItem[]> {
+  const clip = (s: string, n: number) =>
+    opts.fullText || s.length <= n ? s : `${s.slice(0, n)}…`;
   const { data: rows, error } = await client
     .from("user_highlights")
     .select(
@@ -1361,7 +1374,7 @@ export async function listAllHighlights(
       problemMap.set(p.problem_id, {
         year: p.year,
         problemNumber: p.problem_number,
-        bodySnippet: body.length > 80 ? `${body.slice(0, 80)}…` : body,
+        bodySnippet: clip(body, 80),
         lawCode: p.laws?.law_code ?? null,
         scienceSubject: p.science_subject,
       });
@@ -1449,7 +1462,7 @@ export async function listAllHighlights(
           secondaryLabel: p.year
             ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
             : "문제",
-          bodySnippet: body.length > 120 ? `${body.slice(0, 120)}…` : body,
+          bodySnippet: clip(body, 120),
           href: `/subjects/${p.lawCode}/problems/${c.problemId}`,
         },
       ];
@@ -1470,7 +1483,7 @@ export async function listAllHighlights(
           secondaryLabel: p.year
             ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
             : "문제",
-          bodySnippet: body.length > 120 ? `${body.slice(0, 120)}…` : body,
+          bodySnippet: clip(body, 120),
           href: `/subjects/${p.lawCode}/problems/${b.problemId}`,
         },
       ];

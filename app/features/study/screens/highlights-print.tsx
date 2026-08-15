@@ -64,7 +64,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (!user) throw data("Unauthorized", { status: 401 });
 
   const [items, aliases, watermark] = await Promise.all([
-    listAllHighlights(client, user.id),
+    listAllHighlights(client, user.id, { fullText: true }),
     getHighlightColorAliases(client, user.id),
     getPrintWatermark(client, user.id),
   ]);
