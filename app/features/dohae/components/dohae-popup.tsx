@@ -57,6 +57,24 @@ function DohaeTable({ cells }: { cells: DohaeCell[][] }) {
   // 주체적 기준 등)이 본문처럼 왼쪽 정렬·보통 굵기로 나왔다(원장 신고 2026-08-17).
   const labelCols = hasHeader ? (cells[0]?.[0]?.colSpan ?? 1) : 1;
   const startCols = gridStartCols(cells);
+  // 라벨 열이 1개("구 분")인 표는 첫 열이 정말 라벨 열인지 **표 단위로** 한 번에 정한다.
+  // 칸마다 글자수로 재면 같은 열인데 어떤 칸만 굵게 나오는 들쭉날쭉이 생긴다
+  // ("새로운 발명 수용(구체적 타당성)" 14자만 빠지던 문제 — 원장 신고 2026-08-17).
+  // 첫 열이 긴 예시 블록인 표(보정 t25 138자·법정실시권 t49 170자)를 걸러내는 게 목적이라
+  // 실측 분포상 가장 긴 진짜 라벨(42자)과 여유 있게 갈리는 45자를 경계로 둔다.
+  const LABEL_COL_MAX = 45;
+  const col0IsLabel =
+    labelCols > 1 ||
+    cells.every((row, ri) =>
+      ri === 0 && hasHeader
+        ? true
+        : row.every(
+            (c, ci) =>
+              row.length < 2 ||
+              startCols[ri][ci] !== 0 ||
+              c.text.replace(/\s/g, "").length <= LABEL_COL_MAX,
+          ),
+    );
   return (
     <div className="overflow-x-auto">
       <table className="border-border w-full border-collapse text-[length:calc(13.5px*var(--study-fs,1))]">
@@ -67,13 +85,11 @@ function DohaeTable({ cells }: { cells: DohaeCell[][] }) {
                 const isHead = hasHeader && ri === 0;
                 const Tag = isHead ? "th" : "td";
                 // 라벨 셀 — 헤더 톤(가운데·굵게·연한 음영). 라벨 열 안에 놓인 칸만.
-                // 라벨 열이 1개뿐인 표는 길이 제한을 유지한다 — 보정(t25) 처럼 첫 열이
-                // 긴 예시 블록인 표를 라벨로 오인하지 않게.
                 const isLabel =
                   !isHead &&
                   row.length > 1 &&
                   startCols[ri][ci] < labelCols &&
-                  (labelCols > 1 || c.text.replace(/\s/g, "").length <= 12);
+                  col0IsLabel;
                 return (
                   <Tag
                     key={ci}
