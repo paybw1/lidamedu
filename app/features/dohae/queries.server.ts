@@ -140,6 +140,46 @@ export async function listDohaeUnitArticles(
     });
 }
 
+/**
+ * 조문 번호 → 조문 제목. 관련조문 참조를 "法 20Ⅵ [절차의 중단]" 으로 보여주는 데 쓴다.
+ * ★메인 뷰어(article-viewer·systematic-node-viewer)가 만드는 titleMap 과 **같은 규칙**이어야
+ *   양쪽 표기가 통일된다(원장 지적 2026-08-17). 아래 정규식을 바꾸면 그쪽도 같이 바꿀 것.
+ * 참조는 법 전체 어디든 가리킬 수 있으므로 그 법의 조문을 전부 담는다.
+ */
+export async function getArticleTitleMap(
+  client: SupabaseClient<Database>,
+  lawCode: string,
+): Promise<Record<string, string>> {
+  const { data: law, error: lawErr } = await client
+    .from("laws")
+    .select("law_id")
+    .eq("law_code", lawCode)
+    .maybeSingle();
+  if (lawErr) throw lawErr;
+  if (!law) return {};
+
+  const out: Record<string, string> = {};
+  // ★PostgREST 기본 상한 1000행 — 조문 수가 그보다 많은 법(민법)도 있어 페이징한다.
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await client
+      .from("articles")
+      .select("article_number, display_label")
+      .eq("law_id", law.law_id)
+      .eq("level", "article")
+      .is("deleted_at", null)
+      .order("article_id")
+      .range(from, from + 999);
+    if (error) throw error;
+    for (const a of data ?? []) {
+      if (!a.article_number) continue;
+      const m = a.display_label.match(/^제\d+조(?:의\d+)?\s+(.+)$/);
+      out[a.article_number] = m ? m[1] : a.display_label;
+    }
+    if (!data || data.length < 1000) break;
+  }
+  return out;
+}
+
 export async function listDohaeUnitsForArticle(
   client: SupabaseClient<Database>,
   articleId: string,

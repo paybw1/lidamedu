@@ -12,7 +12,7 @@ import {
   PanelRightIcon,
   SquareIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useFetcher, useFetchers } from "react-router";
 
 import {
@@ -42,6 +42,8 @@ type UnitPayload = Awaited<ReturnType<typeof unitLoader>>;
 
 type DohaeView = "dialog" | "sheet";
 const DOHAE_VIEW_KEY = "lidam:dohaeView";
+// 도해특허법 = 특허법 단행본. 다른 과목 도해가 생기면 유닛의 book_code 로 갈라야 한다.
+const DOHAE_LAW_SLUG = "patent" as const;
 
 /**
  * 각 셀이 실제로 놓이는 격자 열 번호. rowspan 이 걸린 앞 행의 칸이 자리를 차지하므로
@@ -173,11 +175,13 @@ function UnitArticles({
   articles,
   highlightsByArticle,
   memosByArticle,
+  titleMap,
   viewerIsStaff,
 }: {
   articles: UnitPayload["articles"];
   highlightsByArticle: UnitPayload["articleHighlights"];
   memosByArticle: UnitPayload["articleMemos"];
+  titleMap: Map<string, string>;
   viewerIsStaff: boolean;
 }) {
   return (
@@ -185,15 +189,33 @@ function UnitArticles({
       {articles.map((a) => {
         const body = parseArticleBody(a.bodyJson);
         const memos = memosByArticle[a.articleId] ?? [];
+        const importance = Math.max(0, Math.min(3, a.importance));
         return (
           <div
             key={a.articleId}
             className="border-primary/50 bg-primary/[0.04] rounded-lg border px-4 py-3"
           >
-            <p className="mb-1.5 flex items-center gap-1.5 text-[13px] font-bold">
+            <p className="mb-1.5 flex items-center gap-2 text-[15px] font-bold">
               {a.displayLabel}
-              {a.importance > 0 ? (
-                <span className="text-amber-500">{"★".repeat(a.importance)}</span>
+              {/* 중요도 — 메인 뷰어와 같은 표기(빈 별까지 3개, 본문보다 큰 글자). */}
+              {importance > 0 ? (
+                <span
+                  className="inline-flex items-center gap-0.5 text-base leading-none"
+                  aria-label={`중요도 ${importance}성급`}
+                >
+                  {Array.from({ length: 3 }, (_, i) => (
+                    <span
+                      key={i}
+                      className={
+                        i < importance
+                          ? "text-amber-500 dark:text-amber-400"
+                          : "text-muted-foreground/30"
+                      }
+                    >
+                      ★
+                    </span>
+                  ))}
+                </span>
               ) : null}
             </p>
             {body ? (
@@ -206,7 +228,12 @@ function UnitArticles({
                   viewerIsStaff={viewerIsStaff}
                 >
                   <div className="text-foreground text-[length:calc(14px*var(--study-fs,1))] leading-[1.75]">
-                    <ArticleBodyView body={body} lawCode="patent" memos={memos} />
+                    <ArticleBodyView
+                      body={body}
+                      titleMap={titleMap}
+                      lawCode={DOHAE_LAW_SLUG}
+                      memos={memos}
+                    />
                   </div>
                 </HighlightOverlay>
               </MemoMarksOverlay>
@@ -225,12 +252,14 @@ function DohaeBlocks({
   articles,
   articleHighlights,
   articleMemos,
+  titleMap,
   viewerIsStaff,
 }: {
   blocks: DohaeBlock[];
   articles: UnitPayload["articles"];
   articleHighlights: UnitPayload["articleHighlights"];
   articleMemos: UnitPayload["articleMemos"];
+  titleMap: Map<string, string>;
   viewerIsStaff: boolean;
 }) {
   // 조문 원문 박스는 유닛당 정확히 1개(93유닛 중 76개 보유, 나머지는 아예 없음).
@@ -268,6 +297,7 @@ function DohaeBlocks({
                   articles={articles}
                   highlightsByArticle={articleHighlights}
                   memosByArticle={articleMemos}
+                  titleMap={titleMap}
                   viewerIsStaff={viewerIsStaff}
                 />
               );
@@ -367,6 +397,11 @@ export function DohaePopup({
 
   const payload = fetcher.data;
   const unit = activeUnitId && payload?.unit.unitId === activeUnitId ? payload.unit : null;
+  // 관련조문 표기용 조문 제목표 — ArticleBodyView 가 Map 을 받는다.
+  const titleMap = useMemo(() => {
+    const src: Record<string, string> = payload?.titleMap ?? {};
+    return new Map(Object.entries(src));
+  }, [payload?.titleMap]);
   const activeIndex = units.findIndex((u) => u.unitId === activeUnitId);
   const activeSummary = activeIndex >= 0 ? units[activeIndex] : null;
   const prevUnit = activeIndex > 0 ? units[activeIndex - 1] : null;
@@ -510,6 +545,7 @@ export function DohaePopup({
                       articles={payload?.articles ?? []}
                       articleHighlights={payload?.articleHighlights ?? {}}
                       articleMemos={payload?.articleMemos ?? {}}
+                      titleMap={titleMap}
                       viewerIsStaff={viewerIsStaff}
                     />
                   </HighlightOverlay>

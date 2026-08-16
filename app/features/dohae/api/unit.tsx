@@ -16,7 +16,10 @@ import {
 } from "~/features/annotations/queries.server";
 
 import type { DohaeBlock } from "../labels";
-import { listDohaeUnitArticles } from "../queries.server";
+import { getArticleTitleMap, listDohaeUnitArticles } from "../queries.server";
+
+// 도해특허법 = 특허법 단행본. 다른 과목 도해가 생기면 book_code 로 갈라야 한다.
+const DOHAE_LAW_CODE = "patent";
 
 const SIGNED_URL_TTL_SEC = 3600;
 
@@ -60,17 +63,24 @@ export async function loader({ request }: Route.LoaderArgs) {
   const articles = await listDohaeUnitArticles(client, row.unit_id);
   const articleIds = articles.map((a) => a.articleId);
 
-  const [memos, highlights, articleMemos, articleHighlights] = await Promise.all([
-    listMemos(client, user.id, "dohae_unit", row.unit_id),
-    listHighlights(client, user.id, "dohae_unit", row.unit_id),
-    listMemosByArticleIds(client, user.id, articleIds),
-    listHighlightsByArticleIds(client, user.id, articleIds),
-  ]);
+  const [memos, highlights, articleMemos, articleHighlights, titleMap] =
+    await Promise.all([
+      listMemos(client, user.id, "dohae_unit", row.unit_id),
+      listHighlights(client, user.id, "dohae_unit", row.unit_id),
+      listMemosByArticleIds(client, user.id, articleIds),
+      listHighlightsByArticleIds(client, user.id, articleIds),
+      // 관련조문 참조에 조문 제목을 붙이려면 그 법 전체 제목표가 필요하다
+      // (참조는 유닛 밖 조문을 가리킬 수 있다).
+      articleIds.length > 0
+        ? getArticleTitleMap(client, DOHAE_LAW_CODE)
+        : Promise.resolve({}),
+    ]);
 
   return {
     articles,
     articleMemos,
     articleHighlights,
+    titleMap,
     unit: {
       unitId: row.unit_id,
       unitKey: row.unit_key,
