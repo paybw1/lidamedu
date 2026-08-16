@@ -54,6 +54,7 @@ export function StudyPrintShell({
   watermark,
   empty,
   emptyText,
+  controls,
   children,
 }: {
   docTitle: string;
@@ -61,6 +62,8 @@ export function StudyPrintShell({
   watermark: PrintWatermark;
   empty?: boolean;
   emptyText?: string;
+  /** 인쇄 전 선택지(모드 전환 등) — 화면 툴바에만 나오고 인쇄물에는 안 나온다. */
+  controls?: ReactNode;
   children: ReactNode;
 }) {
   // 마운트 후 렌더가 끝날 시간을 주고 인쇄 대화상자 자동 호출.
@@ -99,10 +102,11 @@ export function StudyPrintShell({
       </div>
 
       {/* 화면 전용 툴바 (인쇄 제외) */}
-      <div className="no-print sticky top-0 z-20 flex items-center justify-between border-b border-neutral-200 bg-white/95 px-5 py-3 backdrop-blur">
+      <div className="no-print sticky top-0 z-20 flex flex-wrap items-center justify-between gap-2 border-b border-neutral-200 bg-white/95 px-5 py-3 backdrop-blur">
         <p className="text-sm font-semibold text-neutral-700">
           {docTitle} — 인쇄 대화상자에서 “PDF로 저장”을 선택하세요.
         </p>
+        {controls}
         <div className="flex items-center gap-2">
           <button
             type="button"
