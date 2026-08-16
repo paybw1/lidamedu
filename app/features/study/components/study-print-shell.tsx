@@ -14,9 +14,13 @@ import {
   type LawSubjectSlug,
 } from "~/features/subjects/lib/subjects";
 
+// ★중복 제거 필수 — 특허·상표·디자인은 1차·2차 목록에 모두 있어서, 그냥 이어 붙이면
+//   아래 groupBySubject 가 같은 과목 그룹을 두 번 내보낸다(특허 → 민법 → 특허 반복).
 const SUBJECT_ORDER: LawSubjectSlug[] = [
-  ...FIRST_EXAM_LAW_SLUGS,
-  ...SECOND_EXAM_LAW_SLUGS,
+  ...new Set<LawSubjectSlug>([
+    ...FIRST_EXAM_LAW_SLUGS,
+    ...SECOND_EXAM_LAW_SLUGS,
+  ]),
 ];
 
 // 과목 슬러그로 그룹핑 — 정해진 과목 순서 우선, 그 외(또는 null)는 "기타" 로.
