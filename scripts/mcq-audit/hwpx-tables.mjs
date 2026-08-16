@@ -96,7 +96,21 @@ const esc = (s) =>
 /** 첫 행을 thead 로 — 기존 파이프 표 변환 규칙과 동일하게 맞춘다. */
 export function toHtml(t) {
   // 셀 안 줄바꿈은 원본 문단 그대로 <br> 로 (이스케이프 뒤에 넣어야 태그로 산다).
-  const cellHtml = (c) => (c.paras?.length ? c.paras.map(esc).join("<br>") : esc(c.text));
+  //
+  // 예외 — **짧은 라벨은 한 줄로 붙인다**(사용자 지시 2026-08-16). 교재에서 `의/사`,
+  // `주체적/요건` 처럼 두세 줄로 쌓인 건 칸이 좁아 접힌 것이지 의미상 줄바꿈이 아니다.
+  // 판정: 문단이 3개 이하 · 각 문단에 공백이 없음(=낱말 조각) · 이어 붙여도 12자 이하.
+  // `청구항 1 : A+B` 처럼 공백을 품은 문단은 여기 걸리지 않아 줄바꿈이 유지된다.
+  const isWrappedLabel = (paras) =>
+    paras.length > 1 &&
+    paras.length <= 3 &&
+    paras.every((p) => !/\s/.test(p)) &&
+    paras.join(" ").length <= 12;
+  const cellHtml = (c) => {
+    const paras = c.paras ?? [];
+    if (paras.length === 0) return esc(c.text);
+    return paras.map(esc).join(isWrappedLabel(paras) ? " " : "<br>");
+  };
   const line = (cells, tag) =>
     "<tr>" +
     cells
