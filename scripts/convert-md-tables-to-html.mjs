@@ -222,7 +222,9 @@ function renderHtml(headerCells, bodyRows) {
   return `<table>\n<thead>\n${headRows.join("\n")}\n</thead>\n<tbody>\n${bodyHtml.join("\n")}\n</tbody>\n</table>`;
 }
 
-function convertMarkdownTablesInText(text) {
+// 선지 해설(problem_choices)에도 같은 변환이 필요해 export — 아래 CLI 본문은
+// 직접 실행할 때만 돈다(import 시에는 DB 조회가 일어나지 않도록).
+export function convertMarkdownTablesInText(text) {
   let count = 0;
   const replaced = text.replace(TABLE_BLOCK_RE, (match, pre, block) => {
     const parsed = parseTable(block);
@@ -234,44 +236,82 @@ function convertMarkdownTablesInText(text) {
   return { text: replaced, count };
 }
 
-const query = supa
-  .from("problems")
-  .select("problem_id, body_md, explanation_md")
-  .is("deleted_at", null);
+// --choices: 문제 단위 해설(problems.explanation_md) 대신 **선지별 해설**
+//   (problem_choices.explanation_md)을 대상으로 한다. 교재 표는 대부분 선지 해설에 붙어 있고,
+//   병합 셀이 파이프 표로 변환되며 빈 칸으로 뭉개져 있었다(2026-08-16 신고).
+const CHOICES = ARGS.includes("--choices");
 
-const { data: problems, error } = ONLY_PID
-  ? await query.eq("problem_id", ONLY_PID)
-  : await query.like("explanation_md", "%|%---%|%");
-
-if (error) {
-  console.error(error);
-  process.exit(1);
+let candidates;
+if (CHOICES) {
+  const q = supa
+    .from("problem_choices")
+    .select("choice_id, problem_id, choice_index, explanation_md");
+  const { data, error: err } = ONLY_PID
+    ? await q.eq("problem_id", ONLY_PID)
+    : await q.like("explanation_md", "%|%---%|%");
+  if (err) {
+    console.error(err);
+    process.exit(1);
+  }
+  candidates = (data ?? [])
+    .filter((c) => (c.explanation_md ?? "").includes("|"))
+    .map((c) => ({
+      key: c.choice_id,
+      pid: c.problem_id,
+      label: `pid=${c.problem_id} 선지${c.choice_index}`,
+      text: c.explanation_md ?? "",
+    }));
+} else {
+  const query = supa
+    .from("problems")
+    .select("problem_id, body_md, explanation_md")
+    .is("deleted_at", null);
+  const { data: problems, error } = ONLY_PID
+    ? await query.eq("problem_id", ONLY_PID)
+    : await query.like("explanation_md", "%|%---%|%");
+  if (error) {
+    console.error(error);
+    process.exit(1);
+  }
+  candidates = (problems ?? [])
+    .filter((p) => (p.explanation_md ?? "").includes("|"))
+    .map((p) => ({
+      key: p.problem_id,
+      pid: p.problem_id,
+      label: `pid=${p.problem_id}  body=${(p.body_md ?? "").slice(0, 60)}…`,
+      text: p.explanation_md ?? "",
+    }));
 }
 
-const candidates = (problems ?? []).filter((p) =>
-  /\|[^\n]*\|\n\|[\s\-:|]+\|/.test(p.explanation_md ?? ""),
+candidates = candidates.filter((c) =>
+  /\|[^\n]*\|\n\|[\s\-:|]+\|/.test(c.text),
 );
 
-console.log(`후보 ${candidates.length} 건`);
+console.log(`후보 ${candidates.length} 건${CHOICES ? " (선지 해설)" : ""}`);
 
 let updated = 0;
 let totalTables = 0;
-for (const p of candidates) {
-  const before = p.explanation_md ?? "";
+for (const c of candidates) {
+  const before = c.text;
   const { text: after, count } = convertMarkdownTablesInText(before);
   if (count === 0 || after === before) continue;
   totalTables += count;
   console.log("---");
-  console.log(`pid=${p.problem_id}  body=${(p.body_md ?? "").slice(0, 60)}…  표 ${count} 개`);
+  console.log(`${c.label}  표 ${count} 개`);
   if (!APPLY) {
     console.log(after.slice(0, 800) + (after.length > 800 ? "…(truncated)" : ""));
   } else {
-    const { error: upErr } = await supa
-      .from("problems")
-      .update({ explanation_md: after })
-      .eq("problem_id", p.problem_id);
+    const { error: upErr } = CHOICES
+      ? await supa
+          .from("problem_choices")
+          .update({ explanation_md: after })
+          .eq("choice_id", c.key)
+      : await supa
+          .from("problems")
+          .update({ explanation_md: after })
+          .eq("problem_id", c.key);
     if (upErr) {
-      console.error(`  ✗ ${p.problem_id}: ${upErr.message}`);
+      console.error(`  ✗ ${c.key}: ${upErr.message}`);
     } else {
       updated += 1;
     }
