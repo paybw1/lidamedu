@@ -8,6 +8,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   Loader2Icon,
+  NotebookPenIcon,
   PanelRightIcon,
   SquareIcon,
 } from "lucide-react";
@@ -240,6 +241,10 @@ export function DohaePopup({
       /* private mode 등 — 기억만 포기 */
     }
   };
+  // 우측 학습 툴(포스트잇·하이라이트) 접기 — 시트는 폭이 좁아 기본 접힘, 팝업은 펼침.
+  // null = 아직 손대지 않음 → 표시 방식의 기본값을 따른다.
+  const [toolsOpenRaw, setToolsOpen] = useState<boolean | null>(null);
+  const toolsOpen = toolsOpenRaw ?? view === "dialog";
   const fetcher = useFetcher<UnitPayload>();
   const fetchers = useFetchers();
 
@@ -327,11 +332,32 @@ export function DohaePopup({
                 </button>
               </>
             ) : null}
+            <div className="ml-auto flex items-center gap-1.5">
+            {activeSummary ? (
+              <button
+                type="button"
+                onClick={() => setToolsOpen(!toolsOpen)}
+                aria-pressed={toolsOpen}
+                title="포스트잇·하이라이트 목록 접기/펴기"
+                className={cn(
+                  "border-border hover:bg-muted hidden items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] lg:inline-flex",
+                  toolsOpen ? "text-foreground" : "text-muted-foreground",
+                )}
+              >
+                <NotebookPenIcon className="size-3" />
+                학습 툴
+                {toolsOpen ? (
+                  <ChevronRightIcon className="size-3" />
+                ) : (
+                  <ChevronLeftIcon className="size-3" />
+                )}
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => setView(view === "sheet" ? "dialog" : "sheet")}
               title="표시 방식 비교용 — 선택은 이 브라우저에 기억됩니다."
-              className="border-border text-muted-foreground hover:bg-muted ml-auto inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px]"
+              className="border-border text-muted-foreground hover:bg-muted inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px]"
             >
               {view === "sheet" ? (
                 <>
@@ -343,6 +369,7 @@ export function DohaePopup({
                 </>
               )}
             </button>
+            </div>
           </div>
         </DialogHeader>
 
@@ -370,7 +397,12 @@ export function DohaePopup({
             ))}
           </ul>
         ) : (
-          <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[1fr_280px]">
+          <div
+            className={cn(
+              "grid min-h-0 flex-1 grid-cols-1",
+              toolsOpen && "lg:grid-cols-[1fr_280px]",
+            )}
+          >
             <div className="min-h-0 overflow-y-auto px-5 py-4">
               {!unit ? (
                 <p className="text-muted-foreground flex items-center gap-2 py-16 text-center text-sm">
@@ -394,7 +426,12 @@ export function DohaePopup({
                 ★하이라이트 삭제는 이 목록에서만 된다(본문 마킹을 눌러 지우는 경로는 없다).
                 조문 뷰어는 우측 패널에 같은 목록이 있는데 팝업엔 빠져 있어, 그은 하이라이트를
                 지울 방법이 아예 없었다(원장 문의 2026-08-17). */}
-            <aside className="border-border bg-muted/20 hidden min-h-0 overflow-y-auto border-l px-3 py-4 lg:block">
+            <aside
+              className={cn(
+                "border-border bg-muted/20 hidden min-h-0 overflow-y-auto border-l px-3 py-4",
+                toolsOpen && "lg:block",
+              )}
+            >
               <p className="text-muted-foreground mb-2 text-[11px] font-semibold tracking-wide uppercase">
                 포스트잇
               </p>
