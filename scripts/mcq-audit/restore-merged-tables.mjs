@@ -28,6 +28,12 @@ const BOOKS = [
 // 셀 안 항목 번호("1." "2.")는 문단 구성에 따라 한쪽에만 남는 경우가 있어,
 // 정확 일치가 안 되면 번호를 뗀 서명으로 한 번 더 맞춘다(유일할 때만 인정).
 const loose = (s) => s.replace(/\d+\./g, "");
+// 같은 표인지 볼 때는 **구조와 내용만** 본다 — 열 너비(colgroup)는 같은 표라도 실린
+// 위치에 따라 조금씩 달라서, 그것까지 비교하면 멀쩡한 표가 '모호' 로 빠진다.
+const shape = (t) =>
+  toHtml(t)
+    .replace(/<colgroup>[\s\S]*?<\/colgroup>/, "")
+    .replace(/ style="table-layout:fixed"/, "");
 
 const bySig = new Map();
 const byLoose = new Map();
@@ -38,11 +44,11 @@ for (const f of BOOKS) {
     if (!t.sig) continue;
     const prev = bySig.get(t.sig);
     if (prev === undefined) bySig.set(t.sig, t);
-    else if (prev && toHtml(prev) !== toHtml(t)) bySig.set(t.sig, null); // 모호 → 제외
+    else if (prev && shape(prev) !== shape(t)) bySig.set(t.sig, null); // 모호 → 제외
     const lk = loose(t.sig);
     const lprev = byLoose.get(lk);
     if (lprev === undefined) byLoose.set(lk, t);
-    else if (lprev && toHtml(lprev) !== toHtml(t)) byLoose.set(lk, null);
+    else if (lprev && shape(lprev) !== shape(t)) byLoose.set(lk, null);
   }
 }
 console.log(`원본 표 ${nTables}개 · 서명 색인 ${bySig.size}개 (모호 ${[...bySig.values()].filter((v) => v === null).length})`);

@@ -49,7 +49,7 @@ function tableFrom(node) {
   walk(node, (n) => {
     const tk = Object.keys(n).find((k) => k !== ":@" && !k.startsWith("@_"));
     if (tk !== "hp:tc") return;
-    let row = 0, col = 0, colSpan = 1, rowSpan = 1;
+    let row = 0, col = 0, colSpan = 1, rowSpan = 1, width = 0;
     const paras = [];
     for (const c of n[tk] ?? []) {
       const ck = Object.keys(c).find((k) => k !== ":@" && !k.startsWith("@_"));
@@ -58,6 +58,8 @@ function tableFrom(node) {
       if (ck === "hp:cellAddr") {
         col = parseInt(a["@_colAddr"] ?? "0", 10) || 0;
         row = parseInt(a["@_rowAddr"] ?? "0", 10) || 0;
+      } else if (ck === "hp:cellSz") {
+        width = parseInt(a["@_width"] ?? "0", 10) || 0;
       } else if (ck === "hp:cellSpan") {
         colSpan = parseInt(a["@_colSpan"] ?? "1", 10) || 1;
         rowSpan = parseInt(a["@_rowSpan"] ?? "1", 10) || 1;
@@ -74,12 +76,47 @@ function tableFrom(node) {
       }
     }
     if (row < rowCnt && col < colCnt)
-      grid[row][col] = { paras, text: paras.join(" ").trim(), colSpan, rowSpan };
+      grid[row][col] = { paras, text: paras.join(" ").trim(), colSpan, rowSpan, width };
   });
 
   const rows = grid.map((r) => r.filter(Boolean));
   if (rows.every((r) => r.length === 0)) return null;
-  return { rows, rowCnt, colCnt, sig: signatureOf(rows.flat().map((c) => c.text)) };
+
+  // 열 너비 — 원본 비율을 그대로 옮기기 위해 hp:cellSz/@width 로 계산한다.
+  //  · 한 칸짜리 셀은 그 열의 너비를 그대로 알려준다.
+  //  · 병합 셀밖에 없는 열은 병합 폭에서 이미 아는 열을 뺀 나머지를 균등 배분.
+  const colW = Array(colCnt).fill(0);
+  for (let r = 0; r < rowCnt; r++)
+    for (let c = 0; c < colCnt; c++) {
+      const cell = grid[r][c];
+      if (cell && cell.colSpan === 1 && cell.width > 0)
+        colW[c] = Math.max(colW[c], cell.width);
+    }
+  for (let r = 0; r < rowCnt; r++)
+    for (let c = 0; c < colCnt; c++) {
+      const cell = grid[r][c];
+      if (!cell || cell.colSpan <= 1 || !cell.width) continue;
+      const span = [];
+      let known = 0;
+      for (let k = c; k < Math.min(colCnt, c + cell.colSpan); k++) {
+        if (colW[k] > 0) known += colW[k];
+        else span.push(k);
+      }
+      if (span.length > 0 && cell.width > known)
+        for (const k of span) colW[k] = (cell.width - known) / span.length;
+    }
+  const total = colW.reduce((a, b) => a + b, 0);
+  const colPct = total > 0 && colW.every((w) => w > 0)
+    ? colW.map((w) => Math.round((w / total) * 1000) / 10)
+    : null;
+
+  return {
+    rows,
+    rowCnt,
+    colCnt,
+    colPct,
+    sig: signatureOf(rows.flat().map((c) => c.text)),
+  };
 }
 
 /** 병합 유무와 무관하게 같아지는 지문 — 비어있지 않은 셀 텍스트를 순서대로 이은 것. */
@@ -123,7 +160,18 @@ export function toHtml(t) {
       .join("") +
     "</tr>";
   const [head, ...body] = t.rows;
-  const parts = ["<table>"];
+  // 열 너비는 원본 비율 그대로. table-layout:fixed 라야 colgroup 비율이 그대로 선다
+  // (auto 면 내용 길이에 따라 브라우저가 다시 나눠 버린다).
+  const useCols = t.colPct && t.colPct.length > 1;
+  const parts = [
+    useCols ? '<table style="table-layout:fixed">' : "<table>",
+  ];
+  if (useCols)
+    parts.push(
+      "<colgroup>" +
+        t.colPct.map((p) => `<col style="width:${p}%">`).join("") +
+        "</colgroup>",
+    );
   // 한 칸짜리 표는 교재의 '예시 박스' 다 — 머리글(굵게·음영)이 아니라 본문 칸으로.
   const single = t.rows.length === 1 && head?.length === 1;
   if (single) parts.push("<tbody>", line(head, "td"), "</tbody>");
