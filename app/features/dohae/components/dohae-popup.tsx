@@ -27,6 +27,10 @@ import { HighlightList } from "~/features/annotations/components/highlight-list"
 import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
 import { MemoList } from "~/features/annotations/components/memo-list";
 import { MemoMarksOverlay } from "~/features/annotations/components/memo-marks-overlay";
+import {
+  MEMO_SNIPPET_EVENT,
+  type MemoSnippetEventDetail,
+} from "~/features/annotations/lib/memo-selection-event";
 import { ArticleBodyView } from "~/features/laws/components/article-body";
 import { parseArticleBody } from "~/features/laws/lib/article-body";
 
@@ -359,6 +363,21 @@ export function DohaePopup({
       /* private mode 등 — 기억만 포기 */
     }
   };
+  // 조문별 주석 섹션 펼침 상태. 내용이 있으면 기본 펼침, 사용자가 접으면 그 뜻을 따른다.
+  const [expandedArticle, setExpandedArticle] = useState<Record<string, boolean>>({});
+  // 본문에서 "포스트잇 추가"를 누르면 그 조문 섹션을 펼쳐 준다 — 접혀 있으면 입력칸이
+  // 화면에 없어 아무 일도 안 일어난 것처럼 보인다. (MemoList 자체는 접혀도 mount 상태라
+  // 이벤트는 정상 수신한다.)
+  const [snippetArticleId, setSnippetArticleId] = useState<string | null>(null);
+  useEffect(() => {
+    const onSnippet = (e: Event) => {
+      const detail = (e as CustomEvent<MemoSnippetEventDetail>).detail;
+      if (detail?.targetType === "article") setSnippetArticleId(detail.targetId);
+    };
+    document.addEventListener(MEMO_SNIPPET_EVENT, onSnippet);
+    return () => document.removeEventListener(MEMO_SNIPPET_EVENT, onSnippet);
+  }, []);
+
   // 우측 학습 툴(포스트잇·하이라이트) 접기 — 시트는 폭이 좁아 기본 접힘, 팝업은 펼침.
   // null = 아직 손대지 않음 → 표시 방식의 기본값을 따른다.
   const [toolsOpenRaw, setToolsOpen] = useState<boolean | null>(null);
@@ -563,27 +582,87 @@ export function DohaePopup({
               )}
             >
               <p className="text-muted-foreground mb-2 text-[11px] font-semibold tracking-wide uppercase">
-                포스트잇
+                도해 해설
               </p>
               {unit ? (
-                <MemoList
-                  targetType="dohae_unit"
-                  targetId={unit.unitId}
-                  initial={payload?.memos ?? []}
-                  viewerIsStaff={viewerIsStaff}
-                />
+                <>
+                  <MemoList
+                    targetType="dohae_unit"
+                    targetId={unit.unitId}
+                    initial={payload?.memos ?? []}
+                    viewerIsStaff={viewerIsStaff}
+                  />
+                  <div className="mt-3">
+                    <HighlightList
+                      targetType="dohae_unit"
+                      targetId={unit.unitId}
+                      initial={payload?.highlights ?? []}
+                      viewerIsStaff={viewerIsStaff}
+                      compact
+                    />
+                  </div>
+                </>
               ) : null}
-              <p className="text-muted-foreground mt-5 mb-2 text-[11px] font-semibold tracking-wide uppercase">
-                하이라이트
-              </p>
-              {unit ? (
-                <HighlightList
-                  targetType="dohae_unit"
-                  targetId={unit.unitId}
-                  initial={payload?.highlights ?? []}
-                  viewerIsStaff={viewerIsStaff}
-                />
+
+              {/* 조문 축 — 팝업 안 조문에 그은 것은 target_type='article' 이라 위 목록에
+                  안 잡힌다. 조문별로 따로 실어야 지울 수 있고, 포스트잇 작성 이벤트도
+                  같은 대상의 MemoList 가 mount 돼 있어야 받는다(그래서 접어도 mount 유지). */}
+              {(payload?.articles ?? []).length > 0 ? (
+                <>
+                  <p className="text-muted-foreground mt-5 mb-2 text-[11px] font-semibold tracking-wide uppercase">
+                    조문 · 메인 화면과 공유
+                  </p>
+                  <div className="space-y-1.5">
+                    {(payload?.articles ?? []).map((a) => {
+                      const ms = payload?.articleMemos?.[a.articleId] ?? [];
+                      const hs = payload?.articleHighlights?.[a.articleId] ?? [];
+                      return (
+                        <details
+                          key={a.articleId}
+                          open={
+                            expandedArticle[a.articleId] ??
+                            (ms.length + hs.length > 0 || snippetArticleId === a.articleId)
+                          }
+                          onToggle={(e) =>
+                            setExpandedArticle((prev) => ({
+                              ...prev,
+                              [a.articleId]: e.currentTarget.open,
+                            }))
+                          }
+                          className="border-border bg-background/60 rounded-md border px-2 py-1.5"
+                        >
+                          <summary className="cursor-pointer text-[11px] font-medium">
+                            {a.displayLabel}
+                            {ms.length + hs.length > 0 ? (
+                              <span className="text-muted-foreground ml-1 tabular-nums">
+                                {ms.length + hs.length}
+                              </span>
+                            ) : null}
+                          </summary>
+                          <div className="mt-2">
+                            <MemoList
+                              targetType="article"
+                              targetId={a.articleId}
+                              initial={ms}
+                              viewerIsStaff={viewerIsStaff}
+                            />
+                          </div>
+                          <div className="mt-3">
+                            <HighlightList
+                              targetType="article"
+                              targetId={a.articleId}
+                              initial={hs}
+                              viewerIsStaff={viewerIsStaff}
+                              compact
+                            />
+                          </div>
+                        </details>
+                      );
+                    })}
+                  </div>
+                </>
               ) : null}
+
               <p className="text-muted-foreground mt-4 text-[11px] leading-relaxed">
                 다이어그램(이미지) 안 문구는 드래그 대상이 아닙니다.
               </p>

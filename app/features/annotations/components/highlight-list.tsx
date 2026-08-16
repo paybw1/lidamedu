@@ -50,12 +50,15 @@ export function HighlightList({
   targetId: _targetId,
   initial,
   viewerIsStaff = false,
+  compact = false,
 }: {
   targetType: AnnotationTargetType;
   targetId: string;
   initial: HighlightRecord[];
   /** 보는 사람이 강사·원장인지 — 본인 하이라이트도 강사 표식으로 표시. */
   viewerIsStaff?: boolean;
+  /** 한 화면에 여러 개를 쌓을 때(도해 팝업의 조문별 목록) 안내문 반복을 없앤다. */
+  compact?: boolean;
 }) {
   const deleteFetcher = useFetcher();
   const aliases = useHighlightAliases();
@@ -68,10 +71,12 @@ export function HighlightList({
 
   return (
     <div className="space-y-3">
-      <p className="text-muted-foreground text-xs leading-relaxed">
-        본문에서 텍스트를 드래그하면 선택 영역 위에 색상 툴바가 떠오릅니다. 색을
-        클릭하면 저장됩니다.
-      </p>
+      {compact ? null : (
+        <p className="text-muted-foreground text-xs leading-relaxed">
+          본문에서 텍스트를 드래그하면 선택 영역 위에 색상 툴바가 떠오릅니다. 색을
+          클릭하면 저장됩니다.
+        </p>
+      )}
 
       <div className="space-y-2">
         <p className="text-xs font-medium">
