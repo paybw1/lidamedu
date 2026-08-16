@@ -372,7 +372,18 @@ export function DohaePopup({
   useEffect(() => {
     const onSnippet = (e: Event) => {
       const detail = (e as CustomEvent<MemoSnippetEventDetail>).detail;
-      if (detail?.targetType === "article") setSnippetArticleId(detail.targetId);
+      if (!detail) return;
+      // 입력칸이 화면에 없으면 아무 일도 안 일어난 것처럼 보인다 — 패널을 펴고,
+      // 해당 조문 섹션을 열고, 거기로 스크롤해 준다.
+      setToolsOpen(true);
+      if (detail.targetType !== "article") return;
+      setSnippetArticleId(detail.targetId);
+      setExpandedArticle((prev) => ({ ...prev, [detail.targetId]: true }));
+      requestAnimationFrame(() => {
+        document
+          .getElementById(`dohae-annot-${detail.targetId}`)
+          ?.scrollIntoView({ block: "nearest" });
+      });
     };
     document.addEventListener(MEMO_SNIPPET_EVENT, onSnippet);
     return () => document.removeEventListener(MEMO_SNIPPET_EVENT, onSnippet);
@@ -619,6 +630,7 @@ export function DohaePopup({
                       return (
                         <details
                           key={a.articleId}
+                          id={`dohae-annot-${a.articleId}`}
                           open={
                             expandedArticle[a.articleId] ??
                             (ms.length + hs.length > 0 || snippetArticleId === a.articleId)
