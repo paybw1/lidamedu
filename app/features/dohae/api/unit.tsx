@@ -8,9 +8,15 @@ import { data } from "react-router";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
-import { listHighlights, listMemos } from "~/features/annotations/queries.server";
+import {
+  listHighlights,
+  listHighlightsByArticleIds,
+  listMemos,
+  listMemosByArticleIds,
+} from "~/features/annotations/queries.server";
 
 import type { DohaeBlock } from "../labels";
+import { listDohaeUnitArticles } from "../queries.server";
 
 const SIGNED_URL_TTL_SEC = 3600;
 
@@ -49,12 +55,22 @@ export async function loader({ request }: Route.LoaderArgs) {
     }
   }
 
-  const [memos, highlights] = await Promise.all([
+  // 이 유닛에 연결된 플랫폼 조문 — 교재 조문 박스 대신 이걸 그린다. 주석은 조문 축
+  // (target_type='article')이라 메인 화면과 그대로 공유된다.
+  const articles = await listDohaeUnitArticles(client, row.unit_id);
+  const articleIds = articles.map((a) => a.articleId);
+
+  const [memos, highlights, articleMemos, articleHighlights] = await Promise.all([
     listMemos(client, user.id, "dohae_unit", row.unit_id),
     listHighlights(client, user.id, "dohae_unit", row.unit_id),
+    listMemosByArticleIds(client, user.id, articleIds),
+    listHighlightsByArticleIds(client, user.id, articleIds),
   ]);
 
   return {
+    articles,
+    articleMemos,
+    articleHighlights,
     unit: {
       unitId: row.unit_id,
       unitKey: row.unit_key,

@@ -68,6 +68,78 @@ export async function listDohaeUnitsForNodes(
  * 쓰이지 않는다. dohae_unit_articles 는 콘텐츠(조문 참조)라 그대로 두고, 조문 축 진입을
  * 되살릴 때를 위해 남긴다.
  */
+export interface DohaeUnitArticle {
+  articleId: string;
+  articleNumber: string | null;
+  displayLabel: string;
+  importance: number;
+  bodyJson: unknown;
+  effectiveDate: string | null;
+}
+
+/** 조문 번호 자연 정렬 — "42의3" 이 "43" 보다 앞. */
+function naturalKey(s: string | null): [number, number] {
+  const m = (s ?? "").match(/^(\d+)(?:의(\d+))?/);
+  if (!m) return [0, 0];
+  return [Number(m[1]), m[2] ? Number(m[2]) : 0];
+}
+
+/**
+ * 도해 유닛에 연결된 플랫폼 조문 + 현행 본문.
+ * 팝업의 교재 조문 박스를 이 조문으로 갈아끼워, 하이라이트·포스트잇을 조문 축으로
+ * 메인 화면과 공유하고 조문 개정·수정이 그대로 반영되게 한다(원장 지시 2026-08-17).
+ */
+export async function listDohaeUnitArticles(
+  client: SupabaseClient<Database>,
+  unitId: string,
+): Promise<DohaeUnitArticle[]> {
+  const { data: links, error } = await client
+    .from("dohae_unit_articles")
+    .select(
+      "articles(article_id, article_number, display_label, importance, current_revision_id)",
+    )
+    .eq("unit_id", unitId);
+  if (error) throw error;
+
+  const byId = new Map<string, NonNullable<(typeof links)[number]["articles"]>>();
+  for (const l of links ?? []) if (l.articles) byId.set(l.articles.article_id, l.articles);
+  const rows = [...byId.values()];
+  if (rows.length === 0) return [];
+
+  const revIds = rows
+    .map((a) => a.current_revision_id)
+    .filter((x): x is string => x != null);
+  const revMap = new Map<string, { body_json: unknown; effective_date: string | null }>();
+  // ★.in() 에 id 를 몰아넣으면 URL 길이 초과(414) — 100개씩 끊는다(조문 최대 17개지만 규칙 유지).
+  for (let i = 0; i < revIds.length; i += 100) {
+    const { data: revs, error: revErr } = await client
+      .from("article_revisions")
+      .select("revision_id, body_json, effective_date")
+      .in("revision_id", revIds.slice(i, i + 100));
+    if (revErr) throw revErr;
+    for (const r of revs ?? [])
+      revMap.set(r.revision_id, { body_json: r.body_json, effective_date: r.effective_date });
+  }
+
+  return rows
+    .map((a) => {
+      const rev = a.current_revision_id ? revMap.get(a.current_revision_id) : null;
+      return {
+        articleId: a.article_id,
+        articleNumber: a.article_number,
+        displayLabel: a.display_label,
+        importance: a.importance ?? 0,
+        bodyJson: rev?.body_json ?? null,
+        effectiveDate: rev?.effective_date ?? null,
+      };
+    })
+    .sort((x, y) => {
+      const xk = naturalKey(x.articleNumber);
+      const yk = naturalKey(y.articleNumber);
+      return xk[0] - yk[0] || xk[1] - yk[1];
+    });
+}
+
 export async function listDohaeUnitsForArticle(
   client: SupabaseClient<Database>,
   articleId: string,
