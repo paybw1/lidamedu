@@ -263,6 +263,13 @@ for (let i = 0; i < paras.length; i++) {
     units.push(curUnit);
     continue;
   }
+  // 후미 자료(저자 소개·판권지)는 어느 주제에도 속하지 않는다. 종전엔 문서 끝까지
+  // 마지막 주제(81 특허법과 실용신안법의 비교)에 붙어, 발행일·인쇄소 표가 본문 표로
+  // 딸려 들어갔다(원장 신고 2026-08-17).
+  if (p.plain && p.plain.replace(/\s/g, "") === "저자소개") {
+    console.log(`후미 자료 시작('저 자 소 개') — 문단 ${i} 이후 수집 중단`);
+    break;
+  }
   if (!curUnit) continue;
 
   const badge = p.shapeTexts.find((t) => ROMAN.test(t));
