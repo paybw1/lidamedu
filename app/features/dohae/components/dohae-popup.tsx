@@ -3,7 +3,14 @@
 // 학습 툴: HighlightOverlay(dohae_unit)+MemoMarksOverlay+우측 MemoList. 선택 툴바는
 // 조문 뷰어의 prop-less HighlightToolbar 가 컨테이너 dataset 으로 대상 판별.
 
-import { BookOpenIcon, ChevronLeftIcon, Loader2Icon } from "lucide-react";
+import {
+  BookOpenIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  Loader2Icon,
+  PanelRightIcon,
+  SquareIcon,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { useFetcher, useFetchers } from "react-router";
 
@@ -13,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/core/components/ui/dialog";
+import { Sheet, SheetContent } from "~/core/components/ui/sheet";
 import { cn } from "~/core/lib/utils";
 import { HighlightList } from "~/features/annotations/components/highlight-list";
 import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
@@ -28,6 +36,9 @@ import {
 import type { loader as unitLoader } from "../api/unit";
 
 type UnitPayload = Awaited<ReturnType<typeof unitLoader>>;
+
+type DohaeView = "dialog" | "sheet";
+const DOHAE_VIEW_KEY = "lidam:dohaeView";
 
 /**
  * 각 셀이 실제로 놓이는 격자 열 번호. rowspan 이 걸린 앞 행의 칸이 자리를 차지하므로
@@ -215,6 +226,20 @@ export function DohaePopup({
   viewerIsStaff: boolean;
 }) {
   const [activeUnitId, setActiveUnitId] = useState<string | null>(null);
+  // 표시 방식 — 팝업(가운데) vs 시트(오른쪽). 비교해 보려고 남긴 전환이라 브라우저에 기억한다.
+  const [view, setViewState] = useState<DohaeView>("dialog");
+  useEffect(() => {
+    const saved = window.localStorage.getItem(DOHAE_VIEW_KEY);
+    if (saved === "sheet" || saved === "dialog") setViewState(saved);
+  }, []);
+  const setView = (v: DohaeView) => {
+    setViewState(v);
+    try {
+      window.localStorage.setItem(DOHAE_VIEW_KEY, v);
+    } catch {
+      /* private mode 등 — 기억만 포기 */
+    }
+  };
   const fetcher = useFetcher<UnitPayload>();
   const fetchers = useFetchers();
 
@@ -249,21 +274,23 @@ export function DohaePopup({
 
   const payload = fetcher.data;
   const unit = activeUnitId && payload?.unit.unitId === activeUnitId ? payload.unit : null;
-  const activeSummary = units.find((u) => u.unitId === activeUnitId) ?? null;
+  const activeIndex = units.findIndex((u) => u.unitId === activeUnitId);
+  const activeSummary = activeIndex >= 0 ? units[activeIndex] : null;
+  const prevUnit = activeIndex > 0 ? units[activeIndex - 1] : null;
+  const nextUnit =
+    activeIndex >= 0 && activeIndex < units.length - 1 ? units[activeIndex + 1] : null;
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="flex max-h-[88vh] w-[96vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl lg:max-w-5xl"
-        // 하이라이트 툴바는 팝업 **밖**(앱 루트)에 mount 돼 있어(fixed 좌표계 때문에 안으로
-        // 옮길 수 없다) Radix 가 색상 클릭을 '바깥 클릭'으로 보고 팝업을 닫아버린다.
-        // 툴바 안에서 시작된 상호작용은 닫힘에서 제외한다(원장 신고 2026-08-17).
-        onInteractOutside={(e) => {
-          const el = e.target as HTMLElement | null;
-          if (el?.closest?.("[data-testid='highlight-toolbar']")) e.preventDefault();
-        }}
-      >
-        <DialogHeader className="border-border shrink-0 border-b px-5 py-3.5">
+  // 하이라이트 툴바는 이 창 **밖**(앱 루트)에 mount 돼 있어(fixed 좌표계 때문에 안으로
+  // 옮길 수 없다) Radix 가 색상 클릭을 '바깥 클릭'으로 보고 창을 닫아버린다.
+  // 툴바 안에서 시작된 상호작용은 닫힘에서 제외한다(원장 신고 2026-08-17).
+  const keepOpenOnToolbar = (e: { target: EventTarget | null; preventDefault: () => void }) => {
+    const el = e.target as HTMLElement | null;
+    if (el?.closest?.("[data-testid='highlight-toolbar']")) e.preventDefault();
+  };
+
+  const body = (
+      <>
+        <DialogHeader className="border-border shrink-0 border-b px-5 py-3.5 pr-12">
           <DialogTitle className="flex flex-wrap items-center gap-2 text-[15px]">
             <BookOpenIcon className="text-primary size-4" />
             도해특허법 <span className="text-muted-foreground text-xs font-normal">제20판 · 강사 전용</span>
@@ -274,6 +301,49 @@ export function DohaePopup({
               </span>
             ) : null}
           </DialogTitle>
+          {/* 같은 노드에 묶인 주제 사이 이동 + 표시 방식(팝업/시트) 전환 */}
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            {activeSummary && units.length > 1 ? (
+              <>
+                <UnitStepButton
+                  dir="prev"
+                  unit={prevUnit}
+                  onGo={setActiveUnitId}
+                />
+                <span className="text-muted-foreground text-[11px] tabular-nums">
+                  {activeIndex + 1} / {units.length}
+                </span>
+                <UnitStepButton
+                  dir="next"
+                  unit={nextUnit}
+                  onGo={setActiveUnitId}
+                />
+                <button
+                  type="button"
+                  onClick={() => setActiveUnitId(null)}
+                  className="text-muted-foreground hover:text-foreground ml-1 text-[11px] underline underline-offset-2"
+                >
+                  목록
+                </button>
+              </>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => setView(view === "sheet" ? "dialog" : "sheet")}
+              title="표시 방식 비교용 — 선택은 이 브라우저에 기억됩니다."
+              className="border-border text-muted-foreground hover:bg-muted ml-auto inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px]"
+            >
+              {view === "sheet" ? (
+                <>
+                  <SquareIcon className="size-3" /> 팝업으로 보기
+                </>
+              ) : (
+                <>
+                  <PanelRightIcon className="size-3" /> 시트로 보기
+                </>
+              )}
+            </button>
+          </div>
         </DialogHeader>
 
         {activeUnitId === null ? (
@@ -302,15 +372,6 @@ export function DohaePopup({
         ) : (
           <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[1fr_280px]">
             <div className="min-h-0 overflow-y-auto px-5 py-4">
-              {units.length > 1 ? (
-                <button
-                  type="button"
-                  onClick={() => setActiveUnitId(null)}
-                  className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
-                >
-                  <ChevronLeftIcon className="size-3.5" /> 목록으로
-                </button>
-              ) : null}
               {!unit ? (
                 <p className="text-muted-foreground flex items-center gap-2 py-16 text-center text-sm">
                   <Loader2Icon className="mx-auto size-4 animate-spin" /> 불러오는 중…
@@ -362,7 +423,62 @@ export function DohaePopup({
             </aside>
           </div>
         )}
+      </>
+  );
+
+  // 표시 방식 두 가지를 나란히 비교하려고 남겨둔 전환(원장 요청 2026-08-17).
+  //  · 팝업(Dialog) — 화면 가운데, 넓게 펼쳐 표를 통째로 본다.
+  //  · 시트(Sheet)  — 오른쪽에서 밀려나와 왼쪽 체계도·조문을 보면서 대조한다.
+  // 어느 쪽이든 툴바 예외 처리(keepOpenOnToolbar)는 똑같이 필요하다.
+  if (view === "sheet") {
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent
+          side="right"
+          className="flex w-[94vw] gap-0 overflow-hidden p-0 sm:max-w-3xl lg:max-w-4xl"
+          onInteractOutside={keepOpenOnToolbar}
+        >
+          {body}
+        </SheetContent>
+      </Sheet>
+    );
+  }
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="flex max-h-[88vh] w-[96vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl lg:max-w-5xl"
+        onInteractOutside={keepOpenOnToolbar}
+      >
+        {body}
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** 같은 노드에 묶인 주제 사이 이동 버튼. 끝이면 비활성. */
+function UnitStepButton({
+  dir,
+  unit,
+  onGo,
+}: {
+  dir: "prev" | "next";
+  unit: DohaeUnitSummary | null;
+  onGo: (id: string) => void;
+}) {
+  const Icon = dir === "prev" ? ChevronLeftIcon : ChevronRightIcon;
+  return (
+    <button
+      type="button"
+      disabled={!unit}
+      onClick={() => unit && onGo(unit.unitId)}
+      title={unit ? `${dohaeUnitLabel(unit)} ${unit.title}` : undefined}
+      className="border-border text-muted-foreground hover:bg-muted inline-flex max-w-[13rem] items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] disabled:opacity-40"
+    >
+      {dir === "prev" ? <Icon className="size-3 shrink-0" /> : null}
+      <span className="truncate">
+        {unit ? `${dohaeUnitLabel(unit)} ${unit.title}` : dir === "prev" ? "처음" : "마지막"}
+      </span>
+      {dir === "next" ? <Icon className="size-3 shrink-0" /> : null}
+    </button>
   );
 }
