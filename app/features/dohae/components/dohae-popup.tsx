@@ -92,32 +92,13 @@ function columnPercents(
   return w.map((x) => Math.round((x / total) * 1000) / 10);
 }
 
+// ★칸 서식(음영·가운데·굵게)은 **원본 값 그대로** 쓴다. 글자수·열 위치로 짐작하던
+//   규칙은 전부 걷어냈다 — 머리행 없이 이어지는 표(참고1.2 분류)의 데이터 행이
+//   머리글로 칠해지고, 같은 열인데 긴 칸만 라벨에서 빠지는 문제의 뿌리였다
+//   (원장 지시 2026-08-17 "원본 형식에 맞춰줘").
 function DohaeTable({ cells }: { cells: DohaeCell[][] }) {
   if (cells.length === 0) return null;
-  const hasHeader = cells.length > 1;
-  // 라벨 열 수 — 도해 표는 머리글 첫 칸이 라벨 묶음을 덮는다("요 건" 3열 / "구 분" 2열).
-  // 종전엔 ci===0 만 라벨로 봐서, rowspan 때문에 2·3열로 밀린 라벨(정의·자연법칙을 이용·
-  // 주체적 기준 등)이 본문처럼 왼쪽 정렬·보통 굵기로 나왔다(원장 신고 2026-08-17).
-  const labelCols = hasHeader ? (cells[0]?.[0]?.colSpan ?? 1) : 1;
   const startCols = gridStartCols(cells);
-  // 라벨 열이 1개("구 분")인 표는 첫 열이 정말 라벨 열인지 **표 단위로** 한 번에 정한다.
-  // 칸마다 글자수로 재면 같은 열인데 어떤 칸만 굵게 나오는 들쭉날쭉이 생긴다
-  // ("새로운 발명 수용(구체적 타당성)" 14자만 빠지던 문제 — 원장 신고 2026-08-17).
-  // 첫 열이 긴 예시 블록인 표(보정 t25 138자·법정실시권 t49 170자)를 걸러내는 게 목적이라
-  // 실측 분포상 가장 긴 진짜 라벨(42자)과 여유 있게 갈리는 45자를 경계로 둔다.
-  const LABEL_COL_MAX = 45;
-  const col0IsLabel =
-    labelCols > 1 ||
-    cells.every((row, ri) =>
-      ri === 0 && hasHeader
-        ? true
-        : row.every(
-            (c, ci) =>
-              row.length < 2 ||
-              startCols[ri][ci] !== 0 ||
-              c.text.replace(/\s/g, "").length <= LABEL_COL_MAX,
-          ),
-    );
   // 열 비율 — 원본 그대로. ★table-layout:fixed 를 함께 걸어야 비율이 선다
   // (auto 면 브라우저가 내용 길이로 다시 나눠 버린다).
   const colPct = columnPercents(cells, startCols);
@@ -138,25 +119,18 @@ function DohaeTable({ cells }: { cells: DohaeCell[][] }) {
           {cells.map((row, ri) => (
             <tr key={ri}>
               {row.map((c, ci) => {
-                const isHead = hasHeader && ri === 0;
-                const Tag = isHead ? "th" : "td";
-                // 라벨 셀 — 헤더 톤(가운데·굵게·연한 음영). 라벨 열 안에 놓인 칸만.
-                const isLabel =
-                  !isHead &&
-                  row.length > 1 &&
-                  startCols[ri][ci] < labelCols &&
-                  col0IsLabel;
+                // 첫 행의 음영 칸만 머리글로 — 그 밖은 전부 본문 칸(서식은 아래 클래스로).
+                const Tag = ri === 0 && c.shade ? "th" : "td";
                 return (
                   <Tag
                     key={ci}
                     colSpan={c.colSpan > 1 ? c.colSpan : undefined}
                     rowSpan={c.rowSpan > 1 ? c.rowSpan : undefined}
                     className={cn(
-                      "border-border border px-2.5 py-1.5 text-left align-middle leading-[1.65] whitespace-pre-wrap",
-                      isHead && "bg-muted/60 text-center font-bold",
-                      isLabel && "bg-muted/40 text-center font-semibold",
-                      // 줄바꿈이 든 라벨(세로쓰기 "내\n용")은 원본 줄나눔을 살린다.
-                      isLabel && !c.text.includes("\n") && "whitespace-nowrap",
+                      "border-border border px-2.5 py-1.5 text-left align-middle leading-[1.65] font-normal whitespace-pre-wrap",
+                      c.shade && "bg-muted/50",
+                      c.align === "center" && "text-center",
+                      c.bold && "font-semibold",
                     )}
                   >
                     {c.text}

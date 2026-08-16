@@ -44,6 +44,65 @@ const childrenOf = (node) => {
 const tagOf = (node) => Object.keys(node).filter((k) => k !== ":@")[0] ?? null;
 const attrsOf = (node) => node[":@"] ?? {};
 
+// ── 원본 서식표(header.xml) — 칸 배경·문단 정렬·글꼴 ──────────────────────────
+// ★도해 표의 라벨 칸은 원본이 직접 표시한다: 배경 #F0F0F0 + CENTER + 돋움체 Bold.
+//   (hp:tc/@header 는 전부 0 이라 못 쓰고, 굵게도 hh:bold 가 아니라 **글꼴 이름**으로
+//   들어간다 — 702개 charPr 중 hh:bold 는 12개뿐.) 글자수·열 위치로 짐작하던 규칙을
+//   전부 걷어내고 이 세 값을 그대로 옮긴다(원장 지시 2026-08-17 "원본 형식에 맞춰줘").
+const headerTree = parser.parse(
+  zip.getEntry("Contents/header.xml").getData().toString("utf8"),
+);
+const FILL_FACE = new Map(); // borderFill id → faceColor
+const PARA_ALIGN = new Map(); // paraPr id → LEFT|CENTER|RIGHT|JUSTIFY
+const CHAR_FONT = new Map(); // charPr id → { boldish }
+{
+  const fontFace = new Map(); // font id → 이름
+  (function walk(n) {
+    if (Array.isArray(n)) return n.forEach(walk);
+    if (!n || typeof n !== "object") return;
+    const t = tagOf(n);
+    const a = attrsOf(n);
+    if (t === "hh:font") fontFace.set(a["@_id"], a["@_face"] ?? "");
+    for (const [k, v] of Object.entries(n)) {
+      if (k === ":@" || k.startsWith("@_")) continue;
+      walk(v);
+    }
+  })(headerTree);
+  (function walk(n) {
+    if (Array.isArray(n)) return n.forEach(walk);
+    if (!n || typeof n !== "object") return;
+    const t = tagOf(n);
+    const a = attrsOf(n);
+    if (t === "hh:borderFill") {
+      let face = "";
+      (function f(x) {
+        if (tagOf(x) === "hc:winBrush") face = attrsOf(x)["@_faceColor"] ?? face;
+        childrenOf(x).forEach(f);
+      })(n);
+      FILL_FACE.set(a["@_id"], face);
+    } else if (t === "hh:paraPr") {
+      const al = childrenOf(n).find((c) => tagOf(c) === "hh:align");
+      PARA_ALIGN.set(a["@_id"], attrsOf(al ?? {})["@_horizontal"] ?? "");
+    } else if (t === "hh:charPr") {
+      const fr = childrenOf(n).find((c) => tagOf(c) === "hh:fontRef");
+      const face = fontFace.get(attrsOf(fr ?? {})["@_hangul"]) ?? "";
+      CHAR_FONT.set(a["@_id"], {
+        boldish:
+          childrenOf(n).some((c) => tagOf(c) === "hh:bold") || /bold/i.test(face),
+      });
+    }
+    for (const [k, v] of Object.entries(n)) {
+      if (k === ":@" || k.startsWith("@_")) continue;
+      walk(v);
+    }
+  })(headerTree);
+}
+// 음영 = 흰색·없음이 아닌 배경. 교재는 라벨 칸에만 회색(#F0F0F0)을 깐다.
+const isShaded = (fillId) => {
+  const f = (FILL_FACE.get(fillId) ?? "").toLowerCase();
+  return f !== "" && f !== "none" && f !== "#ffffff";
+};
+
 const SHAPE_TAGS = new Set([
   "hp:rect", "hp:line", "hp:polygon", "hp:curve", "hp:connectLine",
   "hp:container", "hp:ellipse", "hp:arc",
@@ -95,6 +154,51 @@ function cellImages(tcNode) {
   return out;
 }
 
+/**
+ * 칸의 원본 서식 → { shade?, align?, bold? }.
+ * 중첩 표(hp:tbl)·도형 안 내용은 건너뛴다 — 그 칸의 서식이 아니라 자식 표의 서식이다.
+ */
+function cellStyle(tcNode) {
+  const aligns = [];
+  let bold = false;
+  let any = false;
+  (function walk(n) {
+    const tag = tagOf(n);
+    if (tag === "hp:tbl" || SHAPE_TAGS.has(tag) || tag === "hp:shapeComment") return;
+    if (tag === "hp:p") {
+      let text = "";
+      (function t(x) {
+        if (tagOf(x) === "hp:t") {
+          for (const c of childrenOf(x)) if (typeof c["#text"] === "string") text += c["#text"];
+        }
+        if (tagOf(x) === "hp:run") {
+          const f = CHAR_FONT.get(attrsOf(x)["@_charPrIDRef"]);
+          let runText = "";
+          (function r(y) {
+            if (tagOf(y) === "hp:t")
+              for (const c of childrenOf(y)) if (typeof c["#text"] === "string") runText += c["#text"];
+            childrenOf(y).forEach(r);
+          })(x);
+          if (runText.trim() && f?.boldish) bold = true;
+        }
+        childrenOf(x).forEach(t);
+      })(n);
+      if (text.trim()) {
+        any = true;
+        aligns.push(PARA_ALIGN.get(attrsOf(n)["@_paraPrIDRef"]) ?? "");
+      }
+      return;
+    }
+    childrenOf(n).forEach(walk);
+  })(tcNode);
+  const align = any && aligns.every((a) => a === "CENTER") ? "center" : null;
+  return {
+    ...(isShaded(attrsOf(tcNode)["@_borderFillIDRef"]) ? { shade: true } : {}),
+    ...(align ? { align } : {}),
+    ...(bold ? { bold: true } : {}),
+  };
+}
+
 function parseTable(tblNode) {
   const cellRows = [];
   (function walk(n) {
@@ -103,10 +207,7 @@ function parseTable(tblNode) {
       (function cw(m) {
         if (tagOf(m) === "hp:tc") {
           let colSpan = 1, rowSpan = 1, width = 0;
-          // ★머리행 여부는 원본이 직접 표시한다(hp:tc/@header). 행 개수로 짐작하면
-          //   머리행 없이 이어지는 표(참고1.2 분류의 2~6번째 표)의 데이터 행이
-          //   머리글로 칠해진다(원장 신고 2026-08-17).
-          const isHeader = (attrsOf(m)["@_header"] ?? "0") === "1";
+          const style = cellStyle(m);
           (function findSpan(x) {
             const t = tagOf(x);
             if (t === "hp:cellSpan") {
@@ -130,7 +231,7 @@ function parseTable(tblNode) {
             colSpan,
             rowSpan,
             ...(width > 0 ? { width } : {}),
-            ...(isHeader ? { header: true } : {}),
+            ...style,
             ...(nested.length ? { tables: nested } : {}),
             ...(imgs.length ? { imgs } : {}),
           });

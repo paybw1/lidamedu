@@ -7,6 +7,12 @@ export interface DohaeCell {
   rowSpan: number;
   /** 원본 칸 너비(HWPX hp:cellSz/@width). 렌더에서 열 비율(colgroup)로 환산한다. */
   width?: number;
+  /** 원본 칸 배경이 회색(#F0F0F0 등) — 교재가 라벨 칸에만 깐다. */
+  shade?: boolean;
+  /** 원본 문단 정렬이 가운데. (그 밖은 왼쪽 — 별도 표기 없음) */
+  align?: "center";
+  /** 원본 글꼴이 굵은 계열(돋움체 Bold 등). ★hh:bold 플래그는 교재가 거의 안 쓴다. */
+  bold?: boolean;
   /** 셀 안 중첩 표들. */
   tables?: DohaeCell[][][];
   /** 셀 안 이미지 binId (현재 미사용 — 시드에 이미지 미포함). */
