@@ -195,7 +195,7 @@ function UnitArticles({
             key={a.articleId}
             className="border-primary/50 bg-primary/[0.04] rounded-lg border px-4 py-3"
           >
-            <p className="mb-1.5 flex items-center gap-2 text-[15px] font-bold">
+            <p className="mb-1.5 flex items-center gap-2 text-[16px] font-bold">
               {a.displayLabel}
               {/* 중요도 — 메인 뷰어와 같은 표기(빈 별까지 3개, 본문보다 큰 글자). */}
               {importance > 0 ? (
