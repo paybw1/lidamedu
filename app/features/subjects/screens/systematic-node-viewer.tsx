@@ -1,6 +1,7 @@
 import type { Route } from "./+types/systematic-node-viewer";
 
 import {
+  BookOpenIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -50,6 +51,8 @@ import {
 import { getTierCompletionsBySet } from "~/features/blanks/tiers.server";
 import type { BlankTier } from "~/features/blanks/lib/tiers";
 import { listCommentsBulk } from "~/features/comments/queries.server";
+import { DohaePopup } from "~/features/dohae/components/dohae-popup";
+import { listDohaeUnitsForNodes } from "~/features/dohae/queries.server";
 import { ArticleBodyView } from "~/features/laws/components/article-body";
 import { ArticleRightPanel } from "~/features/laws/components/article-right-panel";
 import { parseArticleBody } from "~/features/laws/lib/article-body";
@@ -354,7 +357,11 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   // 체계도에서 문제로 진입할 수 있게 서브트리 핀 문제 목록을 함께 내려준다.
   const nodeProblemSeq = await getSystematicNodeProblemSequence(client, nodeId);
 
+  // 도해특허법 — 이 노드 서브트리에 배치된 유닛. ★staff 전용(RLS 로 학생은 항상 빈 배열).
+  const dohaeUnits = await listDohaeUnitsForNodes(client, subtreeNodeIds);
+
   return {
+    dohaeUnits,
     subject: LAW_SUBJECTS[lawCode],
     axisCounts,
     nodeProblems: nodeProblemSeq?.problems ?? [],
@@ -411,6 +418,7 @@ function Inner({
   const {
     subject,
     blankV2,
+    dohaeUnits,
     lawId,
     node,
     nodeQnaThreads,
@@ -449,6 +457,8 @@ function Inner({
   const systematicEmpty = systematicNodes.length === 0;
   const renderSystematic = axis === "systematic" && !systematicEmpty;
   const [subtitlesOnly, setSubtitlesOnly] = useState(false);
+  // 도해특허법 팝업 — staff 전용(RLS 로 dohaeUnits 가 학생에겐 항상 빈 배열).
+  const [dohaeOpen, setDohaeOpen] = useState(false);
   const [blankMode, setBlankMode] = useState(false);
   const [subjectBlankMode, setSubjectBlankMode] = useState(false);
   const [periodBlankMode, setPeriodBlankMode] = useState(false);
@@ -510,8 +520,17 @@ function Inner({
 
   return (
     <div className="mx-auto flex w-full max-w-screen-2xl flex-row items-start gap-0 px-5 py-6 md:px-10 md:py-8">
-      {/* multi-article 환경: HighlightToolbar 1개를 root 에 mount, prop 없이 selection 컨테이너의 dataset 으로 article 결정 */}
+      {/* multi-article 환경: HighlightToolbar 1개를 root 에 mount, prop 없이 selection 컨테이너의 dataset 으로 article 결정.
+          도해 팝업(dohae_unit)도 같은 툴바를 공유한다(조문 뷰어와 동일 규약). */}
       <HighlightToolbar />
+      {dohaeUnits.length > 0 ? (
+        <DohaePopup
+          units={dohaeUnits}
+          open={dohaeOpen}
+          onOpenChange={setDohaeOpen}
+          viewerIsStaff={loaderData.isStaff}
+        />
+      ) : null}
 
       <div
         className={`grid min-w-0 flex-1 gap-5 ${leftOnlyGridCls(leftCollapsed)}`}
@@ -713,6 +732,22 @@ function Inner({
               </details>
               {/* 모드 토글 버튼 행 */}
               <div className="border-border mt-3 flex flex-wrap items-center gap-1.5 border-t pt-3">
+                {dohaeUnits.length > 0 ? (
+                  // ★staff 전용 — RLS 로 학생은 dohaeUnits 가 항상 빈 배열.
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDohaeOpen(true)}
+                    title="도해특허법 (강사 전용)"
+                    className="h-9 gap-1.5 rounded-full border-amber-300 bg-amber-50 text-xs text-amber-800 hover:bg-amber-100 sm:h-7 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
+                  >
+                    <BookOpenIcon className="size-3.5" />
+                    도해
+                    <span className="ml-0.5 tabular-nums">
+                      {dohaeUnits.length}
+                    </span>
+                  </Button>
+                ) : null}
                 {blankAvailableCount > 0 ? (
                   <>
                     <Button

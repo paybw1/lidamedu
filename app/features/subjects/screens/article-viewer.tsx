@@ -52,8 +52,6 @@ import { listBlankSetsByArticle } from "~/features/blanks/queries.server";
 import { getDueBlankSets } from "~/features/blanks/srs.server";
 import { getTierCompletionsBySet } from "~/features/blanks/tiers.server";
 import { listComments } from "~/features/comments/queries.server";
-import { DohaePopup } from "~/features/dohae/components/dohae-popup";
-import { listDohaeUnitsForArticle } from "~/features/dohae/queries.server";
 import { ArticleBodyView } from "~/features/laws/components/article-body";
 import { ReadingControls } from "~/features/study/components/study-font-control";
 import { ArticleEditor } from "~/features/laws/components/article-editor";
@@ -235,9 +233,6 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     getSubjectAxisCounts(client, lawCode, law.lawId),
   ]);
 
-  // 도해특허법 — RLS 가 staff 전용이라 학생 요청은 자연히 0행(칩 숨김).
-  const dohaeUnits = await listDohaeUnitsForArticle(client, article.articleId);
-
   // 통합본 PDF 위치 링크(조각과 병존). staff 는 항상 미리보기, 학생은 플래그 on 시.
   const [pdfLocations, pdfFlag] = await Promise.all([
     getPdfLocations(client, "article", article.articleId),
@@ -400,7 +395,6 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     lectureResources,
     pdfLocations,
     pdfLocationsEnabled,
-    dohaeUnits,
   };
 }
 
@@ -462,10 +456,7 @@ function ArticleViewerInner({
     lectureResources,
     pdfLocations,
     pdfLocationsEnabled,
-    dohaeUnits,
   } = loaderData;
-  // 도해특허법 팝업 — staff 전용(RLS 로 dohaeUnits 가 학생에겐 항상 빈 배열).
-  const [dohaeOpen, setDohaeOpen] = useState(false);
   const { axis } = useSortAxis();
   // 민법은 체계도 축이 조문 목차와 동일 → 축 토글·체계도 트리 숨김(조문 트리만).
   const hasSystematicAxis = subjectHasSystematicAxis(subject.slug);
@@ -622,17 +613,8 @@ function ArticleViewerInner({
           currentId={article.articleNumber}
         />
       ) : null}
-      {/* prop-less — 선택이 일어난 컨테이너의 dataset(target-type/-id)으로 저장 대상 판별.
-          조문 본문(article)과 도해 팝업(dohae_unit)이 한 툴바를 공유한다. */}
+      {/* prop-less — 선택이 일어난 컨테이너의 dataset(target-type/-id)으로 저장 대상 판별. */}
       <HighlightToolbar />
-      {dohaeUnits.length > 0 ? (
-        <DohaePopup
-          units={dohaeUnits}
-          open={dohaeOpen}
-          onOpenChange={setDohaeOpen}
-          viewerIsStaff={staffRole !== null}
-        />
-      ) : null}
       <SrsReturnBar />
 
       {/* 시점/비교 배너 — amber tone */}
@@ -974,7 +956,6 @@ function ArticleViewerInner({
               {relatedCases.length > 0 ||
               relatedProblems.length > 0 ||
               oxQuestions.length > 0 ||
-              dohaeUnits.length > 0 ||
               blankAvailable ? (
                 <div className="mx-6 mb-4 flex flex-wrap items-center gap-1.5">
                   <span className="text-muted-foreground mr-0.5 text-[11px] font-semibold">
@@ -1047,18 +1028,6 @@ function ArticleViewerInner({
                       <span className="tabular-nums">
                         {blankSet!.blanks.length}
                       </span>
-                    </button>
-                  ) : null}
-                  {dohaeUnits.length > 0 ? (
-                    // ★staff 전용 — RLS 로 학생은 dohaeUnits 가 항상 빈 배열.
-                    <button
-                      type="button"
-                      onClick={() => setDohaeOpen(true)}
-                      className="border-amber-300 bg-amber-50 text-amber-800 hover:border-amber-400 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors"
-                      title="도해특허법 (강사 전용)"
-                    >
-                      <BookOpenIcon className="size-3" /> 도해{" "}
-                      <span className="tabular-nums">{dohaeUnits.length}</span>
                     </button>
                   ) : null}
                 </div>

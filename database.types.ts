@@ -5464,6 +5464,36 @@ export type Database = {
           },
         ]
       }
+      dohae_unit_nodes: {
+        Row: {
+          node_id: string
+          unit_id: string
+        }
+        Insert: {
+          node_id: string
+          unit_id: string
+        }
+        Update: {
+          node_id?: string
+          unit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dohae_unit_nodes_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "systematic_nodes"
+            referencedColumns: ["node_id"]
+          },
+          {
+            foreignKeyName: "dohae_unit_nodes_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "dohae_units"
+            referencedColumns: ["unit_id"]
+          },
+        ]
+      }
       dohae_units: {
         Row: {
           blocks: Json
