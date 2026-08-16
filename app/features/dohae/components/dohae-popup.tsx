@@ -28,9 +28,35 @@ import type { loader as unitLoader } from "../api/unit";
 
 type UnitPayload = Awaited<ReturnType<typeof unitLoader>>;
 
+/**
+ * 각 셀이 실제로 놓이는 격자 열 번호. rowspan 이 걸린 앞 행의 칸이 자리를 차지하므로
+ * 배열 인덱스(ci)와 열 번호가 어긋난다 — 라벨 판정은 반드시 이 값으로 해야 한다.
+ */
+function gridStartCols(cells: DohaeCell[][]): number[][] {
+  const pending: number[] = [];
+  const out = cells.map((row) => {
+    let cur = 0;
+    const starts = row.map((c) => {
+      while ((pending[cur] ?? 0) > 0) cur++;
+      const start = cur;
+      for (let k = start; k < start + c.colSpan; k++) pending[k] = c.rowSpan;
+      cur = start + c.colSpan;
+      return start;
+    });
+    for (let k = 0; k < pending.length; k++) if (pending[k] > 0) pending[k]--;
+    return starts;
+  });
+  return out;
+}
+
 function DohaeTable({ cells }: { cells: DohaeCell[][] }) {
   if (cells.length === 0) return null;
   const hasHeader = cells.length > 1;
+  // 라벨 열 수 — 도해 표는 머리글 첫 칸이 라벨 묶음을 덮는다("요 건" 3열 / "구 분" 2열).
+  // 종전엔 ci===0 만 라벨로 봐서, rowspan 때문에 2·3열로 밀린 라벨(정의·자연법칙을 이용·
+  // 주체적 기준 등)이 본문처럼 왼쪽 정렬·보통 굵기로 나왔다(원장 신고 2026-08-17).
+  const labelCols = hasHeader ? (cells[0]?.[0]?.colSpan ?? 1) : 1;
+  const startCols = gridStartCols(cells);
   return (
     <div className="overflow-x-auto">
       <table className="border-border w-full border-collapse text-[length:calc(13.5px*var(--study-fs,1))]">
@@ -40,9 +66,14 @@ function DohaeTable({ cells }: { cells: DohaeCell[][] }) {
               {row.map((c, ci) => {
                 const isHead = hasHeader && ri === 0;
                 const Tag = isHead ? "th" : "td";
-                // 라벨 셀 — 첫 열의 짧은 텍스트(구 분/요 건 등)는 헤더 톤.
+                // 라벨 셀 — 헤더 톤(가운데·굵게·연한 음영). 라벨 열 안에 놓인 칸만.
+                // 라벨 열이 1개뿐인 표는 길이 제한을 유지한다 — 보정(t25) 처럼 첫 열이
+                // 긴 예시 블록인 표를 라벨로 오인하지 않게.
                 const isLabel =
-                  !isHead && ci === 0 && row.length > 1 && c.text.replace(/\s/g, "").length <= 12;
+                  !isHead &&
+                  row.length > 1 &&
+                  startCols[ri][ci] < labelCols &&
+                  (labelCols > 1 || c.text.replace(/\s/g, "").length <= 12);
                 return (
                   <Tag
                     key={ci}
@@ -51,7 +82,9 @@ function DohaeTable({ cells }: { cells: DohaeCell[][] }) {
                     className={cn(
                       "border-border border px-2.5 py-1.5 text-left align-middle leading-[1.65] whitespace-pre-wrap",
                       isHead && "bg-muted/60 text-center font-bold",
-                      isLabel && "bg-muted/40 text-center font-semibold whitespace-nowrap",
+                      isLabel && "bg-muted/40 text-center font-semibold",
+                      // 줄바꿈이 든 라벨(세로쓰기 "내\n용")은 원본 줄나눔을 살린다.
+                      isLabel && !c.text.includes("\n") && "whitespace-nowrap",
                     )}
                   >
                     {c.text}
