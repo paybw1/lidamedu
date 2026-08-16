@@ -27,6 +27,8 @@ import { HighlightList } from "~/features/annotations/components/highlight-list"
 import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
 import { MemoList } from "~/features/annotations/components/memo-list";
 import { MemoMarksOverlay } from "~/features/annotations/components/memo-marks-overlay";
+import { ArticleBodyView } from "~/features/laws/components/article-body";
+import { parseArticleBody } from "~/features/laws/lib/article-body";
 
 import {
   dohaeUnitLabel,
@@ -161,7 +163,79 @@ function DohaeTable({ cells }: { cells: DohaeCell[][] }) {
   );
 }
 
-function DohaeBlocks({ blocks }: { blocks: DohaeBlock[] }) {
+/**
+ * 교재의 조문 원문 박스 자리에 들어가는 **플랫폼 조문**.
+ * ★메인 화면(조문 뷰어·노드 뷰어)과 동일한 컴포넌트·동일한 앵커
+ * (fieldPath="article.body", targetType="article")를 그대로 쓴다 —
+ * 마크업이 조금이라도 다르면 하이라이트 오프셋이 어긋나 양쪽이 같은 자리를 못 가리킨다.
+ */
+function UnitArticles({
+  articles,
+  highlightsByArticle,
+  memosByArticle,
+  viewerIsStaff,
+}: {
+  articles: UnitPayload["articles"];
+  highlightsByArticle: UnitPayload["articleHighlights"];
+  memosByArticle: UnitPayload["articleMemos"];
+  viewerIsStaff: boolean;
+}) {
+  return (
+    <div className="space-y-3">
+      {articles.map((a) => {
+        const body = parseArticleBody(a.bodyJson);
+        const memos = memosByArticle[a.articleId] ?? [];
+        return (
+          <div
+            key={a.articleId}
+            className="border-primary/50 bg-primary/[0.04] rounded-lg border px-4 py-3"
+          >
+            <p className="mb-1.5 flex items-center gap-1.5 text-[13px] font-bold">
+              {a.displayLabel}
+              {a.importance > 0 ? (
+                <span className="text-amber-500">{"★".repeat(a.importance)}</span>
+              ) : null}
+            </p>
+            {body ? (
+              <MemoMarksOverlay memos={memos}>
+                <HighlightOverlay
+                  fieldPath="article.body"
+                  targetType="article"
+                  targetId={a.articleId}
+                  highlights={highlightsByArticle[a.articleId] ?? []}
+                  viewerIsStaff={viewerIsStaff}
+                >
+                  <div className="text-foreground text-[length:calc(14px*var(--study-fs,1))] leading-[1.75]">
+                    <ArticleBodyView body={body} lawCode="patent" memos={memos} />
+                  </div>
+                </HighlightOverlay>
+              </MemoMarksOverlay>
+            ) : (
+              <p className="text-muted-foreground text-xs">[본문을 불러오지 못했습니다]</p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function DohaeBlocks({
+  blocks,
+  articles,
+  articleHighlights,
+  articleMemos,
+  viewerIsStaff,
+}: {
+  blocks: DohaeBlock[];
+  articles: UnitPayload["articles"];
+  articleHighlights: UnitPayload["articleHighlights"];
+  articleMemos: UnitPayload["articleMemos"];
+  viewerIsStaff: boolean;
+}) {
+  // 조문 원문 박스는 유닛당 정확히 1개(93유닛 중 76개 보유, 나머지는 아예 없음).
+  // 그 자리에서만 플랫폼 조문으로 갈아끼운다.
+  let articleBoxUsed = false;
   return (
     <div className="space-y-3">
       {blocks.map((b, i) => {
@@ -181,9 +255,23 @@ function DohaeBlocks({ blocks }: { blocks: DohaeBlock[] }) {
             </p>
           );
         if (b.type === "table") {
-          // 1셀 박스 표 + 조문 원문 → 조문 박스 스타일.
+          // 1셀 박스 표 + 조문 원문 → 조문 박스.
           const single = b.cells.length === 1 && b.cells[0]?.length === 1;
           if (single && /^제\d+조/.test(b.cells[0][0].text)) {
+            // 연결 조문이 있으면 교재 텍스트 대신 플랫폼 조문(개정 반영 + 주석 공유).
+            // 없으면(「조약의 효력」— 조약은 articles 미수록) 교재 텍스트 그대로.
+            if (!articleBoxUsed && articles.length > 0) {
+              articleBoxUsed = true;
+              return (
+                <UnitArticles
+                  key={i}
+                  articles={articles}
+                  highlightsByArticle={articleHighlights}
+                  memosByArticle={articleMemos}
+                  viewerIsStaff={viewerIsStaff}
+                />
+              );
+            }
             return (
               <div
                 key={i}
@@ -417,7 +505,13 @@ export function DohaePopup({
                     highlights={payload?.highlights ?? []}
                     viewerIsStaff={viewerIsStaff}
                   >
-                    <DohaeBlocks blocks={unit.blocks} />
+                    <DohaeBlocks
+                      blocks={unit.blocks}
+                      articles={payload?.articles ?? []}
+                      articleHighlights={payload?.articleHighlights ?? {}}
+                      articleMemos={payload?.articleMemos ?? {}}
+                      viewerIsStaff={viewerIsStaff}
+                    />
                   </HighlightOverlay>
                 </MemoMarksOverlay>
               )}
