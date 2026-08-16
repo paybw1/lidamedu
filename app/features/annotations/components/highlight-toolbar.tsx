@@ -313,12 +313,17 @@ export function HighlightToolbar({
   const { top, left } = placeToolbar(pending.rect, TOOLBAR_W, TOOLBAR_H);
   const submitting = fetcher.state !== "idle";
 
+  // ★모달(도해 팝업 등) 위에서도 떠야 한다. Radix Dialog 는 열릴 때 ①포털을 body 끝에 붙이고
+  //   (같은 z-50 이면 나중 요소가 위로 간다) ②body 에 pointer-events:none 을 건다. 툴바는
+  //   dialog 밖(앱 루트)에 mount 되므로 z 를 올리고 pointer-events 를 직접 켜야 보이고 눌린다.
+  //   DialogContent 안으로 옮기는 건 답이 아니다 — transform 이 걸려 있어 position:fixed 의
+  //   좌표계가 팝업 기준으로 바뀌면서 툴바가 엉뚱한 자리에 뜬다.
   return (
     <div
       role="toolbar"
       aria-label="하이라이트 색상 선택"
       data-testid="highlight-toolbar"
-      className="bg-popover text-popover-foreground fixed z-50 flex flex-col gap-1 rounded-md border p-1 shadow-md"
+      className="bg-popover text-popover-foreground pointer-events-auto fixed z-[70] flex flex-col gap-1 rounded-md border p-1 shadow-md"
       style={{ top, left, width: TOOLBAR_W, height: TOOLBAR_H }}
     >
       <div className="flex items-center gap-1">
