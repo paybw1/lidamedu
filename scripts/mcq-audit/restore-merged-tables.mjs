@@ -47,9 +47,10 @@ for (const f of BOOKS) {
 }
 console.log(`원본 표 ${nTables}개 · 서명 색인 ${bySig.size}개 (모호 ${[...bySig.values()].filter((v) => v === null).length})`);
 
-// 파이프 표 블록 — convert-md-tables-to-html.mjs 와 같은 규칙.
+// 파이프 표 블록. 데이터 행이 **없는** 것(머리행 + 구분선만)도 잡는다 —
+// 교재의 한 칸짜리 '예시 박스'가 그 형태라 종전 규칙에선 통째로 빠져 있었다.
 const TABLE_BLOCK_RE =
-  /(^|\n)((?:\|[^\n]*\|[ \t]*\n)(?:\|[ \-:|\t]+\|[ \t]*\n)(?:\|[^\n]*\|[ \t]*(?:\n|$))+)/g;
+  /(^|\n)((?:\|[^\n]*\|[ \t]*\n)(?:\|[ \-:|\t]+\|[ \t]*(?:\n|$))(?:\|[^\n]*\|[ \t]*(?:\n|$))*)/g;
 
 function pipeSignature(block) {
   const cells = [];

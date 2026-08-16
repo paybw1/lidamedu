@@ -49,7 +49,8 @@ function tableFrom(node) {
   walk(node, (n) => {
     const tk = Object.keys(n).find((k) => k !== ":@" && !k.startsWith("@_"));
     if (tk !== "hp:tc") return;
-    let row = 0, col = 0, colSpan = 1, rowSpan = 1, text = "";
+    let row = 0, col = 0, colSpan = 1, rowSpan = 1;
+    const paras = [];
     for (const c of n[tk] ?? []) {
       const ck = Object.keys(c).find((k) => k !== ":@" && !k.startsWith("@_"));
       if (!ck) continue;
@@ -61,17 +62,19 @@ function tableFrom(node) {
         colSpan = parseInt(a["@_colSpan"] ?? "1", 10) || 1;
         rowSpan = parseInt(a["@_rowSpan"] ?? "1", 10) || 1;
       } else if (ck === "hp:subList") {
-        // 셀 안 문단들은 공백으로 잇는다 — 기존 파이프 표와 같은 표기가 되도록
-        // (세로로 쌓인 라벨 "의/사" → "의 사").
+        // 셀 안 문단은 **원본 그대로 줄을 나눠** 보관한다(사용자 지시 2026-08-16).
+        // 한 줄로 이어 붙이면 "청구항 1 : … 청구항 2 : …" 처럼 목록이 뭉개진다.
+        // 대조용 서명은 아래에서 공백으로 이은 text 를 쓴다(기존 파이프 표와 동일).
         walk(c, (sn) => {
           const stk = Object.keys(sn).find((k) => k !== ":@" && !k.startsWith("@_"));
           if (stk !== "hp:p") return;
           const t = textOf(sn);
-          if (t) text += (text ? " " : "") + t;
+          if (t) paras.push(t);
         });
       }
     }
-    if (row < rowCnt && col < colCnt) grid[row][col] = { text: text.trim(), colSpan, rowSpan };
+    if (row < rowCnt && col < colCnt)
+      grid[row][col] = { paras, text: paras.join(" ").trim(), colSpan, rowSpan };
   });
 
   const rows = grid.map((r) => r.filter(Boolean));
@@ -92,6 +95,8 @@ const esc = (s) =>
 
 /** 첫 행을 thead 로 — 기존 파이프 표 변환 규칙과 동일하게 맞춘다. */
 export function toHtml(t) {
+  // 셀 안 줄바꿈은 원본 문단 그대로 <br> 로 (이스케이프 뒤에 넣어야 태그로 산다).
+  const cellHtml = (c) => (c.paras?.length ? c.paras.map(esc).join("<br>") : esc(c.text));
   const line = (cells, tag) =>
     "<tr>" +
     cells
@@ -99,14 +104,19 @@ export function toHtml(t) {
         const a =
           (c.colSpan > 1 ? ` colspan="${c.colSpan}"` : "") +
           (c.rowSpan > 1 ? ` rowspan="${c.rowSpan}"` : "");
-        return `<${tag}${a}>${esc(c.text)}</${tag}>`;
+        return `<${tag}${a}>${cellHtml(c)}</${tag}>`;
       })
       .join("") +
     "</tr>";
   const [head, ...body] = t.rows;
   const parts = ["<table>"];
-  if (head?.length) parts.push("<thead>", line(head, "th"), "</thead>");
-  if (body.length) parts.push("<tbody>", ...body.map((r) => line(r, "td")), "</tbody>");
+  // 한 칸짜리 표는 교재의 '예시 박스' 다 — 머리글(굵게·음영)이 아니라 본문 칸으로.
+  const single = t.rows.length === 1 && head?.length === 1;
+  if (single) parts.push("<tbody>", line(head, "td"), "</tbody>");
+  else {
+    if (head?.length) parts.push("<thead>", line(head, "th"), "</thead>");
+    if (body.length) parts.push("<tbody>", ...body.map((r) => line(r, "td")), "</tbody>");
+  }
   parts.push("</table>");
   return parts.join("\n");
 }
