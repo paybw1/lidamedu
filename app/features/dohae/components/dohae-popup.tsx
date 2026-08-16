@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "~/core/components/ui/dialog";
 import { cn } from "~/core/lib/utils";
+import { HighlightList } from "~/features/annotations/components/highlight-list";
 import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
 import { MemoList } from "~/features/annotations/components/memo-list";
 import { MemoMarksOverlay } from "~/features/annotations/components/memo-marks-overlay";
@@ -328,10 +329,13 @@ export function DohaePopup({
                 </MemoMarksOverlay>
               )}
             </div>
-            {/* 우측 학습 툴 — 포스트잇/메모. 하이라이트는 본문 드래그 → 색상 툴바. */}
+            {/* 우측 학습 툴 — 포스트잇 + 하이라이트 목록. (제목은 "포스트잇" 단일 표기)
+                ★하이라이트 삭제는 이 목록에서만 된다(본문 마킹을 눌러 지우는 경로는 없다).
+                조문 뷰어는 우측 패널에 같은 목록이 있는데 팝업엔 빠져 있어, 그은 하이라이트를
+                지울 방법이 아예 없었다(원장 문의 2026-08-17). */}
             <aside className="border-border bg-muted/20 hidden min-h-0 overflow-y-auto border-l px-3 py-4 lg:block">
               <p className="text-muted-foreground mb-2 text-[11px] font-semibold tracking-wide uppercase">
-                포스트잇 · 메모
+                포스트잇
               </p>
               {unit ? (
                 <MemoList
@@ -341,9 +345,19 @@ export function DohaePopup({
                   viewerIsStaff={viewerIsStaff}
                 />
               ) : null}
+              <p className="text-muted-foreground mt-5 mb-2 text-[11px] font-semibold tracking-wide uppercase">
+                하이라이트
+              </p>
+              {unit ? (
+                <HighlightList
+                  targetType="dohae_unit"
+                  targetId={unit.unitId}
+                  initial={payload?.highlights ?? []}
+                  viewerIsStaff={viewerIsStaff}
+                />
+              ) : null}
               <p className="text-muted-foreground mt-4 text-[11px] leading-relaxed">
-                본문 문구를 드래그하면 하이라이트·포스트잇 툴바가 뜹니다. 표 텍스트에도
-                동일하게 작동합니다. 다이어그램(이미지) 안 문구는 대상이 아닙니다.
+                다이어그램(이미지) 안 문구는 드래그 대상이 아닙니다.
               </p>
             </aside>
           </div>
