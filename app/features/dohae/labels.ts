@@ -5,6 +5,8 @@ export interface DohaeCell {
   text: string;
   colSpan: number;
   rowSpan: number;
+  /** 원본 칸 너비(HWPX hp:cellSz/@width). 렌더에서 열 비율(colgroup)로 환산한다. */
+  width?: number;
   /** 셀 안 중첩 표들. */
   tables?: DohaeCell[][][];
   /** 셀 안 이미지 binId (현재 미사용 — 시드에 이미지 미포함). */

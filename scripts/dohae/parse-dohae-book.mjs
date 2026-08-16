@@ -102,15 +102,25 @@ function parseTable(tblNode) {
       const rich = [];
       (function cw(m) {
         if (tagOf(m) === "hp:tc") {
-          let colSpan = 1, rowSpan = 1;
+          let colSpan = 1, rowSpan = 1, width = 0;
+          // ★머리행 여부는 원본이 직접 표시한다(hp:tc/@header). 행 개수로 짐작하면
+          //   머리행 없이 이어지는 표(참고1.2 분류의 2~6번째 표)의 데이터 행이
+          //   머리글로 칠해진다(원장 신고 2026-08-17).
+          const isHeader = (attrsOf(m)["@_header"] ?? "0") === "1";
           (function findSpan(x) {
-            if (tagOf(x) === "hp:cellSpan") {
+            const t = tagOf(x);
+            if (t === "hp:cellSpan") {
               const a = attrsOf(x);
               colSpan = Number(a["@_colSpan"] ?? 1) || 1;
               rowSpan = Number(a["@_rowSpan"] ?? 1) || 1;
               return;
             }
-            if (tagOf(x) === "hp:subList") return;
+            // 칸 너비 — 원본 열 비율을 살리기 위해 함께 보관한다(렌더에서 colgroup 으로).
+            if (t === "hp:cellSz") {
+              width = Number(attrsOf(x)["@_width"] ?? 0) || 0;
+              return;
+            }
+            if (t === "hp:subList") return;
             for (const ch of childrenOf(x)) findSpan(ch);
           })(m);
           const nested = cellNestedTables(m).map(parseTable);
@@ -119,6 +129,8 @@ function parseTable(tblNode) {
             text: cellText(m),
             colSpan,
             rowSpan,
+            ...(width > 0 ? { width } : {}),
+            ...(isHeader ? { header: true } : {}),
             ...(nested.length ? { tables: nested } : {}),
             ...(imgs.length ? { imgs } : {}),
           });

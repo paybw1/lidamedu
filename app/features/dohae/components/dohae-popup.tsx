@@ -49,6 +49,49 @@ function gridStartCols(cells: DohaeCell[][]): number[][] {
   return out;
 }
 
+/**
+ * 원본 칸 너비(hp:cellSz)로 열 비율을 낸다.
+ *  · 한 칸짜리 셀은 그 열의 너비를 그대로 알려준다.
+ *  · 병합 셀밖에 없는 열은 병합 폭에서 이미 아는 열을 뺀 나머지를 균등 배분.
+ * 모든 열의 너비를 알아내지 못하면 null — 브라우저 자동 배분에 맡긴다.
+ */
+function columnPercents(
+  cells: DohaeCell[][],
+  startCols: number[][],
+): number[] | null {
+  let colCount = 0;
+  cells.forEach((row, ri) =>
+    row.forEach((c, ci) => {
+      colCount = Math.max(colCount, startCols[ri][ci] + c.colSpan);
+    }),
+  );
+  if (colCount < 2) return null;
+  const w = new Array<number>(colCount).fill(0);
+  cells.forEach((row, ri) =>
+    row.forEach((c, ci) => {
+      if (c.colSpan === 1 && (c.width ?? 0) > 0)
+        w[startCols[ri][ci]] = Math.max(w[startCols[ri][ci]], c.width!);
+    }),
+  );
+  cells.forEach((row, ri) =>
+    row.forEach((c, ci) => {
+      if (c.colSpan <= 1 || !(c.width ?? 0)) return;
+      const start = startCols[ri][ci];
+      const unknown: number[] = [];
+      let known = 0;
+      for (let k = start; k < Math.min(colCount, start + c.colSpan); k++) {
+        if (w[k] > 0) known += w[k];
+        else unknown.push(k);
+      }
+      if (unknown.length > 0 && c.width! > known)
+        for (const k of unknown) w[k] = (c.width! - known) / unknown.length;
+    }),
+  );
+  if (w.some((x) => x <= 0)) return null;
+  const total = w.reduce((a, b) => a + b, 0);
+  return w.map((x) => Math.round((x / total) * 1000) / 10);
+}
+
 function DohaeTable({ cells }: { cells: DohaeCell[][] }) {
   if (cells.length === 0) return null;
   const hasHeader = cells.length > 1;
@@ -75,9 +118,22 @@ function DohaeTable({ cells }: { cells: DohaeCell[][] }) {
               c.text.replace(/\s/g, "").length <= LABEL_COL_MAX,
           ),
     );
+  // 열 비율 — 원본 그대로. ★table-layout:fixed 를 함께 걸어야 비율이 선다
+  // (auto 면 브라우저가 내용 길이로 다시 나눠 버린다).
+  const colPct = columnPercents(cells, startCols);
   return (
     <div className="overflow-x-auto">
-      <table className="border-border w-full border-collapse text-[length:calc(13.5px*var(--study-fs,1))]">
+      <table
+        className="border-border w-full border-collapse text-[length:calc(13.5px*var(--study-fs,1))]"
+        style={colPct ? { tableLayout: "fixed" } : undefined}
+      >
+        {colPct ? (
+          <colgroup>
+            {colPct.map((p, i) => (
+              <col key={i} style={{ width: `${p}%` }} />
+            ))}
+          </colgroup>
+        ) : null}
         <tbody>
           {cells.map((row, ri) => (
             <tr key={ri}>
@@ -222,7 +278,16 @@ export function DohaePopup({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[88vh] w-[96vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl lg:max-w-5xl">
+      <DialogContent
+        className="flex max-h-[88vh] w-[96vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl lg:max-w-5xl"
+        // 하이라이트 툴바는 팝업 **밖**(앱 루트)에 mount 돼 있어(fixed 좌표계 때문에 안으로
+        // 옮길 수 없다) Radix 가 색상 클릭을 '바깥 클릭'으로 보고 팝업을 닫아버린다.
+        // 툴바 안에서 시작된 상호작용은 닫힘에서 제외한다(원장 신고 2026-08-17).
+        onInteractOutside={(e) => {
+          const el = e.target as HTMLElement | null;
+          if (el?.closest?.("[data-testid='highlight-toolbar']")) e.preventDefault();
+        }}
+      >
         <DialogHeader className="border-border shrink-0 border-b px-5 py-3.5">
           <DialogTitle className="flex flex-wrap items-center gap-2 text-[15px]">
             <BookOpenIcon className="text-primary size-4" />
