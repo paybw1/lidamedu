@@ -48,6 +48,8 @@ type DohaeView = "dialog" | "sheet";
 const DOHAE_VIEW_KEY = "lidam:dohaeView";
 // 도해특허법 = 특허법 단행본. 다른 과목 도해가 생기면 유닛의 book_code 로 갈라야 한다.
 const DOHAE_LAW_SLUG = "patent" as const;
+// 접힘 상태 맵에서 "도해 해설" 축을 가리키는 키(조문 id 와 섞이지 않게 uuid 형태를 피한다).
+const DOHAE_AXIS_KEY = "dohae";
 
 /**
  * 각 셀이 실제로 놓이는 격자 열 번호. rowspan 이 걸린 앞 행의 칸이 자리를 차지하므로
@@ -432,6 +434,10 @@ export function DohaePopup({
     const src: Record<string, string> = payload?.titleMap ?? {};
     return new Map(Object.entries(src));
   }, [payload?.titleMap]);
+  // 하이라이트 총계(도해 해설 + 조문 전부) — 접어 둔 "하이라이트 정리" 요약에 표시.
+  const highlightTotal =
+    (payload?.highlights ?? []).length +
+    Object.values(payload?.articleHighlights ?? {}).reduce((a, v) => a + v.length, 0);
   const activeIndex = units.findIndex((u) => u.unitId === activeUnitId);
   const activeSummary = activeIndex >= 0 ? units[activeIndex] : null;
   const prevUnit = activeIndex > 0 ? units[activeIndex - 1] : null;
@@ -553,84 +559,9 @@ export function DohaePopup({
           <div
             className={cn(
               "grid min-h-0 flex-1 grid-cols-1",
-              // 좌우 분리 — 왼쪽 = 조문(메인 화면과 공유), 오른쪽 = 도해 해설.
-              // 한 패널에 세로로 쌓으니 두 축이 섞여 헷갈린다는 지적(원장 2026-08-17).
-              toolsOpen && "lg:grid-cols-[240px_1fr_260px]",
+              toolsOpen && "lg:grid-cols-[1fr_300px]",
             )}
           >
-            {/* ── 왼쪽: 조문 축 ─────────────────────────────────────────────
-                팝업 안 조문에 그은 것은 target_type='article' 이라 도해 목록에 안 잡힌다.
-                조문별로 따로 실어야 지울 수 있고, 포스트잇 작성 이벤트도 같은 대상의
-                MemoList 가 mount 돼 있어야 받는다(그래서 접어도 mount 유지). */}
-            <aside
-              className={cn(
-                "border-border bg-primary/[0.03] hidden min-h-0 overflow-y-auto border-r px-3 py-4",
-                toolsOpen && "lg:block",
-              )}
-            >
-              <p className="text-link mb-0.5 text-[11px] font-semibold tracking-wide uppercase">
-                조문
-              </p>
-              <p className="text-muted-foreground mb-2 text-[10px]">
-                메인 화면과 공유됩니다
-              </p>
-              {(payload?.articles ?? []).length === 0 ? (
-                <p className="text-muted-foreground text-[11px]">
-                  이 주제에 연결된 조문이 없습니다.
-                </p>
-              ) : (
-                <div className="space-y-1.5">
-                  {(payload?.articles ?? []).map((a) => {
-                    const ms = payload?.articleMemos?.[a.articleId] ?? [];
-                    const hs = payload?.articleHighlights?.[a.articleId] ?? [];
-                    return (
-                      <details
-                        key={a.articleId}
-                        id={`dohae-annot-${a.articleId}`}
-                        open={
-                          expandedArticle[a.articleId] ??
-                          (ms.length + hs.length > 0 || snippetArticleId === a.articleId)
-                        }
-                        onToggle={(e) =>
-                          setExpandedArticle((prev) => ({
-                            ...prev,
-                            [a.articleId]: e.currentTarget.open,
-                          }))
-                        }
-                        className="border-border bg-background/60 rounded-md border px-2 py-1.5"
-                      >
-                        <summary className="cursor-pointer text-[11px] font-medium">
-                          {a.displayLabel}
-                          {ms.length + hs.length > 0 ? (
-                            <span className="text-muted-foreground ml-1 tabular-nums">
-                              {ms.length + hs.length}
-                            </span>
-                          ) : null}
-                        </summary>
-                        <div className="mt-2">
-                          <MemoList
-                            targetType="article"
-                            targetId={a.articleId}
-                            initial={ms}
-                            viewerIsStaff={viewerIsStaff}
-                          />
-                        </div>
-                        <div className="mt-3">
-                          <HighlightList
-                            targetType="article"
-                            targetId={a.articleId}
-                            initial={hs}
-                            viewerIsStaff={viewerIsStaff}
-                            compact
-                          />
-                        </div>
-                      </details>
-                    );
-                  })}
-                </div>
-              )}
-            </aside>
-
             <div className="min-h-0 overflow-y-auto px-5 py-4">
               {!unit ? (
                 <p className="text-muted-foreground flex items-center gap-2 py-16 text-center text-sm">
@@ -657,38 +588,135 @@ export function DohaePopup({
                 </MemoMarksOverlay>
               )}
             </div>
-            {/* ── 오른쪽: 도해 해설 축 ───────────────────────────────────────
-                ★하이라이트 삭제는 이 목록에서만 된다(본문 마킹을 눌러 지우는 경로는 없다). */}
+            {/* ── 오른쪽 학습 툴 — 포스트잇이 주(主), 하이라이트는 접어 둔다.
+                하이라이트는 본문에 색으로 이미 보이니 목록은 고치거나 지울 때만 필요하다
+                (원장 판단 2026-08-17). 좌우 2단은 집중이 흩어져 되돌렸다.
+                ★조문별 MemoList 는 접어도 mount 유지 — 포스트잇 작성 이벤트가
+                  targetType+targetId 로 필터링돼 그 대상이 떠 있어야 도달한다. */}
             <aside
               className={cn(
                 "border-border bg-muted/20 hidden min-h-0 overflow-y-auto border-l px-3 py-4",
                 toolsOpen && "lg:block",
               )}
             >
-              <p className="text-foreground mb-0.5 text-[11px] font-semibold tracking-wide uppercase">
-                도해 해설
+              <p className="text-foreground mb-2 flex items-center gap-1.5 text-[11px] font-semibold tracking-wide uppercase">
+                <NotebookPenIcon className="size-3.5" /> 포스트잇
               </p>
-              <p className="text-muted-foreground mb-2 text-[10px]">
-                이 팝업 안에서만 보입니다
-              </p>
+
               {unit ? (
-                <>
-                  <MemoList
-                    targetType="dohae_unit"
-                    targetId={unit.unitId}
-                    initial={payload?.memos ?? []}
-                    viewerIsStaff={viewerIsStaff}
-                  />
-                  <div className="mt-3">
-                    <HighlightList
-                      targetType="dohae_unit"
-                      targetId={unit.unitId}
-                      initial={payload?.highlights ?? []}
-                      viewerIsStaff={viewerIsStaff}
-                      compact
-                    />
+                <div className="space-y-1.5">
+                  <details
+                    open={expandedArticle[DOHAE_AXIS_KEY] ?? true}
+                    onToggle={(e) =>
+                      setExpandedArticle((prev) => ({
+                        ...prev,
+                        [DOHAE_AXIS_KEY]: e.currentTarget.open,
+                      }))
+                    }
+                    className="border-border bg-background/60 rounded-md border px-2 py-1.5"
+                  >
+                    <summary className="cursor-pointer text-[11px] font-medium">
+                      도해 해설
+                      <span className="text-muted-foreground ml-1 text-[10px] font-normal">
+                        이 팝업 전용
+                      </span>
+                      {(payload?.memos ?? []).length > 0 ? (
+                        <span className="text-muted-foreground ml-1 tabular-nums">
+                          {(payload?.memos ?? []).length}
+                        </span>
+                      ) : null}
+                    </summary>
+                    <div className="mt-2">
+                      <MemoList
+                        targetType="dohae_unit"
+                        targetId={unit.unitId}
+                        initial={payload?.memos ?? []}
+                        viewerIsStaff={viewerIsStaff}
+                      />
+                    </div>
+                  </details>
+
+                  {(payload?.articles ?? []).map((a) => {
+                    const ms = payload?.articleMemos?.[a.articleId] ?? [];
+                    return (
+                      <details
+                        key={a.articleId}
+                        id={`dohae-annot-${a.articleId}`}
+                        open={
+                          expandedArticle[a.articleId] ??
+                          (ms.length > 0 || snippetArticleId === a.articleId)
+                        }
+                        onToggle={(e) =>
+                          setExpandedArticle((prev) => ({
+                            ...prev,
+                            [a.articleId]: e.currentTarget.open,
+                          }))
+                        }
+                        className="border-border bg-background/60 rounded-md border px-2 py-1.5"
+                      >
+                        <summary className="cursor-pointer text-[11px] font-medium">
+                          {a.displayLabel}
+                          <span className="text-link ml-1 text-[10px] font-normal">
+                            메인 공유
+                          </span>
+                          {ms.length > 0 ? (
+                            <span className="text-muted-foreground ml-1 tabular-nums">
+                              {ms.length}
+                            </span>
+                          ) : null}
+                        </summary>
+                        <div className="mt-2">
+                          <MemoList
+                            targetType="article"
+                            targetId={a.articleId}
+                            initial={ms}
+                            viewerIsStaff={viewerIsStaff}
+                          />
+                        </div>
+                      </details>
+                    );
+                  })}
+                </div>
+              ) : null}
+
+              {/* 하이라이트 — 본문에 이미 보이므로 기본 접힘. 고치거나 지울 때만 편다. */}
+              {unit ? (
+                <details className="border-border mt-4 rounded-md border px-2 py-1.5">
+                  <summary className="text-muted-foreground cursor-pointer text-[11px] font-semibold tracking-wide uppercase">
+                    하이라이트 정리
+                    {highlightTotal > 0 ? (
+                      <span className="ml-1 tabular-nums">{highlightTotal}</span>
+                    ) : null}
+                  </summary>
+                  <div className="mt-2 space-y-3">
+                    <div>
+                      <p className="text-muted-foreground mb-1 text-[10px] font-medium">
+                        도해 해설
+                      </p>
+                      <HighlightList
+                        targetType="dohae_unit"
+                        targetId={unit.unitId}
+                        initial={payload?.highlights ?? []}
+                        viewerIsStaff={viewerIsStaff}
+                        compact
+                      />
+                    </div>
+                    {(payload?.articles ?? []).map((a) => (
+                      <div key={a.articleId}>
+                        <p className="text-muted-foreground mb-1 text-[10px] font-medium">
+                          {a.displayLabel}
+                        </p>
+                        <HighlightList
+                          targetType="article"
+                          targetId={a.articleId}
+                          initial={payload?.articleHighlights?.[a.articleId] ?? []}
+                          viewerIsStaff={viewerIsStaff}
+                          compact
+                        />
+                      </div>
+                    ))}
                   </div>
-                </>
+                </details>
               ) : null}
 
               <p className="text-muted-foreground mt-4 text-[11px] leading-relaxed">
@@ -709,7 +737,7 @@ export function DohaePopup({
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent
           side="right"
-          className="flex w-[94vw] gap-0 overflow-hidden p-0 sm:max-w-3xl lg:max-w-5xl xl:max-w-6xl"
+          className="flex w-[94vw] gap-0 overflow-hidden p-0 sm:max-w-3xl lg:max-w-4xl"
           onInteractOutside={keepOpenOnToolbar}
         >
           {body}
@@ -720,8 +748,7 @@ export function DohaePopup({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        // 좌우 학습 툴 2단이 들어가야 해서 넓힌다(240 + 본문 + 260).
-        className="flex max-h-[88vh] w-[96vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl lg:max-w-6xl xl:max-w-[88rem]"
+        className="flex max-h-[88vh] w-[96vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl lg:max-w-5xl"
         onInteractOutside={keepOpenOnToolbar}
       >
         {body}
