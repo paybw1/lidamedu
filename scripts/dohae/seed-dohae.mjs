@@ -70,6 +70,18 @@ for (const c of crops) {
 }
 console.log(`storage 업로드 ${crops.length}건 완료`);
 
+// ★원장 억제 창 — 재시드는 전량 삭제 후 재삽입이라 dohae_units 트리거가 원장에
+//   186행(삭제 93 + 삽입 93)을 쏟아낸다. 사람이 고친 편집 이력이 그 잡음에 묻히면
+//   원장이 복구 원천 구실을 못 한다. 시드 구간만 기록을 끈다(메모: errata-system-phase0).
+const { data: windowId, error: winErr } = await supa.rpc("fn_open_suppress_window", {
+  p_reason: "도해 재시드(seed-dohae)",
+  p_minutes: 30,
+  p_scope: ["dohae"],
+});
+if (winErr) throw new Error(`억제 창 열기 실패: ${winErr.message}`);
+console.log(`원장 억제 창 열림 (${windowId})`);
+
+try {
 // 2) 기존 book_code 삭제(재시드) → 삽입
 {
   const { error } = await supa.from("dohae_units").delete().eq("book_code", BOOK);
@@ -93,6 +105,12 @@ for (let i = 0; i < links.length; i += 200) {
   if (error) throw new Error(`insert links: ${error.message}`);
 }
 console.log(`dohae_unit_articles ${links.length}건 삽입`);
+} finally {
+  // ★반드시 닫는다 — 열린 채로 두면 이후 사람이 한 편집까지 원장에 안 남는다.
+  const { error } = await supa.rpc("fn_close_suppress_window", { p_window_id: windowId });
+  if (error) console.error(`억제 창 닫기 실패(수동 확인 필요): ${error.message}`);
+  else console.log("원장 억제 창 닫음");
+}
 
 // 3) 검증 — 건수·표 블록 수·이미지 존재
 const { count: unitCount } = await supa
