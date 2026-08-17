@@ -93,3 +93,57 @@ const { count } = await supa
   .select("unit_id", { count: "exact", head: true });
 console.log(`dohae_unit_nodes ${count}건 (기대 ${links.length})`);
 if (count !== links.length) throw new Error("건수 불일치");
+
+// ── 조문 보강 — 책 제목의 참조 표기는 축약이라 조문이 빠진다 ──────────────────
+// 유닛의 조문은 제목의 "(法 3~5①)" 같은 표기에서 뽑는데, 이건 대표 조문만 든 축약이다.
+// 그래서 체계도 노드에는 있는 조문이 도해에선 빠져 보인다(행위능력의 제7조의2 등,
+// 원장 신고 2026-08-17). 노드에 유닛이 **하나뿐**이면 그 노드의 조문이 곧 그 주제의
+// 조문이므로, 책 표기에 **더해서**(빼지 않고) 채운다.
+// ★유닛이 여럿 얹힌 노드는 건너뛴다 — 그 노드 조문 전체를 각 유닛에 주면
+//   "재외자의 재판관할"에 대리인 노드 조문이 통째로 붙는 식으로 과다 포섭된다.
+{
+  const unitsOnNode = new Map(); // node_id → unit_id[]
+  for (const l of links) {
+    const arr = unitsOnNode.get(l.node_id) ?? [];
+    arr.push(l.unit_id);
+    unitsOnNode.set(l.node_id, arr);
+  }
+  const soleNodes = [...unitsOnNode.entries()].filter(([, us]) => us.length === 1);
+
+  const { data: nodeLinks, error: nlErr } = await supa
+    .from("article_systematic_links")
+    .select("node_id, article_id")
+    .in("node_id", soleNodes.map(([n]) => n));
+  if (nlErr) throw nlErr;
+  const articlesByNode = new Map();
+  for (const r of nodeLinks ?? []) {
+    const arr = articlesByNode.get(r.node_id) ?? [];
+    arr.push(r.article_id);
+    articlesByNode.set(r.node_id, arr);
+  }
+
+  const { data: existing, error: exErr } = await supa
+    .from("dohae_unit_articles")
+    .select("unit_id, article_id");
+  if (exErr) throw exErr;
+  const have = new Set((existing ?? []).map((r) => `${r.unit_id}|${r.article_id}`));
+
+  const add = [];
+  const perUnit = [];
+  for (const [nodeId, [uid]] of soleNodes) {
+    const arts = articlesByNode.get(nodeId) ?? [];
+    const missing = arts.filter((aid) => !have.has(`${uid}|${aid}`));
+    if (missing.length === 0) continue;
+    perUnit.push({ uid, n: missing.length });
+    for (const aid of missing) add.push({ unit_id: uid, article_id: aid });
+  }
+  console.log(`조문 보강 — 유닛 ${perUnit.length}개에 ${add.length}건 추가(노드 배치 기준)`);
+  for (let i = 0; i < add.length; i += 200) {
+    const { error } = await supa.from("dohae_unit_articles").insert(add.slice(i, i + 200));
+    if (error) throw new Error(`보강 insert: ${error.message}`);
+  }
+  const { count: total } = await supa
+    .from("dohae_unit_articles")
+    .select("unit_id", { count: "exact", head: true });
+  console.log(`dohae_unit_articles ${total}건`);
+}

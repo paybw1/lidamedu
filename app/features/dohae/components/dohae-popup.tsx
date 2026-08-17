@@ -605,37 +605,7 @@ export function DohaePopup({
 
               {unit ? (
                 <div className="space-y-1.5">
-                  <details
-                    open={expandedArticle[DOHAE_AXIS_KEY] ?? true}
-                    onToggle={(e) =>
-                      setExpandedArticle((prev) => ({
-                        ...prev,
-                        [DOHAE_AXIS_KEY]: e.currentTarget.open,
-                      }))
-                    }
-                    className="border-border bg-background/60 rounded-md border px-2 py-1.5"
-                  >
-                    <summary className="cursor-pointer text-[11px] font-medium">
-                      도해 해설
-                      <span className="text-muted-foreground ml-1 text-[10px] font-normal">
-                        이 팝업 전용
-                      </span>
-                      {(payload?.memos ?? []).length > 0 ? (
-                        <span className="text-muted-foreground ml-1 tabular-nums">
-                          {(payload?.memos ?? []).length}
-                        </span>
-                      ) : null}
-                    </summary>
-                    <div className="mt-2">
-                      <MemoList
-                        targetType="dohae_unit"
-                        targetId={unit.unitId}
-                        initial={payload?.memos ?? []}
-                        viewerIsStaff={viewerIsStaff}
-                      />
-                    </div>
-                  </details>
-
+                  {/* 조문 먼저, 도해 해설은 뒤로(원장 지시 2026-08-17). */}
                   {(payload?.articles ?? []).map((a) => {
                     const ms = payload?.articleMemos?.[a.articleId] ?? [];
                     return (
@@ -676,6 +646,37 @@ export function DohaePopup({
                       </details>
                     );
                   })}
+
+                  <details
+                    open={expandedArticle[DOHAE_AXIS_KEY] ?? true}
+                    onToggle={(e) =>
+                      setExpandedArticle((prev) => ({
+                        ...prev,
+                        [DOHAE_AXIS_KEY]: e.currentTarget.open,
+                      }))
+                    }
+                    className="border-border bg-background/60 rounded-md border px-2 py-1.5"
+                  >
+                    <summary className="cursor-pointer text-[11px] font-medium">
+                      도해 해설
+                      <span className="text-muted-foreground ml-1 text-[10px] font-normal">
+                        이 팝업 전용
+                      </span>
+                      {(payload?.memos ?? []).length > 0 ? (
+                        <span className="text-muted-foreground ml-1 tabular-nums">
+                          {(payload?.memos ?? []).length}
+                        </span>
+                      ) : null}
+                    </summary>
+                    <div className="mt-2">
+                      <MemoList
+                        targetType="dohae_unit"
+                        targetId={unit.unitId}
+                        initial={payload?.memos ?? []}
+                        viewerIsStaff={viewerIsStaff}
+                      />
+                    </div>
+                  </details>
                 </div>
               ) : null}
 
