@@ -4,9 +4,9 @@
 
 import type { Route } from "./+types/admin-dohae";
 
-import { BookOpenIcon } from "lucide-react";
+import { BookOpenIcon, PencilLineIcon } from "lucide-react";
 import { useState } from "react";
-import { data } from "react-router";
+import { Link, data } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
 import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
@@ -96,11 +96,14 @@ export default function AdminDohae({ loaderData }: Route.ComponentProps) {
             </h2>
             <ul className="divide-border grid grid-cols-1 divide-y md:grid-cols-2 md:divide-y-0">
               {list.map((u) => (
-                <li key={u.unitId} className="md:border-border/60 md:border-b">
+                <li
+                  key={u.unitId}
+                  className="md:border-border/60 flex items-center md:border-b"
+                >
                   <button
                     type="button"
                     onClick={() => setActive(u)}
-                    className="hover:bg-muted/50 flex w-full items-center gap-2.5 px-4 py-2 text-left"
+                    className="hover:bg-muted/50 flex min-w-0 flex-1 items-center gap-2.5 px-4 py-2 text-left"
                   >
                     <span className="bg-primary/10 text-link inline-flex h-6 min-w-9 shrink-0 items-center justify-center rounded-md px-1.5 text-xs font-bold tabular-nums">
                       {dohaeUnitLabel(u)}
@@ -113,6 +116,13 @@ export default function AdminDohae({ loaderData }: Route.ComponentProps) {
                     </span>
                     <BookOpenIcon className="text-muted-foreground size-3.5 shrink-0" />
                   </button>
+                  <Link
+                    to={`/admin/dohae/${u.unitKey}`}
+                    title="텍스트 편집"
+                    className="text-muted-foreground hover:bg-muted/50 hover:text-foreground mr-2 inline-flex size-7 shrink-0 items-center justify-center rounded-md"
+                  >
+                    <PencilLineIcon className="size-3.5" />
+                  </Link>
                 </li>
               ))}
             </ul>

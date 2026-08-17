@@ -1,0 +1,225 @@
+// /admin/dohae/:unitKey — 도해 유닛 **텍스트** 편집. ★staff 전용.
+//
+// 구조(표 병합·열 너비·음영·굵게·다이어그램)는 원본 HWPX 에서 온 값이라 여기서 못 바꾼다.
+// 오타·조문 표기 정정 같은 실수요를 덮는 게 목적이고, 구조를 바꿔야 하면 원본을 고쳐
+// 재파싱하는 편이 안전하다.
+//
+// ★편집분은 재시드(seed-dohae)로 사라진다 — 원장(content_revisions)이 유일한 복구 원천
+//   (원장 판단 2026-08-17: 날아가도 무방, 대신 무엇을 고쳤는지는 남길 것).
+
+import type { Route } from "./+types/admin-dohae-edit";
+
+import { ArrowLeftIcon, SaveIcon } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Link, data, useNavigation } from "react-router";
+
+import { Button } from "~/core/components/ui/button";
+import { Textarea } from "~/core/components/ui/textarea";
+import makeServerClient from "~/core/lib/supa-client.server";
+import { cn } from "~/core/lib/utils";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import { getStaffRole } from "~/features/laws/queries.server";
+
+import { dohaeUnitLabel, type DohaeBlock } from "../labels";
+import { applyTextEdits, collectTextNodes } from "../lib/dohae-edit";
+
+export const meta: Route.MetaFunction = () => [
+  { title: "도해 유닛 편집 | 리담변리사학원" },
+];
+
+const BOOK = "dohae_patent_20";
+
+/** staff 게이트 + 유닛 조회 — loader·action 공용. */
+async function loadUnit(request: Request, unitKey: string | undefined) {
+  if (!unitKey) throw data("Missing unitKey", { status: 400 });
+  const [client] = makeServerClient(request);
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  if (!user) throw data("Unauthorized", { status: 401 });
+  const role = await getStaffRole(client, user.id);
+  if (!role) throw data("Forbidden", { status: 403 });
+
+  const { data: row, error } = await client
+    .from("dohae_units")
+    .select("unit_id, unit_key, kind, title, chapter_no, chapter_title, unit_no, ref_no, pdf_page, blocks")
+    .eq("book_code", BOOK)
+    .eq("unit_key", unitKey)
+    .maybeSingle();
+  if (error) throw error;
+  if (!row) throw data("Not found", { status: 404 });
+  return { client, role, row };
+}
+
+export async function loader({ params, request }: Route.LoaderArgs) {
+  const { role, row } = await loadUnit(request, params.unitKey);
+  const blocks = (row.blocks ?? []) as DohaeBlock[];
+  return {
+    role,
+    unit: {
+      unitId: row.unit_id,
+      unitKey: row.unit_key,
+      kind: row.kind as "topic" | "reference",
+      title: row.title,
+      chapterNo: row.chapter_no,
+      chapterTitle: row.chapter_title,
+      unitNo: row.unit_no,
+      refNo: row.ref_no,
+      pdfPage: row.pdf_page,
+    },
+    nodes: collectTextNodes(blocks),
+  };
+}
+
+export async function action({ params, request }: Route.ActionArgs) {
+  const { client, row } = await loadUnit(request, params.unitKey);
+  const fd = await request.formData();
+
+  // 경로 → 새 텍스트. 구조는 서버가 가진 원본을 그대로 쓰고 텍스트만 갈아끼운다.
+  const edits: Record<string, string> = {};
+  for (const [k, v] of fd.entries()) {
+    if (!k.startsWith("t:") || typeof v !== "string") continue;
+    edits[k.slice(2)] = v;
+  }
+
+  const result = applyTextEdits((row.blocks ?? []) as DohaeBlock[], edits);
+  if (result.rejected.length > 0) {
+    // 구조와 안 맞는 경로가 하나라도 있으면 저장하지 않는다 — 다른 사람이 재시드해
+    // 블록이 바뀐 상태일 수 있다(그대로 밀면 엉뚱한 칸을 덮는다).
+    return {
+      ok: false as const,
+      error: `본문 구조가 바뀌었습니다(${result.rejected.length}곳). 새로고침 후 다시 시도해 주세요.`,
+    };
+  }
+  if (result.changed.length === 0) {
+    return { ok: false as const, error: "변경된 내용이 없습니다." };
+  }
+
+  // ★요청 클라이언트로 쓴다(adminClient 금지) — RLS staff UPDATE 정책이 최종 방어선이고,
+  //   원장 트리거가 auth.uid() 로 작성자를 남긴다.
+  const { error } = await client
+    .from("dohae_units")
+    .update({
+      // blocks 는 jsonb — 생성 타입의 Json 과 DohaeBlock 은 구조가 같지만 서로
+      // 대입되지 않는다(인덱스 시그니처 없음). 직렬화해 형태를 맞춘다.
+      blocks: JSON.parse(JSON.stringify(result.blocks)),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("unit_id", row.unit_id);
+  if (error) return { ok: false as const, error: error.message };
+
+  return { ok: true as const, changed: result.changed.length };
+}
+
+export default function AdminDohaeEdit({
+  loaderData,
+  actionData,
+}: Route.ComponentProps) {
+  const { role, unit, nodes } = loaderData;
+  const nav = useNavigation();
+  const saving = nav.state !== "idle";
+  const [draft, setDraft] = useState<Record<string, string>>({});
+
+  const original = useMemo(
+    () => new Map(nodes.map((n) => [n.path, n.text])),
+    [nodes],
+  );
+  const dirty = Object.entries(draft).filter(
+    ([p, v]) => (original.get(p) ?? "") !== v,
+  );
+
+  return (
+    <AdminShell
+      cluster="laws"
+      role={role}
+      title={`도해 편집 — ${dohaeUnitLabel(unit)} ${unit.title}`}
+      desc={`제${unit.chapterNo}장 ${unit.chapterTitle}${unit.pdfPage ? ` · 원본 p.${unit.pdfPage}` : ""} — 텍스트만 수정합니다. 표 구조·열 너비·서식은 원본 그대로 유지됩니다.`}
+    >
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <Button asChild variant="outline" size="sm" className="h-8">
+          <Link to="/admin/dohae">
+            <ArrowLeftIcon className="size-3.5" /> 목록
+          </Link>
+        </Button>
+        {actionData?.ok ? (
+          <p className="text-[13px] font-medium text-emerald-600 dark:text-emerald-400">
+            {actionData.changed}곳을 저장했습니다.
+          </p>
+        ) : actionData?.error ? (
+          <p className="text-destructive text-[13px] font-medium">
+            {actionData.error}
+          </p>
+        ) : null}
+      </div>
+
+      <form method="post">
+        {/* 편집하지 않은 칸도 함께 보내면 폼이 커지기만 하므로, 바뀐 것만 담는다. */}
+        {dirty.map(([path, value]) => (
+          <input key={path} type="hidden" name={`t:${path}`} value={value} />
+        ))}
+
+        <div className="bg-card divide-border divide-y rounded-xl border shadow-sm">
+          {nodes.map((n) => {
+            const value = draft[n.path] ?? n.text;
+            const isDirty = value !== n.text;
+            return (
+              <div
+                key={n.path}
+                className={cn("px-4 py-2.5", isDirty && "bg-amber-50/60 dark:bg-amber-950/20")}
+              >
+                <p className="text-muted-foreground mb-1 flex items-center gap-1.5 text-[11px]">
+                  <span className="font-medium">{n.label}</span>
+                  {isDirty ? (
+                    <span className="font-semibold text-amber-600 dark:text-amber-400">
+                      수정됨
+                    </span>
+                  ) : null}
+                </p>
+                {n.multiline ? (
+                  <Textarea
+                    value={value}
+                    onChange={(e) =>
+                      setDraft((prev) => ({ ...prev, [n.path]: e.target.value }))
+                    }
+                    rows={Math.min(12, Math.max(2, value.split("\n").length + 1))}
+                    className="text-[13px] leading-relaxed"
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    value={value}
+                    onChange={(e) =>
+                      setDraft((prev) => ({ ...prev, [n.path]: e.target.value }))
+                    }
+                    className="border-input focus:ring-ring w-full rounded-md border px-2.5 py-1.5 text-[13px] focus:ring-2 focus:outline-none"
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="bg-background/95 sticky bottom-0 mt-3 flex items-center gap-2 border-t py-3 backdrop-blur">
+          <Button type="submit" disabled={saving || dirty.length === 0} className="h-9">
+            <SaveIcon className="size-3.5" />
+            {saving ? "저장 중…" : `저장 (${dirty.length}곳)`}
+          </Button>
+          {dirty.length > 0 ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9"
+              onClick={() => setDraft({})}
+            >
+              되돌리기
+            </Button>
+          ) : null}
+          <p className="text-muted-foreground ml-auto text-[11px]">
+            텍스트 {nodes.length}곳 · 저장 이력은 개정 원장에 남습니다.
+          </p>
+        </div>
+      </form>
+    </AdminShell>
+  );
+}

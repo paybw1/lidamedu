@@ -1447,6 +1447,8 @@ export default [
       ),
       // 도해특허법 전체 열람·검수 — ★staff 전용(수험생 비노출).
       route("/admin/dohae", "features/dohae/screens/admin-dohae.tsx"),
+      // 도해 유닛 텍스트 편집 — ★staff 전용. 구조는 못 바꾼다(원본 재파싱의 몫).
+      route("/admin/dohae/:unitKey", "features/dohae/screens/admin-dohae-edit.tsx"),
       // feat-7-041 — 전체 학습현황(학원 전체 집계·익명, manager+).
       route(
         "/admin/analytics/students",
