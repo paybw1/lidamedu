@@ -412,7 +412,11 @@ function parseLawRefs(title) {
     const rest = body.slice(lawM[0].length);
     const tokens = rest.split(/[,、]|\s및\s/).map((t) => t.trim()).filter(Boolean);
     const articles = [];
-    for (const tok of tokens) {
+    for (const tok0 of tokens) {
+      // ★항·호 표시(①②…)를 먼저 걷어낸다. 종전엔 범위 정규식이 "~" 바로 앞의 숫자만
+      //   보게 돼 있어 "5②~10" 이 "5" 하나로 잘렸다 — 제6~10조가 통째로 누락
+      //   (t04 대리인이 3·5·12 만 연결됨. 원장 신고 2026-08-17).
+      const tok = tok0.replace(/[①-⑳㉑-㉟㊱-㊿]/g, "");
       // 범위는 전개하지 않고 원형 보존("20~24"·"215~224의5") — 해소 단계(resolve-articles)가
       // DB 조문 목록 기반으로 전개한다(범위 안 "103의2" 같은 곁가지 조문 포함 목적).
       const range = /^(\d+(?:의\d+)?)\s*~\s*(\d+(?:의\d+)?)/.exec(tok);
