@@ -10,6 +10,7 @@ import {
   Loader2Icon,
   NotebookPenIcon,
   PanelRightIcon,
+  PencilLineIcon,
   SquareIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -492,6 +493,19 @@ export function DohaePopup({
               </>
             ) : null}
             <div className="ml-auto flex items-center gap-1.5">
+            {activeSummary && viewerIsStaff ? (
+              // 지금 보고 있는 유닛의 편집 화면으로. ★새 탭 — 팝업을 닫지 않아야
+              // 원문과 나란히 놓고 고칠 수 있다.
+              <a
+                href={`/admin/dohae/${activeSummary.unitKey}`}
+                target="_blank"
+                rel="noreferrer"
+                title="이 주제의 텍스트 편집 (새 탭)"
+                className="border-border text-muted-foreground hover:bg-muted inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px]"
+              >
+                <PencilLineIcon className="size-3" /> 편집
+              </a>
+            ) : null}
             {activeSummary ? (
               <button
                 type="button"
