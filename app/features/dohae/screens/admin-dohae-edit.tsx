@@ -9,12 +9,13 @@
 
 import type { Route } from "./+types/admin-dohae-edit";
 
-import { ArrowLeftIcon, SaveIcon } from "lucide-react";
+import { ArrowLeftIcon, HistoryIcon, SaveIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, data, useNavigation } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Textarea } from "~/core/components/ui/textarea";
+import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
 import { AdminShell } from "~/features/admin/components/admin-shell";
@@ -22,6 +23,7 @@ import { getStaffRole } from "~/features/laws/queries.server";
 
 import { dohaeUnitLabel, type DohaeBlock } from "../labels";
 import { applyTextEdits, collectTextNodes } from "../lib/dohae-edit";
+import { listDohaeRevisions, type DohaeRevision } from "../queries.server";
 
 export const meta: Route.MetaFunction = () => [
   { title: "도해 유닛 편집 | 리담변리사학원" },
@@ -52,10 +54,13 @@ async function loadUnit(request: Request, unitKey: string | undefined) {
 }
 
 export async function loader({ params, request }: Route.LoaderArgs) {
-  const { role, row } = await loadUnit(request, params.unitKey);
+  const { client, role, row } = await loadUnit(request, params.unitKey);
   const blocks = (row.blocks ?? []) as DohaeBlock[];
+  // 편집 이력 — 편집분은 재시드로 사라지므로 이 원장이 유일한 복구 원천이다.
+  const revisions = await listDohaeRevisions(client, adminClient, row.unit_id);
   return {
     role,
+    revisions,
     unit: {
       unitId: row.unit_id,
       unitKey: row.unit_key,
@@ -115,7 +120,7 @@ export default function AdminDohaeEdit({
   loaderData,
   actionData,
 }: Route.ComponentProps) {
-  const { role, unit, nodes } = loaderData;
+  const { role, unit, nodes, revisions } = loaderData;
   const nav = useNavigation();
   const saving = nav.state !== "idle";
   const [draft, setDraft] = useState<Record<string, string>>({});
@@ -220,6 +225,77 @@ export default function AdminDohaeEdit({
           </p>
         </div>
       </form>
+
+      <RevisionHistory revisions={revisions} />
     </AdminShell>
+  );
+}
+
+// 편집 이력 — ★재시드로 편집분이 사라져도 여기서 무엇을 고쳤는지 되찾을 수 있다.
+//   원장은 append-only 라 지워지지 않는다.
+function RevisionHistory({ revisions }: { revisions: DohaeRevision[] }) {
+  const fmt = (iso: string) =>
+    new Date(iso).toLocaleString("ko-KR", {
+      year: "2-digit",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  return (
+    <section className="mt-6">
+      <h2 className="mb-2 flex items-center gap-1.5 text-sm font-bold tracking-tight">
+        <HistoryIcon className="size-3.5" /> 변경 이력
+        {revisions.length > 0 ? (
+          <span className="text-muted-foreground text-xs font-normal tabular-nums">
+            {revisions.length}
+          </span>
+        ) : null}
+      </h2>
+      {revisions.length === 0 ? (
+        <p className="text-muted-foreground text-[13px]">
+          아직 편집 기록이 없습니다.
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {revisions.map((r) => (
+            <li key={r.revisionId} className="bg-card rounded-xl border px-4 py-2.5 shadow-sm">
+              <p className="text-muted-foreground flex flex-wrap items-center gap-2 text-[11px]">
+                <span className="text-foreground font-medium">
+                  {r.authorName ?? (r.systemLabel === "system" ? "시드·시스템" : "알 수 없음")}
+                </span>
+                <span className="tabular-nums">{fmt(r.createdAt)}</span>
+                <span>{r.op}</span>
+                {r.otherFields.length > 0 ? (
+                  <span>기타 필드: {r.otherFields.join(", ")}</span>
+                ) : null}
+              </p>
+              {r.diffs.length === 0 ? (
+                <p className="text-muted-foreground mt-1 text-[12px]">
+                  텍스트 변경 없음
+                </p>
+              ) : (
+                <ul className="mt-1.5 space-y-1.5">
+                  {r.diffs.map((d) => (
+                    <li key={d.path} className="text-[12px] leading-relaxed">
+                      <span className="text-muted-foreground mr-1.5 text-[11px]">
+                        {d.label}
+                      </span>
+                      <span className="text-destructive line-through decoration-1">
+                        {d.before || "(빈칸)"}
+                      </span>
+                      <span className="text-muted-foreground mx-1">→</span>
+                      <span className="font-medium text-emerald-700 dark:text-emerald-400">
+                        {d.after || "(빈칸)"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

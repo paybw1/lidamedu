@@ -95,6 +95,33 @@ function applyOne(blocks: DohaeBlock[], path: string, text: string): boolean {
   }
 }
 
+export interface DohaeTextDiff {
+  path: string;
+  label: string;
+  before: string;
+  after: string;
+}
+
+/**
+ * 두 블록 묶음의 **텍스트 차이**만 뽑는다(원장 before/after 스냅샷 비교용).
+ * 구조가 달라진 경로(재파싱으로 표가 바뀐 경우)는 한쪽만 있는 것으로 나온다.
+ */
+export function diffTextNodes(
+  before: DohaeBlock[] | null,
+  after: DohaeBlock[] | null,
+): DohaeTextDiff[] {
+  const b = new Map(collectTextNodes(before ?? []).map((n) => [n.path, n]));
+  const a = new Map(collectTextNodes(after ?? []).map((n) => [n.path, n]));
+  const out: DohaeTextDiff[] = [];
+  for (const path of new Set([...b.keys(), ...a.keys()])) {
+    const bt = b.get(path)?.text ?? "";
+    const at = a.get(path)?.text ?? "";
+    if (bt === at) continue;
+    out.push({ path, label: (a.get(path) ?? b.get(path))!.label, before: bt, after: at });
+  }
+  return out;
+}
+
 export interface ApplyResult {
   blocks: DohaeBlock[];
   /** 실제로 값이 바뀐 경로들 */

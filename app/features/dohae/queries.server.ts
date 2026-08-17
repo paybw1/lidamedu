@@ -4,7 +4,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
-import type { DohaeUnitSummary } from "./labels";
+import type { DohaeBlock, DohaeUnitSummary } from "./labels";
+import { diffTextNodes, type DohaeTextDiff } from "./lib/dohae-edit";
 
 const UNIT_COLS =
   "dohae_units(unit_id, unit_key, kind, title, chapter_no, chapter_title, unit_no, ref_no)";
@@ -68,6 +69,70 @@ export async function listDohaeUnitsForNodes(
  * 쓰이지 않는다. dohae_unit_articles 는 콘텐츠(조문 참조)라 그대로 두고, 조문 축 진입을
  * 되살릴 때를 위해 남긴다.
  */
+export interface DohaeRevision {
+  revisionId: string;
+  op: string;
+  createdAt: string;
+  /** 사람 이름. 시드·트리거 테스트 등 auth 없이 난 것은 null. */
+  authorName: string | null;
+  systemLabel: string | null;
+  diffs: DohaeTextDiff[];
+  /** 텍스트 외 필드(title 등)가 바뀐 경우 — 참고 표시용. */
+  otherFields: string[];
+}
+
+/**
+ * 유닛 편집 이력 — 원장(content_revisions)의 before/after 스냅샷에서 텍스트 차이를 뽑는다.
+ * ★편집분은 재시드로 사라지므로 이 원장이 유일한 복구 원천이다(원장 판단 2026-08-17).
+ * 작성자 이름은 profiles 를 별도 조회해야 한다 — 원장에 FK 가 없고, 타 사용자 profiles
+ * 는 RLS 상 요청 클라이언트로 못 읽는다(메모: profiles-rls-staff-cross-read).
+ */
+export async function listDohaeRevisions(
+  client: SupabaseClient<Database>,
+  adminClient: SupabaseClient<Database>,
+  unitId: string,
+  limit = 50,
+): Promise<DohaeRevision[]> {
+  const { data, error } = await client
+    .from("content_revisions")
+    .select(
+      "revision_id, op, created_at, created_by, created_by_label, changed_fields, before_snapshot, after_snapshot",
+    )
+    .eq("content_type", "dohae")
+    .eq("content_id", unitId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  const rows = data ?? [];
+  if (rows.length === 0) return [];
+
+  const authorIds = [...new Set(rows.map((r) => r.created_by).filter((x): x is string => !!x))];
+  const names = new Map<string, string>();
+  if (authorIds.length > 0) {
+    const { data: profs } = await adminClient
+      .from("profiles")
+      .select("profile_id, name")
+      .in("profile_id", authorIds);
+    for (const p of profs ?? []) if (p.name) names.set(p.profile_id, p.name);
+  }
+
+  const blocksOf = (snap: unknown): DohaeBlock[] | null => {
+    if (!snap || typeof snap !== "object") return null;
+    const b = (snap as { blocks?: unknown }).blocks;
+    return Array.isArray(b) ? (b as DohaeBlock[]) : null;
+  };
+
+  return rows.map((r) => ({
+    revisionId: r.revision_id,
+    op: r.op,
+    createdAt: r.created_at,
+    authorName: r.created_by ? (names.get(r.created_by) ?? null) : null,
+    systemLabel: r.created_by_label,
+    diffs: diffTextNodes(blocksOf(r.before_snapshot), blocksOf(r.after_snapshot)),
+    otherFields: (r.changed_fields ?? []).filter((f) => f !== "blocks" && f !== "updated_at"),
+  }));
+}
+
 export interface DohaeUnitArticle {
   articleId: string;
   articleNumber: string | null;
