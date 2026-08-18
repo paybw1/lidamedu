@@ -1,4 +1,4 @@
-// feat-2-032 S3 — 학생 2차 답안 AI 채점 초안. 학생 본인이 자기 답안에 대해 요청.
+// feat-2-032 S3 — 학생 2차 3단계 훈련(논점·목차·포섭) AI 채점 초안. 본인이 자기 기록에 대해 요청.
 //   근거 = 문제 발문 + 모범답안 + 실제 채점위원 채점평(problem_grading_notes) + 3축 루브릭.
 //   결과를 user_subjective_attempts.ai_* 에 저장하고 반환. 강사 확정(reviewer_*)과 별개 초안.
 import { data } from "react-router";
@@ -11,10 +11,13 @@ import type { Route } from "./+types/subjective-ai-grade";
 
 const schema = z.object({
   problemId: z.string().uuid(),
-  // 화면에 보이는 현재 답안(자동저장 레이스 방지). 없으면 저장된 답안 사용.
-  answer: z.string().max(50000).optional(),
+  // 화면에 보이는 현재 3단계 내용(자동저장 레이스 방지). 없으면 저장된 값 사용.
+  issuesMd: z.string().max(20000).optional(),
+  outlineMd: z.string().max(20000).optional(),
+  analysisMd: z.string().max(20000).optional(),
 });
-const MIN_ANSWER_LEN = 50; // 너무 짧은 답안은 채점 무의미(비용 낭비 방지).
+// 3단계를 합쳐 이 길이 미만이면 채점 무의미(비용 낭비 방지).
+const MIN_ANSWER_LEN = 50;
 
 export async function action({ request }: Route.ActionArgs) {
   if (request.method !== "POST") {
@@ -29,25 +32,36 @@ export async function action({ request }: Route.ActionArgs) {
   const fd = await request.formData();
   const parsed = schema.safeParse({
     problemId: fd.get("problemId"),
-    answer: (fd.get("answer") as string | null) ?? undefined,
+    issuesMd: (fd.get("issuesMd") as string | null) ?? undefined,
+    outlineMd: (fd.get("outlineMd") as string | null) ?? undefined,
+    analysisMd: (fd.get("analysisMd") as string | null) ?? undefined,
   });
   if (!parsed.success) return data({ error: "Invalid input" }, { status: 400 });
   const problemId = parsed.data.problemId;
 
-  // 본인 답안(최근) — RLS 로 본인 것만. 화면 답안(form)이 오면 그것을 채점(레이스 방지).
+  // 본인 기록(최근) — RLS 로 본인 것만. 화면 값(form)이 오면 그것을 채점(레이스 방지).
   const { data: attempt } = await client
     .from("user_subjective_attempts")
-    .select("attempt_id, answer_md")
+    .select("attempt_id, issues_md, outline_md, analysis_md")
     .eq("user_id", user.id)
     .eq("problem_id", problemId)
     .is("deleted_at", null)
     .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  const answer = (parsed.data.answer ?? attempt?.answer_md ?? "").trim();
-  if (answer.length < MIN_ANSWER_LEN) {
+  const stages = {
+    issuesMd: parsed.data.issuesMd ?? attempt?.issues_md ?? "",
+    outlineMd: parsed.data.outlineMd ?? attempt?.outline_md ?? "",
+    analysisMd: parsed.data.analysisMd ?? attempt?.analysis_md ?? "",
+  };
+  const filledLen = (
+    stages.issuesMd +
+    stages.outlineMd +
+    stages.analysisMd
+  ).trim().length;
+  if (filledLen < MIN_ANSWER_LEN) {
     return data(
-      { error: "답안을 조금 더 작성한 뒤 채점을 요청하세요." },
+      { error: "조금 더 작성한 뒤 채점을 요청하세요." },
       { status: 400 },
     );
   }
@@ -75,7 +89,7 @@ export async function action({ request }: Route.ActionArgs) {
     questionBody: prob.body_md ?? "",
     modelAnswer: prob.model_answer_md ?? null,
     gradingNotesMd,
-    studentAnswer: answer,
+    studentStages: stages,
     userId: user.id,
   });
   if (!draft) {

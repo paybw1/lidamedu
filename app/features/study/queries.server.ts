@@ -691,9 +691,17 @@ export async function getStudyAidCounts(
   };
 }
 
-// ──────── 주관식 답안 + 자기채점 + 첨삭 (feat-4-A-305 + feat-3-402) ────────
+// ──────── 주관식 3단계 훈련 기록 (feat-2-032 개편 2026-08-18) ────────
+// 2차는 오프라인 지필 시험이라 온라인 완성 답안 작성은 효용이 낮다 —
+// ① 논점 추출 ② 목차 구성 ③ 사안의 포섭·결론 3단계로 나눠 기록한다.
+// 3단계는 AI 채점 3축(issue/structure/writing)과 1:1 대응.
 export interface SubjectiveAttempt {
   attemptId: string;
+  // 3단계 훈련 본문.
+  issuesMd: string;
+  outlineMd: string;
+  analysisMd: string;
+  // ↓ 미사용(보존) — 자기채점·첨삭 폐지 전 기록. 컬럼은 남기되 새 경로는 쓰지 않는다.
   answerMd: string;
   selfScore: number | null;
   selfScoreNote: string | null;
@@ -718,10 +726,13 @@ export interface SubjectiveAttempt {
 }
 
 const ATTEMPT_COLUMNS =
-  "attempt_id, user_id, problem_id, answer_md, self_score, self_score_note, submitted_at, updated_at, review_requested_at, review_completed_at, reviewer_id, reviewer_score, reviewer_comment_md, rubric_self_check, ai_overall_score, ai_axis_scores, ai_feedback_md, ai_graded_at, timed_limit_min, timed_elapsed_sec";
+  "attempt_id, user_id, problem_id, issues_md, outline_md, analysis_md, answer_md, self_score, self_score_note, submitted_at, updated_at, review_requested_at, review_completed_at, reviewer_id, reviewer_score, reviewer_comment_md, rubric_self_check, ai_overall_score, ai_axis_scores, ai_feedback_md, ai_graded_at, timed_limit_min, timed_elapsed_sec";
 
 function rowToAttempt(row: {
   attempt_id: string;
+  issues_md?: string | null;
+  outline_md?: string | null;
+  analysis_md?: string | null;
   answer_md: string;
   self_score: number | null;
   self_score_note: string | null;
@@ -751,6 +762,9 @@ function rowToAttempt(row: {
       : null;
   return {
     attemptId: row.attempt_id,
+    issuesMd: row.issues_md ?? "",
+    outlineMd: row.outline_md ?? "",
+    analysisMd: row.analysis_md ?? "",
     answerMd: row.answer_md,
     selfScore: row.self_score,
     selfScoreNote: row.self_score_note,
@@ -916,39 +930,27 @@ export async function upsertSubjectiveAttempt(
   userId: string,
   problemId: string,
   input: {
-    answerMd: string;
-    // submit=true 시 self_score / submitted_at 동시 갱신.
-    submit?: {
-      selfScore: number | null;
-      selfScoreNote: string | null;
-      // 시험 모드 제출일 때만 전달 — 미전달 시 기존 기록 보존.
-      timedLimitMin?: number;
-      timedElapsedSec?: number;
-    };
-    // rubric 체크리스트 — 항상 갱신 가능 (자기채점 진행 중에도).
-    rubricSelfCheck?: number[] | null;
+    // 3단계 본문 — 매 저장마다 전량 전송(부분 저장 없음).
+    issuesMd: string;
+    outlineMd: string;
+    analysisMd: string;
+    // 시험 모드 종료(조기 제출·시간 만료) 시에만 전달 — 미전달 시 기존 기록 보존.
+    timed?: { limitMin: number; elapsedSec: number };
   },
 ): Promise<SubjectiveAttempt> {
+  // answer_md(완성 답안)는 더 쓰지 않는다 — NOT NULL 이지만 DB default '' 가 받는다.
   const row: Database["public"]["Tables"]["user_subjective_attempts"]["Insert"] =
     {
       user_id: userId,
       problem_id: problemId,
-      answer_md: input.answerMd,
-      ...(input.submit
+      issues_md: input.issuesMd,
+      outline_md: input.outlineMd,
+      analysis_md: input.analysisMd,
+      ...(input.timed
         ? {
-            self_score: input.submit.selfScore,
-            self_score_note: input.submit.selfScoreNote,
-            submitted_at: new Date().toISOString(),
-            ...(input.submit.timedLimitMin !== undefined
-              ? { timed_limit_min: input.submit.timedLimitMin }
-              : {}),
-            ...(input.submit.timedElapsedSec !== undefined
-              ? { timed_elapsed_sec: input.submit.timedElapsedSec }
-              : {}),
+            timed_limit_min: input.timed.limitMin,
+            timed_elapsed_sec: input.timed.elapsedSec,
           }
-        : {}),
-      ...(input.rubricSelfCheck !== undefined
-        ? { rubric_self_check: input.rubricSelfCheck }
         : {}),
     };
   // 작성 취소로 soft delete 된 row 위에 다시 쓰면 자동 복구(취소 시 상태 필드는 초기화됨).
@@ -983,6 +985,9 @@ export async function cancelSubjectiveAttempt(
     .from("user_subjective_attempts")
     .update({
       deleted_at: new Date().toISOString(),
+      issues_md: "",
+      outline_md: "",
+      analysis_md: "",
       answer_md: "",
       self_score: null,
       self_score_note: null,

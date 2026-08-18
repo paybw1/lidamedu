@@ -46,11 +46,14 @@ import { ProblemSystematicTree } from "../problem-systematic-tree";
 import { SortAxisProvider, SortAxisToggle } from "../sort-axis";
 import { stripSystematicNumber } from "../systematic-node-label";
 
-/** 문항별 답안 작성/제출(자기채점)/첨삭 완료 상태 — user_subjective_attempts 파생. */
+/** 문항별 3단계 훈련 진행(작성한 단계 수)·AI 채점 여부 — user_subjective_attempts 파생. */
 export type SubjectiveAttemptStatus = Record<
   string,
-  { submitted: boolean; reviewed: boolean }
+  { stagesDone: number; aiGraded: boolean }
 >;
+
+/** 훈련 단계 수 — ① 논점 ② 목차 ③ 포섭·결론 (subjective-panel 의 STAGES 와 동수). */
+const STAGE_TOTAL = 3;
 
 interface YearGroup {
   /** null = 연도 미상(예상문제 등) — 목록 맨 뒤. */
@@ -131,14 +134,17 @@ export function SubjectiveTab({
 
   const groups = groupByYear(problems);
 
-  // 주관식 학습 현황 — 객관식 정답률 대신 답안 작성/제출/첨삭 진행으로 측정.
+  // 주관식 학습 현황 — 객관식 정답률 대신 3단계 훈련 진행으로 측정.
   const total = problems.length;
-  const attempted = problems.filter((p) => attemptStatus[p.problemId]).length;
+  const attempted = problems.filter(
+    (p) => (attemptStatus[p.problemId]?.stagesDone ?? 0) > 0,
+  ).length;
+  // 3단계를 모두 채운 문항 / AI 채점까지 받은 문항.
   const submitted = problems.filter(
-    (p) => attemptStatus[p.problemId]?.submitted,
+    (p) => (attemptStatus[p.problemId]?.stagesDone ?? 0) >= STAGE_TOTAL,
   ).length;
   const reviewed = problems.filter(
-    (p) => attemptStatus[p.problemId]?.reviewed,
+    (p) => attemptStatus[p.problemId]?.aiGraded,
   ).length;
   const progressPct = total > 0 ? Math.round((attempted / total) * 100) : 0;
 
@@ -243,20 +249,20 @@ export function SubjectiveTab({
             sub="현재 등록된 전체"
           />
           <SubjectiveKpiCard
-            label="답안 작성"
+            label="훈련 착수"
             value={`${attempted.toLocaleString("ko-KR")}문항`}
             sub={`진행률 ${progressPct}%`}
             accent={attempted > 0}
           />
           <SubjectiveKpiCard
-            label="자기채점 제출"
+            label="3단계 완주"
             value={`${submitted.toLocaleString("ko-KR")}문항`}
-            sub="작성 후 제출한 답안"
+            sub="논점·목차·포섭까지"
           />
           <SubjectiveKpiCard
-            label="첨삭 완료"
+            label="AI 채점"
             value={`${reviewed.toLocaleString("ko-KR")}문항`}
-            sub="강사 검토를 받은 답안"
+            sub="3축 초안 채점을 받은 문항"
           />
         </div>
         {total > 0 ? (
@@ -356,26 +362,26 @@ function SubjectiveKpiCard({
 function AttemptStatusBadge({
   status,
 }: {
-  status: { submitted: boolean; reviewed: boolean } | null;
+  status: { stagesDone: number; aiGraded: boolean } | null;
 }) {
-  if (!status) return null;
-  if (status.reviewed) {
+  if (!status || status.stagesDone === 0) return null;
+  if (status.aiGraded) {
     return (
       <Badge className="bg-violet-500 text-xs text-white hover:bg-violet-500">
-        첨삭 완료
+        AI 채점 완료
       </Badge>
     );
   }
-  if (status.submitted) {
+  if (status.stagesDone >= STAGE_TOTAL) {
     return (
       <Badge className="bg-emerald-600 text-xs text-white hover:bg-emerald-600">
-        제출함
+        3단계 완주
       </Badge>
     );
   }
   return (
     <Badge className="bg-sky-500 text-xs text-white hover:bg-sky-500">
-      작성 중
+      {status.stagesDone}/{STAGE_TOTAL}단계
     </Badge>
   );
 }
@@ -391,7 +397,7 @@ function SubjectiveCard({
   subjectSlug: LawSubjectMeta["slug"];
   item: ProblemListItem;
   linkQuery: string;
-  status: { submitted: boolean; reviewed: boolean } | null;
+  status: { stagesDone: number; aiGraded: boolean } | null;
   placements?: ProblemPlacement[];
   isStaff?: boolean;
 }) {

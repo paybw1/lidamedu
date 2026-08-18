@@ -163,10 +163,10 @@ export interface SubjectHubData {
   axisCounts: Record<SubjectTab, number>;
   // 주관식 탭 게이트 — 고도화 전까지 staff 전용(학생은 레일에서 비활성).
   isStaff: boolean;
-  // 주관식 학습 현황 — 문항별 답안 작성/제출(자기채점)/첨삭 완료 상태(user_subjective_attempts).
+  // 주관식 학습 현황 — 문항별 3단계 훈련 진행(작성 단계 수)·AI 채점 여부(user_subjective_attempts).
   subjectiveAttemptStatus: Record<
     string,
-    { submitted: boolean; reviewed: boolean }
+    { stagesDone: number; aiGraded: boolean }
   >;
   // 주관식 탭 좌측 트리 — problem_systematic_links 기반 노드별 {문제 수, 첫 문제}.
   subjectiveNodeStats: Record<string, SystematicNodeProblemStat>;
@@ -946,24 +946,27 @@ export async function loadSubjectHub(
       ])
     : [null, {}, {}, null, [], {} as NodeProgressByArticle];
 
-  // 주관식 학습 현황 — 이 과목 주관식 문항별 답안 작성/제출/첨삭 상태.
+  // 주관식 학습 현황 — 이 과목 문항별 3단계 훈련 진행 + AI 채점 여부.
   const subjectiveAttemptStatus: Record<
     string,
-    { submitted: boolean; reviewed: boolean }
+    { stagesDone: number; aiGraded: boolean }
   > = {};
   if (user) {
     const { data: subjAttempts } = await client
       .from("user_subjective_attempts")
       .select(
-        "problem_id, submitted_at, review_completed_at, problems!inner(law_id)",
+        "problem_id, issues_md, outline_md, analysis_md, ai_graded_at, problems!inner(law_id)",
       )
       .eq("user_id", user.id)
       .eq("problems.law_id", law.lawId)
       .is("deleted_at", null);
     for (const r of subjAttempts ?? []) {
+      const stagesDone = [r.issues_md, r.outline_md, r.analysis_md].filter(
+        (v) => (v ?? "").trim().length > 0,
+      ).length;
       subjectiveAttemptStatus[r.problem_id] = {
-        submitted: r.submitted_at != null,
-        reviewed: r.review_completed_at != null,
+        stagesDone,
+        aiGraded: r.ai_graded_at != null,
       };
     }
   }

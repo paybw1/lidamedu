@@ -1,6 +1,8 @@
-// 주관식 답안 autosave + 자기채점 제출.
-// intent=autosave : answer_md 만 갱신 (submitted_at 유지).
-// intent=submit   : answer_md + self_score + submitted_at 갱신.
+// 주관식 3단계 훈련 저장 (feat-2-032 개편 2026-08-18).
+//   ① 논점 추출 ② 목차 구성 ③ 사안의 포섭·결론 — 세 칸을 항상 함께 보낸다(부분 저장 없음).
+// intent=autosave : 3단계 본문만 갱신.
+// intent=timed    : 3단계 본문 + 시험 모드 응시 기록(제한·소요) 갱신.
+// intent=cancel   : soft delete + 상태 초기화.
 import type { Route } from "./+types/subjective-attempt";
 
 import { data } from "react-router";
@@ -12,34 +14,19 @@ import {
   upsertSubjectiveAttempt,
 } from "~/features/study/queries.server";
 
-// rubric_self_check 는 JSON 인코딩된 number[] 로 전달.
-const rubricCheckSchema = z
-  .string()
-  .optional()
-  .nullable()
-  .transform((raw): number[] | undefined => {
-    if (raw == null || raw === "") return undefined;
-    try {
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return undefined;
-      return parsed.filter((v): v is number => typeof v === "number");
-    } catch {
-      return undefined;
-    }
-  });
+// 한 칸당 상한 — 완성 답안이 아니라 논점·목차·포섭이라 20k 로도 넉넉하다.
+const STAGE_MAX = 20000;
 
 const baseSchema = z.object({
   problemId: z.string().uuid(),
-  answerMd: z.string().max(20000),
-  rubricSelfCheck: rubricCheckSchema,
+  issuesMd: z.string().max(STAGE_MAX),
+  outlineMd: z.string().max(STAGE_MAX),
+  analysisMd: z.string().max(STAGE_MAX),
 });
 
-const submitSchema = baseSchema.extend({
-  selfScore: z.coerce.number().int().min(0).max(100).nullable().optional(),
-  selfScoreNote: z.string().max(2000).nullable().optional(),
-  // 시험 모드 제출 시에만 전달 (feat-2-033).
-  timedLimitMin: z.coerce.number().int().min(1).max(180).optional(),
-  timedElapsedSec: z.coerce.number().int().min(0).optional(),
+const timedSchema = baseSchema.extend({
+  timedLimitMin: z.coerce.number().int().min(1).max(180),
+  timedElapsedSec: z.coerce.number().int().min(0),
 });
 
 export async function action({ request }: Route.ActionArgs) {
@@ -54,13 +41,15 @@ export async function action({ request }: Route.ActionArgs) {
 
   const fd = await request.formData();
   const intent = String(fd.get("intent") ?? "autosave");
+  const stages = {
+    problemId: fd.get("problemId"),
+    issuesMd: fd.get("issuesMd") ?? "",
+    outlineMd: fd.get("outlineMd") ?? "",
+    analysisMd: fd.get("analysisMd") ?? "",
+  };
 
   if (intent === "autosave") {
-    const parsed = baseSchema.safeParse({
-      problemId: fd.get("problemId"),
-      answerMd: fd.get("answerMd") ?? "",
-      rubricSelfCheck: fd.get("rubricSelfCheck"),
-    });
+    const parsed = baseSchema.safeParse(stages);
     if (!parsed.success)
       return data({ error: "Invalid input" }, { status: 400 });
     const attempt = await upsertSubjectiveAttempt(
@@ -68,21 +57,19 @@ export async function action({ request }: Route.ActionArgs) {
       user.id,
       parsed.data.problemId,
       {
-        answerMd: parsed.data.answerMd,
-        rubricSelfCheck: parsed.data.rubricSelfCheck,
+        issuesMd: parsed.data.issuesMd,
+        outlineMd: parsed.data.outlineMd,
+        analysisMd: parsed.data.analysisMd,
       },
     );
     return data({ ok: true, attempt });
   }
 
-  if (intent === "submit") {
-    const parsed = submitSchema.safeParse({
-      problemId: fd.get("problemId"),
-      answerMd: fd.get("answerMd") ?? "",
-      selfScore: fd.get("selfScore"),
-      selfScoreNote: (fd.get("selfScoreNote") as string | null) || null,
-      timedLimitMin: fd.get("timedLimitMin") ?? undefined,
-      timedElapsedSec: fd.get("timedElapsedSec") ?? undefined,
+  if (intent === "timed") {
+    const parsed = timedSchema.safeParse({
+      ...stages,
+      timedLimitMin: fd.get("timedLimitMin"),
+      timedElapsedSec: fd.get("timedElapsedSec"),
     });
     if (!parsed.success)
       return data({ error: "Invalid input" }, { status: 400 });
@@ -91,19 +78,19 @@ export async function action({ request }: Route.ActionArgs) {
       user.id,
       parsed.data.problemId,
       {
-        answerMd: parsed.data.answerMd,
-        submit: {
-          selfScore: parsed.data.selfScore ?? null,
-          selfScoreNote: parsed.data.selfScoreNote ?? null,
-          timedLimitMin: parsed.data.timedLimitMin,
-          timedElapsedSec: parsed.data.timedElapsedSec,
+        issuesMd: parsed.data.issuesMd,
+        outlineMd: parsed.data.outlineMd,
+        analysisMd: parsed.data.analysisMd,
+        timed: {
+          limitMin: parsed.data.timedLimitMin,
+          elapsedSec: parsed.data.timedElapsedSec,
         },
       },
     );
     return data({ ok: true, attempt });
   }
 
-  // 작성 취소 — 답안 soft delete + 상태 초기화(첨삭 이력 있으면 거부).
+  // 작성 취소 — soft delete + 상태 초기화(첨삭 이력 있으면 거부).
   if (intent === "cancel") {
     const problemId = String(fd.get("problemId") ?? "");
     if (!z.string().uuid().safeParse(problemId).success)

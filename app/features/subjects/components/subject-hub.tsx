@@ -77,10 +77,10 @@ interface SubjectHubProps {
   axisCounts?: Record<SubjectTab, number>;
   // 주관식 탭 게이트 — 고도화 전까지 staff 전용(학생은 레일에서 비활성).
   isStaff?: boolean;
-  // 주관식 문항별 답안 작성/제출/첨삭 상태 — 주관식 탭 학습 현황용.
+  // 주관식 문항별 3단계 훈련 진행·AI 채점 여부 — 주관식 탭 학습 현황용.
   subjectiveAttemptStatus?: Record<
     string,
-    { submitted: boolean; reviewed: boolean }
+    { stagesDone: number; aiGraded: boolean }
   >;
   // 주관식 탭 체계도 — 노드별 카운트 / ?node= 필터 / 문항별 배치(카드 배지) / 기출 leaf.
   subjectiveNodeStats?: Record<string, SystematicNodeProblemStat>;

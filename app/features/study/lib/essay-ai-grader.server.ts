@@ -29,8 +29,26 @@ interface GradeArgs {
   questionBody: string; // 발문(body_md)
   modelAnswer: string | null; // 모범답안
   gradingNotesMd: string | null; // 실제 채점위원 채점평(폼 단위)
-  studentAnswer: string; // 학생 답안 마크다운
+  studentStages: EssayStages; // 학생 3단계 훈련 기록
   userId?: string | null; // 사용량 로깅
+}
+
+/** 학생이 작성하는 3단계 — AI 채점 3축과 1:1 대응(feat-2-032 개편 2026-08-18). */
+export interface EssayStages {
+  issuesMd: string; // ① 논점 추출 → issue 축
+  outlineMd: string; // ② 목차 구성 → structure 축
+  analysisMd: string; // ③ 사안의 포섭·결론 → writing 축
+}
+
+const STAGE_EMPTY = "(미작성)";
+
+/** 3단계를 채점용 한 덩어리로 조립. 축↔단계 대응이 프롬프트에서 흔들리지 않게 머리글을 고정한다. */
+export function composeStageAnswer(s: EssayStages): string {
+  return [
+    `### ① 논점 추출\n${s.issuesMd.trim() || STAGE_EMPTY}`,
+    `### ② 목차 구성\n${s.outlineMd.trim() || STAGE_EMPTY}`,
+    `### ③ 사안의 포섭·결론\n${s.analysisMd.trim() || STAGE_EMPTY}`,
+  ].join("\n\n");
 }
 
 const SYSTEM_PROMPT = `당신은 대한민국 변리사 2차 시험(주관식·논술)의 채점 보조 AI 입니다.
@@ -86,7 +104,7 @@ export async function gradeEssayDraft(
   ]
     .filter(Boolean)
     .join("\n");
-  const studentSection = `## 학생 답안\n${args.studentAnswer}`;
+  const studentSection = `## 학생 답안(3단계 훈련)\n${composeStageAnswer(args.studentStages)}`;
 
   let response: Awaited<ReturnType<typeof client.messages.create>>;
   try {
