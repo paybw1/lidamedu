@@ -612,7 +612,13 @@ export async function listDisplayedProblems(
   client: SupabaseClient<Database>,
   lawCode: LawSubjectSlug,
   filters: ProblemFiltersApplied,
-  opts: { userId: string | null; nodeId: string | null },
+  opts: {
+    userId: string | null;
+    nodeId: string | null;
+    // ?node= 를 어느 축으로 풀지 — 객관식은 조문 파생 시퀀스, 주관식은
+    // problem_systematic_links 배치(subtree). 모수가 달라 축을 섞으면 안 된다.
+    nodeAxis?: "problems" | "subjective";
+  },
 ): Promise<ProblemListItem[]> {
   const problems = await listProblemsBySubject(
     client,
@@ -640,7 +646,14 @@ export async function listDisplayedProblems(
     bookmarkedIds = new Set(refs.map((r) => r.problemId));
   }
   let nodeProblemIds: Set<string> | null = null;
-  if (opts.nodeId) {
+  if (opts.nodeId && opts.nodeAxis === "subjective") {
+    // 주관식 — 그 노드 subtree 에 배치된 문항(허브 주관식 탭의 ?node= 필터와 같은 모수).
+    const nodes = await getSystematicSkeleton(client, lawCode);
+    nodeProblemIds = await getSubjectiveNodeProblemIds(
+      client,
+      systematicSubtreeNodeIds(nodes, opts.nodeId),
+    );
+  } else if (opts.nodeId) {
     const seq = await getSystematicNodeProblemSequence(client, opts.nodeId);
     nodeProblemIds = seq
       ? new Set(seq.problems.map((p) => p.problemId))

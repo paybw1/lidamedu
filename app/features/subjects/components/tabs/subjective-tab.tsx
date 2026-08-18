@@ -120,17 +120,24 @@ export function SubjectiveTab({
   })();
 
   // 문제 클릭 시 색인 컨텍스트를 실어 보낸다(객관식 탭과 동일 규약 — list=1).
-  // ★node 는 제거 — 뷰어 list 모드의 노드 해석(listDisplayedProblems)은 객관식
-  //   조문 파생 시맨틱이라 링크 기반 주관식 필터와 어긋난다. prev/next 는 주관식
-  //   전체 목록 순서로 폴백(뷰어 배치 배지가 허브 노드 필터로 복귀 경로 제공).
+  // ?node= 는 보존한다 — 뷰어가 주관식 문제면 배치 링크(problem_systematic_links) 축으로
+  // 풀어 그 노드 안에서만 prev/next 를 계산한다(listDisplayedProblems nodeAxis).
   const problemLinkQuery = (() => {
     const sp = new URLSearchParams(searchParams);
     sp.delete("tab");
-    sp.delete("node");
     sp.set("list", "1");
     const s = sp.toString();
     return s ? `?${s}` : "";
   })();
+
+  // 트리 leaf 는 그 leaf 가 매달린 노드를 색인 컨텍스트로 쓴다(현재 ?node= 필터와 무관).
+  const leafLinkQuery = (nodeId: string) => {
+    const sp = new URLSearchParams(searchParams);
+    sp.delete("tab");
+    sp.set("list", "1");
+    sp.set("node", nodeId);
+    return `?${sp.toString()}`;
+  };
 
   const groups = groupByYear(problems);
 
@@ -159,7 +166,7 @@ export function SubjectiveTab({
           l.year != null
             ? `${l.year}년${l.examRoundNo != null ? ` 제${l.examRoundNo}회` : ""}${l.problemNumber != null ? ` 문제${l.problemNumber}` : ""}`
             : "연도 미상",
-        to: `/subjects/${subject.slug}/problems/${l.problemId}${problemLinkQuery}`,
+        to: `/subjects/${subject.slug}/problems/${l.problemId}${leafLinkQuery(nodeId)}`,
       }));
     }
     return out;

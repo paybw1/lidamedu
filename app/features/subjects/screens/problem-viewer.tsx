@@ -536,6 +536,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     const displayed = await listDisplayedProblems(client, lawCode, filters, {
       userId: user.id,
       nodeId,
+      // 보고 있는 문제의 축으로 ?node= 를 해석한다 — 주관식은 배치 링크 기준.
+      nodeAxis: problem.format === "subjective" ? "subjective" : "problems",
     });
     // 학습과목 탭은 객관식(1차)·2차 주관식을 별 섹션으로 나눠 표시 → 같은 차수 안에서만 prev/next.
     const cur = displayed.find((p) => p.problemId === problem.problemId);
