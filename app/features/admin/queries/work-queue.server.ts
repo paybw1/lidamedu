@@ -12,7 +12,6 @@ import { getQnaSlaBreachCount } from "~/features/qna/sla.server";
 
 export interface AdminWorkQueueCounts {
   newSignupsToday: number;
-  subjectivePending: number;
   aiNegativePending: number;
   relationGapsTotal: number;
   inactiveStudents7d: number;
@@ -47,7 +46,6 @@ export async function getAdminWorkQueue(
   const row = (rpcRes.data ?? [])[0];
   return {
     newSignupsToday: Number(row?.new_signups_today ?? 0),
-    subjectivePending: Number(row?.subjective_pending ?? 0),
     aiNegativePending: Number(row?.ai_negative_pending ?? 0),
     relationGapsTotal: Number(row?.relation_gaps_total ?? 0),
     inactiveStudents7d: Number(row?.inactive_students_7d ?? 0),

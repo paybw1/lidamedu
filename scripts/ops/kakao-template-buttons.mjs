@@ -51,34 +51,6 @@ const TEMPLATES = [
       },
     ],
   },
-  {
-    envName: "KAKAO_TEMPLATE_REVIEW_REQUESTED",
-    name: `채점 요청 도착 알림${NAME_SUFFIX}`,
-    content:
-      "[변리사 학습 플랫폼] 채점 요청이 등록되었어요.\n\n#{targetLabel}에 새 채점 요청이 올라왔습니다.\n\n제목: #{title}\n작성자: #{askerName}\n내용: #{excerpt}\n\n지금 확인하기",
-    buttons: [
-      {
-        buttonType: "WL",
-        buttonName: "지금 확인하기",
-        linkMo: `${BASE}/admin/subjective-reviews`,
-        linkPc: `${BASE}/admin/subjective-reviews`,
-      },
-    ],
-  },
-  {
-    envName: "KAKAO_TEMPLATE_REVIEW_COMPLETED",
-    name: `채점 완료 확인${NAME_SUFFIX}`,
-    content:
-      "[변리사 학습 플랫폼] 채점 완료가 등록되었어요.\n\n#{targetLabel}의 채점이 완료되었습니다. \n\n제목: #{title}\n답변자: #{answererName} \n내용: #{excerpt}\n\n채점 확인하기",
-    buttons: [
-      {
-        buttonType: "WL",
-        buttonName: "채점 확인하기",
-        linkMo: `${BASE}#{path}`,
-        linkPc: `${BASE}#{path}`,
-      },
-    ],
-  },
 ];
 
 function authHeader() {

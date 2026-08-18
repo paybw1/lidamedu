@@ -243,12 +243,6 @@ function WorkQueueRow({
       hint: "KST 오늘 자정 이후 가입한 사용자",
     },
     {
-      label: "첨삭 대기",
-      value: counts.subjectivePending,
-      to: "/admin/subjective-reviews",
-      hint: "주관식 첨삭 요청 미완료",
-    },
-    {
       label: "AI 부정 피드백",
       value: counts.aiNegativePending,
       to: "/admin/ai-qna/feedback",
@@ -358,7 +352,6 @@ function ContentStatsRow({ stats }: { stats: StaffContentStats }) {
       value: stats.articleRevisions,
       hint: "참여한 개정 revision",
     },
-    { label: "첨삭 완료", value: stats.subjectiveReviews, hint: "주관식 검토" },
   ];
   return (
     <StatSection label="내 콘텐츠 현황" cols={7} testid="admin-hub-content-stats">

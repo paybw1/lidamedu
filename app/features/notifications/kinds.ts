@@ -8,7 +8,6 @@ export type NotificationKind =
 
 // 강사용 kinds (인박스에서 staff 필터링).
 export const STAFF_KINDS: NotificationKind[] = [
-  "subjective_review_request",
   "qna_new_question",
   "cohort_inactive_alert",
   "exam_certificate_submitted",
@@ -25,7 +24,6 @@ export const STAFF_KINDS: NotificationKind[] = [
 
 // 학생용 kinds.
 export const STUDENT_KINDS: NotificationKind[] = [
-  "subjective_review_completed",
   "qna_new_answer",
   "announcement",
   "student_note_shared",

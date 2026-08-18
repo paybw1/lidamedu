@@ -1,4 +1,4 @@
-// 학생용 알림 인박스 — /inbox. 첨삭 완료, Q&A 답변, 공지 등.
+// 학생용 알림 인박스 — /inbox. Q&A 답변, 공지 등.
 
 import {
   ArrowRightIcon,
@@ -52,7 +52,6 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 const KIND_LABEL: Partial<Record<NotificationKind, string>> = {
-  subjective_review_completed: "첨삭 완료",
   qna_new_answer: "Q&A 답변",
   announcement: "공지",
   student_note_shared: "상담 코멘트",
@@ -73,7 +72,6 @@ const EXPAND_IN_PLACE_KINDS: ReadonlySet<NotificationKind> = new Set([
 ] as NotificationKind[]);
 
 const KIND_ICON: Partial<Record<NotificationKind, typeof BellIcon>> = {
-  subjective_review_completed: ClipboardCheckIcon,
   qna_new_answer: MessageCircleIcon,
   announcement: MegaphoneIcon,
   student_note_shared: MessageSquareTextIcon,

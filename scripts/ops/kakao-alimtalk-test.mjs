@@ -2,7 +2,7 @@
 // 프로덕션 코드(app/features/qna/notify-kakao.server.ts)와 동일한 인증·페이로드 경로.
 //
 //   node scripts/ops/kakao-alimtalk-test.mjs 01012345678 [템플릿키]
-//   템플릿키: new-question(기본) | new-answer | review-requested | review-completed
+//   템플릿키: new-question(기본) | new-answer
 //
 // .env 의 KAKAO_* 환경변수를 사용한다. 발송 전 상태만 보려면:
 //   node scripts/ops/kakao-alimtalk-test.mjs --status
@@ -13,8 +13,6 @@ import "dotenv/config";
 const TEMPLATE_ENV = {
   "new-question": "KAKAO_TEMPLATE_NEW_QUESTION",
   "new-answer": "KAKAO_TEMPLATE_NEW_ANSWER",
-  "review-requested": "KAKAO_TEMPLATE_REVIEW_REQUESTED",
-  "review-completed": "KAKAO_TEMPLATE_REVIEW_COMPLETED",
 };
 
 // 승인 템플릿의 변수 세트에 맞춘 샘플 값(2026-07-06 승인본 기준).
@@ -26,18 +24,6 @@ const SAMPLE_VARIABLES = {
     "#{excerpt}": "이 메시지가 도착했다면 알림톡 라이브 발송이 정상 동작합니다.",
   },
   "new-answer": {
-    "#{targetLabel}": "문제",
-    "#{title}": "알림톡 라이브 테스트",
-    "#{answererName}": "시스템 점검",
-    "#{excerpt}": "이 메시지가 도착했다면 알림톡 라이브 발송이 정상 동작합니다.",
-  },
-  "review-requested": {
-    "#{targetLabel}": "문제",
-    "#{title}": "알림톡 라이브 테스트",
-    "#{askerName}": "시스템 점검",
-    "#{excerpt}": "이 메시지가 도착했다면 알림톡 라이브 발송이 정상 동작합니다.",
-  },
-  "review-completed": {
     "#{targetLabel}": "문제",
     "#{title}": "알림톡 라이브 테스트",
     "#{answererName}": "시스템 점검",
@@ -105,7 +91,7 @@ if (!arg1 || arg1 === "--status") {
   await printStatus();
   if (!arg1) {
     console.log(
-      "\n발송: node scripts/ops/kakao-alimtalk-test.mjs 01012345678 [new-question|new-answer|review-requested|review-completed]",
+      "\n발송: node scripts/ops/kakao-alimtalk-test.mjs 01012345678 [new-question|new-answer]",
     );
   }
   process.exit(0);

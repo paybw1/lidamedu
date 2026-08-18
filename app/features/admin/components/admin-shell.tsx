@@ -323,8 +323,6 @@ export const ADMIN_NAV: NavCluster[] = [
     screens: [
       { label: "주관식 회차", to: "/admin/gs" },
       { label: "주관식 시리즈", to: "/admin/gs/series" },
-      // 주관식 채점 대기 — 주관식 운영 흐름에 속하므로 gs 클러스터로.
-      { label: "주관식 첨삭 대기", to: "/admin/subjective-reviews" },
       { label: "포인트 관리", to: "/admin/gs/points" },
       // §3 GS 비용 가드 — 운영자 가시성.
       { label: "AI·OCR 사용량", to: "/admin/gs/usage" },

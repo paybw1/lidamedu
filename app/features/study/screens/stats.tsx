@@ -1236,7 +1236,7 @@ function ProgressTab({ data }: { data: StatsData }) {
       highlights: a?.highlights ?? 0,
       gs:
         sub && sub.attempts > 0
-          ? { count: sub.attempts, selfAvg: Math.round(sub.avgSelfScore ?? 0) }
+          ? { count: sub.attempts, aiAvg: sub.avgAiScore }
           : null,
       lastPoints: lastPoints[sp.lawCode] ?? [],
     };

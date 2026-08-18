@@ -10,8 +10,6 @@
 //                          SMS/LMS 로 자동 폴백. 미설정 시 알림톡 전용(폴백 없음).
 //   KAKAO_TEMPLATE_NEW_QUESTION         — 새 질문 알림 템플릿 ID (카카오 사전 승인 필요)
 //   KAKAO_TEMPLATE_NEW_ANSWER           — 답변 도착 알림 템플릿 ID (카카오 사전 승인 필요)
-//   KAKAO_TEMPLATE_REVIEW_REQUESTED     — 주관식 첨삭 요청 알림 (강사 수신)
-//   KAKAO_TEMPLATE_REVIEW_COMPLETED     — 주관식 첨삭 완료 알림 (학생 수신)
 //
 // API_KEY/API_SECRET/PFID/TEMPLATE_* 중 하나라도 비면 sendKakaoAlimtalk 는
 // KakaoNotConfigured 를 throw 하고, notify.server.ts 디스패처가 이를 silent catch 하여
@@ -26,11 +24,7 @@ export class KakaoNotConfigured extends Error {
   }
 }
 
-export type KakaoTemplateKey =
-  | "new-question"
-  | "new-answer"
-  | "review-requested"
-  | "review-completed";
+export type KakaoTemplateKey = "new-question" | "new-answer";
 
 interface KakaoConfig {
   provider: string;
@@ -50,8 +44,6 @@ function readConfig(): KakaoConfig | KakaoNotConfigured {
   const senderPhone = process.env.KAKAO_SENDER_PHONE ?? "";
   const tplQuestion = process.env.KAKAO_TEMPLATE_NEW_QUESTION ?? "";
   const tplAnswer = process.env.KAKAO_TEMPLATE_NEW_ANSWER ?? "";
-  const tplReviewRequested = process.env.KAKAO_TEMPLATE_REVIEW_REQUESTED ?? "";
-  const tplReviewCompleted = process.env.KAKAO_TEMPLATE_REVIEW_COMPLETED ?? "";
 
   const missing: string[] = [];
   if (!apiKey) missing.push("KAKAO_API_KEY");
@@ -59,8 +51,6 @@ function readConfig(): KakaoConfig | KakaoNotConfigured {
   if (!pfid) missing.push("KAKAO_PFID");
   if (!tplQuestion) missing.push("KAKAO_TEMPLATE_NEW_QUESTION");
   if (!tplAnswer) missing.push("KAKAO_TEMPLATE_NEW_ANSWER");
-  if (!tplReviewRequested) missing.push("KAKAO_TEMPLATE_REVIEW_REQUESTED");
-  if (!tplReviewCompleted) missing.push("KAKAO_TEMPLATE_REVIEW_COMPLETED");
   if (missing.length > 0) return new KakaoNotConfigured(missing);
 
   return {
@@ -72,8 +62,6 @@ function readConfig(): KakaoConfig | KakaoNotConfigured {
     templates: {
       "new-question": tplQuestion,
       "new-answer": tplAnswer,
-      "review-requested": tplReviewRequested,
-      "review-completed": tplReviewCompleted,
     },
   };
 }

@@ -219,7 +219,6 @@ export default [
     ...prefix("/study", [
       route("/session-complete", "features/study/api/session-complete.tsx"),
       route("/subjective-attempt", "features/study/api/subjective-attempt.tsx"),
-      route("/subjective-review", "features/study/api/subjective-review.tsx"),
       route("/session-from-wrong", "features/study/api/session-from-wrong.tsx"),
       route(
         "/session-from-weakness",
@@ -681,10 +680,6 @@ export default [
         ],
       ),
       route("/admin", "features/admin/screens/admin.tsx"),
-      route(
-        "/admin/subjective-reviews",
-        "features/admin/screens/admin-subjective-reviews.tsx",
-      ),
       route("/admin/audit-logs", "features/admin/screens/admin-audit-logs.tsx"),
       route("/admin/inbox", "features/notifications/screens/staff-inbox.tsx"),
       route(

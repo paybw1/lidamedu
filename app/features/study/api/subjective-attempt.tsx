@@ -90,7 +90,7 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ ok: true, attempt });
   }
 
-  // 작성 취소 — soft delete + 상태 초기화(첨삭 이력 있으면 거부).
+  // 작성 취소 — soft delete + 상태 초기화.
   if (intent === "cancel") {
     const problemId = String(fd.get("problemId") ?? "");
     if (!z.string().uuid().safeParse(problemId).success)

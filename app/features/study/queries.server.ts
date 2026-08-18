@@ -701,21 +701,10 @@ export interface SubjectiveAttempt {
   issuesMd: string;
   outlineMd: string;
   analysisMd: string;
-  // ↓ 미사용(보존) — 자기채점·첨삭 폐지 전 기록. 컬럼은 남기되 새 경로는 쓰지 않는다.
-  answerMd: string;
-  selfScore: number | null;
-  selfScoreNote: string | null;
-  submittedAt: string | null;
   updatedAt: string;
-  // 첨삭(강사 검토) 상태.
-  reviewRequestedAt: string | null;
-  reviewCompletedAt: string | null;
-  reviewerId: string | null;
-  reviewerScore: number | null;
-  reviewerCommentMd: string | null;
-  // 채점기준 체크리스트 체크된 항목 인덱스 (feat-4-A-322).
-  rubricSelfCheck: number[] | null;
-  // AI 채점 초안 (feat-2-032 S3).
+  // ※ answer_md·self_score·submitted_at·rubric_self_check·review_* 컬럼은 DB 에 남아 있지만
+  //   (학습 데이터 무삭제 원칙) 자기채점·첨삭 폐지로 읽지 않는다 — 타입에서도 뺀다.
+  // AI 채점 초안 (feat-2-032 S3) — 폐지된 자기채점·첨삭을 대신하는 유일한 점수 신호.
   aiOverallScore: number | null;
   // 축별 null = 해당 단계 미작성(채점 제외). 종합은 작성한 축만으로 재정규화된 값.
   aiAxisScores: {
@@ -731,24 +720,14 @@ export interface SubjectiveAttempt {
 }
 
 const ATTEMPT_COLUMNS =
-  "attempt_id, user_id, problem_id, issues_md, outline_md, analysis_md, answer_md, self_score, self_score_note, submitted_at, updated_at, review_requested_at, review_completed_at, reviewer_id, reviewer_score, reviewer_comment_md, rubric_self_check, ai_overall_score, ai_axis_scores, ai_feedback_md, ai_graded_at, timed_limit_min, timed_elapsed_sec";
+  "attempt_id, user_id, problem_id, issues_md, outline_md, analysis_md, updated_at, ai_overall_score, ai_axis_scores, ai_feedback_md, ai_graded_at, timed_limit_min, timed_elapsed_sec";
 
 function rowToAttempt(row: {
   attempt_id: string;
   issues_md?: string | null;
   outline_md?: string | null;
   analysis_md?: string | null;
-  answer_md: string;
-  self_score: number | null;
-  self_score_note: string | null;
-  submitted_at: string | null;
   updated_at: string;
-  review_requested_at: string | null;
-  review_completed_at: string | null;
-  reviewer_id: string | null;
-  reviewer_score: number | null;
-  reviewer_comment_md: string | null;
-  rubric_self_check: unknown;
   ai_overall_score?: number | null;
   ai_axis_scores?: unknown;
   ai_feedback_md?: string | null;
@@ -773,21 +752,7 @@ function rowToAttempt(row: {
     issuesMd: row.issues_md ?? "",
     outlineMd: row.outline_md ?? "",
     analysisMd: row.analysis_md ?? "",
-    answerMd: row.answer_md,
-    selfScore: row.self_score,
-    selfScoreNote: row.self_score_note,
-    submittedAt: row.submitted_at,
     updatedAt: row.updated_at,
-    reviewRequestedAt: row.review_requested_at,
-    reviewCompletedAt: row.review_completed_at,
-    reviewerId: row.reviewer_id,
-    reviewerScore: row.reviewer_score,
-    reviewerCommentMd: row.reviewer_comment_md,
-    rubricSelfCheck: Array.isArray(row.rubric_self_check)
-      ? (row.rubric_self_check as unknown[]).filter(
-          (v): v is number => typeof v === "number",
-        )
-      : null,
     aiOverallScore: row.ai_overall_score ?? null,
     aiAxisScores,
     aiFeedbackMd: row.ai_feedback_md ?? null,
@@ -812,125 +777,6 @@ export async function getSubjectiveAttempt(
   if (error) throw error;
   if (!data) return null;
   return rowToAttempt(data);
-}
-
-// 첨삭 요청 — 학생 본인. submitted_at 이 NULL 이면 제출되지 않은 답안이라 거부.
-export async function requestSubjectiveReview(
-  client: SupabaseClient<Database>,
-  userId: string,
-  problemId: string,
-): Promise<
-  { ok: true; attempt: SubjectiveAttempt } | { ok: false; error: string }
-> {
-  const existing = await getSubjectiveAttempt(client, userId, problemId);
-  if (!existing) return { ok: false, error: "답안이 없습니다" };
-  if (!existing.submittedAt) {
-    return {
-      ok: false,
-      error: "자기채점 완료(제출) 후에 첨삭 요청이 가능합니다.",
-    };
-  }
-  if (existing.reviewRequestedAt && !existing.reviewCompletedAt) {
-    return { ok: false, error: "이미 첨삭 요청 중입니다." };
-  }
-  const { data, error } = await client
-    .from("user_subjective_attempts")
-    .update({
-      review_requested_at: new Date().toISOString(),
-      review_completed_at: null,
-      reviewer_id: null,
-      reviewer_score: null,
-      reviewer_comment_md: null,
-    })
-    .eq("attempt_id", existing.attemptId)
-    .eq("user_id", userId)
-    .select(ATTEMPT_COLUMNS)
-    .single();
-  if (error) return { ok: false, error: error.message };
-  return { ok: true, attempt: rowToAttempt(data) };
-}
-
-// 강사 검토 완료. staff role 검사는 caller (action) 에서.
-export async function completeSubjectiveReview(
-  client: SupabaseClient<Database>,
-  reviewerId: string,
-  attemptId: string,
-  input: { score: number | null; commentMd: string | null },
-): Promise<
-  { ok: true; attempt: SubjectiveAttempt } | { ok: false; error: string }
-> {
-  const { data, error } = await client
-    .from("user_subjective_attempts")
-    .update({
-      reviewer_id: reviewerId,
-      reviewer_score: input.score,
-      reviewer_comment_md: input.commentMd,
-      review_completed_at: new Date().toISOString(),
-    })
-    .eq("attempt_id", attemptId)
-    .not("review_requested_at", "is", null)
-    .select(ATTEMPT_COLUMNS)
-    .single();
-  if (error) return { ok: false, error: error.message };
-  return { ok: true, attempt: rowToAttempt(data) };
-}
-
-// 강사 큐 — 검토 요청 대기 중. admin client 로 RLS 우회 (RLS staff_select 가 있어도 명시적 사용).
-export interface PendingReviewItem {
-  attemptId: string;
-  userId: string;
-  userName: string;
-  userEmail: string | null;
-  problemId: string;
-  problemYear: number | null;
-  problemNumber: number | null;
-  problemBodySnippet: string;
-  lawCode: string | null;
-  selfScore: number | null;
-  submittedAt: string | null;
-  requestedAt: string;
-  answerMd: string;
-}
-
-export async function listPendingSubjectiveReviews(
-  client: SupabaseClient<Database>,
-  options: { onlyCompleted?: boolean; limit?: number } = {},
-): Promise<PendingReviewItem[]> {
-  const limit = options.limit ?? 100;
-  let q = client
-    .from("user_subjective_attempts")
-    .select(
-      "attempt_id, user_id, answer_md, self_score, submitted_at, review_requested_at, review_completed_at, problem_id, problems!inner(year, problem_number, body_md, laws(law_code)), profiles!user_id(name)",
-    )
-    .is("deleted_at", null)
-    .not("review_requested_at", "is", null)
-    .order("review_requested_at", { ascending: false })
-    .limit(limit);
-  if (options.onlyCompleted) {
-    q = q.not("review_completed_at", "is", null);
-  } else {
-    q = q.is("review_completed_at", null);
-  }
-  const { data, error } = await q;
-  if (error) throw error;
-  return (data ?? []).map((r) => {
-    const body = r.problems?.body_md ?? "";
-    return {
-      attemptId: r.attempt_id,
-      userId: r.user_id,
-      userName: r.profiles?.name ?? "",
-      userEmail: null,
-      problemId: r.problem_id,
-      problemYear: r.problems?.year ?? null,
-      problemNumber: r.problems?.problem_number ?? null,
-      problemBodySnippet: body.length > 120 ? `${body.slice(0, 120)}…` : body,
-      lawCode: r.problems?.laws?.law_code ?? null,
-      selfScore: r.self_score,
-      submittedAt: r.submitted_at,
-      requestedAt: r.review_requested_at as string,
-      answerMd: r.answer_md,
-    };
-  });
 }
 
 export async function upsertSubjectiveAttempt(
@@ -975,20 +821,13 @@ export async function upsertSubjectiveAttempt(
 }
 
 // 답안 작성 취소 — 본인 답안을 soft delete 하고 상태 필드를 초기화해 '미작성'으로 되돌린다.
-// 첨삭 이력(요청 중·완료)이 있으면 강사 기록 보존을 위해 거부.
 export async function cancelSubjectiveAttempt(
   client: SupabaseClient<Database>,
   userId: string,
   problemId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const existing = await getSubjectiveAttempt(client, userId, problemId);
-  if (!existing) return { ok: false, error: "취소할 답안이 없습니다." };
-  if (existing.reviewRequestedAt || existing.reviewCompletedAt) {
-    return {
-      ok: false,
-      error: "첨삭 이력이 있는 답안은 취소할 수 없습니다.",
-    };
-  }
+  if (!existing) return { ok: false, error: "취소할 기록이 없습니다." };
   const { error } = await client
     .from("user_subjective_attempts")
     .update({
@@ -996,11 +835,6 @@ export async function cancelSubjectiveAttempt(
       issues_md: "",
       outline_md: "",
       analysis_md: "",
-      answer_md: "",
-      self_score: null,
-      self_score_note: null,
-      submitted_at: null,
-      rubric_self_check: [],
       ai_overall_score: null,
       ai_axis_scores: null,
       ai_feedback_md: null,
@@ -2837,15 +2671,17 @@ export async function getCaseStudyStats(
 
 export interface UserSubjectiveStats {
   totalAttempts: number;
-  submittedAttempts: number;
-  avgSelfScore: number | null;
-  reviewRequested: number;
-  reviewCompleted: number;
+  /** 3단계(논점·목차·포섭)를 모두 채운 문항 수. */
+  completedAttempts: number;
+  /** AI 채점을 받은 문항 수. */
+  aiGradedAttempts: number;
+  /** AI 종합 점수 평균 — 자기채점 폐지로 AI 초안이 유일한 점수 신호. */
+  avgAiScore: number | null;
   bySubject: Array<{
     lawCode: LawSubjectSlug;
     name: string;
     attempts: number;
-    avgSelfScore: number | null;
+    avgAiScore: number | null;
   }>;
 }
 
@@ -2858,7 +2694,7 @@ export async function getUserSubjectiveStats(
   let q = client
     .from("user_subjective_attempts")
     .select(
-      "attempt_id, self_score, submitted_at, review_requested_at, review_completed_at, problems!inner(law_id, laws!inner(law_code))",
+      "attempt_id, issues_md, outline_md, analysis_md, ai_overall_score, problems!inner(law_id, laws!inner(law_code))",
     )
     .eq("user_id", userId)
     .is("deleted_at", null);
@@ -2868,22 +2704,25 @@ export async function getUserSubjectiveStats(
   if (error) throw error;
   const list = rows ?? [];
 
-  let submitted = 0;
-  let reviewRequested = 0;
-  let reviewCompleted = 0;
-  const selfScores: number[] = [];
+  let completed = 0;
+  let aiGraded = 0;
+  const aiScores: number[] = [];
   const byCode = new Map<string, { attempts: number; scores: number[] }>();
   for (const r of list) {
-    if (r.submitted_at) submitted += 1;
-    if (r.review_requested_at && !r.review_completed_at) reviewRequested += 1;
-    if (r.review_completed_at) reviewCompleted += 1;
-    if (r.self_score != null) selfScores.push(r.self_score);
+    const stagesDone = [r.issues_md, r.outline_md, r.analysis_md].filter(
+      (v) => (v ?? "").trim().length > 0,
+    ).length;
+    if (stagesDone >= 3) completed += 1;
+    if (r.ai_overall_score != null) {
+      aiGraded += 1;
+      aiScores.push(r.ai_overall_score);
+    }
     const code = r.problems?.laws?.law_code;
     if (code) {
       if (!byCode.has(code)) byCode.set(code, { attempts: 0, scores: [] });
       const c = byCode.get(code)!;
       c.attempts += 1;
-      if (r.self_score != null) c.scores.push(r.self_score);
+      if (r.ai_overall_score != null) c.scores.push(r.ai_overall_score);
     }
   }
   const avg = (xs: number[]): number | null =>
@@ -2892,17 +2731,16 @@ export async function getUserSubjectiveStats(
       : Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 10) / 10;
   return {
     totalAttempts: list.length,
-    submittedAttempts: submitted,
-    avgSelfScore: avg(selfScores),
-    reviewRequested,
-    reviewCompleted,
+    completedAttempts: completed,
+    aiGradedAttempts: aiGraded,
+    avgAiScore: avg(aiScores),
     bySubject: lawCodes.map(({ slug, name }) => {
       const c = byCode.get(slug);
       return {
         lawCode: slug,
         name,
         attempts: c?.attempts ?? 0,
-        avgSelfScore: c ? avg(c.scores) : null,
+        avgAiScore: c ? avg(c.scores) : null,
       };
     }),
   };

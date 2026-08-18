@@ -5,7 +5,6 @@ export const STAFF_DUTIES = [
   "upgrade_request",
   "bug_report",
   "qna_question",
-  "review_request",
   "ai_usage_alert",
   "lecture_abuse_alert",
   "student_admin_access",
@@ -64,12 +63,6 @@ export const DUTY_META: Record<StaffDuty, DutyMeta> = {
   qna_question: {
     label: "Q&A 신규 질문",
     desc: "학생이 질문을 올리면 인박스·이메일·알림톡 발송. 과목별 답변자 지정이 있으면 그쪽이 우선.",
-    kind: "notify",
-    fallbackRoles: ["instructor", "manager", "admin"],
-  },
-  review_request: {
-    label: "주관식 첨삭 요청",
-    desc: "학생이 주관식 첨삭을 요청하면 인박스·이메일·알림톡 발송.",
     kind: "notify",
     fallbackRoles: ["instructor", "manager", "admin"],
   },

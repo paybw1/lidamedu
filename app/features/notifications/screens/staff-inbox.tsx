@@ -59,7 +59,6 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 const KIND_LABEL: Partial<Record<StaffNotificationKind, string>> = {
-  subjective_review_request: "주관식 첨삭",
   qna_new_question: "Q&A 질문",
   bug_report_created: "오류 신고",
   cohort_upgrade_requested: "등업 신청",
@@ -72,7 +71,6 @@ const KIND_LABEL: Partial<Record<StaffNotificationKind, string>> = {
 const KIND_ICON: Partial<
   Record<StaffNotificationKind, typeof ClipboardCheckIcon>
 > = {
-  subjective_review_request: ClipboardCheckIcon,
   qna_new_question: MessageCircleQuestionIcon,
   bug_report_created: BugIcon,
   lecture_note_abuse: ShieldAlertIcon,

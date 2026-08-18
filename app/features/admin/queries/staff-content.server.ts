@@ -1,5 +1,5 @@
 // 강사 본인이 등록한 콘텐츠 카운트 — 운영자 허브 상단 카드용.
-// 5종 + 첨삭 완료 건수.
+// 5종 콘텐츠 기여 건수.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
@@ -10,8 +10,6 @@ export interface StaffContentStats {
   papers: number;
   bookUpdates: number;
   articleComments: number;
-  // 본인이 첨삭 완료한 주관식 검토.
-  subjectiveReviews: number;
   // 본인이 발행에 참여한 법 개정 (article_revisions).
   articleRevisions: number;
 }
@@ -21,7 +19,7 @@ export async function getStaffContentStats(
   userId: string,
 ): Promise<StaffContentStats> {
   // 모두 deleted_at IS NULL (해당하는 테이블만) 조건 + created_by = userId.
-  const [cases, problems, papers, bookUpdates, articleComments, reviews, revisions] =
+  const [cases, problems, papers, bookUpdates, articleComments, revisions] =
     await Promise.all([
       client
         .from("cases")
@@ -65,7 +63,6 @@ export async function getStaffContentStats(
     papers: papers.count ?? 0,
     bookUpdates: bookUpdates.count ?? 0,
     articleComments: articleComments.count ?? 0,
-    subjectiveReviews: reviews.count ?? 0,
     articleRevisions: revisions.count ?? 0,
   };
 }

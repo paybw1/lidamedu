@@ -241,7 +241,7 @@ export function SubjectiveTab({
           </div>
         ) : null}
 
-        {/* 주관식 학습 현황 — 답안 작성(진행률)·자기채점 제출·첨삭 완료 */}
+        {/* 주관식 학습 현황 — 3단계 훈련 착수(진행률)·완주·AI 채점 */}
         <div className="grid gap-3 sm:grid-cols-4">
           <SubjectiveKpiCard
             label="주관식 문항"
@@ -358,7 +358,7 @@ function SubjectiveKpiCard({
   );
 }
 
-// 문항 학습 상태 배지 — 첨삭 완료 > 제출 > 작성 중 우선.
+// 문항 학습 상태 배지 — AI 채점 완료 > 3단계 완주 > 진행 중 우선.
 function AttemptStatusBadge({
   status,
 }: {

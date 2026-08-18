@@ -42,7 +42,8 @@ export interface LauncherSubject {
   bookmarks: number;
   postits: number;
   highlights: number;
-  gs: { count: number; selfAvg: number } | null;
+  /** 2차 주관식 3단계 훈련 — 착수 문항 수 + AI 채점 평균(미채점이면 null). */
+  gs: { count: number; aiAvg: number | null } | null;
   /** 조문·판례·문제별 마지막 학습 지점(이어서 보기). 학습한 종류만 담긴다. */
   lastPoints: SubjectLastPoint[];
 }
@@ -287,9 +288,9 @@ export function SubjectCard({
         />
         {is2 && s.gs ? (
           <MiniStat
-            label="답안"
-            value={`${s.gs.count}편`}
-            sub={`평균 ${s.gs.selfAvg}`}
+            label="2차 훈련"
+            value={`${s.gs.count}문항`}
+            sub={s.gs.aiAvg != null ? `AI 평균 ${s.gs.aiAvg}` : "AI 채점 전"}
           />
         ) : (
           <MiniStat
