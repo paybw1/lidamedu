@@ -717,7 +717,12 @@ export interface SubjectiveAttempt {
   rubricSelfCheck: number[] | null;
   // AI 채점 초안 (feat-2-032 S3).
   aiOverallScore: number | null;
-  aiAxisScores: { issue: number; structure: number; writing: number } | null;
+  // 축별 null = 해당 단계 미작성(채점 제외). 종합은 작성한 축만으로 재정규화된 값.
+  aiAxisScores: {
+    issue: number | null;
+    structure: number | null;
+    writing: number | null;
+  } | null;
   aiFeedbackMd: string | null;
   aiGradedAt: string | null;
   // 시험 모드 응시 기록 (feat-2-033). NULL=학습 모드 제출.
@@ -752,12 +757,15 @@ function rowToAttempt(row: {
   timed_elapsed_sec?: number | null;
 }): SubjectiveAttempt {
   const ax = row.ai_axis_scores;
+  // 미작성 축은 null 로 저장된다 — 0 으로 뭉개면 '0점'과 '채점 제외'가 구분되지 않는다.
+  const axisValue = (v: unknown): number | null =>
+    typeof v === "number" && Number.isFinite(v) ? v : null;
   const aiAxisScores =
     ax && typeof ax === "object" && "issue" in ax
       ? {
-          issue: Number((ax as Record<string, unknown>).issue) || 0,
-          structure: Number((ax as Record<string, unknown>).structure) || 0,
-          writing: Number((ax as Record<string, unknown>).writing) || 0,
+          issue: axisValue((ax as Record<string, unknown>).issue),
+          structure: axisValue((ax as Record<string, unknown>).structure),
+          writing: axisValue((ax as Record<string, unknown>).writing),
         }
       : null;
   return {

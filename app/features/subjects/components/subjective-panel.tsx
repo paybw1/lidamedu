@@ -63,6 +63,12 @@ const STAGES = [
 ] as const;
 
 type StageKey = (typeof STAGES)[number]["key"];
+/** 축별 null = 그 단계를 아직 안 써서 채점에서 뺐다는 뜻(0점과 구분). */
+type AxisScores = {
+  issue: number | null;
+  structure: number | null;
+  writing: number | null;
+};
 type StageValues = Record<StageKey, string>;
 
 const emptyStages = (): StageValues => ({
@@ -148,7 +154,7 @@ export function SubjectivePanel({
     ok?: boolean;
     draft?: {
       overall: number;
-      axisScores: { issue: number; structure: number; writing: number };
+      axisScores: AxisScores;
       feedbackMd: string;
     };
     error?: string;
@@ -714,17 +720,18 @@ function AiGradeResult({
 }: {
   result: {
     overall: number;
-    axisScores: { issue: number; structure: number; writing: number };
+    axisScores: AxisScores;
     feedbackMd: string;
   } | null;
   gradedAt: string | null;
 }) {
   if (!result) return null;
-  const axes: { key: keyof typeof result.axisScores; label: string }[] = [
+  const axes: { key: keyof AxisScores; label: string }[] = [
     { key: "issue", label: "① 논점 추출" },
     { key: "structure", label: "② 목차·구성" },
     { key: "writing", label: "③ 포섭·논증" },
   ];
+  const skipped = axes.filter((a) => result.axisScores[a.key] === null);
   return (
     <div className="border-primary/30 bg-card space-y-3 rounded-xl border p-5 shadow-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -749,22 +756,40 @@ function AiGradeResult({
           const v = result.axisScores[a.key];
           return (
             <div key={a.key} className="flex items-center gap-2 text-xs">
-              <span className="text-muted-foreground w-24 shrink-0">
+              <span
+                className={cn(
+                  "w-24 shrink-0",
+                  v === null ? "text-muted-foreground/60" : "text-muted-foreground",
+                )}
+              >
                 {a.label}
               </span>
               <div className="bg-muted h-2 flex-1 overflow-hidden rounded-full">
-                <div
-                  className="bg-primary h-full rounded-full"
-                  style={{ width: `${Math.max(0, Math.min(100, v))}%` }}
-                />
+                {v === null ? null : (
+                  <div
+                    className="bg-primary h-full rounded-full"
+                    style={{ width: `${Math.max(0, Math.min(100, v))}%` }}
+                  />
+                )}
               </div>
-              <span className="text-foreground w-10 shrink-0 text-right font-semibold tabular-nums">
-                {v}
+              <span
+                className={cn(
+                  "w-10 shrink-0 text-right font-semibold tabular-nums",
+                  v === null ? "text-muted-foreground/60" : "text-foreground",
+                )}
+              >
+                {v === null ? "—" : v}
               </span>
             </div>
           );
         })}
       </div>
+      {skipped.length ? (
+        <p className="text-muted-foreground text-[11px]">
+          {skipped.map((a) => a.label).join(" · ")} 은(는) 아직 작성하지 않아
+          채점에서 제외했습니다. 종합은 작성한 단계만으로 계산됩니다.
+        </p>
+      ) : null}
       {result.feedbackMd ? (
         <div className="border-border border-t pt-3 text-[length:calc(14px*var(--study-fs))] leading-[1.75]">
           <MarkdownView text={result.feedbackMd} trusted={false} />

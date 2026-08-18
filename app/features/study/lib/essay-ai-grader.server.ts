@@ -15,7 +15,12 @@ export const ESSAY_AXES = [
   { key: "writing", label: "답안 작성·논증", weight: 0.35 },
 ] as const;
 
-export type EssayAxisScores = { issue: number; structure: number; writing: number };
+// null = 해당 단계 미작성 → 채점 제외(0점과 구분). 종합은 작성한 축만으로 재정규화한다.
+export type EssayAxisScores = {
+  issue: number | null;
+  structure: number | null;
+  writing: number | null;
+};
 
 export interface EssayGradingDraft {
   overall: number; // 0~100 가중합
@@ -55,19 +60,32 @@ const SYSTEM_PROMPT = `당신은 대한민국 변리사 2차 시험(주관식·�
 아래 '채점 3축 기준'과 '실제 채점위원 채점평', '모범답안'에 근거해서만 채점하세요. 기준에 없는 임의
 잣대를 만들지 마세요.
 
-[채점 3축 기준]
-1) 논점 추출(issue): 출제자가 무엇을 묻는지(설문 취지·핵심)를 정확히 파악했는가. 사안의 특정 사실을
-   포착해 배점에 맞는 쟁점을 빠짐없이 적시했는가. 묻지 않은 것·무관한 조문·일반론 나열, 설문 단서
-   위반, 자의적 해석, 핵심 쟁점 누락은 감점.
-2) 목차·구성(structure): 쟁점별 목차·소제목으로 체계화했는가. 배점 비례로 분량·강약을 배분(일반론
-   최소·사안 해결에 지면 할애)했는가. 학설·판례를 구분 배치했는가. 수험서 목차 단순 암기, 특정 쟁점
-   편중, 서론 장황, 조문 전사식 나열은 감점.
-3) 답안 작성·논증(writing): 실정법(조문)→학설·판례 순으로 근거를 제시하고 사안에 포섭·적용했는가.
-   명확한 결론과 결론에 이르는 일관된 논리가 있는가. 학설 대립 시 자기 입장·논거를 밝혔는가. 법전
-   전사, 애매모호한 결론, 논리 비약, 본문↔결론 모순은 감점.
+[중요 — 학습자는 완성 답안을 쓰지 않습니다]
+2차는 오프라인 지필 시험이므로 온라인에서는 답안의 뼈대를 잡는 3단계 훈련만 합니다. 학생 입력은
+① 논점 추출 ② 목차 구성 ③ 사안의 포섭·결론 세 칸으로 나뉘어 들어옵니다. 각 축은 **대응하는 단계만**
+보고 채점하세요(① → issue, ② → structure, ③ → writing). "분량이 적다", "완성된 문장이 아니다",
+"서론·결론이 없다"처럼 **완성 답안이 아니라는 이유로 감점하지 마세요.**
 
-각 축을 0~100 으로 채점하고, 총평은 한국어 마크다운으로 '강점 → 보완할 점 → 다음 학습 제안' 순 6~12줄.
-채점은 강사 검토 전 초안이며 강사가 최종 수정할 수 있습니다.`;
+[채점 3축 기준]
+1) 논점 추출(issue) — ①만 본다: 출제자가 무엇을 묻는지(설문 취지·핵심)를 정확히 파악했는가. 사안의
+   특정 사실을 포착해 배점에 맞는 쟁점을 빠짐없이 적시했는가. 묻지 않은 것·무관한 조문·일반론 나열,
+   설문 단서 위반, 자의적 해석, 핵심 쟁점 누락은 감점. 다만 문장이 아니라 키워드·목록 형태여도
+   쟁점이 정확하면 감점하지 않는다.
+2) 목차·구성(structure) — ②만 본다: 쟁점별 목차·소제목으로 체계화했는가. 배점 비례로 분량·강약을
+   배분할 계획이 드러나는가(일반론 최소·사안 해결에 지면 할애). 학설·판례를 구분 배치했는가.
+   수험서 목차 단순 암기, 특정 쟁점 편중, 서론 비대, 조문 전사식 나열은 감점. 목차 기호(Ⅰ·1·가)의
+   형식은 따지지 않는다.
+3) 답안 작성·논증(writing) — ③만 본다: 실정법(조문)→학설·판례 순으로 근거를 제시하고 사안에
+   포섭·적용했는가. 명확한 결론과 결론에 이르는 일관된 논리가 있는가. 학설 대립 시 자기 입장·논거를
+   밝혔는가. 법전 전사, 애매모호한 결론, 논리 비약, 본문↔결론 모순은 감점. 이 단계는 문장으로 쓴
+   포섭·결론을 기대한다 — 목차를 다시 옮겨 적기만 한 경우는 감점.
+
+'(미작성)'으로 표시된 단계는 채점 대상이 아닙니다. 그 축의 점수는 무시되므로 0 을 넣고, 총평에서도
+그 단계를 평가하지 말고 '아직 작성하지 않았다'는 사실만 짚으세요.
+
+각 축을 0~100 으로 채점하고, 총평은 한국어 마크다운으로 '강점 → 보완할 점 → 다음 학습 제안' 순
+6~12줄. 총평은 단계 이름(① 논점 / ② 목차 / ③ 포섭·결론)으로 짚어 주세요. 채점은 강사 검토 전
+초안입니다.`;
 
 /** 0~100 로 clamp + 0.5 단위 반올림. */
 function clampScore(n: unknown): number {
@@ -220,18 +238,30 @@ export async function gradeEssayDraft(
     return null;
   }
 
-  const axisScores: EssayAxisScores = {
-    issue: clampScore(parsed.issue_score),
-    structure: clampScore(parsed.structure_score),
-    writing: clampScore(parsed.writing_score),
+  // 미작성 단계는 채점 제외(null) — 모델이 0 을 넣어도 서버가 지운다. 작성 여부의 권위는 서버.
+  const filled = {
+    issue: args.studentStages.issuesMd.trim().length > 0,
+    structure: args.studentStages.outlineMd.trim().length > 0,
+    writing: args.studentStages.analysisMd.trim().length > 0,
   };
+  const axisScores: EssayAxisScores = {
+    issue: filled.issue ? clampScore(parsed.issue_score) : null,
+    structure: filled.structure ? clampScore(parsed.structure_score) : null,
+    writing: filled.writing ? clampScore(parsed.writing_score) : null,
+  };
+  // 종합 = 작성한 축만 가중 평균(가중치 재정규화). 미작성을 0점으로 깔지 않는다 —
+  // ①만 연습한 학생이 33점을 받으면 훈련을 그만두게 된다.
+  const weighted = ESSAY_AXES.reduce(
+    (acc, ax) => {
+      const v = axisScores[ax.key];
+      return v === null
+        ? acc
+        : { sum: acc.sum + v * ax.weight, w: acc.w + ax.weight };
+    },
+    { sum: 0, w: 0 },
+  );
   const overall =
-    Math.round(
-      (axisScores.issue * ESSAY_AXES[0].weight +
-        axisScores.structure * ESSAY_AXES[1].weight +
-        axisScores.writing * ESSAY_AXES[2].weight) *
-        2,
-    ) / 2;
+    weighted.w > 0 ? Math.round((weighted.sum / weighted.w) * 2) / 2 : 0;
 
   await recordAiUsage({
     kind: "ai_grade",
