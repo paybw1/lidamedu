@@ -55,7 +55,7 @@ export async function createUserNotifications(
   }
 }
 
-// Back-compat alias — 기존 caller(notify-review, qna) 가 createStaffNotifications 를 import.
+// Back-compat alias — 기존 caller(qna 등)가 createStaffNotifications 를 import.
 export const createStaffNotifications = createUserNotifications;
 
 /** 특정 엔티티에 걸린 미읽음 알림을 (수신자 전원) 읽음 처리. 처리 완료된 요청 알림 자동 정리용. */
