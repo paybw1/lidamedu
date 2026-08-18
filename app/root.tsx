@@ -171,10 +171,15 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
   const isPreRendered =
     pathname.includes("/legal") || pathname.includes("/blog");
 
+  // 강의 플랫폼(/lecture/*)은 라이트 단일 테마(원장 2026-08-19) — 커머스 화면이라
+  // 상품 이미지·가격표가 어두운 배경에서 깨진다. 학습 플랫폼의 테마 설정과 무관하게 고정하며,
+  // 다크로 되돌리는 스크립트(PreventFlashOnWrongTheme)도 이 경로에서는 싣지 않는다.
+  const isLecture = pathname.startsWith("/lecture");
+
   return (
     <html
       lang={data?.locale ?? "en"}
-      className={cn(theme ?? "", "h-full")}
+      className={cn(isLecture ? "light" : (theme ?? ""), "h-full")}
       dir={i18n.dir()}
     >
       <head>
@@ -182,7 +187,7 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <Meta />
         <Links />
-        {isPreRendered ? (
+        {isLecture ? null : isPreRendered ? (
           <script src="/scripts/prerendered-theme.js" />
         ) : (
           <PreventFlashOnWrongTheme ssrTheme={Boolean(data?.theme)} />
