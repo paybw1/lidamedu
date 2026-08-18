@@ -7,7 +7,7 @@
 // 채점은 AI 채점 초안 하나로 통일 — 자기채점(점수·메모·체크리스트)과 강사 첨삭은 폐지했다
 // (GS 2차 모의고사의 강사 채점은 별개 시스템으로 유지). 채점기준·모범답안은 열람 자료로
 // 남기되 노출 게이트(staff 전용, redactSubjectiveAnswer)는 그대로다.
-import { CircleCheckIcon, TimerIcon } from "lucide-react";
+import { ChevronDownIcon, CircleCheckIcon, TimerIcon } from "lucide-react";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useFetcher } from "react-router";
 
@@ -85,6 +85,25 @@ const stagesOf = (a: SubjectiveAttempt | null): StageValues =>
 const stagesKey = (s: StageValues) =>
   JSON.stringify([s.issues, s.outline, s.analysis]);
 
+/**
+ * 펼침 기본값 — 작성한 단계는 펼치고(내용을 바로 읽게), 미작성 단계는 그 중 첫 칸만 펼친다.
+ * 문제를 열자마자 세 칸이 다 열려 화면을 채우는 것을 막고, 다음에 쓸 칸으로 시선을 모은다.
+ * 계산 시점은 마운트·문제 이동뿐 — 타이핑 중에 재계산하면 칸이 저절로 열리고 닫힌다.
+ */
+const defaultOpenStages = (s: StageValues): Record<StageKey, boolean> => {
+  const filled = {
+    issues: s.issues.trim().length > 0,
+    outline: s.outline.trim().length > 0,
+    analysis: s.analysis.trim().length > 0,
+  };
+  const firstEmpty = STAGES.find((st) => !filled[st.key])?.key;
+  return {
+    issues: filled.issues || firstEmpty === "issues",
+    outline: filled.outline || firstEmpty === "outline",
+    analysis: filled.analysis || firstEmpty === "analysis",
+  };
+};
+
 const filledLength = (s: StageValues) =>
   (s.issues + s.outline + s.analysis).trim().length;
 
@@ -123,6 +142,10 @@ export function SubjectivePanel({
 }) {
   const [stages, setStages] = useState<StageValues>(() =>
     stagesOf(initialAttempt),
+  );
+  // 단계별 접힘/펼침 — 화면 상태(서버 저장 대상 아님).
+  const [openStages, setOpenStages] = useState<Record<StageKey, boolean>>(() =>
+    defaultOpenStages(stagesOf(initialAttempt)),
   );
   const [revealedModel, setRevealedModel] = useState(false);
   const [revealedRubric, setRevealedRubric] = useState(false);
@@ -232,6 +255,7 @@ export function SubjectivePanel({
   useEffect(() => {
     const next = stagesOf(initialAttempt);
     setStages(next);
+    setOpenStages(defaultOpenStages(next));
     setLastSaved(initialAttempt);
     setRevealedModel(false);
     setRevealedRubric(false);
@@ -282,6 +306,7 @@ export function SubjectivePanel({
       const next = emptyStages();
       lastSentRef.current = stagesKey(next);
       setStages(next);
+      setOpenStages(defaultOpenStages(next));
       setLastSaved(null);
       setTimedResult(null);
     }
@@ -462,6 +487,10 @@ export function SubjectivePanel({
               key={s.key}
               stage={s}
               value={stages[s.key]}
+              open={openStages[s.key]}
+              onToggle={() =>
+                setOpenStages((prev) => ({ ...prev, [s.key]: !prev[s.key] }))
+              }
               onChange={(v) => setStages((prev) => ({ ...prev, [s.key]: v }))}
             />
           ))}
@@ -630,16 +659,30 @@ export function SubjectivePanel({
 function StageEditor({
   stage,
   value,
+  open,
+  onToggle,
   onChange,
 }: {
   stage: (typeof STAGES)[number];
   value: string;
+  open: boolean;
+  onToggle: () => void;
   onChange: (v: string) => void;
 }) {
   const done = value.trim().length > 0;
+  const panelId = `subjective-stage-panel-${stage.key}`;
+  // 접힌 칸의 미리보기 — 줄바꿈을 공백으로 눌러 한 줄로.
+  const preview = value.trim().replace(/\s+/g, " ").slice(0, 60);
   return (
-    <div className="p-4">
-      <div className="mb-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+    <div>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        aria-controls={panelId}
+        className="hover:bg-muted/40 flex w-full items-center gap-x-2 gap-y-1 px-4 py-3 text-left transition-colors"
+        data-testid={`subjective-stage-toggle-${stage.key}`}
+      >
         <span
           className={cn(
             "inline-flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-bold",
@@ -651,22 +694,45 @@ function StageEditor({
           {done ? "✓" : stage.no}
         </span>
         <span className="text-sm font-bold">{stage.title}</span>
-        <span className="text-muted-foreground text-[11px]">{stage.axis}</span>
-        <span className="text-muted-foreground ml-auto text-[11px] tabular-nums">
+        <span className="text-muted-foreground hidden text-[11px] sm:inline">
+          {stage.axis}
+        </span>
+        {/* 접혔을 때만 내용 미리보기 — 펼치지 않고도 뭘 썼는지 알 수 있게. */}
+        {!open && preview ? (
+          <span className="text-muted-foreground min-w-0 flex-1 truncate text-[11px]">
+            {preview}
+          </span>
+        ) : null}
+        <span
+          className={cn(
+            "text-muted-foreground text-[11px] tabular-nums",
+            !open && preview ? "shrink-0" : "ml-auto",
+          )}
+        >
           {value.length}자
         </span>
-      </div>
-      <p className="text-muted-foreground mb-2 text-[11px] leading-relaxed">
-        {stage.hint}
-      </p>
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        rows={stage.rows}
-        placeholder={stage.placeholder}
-        className="border-input bg-background focus:ring-primary/30 w-full rounded-lg border px-4 py-3 text-sm leading-[1.8] tracking-[-0.005em] focus:ring-2 focus:outline-none"
-        data-testid={`subjective-stage-${stage.key}`}
-      />
+        <ChevronDownIcon
+          className={cn(
+            "text-muted-foreground size-4 shrink-0 transition-transform",
+            open && "rotate-180",
+          )}
+        />
+      </button>
+      {open ? (
+        <div id={panelId} className="px-4 pb-4">
+          <p className="text-muted-foreground mb-2 text-[11px] leading-relaxed">
+            {stage.hint}
+          </p>
+          <textarea
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            rows={stage.rows}
+            placeholder={stage.placeholder}
+            className="border-input bg-background focus:ring-primary/30 w-full rounded-lg border px-4 py-3 text-sm leading-[1.8] tracking-[-0.005em] focus:ring-2 focus:outline-none"
+            data-testid={`subjective-stage-${stage.key}`}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
