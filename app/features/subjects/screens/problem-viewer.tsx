@@ -1469,6 +1469,7 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                   viewerIsStaff={isStaff}
                   answerCaseGroups={answerCaseGroups}
                   initialAttempt={subjectiveAttempt}
+                  totalPoints={problem.totalPoints}
                 />
               ) : (
                 <>

@@ -2181,7 +2181,7 @@ export async function getProblemById(
   const { data: problem, error } = await client
     .from("problems")
     .select(
-      "problem_id, display_no, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, exam_number, body_md, importance, primary_article_id, law_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, rubric_ai_generated_at, rubric_reviewed_at, main_case_number, articles!primary_article_id(article_number, display_label)",
+      "problem_id, display_no, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, exam_number, body_md, importance, primary_article_id, law_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, rubric_ai_generated_at, rubric_reviewed_at, main_case_number, total_points, articles!primary_article_id(article_number, display_label)",
     )
     .eq("problem_id", problemId)
     .is("deleted_at", null)
@@ -2243,6 +2243,7 @@ export async function getProblemById(
     rubricAiGeneratedAt: problem.rubric_ai_generated_at,
     rubricReviewedAt: problem.rubric_reviewed_at,
     mainCaseNumber: problem.main_case_number,
+    totalPoints: problem.total_points,
     hasTable:
       hasTableMd(problem.explanation_md) ||
       choiceList.some((c) => hasTableMd(c.explanation_md)) ||
@@ -2294,7 +2295,7 @@ export async function getProblemDetailsByIds(
   const { data: problemRows, error } = await client
     .from("problems")
     .select(
-      "problem_id, display_no, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, importance, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, rubric_ai_generated_at, rubric_reviewed_at, main_case_number, articles!primary_article_id(article_number, display_label)",
+      "problem_id, display_no, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, importance, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, rubric_ai_generated_at, rubric_reviewed_at, main_case_number, total_points, articles!primary_article_id(article_number, display_label)",
     )
     .in("problem_id", problemIds)
     .is("deleted_at", null);
@@ -2393,6 +2394,7 @@ export async function getProblemDetailsByIds(
       rubricAiGeneratedAt: p.rubric_ai_generated_at,
       rubricReviewedAt: p.rubric_reviewed_at,
       mainCaseNumber: p.main_case_number,
+      totalPoints: p.total_points,
       hasTable:
         hasTableMd(p.explanation_md) ||
         choices.some((c) => hasTableMd(c.explanationMd)) ||
@@ -2592,7 +2594,7 @@ export async function getSystematicNodeProblems(
     client
       .from("problems")
       .select(
-        "problem_id, display_no, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, importance, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, rubric_ai_generated_at, rubric_reviewed_at, main_case_number, articles!primary_article_id(article_number, display_label)",
+        "problem_id, display_no, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, importance, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, rubric_ai_generated_at, rubric_reviewed_at, main_case_number, total_points, articles!primary_article_id(article_number, display_label)",
       )
       .in("problem_id", slice)
       .is("deleted_at", null)
@@ -2698,6 +2700,7 @@ export async function getSystematicNodeProblems(
         rubricAiGeneratedAt: p.rubric_ai_generated_at,
         rubricReviewedAt: p.rubric_reviewed_at,
         mainCaseNumber: p.main_case_number,
+        totalPoints: p.total_points,
         hasTable:
           hasTableMd(p.explanation_md) ||
           (choicesByProblem.get(p.problem_id) ?? []).some((c) =>

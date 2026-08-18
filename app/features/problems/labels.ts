@@ -365,6 +365,8 @@ export interface ProblemDetail extends ProblemListItem {
   boxItems: ProblemBoxItem[];
   /** 주관식 관련판례 메인 지정(사건번호) — null=미지정. */
   mainCaseNumber: string | null;
+  /** 배점(주관식). 시험 모드 기본 제한시간 산출에 쓴다. null=미설정. */
+  totalPoints: number | null;
 }
 
 // ── 운영자 기출문제 판례 매칭 (feat-8-024) ──────────────────────────────

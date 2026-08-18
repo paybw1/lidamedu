@@ -107,6 +107,22 @@ const defaultOpenStages = (s: StageValues): Record<StageKey, boolean> => {
 const filledLength = (s: StageValues) =>
   (s.issues + s.outline + s.analysis).trim().length;
 
+// 시험 모드 기본 제한시간 — 배점 기준(원장 2026-08-18): 30점 = 7분, 20점 = 5분.
+// 완성 답안이 아니라 뼈대(논점·목차·포섭)를 세우는 시간이라 실전 답안 작성 시간보다 짧다.
+const DEFAULT_LIMIT_BY_POINTS: Record<number, number> = { 30: 7, 20: 5 };
+const FALLBACK_LIMIT_MIN = 7;
+const LIMIT_MIN = 1;
+const LIMIT_MAX = 180;
+
+/** 배점 → 기본 제한시간(분). 표에 없는 배점은 30점=7분 비례로 환산(20점도 5분으로 맞는다). */
+export function defaultTimedLimitMin(totalPoints: number | null): number {
+  if (totalPoints == null || totalPoints <= 0) return FALLBACK_LIMIT_MIN;
+  const preset = DEFAULT_LIMIT_BY_POINTS[totalPoints];
+  if (preset != null) return preset;
+  const scaled = Math.round((totalPoints * 7) / 30);
+  return Math.max(LIMIT_MIN, Math.min(LIMIT_MAX, scaled));
+}
+
 /** 폼 필드명은 API(subjective-attempt / subjective-ai-grade)와 공유한다. */
 function appendStages(fd: FormData, s: StageValues) {
   fd.set("issuesMd", s.issues);
@@ -125,6 +141,7 @@ export function SubjectivePanel({
   viewerIsStaff,
   answerCaseGroups,
   initialAttempt,
+  totalPoints,
 }: {
   problemId: string;
   modelAnswerMd: string | null;
@@ -139,6 +156,8 @@ export function SubjectivePanel({
   // 설문별 관련 판례 배지(모범답안 인용 판례 자동 추출).
   answerCaseGroups: AnswerCaseGroup[];
   initialAttempt: SubjectiveAttempt | null;
+  // 배점 — 시험 모드 기본 제한시간 산출(30점=7분·20점=5분). null=미설정.
+  totalPoints: number | null;
 }) {
   const [stages, setStages] = useState<StageValues>(() =>
     stagesOf(initialAttempt),
@@ -154,7 +173,9 @@ export function SubjectivePanel({
   );
   // 시간제한 응시 모드 — 클라이언트 상태. 새로고침 시 리셋 (자기학습용).
   const [timedStartedAt, setTimedStartedAt] = useState<number | null>(null);
-  const [timedLimitMin, setTimedLimitMin] = useState<number>(30);
+  const [timedLimitMin, setTimedLimitMin] = useState<number>(() =>
+    defaultTimedLimitMin(totalPoints),
+  );
   // 시험 모드 완료(조기 제출·시간 만료) 결과 — 완료 카드 표시용, 문제 이동 시 리셋.
   const [timedResult, setTimedResult] = useState<{
     limitMin: number;
@@ -257,6 +278,7 @@ export function SubjectivePanel({
     setStages(next);
     setOpenStages(defaultOpenStages(next));
     setLastSaved(initialAttempt);
+    setTimedLimitMin(defaultTimedLimitMin(totalPoints));
     setRevealedModel(false);
     setRevealedRubric(false);
     setTimedStartedAt(null);
@@ -413,6 +435,10 @@ export function SubjectivePanel({
         />
       ) : (
         <SubjectiveTimedBar
+          // 문제가 바뀌면 입력창을 그 문제의 기본값으로 다시 채워야 한다(내부 상태라 key 로 리셋).
+          key={problemId}
+          defaultLimitMin={defaultTimedLimitMin(totalPoints)}
+          totalPoints={totalPoints}
           timedStartedAt={timedStartedAt}
           timedLimitMin={timedLimitMin}
           timedRemainSec={timedRemainSec}
@@ -886,6 +912,8 @@ function fmtMMSS(totalSec: number) {
 }
 
 function SubjectiveTimedBar({
+  defaultLimitMin,
+  totalPoints,
   timedStartedAt,
   timedLimitMin,
   timedRemainSec,
@@ -894,6 +922,8 @@ function SubjectiveTimedBar({
   onSubmit,
   onCancel,
 }: {
+  defaultLimitMin: number;
+  totalPoints: number | null;
   timedStartedAt: number | null;
   timedLimitMin: number;
   timedRemainSec: number | null;
@@ -902,7 +932,7 @@ function SubjectiveTimedBar({
   onSubmit: () => void;
   onCancel: () => void;
 }) {
-  const [minInput, setMinInput] = useState<string>("30");
+  const [minInput, setMinInput] = useState<string>(String(defaultLimitMin));
   if (timedStartedAt === null) {
     return (
       <div className="border-border bg-muted/30 flex flex-wrap items-center gap-3 rounded-xl border border-dashed px-4 py-3 text-xs">
@@ -913,8 +943,8 @@ function SubjectiveTimedBar({
           제한 시간
           <input
             type="number"
-            min={1}
-            max={180}
+            min={LIMIT_MIN}
+            max={LIMIT_MAX}
             value={minInput}
             onChange={(e) => setMinInput(e.target.value)}
             className="border-input bg-background focus:ring-primary/30 h-7 w-14 rounded-lg border px-2 text-xs tabular-nums focus:ring-2 focus:outline-none"
@@ -927,8 +957,8 @@ function SubjectiveTimedBar({
           className="h-7 rounded-full"
           onClick={() => {
             const m = Number(minInput);
-            if (Number.isNaN(m) || m < 1 || m > 180) {
-              alert("제한 시간은 1~180분 사이로 입력하세요.");
+            if (Number.isNaN(m) || m < LIMIT_MIN || m > LIMIT_MAX) {
+              alert(`제한 시간은 ${LIMIT_MIN}~${LIMIT_MAX}분 사이로 입력하세요.`);
               return;
             }
             onStart(m);
@@ -940,7 +970,9 @@ function SubjectiveTimedBar({
         <span className="text-muted-foreground ml-auto text-[11px]">
           {lastRecord
             ? `지난 응시: ${lastRecord.limitMin}분 제한 · ${fmtMMSS(lastRecord.elapsedSec)} 소요`
-            : "시작하면 모범답안·채점기준이 잠깁니다."}
+            : totalPoints != null
+              ? `${totalPoints}점 기준 ${defaultLimitMin}분 · 시작하면 모범답안·채점기준이 잠깁니다.`
+              : "시작하면 모범답안·채점기준이 잠깁니다."}
         </span>
       </div>
     );
