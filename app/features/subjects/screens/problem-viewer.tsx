@@ -86,6 +86,7 @@ import {
   getProblemById,
   getProblemPlacementsBulk,
   getRelatedProblems,
+  getSubjectiveNodeProblemStats,
   getSystematicNodeProblemSequence,
   getSystematicNodeProblemStats,
 } from "~/features/problems/queries.server";
@@ -308,9 +309,13 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       ? getSubjectAxisCounts(client, lawCode, law.lawId)
       : Promise.resolve({ articles: 0, cases: 0, problems: 0, subjective: 0 }),
     listLectureResources(client, "problem", problem.problemId),
-    law
-      ? getSystematicNodeProblemStats(client, lawCode)
-      : Promise.resolve<Record<string, SystematicNodeProblemStat>>({}),
+    // 좌측 체계도 카운트 — 보고 있는 문제와 같은 축이어야 한다. 주관식 뷰어에서 객관식
+    // 통계를 쓰면 없는 문제 수가 노출된다(주관식 배치는 problem_systematic_links 축).
+    !law
+      ? Promise.resolve<Record<string, SystematicNodeProblemStat>>({})
+      : problem.format === "subjective"
+        ? getSubjectiveNodeProblemStats(client, lawCode).then((r) => r.stats)
+        : getSystematicNodeProblemStats(client, lawCode),
     getProblemPlacementNodeId(client, params.problemId),
     // 주관식 체계도 복수 배치(problem_systematic_links) — 뷰어 배지용.
     problem.format === "subjective"
@@ -1030,6 +1035,7 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                           nodeStats={problemNodeStats}
                           activeNodeId={activeNodeId ?? undefined}
                           linkBase={`/subjects/${subject.slug}`}
+                          tab={problem.format === "subjective" ? "subjective" : "problems"}
                         />
                       )}
                     </div>
@@ -1081,6 +1087,7 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                       nodeStats={problemNodeStats}
                       activeNodeId={activeNodeId ?? undefined}
                       linkBase={`/subjects/${subject.slug}`}
+                      tab={problem.format === "subjective" ? "subjective" : "problems"}
                     />
                   )}
                 </div>
