@@ -8,6 +8,8 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import { runAfterResponse } from "~/core/lib/wait-until.server";
 import { regenerateForRevisions } from "~/features/errata/pdf/regenerate.server";
 import { getStaffRole } from "~/features/laws/queries.server";
+import type { DohaeBlock } from "~/features/dohae/labels";
+import { diffTextNodes } from "~/features/dohae/lib/dohae-edit";
 import {
   ANSWER_FIELDS,
   ERRATA_KINDS,
@@ -70,6 +72,29 @@ function diffFields(changed: string[]): string[] {
   return [...set].sort();
 }
 
+/**
+ * 도해 유닛의 사람이 읽는 diff — blocks jsonb 를 텍스트 경로 단위로 비교한다.
+ * 바뀐 칸이 여럿이면 한 필드에 줄바꿈으로 모아 싣는다(모달의 before/after 프리필용).
+ */
+function dohaeFieldDiffs(before: unknown, after: unknown): PublishFieldDiff[] {
+  const blocksOf = (snap: unknown): DohaeBlock[] | null => {
+    if (!snap || typeof snap !== "object") return null;
+    const b = (snap as { blocks?: unknown }).blocks;
+    return Array.isArray(b) ? (b as DohaeBlock[]) : null;
+  };
+  const diffs = diffTextNodes(blocksOf(before), blocksOf(after));
+  if (diffs.length === 0) return [];
+  const cut = (s: string) =>
+    s.length > MAX_FIELD_TEXT ? s.slice(0, MAX_FIELD_TEXT) + "\n…(생략)" : s;
+  return [
+    {
+      field: "본문",
+      beforeText: cut(diffs.map((d) => `[${d.label}] ${d.before}`).join("\n")),
+      afterText: cut(diffs.map((d) => `[${d.label}] ${d.after}`).join("\n")),
+    },
+  ];
+}
+
 async function contentLabelOf(
   client: ReturnType<typeof makeServerClient>[0],
   contentType: string,
@@ -82,6 +107,16 @@ async function contentLabelOf(
       .eq("article_id", contentId)
       .maybeSingle();
     return a ? `${a.laws?.short_label ?? ""} ${a.display_label}`.trim() : "조문";
+  }
+  if (contentType === "dohae") {
+    const { data: u } = await client
+      .from("dohae_units")
+      .select("kind, unit_no, ref_no, title, chapter_no, pdf_page")
+      .eq("unit_id", contentId)
+      .maybeSingle();
+    if (!u) return "도해";
+    const no = u.kind === "topic" ? String(u.unit_no ?? "") : `참고 ${u.ref_no ?? ""}`;
+    return `도해특허법 ${no} ${u.title}${u.pdf_page ? ` (p.${u.pdf_page})` : ""}`;
   }
   if (contentType === "precedent") {
     const { data: c } = await client
@@ -134,11 +169,16 @@ export async function loader({ request }: Route.LoaderArgs) {
     op: r.op,
     changedFields: r.changed_fields ?? [],
     effectiveDate: r.effective_date,
-    fieldDiffs: diffFields(r.changed_fields ?? []).map((field) => ({
-      field,
-      beforeText: snapshotFieldText(r.before_snapshot, field),
-      afterText: snapshotFieldText(r.after_snapshot, field),
-    })),
+    fieldDiffs:
+      // 도해의 blocks 는 유닛 전체 구조를 담은 jsonb — 그대로 덤프하면 사람이 못 읽고
+      // 20k 로 잘려 정작 바뀐 곳이 안 보인다. 텍스트 경로 단위 diff 로 바꿔 싣는다.
+      r.content_type === "dohae"
+        ? dohaeFieldDiffs(r.before_snapshot, r.after_snapshot)
+        : diffFields(r.changed_fields ?? []).map((field) => ({
+            field,
+            beforeText: snapshotFieldText(r.before_snapshot, field),
+            afterText: snapshotFieldText(r.after_snapshot, field),
+          })),
   }));
 
   // 대상 위치 — publication_content_map 역참조 (매핑 없으면 빈 배열: 발행은 막지 않는다 §4.4)

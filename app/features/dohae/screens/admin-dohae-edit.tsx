@@ -9,8 +9,8 @@
 
 import type { Route } from "./+types/admin-dohae-edit";
 
-import { ArrowLeftIcon, HistoryIcon, SaveIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ArrowLeftIcon, HistoryIcon, MegaphoneIcon, SaveIcon } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, data, useNavigation } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
@@ -19,6 +19,8 @@ import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
 import { AdminShell } from "~/features/admin/components/admin-shell";
+import { ErrataPublishModal } from "~/features/errata/components/errata-publish-modal";
+import { getUnpublishedRevisions } from "~/features/errata/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 
 import { dohaeUnitLabel, type DohaeBlock } from "../labels";
@@ -113,6 +115,19 @@ export async function action({ params, request }: Route.ActionArgs) {
     .eq("unit_id", row.unit_id);
   if (error) return { ok: false as const, error: error.message };
 
+  // ★두 갈래(원장 지시 2026-08-18) — 추록·정오표는 **실제 책이 바뀐 때만** 발행한다.
+  //   적재 오류 정정(파서가 잘못 읽은 텍스트·오타)은 책이 바뀐 게 아니므로 원장에만 남긴다
+  //   (메모: errata-only-for-book-changes). 발행을 고른 경우에만 방금 난 원장 묶음을
+  //   돌려주고, 화면이 발행 모달을 연다.
+  if (fd.get("publishIntent") === "1") {
+    const revisions = await getUnpublishedRevisions(client, ["dohae"], row.unit_id);
+    return {
+      ok: true as const,
+      changed: result.changed.length,
+      publishRevisionIds: revisions.map((r) => r.revisionId),
+    };
+  }
+
   return { ok: true as const, changed: result.changed.length };
 }
 
@@ -124,6 +139,12 @@ export default function AdminDohaeEdit({
   const nav = useNavigation();
   const saving = nav.state !== "idle";
   const [draft, setDraft] = useState<Record<string, string>>({});
+  // 저장이 끝나 원장 묶음을 받으면 발행 모달을 연다(취소해도 저장은 유지).
+  const [publishIds, setPublishIds] = useState<string[] | null>(null);
+  const returnedIds = actionData?.ok ? actionData.publishRevisionIds : undefined;
+  useEffect(() => {
+    if (returnedIds && returnedIds.length > 0) setPublishIds(returnedIds);
+  }, [returnedIds]);
 
   const original = useMemo(
     () => new Map(nodes.map((n) => [n.path, n.text])),
@@ -204,15 +225,27 @@ export default function AdminDohaeEdit({
           })}
         </div>
 
-        <div className="bg-background/95 sticky bottom-0 mt-3 flex items-center gap-2 border-t py-3 backdrop-blur">
+        <div className="bg-background/95 sticky bottom-0 mt-3 flex flex-wrap items-center gap-2 border-t py-3 backdrop-blur">
+          {/* 두 갈래 — 기본은 적재 오류 정정(발행 안 함). 책이 실제로 바뀐 경우만 발행. */}
           <Button type="submit" disabled={saving || dirty.length === 0} className="h-9">
             <SaveIcon className="size-3.5" />
-            {saving ? "저장 중…" : `저장 (${dirty.length}곳)`}
+            {saving ? "저장 중…" : `적재 오류 정정으로 저장 (${dirty.length}곳)`}
+          </Button>
+          <Button
+            type="submit"
+            name="publishIntent"
+            value="1"
+            variant="outline"
+            disabled={saving || dirty.length === 0}
+            title="교재 내용 자체가 바뀐 경우에만 사용하세요. 저장 후 추록·정오표 발행 모달이 열립니다."
+            className="h-9"
+          >
+            <MegaphoneIcon className="size-3.5" /> 책 내용 정정 + 추록·정오표 발행
           </Button>
           {dirty.length > 0 ? (
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="sm"
               className="h-9"
               onClick={() => setDraft({})}
@@ -221,10 +254,20 @@ export default function AdminDohaeEdit({
             </Button>
           ) : null}
           <p className="text-muted-foreground ml-auto text-[11px]">
-            텍스트 {nodes.length}곳 · 저장 이력은 개정 원장에 남습니다.
+            텍스트 {nodes.length}곳 · 오타·적재 오류는 발행 대상이 아닙니다.
           </p>
         </div>
       </form>
+
+      {publishIds ? (
+        <ErrataPublishModal
+          open
+          onOpenChange={() => {}}
+          revisionIds={publishIds}
+          defaultKind="typo"
+          onDone={() => setPublishIds(null)}
+        />
+      ) : null}
 
       <RevisionHistory revisions={revisions} />
     </AdminShell>
