@@ -1250,3 +1250,20 @@ create table public.popup_notices (
 - **publication_content_map**: 콘텐츠↔책 위치. unique(edition, content_type, content_id). 특허 1,739건: statute 268(★page_no+편/장/조 toc_path 전량)·precedent 364(제10판 수록 순번 sort_key+색인 page_no 360 — ★cases.source_seq 는 제9판 흔적으로 비파괴 보존)·mcq 1,107. ★교재 오기 2건은 실제 판례로 매핑(2017다245789→245798, 사건번호 낙자=2009허351).
 - **v_current_editions**(security_invoker): 판본별 최신 frozen/printed 1행. RLS 전부 staff(`private.is_staff`) — 수험생 노출은 Phase 4 별도 정책.
 - 최신판례 10건(제10판 완고 후 등록)은 `content_revisions`에 수동 삽입(`created_by_label='system:phase2_backfill'`, merge pending) — 축C 추록 대기열의 첫 실물. 상표·디자인 시드는 추후, 민법·자연과학 제외(사용자 스코프 지시).
+
+## user_subjective_attempts (2차 주관식 학습)  ✅ 3단계 훈련으로 재편 (2026-08-18, feat-2-032 개편)
+
+> DDL `scripts/sql/20260818_subjective_three_stage.sql` · 화면 `app/features/subjects/screens/problem-viewer.tsx`(SubjectivePanel)
+
+2차는 **오프라인 지필 시험**이라 온라인에서 완성 답안을 타이핑하는 훈련은 효용이 낮다는 판단(원장, 2026-08-18).
+답안 작성 대신 **① 논점 추출 → ② 목차 구성 → ③ 사안의 포섭·결론** 3단계로 나눠 훈련한다.
+이 3단계는 AI 채점 3축(논점 40% / 목차·구성 25% / 논증 35%)과 **1:1 로 대응**한다.
+
+- **신규 컬럼**: `issues_md`(①) · `outline_md`(②) · `analysis_md`(③) — 전부 `text not null default ''`.
+  기존 답안 6건은 `answer_md` → `analysis_md` 로 백필(원본은 `answer_md` 에 그대로 남음).
+- **★`answer_md` 는 NOT NULL** — 새 경로가 더는 쓰지 않으므로 `default ''` 를 붙였다. 없으면 신규 insert 가 깨진다.
+- **미사용 컬럼(보존)**: `answer_md` · `self_score` · `self_score_note` · `submitted_at` · `rubric_self_check`(자기채점 폐지),
+  `review_requested_at` · `review_completed_at` · `reviewer_id` · `reviewer_score` · `reviewer_comment_md`(기출 경로 강사 첨삭 폐지).
+  화면·API 에서만 걷어내고 **컬럼은 남긴다** — 사용자 학습 데이터 무삭제 원칙(CLAUDE.md Non-negotiable 9). 컬럼 코멘트로 표시.
+- **유지**: `ai_*`(AI 채점 초안) · `timed_limit_min`/`timed_elapsed_sec`(시험 모드 — 오프라인 시간배분 훈련).
+- ★**GS(2차 모의고사)의 강사 채점·첨삭은 별개 시스템**(`gs_answers` 계열)으로 그대로 유지된다. 이번 폐지는 기출 problems 경로 한정.

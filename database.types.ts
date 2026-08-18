@@ -13736,10 +13736,13 @@ export type Database = {
           ai_feedback_md: string | null
           ai_graded_at: string | null
           ai_overall_score: number | null
+          analysis_md: string
           answer_md: string
           attempt_id: string
           created_at: string
           deleted_at: string | null
+          issues_md: string
+          outline_md: string
           problem_id: string
           review_completed_at: string | null
           review_requested_at: string | null
@@ -13760,10 +13763,13 @@ export type Database = {
           ai_feedback_md?: string | null
           ai_graded_at?: string | null
           ai_overall_score?: number | null
+          analysis_md?: string
           answer_md?: string
           attempt_id?: string
           created_at?: string
           deleted_at?: string | null
+          issues_md?: string
+          outline_md?: string
           problem_id: string
           review_completed_at?: string | null
           review_requested_at?: string | null
@@ -13784,10 +13790,13 @@ export type Database = {
           ai_feedback_md?: string | null
           ai_graded_at?: string | null
           ai_overall_score?: number | null
+          analysis_md?: string
           answer_md?: string
           attempt_id?: string
           created_at?: string
           deleted_at?: string | null
+          issues_md?: string
+          outline_md?: string
           problem_id?: string
           review_completed_at?: string | null
           review_requested_at?: string | null
