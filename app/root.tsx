@@ -44,6 +44,7 @@ import { Dialog } from "./core/components/ui/dialog";
 import { Sheet } from "./core/components/ui/sheet";
 import { GEO_BLOCKED_CODE } from "./core/lib/geo-gate";
 import { requireAllowedCountry } from "./core/lib/geo-gate.server";
+import { getActivePlatform } from "./core/lib/platforms";
 import i18next from "./core/lib/i18next.server";
 import { themeSessionResolver } from "./core/lib/theme-session.server";
 import { cn } from "./core/lib/utils";
@@ -171,10 +172,12 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
   const isPreRendered =
     pathname.includes("/legal") || pathname.includes("/blog");
 
-  // 강의 플랫폼(/lecture/*)은 라이트 단일 테마(원장 2026-08-19) — 커머스 화면이라
-  // 상품 이미지·가격표가 어두운 배경에서 깨진다. 학습 플랫폼의 테마 설정과 무관하게 고정하며,
-  // 다크로 되돌리는 스크립트(PreventFlashOnWrongTheme)도 이 경로에서는 싣지 않는다.
-  const isLecture = pathname.startsWith("/lecture");
+  // 강의 플랫폼은 라이트 단일 테마(원장 2026-08-19) — 커머스 화면이라 상품 이미지·가격표가
+  // 어두운 배경에서 깨진다. 학습 플랫폼의 테마 설정과 무관하게 고정하며, 다크로 되돌리는
+  // 스크립트(PreventFlashOnWrongTheme)도 이 경로에서는 싣지 않는다.
+  // ★경로 판별은 getActivePlatform 단일 소스 — lecture.layout 아래에는 /lecture 말고도
+  //   /about·/location·/community·/announcements·/guide 가 있어 경로 접두사로는 새는다.
+  const isLecture = getActivePlatform(pathname) === "lecture";
 
   return (
     <html
