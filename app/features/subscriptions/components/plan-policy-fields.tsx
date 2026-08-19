@@ -7,7 +7,16 @@ import { Input } from "~/core/components/ui/input";
 import type { PlanPolicy } from "~/features/subscriptions/queries.server";
 
 type CoursePlanRef = { planId: string; name: string };
-type DurationMode = "multiplier" | "days" | "fixed";
+// ★배수는 수강기간 방식이 아니다(원장 요청 2026-08-20).
+//   수강기간 = 언제까지 볼 수 있는가(일수 또는 종료일) — DB 가 둘 중 하나를 반드시 요구한다.
+//   배수     = 강의시간 대비 얼마나 볼 수 있는가 — 위와 무관한 별개 축.
+//   종전에는 배수가 수강기간 방식의 세 번째 선택지라, 배수를 고르면 일수·종료일이 둘 다
+//   비어 plan_policies_check 에 걸려 저장 자체가 실패했다(요청 ①의 원인).
+type DurationMode = "days" | "fixed";
+
+// 배수 프리셋 — 무제한은 값 없음(null)으로 저장한다.
+const MULTIPLIER_PRESETS = ["1", "1.5", "2", "3"] as const;
+const UNLIMITED = "unlimited";
 
 function Field({
   label,
@@ -65,13 +74,17 @@ export function PlanPolicyFields({
   coursePlans: CoursePlanRef[];
   currentPlanId?: string;
 }) {
-  const initialMode: DurationMode =
-    policy?.multiplier != null
-      ? "multiplier"
-      : policy?.fixedEndDate
-        ? "fixed"
-        : "days";
+  const initialMode: DurationMode = policy?.fixedEndDate ? "fixed" : "days";
   const [mode, setMode] = useState<DurationMode>(initialMode);
+  // 배수 — 프리셋에 없는 기존 값(예: 2.5)은 "직접 입력"으로 살린다.
+  const savedMul = policy?.multiplier ?? null;
+  const initialMul =
+    savedMul == null
+      ? UNLIMITED
+      : MULTIPLIER_PRESETS.includes(String(savedMul) as never)
+        ? String(savedMul)
+        : "custom";
+  const [mulChoice, setMulChoice] = useState<string>(initialMul);
   const extSet = new Set(policy?.extensionPlanIds ?? []);
   // 연장 대상 후보 — 자기 자신 제외.
   const extCandidates = coursePlans.filter((c) => c.planId !== currentPlanId);
@@ -90,7 +103,6 @@ export function PlanPolicyFields({
         <div className="flex flex-wrap gap-x-4 gap-y-1.5">
           {(
             [
-              ["multiplier", "배수 (강의시간 × N)"],
               ["days", "고정 일수"],
               ["fixed", "고정 종료일"],
             ] as [DurationMode, string][]
@@ -109,18 +121,6 @@ export function PlanPolicyFields({
           ))}
         </div>
         <div className="mt-2 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-          {mode === "multiplier" ? (
-            <Field label="배수 (N)" hint="총 시청가능 = 강의 재생시간 × N">
-              <Input
-                name="policy_multiplier"
-                type="number"
-                min={0}
-                step="0.1"
-                defaultValue={policy?.multiplier ?? 2}
-                className={numInput}
-              />
-            </Field>
-          ) : null}
           {mode === "days" ? (
             <Field label="수강기간 (일)" hint="지급일로부터">
               <Input
@@ -144,6 +144,53 @@ export function PlanPolicyFields({
             </Field>
           ) : null}
         </div>
+      </div>
+
+      {/* 배수 — 수강기간과 독립된 축(원장 요청 2026-08-20). 어떤 수강기간 방식이든 함께 지정한다. */}
+      <div>
+        <p className="text-muted-foreground mb-1.5 text-[11px] font-semibold">
+          배수 (강의시간 대비 누적 시청 허용량)
+        </p>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+          {(
+            [
+              [UNLIMITED, "무제한"],
+              ...MULTIPLIER_PRESETS.map((v) => [v, `${v}배수`]),
+              ["custom", "직접 입력"],
+            ] as [string, string][]
+          ).map(([val, label]) => (
+            <label key={val} className="inline-flex items-center gap-1 text-xs">
+              <input
+                type="radio"
+                name="policy_multiplierChoice"
+                value={val}
+                checked={mulChoice === val}
+                onChange={() => setMulChoice(val)}
+                className="size-3.5"
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+        {mulChoice === "custom" ? (
+          <div className="mt-2 max-w-[12rem]">
+            <Field label="배수 (N)" hint="1 이상. 총 시청가능 = 강의 재생시간 × N">
+              <Input
+                name="policy_multiplier"
+                type="number"
+                min={1}
+                max={100}
+                step="0.1"
+                defaultValue={savedMul ?? 2}
+                className={numInput}
+              />
+            </Field>
+          </div>
+        ) : null}
+        <p className="text-muted-foreground/70 mt-1 text-[10px]">
+          무제한 = 시청 시간 제한 없음(수강기간만 적용). 기존 수강권에는 소급되지
+          않고 새 지급분부터 반영됩니다.
+        </p>
       </div>
 
       {/* 기기 · 다운로드 */}

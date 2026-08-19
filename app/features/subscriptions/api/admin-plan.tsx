@@ -32,10 +32,13 @@ const toIso = (v: FormDataEntryValue | null): string | null => {
 };
 
 // 강의 수강 정책(course/tpass 전용) — plan_policies. durationMode 로 수강기간 방식 분기.
+// ★배수(multiplier)는 수강기간 방식이 아니라 독립 축이다 — 어느 방식이든 함께 지정한다.
+//   무제한은 null. DB check 가 multiplier >= 1 이라 하한을 1 로 둔다(0 이면 저장 실패).
 const policySchema = z.object({
-  durationMode: z.enum(["multiplier", "days", "fixed"]),
-  multiplier: z.coerce.number().min(0).max(100).nullable(),
-  durationDays: z.coerce.number().int().min(0).max(3650).nullable(),
+  durationMode: z.enum(["days", "fixed"]),
+  multiplier: z.coerce.number().min(1).max(100).nullable(),
+  // DB check 가 duration_days > 0 이라 하한은 1.
+  durationDays: z.coerce.number().int().min(1).max(3650).nullable(),
   fixedEndDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
   allowDownload: z.boolean(),
   allowPc: z.boolean(),
@@ -215,10 +218,17 @@ export async function action({ request }: Route.ActionArgs) {
     parsed.data.productKind === "tpass"
   ) {
     const durationMode = String(fd.get("policy_durationMode") ?? "days");
+    // 배수 — 프리셋 라디오(무제한/1/1.5/2/3/직접입력)에서 값을 정한다.
+    const mulChoice = String(fd.get("policy_multiplierChoice") ?? "unlimited");
+    const multiplier =
+      mulChoice === "unlimited"
+        ? null
+        : mulChoice === "custom"
+          ? fd.get("policy_multiplier")
+          : mulChoice;
     const policyParsed = policySchema.safeParse({
       durationMode,
-      multiplier:
-        durationMode === "multiplier" ? fd.get("policy_multiplier") : null,
+      multiplier,
       durationDays:
         durationMode === "days" ? fd.get("policy_durationDays") : null,
       fixedEndDate:
@@ -249,6 +259,19 @@ export async function action({ request }: Route.ActionArgs) {
       );
     }
     const p = policyParsed.data;
+    // 수강기간은 일수·종료일 중 하나가 반드시 있어야 한다(DB 제약).
+    // 여기서 막지 않으면 DB 제약 문구가 그대로 관리자에게 노출된다.
+    if (p.durationDays == null && p.fixedEndDate == null) {
+      return data(
+        {
+          error:
+            durationMode === "fixed"
+              ? "수강 종료일을 입력하세요."
+              : "수강기간(일)을 1일 이상 입력하세요.",
+        },
+        { status: 400 },
+      );
+    }
     const polRes = await upsertPlanPolicy(res.planId, {
       multiplier: p.multiplier,
       durationDays: p.durationDays,

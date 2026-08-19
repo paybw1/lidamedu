@@ -427,8 +427,26 @@ export async function upsertPlanPolicy(
     },
     { onConflict: "plan_id" },
   );
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: planPolicyErrorMessage(error.message) };
   return { ok: true };
+}
+
+/**
+ * DB 제약 위반을 관리자가 읽을 수 있는 문장으로 바꾼다.
+ * (원장 요청 2026-08-20 — "잘못된 값 입력 시 DB 오류문구가 아닌 관리자용 안내 메시지")
+ * 매칭되지 않는 오류는 원문을 남긴다 — 삼켜 버리면 원인 파악이 불가능해진다.
+ */
+function planPolicyErrorMessage(raw: string): string {
+  if (raw.includes("plan_policies_check")) {
+    return "수강기간을 정할 수 없습니다 — 수강일수 또는 종료일 중 하나를 반드시 입력하세요.";
+  }
+  if (raw.includes("plan_policies_duration_days_check")) {
+    return "수강기간(일)은 1일 이상이어야 합니다.";
+  }
+  if (raw.includes("plan_policies_multiplier_check")) {
+    return "배수는 1 이상이어야 합니다. 제한을 두지 않으려면 “무제한”을 선택하세요.";
+  }
+  return `수강 정책 저장 실패: ${raw}`;
 }
 
 export interface ActiveSubscriptionInfo {

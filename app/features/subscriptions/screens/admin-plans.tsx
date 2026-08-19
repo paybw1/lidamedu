@@ -3,8 +3,14 @@
 import type { ReactNode } from "react";
 
 import { PackageIcon, PencilIcon, PlusIcon, XIcon } from "lucide-react";
-import { useEffect, useState } from "react";
-import { data, useFetcher, useLocation, useNavigate } from "react-router";
+import { useEffect, useRef, useState } from "react";
+import {
+  data,
+  useFetcher,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { ImageUploadHint } from "~/core/components/image-upload-hint";
@@ -113,6 +119,10 @@ export default function AdminPlans({ loaderData }: Route.ComponentProps) {
   const { plans, policies, courseLinks, editions, bookLinks, books, categoryOptions, role } =
     loaderData;
   const [adding, setAdding] = useState(false);
+  // 강의개설 목록의 "강의수정" 에서 ?plan=<planId> 로 들어오면 그 행을 바로 펼친다
+  // (원장 요청 2026-08-20 — 목록을 다시 훑지 않게).
+  const [params] = useSearchParams();
+  const focusPlanId = params.get("plan");
   const coursePlans = plans
     .filter((p) => p.productKind === "course" || p.productKind === "tpass")
     .map((p) => ({ planId: p.planId, name: p.name }));
@@ -167,6 +177,7 @@ export default function AdminPlans({ loaderData }: Route.ComponentProps) {
             books={books}
             linkedBooks={bookLinks[p.planId] ?? []}
             categoryOptions={categoryOptions}
+            autoOpen={focusPlanId === p.planId}
           />
         ))}
       </IndexTable>
@@ -185,6 +196,7 @@ function PlanRow({
   books,
   linkedBooks,
   categoryOptions,
+  autoOpen = false,
 }: {
   plan: SubscriptionPlan;
   policy?: PlanPolicy;
@@ -194,8 +206,15 @@ function PlanRow({
   books: BookPickerItem[];
   linkedBooks: PlanBookLink[];
   categoryOptions: Array<{ categoryId: string; label: string }>;
+  /** ?plan= 딥링크 대상이면 펼친 상태로 시작하고 화면에 보이도록 스크롤한다. */
+  autoOpen?: boolean;
 }) {
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(autoOpen);
+  const rowRef = useRef<HTMLTableRowElement>(null);
+  useEffect(() => {
+    if (!autoOpen) return;
+    rowRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [autoOpen]);
   return (
     <>
       <TR>
@@ -239,7 +258,7 @@ function PlanRow({
         </TD>
       </TR>
       {editing ? (
-        <tr className="border-border/60 border-b last:border-0">
+        <tr ref={rowRef} className="border-border/60 border-b last:border-0">
           <td colSpan={7} className="p-3">
             <PlanForm
               mode="update"

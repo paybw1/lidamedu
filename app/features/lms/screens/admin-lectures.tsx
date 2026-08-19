@@ -481,7 +481,12 @@ export default function AdminLectures({ loaderData, actionData }: Route.Componen
                         >
                           상세보기
                         </a>
-                        <Link to="/admin/pricing" className="text-link hover:underline">
+                        {/* 목록을 다시 거치지 않고 해당 상품의 수정폼으로 직행
+                            (원장 요청 2026-08-20). ?plan= 을 admin-plans 가 받아 펼친다. */}
+                        <Link
+                          to={`/admin/pricing?plan=${l.planId}`}
+                          className="text-link hover:underline"
+                        >
                           강의수정
                         </Link>
                         {l.firstCourseId ? (
