@@ -1,4 +1,6 @@
-// 암기 모드 — 조/항/호/목 + 소제목 골격을 유지하면서 본문은 학생이 직접 입력.
+// 암기 모드 — 조/항/호/목 골격만 남기고 본문은 학생이 직접 입력.
+// ★항 소제목(예: ① (산업상 이용가능성))은 표시하지 않는다 — 본문 내용을 그대로 알려 주는
+//   힌트라 암기가 성립하지 않는다(원장 지시 2026-08-19). 정답은 "정답 보기"로만 확인.
 // 자판 입력 + 음성(Speech Recognition, ko-KR) 양쪽 지원. 입력값과 정답(cumulative inline text)
 // 의 유사도를 실시간으로 계산해 시각화하고, "확인" 버튼으로 attempt 를 batch 저장.
 
@@ -36,7 +38,6 @@ import {
 interface RecitationBlock {
   blockIndex: number;
   label: string; // ① / 1. / 가. 등
-  subtitle: string | null;
   expectedText: string;
   /** 비교용 정규화 정답 — 키 입력마다 재정규화하지 않도록 1회 계산해 보관. */
   expectedNorm: string;
@@ -117,7 +118,6 @@ export function RecitationView({ articleId, articleLabel, body }: Props) {
             block: {
               blockIndex: myBi,
               label: block.label,
-              subtitle: block.subtitle ?? null,
               expectedText: expected,
               expectedNorm: normalizeForComparison(expected),
               depth,
@@ -135,7 +135,6 @@ export function RecitationView({ articleId, articleLabel, body }: Props) {
               block: {
                 blockIndex: myBi,
                 label: "본문",
-                subtitle: null,
                 expectedText: expected,
                 expectedNorm: normalizeForComparison(expected),
                 depth,
@@ -433,11 +432,6 @@ const ReciteRow = memo(function ReciteRow({
     >
       <div className="flex items-baseline gap-1.5">
         <span className="text-link text-sm font-semibold">{rb.label}</span>
-        {rb.subtitle ? (
-          <span className="bg-primary/10 text-link rounded px-1.5 py-0.5 text-xs font-semibold">
-            ({rb.subtitle})
-          </span>
-        ) : null}
         <SimilarityChip similarity={sim} hasInput={input.length > 0} />
       </div>
 
