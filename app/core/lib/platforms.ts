@@ -43,16 +43,30 @@ export function getActivePlatform(pathname: string): PlatformId {
   }
   // 커뮤니티 영역(자유게시판·스터디·합격수기 + 공지·이용가이드)도 강의 플랫폼 상단바
   // 컨텍스트에서 렌더(lecture.layout 아래로 이관) — 스위처가 '강의'로 표시되도록 판별.
-  if (
+  if (isCommunityAreaPath(pathname)) return "lecture";
+  return "study";
+}
+
+// 커뮤니티 영역 — 강의 레이아웃 아래에 있지만 학습 사용자가 주로 드나드는 읽기 화면.
+// 테마 정책이 강의 커머스 화면과 갈려서(아래 isLightOnlySurface) 별도 판별로 둔다.
+export function isCommunityAreaPath(pathname: string): boolean {
+  return (
     pathname === "/community" ||
     pathname.startsWith("/community/") ||
     pathname === "/announcements" ||
     pathname === "/guide" ||
     pathname.startsWith("/guide/")
-  ) {
-    return "lecture";
-  }
-  return "study";
+  );
+}
+
+// 라이트 단일 테마 화면(원장 2026-08-19) — 강의 플랫폼의 커머스·안내 화면.
+// 상품 이미지·가격표가 어두운 배경에서 깨진다.
+// ★커뮤니티·공지·이용가이드는 제외 — 강의 레이아웃 아래이긴 하나 학습 흐름에서 들어오는
+//   읽기 화면이라 사용자의 다크 설정을 그대로 따른다(원장 지시).
+export function isLightOnlySurface(pathname: string): boolean {
+  return (
+    getActivePlatform(pathname) === "lecture" && !isCommunityAreaPath(pathname)
+  );
 }
 
 // 운영관리(/admin)·인박스(/inbox) 등은 두 플랫폼 공용 운영 영역 — 특정 제품이 아니다.
