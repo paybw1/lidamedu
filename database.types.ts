@@ -2397,6 +2397,99 @@ export type Database = {
           },
         ]
       }
+      case_diagrams: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          blocks: Json
+          case_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          diagram_id: string
+          facts_md: string
+          facts_source_kind: string
+          facts_source_meta: Json
+          facts_source_ref: string | null
+          generated_by: string
+          rejected_reason: string | null
+          review_status: Database["public"]["Enums"]["problem_review_status"]
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          blocks?: Json
+          case_id: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          diagram_id?: string
+          facts_md?: string
+          facts_source_kind?: string
+          facts_source_meta?: Json
+          facts_source_ref?: string | null
+          generated_by?: string
+          rejected_reason?: string | null
+          review_status?: Database["public"]["Enums"]["problem_review_status"]
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          blocks?: Json
+          case_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          diagram_id?: string
+          facts_md?: string
+          facts_source_kind?: string
+          facts_source_meta?: Json
+          facts_source_ref?: string | null
+          generated_by?: string
+          rejected_reason?: string | null
+          review_status?: Database["public"]["Enums"]["problem_review_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_diagrams_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "case_diagrams_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "case_diagrams_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: true
+            referencedRelation: "cases"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "case_diagrams_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "case_diagrams_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       case_issue_attempts: {
         Row: {
           ai_analysis: Json | null

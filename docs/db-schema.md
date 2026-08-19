@@ -360,6 +360,66 @@ create table public.case_articles (
 
 > 판례 전문 검색은 `tsvector + pg_trgm` 우선 (결정사항 #3). pgvector 는 P2.
 
+### 6.1 case_diagrams (2차 대비 판례 도식, feat-2-035 · 2026-08-19 적용)
+
+2차 주관식이 판례 사실관계를 각색해 출제하는 현실에 맞춰, 판례를 **답안 작성 순서**
+(사실관계→쟁점→법조문→법리→포섭→결론)로 도식화해 두는 레퍼런스. 판례 1건 = 도식 1개.
+
+```sql
+create table public.case_diagrams (
+  diagram_id        uuid primary key default gen_random_uuid(),
+  case_id           uuid not null unique references public.cases(case_id) on delete cascade,
+
+  facts_md          text not null default '',           -- 사실관계 (★출처는 하급심)
+  facts_source_kind text not null default 'none'
+    check (facts_source_kind in
+      ('lower_auto','lower_self','lower_manual','supreme_only','manual','none')),
+  facts_source_ref  text,                               -- '특허법원 2022허4635' — 학생 화면 출처 캡션
+  facts_source_meta jsonb not null default '{}'::jsonb, -- {serial, files, fetchedAt}
+
+  blocks            jsonb not null default '[]'::jsonb  -- 쟁점 단위 블록 배열(아래)
+    check (jsonb_typeof(blocks) = 'array'),
+
+  review_status     public.problem_review_status not null default 'draft',
+  generated_by      text not null default 'ai' check (generated_by in ('ai','staff')),
+  approved_at       timestamptz,
+  approved_by       uuid references public.profiles(profile_id) on delete set null,
+  rejected_reason   text,
+
+  created_by        uuid references public.profiles(profile_id) on delete set null,
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now(),   -- set_updated_at 트리거
+  deleted_at        timestamptz                            -- soft delete
+);
+
+create index case_diagrams_review_status_idx
+  on public.case_diagrams (review_status) where deleted_at is null;
+```
+
+`blocks[i]` 형태 — DB 는 배열 여부만 보장하고, 필드 검증은 action 경계의 Zod
+(`app/features/cases/lib/case-diagram.ts`)가 단일 소유:
+
+```ts
+{ issue, statutes: string[],
+  doctrine: { textual?, purpose?, objective?, balance? },   // 법리 4축 — 각 축 optional
+  application, conclusion }
+```
+
+**설계 요점**
+- **사실관계만 판례당 1개**, 쟁점~결론은 쟁점마다 1세트라 배열로 반복 —
+  쟁점 2~3개 판결에서 한 줄로 이으면 어느 쟁점의 결론인지 무너진다.
+- **소스 이원화**: 사실관계=하급심 / 쟁점~결론=대법원. 상고심은 법률심이라 사실관계가
+  "원심이 인정한 사실은 …" 으로 압축돼 각색 출제의 원형이 남지 않는다.
+- **법리 4축(문언·취지·목적·형평)은 각각 optional.** 한 판결이 넷을 다 쓰는 일은 드물고,
+  빈 축을 채우게 하면 없는 논거를 짓게 된다(Non-negotiable 11).
+- 하급심 판결문 **전문은 DB 에 넣지 않는다** — `source/하급심 판결문/.cache/` 가 SSOT,
+  DB 에는 정리된 사실관계와 출처 표기만.
+- 테이블은 **과목 무관**. 특허·2005~ 는 생성·노출 범위이지 스키마 제약이 아니다.
+
+**RLS** — `case_training_items` 와 동형
+- `case_diagrams_read_approved` (SELECT): `review_status='approved' and deleted_at is null`
+- `case_diagrams_staff_all` (ALL): `private.is_staff(auth.uid())`
+
 ---
 
 ## 7. problems + 부속
