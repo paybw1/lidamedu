@@ -68,37 +68,115 @@ const stripTags = (s) =>
     .replace(/\r\n?/g, "\n")
     .trim();
 
+/** 법원명 정규화 — "서울고등법원" ↔ "서울고법", "대구지방법원" ↔ "대구지법" 을 같게 본다. */
+export function normalizeCourt(name) {
+  return String(name ?? "")
+    .replace(/\s+/g, "")
+    .replace(/고등법원/g, "고법")
+    .replace(/지방법원/g, "지법")
+    .replace(/가정법원/g, "가법")
+    .replace(/행정법원/g, "행법")
+    .trim();
+}
+
 /** 대법원 원문 헤더에서 원심 표기 추출. 판결·결정 둘 다. */
 function parseLowerRef(officialTextMd) {
   const text = String(officialTextMd ?? "");
   // 【원심판결】 특허법원 2023. 6. 16. 선고 2022허4635 판결
   // 【원심결정】 대구지법 2024. 12. 5.자 2024라10826 결정
   const withDate =
-    /【원심(?:판결|결정)】\s*([^\n【]*?)\s*\d{4}\.\s*\d{1,2}\.\s*\d{1,2}\.\s*(?:선고|자)\s*(\d{4}[가-힣]{1,3}\d+)/;
+    /【원심(?:판결|결정)】\s*([^\n【]*?)\s*(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\.\s*(?:선고|자)\s*(\d{4}[가-힣]{1,3}\d+)/;
+  const md = text.match(withDate);
+  if (md) {
+    const pad = (v) => String(v).padStart(2, "0");
+    return {
+      court: md[1].replace(/[,\s]+$/, "").trim(),
+      decidedAt: `${md[2]}.${pad(md[3])}.${pad(md[4])}`,
+      caseNumber: md[5],
+    };
+  }
   const noDate = /【원심(?:판결|결정)】\s*([^\n【]*?)\s*(\d{4}[가-힣]{1,3}\d+)/;
-  const m = text.match(withDate) ?? text.match(noDate);
+  const m = text.match(noDate);
   if (!m) return null;
-  const court = m[1].replace(/[,\s]+$/, "").trim();
-  return { court, caseNumber: m[2] };
+  return {
+    court: m[1].replace(/[,\s]+$/, "").trim(),
+    decidedAt: null,
+    caseNumber: m[2],
+  };
 }
 
-/** 국가법령정보센터 — 사건번호로 판례일련번호 조회. ★nb= 가 사건번호 키(query= 는 사건명). */
-async function findSerial(caseNumber) {
+/**
+ * 국가법령정보센터 — 사건번호로 판례일련번호 조회. ★nb= 가 사건번호 키(query= 는 사건명).
+ *
+ * ★사건번호만으로는 판례가 유일하지 않다 — `허` 는 특허법원 전용이라 안전하지만
+ *   `나`·`가합`·`라` 는 법원마다 같은 번호가 존재한다(서울고법 2008나68717 ≠ 부산고법 2008나68717).
+ *   법원명이 다르면 채택하지 않는다. 엉뚱한 사건의 사실관계에 그럴듯한 출처를 달아 주는 게
+ *   이 기능의 최악 실패다. 선고일자가 파싱된 경우 2차 확인으로 쓴다.
+ */
+async function findSerial(caseNumber, expected) {
   const url = `${API}/lawSearch.do?OC=${OC}&target=prec&type=JSON&nb=${encodeURIComponent(caseNumber)}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`lawSearch ${res.status}`);
   const json = await res.json().catch(() => null);
   const raw = json?.PrecSearch?.prec;
-  if (!raw) return null;
+  if (!raw) return { hit: null, reason: "미수록" };
   const list = Array.isArray(raw) ? raw : [raw];
-  // 부분일치가 섞여 올 수 있어 사건번호 완전일치만 채택.
-  const hit = list.find((p) => String(p?.사건번호 ?? "").trim() === caseNumber);
-  if (!hit?.판례일련번호) return null;
+  // 부분일치가 섞여 올 수 있어 사건번호 완전일치만 후보로.
+  const sameNumber = list.filter(
+    (p) => String(p?.사건번호 ?? "").trim() === caseNumber,
+  );
+  if (!sameNumber.length) return { hit: null, reason: "미수록" };
+
+  const wantCourt = normalizeCourt(expected?.court);
+  const verified = sameNumber.filter((p) => {
+    const gotCourt = normalizeCourt(p?.법원명);
+    const courtOk = !wantCourt || !gotCourt || gotCourt === wantCourt;
+    const gotDate = String(p?.선고일자 ?? "").trim();
+    const dateOk = !expected?.decidedAt || !gotDate || gotDate === expected.decidedAt;
+    return courtOk && dateOk;
+  });
+  if (!verified.length) {
+    const got = sameNumber
+      .map((p) => `${p?.법원명 ?? "?"} ${p?.선고일자 ?? "?"}`)
+      .join(" / ");
+    return {
+      hit: null,
+      reason: `법원·선고일 불일치 (기대 ${expected?.court ?? "?"} ${expected?.decidedAt ?? "?"} / 실제 ${got})`,
+    };
+  }
+  const hit = verified[0];
+  if (!hit?.판례일련번호) return { hit: null, reason: "미수록" };
   return {
-    serial: String(hit.판례일련번호),
-    court: String(hit.법원명 ?? "").trim(),
-    decidedAt: String(hit.선고일자 ?? "").trim(),
+    hit: {
+      serial: String(hit.판례일련번호),
+      court: String(hit.법원명 ?? "").trim(),
+      decidedAt: String(hit.선고일자 ?? "").trim(),
+    },
+    reason: null,
   };
+}
+
+/**
+ * 사실관계가 실린 전문인지 판정. law.go.kr 은 같은 사건이라도 판시사항·판결요지만
+ * 수록한 레코드를 주는 일이 있는데, 그건 "확보"가 아니다(도식의 사실관계를 못 쓴다).
+ */
+export function hasFactSection(text) {
+  const t = String(text ?? "");
+  // 사실관계 표제는 법원·사건유형마다 다르다. 특허법원 심결취소소송은 "1. 기초사실" 이 많지만
+  // "1. 이 사건 심결의 경위" 로 시작하는 판결도 그만큼 많다(둘 다 사실관계 절이다).
+  if (
+    /기초\s*사실|인정\s*사실|사실\s*관계|심결의\s*경위|처분의\s*경위|사건의\s*개요|분쟁의\s*경과|당사자의\s*주장/.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+  // 표제가 위 어디에도 안 걸리는 판결문도 있다 — 당사자 표시와 【이 유】가 모두 있으면 전문으로 본다.
+  // (판시사항·판결요지만 실린 레코드에는 둘 다 없다. 이 플래그의 목적이 바로 그 구분이다.)
+  return (
+    /【\s*원\s{0,6}고\s*】|【\s*신\s*청\s*인\s*】|【\s*채\s*권\s*자\s*】|【\s*항\s*소\s*인\s*】/.test(t) &&
+    /【\s*이\s{0,6}유\s*】/.test(t)
+  );
 }
 
 /** 판례일련번호 → 전문. */
@@ -201,6 +279,7 @@ async function main() {
     lowerAuto: [],
     lowerSelf: [],
     lowerManual: [],
+    noFacts: [],
     notInApi: [],
     noLowerRef: [],
     failed: [],
@@ -213,6 +292,17 @@ async function main() {
 
     if (!REFRESH && fs.existsSync(cachePath)) {
       const cached = JSON.parse(fs.readFileSync(cachePath, "utf8"));
+      if (!hasFactSection(cached.text)) {
+        report.noFacts.push({
+          case: cn,
+          lower: cached.sourceRef,
+          chars: cached.text.length,
+        });
+        console.log(
+          `${label}  △ 사실관계 없음(${cached.text.length}자)  ${cached.sourceRef}`,
+        );
+        continue;
+      }
       const bucket =
         cached.sourceKind === "lower_manual"
           ? "lowerManual"
@@ -239,6 +329,7 @@ async function main() {
         sourceKind: "lower_self",
         sourceRef: `${COURT_LABEL[row.court] ?? row.court} ${cn}`,
         fetchedAt: new Date().toISOString(),
+        hasFacts: hasFactSection(row.official_text_md),
         text: row.official_text_md.trim(),
       };
       fs.writeFileSync(cachePath, JSON.stringify(rec, null, 2), "utf8");
@@ -264,6 +355,7 @@ async function main() {
           sourceRef: used.map((n) => path.parse(n).name.replace(`${cn} `, "")).join(" / "),
           files: used,
           fetchedAt: new Date().toISOString(),
+          hasFacts: hasFactSection(text),
           text,
         };
         fs.writeFileSync(cachePath, JSON.stringify(rec, null, 2), "utf8");
@@ -284,11 +376,15 @@ async function main() {
       continue;
     }
     try {
-      const found = await findSerial(ref.caseNumber);
+      const { hit: found, reason } = await findSerial(ref.caseNumber, ref);
       await sleep(REQUEST_GAP_MS);
       if (!found) {
-        report.notInApi.push({ case: cn, lower: `${ref.court} ${ref.caseNumber}` });
-        console.log(`${label}  ✗ 미수록  ${ref.court} ${ref.caseNumber}`);
+        report.notInApi.push({
+          case: cn,
+          lower: `${ref.court} ${ref.caseNumber}`,
+          reason,
+        });
+        console.log(`${label}  ✗ ${reason}  ${ref.court} ${ref.caseNumber}`);
         continue;
       }
       const text = await fetchFullText(found.serial);
@@ -306,11 +402,19 @@ async function main() {
         serial: found.serial,
         decidedAt: found.decidedAt,
         fetchedAt: new Date().toISOString(),
+        // ★수록은 됐어도 판시사항·요지만 실린 레코드가 있다 — 그건 사실관계 소스가 못 된다.
+        //   캐시는 남기되(재요청 방지) 플래그로 갈라, 생성기는 hasFacts 인 것만 쓴다.
+        hasFacts: hasFactSection(text),
         text,
       };
       fs.writeFileSync(cachePath, JSON.stringify(rec, null, 2), "utf8");
-      report.lowerAuto.push({ case: cn, ref: rec.sourceRef, chars: text.length });
-      console.log(`${label}  자동 ${String(text.length).padStart(6)}자  ${rec.sourceRef}`);
+      if (!rec.hasFacts) {
+        report.noFacts.push({ case: cn, lower: rec.sourceRef, chars: text.length });
+        console.log(`${label}  △ 요지만 ${String(text.length).padStart(6)}자  ${rec.sourceRef}`);
+      } else {
+        report.lowerAuto.push({ case: cn, ref: rec.sourceRef, chars: text.length });
+        console.log(`${label}  자동 ${String(text.length).padStart(6)}자  ${rec.sourceRef}`);
+      }
     } catch (e) {
       report.failed.push({ case: cn, reason: String(e.message).slice(0, 120) });
       console.log(`${label}  ✗ 오류 ${String(e.message).slice(0, 60)}`);
@@ -320,7 +424,11 @@ async function main() {
   const reportPath = path.join(CACHE_DIR, `_report-${scope}.json`);
   fs.writeFileSync(reportPath, JSON.stringify(report, null, 2), "utf8");
 
-  const need = [...report.notInApi.map((r) => r.case), ...report.noLowerRef.map((r) => r.case)];
+  const need = [
+    ...report.notInApi.map((r) => r.case),
+    ...report.noFacts.map((r) => r.case),
+    ...report.noLowerRef.map((r) => r.case),
+  ];
   console.log(
     `\n확보 ${report.lowerAuto.length + report.lowerSelf.length + report.lowerManual.length}건` +
       ` (자동 ${report.lowerAuto.length} / 자체 ${report.lowerSelf.length} / 수기 ${report.lowerManual.length})` +
@@ -328,7 +436,8 @@ async function main() {
   );
   if (need.length) {
     console.log(`\n── 수기 투입 대상 (${need.length}건) ──`);
-    for (const r of report.notInApi) console.log(`  ${r.case}  ← ${r.lower} (법령정보센터 미수록)`);
+    for (const r of report.notInApi) console.log(`  ${r.case}  ← ${r.lower} (${r.reason ?? "법령정보센터 미수록"})`);
+    for (const r of report.noFacts) console.log(`  ${r.case}  ← ${r.lower} (수록됐으나 요지만 ${r.chars}자 — 사실관계 없음)`);
     for (const r of report.noLowerRef) console.log(`  ${r.case}  ← 원심 표기 없음 · ${r.title}`);
     console.log(`\n  → ${MANUAL_DIRS[LAW]} 에 "<대법원사건번호> <법원> <하급심사건번호>.pdf" 로 넣고 재실행`);
   }
