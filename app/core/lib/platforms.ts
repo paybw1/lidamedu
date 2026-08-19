@@ -58,12 +58,11 @@ export function isCommunityAreaPath(pathname: string): boolean {
   );
 }
 
-// 라이트 단일 테마 화면(원장 2026-08-19 최종) — 커뮤니티 영역(자유게시판·공지·이용가이드).
-// 사용자 작성 글·첨부 이미지가 섞이는 화면이라 배경을 고정한다.
-// ★강의 플랫폼의 나머지(/lecture/* · /about/* · /location)와 학습 플랫폼은 사용자가 테마를
-//   고른다 — 강의 상단바의 테마 스위처가 그 선택 수단이다.
+// 라이트 단일 테마(원장 2026-08-19 최종) — 강의 플랫폼 전체. 커머스 화면의 상품 이미지·
+// 가격표가 어두운 배경에서 깨진다. 테마 선택은 학습 플랫폼에서만 한다(강의 상단바에 스위처 없음).
+// ★강의 레이아웃 아래 커뮤니티 영역(/community·/announcements·/guide)도 강의 플랫폼이라 포함.
 export function isLightOnlySurface(pathname: string): boolean {
-  return isCommunityAreaPath(pathname);
+  return getActivePlatform(pathname) === "lecture";
 }
 
 // 운영관리(/admin)·인박스(/inbox) 등은 두 플랫폼 공용 운영 영역 — 특정 제품이 아니다.
