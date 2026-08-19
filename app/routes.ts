@@ -1549,6 +1549,15 @@ export default [
           "features/cases/screens/admin-case-training-edit.tsx",
         ),
       ]),
+      // feat-2-035 — 판례 도식(사실관계→쟁점→법조문→법리→포섭→결론). 판례당 1건이라
+      // 목록·편집 키가 itemId 가 아니라 caseId 다.
+      ...prefix("/admin/case-diagrams", [
+        index("features/cases/screens/admin-case-diagram-list.tsx"),
+        route(
+          "/:caseId",
+          "features/cases/screens/admin-case-diagram-edit.tsx",
+        ),
+      ]),
       ...prefix("/admin/blanks", [
         index("features/blanks/screens/admin-blanks-list.tsx"),
         route("/stats", "features/blanks/screens/admin-blanks-stats.tsx"),

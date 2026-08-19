@@ -45,6 +45,7 @@ export type AiUsageKind =
   | "ai_issue_analyze"        // GS §3 학생 액션 — 학생 논점 ↔ 모범 매칭 분석
   | "ai_case_facts_draft"          // 판례훈련 §1 강사 — 판례 전문 → 사실관계 요약 초안
   | "ai_case_issues_draft"         // 판례훈련 §1 강사 — 판례 전문 → 쟁점 목록 초안
+  | "ai_case_diagram_draft"        // feat-2-035 판례 도식 — 대법원 원문 → 쟁점~결론 블록 초안
   | "ai_case_issue_analyze"        // 판례훈련 §3 학생 — 학생 쟁점 ↔ 모범 매칭 분석
   | "ai_case_conclusion_draft"     // 결론·강약 훈련 §1 강사 — 쟁점 목록 → 결론·강약 초안
   | "ai_case_conclusion_analyze"   // 결론·강약 훈련 §3 학생 — 학생 결론·강약 코칭

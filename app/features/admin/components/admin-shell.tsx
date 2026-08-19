@@ -126,6 +126,8 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "판례·기출 매칭", to: "/admin/relations/exam-cases" },
       { label: "판례 등록", to: "/admin/cases/edit" },
       { label: "판례 쟁점훈련 출제", to: "/admin/case-training" },
+      // feat-2-035 — 2차 대비 도식(사실관계→쟁점→법조문→법리→포섭→결론).
+      { label: "판례 도식", to: "/admin/case-diagrams" },
       { label: "강의노트 사례연구 검토", to: "/admin/case-study-review" },
     ],
   },
