@@ -278,3 +278,9 @@ rag-lab/dist/
 
 # GitHub 100MB 제한 초과 대용량 원본 (로컬 보관 — 별도 백업 필요)
 source/특허법/리담특허법 강의노트(제10판).pdf
+
+# 하급심 판결문 원본 + 전문 캐시(feat-2-035) — 저작물·대용량. README 만 추적.
+/source/하급심 판결문/*
+!/source/하급심 판결문/특허/
+/source/하급심 판결문/특허/*
+!/source/하급심 판결문/특허/README.md
