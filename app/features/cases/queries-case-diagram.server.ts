@@ -125,16 +125,25 @@ export async function listCaseDiagramTargets(
   const { data, error } = await query;
   if (error) throw error;
 
+  // ★case_diagrams.case_id 가 unique 라 PostgREST 는 이 임베드를 배열이 아니라
+  //   **객체(또는 null)** 로 내려준다. 배열로 가정하면 .find 가 없어 500 이 난다.
+  //   임베드에는 deleted_at 필터가 안 걸리므로 여기서 살아있는 행만 남긴다.
+  type EmbeddedDiagram = {
+    diagram_id: string;
+    review_status: string;
+    facts_md: string;
+    facts_source_kind: string;
+    blocks: unknown;
+    deleted_at: string | null;
+  };
   const rows: CaseDiagramListRow[] = (data ?? []).map((r) => {
-    const raw = (r.case_diagrams ?? []) as Array<{
-      diagram_id: string;
-      review_status: string;
-      facts_md: string;
-      facts_source_kind: string;
-      blocks: unknown;
-      deleted_at: string | null;
-    }>;
-    const live = raw.find((d) => d.deleted_at === null) ?? null;
+    const raw = r.case_diagrams as EmbeddedDiagram | EmbeddedDiagram[] | null;
+    const candidates: EmbeddedDiagram[] = Array.isArray(raw)
+      ? raw
+      : raw
+        ? [raw]
+        : [];
+    const live = candidates.find((d) => d.deleted_at === null) ?? null;
     return {
       caseId: r.case_id,
       caseNumber: r.case_number,
