@@ -20,8 +20,10 @@ import {
   EXTERNAL_LECTURE_URL,
   LECTURE_GUIDE_LINKS,
   LECTURE_MYPAGE_LINKS,
+  isLightOnlySurface,
 } from "../lib/platforms";
 import { PlatformSwitch } from "../components/platform-switch";
+import ThemeSwitcher from "../components/theme-switcher";
 import { CartClearOnPurchase } from "~/features/lms/components/cart-clear-on-purchase";
 import { CartLink } from "~/features/lms/components/cart-link";
 import { UserMenu } from "../components/navigation-bar";
@@ -62,7 +64,10 @@ export default function LectureLayout({ loaderData }: Route.ComponentProps) {
   const { user, inboxUnread, inboxHref, isStaff } = loaderData;
   // 홈(히어로 캐러셀)에서는 헤더 하단 구분선을 없애 히어로가 상단바에 붙어 보이게.
   //   다른 강의 페이지에선 nav/본문 구분선 유지.
-  const isHome = useLocation().pathname === "/lecture/home";
+  const pathname = useLocation().pathname;
+  const isHome = pathname === "/lecture/home";
+  // 테마 스위처는 선택이 실제로 먹히는 화면에서만 — 커뮤니티 영역은 라이트 고정이라 숨긴다.
+  const themeSelectable = !isLightOnlySurface(pathname);
   return (
     <div className="flex min-h-screen flex-col justify-between">
       <header
@@ -88,6 +93,7 @@ export default function LectureLayout({ loaderData }: Route.ComponentProps) {
           <LectureNav isStaff={isStaff} />
 
           <div className="ml-auto flex items-center gap-2">
+            {themeSelectable ? <ThemeSwitcher /> : null}
             <CartLink />
             {user ? (
               <>
