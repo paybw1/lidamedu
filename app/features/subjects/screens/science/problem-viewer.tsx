@@ -115,6 +115,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   };
 }
 
+// 해설 상시 표시 토글의 브라우저 저장 키(학습 모드 전용, 서버 상태 아님).
+const ALWAYS_EXPLAIN_KEY = "science.alwaysExplain";
+
 const attemptSchema = z.object({
   intent: z.literal("attempt"),
   problemId: z.string().uuid(),
@@ -194,6 +197,28 @@ export default function ScienceProblemViewer({
   const isCorrect =
     showResult && "isCorrect" in aiData && aiData.isCorrect === true;
 
+  // 해설 상시 표시(학습 모드 전용) — 제출 전부터 정답·선지해설·문제해설을 펼쳐 두고
+  // 문제와 대조하며 읽는 방식. 정답이 보이는 상태의 풀이는 채점 의미가 없으므로
+  // 켜져 있는 동안에는 제출(=이력 기록)을 막는다(복습 러너의 ?view=1 과 같은 취급).
+  // 값은 브라우저에 남긴다 — 세션·문제를 넘겨도 유지되고 서버 상태가 아니다.
+  const [alwaysExplain, setAlwaysExplain] = useState(false);
+  useEffect(() => {
+    // localStorage 는 마운트 후에 읽는다(SSR 결과와 어긋나면 hydration 경고).
+    setAlwaysExplain(
+      window.localStorage.getItem(ALWAYS_EXPLAIN_KEY) === "1",
+    );
+  }, []);
+  const toggleAlwaysExplain = () => {
+    setAlwaysExplain((prev) => {
+      const next = !prev;
+      window.localStorage.setItem(ALWAYS_EXPLAIN_KEY, next ? "1" : "0");
+      return next;
+    });
+  };
+  // 시험 모드에서는 어떤 경우에도 미리 보여주지 않는다.
+  const revealAll = sessionMode === "study" && alwaysExplain;
+  const revealed = showResult || revealAll;
+
   useEffect(() => {
     setSelected(null);
   }, [problem.problemId]);
@@ -271,12 +296,35 @@ export default function ScienceProblemViewer({
                 <FlagIcon className="size-3.5" /> 끝내기
               </button>
             ) : null}
+            {/* 해설 상시 표시 — 학습 모드에서만. 시험 모드에는 노출조차 하지 않는다. */}
+            {sessionMode === "study" ? (
+              <button
+                type="button"
+                onClick={toggleAlwaysExplain}
+                aria-pressed={alwaysExplain}
+                title={
+                  alwaysExplain
+                    ? "끄면 제출해야 정답·해설이 보입니다(채점 이력 기록)."
+                    : "켜면 제출 전에도 정답·해설이 보입니다. 대신 채점 이력은 남지 않습니다."
+                }
+                data-testid="science-always-explain"
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold transition-colors",
+                  alwaysExplain
+                    ? "border-amber-400/60 bg-amber-50 text-amber-700 dark:border-amber-700/50 dark:bg-amber-950/30 dark:text-amber-300"
+                    : "border-border text-muted-foreground hover:bg-muted",
+                )}
+              >
+                <LightbulbIcon className="size-3.5" />
+                해설 상시 표시 {alwaysExplain ? "켬" : "끔"}
+              </button>
+            ) : null}
             <span
               className={cn(
                 "inline-flex items-center rounded-full px-2.5 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wide",
                 sessionMode === "exam"
                   ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                  : "bg-primary/10 text-link",
+                  : "bg-muted text-muted-foreground",
               )}
             >
               {sessionMode === "exam" ? "시험 모드" : "학습 모드"}
@@ -348,7 +396,6 @@ export default function ScienceProblemViewer({
           <div className="space-y-2 px-6 py-5">
             {problem.choices.map((c) => {
               const sel = selected === c.choiceId;
-              const revealed = showResult;
               const isThisCorrect = revealed && c.isCorrect;
               const isThisWrongSelected = revealed && sel && !c.isCorrect;
               return (
@@ -422,7 +469,12 @@ export default function ScienceProblemViewer({
             </Button>
           ) : null}
 
-          {!showResult ? (
+          {revealAll ? (
+            // 정답이 보이는 상태라 채점이 성립하지 않는다 — 제출 대신 상태를 밝힌다.
+            <p className="text-muted-foreground ml-auto text-xs">
+              해설 상시 표시 중 — 채점 이력이 남지 않습니다
+            </p>
+          ) : !showResult ? (
             <Button
               type="button"
               onClick={submit}
@@ -475,8 +527,9 @@ export default function ScienceProblemViewer({
           ) : null}
         </div>
 
-        {/* 문제 해설 — study 모드 제출 후 노출(문제 단위 explanation_md). 시험 모드는 showResult=false 라 미노출 */}
-        {showResult && problem.explanationMd ? (
+        {/* 문제 해설 — study 모드 제출 후, 또는 '해설 상시 표시' 켬일 때 노출(문제 단위
+            explanation_md). 시험 모드는 showResult=false·revealAll=false 라 미노출 */}
+        {revealed && problem.explanationMd ? (
           <div
             className="mt-6 rounded-xl border bg-card shadow-sm"
             data-testid="science-explanation"
