@@ -2549,6 +2549,68 @@ export type Database = {
           },
         ]
       }
+      case_lower_courts: {
+        Row: {
+          body_text: string
+          case_id: string
+          char_count: number
+          created_at: string
+          deleted_at: string | null
+          fetched_at: string | null
+          law_serial_id: string | null
+          lower_case_number: string | null
+          lower_court: string | null
+          lower_decided_at: string | null
+          lower_id: string
+          source_kind: string | null
+          source_ref: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          body_text?: string
+          case_id: string
+          char_count?: number
+          created_at?: string
+          deleted_at?: string | null
+          fetched_at?: string | null
+          law_serial_id?: string | null
+          lower_case_number?: string | null
+          lower_court?: string | null
+          lower_decided_at?: string | null
+          lower_id?: string
+          source_kind?: string | null
+          source_ref?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          body_text?: string
+          case_id?: string
+          char_count?: number
+          created_at?: string
+          deleted_at?: string | null
+          fetched_at?: string | null
+          law_serial_id?: string | null
+          lower_case_number?: string | null
+          lower_court?: string | null
+          lower_decided_at?: string | null
+          lower_id?: string
+          source_kind?: string | null
+          source_ref?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_lower_courts_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: true
+            referencedRelation: "cases"
+            referencedColumns: ["case_id"]
+          },
+        ]
+      }
       case_references: {
         Row: {
           authors: string | null

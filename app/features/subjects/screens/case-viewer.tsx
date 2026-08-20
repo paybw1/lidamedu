@@ -19,6 +19,8 @@ import { Card, CardHeader } from "~/core/components/ui/card";
 import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { CaseDiagramSheet } from "~/features/cases/components/case-diagram-sheet";
+import { LowerCourtSheet } from "~/features/cases/components/lower-court-sheet";
+import { getLowerCourtByCaseId } from "~/features/cases/queries-lower-court.server";
 import {
   getCaseDiagramByCaseId,
   resolveStatuteArticleIds,
@@ -249,6 +251,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     siblings,
     axisCounts,
     caseDiagram,
+    lowerCourt,
   ] = await Promise.all([
     getRelatedArticlesByCase(client, kase.caseId),
     getRelatedProblemsByCase(client, kase.caseId, 12),
@@ -265,6 +268,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     getSubjectAxisCounts(client, lawCode, law.lawId),
     // feat-2-035 — 판례 도식. RLS 가 학생에게는 승인분만 준다(staff 는 draft 도).
     getCaseDiagramByCaseId(client, kase.caseId),
+    // 원심 판결문 — case_lower_courts 는 staff 전용 RLS 라 학생 호출은 null.
+    getLowerCourtByCaseId(client, kase.caseId),
   ]);
 
   // feat-2-035 — 도식 법조문 표기를 조문 id 로 해석(본문 펼쳐보기). 도식이 없으면 건너뛴다.
@@ -312,6 +317,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     systematicNodes,
     caseTreeCounts,
     caseDiagram,
+    lowerCourt: lowerCourt?.status === "loaded" ? lowerCourt : null,
     statuteArticleIds,
     relatedArticles,
     relatedProblems,
@@ -346,6 +352,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
     caseTreeCounts,
     caseDiagram,
     statuteArticleIds,
+    lowerCourt,
     relatedArticles,
     relatedProblems,
     examProblems,
@@ -644,6 +651,8 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                     statuteArticleIds={statuteArticleIds}
                   />
                 ) : null}
+                {/* 원심 판결문 — 운영자 전용(RLS 가 학생에게는 null 을 준다). */}
+                {lowerCourt ? <LowerCourtSheet lower={lowerCourt} /> : null}
                 {memEnabled && (hasMem || hasCaseBlanks)
                   ? memToggles.map(([m, label]) => (
                       <button

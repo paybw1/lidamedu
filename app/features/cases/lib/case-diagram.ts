@@ -27,7 +27,7 @@ export const DOCTRINE_AXES = [
   },
   {
     key: "balance",
-    label: "형평성 해석",
+    label: "형평성 고려",
     hint: "다른 규정과의 균형·체계",
   },
 ] as const;

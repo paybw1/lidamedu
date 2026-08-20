@@ -826,6 +826,11 @@ export default [
         "/admin/cases/pdf-missing",
         "features/admin/screens/admin-case-pdf-missing.tsx",
       ),
+      // feat-2-035 — 하급심 판결문 적재 현황 + 수기 확보 대상 목록.
+      route(
+        "/admin/cases/lower-court",
+        "features/cases/screens/admin-lower-court-list.tsx",
+      ),
       route("/admin/cases/edit", "features/admin/screens/admin-case-edit.tsx", {
         id: "admin-case-new",
       }),
