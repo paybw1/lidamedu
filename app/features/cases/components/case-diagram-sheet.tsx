@@ -1,14 +1,28 @@
-// feat-2-035 S4 — 판례 도식 배지 + 우측 Sheet(학생 열람).
+// feat-2-035 S4 — 판례 도식 배지 + 열람 패널(우측 시트 / 가운데 팝업 선택).
 //
-// 팝업(Dialog)이 아니라 Sheet 인 이유: 6단 구조에 쟁점이 여러 개면 모달 박스에 안 들어가고,
-// 판례 본문을 옆에 두고 대조하며 읽는 게 이 기능의 사용법이다(설계 §6).
+// 표시 방식은 원장 요청(2026-08-20)으로 **사용자가 고른다** — 본문과 대조하며 읽으려면 시트가,
+// 도식만 크게 보려면 팝업이 낫다. 선택은 localStorage 에 남아 다음 판례에서도 유지된다.
 //
 // ★법리 4축은 "있는 축만" 렌더한다. 빈 축의 자리를 만들어 두면 "비어 있음"이 정보처럼 읽혀,
 //   근거 없는 축을 채우지 않기로 한 설계가 화면에서 무너진다.
 
-import { GitBranchIcon, ScaleIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+
+import {
+  GitBranchIcon,
+  PanelRightIcon,
+  ScaleIcon,
+  SquareIcon,
+} from "lucide-react";
 
 import { Badge } from "~/core/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "~/core/components/ui/dialog";
 import {
   Sheet,
   SheetContent,
@@ -17,6 +31,7 @@ import {
   SheetTrigger,
 } from "~/core/components/ui/sheet";
 import { cn } from "~/core/lib/utils";
+import { MarkdownView } from "~/features/problems/components/markdown-view";
 
 import {
   filledAxes,
@@ -32,6 +47,12 @@ export interface CaseDiagramView {
   blocks: CaseDiagramBlock[];
   reviewStatus: "draft" | "approved" | "rejected";
 }
+
+type ViewMode = "sheet" | "dialog";
+const VIEW_MODE_KEY = "caseDiagram.viewMode";
+
+// 쟁점 안쪽 4단은 답안 작성 순서 그대로 원문자로 매긴다(원장 요청 2026-08-20).
+const STEP_MARK = ["①", "②", "③", "④"] as const;
 
 /** 사실관계 출처 캡션 — 사실관계가 얇은 이유를 학생이 알 수 있게 밝힌다. */
 function factsSourceCaption(d: CaseDiagramView): string | null {
@@ -54,162 +75,257 @@ export function CaseDiagramSheet({
   className?: string;
 }) {
   const draft = diagram.reviewStatus !== "approved";
-  const caption = factsSourceCaption(diagram);
+  // localStorage 는 마운트 후에 읽는다 — SSR 결과와 어긋나면 hydration 경고.
+  const [mode, setMode] = useState<ViewMode>("sheet");
+  useEffect(() => {
+    const saved = window.localStorage.getItem(VIEW_MODE_KEY);
+    if (saved === "dialog" || saved === "sheet") setMode(saved);
+  }, []);
+  const switchMode = (next: ViewMode) => {
+    setMode(next);
+    window.localStorage.setItem(VIEW_MODE_KEY, next);
+  };
+
+  const trigger = (
+    <button
+      type="button"
+      title="2차 답안 순서로 정리한 도식 보기"
+      className={cn(
+        "inline-flex h-7 items-center gap-1 rounded-full border px-3 text-xs font-medium transition-colors",
+        draft
+          ? "border-amber-500/40 text-amber-700 hover:bg-amber-500/10 dark:text-amber-400"
+          : "border-primary/40 text-link hover:bg-primary/10",
+        className,
+      )}
+    >
+      <GitBranchIcon className="size-3.5" />
+      도식
+      {draft ? <span className="font-semibold">· 검수중</span> : null}
+    </button>
+  );
+
+  const title = (
+    <span className="flex flex-wrap items-center gap-2 text-sm font-semibold">
+      <ScaleIcon className="text-link size-4" />
+      판례 도식
+      <span className="text-muted-foreground font-mono text-xs font-normal">
+        {caseNumber}
+      </span>
+      <ModeToggle mode={mode} onChange={switchMode} />
+    </span>
+  );
+
+  const body = <DiagramBody diagram={diagram} draft={draft} />;
+
+  if (mode === "dialog") {
+    return (
+      <Dialog>
+        <DialogTrigger asChild>{trigger}</DialogTrigger>
+        <DialogContent className="max-h-[88vh] w-[min(96vw,900px)] max-w-none overflow-y-auto p-0 sm:max-w-none">
+          <DialogHeader className="border-border bg-background sticky top-0 z-10 border-b px-4 py-3">
+            <DialogTitle asChild>{title}</DialogTitle>
+            <HeaderHint />
+          </DialogHeader>
+          <div className="px-4 pb-4">{body}</div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Sheet>
-      <SheetTrigger asChild>
-        <button
-          type="button"
-          title="2차 답안 순서로 정리한 도식 보기"
-          className={cn(
-            "inline-flex h-7 items-center gap-1 rounded-full border px-3 text-xs font-medium transition-colors",
-            draft
-              ? "border-amber-500/40 text-amber-700 hover:bg-amber-500/10 dark:text-amber-400"
-              : "border-primary/40 text-link hover:bg-primary/10",
-            className,
-          )}
-        >
-          <GitBranchIcon className="size-3.5" />
-          도식
-          {draft ? <span className="font-semibold">· 검수중</span> : null}
-        </button>
-      </SheetTrigger>
+      <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent
         side="right"
-        className="w-full overflow-y-auto p-0 sm:max-w-[560px]"
+        className="w-full overflow-y-auto p-0 sm:max-w-[620px]"
       >
         <SheetHeader className="border-border bg-background sticky top-0 z-10 border-b px-4 py-3">
-          <SheetTitle className="flex items-center gap-2 text-sm font-semibold">
-            <ScaleIcon className="text-link size-4" />
-            판례 도식
-            <span className="text-muted-foreground font-mono text-xs font-normal">
-              {caseNumber}
-            </span>
-          </SheetTitle>
-          <p className="text-muted-foreground text-[11px]">
-            2차 답안 작성 순서 — 사실관계 → 쟁점 → 법조문 → 법리 → 포섭 → 결론
-          </p>
+          <SheetTitle asChild>{title}</SheetTitle>
+          <HeaderHint />
         </SheetHeader>
-
-        <div className="space-y-4 px-4 py-4">
-          {/* 사실관계 — 판례당 1개. 2차는 이 부분을 각색해 출제된다. */}
-          <section>
-            <h3 className="mb-1.5 flex items-center gap-1.5 text-xs font-bold">
-              <Badge variant="secondary" className="rounded-sm px-1.5 py-0">
-                사실관계
-              </Badge>
-              {caption ? (
-                <span className="text-muted-foreground text-[11px] font-normal">
-                  {caption}
-                </span>
-              ) : null}
-            </h3>
-            {diagram.factsMd.trim() ? (
-              <div className="border-border bg-muted/30 text-foreground rounded-lg border p-3 text-[13px] leading-relaxed whitespace-pre-wrap">
-                {diagram.factsMd}
-              </div>
-            ) : (
-              <p className="border-border text-muted-foreground rounded-lg border border-dashed p-3 text-xs">
-                이 판례는 사실관계가 아직 정리되지 않았습니다. 쟁점부터
-                확인하세요.
-              </p>
-            )}
-          </section>
-
-          {/* 쟁점 단위 블록 — 쟁점마다 법조문·법리·포섭·결론 1세트. */}
-          {diagram.blocks.map((b, i) => {
-            const axes = filledAxes(b);
-            return (
-              <section
-                key={i}
-                className="border-border bg-card rounded-xl border p-3 shadow-sm"
-              >
-                <h3 className="mb-2 flex items-start gap-1.5 text-[13px] font-bold">
-                  <Badge className="mt-0.5 shrink-0 rounded-sm px-1.5 py-0">
-                    쟁점 {i + 1}
-                  </Badge>
-                  <span className="leading-snug">{b.issue}</span>
-                </h3>
-
-                {b.statutes.length > 0 ? (
-                  <Row label="법조문">
-                    <div className="flex flex-wrap gap-1">
-                      {b.statutes.map((s) => (
-                        <span
-                          key={s}
-                          className="border-border text-muted-foreground rounded border px-1.5 py-0.5 text-[11px]"
-                        >
-                          {s}
-                        </span>
-                      ))}
-                    </div>
-                  </Row>
-                ) : null}
-
-                {axes.length > 0 ? (
-                  <Row label="법리">
-                    <div className="space-y-2">
-                      {axes.map((ax) => (
-                        <div key={ax.key}>
-                          <span className="bg-primary/10 text-link rounded px-1.5 py-0.5 text-[10px] font-semibold">
-                            {ax.label}
-                          </span>
-                          <p className="mt-1 text-[13px] leading-relaxed">
-                            {ax.body}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </Row>
-                ) : null}
-
-                {b.application ? (
-                  <Row label="사안의 포섭">
-                    <p className="text-[13px] leading-relaxed">
-                      {b.application}
-                    </p>
-                  </Row>
-                ) : null}
-
-                {b.conclusion ? (
-                  <Row label="결론">
-                    <p className="text-[13px] leading-relaxed font-medium">
-                      {b.conclusion}
-                    </p>
-                  </Row>
-                ) : null}
-              </section>
-            );
-          })}
-
-          {diagram.blocks.length === 0 ? (
-            <p className="text-muted-foreground text-xs">
-              아직 쟁점이 정리되지 않았습니다.
-            </p>
-          ) : null}
-
-          {draft ? (
-            <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
-              검수 전 초안입니다 — 운영자에게만 보입니다.
-            </p>
-          ) : null}
-        </div>
+        <div className="px-4 pb-4">{body}</div>
       </SheetContent>
     </Sheet>
   );
 }
 
-function Row({
+function HeaderHint() {
+  return (
+    <p className="text-muted-foreground text-[11px]">
+      2차 답안 작성 순서 — 사실관계 → 쟁점 → ① 법조문 → ② 법리 → ③ 사안의 포섭 →
+      ④ 결론
+    </p>
+  );
+}
+
+function ModeToggle({
+  mode,
+  onChange,
+}: {
+  mode: ViewMode;
+  onChange: (m: ViewMode) => void;
+}) {
+  return (
+    <span className="border-border ml-auto inline-flex overflow-hidden rounded-full border">
+      {(
+        [
+          ["sheet", "시트", PanelRightIcon],
+          ["dialog", "팝업", SquareIcon],
+        ] as const
+      ).map(([val, label, Icon]) => (
+        <button
+          key={val}
+          type="button"
+          onClick={() => onChange(val)}
+          aria-pressed={mode === val}
+          title={val === "sheet" ? "우측 시트로 보기" : "가운데 팝업으로 보기"}
+          className={cn(
+            "inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold transition-colors",
+            mode === val
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:bg-muted",
+          )}
+        >
+          <Icon className="size-3" />
+          {label}
+        </button>
+      ))}
+    </span>
+  );
+}
+
+function DiagramBody({
+  diagram,
+  draft,
+}: {
+  diagram: CaseDiagramView;
+  draft: boolean;
+}) {
+  const caption = factsSourceCaption(diagram);
+  return (
+    <div className="space-y-4 py-4">
+      {/* 사실관계 — 판례당 1개. 2차는 이 부분을 각색해 출제된다. */}
+      <section>
+        <h3 className="mb-1.5 flex flex-wrap items-center gap-1.5 text-xs font-bold">
+          <Badge variant="secondary" className="rounded-sm px-1.5 py-0">
+            사실관계
+          </Badge>
+          {caption ? (
+            <span className="text-muted-foreground text-[11px] font-normal">
+              {caption}
+            </span>
+          ) : null}
+        </h3>
+        {diagram.factsMd.trim() ? (
+          <div className="border-border bg-muted/30 rounded-lg border p-3">
+            {/* ★markdown 으로 저장된다 — 그대로 텍스트로 뿌리면 ##·**·- 가 노출된다.
+                trusted=false: 원시 HTML 을 파싱하지 않는다(도식에 HTML 은 불필요). */}
+            <MarkdownView
+              text={diagram.factsMd}
+              trusted={false}
+              className="text-[13px] leading-relaxed"
+            />
+          </div>
+        ) : (
+          <p className="border-border text-muted-foreground rounded-lg border border-dashed p-3 text-xs">
+            이 판례는 사실관계가 아직 정리되지 않았습니다. 쟁점부터 확인하세요.
+          </p>
+        )}
+      </section>
+
+      {/* 쟁점 단위 블록 — 쟁점마다 ①법조문 ②법리 ③포섭 ④결론 1세트. */}
+      {diagram.blocks.map((b, i) => {
+        const axes = filledAxes(b);
+        return (
+          <section
+            key={i}
+            className="border-border bg-card rounded-xl border p-3 shadow-sm"
+          >
+            <h3 className="mb-2 flex items-start gap-1.5 text-[13px] font-bold">
+              <Badge className="mt-0.5 shrink-0 rounded-sm px-1.5 py-0">
+                쟁점 {i + 1}
+              </Badge>
+              <span className="leading-snug">{b.issue}</span>
+            </h3>
+
+            {b.statutes.length > 0 ? (
+              <Step no={0} label="법조문">
+                <div className="flex flex-wrap gap-1">
+                  {b.statutes.map((s) => (
+                    <span
+                      key={s}
+                      className="border-border text-muted-foreground rounded border px-1.5 py-0.5 text-[11px]"
+                    >
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              </Step>
+            ) : null}
+
+            {axes.length > 0 ? (
+              <Step no={1} label="법리">
+                <div className="space-y-2">
+                  {axes.map((ax) => (
+                    <div key={ax.key}>
+                      <span className="bg-primary/10 text-link rounded px-1.5 py-0.5 text-[10px] font-semibold">
+                        {ax.label}
+                      </span>
+                      <p className="mt-1 text-[13px] leading-relaxed">
+                        {ax.body}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </Step>
+            ) : null}
+
+            {b.application ? (
+              <Step no={2} label="사안의 포섭">
+                <p className="text-[13px] leading-relaxed">{b.application}</p>
+              </Step>
+            ) : null}
+
+            {b.conclusion ? (
+              <Step no={3} label="결론">
+                <p className="text-[13px] leading-relaxed font-medium">
+                  {b.conclusion}
+                </p>
+              </Step>
+            ) : null}
+          </section>
+        );
+      })}
+
+      {diagram.blocks.length === 0 ? (
+        <p className="text-muted-foreground text-xs">
+          아직 쟁점이 정리되지 않았습니다.
+        </p>
+      ) : null}
+
+      {draft ? (
+        <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
+          검수 전 초안입니다 — 운영자에게만 보입니다.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/** 답안 작성 순서 단계 — 원문자는 순서가 곧 의미라 고정 인덱스로 매긴다(빈 단계도 번호 유지). */
+function Step({
+  no,
   label,
   children,
 }: {
+  no: 0 | 1 | 2 | 3;
   label: string;
   children: React.ReactNode;
 }) {
   return (
     <div className="mt-2">
-      <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wide">
+      <p className="text-muted-foreground mb-1 flex items-center gap-1 text-[10px] font-semibold tracking-wide">
+        <span className="text-link text-[12px]">{STEP_MARK[no]}</span>
         {label}
       </p>
       {children}
