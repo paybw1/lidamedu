@@ -4,6 +4,7 @@
 import { data } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { RichHtml } from "~/features/lms/components/rich-html";
 
 import { getCustomPageByCode } from "../queries.server";
 
@@ -45,11 +46,9 @@ export default function PageView({ loaderData }: Route.ComponentProps) {
           중지 상태 페이지 — 운영자 미리보기입니다(사용자에게는 준비 중 안내가 표시됩니다).
         </div>
       ) : null}
-      {/* 운영자 작성 신뢰 HTML — HtmlEditor 원본 보존 정책과 짝. 반응형 보정은 공용 클래스. */}
-      <div
-        className="lecture-detail-html"
-        dangerouslySetInnerHTML={{ __html: page.bodyHtml }}
-      />
+      {/* 운영자 작성 신뢰 HTML — HtmlEditor 원본 보존 정책과 짝. 반응형 보정은 공용 클래스.
+          RichHtml = <script> 까지 실행(요청서 ⑦). 편집은 staff 전용(admin-page-edit). */}
+      <RichHtml className="lecture-detail-html" html={page.bodyHtml} />
     </div>
   );
 }

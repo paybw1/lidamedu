@@ -17,6 +17,8 @@ import {
   YoutubeIcon,
 } from "lucide-react";
 
+import { RichHtml } from "./rich-html";
+
 type Mode = "visual" | "source" | "preview";
 
 export interface HtmlEditorProps {
@@ -276,11 +278,19 @@ export function HtmlEditor({
           />
         ) : (
           <div className="bg-muted/30 flex justify-center overflow-auto p-4" style={{ minHeight }}>
+            {/* 미리보기도 RichHtml — 스크립트가 실제 페이지에서만 돌면
+                "미리보기와 실제가 같다"는 요청서 ⑦ 조건이 깨진다. */}
             <div
-              className="lecture-detail-html bg-background rounded shadow-sm"
               style={{ width: mobilePreview ? 390 : "100%", maxWidth: "100%", padding: 16 }}
-              dangerouslySetInnerHTML={{ __html: html || "<p style='color:#999'>미리볼 내용이 없습니다.</p>" }}
-            />
+              className="bg-background rounded shadow-sm"
+            >
+              <RichHtml
+                className="lecture-detail-html"
+                html={
+                  html || "<p style='color:#999'>미리볼 내용이 없습니다.</p>"
+                }
+              />
+            </div>
           </div>
         )}
       </div>

@@ -13,6 +13,8 @@ import {
   CommandPalette,
   openCommandPalette,
 } from "../components/command-palette";
+import { BugReportWidget } from "~/features/bug-reports/components/bug-report-widget";
+
 import Footer from "../components/footer";
 import { LectureNav, LectureNavMobile } from "../components/lecture-nav";
 import { LectureSubNav } from "../components/lecture-sub-nav";
@@ -141,6 +143,9 @@ export default function LectureLayout({ loaderData }: Route.ComponentProps) {
 
       <CartClearOnPurchase />
       {user ? <CommandPalette /> : null}
+      {/* 오류 신고 — 종전에는 학습 플랫폼(navigation.layout)에만 있어 강의 플랫폼에서
+          문제를 발견해도 신고할 방법이 없었다. 같은 위젯·같은 엔드포인트를 쓴다. */}
+      {user ? <BugReportWidget /> : null}
       <main className="mx-auto w-full flex-1">
         <Outlet />
       </main>

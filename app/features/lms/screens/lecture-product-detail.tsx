@@ -1,6 +1,7 @@
 // 수강신청 상세(강의 플랫폼) — /lecture/catalog/:productCode.
 //   카탈로그 카드 클릭 → 이 화면. 본문 = 운영자 입력 이미지 또는 HTML(히어로 배너와 동일 방식),
 //   없으면 소개·포함 강의·교재 기본 정보로 폴백. 하단 sticky 담기/수강신청.
+import { RichHtml } from "~/features/lms/components/rich-html";
 import {
   ArrowLeftIcon,
   CheckIcon,
@@ -151,10 +152,11 @@ export default function LectureProductDetail({
           {sections.map((sec) => (
             <section key={sec.key}>
               <h2 className="mb-2 text-lg font-bold tracking-tight">{sec.label}</h2>
-              {/* 운영자(staff) 작성 신뢰 HTML — HtmlEditor 원본 보존 정책과 짝. */}
-              <div
+              {/* 운영자(staff) 작성 신뢰 HTML — HtmlEditor 원본 보존 정책과 짝.
+                  RichHtml = <script> 까지 실행(이벤트 페이지 카운트다운·리빌 등). */}
+              <RichHtml
                 className="lecture-detail-html"
-                dangerouslySetInnerHTML={{ __html: product.detailSections[sec.key] ?? "" }}
+                html={product.detailSections[sec.key] ?? ""}
               />
             </section>
           ))}
@@ -168,9 +170,9 @@ export default function LectureProductDetail({
         />
       ) : product.detailHtml ? (
         // 운영자(staff) 작성 CMS 콘텐츠 — 히어로 배너와 동일하게 신뢰.
-        <div
+        <RichHtml
           className="lecture-detail-html mt-6"
-          dangerouslySetInnerHTML={{ __html: product.detailHtml }}
+          html={product.detailHtml}
         />
       ) : null}
 
