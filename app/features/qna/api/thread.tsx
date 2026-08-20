@@ -56,6 +56,8 @@ const answerSchema = z.object({
 const closeSchema = z.object({
   intent: z.literal("close"),
   threadId: z.string().uuid(),
+  // 강사가 답변 없이 처리 완료할 때의 사유(선택) — 질문자가 이유를 알 수 있게.
+  reasonMd: z.string().trim().max(1000).optional(),
 });
 
 const deleteSchema = z.object({
@@ -269,7 +271,13 @@ export async function action({ request }: Route.ActionArgs) {
     if (!existing) {
       return data({ ok: false, error: "not-found" }, { status: 404, headers });
     }
-    await closeThread(client, parsed.data.threadId);
+    // 강사 종료면 처리자를 남긴다 — 답변 없이 끝난 건도 "누가 처리했는지"가 남아야
+    // SLA·통계에서 미응답으로 떠돌지 않는다.
+    const closerIsStaff = (await getStaffRole(client, user.id)) !== null;
+    await closeThread(client, parsed.data.threadId, {
+      resolvedBy: closerIsStaff ? user.id : null,
+      reasonMd: closerIsStaff ? (parsed.data.reasonMd ?? null) : null,
+    });
     return data({ ok: true }, { headers });
   }
 

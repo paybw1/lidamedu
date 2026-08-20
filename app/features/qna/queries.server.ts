@@ -722,13 +722,40 @@ export async function answerThread(
   return (await fillProfileNames([toDetail(data as unknown as RawDetailRow)]))[0];
 }
 
+/**
+ * 질문 종료. 질문자의 "충분히 답변됨" 종료와, 강사의 "답변 없이 처리 완료"(질문이 잘못
+ * 작성된 경우 등, 원장 요청 2026-08-20)가 같은 경로를 쓴다.
+ *
+ * ★정식 답변 없이 끝나는 건은 answered_at 을 여기서 찍는다 — SLA 미응답 판정이
+ *   `answered_at IS NULL AND status IN ('open','ai_answered')` 이라, 상태만 바꾸면
+ *   목록에서는 사라지지만 지연 통계에는 영구 미응답으로 남는다.
+ * @param resolvedBy 강사 종료면 처리자 id. 질문자 종료면 null(원래 답변자를 보존).
+ * @param reasonMd   답변이 없을 때만 채우는 종료 사유 — 질문자가 이유를 알 수 있게.
+ */
 export async function closeThread(
   client: SupabaseClient<Database>,
   threadId: string,
+  opts: { resolvedBy?: string | null; reasonMd?: string | null } = {},
 ): Promise<void> {
+  const { data: current, error: readErr } = await client
+    .from("qna_threads")
+    .select("answered_at, answer_md")
+    .eq("thread_id", threadId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (readErr) throw readErr;
+
+  const patch: Record<string, unknown> = { status: "closed" };
+  if (current && !current.answered_at) {
+    patch.answered_at = new Date().toISOString();
+    if (opts.resolvedBy) patch.answerer_id = opts.resolvedBy;
+  }
+  const reason = opts.reasonMd?.trim();
+  if (reason && !current?.answer_md?.trim()) patch.answer_md = reason;
+
   const { error } = await client
     .from("qna_threads")
-    .update({ status: "closed" })
+    .update(patch)
     .eq("thread_id", threadId)
     .is("deleted_at", null);
   if (error) throw error;

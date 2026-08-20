@@ -22,6 +22,7 @@ import {
 } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
+import { Textarea } from "~/core/components/ui/textarea";
 import { QnaImageTextarea } from "~/features/qna/components/qna-image-textarea";
 import { cn } from "~/core/lib/utils";
 import { Chip } from "~/features/community/components/community-ui";
@@ -408,6 +409,15 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
 
       {isAsker && thread.status === "answered" ? (
         <CloseButton threadId={thread.threadId} />
+      ) : null}
+
+      {/* 강사·관리자 — 답변 없이 처리 완료. 질문이 잘못 작성돼 답변할 것이 없는 건이
+          미답변 큐에 영구히 남는 문제(원장 요청 2026-08-20). 사유는 질문자에게 보인다. */}
+      {isStaff && thread.status !== "closed" ? (
+        <StaffResolveForm
+          threadId={thread.threadId}
+          hasAnswer={Boolean(thread.answerMd?.trim())}
+        />
       ) : null}
 
       {thread.status === "closed" ? (
@@ -1162,6 +1172,56 @@ function AnswerForm({ threadId }: { threadId: string }) {
         </div>
       </fetcher.Form>
     </div>
+  );
+}
+
+/**
+ * 강사·관리자 — 답변 없이 처리 완료(질문 오류·중복·오등록 등).
+ * 사유는 답변이 비어 있을 때만 답변란에 남는다 — 질문자가 왜 종료됐는지 알 수 있게.
+ */
+function StaffResolveForm({
+  threadId,
+  hasAnswer,
+}: {
+  threadId: string;
+  hasAnswer: boolean;
+}) {
+  const fetcher = useFetcher();
+  const isSubmitting = fetcher.state !== "idle";
+  return (
+    <fetcher.Form
+      method="post"
+      action="/api/qna/thread"
+      className="border-border bg-card rounded-2xl border p-4 shadow-sm"
+    >
+      <input type="hidden" name="intent" value="close" />
+      <input type="hidden" name="threadId" value={threadId} />
+      <p className="mb-2 flex items-center gap-2 text-[13px] font-semibold">
+        <CheckCircle2Icon className="size-4 text-emerald-600 dark:text-emerald-400" />
+        답변 없이 처리 완료
+      </p>
+      <p className="text-muted-foreground mb-2 text-[12px] leading-relaxed">
+        질문이 잘못 작성됐거나 중복·오등록이라 답변할 내용이 없는 경우에 씁니다.
+        처리하면 미답변 목록과 지연 통계에서 빠집니다.
+      </p>
+      {hasAnswer ? null : (
+        <Textarea
+          name="reasonMd"
+          rows={2}
+          placeholder="종료 사유 (선택) — 질문자에게 표시됩니다. 예: 질문 내용이 확인되지 않아 종료합니다. 다시 작성해 주세요."
+          className="mb-2 text-[13px]"
+        />
+      )}
+      <Button
+        type="submit"
+        variant="outline"
+        size="sm"
+        className="rounded-full"
+        disabled={isSubmitting}
+      >
+        처리 완료
+      </Button>
+    </fetcher.Form>
   );
 }
 
