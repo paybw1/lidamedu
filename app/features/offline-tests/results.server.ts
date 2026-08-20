@@ -332,7 +332,14 @@ export interface SaveOfflineResultsSummary {
   // Phase 1 S1 — SRS 축 부분 실패 경고 (스탬프 미기록 → 재저장 시 해당 축만 자동 재적용).
   srsWarnings: string[];
   // Phase 3 G3 — 진단 테스트 tier 자동 갱신 결과 (운영자 화면 가시화).
-  tierUpdates: Array<{ userId: string; tier: string; score: number; total: number }>;
+  tierUpdates: Array<{
+    userId: string;
+    /** 혼합 출제 대응 — 갱신된 자연과학 과목 코드. */
+    subject: string;
+    tier: string;
+    score: number;
+    total: number;
+  }>;
   tierRetractedCount: number;
 }
 
@@ -374,6 +381,10 @@ export async function saveOfflineTestResults(
     .maybeSingle();
   const isDiagnostic = Boolean(testMeta?.is_diagnostic && testMeta?.science_subject);
   const diagnosticSubject = testMeta?.science_subject ?? null;
+  // ★혼합 출제 대응(원장 결정 2026-08-20) — 자연과학 시험지는 과목이 하나로 적혀 있어도
+  //   문항은 여러 과목이 섞일 수 있다. tier 는 과목별 수준이므로 한 덩어리로 채점하면
+  //   물리 성적으로 화학 수준을 판정하게 된다. 문항의 실제 과목으로 나눠 집계한다.
+  //   시험지의 science_subject 는 "이 시험이 자연과학인가"의 표지로만 쓴다.
   // 시험일 정오(KST) 시각으로 기록 — "가장 최근 시도" 규칙과 실제 응시일 정합.
   const attemptedAt = `${input.takenAt}T12:00:00+09:00`;
 
@@ -493,8 +504,39 @@ export async function saveOfflineTestResults(
   const oxStampUsers: string[] = [];
   // G3 — 진단 tier 갱신 수집 (taken 전원). tier 는 SRS 와 달리 현재 상태 스냅샷이라
   //   재저장 시에도 항상 최신 결과로 갱신한다(승인 1-3). absent 철회는 아래에서 표시.
-  const tierTaken: Array<{ userId: string; score: number; total: number }> = [];
+  // 과목별로 나눠 담는다 — { userId, subject } 단위로 점수/총점.
+  const tierTaken: Array<{
+    userId: string;
+    subject: string;
+    score: number;
+    total: number;
+  }> = [];
   const tierAbsentUsers: string[] = [];
+
+  // 문항 → 자연과학 과목. 진단 테스트일 때만 조회(그 외에는 쓰이지 않는다).
+  const subjectByQuestionId = new Map<string, string>();
+  if (isDiagnostic && problemIdsInTest.length > 0) {
+    const { data: sciRows } = await admin
+      .from("problems")
+      .select("problem_id, science_subject")
+      .in("problem_id", problemIdsInTest)
+      .eq("subject_type", "science");
+    const subjectByProblem = new Map(
+      (sciRows ?? [])
+        .filter((r) => r.science_subject)
+        .map((r) => [r.problem_id, r.science_subject as string]),
+    );
+    for (const q of questions) {
+      const pid = q.problem_id ?? q.ox_problem_id;
+      const subject = pid ? subjectByProblem.get(pid) : undefined;
+      // 과목을 못 찾은 문항(법률 문제·빈칸 등)은 시험지 과목으로 귀속한다 —
+      // 버리면 총점이 줄어 tier 가 실제보다 높게 나온다.
+      subjectByQuestionId.set(
+        q.question_id,
+        subject ?? diagnosticSubject ?? "",
+      );
+    }
+  }
 
   for (const entry of input.entries) {
     const wrongSet = new Set(
@@ -509,11 +551,19 @@ export async function saveOfflineTestResults(
     // G3 — 진단 테스트 tier 수집 (온라인 프리필·지필 공통, absent 는 철회 표시).
     if (isDiagnostic) {
       if (entry.status === "taken") {
-        tierTaken.push({
-          userId: entry.userId,
-          score: answerRows.filter((r) => r.is_correct).length,
-          total: answerRows.length,
-        });
+        // 과목별 정답/총점 — 혼합 시험이면 과목 수만큼 행이 생긴다.
+        const perSubject = new Map<string, { score: number; total: number }>();
+        for (const r of answerRows) {
+          const subject = subjectByQuestionId.get(r.question_id);
+          if (!subject) continue;
+          const acc = perSubject.get(subject) ?? { score: 0, total: 0 };
+          acc.total += 1;
+          if (r.is_correct) acc.score += 1;
+          perSubject.set(subject, acc);
+        }
+        for (const [subject, acc] of perSubject) {
+          tierTaken.push({ userId: entry.userId, subject, ...acc });
+        }
       } else {
         tierAbsentUsers.push(entry.userId);
       }
@@ -797,11 +847,17 @@ export async function saveOfflineTestResults(
       const nowIso = new Date().toISOString();
       const rows = tierTaken.map((t) => {
         const tier = deriveScienceTier(t.score, t.total);
-        tierUpdates.push({ userId: t.userId, tier, score: t.score, total: t.total });
+        tierUpdates.push({
+          userId: t.userId,
+          subject: t.subject,
+          tier,
+          score: t.score,
+          total: t.total,
+        });
         return {
           user_id: t.userId,
           subject_kind: "science",
-          subject_code: diagnosticSubject,
+          subject_code: t.subject,
           science_tier: tier,
           science_score: t.score,
           science_total: t.total,
@@ -819,11 +875,12 @@ export async function saveOfflineTestResults(
     // 철회(taken→absent) — 자동 복원 없음(이전 값을 덮어썼으므로 복원 대상 부재).
     // 값은 유지하고 출처만 '진단 철회'로 바꿔 재확인 경고를 노출한다(승인 2.4).
     if (tierAbsentUsers.length > 0) {
+      // 혼합 시험이면 이 시험이 갱신한 과목이 여럿이다 — subject_code 로 좁히지 않고
+      // 이 시험(diagnostic_test_id)이 남긴 행 전부를 철회 표시한다.
       const { data: retracted, error } = await admin
         .from("student_subject_status")
         .update({ tier_source: "diagnostic_retracted", updated_at: new Date().toISOString() })
         .eq("subject_kind", "science")
-        .eq("subject_code", diagnosticSubject)
         .eq("diagnostic_test_id", input.testId)
         .eq("tier_source", "diagnostic_test")
         .in("user_id", tierAbsentUsers)

@@ -63,6 +63,11 @@ import {
   LAW_SUBJECT_SLUGS,
   type LawSubjectSlug,
 } from "~/features/subjects/lib/subjects";
+import {
+  SCIENCE_SUBJECTS,
+  SCIENCE_SUBJECT_SLUGS,
+  type ScienceSubjectSlug,
+} from "~/features/subjects/lib/science";
 
 import type { Route } from "./+types/admin-offline-test-edit";
 
@@ -114,6 +119,15 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   // 후보 탐색 과목 — ?subj= 로 시험지 과목 외 다른 과목도 담을 수 있다(법률 과목 한정).
   // 자연과학 시험은 과목 고정. 저장은 과목 무관(offline_test_questions 는 문항 참조만).
   const subjParam = url.searchParams.get("subj");
+  // 자연과학 혼합 출제 — ?sci= 로 시험지 과목 외 다른 자연과목 문제도 담는다.
+  //   저장은 원래부터 과목 무관(offline_test_questions 는 문항 참조만)이라 화면만 열면 된다.
+  const sciParam = url.searchParams.get("sci");
+  const candScienceSubject =
+    isScience &&
+    sciParam &&
+    (SCIENCE_SUBJECT_SLUGS as readonly string[]).includes(sciParam)
+      ? (sciParam as ScienceSubjectSlug)
+      : (test.scienceSubject as ScienceSubjectSlug | null);
   const candLawCode: LawSubjectSlug | null =
     !isScience &&
     subjParam &&
@@ -131,9 +145,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   let mcqCands: Awaited<ReturnType<typeof listMcqCandidates>> = [];
   let oxCands: Awaited<ReturnType<typeof listOxCandidates>> = [];
   let blankCands: Awaited<ReturnType<typeof listBlankCandidates>> = [];
-  if (isScience && test.scienceSubject) {
+  if (isScience && candScienceSubject) {
     mcqCands = await listScienceMcqCandidates(client, {
-      scienceSubject: test.scienceSubject,
+      scienceSubject: candScienceSubject,
       sectionId: nodeId,
       limit: candLimit,
       all: wantAll,
@@ -155,11 +169,11 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   // 파트 옵션 — 법률=체계도 노드 / 자연과학=단원(science_sections). 라벨만 경량 조회.
   let nodes: Array<{ nodeId: string; label: string; depth: number }> = [];
-  if (isScience && test.scienceSubject) {
+  if (isScience && candScienceSubject) {
     const { data: sections } = await client
       .from("science_sections")
       .select("section_id, label, order_index")
-      .eq("science_subject", test.scienceSubject)
+      .eq("science_subject", candScienceSubject)
       .order("order_index");
     nodes = (sections ?? []).map((s) => ({
       nodeId: s.section_id,
@@ -192,10 +206,16 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     candCountOptions: CAND_COUNT_OPTIONS,
     candShownTotal:
       mcqCands.length + oxCands.length + blankCands.length,
-    candSubject: isScience ? null : candLawCode,
+    candSubject: isScience ? candScienceSubject : candLawCode,
     subjectOptions: isScience
-      ? []
-      : LAW_SUBJECT_SLUGS.map((s) => ({ code: s, name: LAW_SUBJECTS[s].name })),
+      ? SCIENCE_SUBJECT_SLUGS.map((s) => ({
+          code: s as string,
+          name: SCIENCE_SUBJECTS[s].name,
+        }))
+      : LAW_SUBJECT_SLUGS.map((s) => ({
+          code: s as string,
+          name: LAW_SUBJECTS[s].name,
+        })),
     mcqCands,
     oxCands,
     blankCands,
@@ -732,8 +752,9 @@ function CandidateFilter({
   filter: { type: OfflineQuestionType; nodeId: string | null; minImportance: number };
   nodes: Array<{ nodeId: string; label: string; depth: number }>;
   isScience: boolean;
-  candSubject: LawSubjectSlug | null;
-  subjectOptions: Array<{ code: LawSubjectSlug; name: string }>;
+  /** 후보 탐색 과목 — 법률이면 LawSubjectSlug, 자연과학이면 ScienceSubjectSlug. */
+  candSubject: string | null;
+  subjectOptions: Array<{ code: string; name: string }>;
   candCount: string;
   candCountOptions: readonly number[];
 }) {
@@ -741,7 +762,7 @@ function CandidateFilter({
   // 수량 변경 — 현재 적용된 필터(과목/유형/파트/중요도)를 보존하며 count 만 바꿔 이동.
   const changeCount = (count: string) => {
     const params = new URLSearchParams();
-    if (!isScience && candSubject) params.set("subj", candSubject);
+    if (candSubject) params.set(isScience ? "sci" : "subj", candSubject);
     params.set("type", filter.type);
     if (filter.nodeId) params.set("node", filter.nodeId);
     if (filter.minImportance) params.set("imp", String(filter.minImportance));
@@ -751,14 +772,14 @@ function CandidateFilter({
   return (
     <Form method="get" preventScrollReset className="flex flex-wrap items-end gap-2 border-b px-4 py-3">
       {/* 과목 — 시험지 과목 외 다른 과목의 문항도 담을 수 있다(법률 과목). 변경 시 파트 초기화. */}
-      {!isScience && subjectOptions.length > 0 ? (
+      {subjectOptions.length > 0 ? (
         <div className="flex flex-col gap-1">
           <Label className="text-[11px]">과목</Label>
           <select
             value={candSubject ?? ""}
             onChange={(e) => {
               const params = new URLSearchParams();
-              params.set("subj", e.target.value);
+              params.set(isScience ? "sci" : "subj", e.target.value);
               params.set("type", filter.type);
               navigate(`?${params.toString()}`, { preventScrollReset: true });
             }}
@@ -773,8 +794,12 @@ function CandidateFilter({
         </div>
       ) : null}
       {/* 과목 유지용 hidden — '조회'(유형·파트·중요도 GET) 시 선택 과목 보존. */}
-      {!isScience && candSubject ? (
-        <input type="hidden" name="subj" value={candSubject} />
+      {candSubject ? (
+        <input
+          type="hidden"
+          name={isScience ? "sci" : "subj"}
+          value={candSubject}
+        />
       ) : null}
       <div className="flex flex-col gap-1">
         <Label className="text-[11px]">유형</Label>
@@ -976,7 +1001,8 @@ function AutoPickForm({
 }: {
   testId: string;
   filter: { type: OfflineQuestionType; nodeId: string | null; minImportance: number };
-  candSubject: LawSubjectSlug | null;
+  /** 법률=LawSubjectSlug / 자연과학=ScienceSubjectSlug. API 가 축을 보고 파싱한다. */
+  candSubject: string | null;
 }) {
   const fetcher = useFetcher<{ ok?: true; added?: number; error?: string }>();
   const reload = useReload();

@@ -182,7 +182,13 @@ export default function AdminOfflineTestResults({
     saved?: number;
     absent?: number;
     srsWarnings?: string[];
-    tierUpdates?: Array<{ userId: string; tier: string; score: number; total: number }>;
+    tierUpdates?: Array<{
+      userId: string;
+      subject: string;
+      tier: string;
+      score: number;
+      total: number;
+    }>;
     tierRetractedCount?: number;
     error?: string;
   }>();
@@ -365,8 +371,12 @@ export default function AdminOfflineTestResults({
       {/* Phase 3 G3 — 진단 테스트 tier 자동 갱신 내역 (가시화). */}
       {fetcher.data?.ok && (fetcher.data.tierUpdates?.length ?? 0) > 0 ? (
         <p className="mb-3 text-xs text-emerald-700 dark:text-emerald-400">
-          진단 반영 — 자연과학 수준 {fetcher.data.tierUpdates!.length}명 자동
-          갱신됨
+          진단 반영 — 자연과학 수준{" "}
+          {new Set(fetcher.data.tierUpdates!.map((u) => u.userId)).size}명 ·{" "}
+          {[
+            ...new Set(fetcher.data.tierUpdates!.map((u) => u.subject)),
+          ].length}
+          과목 자동 갱신됨
         </p>
       ) : null}
       {fetcher.data?.ok && (fetcher.data.tierRetractedCount ?? 0) > 0 ? (

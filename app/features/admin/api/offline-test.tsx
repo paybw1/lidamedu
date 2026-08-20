@@ -14,6 +14,7 @@ import { getCohortById } from "~/features/cohorts/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { parseOfflineTestSubject } from "~/features/offline-tests/labels";
 import { lawSubjectSlugSchema } from "~/features/subjects/lib/subjects";
+import { SCIENCE_SUBJECT_SLUGS } from "~/features/subjects/lib/science";
 import {
   addTestQuestions,
   createOfflineTest,
@@ -245,8 +246,12 @@ export async function action({ request }: Route.ActionArgs) {
       if (typeParse.data !== "mcq") {
         return data({ error: "자연과학은 객관식만 지원합니다" }, { status: 400 });
       }
+      // 혼합 출제 — 피커에서 고른 자연과목(subject)을 따른다. 없으면 시험지 과목.
+      const rawSci = String(fd.get("subject") ?? "");
+      const sciSubject =
+        SCIENCE_SUBJECT_SLUGS.find((s) => s === rawSci) ?? test.scienceSubject;
       const cands = await listScienceMcqCandidates(client, {
-        scienceSubject: test.scienceSubject,
+        scienceSubject: sciSubject,
         sectionId: nodeId,
         limit: n * 4,
       });
