@@ -10,6 +10,8 @@ import {
   renderToBuffer,
 } from "@react-pdf/renderer";
 
+import { diffSegments, type DiffSegment } from "~/core/lib/diff-lines";
+
 import type { ErrataSheetData, SheetItem } from "./sheet-data.server";
 
 // 한글 폰트 — 자체 배포 파일(고정 URL). 단일 웨이트라 강조는 크기·테두리로.
@@ -78,6 +80,8 @@ const s = StyleSheet.create({
   baRow: { flexDirection: "row", gap: 6, marginTop: 2 },
   baLabel: { width: 42, fontSize: 8.5, color: "#333" },
   baText: { flex: 1, fontSize: 9 },
+  // 바뀐 어절만 밑줄 — 폰트가 단일 웨이트라 굵기로는 강조가 안 된다(원장 요청 2026-08-20).
+  diffMark: { textDecoration: "underline" },
   // 세로 배치용 — flex:1 텍스트를 컬럼(column) 안에 두면 높이가 0 으로 접혀
   // 내용이 이웃 요소와 겹친다(2단 대비 박스에서 실측). 컬럼 컨텍스트는 이것을 쓴다.
   colText: { fontSize: 9 },
@@ -151,7 +155,35 @@ function summaryLine(item: SheetItem): string {
   return `· ${locationOf(item)}  ${kind} — ${item.title ?? ""}`;
 }
 
+/**
+ * 변경 전/후 문구에서 실제로 달라진 어절에만 밑줄을 친다.
+ * 정오표는 한 글자만 바뀐 항목이 많은데(별개↔변개), 통짜로 실으면 어디가 바뀐 건지
+ * 독자가 두 줄을 대조해 가며 찾아야 한다.
+ */
+function MarkedText({
+  segments,
+  style,
+}: {
+  segments: DiffSegment[];
+  style: (typeof s)["baText"] | (typeof s)["colText"];
+}) {
+  return (
+    <Text style={style}>
+      {segments.map((seg, i) =>
+        seg.changed ? (
+          <Text key={i} style={s.diffMark}>
+            {seg.text}
+          </Text>
+        ) : (
+          <Text key={i}>{seg.text}</Text>
+        ),
+      )}
+    </Text>
+  );
+}
+
 function ItemBody({ item }: { item: SheetItem }) {
+  const marks = diffSegments(item.beforeText, item.afterText);
   // 유형별 렌더링 (§2.4) — errata_payload 의 before/after 문구 사용.
   if (item.isWithdrawalNotice) {
     return (
@@ -169,13 +201,13 @@ function ItemBody({ item }: { item: SheetItem }) {
           {item.beforeText ? (
             <View style={s.baRow}>
               <Text style={s.baLabel}>변경 전</Text>
-              <Text style={s.baText}>{item.beforeText}</Text>
+              <MarkedText segments={marks.before} style={s.baText} />
             </View>
           ) : null}
           {item.afterText ? (
             <View style={s.baRow}>
               <Text style={s.baLabel}>변경 후</Text>
-              <Text style={s.baText}>{item.afterText}</Text>
+              <MarkedText segments={marks.after} style={s.baText} />
             </View>
           ) : null}
         </View>
@@ -185,11 +217,19 @@ function ItemBody({ item }: { item: SheetItem }) {
         <View style={s.twoCol}>
           <View style={s.colBox}>
             <Text style={s.colHead}>구(舊)</Text>
-            <Text style={s.colText}>{item.beforeText || "—"}</Text>
+            {item.beforeText ? (
+              <MarkedText segments={marks.before} style={s.colText} />
+            ) : (
+              <Text style={s.colText}>—</Text>
+            )}
           </View>
           <View style={s.colBox}>
             <Text style={s.colHead}>신(新)</Text>
-            <Text style={s.colText}>{item.afterText || "—"}</Text>
+            {item.afterText ? (
+              <MarkedText segments={marks.after} style={s.colText} />
+            ) : (
+              <Text style={s.colText}>—</Text>
+            )}
           </View>
         </View>
       );
@@ -213,11 +253,19 @@ function ItemBody({ item }: { item: SheetItem }) {
         <View>
           <View style={s.baRow}>
             <Text style={s.baLabel}>변경 전</Text>
-            <Text style={s.baText}>{item.beforeText || "—"}</Text>
+            {item.beforeText ? (
+              <MarkedText segments={marks.before} style={s.baText} />
+            ) : (
+              <Text style={s.baText}>—</Text>
+            )}
           </View>
           <View style={s.baRow}>
             <Text style={s.baLabel}>변경 후</Text>
-            <Text style={s.baText}>{item.afterText || "—"}</Text>
+            {item.afterText ? (
+              <MarkedText segments={marks.after} style={s.baText} />
+            ) : (
+              <Text style={s.baText}>—</Text>
+            )}
           </View>
         </View>
       );

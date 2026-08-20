@@ -550,6 +550,11 @@ export default [
         "/admin/errata-sheets",
         "features/errata/screens/admin-errata-sheets.tsx",
       ),
+      // errata — 발행분 수정(문구 정정·회수). 발행 후 고칠 화면이 없어 스크립트로만 가능했다.
+      route(
+        "/admin/errata-items",
+        "features/errata/screens/admin-errata-items.tsx",
+      ),
 
       // 주관식 강의자료 인쇄본 (staff 전용) — 과목 게이트 밖, loader 에서 staff 검사.
       route(

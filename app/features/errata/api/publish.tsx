@@ -8,6 +8,14 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import { runAfterResponse } from "~/core/lib/wait-until.server";
 import { regenerateForRevisions } from "~/features/errata/pdf/regenerate.server";
 import { getStaffRole } from "~/features/laws/queries.server";
+import {
+  CHOICE_TYPE_LABEL,
+  FORMAT_LABEL,
+  ORIGIN_LABEL,
+  POLARITY_LABEL,
+  SCOPE_LABEL,
+  SUBJECTIVE_KIND_LABEL,
+} from "~/features/problems/labels";
 import type { DohaeBlock } from "~/features/dohae/labels";
 import { diffTextNodes } from "~/features/dohae/lib/dohae-edit";
 import {
@@ -56,10 +64,26 @@ export interface PublishModalData {
   regradeSuggested?: boolean;
 }
 
+/**
+ * ★enum 필드는 DB 값(`unit`/`comprehensive`)이 아니라 화면 라벨로 싣는다 —
+ * 정오표는 수험생이 읽는 인쇄물이라 영어 코드가 그대로 찍히면 못 읽는다(원장 지적 2026-08-20).
+ * 라벨은 앱 표시와 같은 SSOT(problems/labels.ts)를 쓴다.
+ */
+const ENUM_FIELD_LABELS: Record<string, Record<string, string>> = {
+  scope: SCOPE_LABEL,
+  polarity: POLARITY_LABEL,
+  format: FORMAT_LABEL,
+  origin: ORIGIN_LABEL,
+  subjective_kind: SUBJECTIVE_KIND_LABEL,
+  choice_type: CHOICE_TYPE_LABEL,
+};
+
 function snapshotFieldText(snapshot: unknown, field: string): string {
   if (snapshot == null || typeof snapshot !== "object") return "";
   const v = (snapshot as Record<string, unknown>)[field];
   if (v == null) return "";
+  const labels = ENUM_FIELD_LABELS[field];
+  if (labels && typeof v === "string" && labels[v]) return labels[v];
   const s = typeof v === "string" ? v : JSON.stringify(v, null, 1);
   return s.length > MAX_FIELD_TEXT ? s.slice(0, MAX_FIELD_TEXT) + "\n…(생략)" : s;
 }

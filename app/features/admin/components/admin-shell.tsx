@@ -130,6 +130,9 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "판례 도식", to: "/admin/case-diagrams" },
       { label: "하급심 판결문", to: "/admin/cases/lower-court" },
       { label: "강의노트 사례연구 검토", to: "/admin/case-study-review" },
+      // errata — 두 화면 모두 cluster="cases" 로 렌더된다(교재 추록·정오표).
+      { label: "추록·정오표 시트", to: "/admin/errata-sheets" },
+      { label: "추록 발행분 수정", to: "/admin/errata-items" },
     ],
   },
   {
