@@ -2,6 +2,7 @@
 // per-blank 추적 + display 는 set 으로 집계.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { fetchAllPages } from "~/core/lib/supa-batch.server";
 import type { Database } from "database.types";
 
 import {
@@ -211,18 +212,20 @@ export async function getBlankSrsCounts(
       .from("user_blank_srs")
       .select("set_id", { head: true, count: "exact" })
       .eq("user_id", userId),
-    client
-      .from("user_blank_srs")
-      .select("lapses")
-      .eq("user_id", userId),
+    // ★행 상한 — 빈칸 카드가 많은 학생(실측 1인 최대 3,296건)은 뒤가 잘린다.
+    fetchAllPages<{ lapses: number | null }>(() =>
+      client
+        .from("user_blank_srs")
+        .select("lapses")
+        .eq("user_id", userId)
+        .order("set_id")
+        .order("blank_idx"),
+    ),
   ]);
 
   const dueSets = new Set((dueRes.data ?? []).map((r) => r.set_id));
   const upcomingSets = new Set((upcomingRes.data ?? []).map((r) => r.set_id));
-  const lapsesSum = (lapsesRes.data ?? []).reduce(
-    (s, r) => s + (r.lapses ?? 0),
-    0,
-  );
+  const lapsesSum = lapsesRes.reduce((s, r) => s + (r.lapses ?? 0), 0);
 
   return {
     dueSets: dueSets.size,

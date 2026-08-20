@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { fetchAllPages } from "~/core/lib/supa-batch.server";
 import type { Database } from "database.types";
 
 import type { AnnotationTargetType } from "~/features/annotations/queries.server";
@@ -1960,14 +1961,17 @@ export async function getUserProblemStats(
       totalAttempts: 0,
     };
   }
-  const { data: rows, error } = await client
-    .from("user_problem_attempts")
-    .select("problem_id, is_correct, attempted_at, problems!inner(law_id)")
-    .eq("user_id", userId)
-    .eq("problems.law_id", law.law_id)
-    .order("attempted_at", { ascending: false });
-  if (error) throw error;
-  const list = rows ?? [];
+  // ★행 상한 — 시도가 많은 학생(실측 1인 최대 4,635건)은 뒤가 잘린다.
+  //   정렬은 attempted_at 만으로는 유일하지 않아 페이지 경계에서 흔들린다 → attempt_id 로 고정.
+  const list = await fetchAllPages(() =>
+    client
+      .from("user_problem_attempts")
+      .select("problem_id, is_correct, attempted_at, problems!inner(law_id)")
+      .eq("user_id", userId)
+      .eq("problems.law_id", law.law_id)
+      .order("attempted_at", { ascending: false })
+      .order("attempt_id"),
+  );
   const distinct = new Set<string>();
   const everCorrect = new Set<string>();
   const lastByProblem = new Map<string, boolean>();

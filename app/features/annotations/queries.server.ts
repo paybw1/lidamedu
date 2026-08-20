@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { fetchAllPages } from "~/core/lib/supa-batch.server";
 import type { Database } from "database.types";
 
 import type {
@@ -124,30 +125,35 @@ export async function getUserArticleAnnotationCounts(
   client: SupabaseClient<Database>,
   userId: string,
 ): Promise<Record<string, ArticleAnnotationCounts>> {
+  // ★행 상한 — 하이라이트가 많은 학생(실측 1인 최대 2,494건)은 뒤가 잘려 카운트가 낮게 나온다.
   const [memos, highlights] = await Promise.all([
-    client
-      .from("user_memos")
-      .select("target_id")
-      .eq("user_id", userId)
-      .eq("target_type", "article")
-      .is("deleted_at", null),
-    client
-      .from("user_highlights")
-      .select("target_id")
-      .eq("user_id", userId)
-      .eq("target_type", "article")
-      .is("deleted_at", null),
+    fetchAllPages(() =>
+      client
+        .from("user_memos")
+        .select("target_id")
+        .eq("user_id", userId)
+        .eq("target_type", "article")
+        .is("deleted_at", null)
+        .order("memo_id"),
+    ),
+    fetchAllPages(() =>
+      client
+        .from("user_highlights")
+        .select("target_id")
+        .eq("user_id", userId)
+        .eq("target_type", "article")
+        .is("deleted_at", null)
+        .order("highlight_id"),
+    ),
   ]);
-  if (memos.error) throw memos.error;
-  if (highlights.error) throw highlights.error;
 
   const out: Record<string, ArticleAnnotationCounts> = {};
-  for (const row of memos.data ?? []) {
+  for (const row of memos) {
     const cur = out[row.target_id] ?? { memos: 0, highlights: 0 };
     cur.memos += 1;
     out[row.target_id] = cur;
   }
-  for (const row of highlights.data ?? []) {
+  for (const row of highlights) {
     const cur = out[row.target_id] ?? { memos: 0, highlights: 0 };
     cur.highlights += 1;
     out[row.target_id] = cur;

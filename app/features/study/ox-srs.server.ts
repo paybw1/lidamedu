@@ -2,6 +2,7 @@
 // 단위 = ref (choice 또는 box_item). recordProblemAttempt OX 분기에서 hook.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { fetchAllPages } from "~/core/lib/supa-batch.server";
 import type { Database } from "database.types";
 
 import {
@@ -282,15 +283,17 @@ export async function getOxSrsCounts(
       .from("user_ox_ref_srs")
       .select("ref_id", { head: true, count: "exact" })
       .eq("user_id", userId),
-    client
-      .from("user_ox_ref_srs")
-      .select("lapses")
-      .eq("user_id", userId),
+    // ★행 상한 — 카드가 많은 학생(실측 1인 최대 3,810건)은 앞부분만 읽혀 누적 오답이 적게 나온다.
+    fetchAllPages<{ lapses: number | null }>(() =>
+      client
+        .from("user_ox_ref_srs")
+        .select("lapses")
+        .eq("user_id", userId)
+        .order("ref_type")
+        .order("ref_id"),
+    ),
   ]);
-  const lapsesSum = (lapsesRes.data ?? []).reduce(
-    (s, r) => s + (r.lapses ?? 0),
-    0,
-  );
+  const lapsesSum = lapsesRes.reduce((s, r) => s + (r.lapses ?? 0), 0);
   return {
     due: dueRes.count ?? 0,
     upcoming7d: upcomingRes.count ?? 0,

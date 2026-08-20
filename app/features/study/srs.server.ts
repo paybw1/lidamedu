@@ -1,6 +1,7 @@
 // feat-2-010 SRS — 서버 측 hook + 조회 헬퍼.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { fetchAllPages } from "~/core/lib/supa-batch.server";
 import type { Database } from "database.types";
 
 import {
@@ -198,15 +199,16 @@ export async function getSrsCounts(
       .from("user_problem_srs")
       .select("problem_id", { head: true, count: "exact" })
       .eq("user_id", userId),
-    client
-      .from("user_problem_srs")
-      .select("lapses")
-      .eq("user_id", userId),
+    // ★행 상한 — 카드 수가 늘면 앞부분만 읽혀 누적 오답이 적게 나온다.
+    fetchAllPages<{ lapses: number | null }>(() =>
+      client
+        .from("user_problem_srs")
+        .select("lapses")
+        .eq("user_id", userId)
+        .order("problem_id"),
+    ),
   ]);
-  const lapsesSum = (lapsesRes.data ?? []).reduce(
-    (s, r) => s + (r.lapses ?? 0),
-    0,
-  );
+  const lapsesSum = lapsesRes.reduce((s, r) => s + (r.lapses ?? 0), 0);
   return {
     due: dueRes.count ?? 0,
     upcoming7d: upcomingRes.count ?? 0,

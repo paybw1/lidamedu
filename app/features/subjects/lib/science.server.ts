@@ -1,6 +1,7 @@
 // 자연과학 단원/문제 서버 쿼리.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { fetchAllPages } from "~/core/lib/supa-batch.server";
 import type { Database } from "database.types";
 
 import {
@@ -204,13 +205,17 @@ export async function getAllScienceSubjectsProgress(
   }
 
   // 본인 시도 — 같은 문제 여러 번 시도해도 distinct 로 세기.
-  const { data: attempts } = await client
-    .from("user_problem_attempts")
-    .select(
-      "problem_id, is_correct, problems!inner(science_subject, subject_type)",
-    )
-    .eq("user_id", userId)
-    .eq("problems.subject_type", "science");
+  // ★행 상한 — 시도가 많은 학생(실측 1인 최대 4,635건)은 뒤가 잘려 집계가 낮게 나온다.
+  const attempts = await fetchAllPages(() =>
+    client
+      .from("user_problem_attempts")
+      .select(
+        "problem_id, is_correct, problems!inner(science_subject, subject_type)",
+      )
+      .eq("user_id", userId)
+      .eq("problems.subject_type", "science")
+      .order("attempt_id"),
+  );
   const attemptedBySubject = new Map<string, Set<string>>();
   const correctBySubject = new Map<string, Set<string>>();
   for (const a of attempts ?? []) {
@@ -259,12 +264,16 @@ export async function getScienceProgress(
     .is("deleted_at", null);
 
   // 사용자 시도 — 같은 문제 여러 번 시도해도 distinct 로 세기.
-  const { data: attempts } = await client
-    .from("user_problem_attempts")
-    .select("problem_id, is_correct, problems!inner(science_subject, subject_type)")
-    .eq("user_id", userId)
-    .eq("problems.subject_type", "science")
-    .eq("problems.science_subject", scienceSubject);
+  // ★행 상한 — 시도가 많은 학생(실측 1인 최대 4,635건)은 뒤가 잘려 집계가 낮게 나온다.
+  const attempts = await fetchAllPages(() =>
+    client
+      .from("user_problem_attempts")
+      .select("problem_id, is_correct, problems!inner(science_subject, subject_type)")
+      .eq("user_id", userId)
+      .eq("problems.subject_type", "science")
+      .eq("problems.science_subject", scienceSubject)
+      .order("attempt_id"),
+  );
 
   const attemptedSet = new Set<string>();
   const correctSet = new Set<string>();
@@ -300,14 +309,18 @@ export async function listSectionsWithStats(
   }
 
   // section_id 별 본인 시도 집계.
-  const { data: attempts } = await client
-    .from("user_problem_attempts")
-    .select(
-      "problem_id, is_correct, problems!inner(science_subject, science_section_id, subject_type)",
-    )
-    .eq("user_id", userId)
-    .eq("problems.subject_type", "science")
-    .eq("problems.science_subject", subject);
+  // ★행 상한 — 시도가 많은 학생(실측 1인 최대 4,635건)은 뒤가 잘려 집계가 낮게 나온다.
+  const attempts = await fetchAllPages(() =>
+    client
+      .from("user_problem_attempts")
+      .select(
+        "problem_id, is_correct, problems!inner(science_subject, science_section_id, subject_type)",
+      )
+      .eq("user_id", userId)
+      .eq("problems.subject_type", "science")
+      .eq("problems.science_subject", subject)
+      .order("attempt_id"),
+  );
 
   const attemptedBySection = new Map<string, Set<string>>();
   const correctBySection = new Map<string, Set<string>>();
