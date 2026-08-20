@@ -24,6 +24,7 @@ import {
 } from "~/features/subjects/components/left-panel-collapse";
 import { Button } from "~/core/components/ui/button";
 import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
+import { cn } from "~/core/lib/utils";
 
 import { ArticleTree } from "../article-tree";
 import { FilteredArticlesReader } from "../filtered-articles-reader";
@@ -86,22 +87,25 @@ export function ArticlesTab({
   const treePanel = (
     <div className="border-border bg-muted/30 overflow-hidden rounded-xl border lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
       {/* Outline header */}
-      <div className="border-border bg-card sticky top-0 z-10 flex items-center justify-between gap-2 rounded-t-xl border-b px-3 py-2">
-        {hasSystematicAxis ? (
-          <span className="text-muted-foreground text-[11px] font-medium">
-            목차
-          </span>
-        ) : (
-          <span className="text-muted-foreground text-[11px] font-medium">
-            조문 목차
-          </span>
+      {/* 체계도/조문 토글이 있으면 그 자체가 무엇을 보는지 말해 준다 — 왼쪽 "목차" 라벨은
+          군더더기라 뺀다(원장 2026-08-20). 토글이 없는 과목(민법)은 머리글이 비어 버리므로
+          "조문 목차"를 남긴다. 문제 탭(problems-tab)과 같은 구조. */}
+      <div
+        className={cn(
+          "border-border bg-card sticky top-0 z-10 flex items-center gap-2 rounded-t-xl border-b px-3 py-2",
+          hasSystematicAxis ? "justify-end" : "justify-start",
         )}
+      >
         {hasSystematicAxis ? (
           <SortAxisToggle
             size="sm"
             disabledAxes={systematicEmpty ? ["systematic"] : undefined}
           />
-        ) : null}
+        ) : (
+          <span className="text-muted-foreground text-[11px] font-medium">
+            조문 목차
+          </span>
+        )}
       </div>
       <div className="p-2">
         {renderSystematic ? (

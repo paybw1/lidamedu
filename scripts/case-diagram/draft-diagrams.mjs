@@ -26,6 +26,9 @@ const FORCE = argv.includes("--force");
 const YEAR = argOf("--year");
 const ONE_CASE = argOf("--case");
 const LIMIT = argOf("--limit") ? Number(argOf("--limit")) : Infinity;
+// ★사실관계 소스(하급심)가 있는 건만 생성 — 없는 건 쟁점~결론만 남아 반쪽 도식이 되고,
+//   나중에 하급심을 구하면 --force 로 다시 돌려야 한다. 그럴 바엔 확보된 것부터 채운다.
+const WITH_FACTS_ONLY = argv.includes("--with-facts");
 const LAW = argOf("--law") ?? "patent";
 
 const CACHE_DIR = path.resolve(process.cwd(), "source", "하급심 판결문", ".cache");
@@ -307,7 +310,7 @@ async function main() {
     .is("deleted_at", null);
   const byCase = new Map((existing ?? []).map((d) => [d.case_id, d]));
 
-  const targets = [];
+  let targets = [];
   const skipped = [];
   for (const c of cases) {
     const prev = byCase.get(c.case_id) ?? null;
@@ -324,7 +327,6 @@ async function main() {
       continue;
     }
     targets.push({ kase: c, prev, cache: readCache(c.case_number) });
-    if (targets.length >= LIMIT) break;
   }
 
   // ★로컬 캐시가 유일한 소스가 아니다 — 운영 화면(/admin/cases/lower-court)에서 적재한
@@ -358,6 +360,18 @@ async function main() {
       };
     }
   }
+
+  // ★LIMIT 은 사실관계 필터 뒤에 적용한다 — 먼저 자르면 --with-facts 가 한 줌만 남긴다.
+  if (WITH_FACTS_ONLY) {
+    const dropped = targets.filter((t) => !t.cache);
+    targets = targets.filter((t) => t.cache);
+    if (dropped.length) {
+      console.log(
+        `[--with-facts] 하급심 미확보 ${dropped.length}건 제외 — 판결문을 구한 뒤 생성하세요.`,
+      );
+    }
+  }
+  if (targets.length > LIMIT) targets = targets.slice(0, LIMIT);
 
   console.log(
     `대상 ${targets.length}건 (사실관계 소스 있음 ${targets.filter((t) => t.cache).length}) · 건너뜀 ${skipped.length}`,
