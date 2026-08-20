@@ -3,11 +3,17 @@
 feat-2-035 판례 도식화의 **사실관계** 소스. 대법원 판결문은 법률심이라 사실관계가
 "원심이 인정한 사실은 …" 으로 압축돼 있어, 2차 각색 출제의 원형이 되는 구체적 사실이 남지 않는다.
 
-## 자동 수집이 먼저다
+## 화면에서 먼저 시도한다
+
+운영 화면 **`/admin/cases/lower-court`** 에서 건별로 바로 수집·적재할 수 있다(원장 요청 2026-08-20).
+`자동 수집` → 실패하면 `원심번호 지정` → 그래도 없으면 `전문 붙여넣기`. 이 폴더에 파일을 넣는 건
+붙여넣기가 곤란한 대용량·다심급 자료일 때다.
+
+## 배치 자동 수집
 
 ```bash
-node scripts/case-diagram/fetch-lower-court.mjs --year 2025    # 연도 단위
-node scripts/case-diagram/fetch-lower-court.mjs --from 2005    # 전체
+npx tsx scripts/case-diagram/fetch-lower-court.mjs --year 2025    # 연도 단위
+npx tsx scripts/case-diagram/fetch-lower-court.mjs --from 2005    # 전체
 ```
 
 대법원 원문의 `【원심판결】` 표기를 파싱해 국가법령정보센터에서 하급심 전문을 받아온다.
@@ -37,7 +43,9 @@ node scripts/case-diagram/fetch-lower-court.mjs --from 2005    # 전체
 - `../.cache/<대법원사건번호>.json` — 전문 캐시. 재실행 시 재요청하지 않는다(`--refresh` 로 무시).
 - `../.cache/_report-<범위>.json` — 확보/미확보 분류 리포트.
 
-전문은 **DB 에 저장하지 않는다.** DB(`case_diagrams`)에는 정리된 사실관계와 출처 표기만 들어간다.
+캐시는 `load-lower-court.mjs --apply` 로 `case_lower_courts`(staff 전용 RLS)에 적재된다 —
+운영 화면에서 원문을 확인하고, 도식 생성기는 캐시가 없으면 DB 를 2차 소스로 읽는다.
+학생 화면에는 어떤 경로로도 노출되지 않는다(저작물 전문).
 
 ## git
 

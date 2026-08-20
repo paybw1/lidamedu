@@ -327,6 +327,38 @@ async function main() {
     if (targets.length >= LIMIT) break;
   }
 
+  // ★로컬 캐시가 유일한 소스가 아니다 — 운영 화면(/admin/cases/lower-court)에서 적재한
+  //   판결문은 DB 에만 있다. case_lower_courts 를 2차 소스로 보지 않으면 화면에서 방금 구해
+  //   넣은 판결문이 도식 생성에 반영되지 않는다.
+  const needDb = targets.filter((t) => !t.cache);
+  if (needDb.length) {
+    const { data: lower, error: lowerErr } = await sb
+      .from("case_lower_courts")
+      .select(
+        "case_id, source_kind, source_ref, body_text, law_serial_id, fetched_at",
+      )
+      .in(
+        "case_id",
+        needDb.map((t) => t.kase.case_id),
+      )
+      .eq("status", "loaded")
+      .is("deleted_at", null);
+    if (lowerErr) throw new Error(lowerErr.message);
+    const byId = new Map((lower ?? []).map((r) => [r.case_id, r]));
+    for (const t of needDb) {
+      const r = byId.get(t.kase.case_id);
+      if (!r?.body_text) continue;
+      t.cache = {
+        sourceKind: r.source_kind ?? "lower_auto",
+        sourceRef: r.source_ref,
+        serial: r.law_serial_id,
+        fetchedAt: r.fetched_at,
+        text: r.body_text,
+        hasFacts: true,
+      };
+    }
+  }
+
   console.log(
     `대상 ${targets.length}건 (사실관계 소스 있음 ${targets.filter((t) => t.cache).length}) · 건너뜀 ${skipped.length}`,
   );

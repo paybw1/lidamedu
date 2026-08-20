@@ -10,17 +10,29 @@
 //
 // ★API 주의: 사건번호 검색 키는 `nb=` 다. `query=` 는 **사건명** 검색이라 사건번호를 넣으면 0건.
 //
-//   node scripts/case-diagram/fetch-lower-court.mjs --year 2025
-//   node scripts/case-diagram/fetch-lower-court.mjs --from 2005          # 전체(기본)
-//   node scripts/case-diagram/fetch-lower-court.mjs --case 2023후10712
-//   node scripts/case-diagram/fetch-lower-court.mjs --year 2025 --refresh # 캐시 무시하고 재수집
+//   npx tsx scripts/case-diagram/fetch-lower-court.mjs --year 2025
+//   npx tsx scripts/case-diagram/fetch-lower-court.mjs --from 2005          # 전체(기본)
+//   npx tsx scripts/case-diagram/fetch-lower-court.mjs --case 2023후10712
+//   npx tsx scripts/case-diagram/fetch-lower-court.mjs --year 2025 --refresh # 캐시 무시하고 재수집
 //
 // 산출: source/하급심 판결문/.cache/<대법원사건번호>.json  (전문 캐시 — DB 에 넣지 않는다)
 //       source/하급심 판결문/.cache/_report-<scope>.json   (3분류 리포트)
+//
+// ★파싱·API 코어는 앱과 공유한다 — app/features/cases/lib/lower-court-fetch.server.ts 가 SSOT.
+//   운영 화면(/admin/cases/lower-court)의 "자동 수집" 버튼이 같은 코드를 쓴다. 정규식 사본을
+//   두 벌 두면 한쪽만 고쳐져 41건이 통째로 오분류되는 일이 또 난다(2026-08-20).
+//   그래서 node 가 아니라 tsx 로 실행한다(TS 를 직접 import 하기 위함).
 import "dotenv/config";
 import { createClient } from "@supabase/supabase-js";
 import fs from "node:fs";
 import path from "node:path";
+
+import {
+  fetchFullText,
+  findSerial,
+  hasFactSection,
+  parseLowerRef,
+} from "../../app/features/cases/lib/lower-court-fetch.server.ts";
 
 const argv = process.argv.slice(2);
 const argOf = (name) => {
@@ -38,8 +50,6 @@ const CACHE_DIR = path.join(ROOT, ".cache");
 // 과목 폴더 — 수기 투입본이 놓이는 곳(설계 §4.2).
 const MANUAL_DIRS = { patent: path.join(ROOT, "특허") };
 
-const OC = process.env.LAW_GO_KR_OC ?? "test";
-const API = "https://www.law.go.kr/DRF";
 const REQUEST_GAP_MS = 120;
 // cases.court enum → 표시 라벨(학생 화면 출처 캡션에 그대로 쓰인다).
 const COURT_LABEL = {
@@ -57,152 +67,6 @@ const sb = createClient(
 );
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const stripTags = (s) =>
-  String(s ?? "")
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]*>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/\r\n?/g, "\n")
-    .trim();
-
-/** 법원명 정규화 — "서울고등법원" ↔ "서울고법", "대구지방법원" ↔ "대구지법" 을 같게 본다. */
-export function normalizeCourt(name) {
-  return String(name ?? "")
-    .replace(/\s+/g, "")
-    .replace(/고등법원/g, "고법")
-    .replace(/지방법원/g, "지법")
-    .replace(/가정법원/g, "가법")
-    .replace(/행정법원/g, "행법")
-    .trim();
-}
-
-/**
- * 대법원 원문 헤더에서 원심 표기 추출. 판결·결정 둘 다.
- *
- * ★표기가 세 갈래다(원장 지적 2026-08-20 — "전문에 원심번호가 있는데 미상으로 나온다"):
- *   ① 【원심판결】 특허법원 2023. 6. 16. 선고 2022허4635 판결
- *   ② 원 심 판 결  특허법원 2016. 1. 21. 선고 2014허4913 판결   ← 글자 사이 공백·괄호 없음
- *   ③ 【원심결정】 대구지법 2024. 12. 5.자 2024라10826 결정
- *   ②를 못 잡아 41건이 통째로 "원심 미상"으로 분류돼 있었다.
- * 사건번호 연도도 2자리(98노8499)가 있어 \d{2,4} 로 받는다.
- */
-// "원심판결" / "원 심 판 결" / "원심결정" — 앞뒤 【】는 있어도 없어도 된다.
-const LOWER_MARKER = "【?\\s*원\\s*심\\s*(?:판\\s*결|결\\s*정)\\s*】?";
-const CASE_NO = "\\d{2,4}\\s*[가-힣]{1,3}\\s*\\d+";
-
-function parseLowerRef(officialTextMd) {
-  // 줄바꿈이 공백으로 들어온 전문이 많아 공백을 한 칸으로 눌러 놓고 찾는다.
-  const text = String(officialTextMd ?? "").replace(/\s+/g, " ");
-  const clean = (s) => s.replace(/\s+/g, "");
-
-  const withDate = new RegExp(
-    `${LOWER_MARKER}\\s*([^【]*?)\\s*(\\d{4})\\.\\s*(\\d{1,2})\\.\\s*(\\d{1,2})\\.\\s*(?:선고|자)\\s*(${CASE_NO})`,
-  );
-  const md = text.match(withDate);
-  if (md) {
-    const pad = (v) => String(v).padStart(2, "0");
-    return {
-      court: md[1].replace(/[,\s]+$/, "").trim(),
-      decidedAt: `${md[2]}.${pad(md[3])}.${pad(md[4])}`,
-      caseNumber: clean(md[5]),
-    };
-  }
-  const noDate = new RegExp(`${LOWER_MARKER}\\s*([^【]*?)\\s*(${CASE_NO})`);
-  const m = text.match(noDate);
-  if (!m) return null;
-  return {
-    court: m[1].replace(/[,\s]+$/, "").trim(),
-    decidedAt: null,
-    caseNumber: clean(m[2]),
-  };
-}
-
-/**
- * 국가법령정보센터 — 사건번호로 판례일련번호 조회. ★nb= 가 사건번호 키(query= 는 사건명).
- *
- * ★사건번호만으로는 판례가 유일하지 않다 — `허` 는 특허법원 전용이라 안전하지만
- *   `나`·`가합`·`라` 는 법원마다 같은 번호가 존재한다(서울고법 2008나68717 ≠ 부산고법 2008나68717).
- *   법원명이 다르면 채택하지 않는다. 엉뚱한 사건의 사실관계에 그럴듯한 출처를 달아 주는 게
- *   이 기능의 최악 실패다. 선고일자가 파싱된 경우 2차 확인으로 쓴다.
- */
-async function findSerial(caseNumber, expected) {
-  const url = `${API}/lawSearch.do?OC=${OC}&target=prec&type=JSON&nb=${encodeURIComponent(caseNumber)}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`lawSearch ${res.status}`);
-  const json = await res.json().catch(() => null);
-  const raw = json?.PrecSearch?.prec;
-  if (!raw) return { hit: null, reason: "미수록" };
-  const list = Array.isArray(raw) ? raw : [raw];
-  // 부분일치가 섞여 올 수 있어 사건번호 완전일치만 후보로.
-  const sameNumber = list.filter(
-    (p) => String(p?.사건번호 ?? "").trim() === caseNumber,
-  );
-  if (!sameNumber.length) return { hit: null, reason: "미수록" };
-
-  const wantCourt = normalizeCourt(expected?.court);
-  const verified = sameNumber.filter((p) => {
-    const gotCourt = normalizeCourt(p?.법원명);
-    const courtOk = !wantCourt || !gotCourt || gotCourt === wantCourt;
-    const gotDate = String(p?.선고일자 ?? "").trim();
-    const dateOk = !expected?.decidedAt || !gotDate || gotDate === expected.decidedAt;
-    return courtOk && dateOk;
-  });
-  if (!verified.length) {
-    const got = sameNumber
-      .map((p) => `${p?.법원명 ?? "?"} ${p?.선고일자 ?? "?"}`)
-      .join(" / ");
-    return {
-      hit: null,
-      reason: `법원·선고일 불일치 (기대 ${expected?.court ?? "?"} ${expected?.decidedAt ?? "?"} / 실제 ${got})`,
-    };
-  }
-  const hit = verified[0];
-  if (!hit?.판례일련번호) return { hit: null, reason: "미수록" };
-  return {
-    hit: {
-      serial: String(hit.판례일련번호),
-      court: String(hit.법원명 ?? "").trim(),
-      decidedAt: String(hit.선고일자 ?? "").trim(),
-    },
-    reason: null,
-  };
-}
-
-/**
- * 사실관계가 실린 전문인지 판정. law.go.kr 은 같은 사건이라도 판시사항·판결요지만
- * 수록한 레코드를 주는 일이 있는데, 그건 "확보"가 아니다(도식의 사실관계를 못 쓴다).
- */
-export function hasFactSection(text) {
-  const t = String(text ?? "");
-  // 사실관계 표제는 법원·사건유형마다 다르다. 특허법원 심결취소소송은 "1. 기초사실" 이 많지만
-  // "1. 이 사건 심결의 경위" 로 시작하는 판결도 그만큼 많다(둘 다 사실관계 절이다).
-  if (
-    /기초\s*사실|인정\s*사실|사실\s*관계|심결의\s*경위|처분의\s*경위|사건의\s*개요|분쟁의\s*경과|당사자의\s*주장/.test(
-      t,
-    )
-  ) {
-    return true;
-  }
-  // 표제가 위 어디에도 안 걸리는 판결문도 있다 — 당사자 표시와 【이 유】가 모두 있으면 전문으로 본다.
-  // (판시사항·판결요지만 실린 레코드에는 둘 다 없다. 이 플래그의 목적이 바로 그 구분이다.)
-  return (
-    /【\s*원\s{0,6}고\s*】|【\s*신\s*청\s*인\s*】|【\s*채\s*권\s*자\s*】|【\s*항\s*소\s*인\s*】/.test(t) &&
-    /【\s*이\s{0,6}유\s*】/.test(t)
-  );
-}
-
-/** 판례일련번호 → 전문. */
-async function fetchFullText(serial) {
-  const url = `${API}/lawService.do?OC=${OC}&target=prec&ID=${serial}&type=JSON`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`lawService ${res.status}`);
-  const json = await res.json().catch(() => null);
-  const body = stripTags(json?.PrecService?.판례내용);
-  return body;
-}
 
 /** 수기 폴더 스캔 — 파일명 첫 토큰(대법원 사건번호)으로 그룹핑. */
 function scanManualDir(lawCode) {

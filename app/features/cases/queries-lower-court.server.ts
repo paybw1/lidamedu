@@ -5,6 +5,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "~/../database.types";
 
+import { COURT_LABELS, type CaseCourt } from "./labels";
+import {
+  hasFactSection,
+  resolveLowerCourtText,
+} from "./lib/lower-court-fetch.server";
 import {
   needsManualWork,
   type LowerCourtStatus,
@@ -138,4 +143,202 @@ export async function listLowerCourtTargets(
     );
 
   return { rows, counts };
+}
+
+// ───────────────────────── 수집(운영 화면에서 바로 적재) ─────────────────────────
+//
+// 그동안 판결문 확보는 로컬 배치(scripts/case-diagram/fetch-lower-court.mjs)뿐이라
+// 운영자가 화면에서 미확보 건을 보고도 아무것도 못 했다(원장 요청 2026-08-20).
+// 파싱·매칭 코어는 배치와 공유한다(lib/lower-court-fetch.server.ts).
+
+type LowerInsert = Database["public"]["Tables"]["case_lower_courts"]["Insert"];
+
+export interface CollectResult {
+  caseId: string;
+  caseNumber: string;
+  status: LowerCourtStatus;
+  ok: boolean;
+  /** 화면에 그대로 띄우는 한 줄 — 실패 사유가 곧 다음 조치다. */
+  message: string;
+}
+
+async function upsertLower(client: Client, row: LowerInsert): Promise<void> {
+  const { error } = await client
+    .from("case_lower_courts")
+    .upsert(row, { onConflict: "case_id" });
+  if (error) throw error;
+}
+
+/**
+ * 한 건 수집 — 원심 표기 파싱 → 법령정보센터 조회 → 전문 적재.
+ * 실패해도 행은 남긴다(상태·원심번호가 다음 수기 작업의 지시서).
+ */
+export async function collectLowerCourt(
+  client: Client,
+  caseId: string,
+  forcedRef?: { caseNumber: string; court?: string | null } | null,
+): Promise<CollectResult> {
+  const { data: kase, error } = await client
+    .from("cases")
+    .select("case_id, case_number, court, decided_at, official_text_md")
+    .eq("case_id", caseId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error) throw error;
+  if (!kase) {
+    return {
+      caseId,
+      caseNumber: "?",
+      status: "no_ref",
+      ok: false,
+      message: "판례를 찾을 수 없습니다.",
+    };
+  }
+
+  // ⓪ 판례 자체가 하급심이면 자기 원문이 곧 사실관계 소스 — 원심을 찾을 이유가 없다.
+  const own = (kase.official_text_md ?? "").trim();
+  if (!forcedRef && kase.court && kase.court !== "supreme" && own) {
+    const ref = `${COURT_LABELS[kase.court as CaseCourt] ?? kase.court} ${kase.case_number}`;
+    await upsertLower(client, {
+      case_id: caseId,
+      status: "loaded",
+      source_kind: "lower_self",
+      source_ref: ref,
+      lower_case_number: kase.case_number,
+      lower_court: COURT_LABELS[kase.court as CaseCourt] ?? kase.court,
+      lower_decided_at: kase.decided_at,
+      law_serial_id: null,
+      body_text: own,
+      char_count: own.length,
+      fetched_at: new Date().toISOString(),
+      deleted_at: null,
+    });
+    return {
+      caseId,
+      caseNumber: kase.case_number,
+      status: "loaded",
+      ok: true,
+      message: `자체 원문 ${own.length.toLocaleString("ko-KR")}자 적재 (${ref})`,
+    };
+  }
+
+  const outcome = await resolveLowerCourtText({
+    supremeCaseNumber: kase.case_number,
+    supremeDecidedAt: kase.decided_at,
+    officialTextMd: kase.official_text_md,
+    forcedRef,
+  });
+
+  if (outcome.status === "no_ref") {
+    await upsertLower(client, {
+      case_id: caseId,
+      status: "no_ref",
+      source_kind: null,
+      source_ref: null,
+      lower_case_number: null,
+      lower_court: null,
+      body_text: "",
+      char_count: 0,
+      deleted_at: null,
+    });
+    return {
+      caseId,
+      caseNumber: kase.case_number,
+      status: "no_ref",
+      ok: false,
+      message: `원심을 특정하지 못했습니다 — ${outcome.reason}`,
+    };
+  }
+
+  const ref = outcome.ref;
+  const refLabel = `${ref.court || "?"} ${ref.caseNumber}`;
+  if (outcome.status === "not_in_api") {
+    await upsertLower(client, {
+      case_id: caseId,
+      status: "not_in_api",
+      source_kind: null,
+      source_ref: refLabel,
+      lower_case_number: ref.caseNumber,
+      lower_court: ref.court || null,
+      lower_decided_at: ref.decidedAt,
+      body_text: "",
+      char_count: 0,
+      deleted_at: null,
+    });
+    return {
+      caseId,
+      caseNumber: kase.case_number,
+      status: "not_in_api",
+      ok: false,
+      message: `원심 ${refLabel} — ${outcome.reason}. 판결문을 직접 붙여넣으세요.`,
+    };
+  }
+
+  // loaded / summary_only — 전문은 받았다. 요지만이면 사실관계 소스가 못 되므로 갈라 둔다.
+  await upsertLower(client, {
+    case_id: caseId,
+    status: outcome.status,
+    source_kind: "lower_auto",
+    source_ref: `${outcome.hit.court || ref.court} ${ref.caseNumber}`,
+    lower_case_number: ref.caseNumber,
+    lower_court: outcome.hit.court || ref.court || null,
+    lower_decided_at: outcome.hit.decidedAt || ref.decidedAt,
+    law_serial_id: outcome.hit.serial,
+    body_text: outcome.status === "loaded" ? outcome.text : "",
+    char_count: outcome.status === "loaded" ? outcome.text.length : 0,
+    fetched_at: new Date().toISOString(),
+    deleted_at: null,
+  });
+  const via = outcome.viaSupreme ? " (대법원 전문에서 원심 표기 확인)" : "";
+  return {
+    caseId,
+    caseNumber: kase.case_number,
+    status: outcome.status,
+    ok: outcome.status === "loaded",
+    message:
+      outcome.status === "loaded"
+        ? `${refLabel} 전문 ${outcome.text.length.toLocaleString("ko-KR")}자 적재${via}`
+        : `${refLabel} — 수록됐으나 판시사항·요지뿐이라 사실관계가 없습니다. 판결문을 직접 붙여넣으세요.`,
+  };
+}
+
+/** 운영자가 판결문 전문을 직접 붙여넣어 적재. API 에 없는 건의 마지막 경로. */
+export async function saveLowerCourtText(
+  client: Client,
+  caseId: string,
+  input: { bodyText: string; sourceRef: string },
+): Promise<CollectResult> {
+  const body = input.bodyText.replace(/\r\n?/g, "\n").trim();
+  const { data: kase, error } = await client
+    .from("cases")
+    .select("case_number")
+    .eq("case_id", caseId)
+    .maybeSingle();
+  if (error) throw error;
+
+  const ref = input.sourceRef.trim();
+  const m = /(\d{2,4}\s*[가-힣]{1,3}\s*\d+)/.exec(ref);
+  await upsertLower(client, {
+    case_id: caseId,
+    status: "loaded",
+    source_kind: "lower_manual",
+    source_ref: ref || "수기 입력",
+    lower_case_number: m ? m[1].replace(/\s+/g, "") : null,
+    lower_court: ref ? ref.split(/\s+/)[0] : null,
+    body_text: body,
+    char_count: body.length,
+    fetched_at: new Date().toISOString(),
+    deleted_at: null,
+  });
+  // 사실관계 절이 안 보이면 알려 준다 — 요지만 붙여넣으면 도식 사실관계가 부실해진다.
+  const warn = hasFactSection(body)
+    ? ""
+    : " ※사실관계 절(기초사실·심결의 경위 등)이 보이지 않습니다 — 요지만 붙여넣지 않았는지 확인하세요.";
+  return {
+    caseId,
+    caseNumber: kase?.case_number ?? "?",
+    status: "loaded",
+    ok: true,
+    message: `수기 전문 ${body.length.toLocaleString("ko-KR")}자 적재.${warn}`,
+  };
 }
