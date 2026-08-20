@@ -6,6 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
+import { fetchAllPages } from "~/core/lib/supa-batch.server";
 import {
   LAW_SUBJECTS,
   type LawSubjectSlug,
@@ -84,15 +85,23 @@ export async function getQnaAnalyticsByNode(opts?: {
   const admin = adminClient as SupabaseClient<Database>;
   const limit = opts?.limit ?? 20;
 
-  const { data: threads, error } = await admin
-    .from("qna_threads")
-    .select(
-      "thread_id, subject, node_id, science_section_id, quality_grade, status",
-    )
-    .is("deleted_at", null);
-  if (error || !threads) {
-    return { totalThreads: 0, gradedThreads: 0, nodes: [], byNodeId: {} };
-  }
+  // ★1000행 상한 — 스레드가 6,451건이라 통계가 앞 1,000건만 반영되고 있었다. 끝까지 읽는다.
+  const threads = await fetchAllPages<{
+    thread_id: string;
+    subject: string | null;
+    node_id: string | null;
+    science_section_id: string | null;
+    quality_grade: string | null;
+    status: string;
+  }>(() =>
+    admin
+      .from("qna_threads")
+      .select(
+        "thread_id, subject, node_id, science_section_id, quality_grade, status",
+      )
+      .is("deleted_at", null)
+      .order("thread_id"),
+  );
 
   const buckets = new Map<string, Bucket>();
   const threadKey = new Map<string, string>();

@@ -4,6 +4,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "database.types";
 
+import { fetchAllPages } from "~/core/lib/supa-batch.server";
+
 import {
   type DailyMenuItem,
   type DailyMenuKind,
@@ -326,11 +328,16 @@ async function pickBlankDue(
   }
 
   // 2순위 — 신규 미시도 빈칸 세트.
-  const { data: tried } = await client
-    .from("user_blank_attempts")
-    .select("set_id")
-    .eq("user_id", userId);
-  const triedSet = new Set((tried ?? []).map((r) => r.set_id));
+  // ★1000행 상한 — 시도가 많은 학생(실측 1인 최대 7,904건)은 앞 1,000건만 읽혀
+  //   이미 푼 세트를 "신규 미시도"로 다시 추천하게 된다. 끝까지 읽는다.
+  const tried = await fetchAllPages<{ set_id: string }>(() =>
+    client
+      .from("user_blank_attempts")
+      .select("set_id")
+      .eq("user_id", userId)
+      .order("attempt_id"),
+  );
+  const triedSet = new Set(tried.map((r) => r.set_id));
 
   const { data: sets } = await client
     .from("article_blank_sets")
