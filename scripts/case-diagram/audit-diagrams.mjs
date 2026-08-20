@@ -109,10 +109,14 @@ async function main() {
     const allText = [r.facts_md, ...blocks.map(blockText)].join("\n");
 
     // ① 사건번호 실재
+    // ★원문 대조 전에 공백을 지운다 — 판결문 전문은 줄바꿈이 공백으로 들어와
+    //   "특허법원 2019허  8033호" 처럼 사건번호 가운데가 벌어져 있는 경우가 흔하다.
+    //   정확일치로 보면 실재하는 인용을 없는 것으로 잡는다(오탐).
+    const flat = source.replace(/\s+/g, "");
     const cited = [...new Set((allText.match(CASE_NO_RE) ?? []))];
     for (const no of cited) {
       if (no === cn) continue;
-      if (!source.includes(no)) {
+      if (!flat.includes(no.replace(/\s+/g, ""))) {
         msgs.push(["FAIL", `원문에 없는 사건번호 인용: ${no}`]);
       }
     }
