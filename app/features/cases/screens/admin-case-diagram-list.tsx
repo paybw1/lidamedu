@@ -4,7 +4,9 @@
 import { CircleDashedIcon, FileTextIcon, SearchIcon } from "lucide-react";
 import { Form, Link, data } from "react-router";
 
+import { cn } from "~/core/lib/utils";
 import { Input } from "~/core/components/ui/input";
+import { AdminShell } from "~/features/admin/components/admin-shell";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { Chip } from "~/features/community/components/community-ui";
 import {
@@ -69,26 +71,55 @@ export async function loader({ request }: Route.LoaderArgs) {
           : r.diagram?.reviewStatus === status,
     )
     .filter((r) => !q || r.caseNumber.includes(q) || r.caseTitle.includes(q));
-  return { rows, counts, year, status, q };
+  return { rows, counts, year, status, q, role };
 }
 
 export default function AdminCaseDiagramList({
   loaderData,
 }: Route.ComponentProps) {
-  const { rows, counts, year, status, q } = loaderData;
+  const { rows, counts, year, status, q, role } = loaderData;
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 py-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-extrabold tracking-tight">판례 도식</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          2차 답안 작성 순서(사실관계 → 쟁점 → 법조문 → 법리 → 포섭 → 결론)로
-          판례를 도식화합니다. 승인한 도식만 학생에게 보입니다.
-        </p>
-        <p className="text-muted-foreground mt-1 text-xs">
-          대상 = 특허법 2005년 이후 · 총 {counts.total}건 · 승인 {counts.done} ·
-          검수대기 {counts.draft} · 미생성 {counts.none}
-        </p>
-      </header>
+    <AdminShell
+      cluster="cases"
+      role={role}
+      title="판례 도식"
+      desc="2차 답안 작성 순서(사실관계 → 쟁점 → 법조문 → 법리 → 포섭 → 결론)로 판례를 도식화합니다. 승인한 도식만 학생에게 보입니다."
+    >
+      {/* 상태별 카운트를 그대로 필터 링크로 — "저장했는데 검수 대기를 어디서 보나"가
+          바로 답이 되도록(원장 문의 2026-08-20). 연도 필터는 유지한 채 상태만 바꾼다. */}
+      <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
+        <span className="text-muted-foreground">특허법 2005년 이후</span>
+        {(
+          [
+            [null, "전체", counts.total],
+            ["draft", "검수 대기", counts.draft],
+            ["approved", "승인", counts.done],
+            ["none", "미생성", counts.none],
+          ] as [string | null, string, number][]
+        ).map(([val, label, n]) => {
+          const sp = new URLSearchParams();
+          if (year) sp.set("year", String(year));
+          if (q) sp.set("q", q);
+          if (val) sp.set("status", val);
+          const active = (status ?? null) === val;
+          return (
+            <Link
+              key={label}
+              to={`/admin/case-diagrams${sp.size ? `?${sp}` : ""}`}
+              preventScrollReset
+              className={cn(
+                "inline-flex h-7 items-center gap-1.5 rounded-full border px-3 font-semibold transition-colors",
+                active
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border text-muted-foreground hover:bg-muted",
+              )}
+            >
+              {label}
+              <span className={active ? "" : "text-foreground"}>{n}</span>
+            </Link>
+          );
+        })}
+      </div>
 
       <Form method="get" className="mb-4 flex flex-wrap items-center gap-2">
         <div className="relative">
@@ -185,7 +216,7 @@ export default function AdminCaseDiagramList({
           ))}
         </ul>
       )}
-    </main>
+    </AdminShell>
   );
 }
 

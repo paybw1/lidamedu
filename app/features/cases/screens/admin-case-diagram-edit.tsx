@@ -20,6 +20,7 @@ import { Button } from "~/core/components/ui/button";
 import { Input } from "~/core/components/ui/input";
 import { Textarea } from "~/core/components/ui/textarea";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { AdminShell } from "~/features/admin/components/admin-shell";
 import { runAfterResponse } from "~/core/lib/wait-until.server";
 import { Chip } from "~/features/community/components/community-ui";
 import { draftCaseDiagramBlocks } from "~/features/cases/lib/ai-case-diagram-drafter.server";
@@ -70,6 +71,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const ctx = await getCaseDiagramEditContext(client, params.caseId);
   if (!ctx) throw data("Not found", { status: 404 });
   return {
+    role,
     kase: {
       ...ctx.kase,
       // 전문은 화면에서 쓰지 않는다(길이만 필요) — 페이로드 절감.
@@ -216,7 +218,7 @@ export default function AdminCaseDiagramEdit({
   loaderData,
   actionData,
 }: Route.ComponentProps) {
-  const { kase, diagram } = loaderData;
+  const { kase, diagram, role } = loaderData;
   const nav = useNavigation();
   const busy = nav.state !== "idle";
 
@@ -243,7 +245,13 @@ export default function AdminCaseDiagramEdit({
     );
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-8">
+    <AdminShell
+      cluster="cases"
+      role={role}
+      title="판례 도식 편집"
+      desc={`${kase.caseNumber} · ${kase.court} ${kase.decidedAt}`}
+      width={960}
+    >
       <Link
         to="/admin/case-diagrams"
         className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-xs"
@@ -522,7 +530,7 @@ export default function AdminCaseDiagramEdit({
           </p>
         </div>
       ) : null}
-    </main>
+    </AdminShell>
   );
 }
 
