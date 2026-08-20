@@ -18,6 +18,8 @@ import { Button } from "~/core/components/ui/button";
 import { Card, CardHeader } from "~/core/components/ui/card";
 import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { CaseDiagramSheet } from "~/features/cases/components/case-diagram-sheet";
+import { getCaseDiagramByCaseId } from "~/features/cases/queries-case-diagram.server";
 import { cn } from "~/core/lib/utils";
 import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
 import { MemoMarksOverlay } from "~/features/annotations/components/memo-marks-overlay";
@@ -243,6 +245,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     lectureResources,
     siblings,
     axisCounts,
+    caseDiagram,
   ] = await Promise.all([
     getRelatedArticlesByCase(client, kase.caseId),
     getRelatedProblemsByCase(client, kase.caseId, 12),
@@ -257,6 +260,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     listLectureResources(client, "case", kase.caseId),
     siblingsPromise,
     getSubjectAxisCounts(client, lawCode, law.lawId),
+    // feat-2-035 — 판례 도식. RLS 가 학생에게는 승인분만 준다(staff 는 draft 도).
+    getCaseDiagramByCaseId(client, kase.caseId),
   ]);
 
   // 통합본 PDF 위치 링크(조각과 병존). staff 는 항상 미리보기, 학생은 플래그 on 시.
@@ -295,6 +300,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     articles,
     systematicNodes,
     caseTreeCounts,
+    caseDiagram,
     relatedArticles,
     relatedProblems,
     examProblems,
@@ -326,6 +332,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
     articles,
     systematicNodes,
     caseTreeCounts,
+    caseDiagram,
     relatedArticles,
     relatedProblems,
     examProblems,
@@ -615,6 +622,13 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
               {/* 암기 모드 토글(원문/빈 칸/쟁점만 보기/전체 복원) + 읽기 모드.
                   ★수험생 공개(특허법 판례, 2026-07-21). 편집 서브토글은 staff 전용 유지. */}
               <div className="mb-3 flex flex-wrap items-center gap-1.5">
+                {/* feat-2-035 — 2차 답안 순서 도식. 승인분만 학생에게 보인다(RLS). */}
+                {caseDiagram ? (
+                  <CaseDiagramSheet
+                    diagram={caseDiagram}
+                    caseNumber={kase.caseNumber}
+                  />
+                ) : null}
                 {memEnabled && (hasMem || hasCaseBlanks)
                   ? memToggles.map(([m, label]) => (
                       <button

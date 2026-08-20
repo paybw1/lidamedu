@@ -58,6 +58,8 @@ interface SubjectHubProps {
   progressByArticle?: import("./node-progress-gauge").NodeProgressByArticle;
   cases?: CaseListItem[];
   casesTotal?: number;
+  /** feat-2-035 — 도식 보유 판례 id(학생=승인분만). */
+  diagramCaseIds?: string[];
   caseFilters?: CaseFiltersApplied;
   caseTreeCounts?: CaseTreeCounts;
   problems?: ProblemListItem[];
@@ -108,6 +110,7 @@ function SubjectHubInner({
   systematicNodes,
   cases,
   casesTotal,
+  diagramCaseIds,
   caseFilters,
   caseTreeCounts,
   problems,
@@ -243,6 +246,7 @@ function SubjectHubInner({
               subject={subject}
               cases={cases ?? []}
               casesTotal={casesTotal ?? cases?.length ?? 0}
+              diagramCaseIds={diagramCaseIds}
               caseFilters={caseFilters}
               initialQuery={caseQuery ?? ""}
               articles={articles ?? []}

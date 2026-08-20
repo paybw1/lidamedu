@@ -93,6 +93,24 @@ export async function getCaseDiagramByCaseId(
 }
 
 /**
+ * 주어진 판례들 중 "보이는 도식"이 있는 id 집합. 학생은 RLS 로 승인분만 잡힌다.
+ * 목록 배지 전용 — CaseListItem 을 늘리지 않기 위해 분리했다(공용 select 라 파급이 크다).
+ */
+export async function listCaseIdsWithDiagram(
+  client: Client,
+  caseIds: string[],
+): Promise<string[]> {
+  if (caseIds.length === 0) return [];
+  const { data, error } = await client
+    .from("case_diagrams")
+    .select("case_id")
+    .in("case_id", caseIds)
+    .is("deleted_at", null);
+  if (error) throw error;
+  return (data ?? []).map((r) => r.case_id);
+}
+
+/**
  * staff 목록 — 대상 판례를 나열하고 도식 유무·상태를 붙인다.
  * 생성 범위(특허 2005~)는 화면이 아니라 호출부 인자로 넘긴다(스키마는 과목 무관).
  */

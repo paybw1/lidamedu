@@ -19,6 +19,7 @@ export default function SubjectPatent({ loaderData }: Route.ComponentProps) {
       systematicNodes={loaderData.systematicNodes}
       cases={loaderData.cases}
       casesTotal={loaderData.casesTotal}
+      diagramCaseIds={loaderData.diagramCaseIds}
       caseFilters={loaderData.caseFilters}
       caseTreeCounts={loaderData.caseTreeCounts}
       problems={loaderData.problems}

@@ -22,6 +22,7 @@ import {
   getCasePlacementMaps,
   listCasesBySubject,
 } from "~/features/cases/queries.server";
+import { listCaseIdsWithDiagram } from "~/features/cases/queries-case-diagram.server";
 import {
   type ArticleNode,
   type LawHeader,
@@ -142,6 +143,8 @@ export interface SubjectHubData {
   systematicNodes: SystematicNode[];
   cases: CaseListItem[];
   casesTotal: number;
+  // feat-2-035 — 표시 목록 중 도식 보유 판례 id(학생=승인분만, RLS).
+  diagramCaseIds: string[];
   caseFilters: CaseFiltersApplied;
   caseTreeCounts: CaseTreeCounts;
   problems: ProblemListItem[];
@@ -703,6 +706,7 @@ export async function loadSubjectHub(
       problemNodeFilter: null,
       cases: [],
       casesTotal: 0,
+      diagramCaseIds: [],
       caseFilters,
       caseTreeCounts: { byArticleId: {}, byChapterId: {}, byNodeId: {} },
       problems: [],
@@ -875,6 +879,14 @@ export async function loadSubjectHub(
     placementMaps.caseSetByNodeId,
   );
   for (const c of cases) c.overallNo = caseOverallMap[c.caseId] ?? null;
+
+  // feat-2-035 — 도식 보유 판례 id. CaseListItem 을 늘리지 않고(공용 LIST_COLUMNS 라
+  // 최근판례 등 다른 호출부까지 번진다) 표시 목록 범위만 별도 조회한다.
+  // RLS 가 학생에게는 승인분만 준다 — 여기서 상태를 다시 거를 필요가 없다.
+  const diagramCaseIds = await listCaseIdsWithDiagram(
+    client,
+    cases.map((c) => c.caseId),
+  );
   if (caseFilters.sort === "overall_asc") {
     cases.sort(
       (a, b) =>
@@ -1063,6 +1075,7 @@ export async function loadSubjectHub(
     problemNodeFilter,
     cases,
     casesTotal,
+    diagramCaseIds,
     caseFilters,
     caseTreeCounts,
     // 주관식 목록은 "모범답안" 배지 하나에 존재 여부만 쓰는데도 본문 전체가 응답에

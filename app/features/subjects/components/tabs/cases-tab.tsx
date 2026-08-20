@@ -10,6 +10,7 @@ import {
   ArrowUpIcon,
   ChevronDownIcon,
   GavelIcon,
+  GitBranchIcon,
   ListTreeIcon,
   SearchIcon,
   StarIcon,
@@ -100,6 +101,7 @@ export function CasesTab({
   subject,
   cases,
   casesTotal,
+  diagramCaseIds,
   caseFilters,
   initialQuery,
   articles,
@@ -110,6 +112,8 @@ export function CasesTab({
   subject: LawSubjectMeta;
   cases: CaseListItem[];
   casesTotal: number;
+  /** feat-2-035 — 도식 보유 판례 id(학생=승인분만). */
+  diagramCaseIds?: string[];
   caseFilters?: CaseFiltersApplied;
   initialQuery: string;
   articles: ArticleNode[];
@@ -118,6 +122,10 @@ export function CasesTab({
   studyStatus: SubjectStudyStatusProps;
 }) {
   const filters = caseFilters ?? { ...DEFAULT_FILTERS, q: initialQuery };
+  const diagramSet = useMemo(
+    () => new Set(diagramCaseIds ?? []),
+    [diagramCaseIds],
+  );
   const [searchParams] = useSearchParams();
   const navigation = useNavigation();
   const navigate = useNavigate();
@@ -612,6 +620,7 @@ export function CasesTab({
                         ? (topicShortByNodeId.get(c.primaryNodeId) ?? null)
                         : null
                     }
+                    hasDiagram={diagramSet.has(c.caseId)}
                   />
                 ))}
               </TableBody>
@@ -774,9 +783,12 @@ function CaseRow({
   item,
   topicColumn = false,
   topicShort = null,
+  hasDiagram = false,
 }: {
   subject: LawSubjectMeta;
   item: CaseListItem;
+  /** feat-2-035 — 도식 보유 여부. 학생에게는 승인분만 true(RLS). */
+  hasDiagram?: boolean;
   /** 주제 배치 과목(상표 등) — 주제 컬럼 렌더 여부(과목 단위로 통일). */
   topicColumn?: boolean;
   /** 이 판례의 주제 축약 라벨("주제N"). 클릭 시 해당 주제 필터. */
@@ -854,6 +866,16 @@ function CaseRow({
         >
           {item.caseNumber}
         </Link>
+        {/* feat-2-035 — 2차 답안 순서 도식 보유 표시. 클릭은 판례 본문에서(Sheet). */}
+        {hasDiagram ? (
+          <span
+            title="2차 답안 순서 도식 있음 — 판례를 열면 볼 수 있습니다"
+            className="border-primary/40 text-link ml-1 inline-flex items-center gap-0.5 rounded-full border px-1.5 py-0 align-middle text-[10px] font-semibold"
+          >
+            <GitBranchIcon className="size-2.5" />
+            도식
+          </span>
+        ) : null}
         {/* 모바일에서는 선고일 컬럼이 숨겨지므로 사건번호 아래에 날짜를 함께 노출. */}
         <span className="text-muted-foreground mt-0.5 block text-[10px] font-normal tabular-nums md:hidden">
           {item.decidedAt}
