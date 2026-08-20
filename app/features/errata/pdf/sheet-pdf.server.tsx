@@ -142,6 +142,8 @@ function locationOf(item: SheetItem): string {
     if (item.sortKey != null) parts.push(`문제 ${item.sortKey}번`);
     if (item.choiceNo != null)
       parts.push(`지문 ${CIRCLED[item.choiceNo - 1] ?? item.choiceNo}`);
+    // 보기 박스(㉠㉡㉢) 편집분 — 선지와 위치 표기를 구분해야 교재에서 찾을 수 있다.
+    if (item.boxMarker) parts.push(`보기 ${item.boxMarker}`);
   } else {
     if (item.pageNo == null && item.sortKey != null)
       parts.push(`수록순 ${item.sortKey}`);

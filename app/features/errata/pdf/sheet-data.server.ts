@@ -22,6 +22,8 @@ export interface SheetItem {
   contentType?: string | null;
   /** 객관식 지문 번호(①②③…) — 지문 단위 정오일 때만. */
   choiceNo?: number | null;
+  /** 보기 박스 항목의 마커(㉠㉡㉢) — 지문(선지)과 위치 표기가 다르다. */
+  boxMarker?: string | null;
   scope: SheetScope;
   isWithdrawalNotice: boolean; // 철회 고지 행 (§2.5 — 본문 대신 별도 표시)
 }
@@ -46,6 +48,13 @@ function payloadText(payload: unknown, key: "before_text" | "after_text"): strin
 }
 
 /** source_ref.choice_no → 지문 번호. 문자열/숫자 모두 허용, 범위 밖은 null. */
+/** source_ref.marker → 보기 마커. 보기 박스 편집분에만 있다. */
+function boxMarkerOf(sourceRef: unknown): string | null {
+  if (sourceRef == null || typeof sourceRef !== "object") return null;
+  const raw = (sourceRef as Record<string, unknown>).marker;
+  return typeof raw === "string" && raw.trim() ? raw.trim().slice(0, 4) : null;
+}
+
 function choiceNoOf(sourceRef: unknown): number | null {
   if (sourceRef == null || typeof sourceRef !== "object") return null;
   const raw = (sourceRef as Record<string, unknown>).choice_no;
@@ -98,6 +107,7 @@ export async function buildErrataSheetData(
     sortKey: r.sort_key,
       contentType: r.content_type,
       choiceNo: choiceNoOf(r.source_ref),
+      boxMarker: boxMarkerOf(r.source_ref),
       scope: (r.exam_scope ?? "unknown") as SheetScope,
       isWithdrawalNotice: r.withdraws_revision_id != null,
     }));
