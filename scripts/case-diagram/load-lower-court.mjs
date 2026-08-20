@@ -55,7 +55,7 @@ async function main() {
   const idByNumber = new Map(cases.map((c) => [c.case_number, c.case_id]));
 
   // 리포트 4분류 → status. 확보(자동/자체/수기)는 캐시에서 전문을 읽어 담는다.
-  const rows = [];
+  let rows = [];
   const missingCase = [];
 
   const pushLoaded = (entry) => {
@@ -108,6 +108,26 @@ async function main() {
   for (const e of report.notInApi ?? []) pushMissing(e, "not_in_api");
   for (const e of report.noFacts ?? []) pushMissing(e, "summary_only");
   for (const e of report.noLowerRef ?? []) pushMissing(e, "no_ref");
+
+  // ★강등 금지 — 운영 화면(/admin/cases/lower-court)에서 지정·붙여넣기로 적재한 건은
+  //   로컬 캐시에 없다. 그대로 밀면 이 스크립트가 그 건을 다시 "미확보"로 판정해
+  //   body_text 를 빈 문자열로 덮어써 수기 전문을 날린다. loaded 인 행은 건드리지 않는다.
+  const { data: already, error: alreadyErr } = await sb
+    .from("case_lower_courts")
+    .select("case_id")
+    .eq("status", "loaded")
+    .is("deleted_at", null);
+  if (alreadyErr) throw new Error(alreadyErr.message);
+  const loadedIds = new Set((already ?? []).map((r) => r.case_id));
+  const demoted = rows.filter(
+    (r) => r.status !== "loaded" && loadedIds.has(r.case_id),
+  );
+  if (demoted.length) {
+    rows = rows.filter((r) => !demoted.includes(r));
+    console.log(
+      `[보호] 이미 적재된 ${demoted.length}건은 미확보로 덮어쓰지 않고 건너뜁니다(화면에서 수기 적재한 건).\n`,
+    );
+  }
 
   const byStatus = rows.reduce((acc, r) => {
     acc[r.status] = (acc[r.status] ?? 0) + 1;
