@@ -85,7 +85,9 @@ function rowToListItem(
     nickname: row.nickname,
     caseType: row.case_type,
     isEnBanc: row.is_en_banc,
-    importance: row.importance ?? 1,
+    // ★NULL 은 NULL 로 둔다 — 중요도 미부여(민법 1문항 인용 886건)를 1성으로
+    //   보이게 하면 원장이 매긴 중요도 1 과 구분이 안 된다(2026-08-20).
+    importance: row.importance,
     summaryTitle: row.summary_title,
     summaryFirstTitle: extractFirstSummaryTitle(row.summary_items),
     subjectLaws: row.subject_laws ?? [],

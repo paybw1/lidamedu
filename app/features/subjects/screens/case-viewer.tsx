@@ -613,7 +613,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                       currentUserId={currentUserId}
                       isAdmin={isAdmin}
                       viewerIsStaff={canEditCase}
-                      importance={kase.importance}
+                      importance={kase.importance ?? undefined}
                       lectureResources={lectureResources}
                       pdfLocations={pdfLocations}
                       pdfLocationsEnabled={pdfLocationsEnabled}
@@ -837,7 +837,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                     currentUserId={currentUserId}
                     isAdmin={isAdmin}
                     viewerIsStaff={canEditCase}
-                    importance={kase.importance}
+                    importance={kase.importance ?? undefined}
                     lectureResources={lectureResources}
                     pdfLocations={pdfLocations}
                     pdfLocationsEnabled={pdfLocationsEnabled}

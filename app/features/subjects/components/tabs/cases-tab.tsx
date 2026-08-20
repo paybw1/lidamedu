@@ -214,7 +214,7 @@ export function CasesTab({
   const isLoading = navigation.state !== "idle";
 
   const tabParam = searchParams.get("tab") ?? "";
-  const importantCount = cases.filter((c) => c.importance >= 3).length;
+  const importantCount = cases.filter((c) => (c.importance ?? 0) >= 3).length;
   const examCount = cases.filter(
     (c) => c.exam1stProblems.length + c.exam2ndYears.length > 0,
   ).length;
@@ -811,17 +811,22 @@ function CaseRow({
   return (
     <TableRow className="hover:bg-muted/40 cursor-pointer">
       <TableCell className="text-center">
-        {/* 중요 판례(중요도 3) = 채워진 별 / 기출 판례 = 빈 별 표시. */}
-        {item.importance >= 3 ? (
-          <StarIcon
-            className="mx-auto size-3.5 fill-amber-400 text-amber-500"
-            aria-label="중요 판례"
-          />
-        ) : item.exam1stProblems.length + item.exam2ndYears.length > 0 ? (
-          <StarIcon
-            className="mx-auto size-3.5 text-amber-400/70"
-            aria-label="기출 판례"
-          />
+        {/* 중요도는 별 "개수"로 구분한다(원장 지시 2026-08-20) — 색 농도만으로는
+            1·2·3 이 구분되지 않았다. 미부여(null)는 별 없음.
+            기출 여부는 옆 칸의 연도 칩이 이미 보여 준다. */}
+        {(item.importance ?? 0) > 0 ? (
+          <span
+            className="inline-flex items-center justify-center gap-px"
+            aria-label={`중요도 ${item.importance}`}
+            title={`중요도 ${item.importance}`}
+          >
+            {Array.from({ length: item.importance ?? 0 }, (_, i) => (
+              <StarIcon
+                key={i}
+                className="size-3 fill-amber-400 text-amber-500"
+              />
+            ))}
+          </span>
         ) : null}
       </TableCell>
       <TableCell className="text-link text-xs font-semibold tabular-nums">

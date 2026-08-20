@@ -18,7 +18,7 @@ export function CaseMetaLine({
     nickname: string | null;
     caseType: string | null;
     isEnBanc: boolean;
-    importance: number;
+    importance: number | null;
     decidedAt: string;
   };
 }) {
@@ -52,7 +52,7 @@ export function CaseMetaLine({
             전합
           </Badge>
         ) : null}
-        {kase.importance > 0 ? (
+        {(kase.importance ?? 0) > 0 ? (
           <span
             className="inline-flex items-center gap-0.5"
             aria-label={`중요도 ${kase.importance}성`}
@@ -62,7 +62,7 @@ export function CaseMetaLine({
                 key={i}
                 className={cn(
                   "size-3",
-                  i < kase.importance
+                  i < (kase.importance ?? 0)
                     ? "fill-amber-400 text-amber-400"
                     : "fill-none text-amber-300",
                 )}

@@ -482,13 +482,21 @@ export async function getStudentDetail(
     if (recent.length >= 12) break;
   }
 
-  // 빈칸.
-  const { data: blankRows } = await admin
-    .from("user_blank_attempts")
-    .select("is_correct")
-    .eq("user_id", profileId);
-  const blankAttempts = blankRows?.length ?? 0;
-  const blankCorrect = (blankRows ?? []).filter((r) => r.is_correct).length;
+  // 빈칸. ★행을 받아 세면 안 된다 — PostgREST 기본 상한 1000행이라 시도가 많은 학생은
+  //   통계가 1,000 에서 멈춘다(실측 1인 최대 7,904건). 카운트 쿼리로 정확히 센다.
+  const [attemptsRes, correctRes] = await Promise.all([
+    admin
+      .from("user_blank_attempts")
+      .select("attempt_id", { count: "exact", head: true })
+      .eq("user_id", profileId),
+    admin
+      .from("user_blank_attempts")
+      .select("attempt_id", { count: "exact", head: true })
+      .eq("user_id", profileId)
+      .eq("is_correct", true),
+  ]);
+  const blankAttempts = attemptsRes.count ?? 0;
+  const blankCorrect = correctRes.count ?? 0;
 
   const totalProblemsAttempted = allAttempts.reduce(
     (acc, a) => acc.add(a.problem_id),

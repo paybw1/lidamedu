@@ -418,11 +418,15 @@ function LowerRow({ row }: { row: LowerCourtListItem }) {
             accept=".pdf,.txt,.md"
             disabled={busy}
             onChange={(e) => {
-              if (e.currentTarget.files?.length && e.currentTarget.form)
-                fetcher.submit(e.currentTarget.form, {
-                  method: "post",
-                  encType: "multipart/form-data",
-                });
+              const files = [...(e.currentTarget.files ?? [])];
+              if (!files.length || !e.currentTarget.form) return;
+              // ★action 을 옵션에 명시해야 한다 — 폼의 action 속성만 두고 submit(form, {method})
+              //   로 보내면 현재 라우트로 가서 "알 수 없는 요청"이 된다(원장 오류신고 2026-08-20).
+              fetcher.submit(e.currentTarget.form, {
+                method: "post",
+                action: "/api/admin/lower-court-upload",
+                encType: "multipart/form-data",
+              });
             }}
             className="file:bg-muted block w-full text-xs file:mr-2 file:rounded file:border-0 file:px-2 file:py-1 file:text-xs"
           />

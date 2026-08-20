@@ -53,7 +53,7 @@ export function SubjectLearningHub({
   problems: ProblemListItem[];
   problemStats: UserProblemStats | null;
 }) {
-  const importantCases = cases.filter((c) => c.importance >= 3);
+  const importantCases = cases.filter((c) => (c.importance ?? 0) >= 3);
   const examCases = cases.filter(
     (c) => c.exam1stProblems.length + c.exam2ndYears.length > 0,
   );

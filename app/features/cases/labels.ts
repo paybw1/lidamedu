@@ -50,7 +50,8 @@ export interface CaseListItem {
   nickname: string | null;
   caseType: string | null;
   isEnBanc: boolean;
-  importance: number;
+  /** 미부여는 null — 별을 그리지 않는다. */
+  importance: number | null;
   summaryTitle: string | null;
   // 복수 요지(summary_items)의 [1] 제목 — list 화면 사건명 컬럼에서 우선 표시.
   // summary_items 가 비었으면 null. legacy summary_title 보다 우선.

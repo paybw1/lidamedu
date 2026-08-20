@@ -240,8 +240,8 @@ export function CaseBody({
           ) : null}
 
           {/* 중요도 별 */}
-          {kase.importance > 0 ? (
-            <ImportanceStars level={kase.importance} />
+          {(kase.importance ?? 0) > 0 ? (
+            <ImportanceStars level={kase.importance ?? 0} />
           ) : null}
 
           {/* 선고일 */}
