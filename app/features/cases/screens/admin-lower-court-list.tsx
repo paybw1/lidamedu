@@ -244,7 +244,8 @@ export default function AdminLowerCourtList({
         <strong>자동 수집</strong> = 대법원 원문의 원심 표기를 읽어 국가법령정보센터에서
         판결문을 받아 적재합니다. 우리 DB 원문이 비어 있으면 대법원 전문부터 받아 원심을
         찾습니다. 못 찾으면 <strong>원심번호 지정</strong>으로 번호를 직접 넣고,
-        법령정보센터에 없는 판결문은 <strong>전문 붙여넣기</strong>로 넣습니다.
+        법령정보센터에 없는 판결문은 <strong>파일 업로드</strong>(PDF·txt·md, 합계 4MB
+        이하) 또는 <strong>전문 붙여넣기</strong>로 넣습니다.
         <br />
         <strong>미수록·요지만</strong> = 원심 사건번호는 확정돼 있어 판결문만 구하면 됩니다.{" "}
         <strong>원심 미상</strong> = 원심이 무엇인지부터 찾아야 합니다.
@@ -335,7 +336,7 @@ export default function AdminLowerCourtList({
 
 function LowerRow({ row }: { row: LowerCourtListItem }) {
   const fetcher = useFetcher<LowerActionResult>();
-  const [mode, setMode] = useState<"ref" | "paste" | null>(null);
+  const [mode, setMode] = useState<"ref" | "upload" | "paste" | null>(null);
   const busy = fetcher.state !== "idle";
   const result = fetcher.data?.kind === "single" ? fetcher.data.result : null;
   const error = fetcher.data?.kind === "error" ? fetcher.data.message : null;
@@ -387,12 +388,59 @@ function LowerRow({ row }: { row: LowerCourtListItem }) {
         </button>
         <button
           type="button"
+          onClick={() => setMode(mode === "upload" ? null : "upload")}
+          className="border-border hover:bg-muted h-7 rounded-lg border px-2.5 text-xs font-semibold"
+        >
+          파일 업로드
+        </button>
+        <button
+          type="button"
           onClick={() => setMode(mode === "paste" ? null : "paste")}
           className="border-border hover:bg-muted h-7 rounded-lg border px-2.5 text-xs font-semibold"
         >
           전문 붙여넣기
         </button>
       </div>
+
+      {mode === "upload" ? (
+        // ★파일 고르면 바로 전송한다(제출 버튼 없음) — 출처 표기는 파일명에서 뽑는다.
+        <fetcher.Form
+          method="post"
+          action="/api/admin/lower-court-upload"
+          encType="multipart/form-data"
+          className="mt-2"
+        >
+          <input type="hidden" name="caseId" value={row.caseId} />
+          <input
+            type="file"
+            name="files"
+            multiple
+            accept=".pdf,.txt,.md"
+            disabled={busy}
+            onChange={(e) => {
+              if (e.currentTarget.files?.length && e.currentTarget.form)
+                fetcher.submit(e.currentTarget.form, {
+                  method: "post",
+                  encType: "multipart/form-data",
+                });
+            }}
+            className="file:bg-muted block w-full text-xs file:mr-2 file:rounded file:border-0 file:px-2 file:py-1 file:text-xs"
+          />
+          <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">
+            <code className="bg-muted rounded px-1 py-0.5">
+              {"<대법원 사건번호> <법원> <하급심 사건번호>.pdf"}
+            </code>{" "}
+            형식으로 이름을 지으면 앞 번호를 떼고 출처 표기가 됩니다. 심급이 여러 개면
+            한 번에 여러 개를 고르세요. <strong>합계 4MB 이하</strong> · 텍스트 레이어
+            없는 스캔 PDF 는 추출되지 않습니다(그때는 붙여넣기).
+          </p>
+          {busy ? (
+            <p className="text-muted-foreground mt-1 text-[11px]">
+              업로드·텍스트 추출 중…
+            </p>
+          ) : null}
+        </fetcher.Form>
+      ) : null}
 
       {mode === "ref" ? (
         <fetcher.Form

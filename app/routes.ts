@@ -174,6 +174,11 @@ export default [
       // feat-7-037 — 전문 PDF 수동 업로드 → 텍스트 추출·적재.
       route("/case-official-pdf", "features/admin/api/case-official-pdf.tsx"),
       route("/case-citations", "features/admin/api/case-citations.tsx"),
+      // feat-2-035 — 하급심 판결문 파일 업로드(행별 버튼). 화면 모듈에 mupdf 를 끌어들이지 않으려 분리.
+      route(
+        "/lower-court-upload",
+        "features/cases/api/lower-court-upload.tsx",
+      ),
       route("/problem-create", "features/admin/api/problem-create.tsx"),
       route("/case-reference", "features/admin/api/case-reference.tsx"),
       route("/paper", "features/admin/api/paper.tsx"),
