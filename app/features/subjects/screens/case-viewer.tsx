@@ -19,7 +19,10 @@ import { Card, CardHeader } from "~/core/components/ui/card";
 import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { CaseDiagramSheet } from "~/features/cases/components/case-diagram-sheet";
-import { getCaseDiagramByCaseId } from "~/features/cases/queries-case-diagram.server";
+import {
+  getCaseDiagramByCaseId,
+  resolveStatuteArticleIds,
+} from "~/features/cases/queries-case-diagram.server";
 import { cn } from "~/core/lib/utils";
 import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
 import { MemoMarksOverlay } from "~/features/annotations/components/memo-marks-overlay";
@@ -264,6 +267,14 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     getCaseDiagramByCaseId(client, kase.caseId),
   ]);
 
+  // feat-2-035 — 도식 법조문 표기를 조문 id 로 해석(본문 펼쳐보기). 도식이 없으면 건너뛴다.
+  const statuteArticleIds = caseDiagram
+    ? await resolveStatuteArticleIds(
+        client,
+        caseDiagram.blocks.flatMap((b) => b.statutes),
+      )
+    : {};
+
   // 통합본 PDF 위치 링크(조각과 병존). staff 는 항상 미리보기, 학생은 플래그 on 시.
   const [pdfLocations, pdfFlag] = await Promise.all([
     getPdfLocations(client, "case", kase.caseId),
@@ -301,6 +312,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     systematicNodes,
     caseTreeCounts,
     caseDiagram,
+    statuteArticleIds,
     relatedArticles,
     relatedProblems,
     examProblems,
@@ -333,6 +345,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
     systematicNodes,
     caseTreeCounts,
     caseDiagram,
+    statuteArticleIds,
     relatedArticles,
     relatedProblems,
     examProblems,
@@ -627,6 +640,8 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                   <CaseDiagramSheet
                     diagram={caseDiagram}
                     caseNumber={kase.caseNumber}
+                    subjectSlug={subject.slug}
+                    statuteArticleIds={statuteArticleIds}
                   />
                 ) : null}
                 {memEnabled && (hasMem || hasCaseBlanks)

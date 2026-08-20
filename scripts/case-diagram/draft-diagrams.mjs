@@ -77,7 +77,8 @@ const FACTS_SYSTEM = `당신은 대한민국 변리사 2차(주관식) 시험 �
 - 판결문에 없는 사건번호·조문 번호.
 
 # 형식
-- markdown. 문단 또는 번호 목록.
+- markdown. 소제목(##)과 목록을 써도 좋습니다.
+- **맨 앞에 "사실관계" 같은 전체 제목은 붙이지 마세요** — 화면이 이미 제목을 답니다.
 - 400~1200자. 학생이 2분 안에 읽고 사안을 그릴 수 있게.`;
 
 const BLOCKS_SCHEMA = {
@@ -140,6 +141,49 @@ async function callModel({ system, prompt, maxTokens, schema }) {
   return textOf(res);
 }
 
+// 사실관계와 타임라인은 같은 소스(하급심)에서 한 번에 뽑는다 — 따로 부르면 두 결과가
+// 어긋난다(산문에는 있는 날짜가 타임라인엔 없는 식). 화면은 같은 사실을 두 형태로 보여준다.
+const FACTS_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    facts_md: { type: "string" },
+    timeline: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          when: { type: "string" },
+          what: { type: "string" },
+          kind: {
+            type: "string",
+            enum: [
+              "filing",
+              "disclosure",
+              "registration",
+              "trial",
+              "litigation",
+              "other",
+            ],
+          },
+        },
+        required: ["when", "what", "kind"],
+      },
+    },
+  },
+  required: ["facts_md", "timeline"],
+};
+
+const TIMELINE_RULE = `
+# 타임라인(timeline)
+사실관계와 **같은 판결문에서** 출원·공지·등록·심판·소송의 경과를 시간 순서대로 뽑습니다.
+- when: 판결문에 적힌 그대로("2018. 7. 5.", "2011. 6.경"). 없는 날짜를 만들지 마세요.
+- what: 그 시점에 무슨 일이 있었는지 한 줄(40자 내외).
+- kind: filing(출원) · disclosure(공지·공개·실시) · registration(등록) · trial(심판) ·
+  litigation(소송) · other 중 하나.
+- 시간 순서로 정렬. 날짜가 확인되는 것만. 5~12개 정도.`;
+
 async function draftFacts(kase, cache) {
   const prompt = [
     "# 사건",
@@ -149,14 +193,29 @@ async function draftFacts(kase, cache) {
     "# 하급심 판결문",
     cache.text,
     "",
-    "위 판결문에서 사실관계를 정리하세요. 법원의 판단·결론은 쓰지 마세요.",
+    "위 판결문에서 사실관계와 경과 타임라인을 JSON 으로 정리하세요.",
+    "법원의 판단·결론은 쓰지 마세요.",
   ].join("\n");
-  const out = await callModel({
-    system: FACTS_SYSTEM,
+  const raw = await callModel({
+    system: FACTS_SYSTEM + TIMELINE_RULE,
     prompt,
-    maxTokens: 4000,
+    maxTokens: 6000,
+    schema: FACTS_SCHEMA,
   });
-  return out.trim();
+  const parsed = JSON.parse(raw);
+  const factsMd = String(parsed?.facts_md ?? "")
+    .trim()
+    // 화면이 이미 "사실관계" 제목을 달고 있다 — 본문 첫 머리글이 중복되면 떼어낸다.
+    .replace(/^\s*#{1,3}\s*사실\s*관계\s*\n+/, "");
+  const timeline = (Array.isArray(parsed?.timeline) ? parsed.timeline : [])
+    .slice(0, 14)
+    .map((e) => ({
+      when: clamp(e?.when, 40),
+      what: clamp(e?.what, 200),
+      kind: clamp(e?.kind, 20) || "other",
+    }))
+    .filter((e) => e.when && e.what);
+  return { factsMd, timeline };
 }
 
 const clamp = (v, n = 1200) =>
@@ -301,13 +360,17 @@ async function main() {
   for (const [i, t] of targets.entries()) {
     const cn = t.kase.case_number;
     try {
-      const factsMd = t.cache ? await draftFacts(t.kase, t.cache) : "";
+      const facts = t.cache
+        ? await draftFacts(t.kase, t.cache)
+        : { factsMd: "", timeline: [] };
+      const factsMd = facts.factsMd;
       const blocks = await draftBlocks(t.kase);
       if (blocks.length === 0) throw new Error("쟁점 0개");
 
       const payload = {
         case_id: t.kase.case_id,
         facts_md: factsMd,
+        timeline: facts.timeline,
         facts_source_kind: t.cache ? t.cache.sourceKind : "none",
         facts_source_ref: t.cache ? t.cache.sourceRef : null,
         facts_source_meta: t.cache
@@ -333,9 +396,9 @@ async function main() {
       const axes = blocks.map(
         (b) => Object.keys(b.doctrine).length,
       );
-      results.push({ case: cn, blocks: blocks.length, factsChars: factsMd.length, axes });
+      results.push({ case: cn, blocks: blocks.length, factsChars: factsMd.length, timeline: facts.timeline.length, axes });
       console.log(
-        `[${i + 1}/${targets.length}] ${cn.padEnd(13)} 쟁점 ${blocks.length} · 축 ${axes.join("/")} · 사실관계 ${factsMd.length}자 · 누적 $${usd().toFixed(2)}`,
+        `[${i + 1}/${targets.length}] ${cn.padEnd(13)} 쟁점 ${blocks.length} · 축 ${axes.join("/")} · 사실관계 ${factsMd.length}자 · 경과 ${facts.timeline.length} · 누적 $${usd().toFixed(2)}`,
       );
     } catch (e) {
       failed.push({ case: cn, reason: String(e.message).slice(0, 160) });

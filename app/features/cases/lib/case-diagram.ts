@@ -92,6 +92,50 @@ export const caseDiagramBlockSchema = z.object({
 
 export const caseDiagramBlocksSchema = z.array(caseDiagramBlockSchema);
 
+// ── 경과 타임라인 (사실관계와 같은 층위 — 판례당 1개) ──────────────────────
+// when 을 date 로 강제하지 않는 이유: 판결문이 "2018. 7.경" 처럼 불완전한 날짜를 쓰는
+// 경우가 있어, 엄격히 파싱하면 그런 사실을 통째로 버리게 된다.
+export const TIMELINE_KINDS = [
+  "filing", // 출원
+  "disclosure", // 공지·공개·실시
+  "registration", // 등록·설정
+  "trial", // 심판 청구·심결
+  "litigation", // 소 제기·판결
+  "other",
+] as const;
+
+export type TimelineKind = (typeof TIMELINE_KINDS)[number];
+
+export const TIMELINE_KIND_LABEL: Record<TimelineKind, string> = {
+  filing: "출원",
+  disclosure: "공지",
+  registration: "등록",
+  trial: "심판",
+  litigation: "소송",
+  other: "경과",
+};
+
+export const timelineEventSchema = z.object({
+  when: trimmed.min(1),
+  what: trimmed.min(1),
+  kind: z.enum(TIMELINE_KINDS).default("other"),
+});
+
+export const caseTimelineSchema = z.array(timelineEventSchema);
+
+export type TimelineEvent = z.infer<typeof timelineEventSchema>;
+
+/** DB jsonb → 타임라인. 형태가 깨진 항목은 버린다(전체를 못 읽는 것보다 낫다). */
+export function parseTimeline(value: unknown): TimelineEvent[] {
+  if (!Array.isArray(value)) return [];
+  const out: TimelineEvent[] = [];
+  for (const raw of value) {
+    const parsed = timelineEventSchema.safeParse(raw);
+    if (parsed.success) out.push(parsed.data);
+  }
+  return out;
+}
+
 export type CaseDiagramBlock = z.infer<typeof caseDiagramBlockSchema>;
 
 /**

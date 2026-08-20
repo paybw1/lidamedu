@@ -2414,6 +2414,7 @@ export type Database = {
           generated_by: string
           rejected_reason: string | null
           review_status: Database["public"]["Enums"]["problem_review_status"]
+          timeline: Json
           updated_at: string
         }
         Insert: {
@@ -2432,6 +2433,7 @@ export type Database = {
           generated_by?: string
           rejected_reason?: string | null
           review_status?: Database["public"]["Enums"]["problem_review_status"]
+          timeline?: Json
           updated_at?: string
         }
         Update: {
@@ -2450,6 +2452,7 @@ export type Database = {
           generated_by?: string
           rejected_reason?: string | null
           review_status?: Database["public"]["Enums"]["problem_review_status"]
+          timeline?: Json
           updated_at?: string
         }
         Relationships: [

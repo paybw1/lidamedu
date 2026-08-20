@@ -32,12 +32,15 @@ import {
 } from "~/core/components/ui/sheet";
 import { cn } from "~/core/lib/utils";
 import { MarkdownView } from "~/features/problems/components/markdown-view";
+import { RefPreviewBadge } from "~/features/subjects/components/ref-preview-badge";
 
 import {
+  TIMELINE_KIND_LABEL,
   filledAxes,
   isLowerCourtSource,
   type CaseDiagramBlock,
   type FactsSourceKind,
+  type TimelineEvent,
 } from "../lib/case-diagram";
 
 export interface CaseDiagramView {
@@ -45,6 +48,7 @@ export interface CaseDiagramView {
   factsSourceKind: FactsSourceKind;
   factsSourceRef: string | null;
   blocks: CaseDiagramBlock[];
+  timeline: TimelineEvent[];
   reviewStatus: "draft" | "approved" | "rejected";
 }
 
@@ -53,6 +57,15 @@ const VIEW_MODE_KEY = "caseDiagram.viewMode";
 
 // 쟁점 안쪽 4단은 답안 작성 순서 그대로 원문자로 매긴다(원장 요청 2026-08-20).
 const STEP_MARK = ["①", "②", "③", "④"] as const;
+
+/**
+ * 사실관계 본문의 맨 앞 "# 사실관계" 머리글을 떼어낸다.
+ * 패널이 이미 "사실관계" 배지를 달고 있어 제목이 두 번 나온다(원장 지적 2026-08-20).
+ * 생성 프롬프트도 함께 고쳤지만, 이미 저장된 도식을 다시 만들지 않아도 되도록 렌더에서 막는다.
+ */
+function stripFactsHeading(md: string): string {
+  return md.replace(/^\s*#{1,3}\s*사실\s*관계\s*\n+/, "");
+}
 
 /** 사실관계 출처 캡션 — 사실관계가 얇은 이유를 학생이 알 수 있게 밝힌다. */
 function factsSourceCaption(d: CaseDiagramView): string | null {
@@ -68,10 +81,16 @@ function factsSourceCaption(d: CaseDiagramView): string | null {
 export function CaseDiagramSheet({
   diagram,
   caseNumber,
+  subjectSlug,
+  statuteArticleIds,
   className,
 }: {
   diagram: CaseDiagramView;
   caseNumber: string;
+  /** 조문 학습화면 링크용 과목 slug. */
+  subjectSlug?: string;
+  /** 법조문 표기 → article_id. 해석 실패분은 텍스트 칩으로 남는다. */
+  statuteArticleIds?: Record<string, string>;
   className?: string;
 }) {
   const draft = diagram.reviewStatus !== "approved";
@@ -115,7 +134,14 @@ export function CaseDiagramSheet({
     </span>
   );
 
-  const body = <DiagramBody diagram={diagram} draft={draft} />;
+  const body = (
+    <DiagramBody
+      diagram={diagram}
+      draft={draft}
+      subjectSlug={subjectSlug}
+      statuteArticleIds={statuteArticleIds}
+    />
+  );
 
   if (mode === "dialog") {
     return (
@@ -197,9 +223,13 @@ function ModeToggle({
 function DiagramBody({
   diagram,
   draft,
+  subjectSlug,
+  statuteArticleIds,
 }: {
   diagram: CaseDiagramView;
   draft: boolean;
+  subjectSlug?: string;
+  statuteArticleIds?: Record<string, string>;
 }) {
   const caption = factsSourceCaption(diagram);
   return (
@@ -217,13 +247,13 @@ function DiagramBody({
           ) : null}
         </h3>
         {diagram.factsMd.trim() ? (
-          <div className="border-border bg-muted/30 rounded-lg border p-3">
+          <div className="border-border bg-muted/30 diagram-facts rounded-lg border p-3">
             {/* ★markdown 으로 저장된다 — 그대로 텍스트로 뿌리면 ##·**·- 가 노출된다.
                 trusted=false: 원시 HTML 을 파싱하지 않는다(도식에 HTML 은 불필요). */}
             <MarkdownView
-              text={diagram.factsMd}
+              text={stripFactsHeading(diagram.factsMd)}
               trusted={false}
-              className="text-[13px] leading-relaxed"
+              className="text-[15px] leading-[1.75]"
             />
           </div>
         ) : (
@@ -233,6 +263,34 @@ function DiagramBody({
         )}
       </section>
 
+      {/* 경과 타임라인 — 같은 사실을 시간축으로. 2차는 출원·공지·심판의 선후가
+          결론을 가르는 문항이 많아 산문만으로는 흐름이 안 잡힌다. */}
+      {diagram.timeline.length > 0 ? (
+        <section>
+          <h3 className="mb-1.5 text-xs font-bold">
+            <Badge variant="secondary" className="rounded-sm px-1.5 py-0">
+              경과
+            </Badge>
+          </h3>
+          <ol className="border-border relative ml-2 space-y-2.5 border-l pl-4">
+            {diagram.timeline.map((ev, i) => (
+              <li key={i} className="relative">
+                <span className="bg-primary absolute top-[0.45rem] -left-[1.31rem] size-2 rounded-full ring-2 ring-[var(--background)]" />
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                  <span className="text-link text-[13px] font-semibold tabular-nums">
+                    {ev.when}
+                  </span>
+                  <span className="border-border text-muted-foreground rounded border px-1.5 text-[11px]">
+                    {TIMELINE_KIND_LABEL[ev.kind]}
+                  </span>
+                </div>
+                <p className="text-[15px] leading-[1.6]">{ev.what}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
+
       {/* 쟁점 단위 블록 — 쟁점마다 ①법조문 ②법리 ③포섭 ④결론 1세트. */}
       {diagram.blocks.map((b, i) => {
         const axes = filledAxes(b);
@@ -241,7 +299,7 @@ function DiagramBody({
             key={i}
             className="border-border bg-card rounded-xl border p-3 shadow-sm"
           >
-            <h3 className="mb-2 flex items-start gap-1.5 text-[13px] font-bold">
+            <h3 className="mb-2 flex items-start gap-1.5 text-[15px] font-bold">
               <Badge className="mt-0.5 shrink-0 rounded-sm px-1.5 py-0">
                 쟁점 {i + 1}
               </Badge>
@@ -250,15 +308,28 @@ function DiagramBody({
 
             {b.statutes.length > 0 ? (
               <Step no={0} label="법조문">
+                {/* 표기만으로는 무슨 규정인지 떠올려야 한다 — 해석된 조문은 그 자리에서
+                    본문을 펼쳐 볼 수 있게 한다(원장 요청 2026-08-20). */}
                 <div className="flex flex-wrap gap-1">
-                  {b.statutes.map((s) => (
-                    <span
-                      key={s}
-                      className="border-border text-muted-foreground rounded border px-1.5 py-0.5 text-[11px]"
-                    >
-                      {s}
-                    </span>
-                  ))}
+                  {b.statutes.map((s) => {
+                    const articleId = statuteArticleIds?.[s];
+                    return articleId && subjectSlug ? (
+                      <RefPreviewBadge
+                        key={s}
+                        kind="article"
+                        refId={articleId}
+                        label={s}
+                        studyHref={`/subjects/${subjectSlug}/articles/${articleId}`}
+                      />
+                    ) : (
+                      <span
+                        key={s}
+                        className="border-border text-muted-foreground rounded border px-2 py-0.5 text-[13px]"
+                      >
+                        {s}
+                      </span>
+                    );
+                  })}
                 </div>
               </Step>
             ) : null}
@@ -268,10 +339,10 @@ function DiagramBody({
                 <div className="space-y-2">
                   {axes.map((ax) => (
                     <div key={ax.key}>
-                      <span className="bg-primary/10 text-link rounded px-1.5 py-0.5 text-[10px] font-semibold">
+                      <span className="bg-primary/10 text-link rounded px-2 py-0.5 text-[12px] font-semibold">
                         {ax.label}
                       </span>
-                      <p className="mt-1 text-[13px] leading-relaxed">
+                      <p className="mt-1 text-[15px] leading-[1.75]">
                         {ax.body}
                       </p>
                     </div>
@@ -282,13 +353,13 @@ function DiagramBody({
 
             {b.application ? (
               <Step no={2} label="사안의 포섭">
-                <p className="text-[13px] leading-relaxed">{b.application}</p>
+                <p className="text-[15px] leading-[1.75]">{b.application}</p>
               </Step>
             ) : null}
 
             {b.conclusion ? (
               <Step no={3} label="결론">
-                <p className="text-[13px] leading-relaxed font-medium">
+                <p className="text-[15px] leading-[1.75] font-medium">
                   {b.conclusion}
                 </p>
               </Step>
@@ -324,8 +395,8 @@ function Step({
 }) {
   return (
     <div className="mt-2">
-      <p className="text-muted-foreground mb-1 flex items-center gap-1 text-[10px] font-semibold tracking-wide">
-        <span className="text-link text-[12px]">{STEP_MARK[no]}</span>
+      <p className="text-muted-foreground mb-1 flex items-center gap-1 text-[12px] font-semibold tracking-wide">
+        <span className="text-link text-[14px]">{STEP_MARK[no]}</span>
         {label}
       </p>
       {children}

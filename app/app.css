@@ -584,3 +584,29 @@ body {
   color: var(--link);
   text-decoration: underline;
 }
+
+/* feat-2-035 — 판례 도식 사실관계. 하급심에서 뽑은 markdown 이라 중첩 목록이 흔한데,
+   기본 스타일은 중첩 단계가 같은 disc 라 계층이 안 보이고 들여쓰기도 얕아 줄이 어긋나
+   보인다(원장 지적 2026-08-20). 단계별 마커·들여쓰기를 명확히 준다. */
+.diagram-facts ul ul {
+  list-style-type: circle;
+  padding-left: 1.1rem;
+  margin-top: 0.15rem;
+}
+.diagram-facts ul ul ul {
+  list-style-type: square;
+}
+.diagram-facts li {
+  margin: 0.2rem 0;
+}
+.diagram-facts li > p {
+  margin: 0;
+}
+/* "## 2. 출원 경과" 같은 소제목이 목록과 붙어 보이지 않게 위 여백만 확보. */
+.diagram-facts h2,
+.diagram-facts h3 {
+  margin-top: 0.9rem;
+}
+.diagram-facts > div > :first-child {
+  margin-top: 0;
+}

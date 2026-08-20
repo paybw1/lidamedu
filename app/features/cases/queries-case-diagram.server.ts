@@ -4,11 +4,17 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "~/../database.types";
+import {
+  articleNumberText,
+  parseDisplay,
+} from "~/features/laws/lib/identifier";
 
 import {
   parseBlocks,
+  parseTimeline,
   type CaseDiagramBlock,
   type FactsSourceKind,
+  type TimelineEvent,
 } from "./lib/case-diagram";
 
 type Client = SupabaseClient<Database>;
@@ -22,6 +28,7 @@ export interface CaseDiagram {
   factsSourceKind: FactsSourceKind;
   factsSourceRef: string | null;
   blocks: CaseDiagramBlock[];
+  timeline: TimelineEvent[];
   reviewStatus: DiagramReviewStatus;
   generatedBy: "ai" | "staff";
   approvedAt: string | null;
@@ -47,7 +54,7 @@ export interface CaseDiagramListRow {
 }
 
 const COLUMNS =
-  "diagram_id, case_id, facts_md, facts_source_kind, facts_source_ref, blocks, review_status, generated_by, approved_at, rejected_reason, updated_at";
+  "diagram_id, case_id, facts_md, facts_source_kind, facts_source_ref, blocks, timeline, review_status, generated_by, approved_at, rejected_reason, updated_at";
 
 function mapDiagram(row: {
   diagram_id: string;
@@ -56,6 +63,7 @@ function mapDiagram(row: {
   facts_source_kind: string;
   facts_source_ref: string | null;
   blocks: unknown;
+  timeline: unknown;
   review_status: string;
   generated_by: string;
   approved_at: string | null;
@@ -69,6 +77,7 @@ function mapDiagram(row: {
     factsSourceKind: row.facts_source_kind as FactsSourceKind,
     factsSourceRef: row.facts_source_ref,
     blocks: parseBlocks(row.blocks),
+    timeline: parseTimeline(row.timeline),
     reviewStatus: row.review_status as DiagramReviewStatus,
     generatedBy: row.generated_by as "ai" | "staff",
     approvedAt: row.approved_at,
@@ -90,6 +99,62 @@ export async function getCaseDiagramByCaseId(
     .maybeSingle();
   if (error) throw error;
   return data ? mapDiagram(data) : null;
+}
+
+/**
+ * 도식의 법조문 표기("특허법 제29조 제2항")를 실제 조문 id 로 해석한다.
+ * 학생이 조문 본문을 그 자리에서 펼쳐 볼 수 있게 하기 위한 것(원장 요청 2026-08-20).
+ *
+ * ★도식에는 조문을 FK 로 저장하지 않는다(설계 §3) — 표기 문자열이 권위이고,
+ *   여기서 읽기 시점에만 해석한다. 해석 실패는 조용히 건너뛴다(그냥 텍스트 칩으로 남는다).
+ * 항·호까지는 조문 단위 미리보기라 조(article) 단위로만 매칭한다.
+ */
+export async function resolveStatuteArticleIds(
+  client: Client,
+  statutes: string[],
+): Promise<Record<string, string>> {
+  const unique = [...new Set(statutes.map((s) => s.trim()).filter(Boolean))];
+  if (unique.length === 0) return {};
+
+  // 표기 → {lawCode, article_number}. 파싱 실패분은 버린다.
+  const parsed = unique.flatMap((raw) => {
+    const ident = parseDisplay(raw);
+    if (!ident) return [];
+    return [{ raw, lawCode: ident.lawCode, number: articleNumberText(ident) }];
+  });
+  if (parsed.length === 0) return {};
+
+  const out: Record<string, string> = {};
+  const byLaw = new Map<string, typeof parsed>();
+  for (const p of parsed) {
+    const list = byLaw.get(p.lawCode) ?? [];
+    list.push(p);
+    byLaw.set(p.lawCode, list);
+  }
+
+  for (const [lawCode, items] of byLaw) {
+    const { data: law } = await client
+      .from("laws")
+      .select("law_id")
+      .eq("law_code", lawCode)
+      .maybeSingle();
+    if (!law) continue;
+    const numbers = [...new Set(items.map((i) => i.number))];
+    const { data: rows } = await client
+      .from("articles")
+      .select("article_id, article_number")
+      .eq("law_id", law.law_id)
+      .eq("level", "article")
+      .in("article_number", numbers);
+    const byNumber = new Map(
+      (rows ?? []).map((r) => [r.article_number, r.article_id]),
+    );
+    for (const i of items) {
+      const id = byNumber.get(i.number);
+      if (id) out[i.raw] = id;
+    }
+  }
+  return out;
 }
 
 /**
@@ -247,6 +312,7 @@ export async function upsertCaseDiagram(
     factsSourceKind: FactsSourceKind;
     factsSourceRef: string | null;
     blocks: CaseDiagramBlock[];
+    timeline?: TimelineEvent[];
     generatedBy: "ai" | "staff";
     userId: string;
   },
@@ -260,6 +326,7 @@ export async function upsertCaseDiagram(
         facts_source_kind: args.factsSourceKind,
         facts_source_ref: args.factsSourceRef,
         blocks: args.blocks,
+        timeline: args.timeline ?? [],
         generated_by: args.generatedBy,
         review_status: "draft",
         approved_at: null,
