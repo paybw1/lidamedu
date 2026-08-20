@@ -19,7 +19,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { createClient } from "@supabase/supabase-js";
 
-import { normalizeCaseNumber } from "../../app/features/cases/lib/case-number.ts";
+import {
+  extractAllCaseNumbers,
+  normalizeCaseNumber,
+} from "../../app/features/cases/lib/case-number.ts";
 import { normalizeOfficialText } from "../../app/features/cases/lib/normalize-official-text.ts";
 import { dateKey } from "../../app/features/cases/lib/lower-court-fetch.server.ts";
 
@@ -189,8 +192,11 @@ async function main() {
       }
 
       // ── 3중 대조. 하나라도 어긋나면 넣지 않는다.
-      const gotNo = normalizeCaseNumber(String(svc.사건번호 ?? ""));
+      // ★병합 사건은 사건번호가 여러 개 온다("95다16202, 95다16219").
+      //   마지막 하나만 보면 멀쩡한 판례가 불일치로 떨어진다 — 목록 전체와 대조한다.
+      const gotNos = extractAllCaseNumbers(String(svc.사건번호 ?? ""));
       const wantNo = normalizeCaseNumber(r.raw);
+      const gotNo = gotNos.includes(wantNo) ? wantNo : (gotNos[gotNos.length - 1] ?? null);
       const gotCourt = String(svc.법원명 ?? "").replace(/\s+/g, "");
       const gotDate = dateKey(svc.선고일자);
       const wantDate = dateKey(r.decidedAt);
