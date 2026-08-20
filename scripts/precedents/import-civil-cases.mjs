@@ -220,9 +220,9 @@ async function main() {
         case_number: r.raw,
         case_title: String(svc.사건명 ?? r.title ?? "").trim() || r.raw,
         is_en_banc: /전원합의체/.test(String(svc.판결유형 ?? "")),
-        // 1문항 인용은 컬럼을 생략해 기본값(1)이 들어가게 둔다 — NULL 로 넣으면
-        // 화면은 ?? 1 로 1성으로 보이는데 "중요도 N 이상" 필터에서는 빠져 어긋난다.
-        ...(importanceOf(r.n) != null ? { importance: importanceOf(r.n) } : {}),
+        // ★1문항 인용은 NULL — "중요도 미부여"(원장 지시 2026-08-20). 화면은 ?? 1 로
+        //   1성처럼 그리지만 "중요도 N 이상" 필터에서는 빠진다. 그게 의도다.
+        importance: importanceOf(r.n),
         summary_items: buildSummaryItems(svc.판시사항, svc.판결요지),
         official_text_md: body,
         law_api_serial_id: String(r.serial),
