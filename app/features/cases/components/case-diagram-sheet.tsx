@@ -250,9 +250,14 @@ function DiagramBody({
           <div className="border-border bg-muted/30 diagram-facts rounded-lg border p-3">
             {/* ★markdown 으로 저장된다 — 그대로 텍스트로 뿌리면 ##·**·- 가 노출된다.
                 trusted=false: 원시 HTML 을 파싱하지 않는다(도식에 HTML 은 불필요). */}
+            {/* ★literalNumbering — 사실관계는 "- 2022. 1. 18. 피고, …" 처럼 날짜로
+                시작하는 줄이 대부분인데, markdown 은 그 "2022." 를 번호 목록 마커로
+                읽어 날짜를 통째로 빼앗아 간다(원장 지적 2026-08-20). 손으로 친 번호는
+                친 그대로 표시한다. */}
             <MarkdownView
               text={stripFactsHeading(diagram.factsMd)}
               trusted={false}
+              literalNumbering
               className="text-[15px] leading-[1.75]"
             />
           </div>
