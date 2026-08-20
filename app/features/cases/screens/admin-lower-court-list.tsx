@@ -14,9 +14,9 @@ import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Chip } from "~/features/admin/components/admin-ui";
 import {
   LOWER_STATUS_LABEL,
-  listLowerCourtTargets,
   type LowerCourtStatus,
-} from "~/features/cases/queries-lower-court.server";
+} from "~/features/cases/lib/lower-court";
+import { listLowerCourtTargets } from "~/features/cases/queries-lower-court.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 
 import type { Route } from "./+types/admin-lower-court-list";

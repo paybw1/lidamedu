@@ -5,28 +5,20 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "~/../database.types";
 
+import {
+  needsManualWork,
+  type LowerCourtStatus,
+} from "./lib/lower-court";
+
 type Client = SupabaseClient<Database>;
 
-export const LOWER_STATUSES = [
-  "loaded",
-  "not_in_api",
-  "summary_only",
-  "no_ref",
-] as const;
-
-export type LowerCourtStatus = (typeof LOWER_STATUSES)[number];
-
-export const LOWER_STATUS_LABEL: Record<LowerCourtStatus, string> = {
-  loaded: "적재됨",
-  not_in_api: "미수록 — 판결문만 구하면 됨",
-  summary_only: "요지만 — 판결문만 구하면 됨",
-  no_ref: "원심 미상 — 원심 확인부터",
-};
-
-/** 수기 확보가 필요한 상태인지. 목록 기본 필터. */
-export function needsManualWork(status: LowerCourtStatus): boolean {
-  return status !== "loaded";
-}
+// 상태 라벨은 클라이언트 안전 모듈이 SSOT — 화면이 .server 를 참조하면 빌드가 깨진다.
+export {
+  LOWER_STATUSES,
+  LOWER_STATUS_LABEL,
+  needsManualWork,
+  type LowerCourtStatus,
+} from "./lib/lower-court";
 
 export interface LowerCourtRow {
   caseId: string;
