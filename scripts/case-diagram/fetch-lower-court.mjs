@@ -79,29 +79,44 @@ export function normalizeCourt(name) {
     .trim();
 }
 
-/** 대법원 원문 헤더에서 원심 표기 추출. 판결·결정 둘 다. */
+/**
+ * 대법원 원문 헤더에서 원심 표기 추출. 판결·결정 둘 다.
+ *
+ * ★표기가 세 갈래다(원장 지적 2026-08-20 — "전문에 원심번호가 있는데 미상으로 나온다"):
+ *   ① 【원심판결】 특허법원 2023. 6. 16. 선고 2022허4635 판결
+ *   ② 원 심 판 결  특허법원 2016. 1. 21. 선고 2014허4913 판결   ← 글자 사이 공백·괄호 없음
+ *   ③ 【원심결정】 대구지법 2024. 12. 5.자 2024라10826 결정
+ *   ②를 못 잡아 41건이 통째로 "원심 미상"으로 분류돼 있었다.
+ * 사건번호 연도도 2자리(98노8499)가 있어 \d{2,4} 로 받는다.
+ */
+// "원심판결" / "원 심 판 결" / "원심결정" — 앞뒤 【】는 있어도 없어도 된다.
+const LOWER_MARKER = "【?\\s*원\\s*심\\s*(?:판\\s*결|결\\s*정)\\s*】?";
+const CASE_NO = "\\d{2,4}\\s*[가-힣]{1,3}\\s*\\d+";
+
 function parseLowerRef(officialTextMd) {
-  const text = String(officialTextMd ?? "");
-  // 【원심판결】 특허법원 2023. 6. 16. 선고 2022허4635 판결
-  // 【원심결정】 대구지법 2024. 12. 5.자 2024라10826 결정
-  const withDate =
-    /【원심(?:판결|결정)】\s*([^\n【]*?)\s*(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\.\s*(?:선고|자)\s*(\d{4}[가-힣]{1,3}\d+)/;
+  // 줄바꿈이 공백으로 들어온 전문이 많아 공백을 한 칸으로 눌러 놓고 찾는다.
+  const text = String(officialTextMd ?? "").replace(/\s+/g, " ");
+  const clean = (s) => s.replace(/\s+/g, "");
+
+  const withDate = new RegExp(
+    `${LOWER_MARKER}\\s*([^【]*?)\\s*(\\d{4})\\.\\s*(\\d{1,2})\\.\\s*(\\d{1,2})\\.\\s*(?:선고|자)\\s*(${CASE_NO})`,
+  );
   const md = text.match(withDate);
   if (md) {
     const pad = (v) => String(v).padStart(2, "0");
     return {
       court: md[1].replace(/[,\s]+$/, "").trim(),
       decidedAt: `${md[2]}.${pad(md[3])}.${pad(md[4])}`,
-      caseNumber: md[5],
+      caseNumber: clean(md[5]),
     };
   }
-  const noDate = /【원심(?:판결|결정)】\s*([^\n【]*?)\s*(\d{4}[가-힣]{1,3}\d+)/;
+  const noDate = new RegExp(`${LOWER_MARKER}\\s*([^【]*?)\\s*(${CASE_NO})`);
   const m = text.match(noDate);
   if (!m) return null;
   return {
     court: m[1].replace(/[,\s]+$/, "").trim(),
     decidedAt: null,
-    caseNumber: m[2],
+    caseNumber: clean(m[2]),
   };
 }
 
