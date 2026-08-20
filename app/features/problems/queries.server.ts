@@ -1974,12 +1974,31 @@ export async function getExamProblemsForCase(
 export async function getExamProblemsByCase(
   client: SupabaseClient<Database>,
 ): Promise<Map<string, ExamProblemRef[]>> {
-  const { data, error } = await client
-    .from("problem_case_links")
-    .select(
-      "case_id, problems!inner(problem_id, year, problem_number, origin, exam_round, format, deleted_at, laws!inner(law_code))",
-    );
-  if (error) throw error;
+  // ★PostgREST 기본 상한 1000행 — 페이지로 끝까지 읽는다.
+  //   민법 문항↔판례 링크 2,109건을 넣자 전체가 2,559건이 되면서 뒤쪽 링크가 잘려
+  //   판례 목록의 기출 표시(별·연도 칩)가 통째로 사라졌다(원장 지적 2026-08-20).
+  //   잘려도 에러가 안 나는 게 이 함정의 고약한 점이다.
+  type LinkRow = {
+    case_id: string;
+    problems: {
+      problem_id: string;
+      year: number | null;
+      problem_number: number | null;
+      origin: string;
+      exam_round: string;
+      format: string;
+      deleted_at: string | null;
+      laws: { law_code: string };
+    } | null;
+  };
+  const data = await fetchAllPages<LinkRow>(() =>
+    client
+      .from("problem_case_links")
+      .select(
+        "case_id, problems!inner(problem_id, year, problem_number, origin, exam_round, format, deleted_at, laws!inner(law_code))",
+      )
+      .order("link_id"),
+  );
   const byCase = new Map<string, ExamProblemRef[]>();
   const seen = new Set<string>(); // `${caseId}::${problemId}` — 중복 링크 제거.
   for (const r of data ?? []) {
@@ -1988,7 +2007,7 @@ export async function getExamProblemsByCase(
     // 객관식 1차 기출(변형 포함) — 변형만 연결된 연도가 칩에서 빠지지 않게.
     if (p.origin !== "past_exam" && p.origin !== "past_exam_variant") continue;
     if (p.exam_round !== "first") continue;
-    if (!MC_FORMATS.includes(p.format)) continue;
+    if (!(MC_FORMATS as readonly string[]).includes(p.format)) continue;
     const key = `${r.case_id}::${p.problem_id}`;
     if (seen.has(key)) continue;
     seen.add(key);
