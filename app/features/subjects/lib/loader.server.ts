@@ -842,14 +842,19 @@ export async function loadSubjectHub(
     problemNodeSeq,
     subjectiveNodeTree,
   ] = await Promise.all([
-    listCasesBySubject(client, lawCode, {
-      query: caseFilters.q || undefined,
-      sort: caseFilters.sort,
-      court: caseFilters.court,
-      examFilter: caseFilters.exam,
-      filterCaseIds,
-      importanceMin: caseFilters.importanceMin || undefined,
-    }),
+    // ★판례 탭이 아닐 때는 전량을 싣지 않는다 — 다른 탭에서 이 목록을 쓰는 곳은
+    //   학습 허브의 "중요 판례 3건"뿐인데, 민법 적재(1,341건) 후 SSR 응답에 697KB 가
+    //   매 탭마다 실려 나갔다. 중요도 3 만 받으면 몇 KB 로 줄고 화면은 그대로다.
+    activeTabIsCases
+      ? listCasesBySubject(client, lawCode, {
+          query: caseFilters.q || undefined,
+          sort: caseFilters.sort,
+          court: caseFilters.court,
+          examFilter: caseFilters.exam,
+          filterCaseIds,
+          importanceMin: caseFilters.importanceMin || undefined,
+        })
+      : listCasesBySubject(client, lawCode, { importanceMin: 3 }),
     listProblemsBySubject(client, lawCode, groupPastExamOrigin(problemFilters)),
     getLatestPublishedRevisionDate(client, law.lawId),
     listProblemYears(client, lawCode),
@@ -868,7 +873,9 @@ export async function loadSubjectHub(
   // 체계도 전체 순번(overallNo) — 노드 필터/정렬 전, 전과목 기준 1회 부여(파생값).
   await attachProblemOverallNo(client, lawCode, problems);
   const cases = casesPage.items;
-  const casesTotal = casesPage.total;
+  // 판례 탭이 아니면 위에서 중요도 3 만 받았다 — 그 total 을 쓰면 "판례 N" 이 10건으로
+  // 줄어 보인다. 필터 무관 전체 카운트로 돌린다.
+  const casesTotal = activeTabIsCases ? casesPage.total : totalCaseCount;
 
   // 체계도 전체 순번(판례) — 전과목 기준 1회 계산 → 표시 항목에 부여. sort=overall 이면 재정렬.
   // (판례는 listCasesBySubject 가 overall 을 모르므로 여기서 in-memory 정렬한다.)

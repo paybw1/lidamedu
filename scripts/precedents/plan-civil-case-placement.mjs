@@ -11,6 +11,12 @@
 //   node scripts/precedents/plan-civil-case-placement.mjs            # 배치안 산출(JSON)
 //   node scripts/precedents/plan-civil-case-placement.mjs --apply    # cases.primary_node_id 반영
 //   node scripts/precedents/plan-civil-case-placement.mjs --apply --only single
+//
+// ★출제범위: 변리사 민법은 제4편 친족·제5편 상속이 시험 범위가 아니다(원장 2026-08-20).
+//   그 두 편에 속한 노드는 득표 계산에서 아예 뺀다.
+// ★동수는 중복 배치한다 — primary_node_id 는 단일 배치라 쓸 수 없으므로
+//   article_case_links(조문↔판례 다대다)로 건다. 배치 로직은 primary_* 가 비어 있으면
+//   ACL 이 가리키는 노드 전부에 판례를 올린다(getCasePlacementMaps 의 legacy 분기).
 import "dotenv/config";
 import fs from "node:fs";
 import path from "node:path";
@@ -25,6 +31,9 @@ const APPLY = argv.includes("--apply");
 const ONLY = argOf("--only"); // single | majority (미지정이면 둘 다)
 const OUT = path.resolve(process.cwd(), "tmp/civil-placement-plan.json");
 const CIVIL_LAW_ID = "74dc73af-f25d-40ff-aead-fb039471982c";
+// 시험 범위 밖 — 루트 노드 라벨 접두사로 판별한다.
+const OUT_OF_SCOPE_ROOTS = ["제4편", "제5편"];
+const ACL_NOTE = "civil-exam-scan";
 
 const sb = createClient(
   process.env.SUPABASE_URL,
@@ -63,6 +72,14 @@ async function main() {
       cur = cur.parent_id ? nodeById.get(cur.parent_id) : null;
     }
     return parts.join(" > ");
+  };
+  /** 시험 범위 판정 — 루트(편)까지 올라가 제4편·제5편이면 제외. */
+  const inScope = (id) => {
+    let cur = nodeById.get(id);
+    let guard = 0;
+    while (cur?.parent_id && guard++ < 10) cur = nodeById.get(cur.parent_id);
+    const root = cur?.display_label ?? "";
+    return !OUT_OF_SCOPE_ROOTS.some((p) => root.startsWith(p));
   };
 
   // ── 민법 문항 + 조문 + 노드
@@ -113,32 +130,52 @@ async function main() {
   }
 
   const plan = [];
-  const counts = { single: 0, majority: 0, tie: 0, no_article: 0, no_link: 0 };
+  const counts = {
+    single: 0,
+    majority: 0,
+    tie: 0,
+    no_article: 0,
+    no_link: 0,
+    out_of_scope: 0,
+  };
   for (const c of cases) {
     const pids = citedBy.get(c.case_id) ?? [];
     if (!pids.length) {
       counts.no_link += 1;
       continue;
     }
-    const votes = new Map();
+    const votes = new Map(); // node → { n, articles:Set }
+    let dropped = 0;
     for (const pid of pids) {
       const art = probById.get(pid)?.primary_article_id;
       const node = art ? nodeOfArticle.get(art) : null;
       if (!node) continue;
-      votes.set(node, (votes.get(node) ?? 0) + 1);
+      // ★제4편 친족·제5편 상속은 변리사 시험 범위가 아니다 — 득표에서 뺀다.
+      if (!inScope(node)) {
+        dropped += 1;
+        continue;
+      }
+      const cur = votes.get(node) ?? { n: 0, articles: new Set() };
+      cur.n += 1;
+      cur.articles.add(art);
+      votes.set(node, cur);
     }
     if (votes.size === 0) {
-      counts.no_article += 1;
+      if (dropped > 0) counts.out_of_scope += 1;
+      else counts.no_article += 1;
       continue;
     }
-    const sorted = [...votes.entries()].sort((a, b) => b[1] - a[1]);
+    const sorted = [...votes.entries()].sort((a, b) => b[1].n - a[1].n);
+    const top = sorted[0][1].n;
     const decided =
       sorted.length === 1
         ? "single"
-        : sorted[0][1] > sorted[1][1]
+        : top > sorted[1][1].n
           ? "majority"
           : "tie";
     counts[decided] += 1;
+    // 동수는 동점 노드 전부에 중복 배치한다(원장 지시) — ACL 로 건다.
+    const tied = sorted.filter(([, v]) => v.n === top);
     plan.push({
       caseId: c.case_id,
       caseNumber: c.case_number,
@@ -148,10 +185,22 @@ async function main() {
       decided,
       nodeId: sorted[0][0],
       nodeLabel: fullLabel(sorted[0][0]),
-      votes: sorted[0][1],
-      totalVotes: [...votes.values()].reduce((s, v) => s + v, 0),
-      // 동수·다수결 검토용 — 경쟁 노드도 싣는다.
-      alternatives: sorted.slice(1, 4).map(([id, v]) => ({ label: fullLabel(id), votes: v })),
+      votes: top,
+      totalVotes: [...votes.values()].reduce((s, v) => s + v.n, 0),
+      outOfScopeDropped: dropped,
+      // 동수일 때 실제로 걸 대상 — 노드 라벨과 그 노드를 가리킨 조문 id.
+      tiedNodes:
+        decided === "tie"
+          ? tied.map(([id, v]) => ({
+              nodeId: id,
+              label: fullLabel(id),
+              articleIds: [...v.articles],
+            }))
+          : [],
+      // 다수결 검토용 — 경쟁 노드도 싣는다.
+      alternatives: sorted
+        .slice(1, 4)
+        .map(([id, v]) => ({ label: fullLabel(id), votes: v.n })),
       problems: pids
         .map((pid) => probById.get(pid)?.display_no)
         .filter(Boolean)
@@ -161,7 +210,8 @@ async function main() {
 
   fs.writeFileSync(OUT, JSON.stringify({ counts, plan }, null, 2), "utf8");
   console.log(
-    `민법 판례 ${cases.length}건 — 단일 ${counts.single} · 다수결 ${counts.majority} · 동수 ${counts.tie} · 조문없음 ${counts.no_article} · 인용문항없음 ${counts.no_link}`,
+    `민법 판례 ${cases.length}건 — 단일 ${counts.single} · 다수결 ${counts.majority} · 동수(중복배치) ${counts.tie}` +
+      ` · 범위밖만(4·5편) ${counts.out_of_scope} · 조문없음 ${counts.no_article} · 인용문항없음 ${counts.no_link}`,
   );
   const byNode = {};
   for (const p of plan) byNode[p.nodeLabel] = (byNode[p.nodeLabel] ?? 0) + 1;
@@ -171,21 +221,71 @@ async function main() {
     console.log("\n--apply 를 붙이면 cases.primary_node_id 에 반영합니다.");
     return;
   }
-  const targets = plan.filter(
+  // ① 단일·다수결 → primary_node_id(단일 배치)
+  const single = plan.filter(
     (p) => p.decided !== "tie" && (!ONLY || p.decided === ONLY),
   );
-  console.log(`반영 대상 ${targets.length}건`);
+  console.log(`단일 배치 ${single.length}건`);
   let done = 0;
-  for (const t of targets) {
+  for (const t of single) {
     const { error } = await sb
       .from("cases")
       .update({ primary_node_id: t.nodeId })
       .eq("case_id", t.caseId);
     if (error) throw new Error(`${t.caseNumber}: ${error.message}`);
     done += 1;
-    if (done % 100 === 0) console.log(`  ${done}/${targets.length}`);
+    if (done % 200 === 0) console.log(`  ${done}/${single.length}`);
   }
-  console.log(`\n배치 완료 ${done}건.`);
+
+  // ② 동수 → 중복 배치. primary_* 를 비워 두면 배치 로직이 ACL 의 조문들이 가리키는
+  //    노드 전부에 판례를 올린다(getCasePlacementMaps). ACL 은 멱등하게 넣는다.
+  const ties = ONLY ? [] : plan.filter((p) => p.decided === "tie");
+  const aclRows = [];
+  for (const t of ties) {
+    for (const n of t.tiedNodes) {
+      for (const articleId of n.articleIds) {
+        aclRows.push({
+          article_id: articleId,
+          case_id: t.caseId,
+          // 기존 값과 맞춘다 — article_case_links 는 cites / directly_interprets 를 쓴다.
+          relation_type: "cites",
+          note: ACL_NOTE,
+        });
+      }
+    }
+  }
+  let aclInserted = 0;
+  if (aclRows.length) {
+    const caseIds = [...new Set(ties.map((t) => t.caseId))];
+    const have = new Set();
+    for (let i = 0; i < caseIds.length; i += 100) {
+      const { data, error } = await sb
+        .from("article_case_links")
+        .select("article_id, case_id")
+        .in("case_id", caseIds.slice(i, i + 100));
+      if (error) throw new Error(error.message);
+      for (const l of data ?? []) have.add(`${l.article_id}:${l.case_id}`);
+    }
+    const fresh = aclRows.filter((r) => !have.has(`${r.article_id}:${r.case_id}`));
+    for (let i = 0; i < fresh.length; i += 200) {
+      const { error } = await sb
+        .from("article_case_links")
+        .insert(fresh.slice(i, i + 200));
+      if (error) throw new Error(`ACL insert 실패: ${error.message}`);
+      aclInserted += fresh.slice(i, i + 200).length;
+    }
+    // 동수 건은 primary 를 비워 둬야 중복 배치가 산다(이전 실행분 정리 포함).
+    for (let i = 0; i < caseIds.length; i += 100) {
+      const { error } = await sb
+        .from("cases")
+        .update({ primary_node_id: null, primary_article_id: null })
+        .in("case_id", caseIds.slice(i, i + 100));
+      if (error) throw new Error(`primary 초기화 실패: ${error.message}`);
+    }
+  }
+  console.log(
+    `\n배치 완료 — 단일 ${done}건 · 동수 중복배치 ${ties.length}건(조문 링크 ${aclInserted}개 신규)`,
+  );
 }
 
 main().catch((e) => {
