@@ -4,6 +4,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "~/../database.types";
+import { fetchAllIn } from "~/core/lib/supa-batch.server";
 import {
   articleNumberText,
   parseDisplay,
@@ -166,13 +167,18 @@ export async function listCaseIdsWithDiagram(
   caseIds: string[],
 ): Promise<string[]> {
   if (caseIds.length === 0) return [];
-  const { data, error } = await client
-    .from("case_diagrams")
-    .select("case_id")
-    .in("case_id", caseIds)
-    .is("deleted_at", null);
-  if (error) throw error;
-  return (data ?? []).map((r) => r.case_id);
+  // ★id 를 통째로 .in() 에 넣으면 URL 이 길어져 PostgREST 가 400(Bad Request)을 던진다 —
+  //   민법 판례 1,341건을 적재하자 /subjects/civil 이 통째로 500 이 됐다(2026-08-20).
+  //   조각내어 조회한다(호출부가 목록 페이지를 주든 전량을 주든 안전하게).
+  const rows = await fetchAllIn<{ case_id: string }>(caseIds, (slice) =>
+    client
+      .from("case_diagrams")
+      .select("case_id")
+      .in("case_id", slice)
+      .is("deleted_at", null)
+      .order("case_id"),
+  );
+  return rows.map((r) => r.case_id);
 }
 
 /**
