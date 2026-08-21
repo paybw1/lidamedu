@@ -2,11 +2,14 @@
 // type(조문/판례/이론) 토글에 따라 조문번호 / 판례번호 입력란 노출.
 // 해설(explanation_md) 변경 시 비어있는 ref 필드를 자동 prefill.
 // polarity + format 이 자동 OX 적용 가능하면 빈 oxTruth 를 정답 여부로부터 추론. 사용자가 직접 OX 를 만지면 자동 모드 해제.
-
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "~/core/lib/utils";
 import { ExplanationEditor } from "~/features/problems/components/explanation-editor";
+import {
+  extractArticleNumber,
+  extractCaseNumber,
+} from "~/features/problems/extract";
 import {
   CHOICE_TYPE_COLOR,
   CHOICE_TYPE_LABEL,
@@ -20,7 +23,6 @@ import {
   deriveChoiceOxTruth,
   isForceOxIneligibleFormat,
 } from "~/features/problems/lib/auto-ox";
-import { extractArticleNumber, extractCaseNumber } from "~/features/problems/extract";
 
 const CHOICE_TYPES: ProblemChoiceType[] = ["statute", "precedent", "theory"];
 
@@ -58,7 +60,9 @@ export function ChoiceEditor({
   const [type, setType] = useState<ProblemChoiceType | "">(
     (initialType ?? "") as ProblemChoiceType | "",
   );
-  const [explanation, setExplanation] = useState<string>(choice.explanationMd ?? "");
+  const [explanation, setExplanation] = useState<string>(
+    choice.explanationMd ?? "",
+  );
   const [articleNumber, setArticleNumber] = useState<string>(
     choice.relatedArticleNumber ?? "",
   );
@@ -67,6 +71,10 @@ export function ChoiceEditor({
   );
   // feat-4-A-342 — 지문 체계도 소분류 (관련 조문이 세분화된 경우 OX 정밀 배치).
   const [nodeId, setNodeId] = useState<string>(choice.relatedNodeId ?? "");
+  // 종합 표시 — 다른 단원 내용을 담은 지문(교재 원본의 기울임체).
+  const [crossUnit, setCrossUnit] = useState<boolean>(
+    choice.crossUnit ?? false,
+  );
   // 사례형(mc_case) 은 사례 의존이라 단독 OX 가 성립하지 않음 → 미설정 상태(persisted ineligible=false + ox_truth 없음)면 자동 체크.
   const [oxIneligible, setOxIneligible] = useState<boolean>(
     choice.oxIneligible ||
@@ -215,7 +223,11 @@ export function ChoiceEditor({
 
   return (
     <div className={cn("border-input rounded-md border", padCls)}>
-      <input type="hidden" name={`choice_${choice.choiceIndex}_id`} value={choice.choiceId} />
+      <input
+        type="hidden"
+        name={`choice_${choice.choiceIndex}_id`}
+        value={choice.choiceId}
+      />
 
       <div className="flex flex-wrap items-center gap-2">
         <span
@@ -237,7 +249,7 @@ export function ChoiceEditor({
           정답
         </label>
         {/* OX 라벨 — O / X / 미판정. 부적합이면 disabled. */}
-        <div className="inline-flex items-center gap-0.5 rounded-md border border-input p-0.5 text-[11px]">
+        <div className="border-input inline-flex items-center gap-0.5 rounded-md border p-0.5 text-[11px]">
           {(["O", "X"] as const).map((v) => (
             <label
               key={v}
@@ -295,6 +307,26 @@ export function ChoiceEditor({
           />
           정오문제 불가
         </label>
+        {/* 종합 표시 — 학습 화면에서 지문 끝에 호박색 "종합" 배지로 나온다.
+            정오표 대상이 아니라 개정 원장에 남지 않는다(트리거 무시 필드). */}
+        <label
+          className={cn(
+            "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px]",
+            crossUnit
+              ? "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+              : "text-muted-foreground",
+          )}
+          title="다른 단원의 내용을 포함한 지문 — 학습 화면에서 지문 끝에 “종합” 배지가 붙는다"
+        >
+          <input
+            type="checkbox"
+            name={`choice_${choice.choiceIndex}_cross_unit`}
+            value="1"
+            checked={crossUnit}
+            onChange={(e) => setCrossUnit(e.target.checked)}
+          />
+          종합
+        </label>
         <div className="ml-auto">
           {/* 박스형(mc_box) 의 choice 는 보기묶음(예: "㉮㉯") 이라 분류·관련조문 불필요 → 셀렉트 숨기고 빈 값으로 hidden 제출. */}
           {format === "mc_box" ? (
@@ -307,7 +339,9 @@ export function ChoiceEditor({
             <select
               name={`choice_${choice.choiceIndex}_type`}
               value={type}
-              onChange={(e) => setType(e.target.value as ProblemChoiceType | "")}
+              onChange={(e) =>
+                setType(e.target.value as ProblemChoiceType | "")
+              }
               className={cn(
                 "border-input rounded-md border px-2 py-1 text-[11px] font-medium",
                 cls,
@@ -348,8 +382,16 @@ export function ChoiceEditor({
           - 조문/이론/미분류: 관련 조문만 노출. */}
       {format === "mc_box" ? (
         <>
-          <input type="hidden" name={`choice_${choice.choiceIndex}_article_number`} value="" />
-          <input type="hidden" name={`choice_${choice.choiceIndex}_case_number`} value="" />
+          <input
+            type="hidden"
+            name={`choice_${choice.choiceIndex}_article_number`}
+            value=""
+          />
+          <input
+            type="hidden"
+            name={`choice_${choice.choiceIndex}_case_number`}
+            value=""
+          />
           {nodeField}
         </>
       ) : type === "precedent" ? (

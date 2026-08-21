@@ -1457,11 +1457,11 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                         <span className="text-foreground/70 shrink-0 font-semibold">
                           {bi.marker}
                         </span>
-                        <span className="flex min-w-0 flex-1 flex-col gap-1">
-                          {bi.crossUnit ? <CrossUnitBadge /> : null}
+                        <span className="min-w-0 flex-1">
                           <span className="whitespace-pre-line">
                             {bi.bodyMd}
                           </span>
+                          {bi.crossUnit ? <CrossUnitBadge /> : null}
                         </span>
                       </li>
                     ))}
@@ -1568,11 +1568,12 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                               {c.choiceIndex}
                             </span>
                             {/* 선지 텍스트 — 조문/판례 본문처럼 하이라이트 가능. 선지별 fieldPath.
-                                ★"타 단원" 배지는 본문 밖에 둔다 — 안에 넣으면 하이라이트 오프셋이 밀린다. */}
-                            <div className="flex min-w-0 flex-1 flex-col gap-1">
-                              {c.crossUnit ? <CrossUnitBadge /> : null}
+                                ★"종합" 배지는 문장 끝에 이어 붙이되 HighlightOverlay 바깥에 둔다 —
+                                  안에 넣으면 배지 글자까지 세어 하이라이트 오프셋이 밀린다.
+                                  그래서 본문 컨테이너를 inline 으로 두고 형제로 붙인다. */}
+                            <div className="min-w-0 flex-1">
                               <HighlightOverlay
-                                className="text-foreground text-[length:calc(15px*var(--study-fs))] leading-[1.65] tracking-[-0.005em] whitespace-pre-line"
+                                className="text-foreground inline text-[length:calc(15px*var(--study-fs))] leading-[1.65] tracking-[-0.005em] whitespace-pre-line"
                                 fieldPath={`problem.choice.${c.choiceIndex}`}
                                 targetType="problem"
                                 targetId={problem.problemId}
@@ -1581,6 +1582,7 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                               >
                                 {c.bodyMd}
                               </HighlightOverlay>
+                              {c.crossUnit ? <CrossUnitBadge /> : null}
                             </div>
                             {showCorrect ? (
                               <CircleCheckIcon className="mt-0.5 size-5 shrink-0 text-emerald-500" />

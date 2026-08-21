@@ -2,11 +2,14 @@
 // ChoiceEditor 와 같은 색인 컬럼(choice_type / 조문·판례 ref / OX truth / 정오문제 불가)을
 // 갖지만 정답 라디오는 없다 (박스 항목 자체는 정답 후보가 아님).
 // 정답 choice body 에 marker 가 포함되면 "정답 그룹" 으로 보고 polarity 규칙으로 OX 자동 도출.
-
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "~/core/lib/utils";
 import { ExplanationEditor } from "~/features/problems/components/explanation-editor";
+import {
+  extractArticleNumber,
+  extractCaseNumber,
+} from "~/features/problems/extract";
 import {
   CHOICE_TYPE_COLOR,
   CHOICE_TYPE_LABEL,
@@ -20,7 +23,6 @@ import {
   deriveBoxItemOxTruth,
   isForceOxIneligibleFormat,
 } from "~/features/problems/lib/auto-ox";
-import { extractArticleNumber, extractCaseNumber } from "~/features/problems/extract";
 
 const CHOICE_TYPES: ProblemChoiceType[] = ["statute", "precedent", "theory"];
 
@@ -52,11 +54,19 @@ export function BoxItemEditor({
   const [type, setType] = useState<ProblemChoiceType | "">(
     (initialType ?? "") as ProblemChoiceType | "",
   );
-  const [explanation, setExplanation] = useState<string>(item.explanationMd ?? "");
-  const [articleNumber, setArticleNumber] = useState<string>(item.relatedArticleNumber ?? "");
-  const [caseNumber, setCaseNumber] = useState<string>(item.relatedCaseNumber ?? "");
+  const [explanation, setExplanation] = useState<string>(
+    item.explanationMd ?? "",
+  );
+  const [articleNumber, setArticleNumber] = useState<string>(
+    item.relatedArticleNumber ?? "",
+  );
+  const [caseNumber, setCaseNumber] = useState<string>(
+    item.relatedCaseNumber ?? "",
+  );
   // feat-4-A-342 — 보기항목 체계도 소분류.
   const [nodeId, setNodeId] = useState<string>(item.relatedNodeId ?? "");
+  // 종합 표시 — 다른 단원 내용을 담은 보기(교재 원본의 기울임체).
+  const [crossUnit, setCrossUnit] = useState<boolean>(item.crossUnit ?? false);
   // 사례형(mc_case) 은 사례 의존이라 단독 OX 가 성립하지 않음 → 미설정이면 자동 체크.
   const [oxIneligible, setOxIneligible] = useState<boolean>(
     item.oxIneligible ||
@@ -194,7 +204,12 @@ export function BoxItemEditor({
     );
 
   return (
-    <div className={cn("border-input border-l-2 border-l-blue-500 rounded-md border", padCls)}>
+    <div
+      className={cn(
+        "border-input rounded-md border border-l-2 border-l-blue-500",
+        padCls,
+      )}
+    >
       <input type="hidden" name={`${prefix}_id`} value={item.boxItemId} />
 
       <div className="flex flex-wrap items-center gap-2">
@@ -206,7 +221,7 @@ export function BoxItemEditor({
         >
           {item.marker}
         </span>
-        <div className="inline-flex items-center gap-0.5 rounded-md border border-input p-0.5 text-[11px]">
+        <div className="border-input inline-flex items-center gap-0.5 rounded-md border p-0.5 text-[11px]">
           {(["O", "X"] as const).map((v) => (
             <label
               key={v}
@@ -262,6 +277,25 @@ export function BoxItemEditor({
             }}
           />
           정오문제 불가
+        </label>
+        {/* 종합 표시 — 학습 화면에서 항목 끝에 호박색 "종합" 배지로 나온다. */}
+        <label
+          className={cn(
+            "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px]",
+            crossUnit
+              ? "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+              : "text-muted-foreground",
+          )}
+          title="다른 단원의 내용을 포함한 보기 — 학습 화면에서 끝에 “종합” 배지가 붙는다"
+        >
+          <input
+            type="checkbox"
+            name={`${prefix}_cross_unit`}
+            value="1"
+            checked={crossUnit}
+            onChange={(e) => setCrossUnit(e.target.checked)}
+          />
+          종합
         </label>
         <div className="ml-auto">
           <select

@@ -1,10 +1,11 @@
 // 운영자 객관식 문제 편집 — 메타 (출처/유형/극성/연도/회차/scope) + 본문 + 5지문.
+import type { Route } from "./+types/admin-problem-edit";
 
 import {
   AlertTriangleIcon,
+  CheckCircleIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  CheckCircleIcon,
   CircleSlashIcon,
   ListIcon,
   MegaphoneIcon,
@@ -24,9 +25,6 @@ import {
 } from "react-router";
 import { toast } from "sonner";
 
-import { ErrataPublishModal } from "~/features/errata/components/errata-publish-modal";
-import { DEFAULT_KIND_BY_CONTEXT } from "~/features/errata/labels";
-
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Input } from "~/core/components/ui/input";
@@ -35,18 +33,16 @@ import { assertSubjectWritable } from "~/core/lib/staff-subject-guard.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
 import { runAfterResponse } from "~/core/lib/wait-until.server";
-import { reindexProblems } from "~/features/ai-qna/lib/source-chunker.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
-import {
-  AdminSelect,
-  Chip,
-  Field,
-} from "~/features/admin/components/admin-ui";
+import { AdminSelect, Chip, Field } from "~/features/admin/components/admin-ui";
+import { reindexProblems } from "~/features/ai-qna/lib/source-chunker.server";
+import { ErrataPublishModal } from "~/features/errata/components/errata-publish-modal";
+import { DEFAULT_KIND_BY_CONTEXT } from "~/features/errata/labels";
+import { getUnpublishedRevisions } from "~/features/errata/queries.server";
 import {
   getStaffRole,
   getSystematicSkeleton,
 } from "~/features/laws/queries.server";
-import { getUnpublishedRevisions } from "~/features/errata/queries.server";
 import { BoxItemEditor } from "~/features/problems/components/box-item-editor";
 import { ChoiceEditor } from "~/features/problems/components/choice-editor";
 import { ExplanationEditor } from "~/features/problems/components/explanation-editor";
@@ -55,7 +51,6 @@ import {
   ORIGIN_HAS_ROUND,
   ORIGIN_LABEL,
   POLARITY_LABEL,
-  SCOPE_LABEL,
   type ProblemBoxItem,
   type ProblemChoice,
   type ProblemDetail,
@@ -63,6 +58,7 @@ import {
   type ProblemOrigin,
   type ProblemPolarity,
   type ProblemScope,
+  SCOPE_LABEL,
 } from "~/features/problems/labels";
 import {
   getProblemById,
@@ -72,8 +68,6 @@ import {
   LAW_SUBJECT_SLUGS,
   type LawSubjectSlug,
 } from "~/features/subjects/lib/subjects";
-
-import type { Route } from "./+types/admin-problem-edit";
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => {
   if (!loaderData) return [{ title: "문제 편집 | 리담변리사학원" }];
@@ -125,14 +119,16 @@ function safeReturnTo(raw: unknown): string {
   return "/admin/problems";
 }
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function loader({ params, request }: Route.LoaderArgs) {
   const problemId = params.problemId;
   if (!problemId) throw data("Missing problemId", { status: 404 });
   // 비-uuid (e.g. /admin/problems/link-suggest 같은 새 child 라우트 미빌드 시
   // 동적 라우트로 빠지는 사고 방지) — 404 로 graceful fail.
-  if (!UUID_RE.test(problemId)) throw data("Invalid problemId", { status: 404 });
+  if (!UUID_RE.test(problemId))
+    throw data("Invalid problemId", { status: 404 });
   const [client] = makeServerClient(request);
   const {
     data: { user },
@@ -233,7 +229,12 @@ export async function loader({ params, request }: Route.LoaderArgs) {
         total: list.length,
       };
     } else {
-      siblings = { prevId: null, nextId: null, position: 0, total: list.length };
+      siblings = {
+        prevId: null,
+        nextId: null,
+        position: 0,
+        total: list.length,
+      };
     }
   }
 
@@ -394,9 +395,7 @@ export async function action({ params, request }: Route.ActionArgs) {
     // 운영자가 명시적으로 다른 article 을 지정한 항목은 보존 (NULL 인 것만 채움).
     const { data: cur } = await client
       .from("problems")
-      .select(
-        "primary_article_id, articles!primary_article_id(article_number)",
-      )
+      .select("primary_article_id, articles!primary_article_id(article_number)")
       .eq("problem_id", problemId)
       .maybeSingle();
     const primaryArticleId = cur?.primary_article_id ?? null;
@@ -474,14 +473,14 @@ export async function action({ params, request }: Route.ActionArgs) {
   // 주관식 탭 트리 카운트·노드 필터·카드 배지에 즉시 반영된다(loader 재계산).
   if (intent === "add_placement") {
     const nodeId = String(fd.get("nodeId") ?? "").trim();
-    if (!nodeId) return { ok: false, error: "배치할 노드를 선택하세요." } as const;
+    if (!nodeId)
+      return { ok: false, error: "배치할 노드를 선택하세요." } as const;
     const note = String(fd.get("placementNote") ?? "").trim() || null;
     const { data: existing } = await client
       .from("problem_systematic_links")
       .select("seq")
       .eq("problem_id", problemId);
-    const nextSeq =
-      Math.max(0, ...(existing ?? []).map((r) => r.seq ?? 0)) + 1;
+    const nextSeq = Math.max(0, ...(existing ?? []).map((r) => r.seq ?? 0)) + 1;
     const { error } = await client.from("problem_systematic_links").insert({
       problem_id: problemId,
       node_id: nodeId,
@@ -518,12 +517,15 @@ export async function action({ params, request }: Route.ActionArgs) {
   // 현재 problem 의 law_id + 현재 primary article 의 article_number 를 한 번에 가져온다.
   const { data: curProblem } = await client
     .from("problems")
-    .select("law_id, primary_article_id, articles!primary_article_id(article_number)")
+    .select(
+      "law_id, primary_article_id, articles!primary_article_id(article_number)",
+    )
     .eq("problem_id", problemId)
     .maybeSingle();
   const currentArticleNumber: string | null =
     curProblem?.articles?.article_number ?? null;
-  let primaryArticleIdUpdate: { primary_article_id: string | null } | null = null;
+  let primaryArticleIdUpdate: { primary_article_id: string | null } | null =
+    null;
   if (fd.has("articleNumber")) {
     if (articleNumberInput == null) {
       // 현재 article_number 도 NULL 이면 default 값 그대로 제출된 것 — 변경 의도 아님.
@@ -599,7 +601,9 @@ export async function action({ params, request }: Route.ActionArgs) {
         const trimmed = line.trim();
         if (trimmed === "") continue;
         // 끝쪽에서 숫자 추출.
-        const m = trimmed.match(/^(.*?)[\s|·,()\[\]]+(\d{1,3})\s*점?\s*\)?\s*$/);
+        const m = trimmed.match(
+          /^(.*?)[\s|·,()\[\]]+(\d{1,3})\s*점?\s*\)?\s*$/,
+        );
         if (m) {
           const label = m[1].trim();
           const points = Number(m[2]);
@@ -660,7 +664,8 @@ export async function action({ params, request }: Route.ActionArgs) {
       .is("deleted_at", null)
       .not("article_number", "is", null);
     for (const a of arts ?? []) {
-      if (a.article_number) articleIdByNumber.set(a.article_number, a.article_id);
+      if (a.article_number)
+        articleIdByNumber.set(a.article_number, a.article_id);
     }
   }
 
@@ -670,14 +675,19 @@ export async function action({ params, request }: Route.ActionArgs) {
     const choiceType = stringOrNull(fd.get(`choice_${i}_type`));
     const articleNumber = stringOrNull(fd.get(`choice_${i}_article_number`));
     const caseNumber = stringOrNull(fd.get(`choice_${i}_case_number`));
-    const articleId = articleNumber ? articleIdByNumber.get(articleNumber) ?? null : null;
+    const articleId = articleNumber
+      ? (articleIdByNumber.get(articleNumber) ?? null)
+      : null;
     // feat-4-A-342 — 지문 체계도 소분류.
     const cNodeIdRaw = stringOrNull(fd.get(`choice_${i}_node_id`));
     const cNodeId = cNodeIdRaw && UUID_RE.test(cNodeIdRaw) ? cNodeIdRaw : null;
     const oxIneligibleSubmitted = fd.get(`choice_${i}_ox_ineligible`) === "1";
     const oxTruthRaw = stringOrNull(fd.get(`choice_${i}_ox_truth`));
-    const oxTruth =
-      oxIneligibleSubmitted ? null : oxTruthRaw === "O" || oxTruthRaw === "X" ? oxTruthRaw : null;
+    const oxTruth = oxIneligibleSubmitted
+      ? null
+      : oxTruthRaw === "O" || oxTruthRaw === "X"
+        ? oxTruthRaw
+        : null;
     const cUpdate: Record<string, unknown> = {
       body_md: String(fd.get(`choice_${i}_body`) ?? ""),
       explanation_md: stringOrNull(fd.get(`choice_${i}_explanation`)),
@@ -693,6 +703,9 @@ export async function action({ params, request }: Route.ActionArgs) {
       ox_ineligible: oxIneligibleSubmitted,
       // 정/오 라벨 — 부적합이면 강제 null.
       ox_truth: oxTruth,
+      // 종합 표시(다른 단원 내용을 담은 지문). 교재 문구 변경이 아니라 분류라
+      // 개정 원장에는 남지 않는다(트리거 무시 필드 — 20260821_cross_unit_no_errata).
+      cross_unit: fd.get(`choice_${i}_cross_unit`) === "1",
     };
     const { error: cErr } = await client
       .from("problem_choices")
@@ -710,9 +723,12 @@ export async function action({ params, request }: Route.ActionArgs) {
       const bChoiceType = stringOrNull(fd.get(`box_${id}_type`));
       const bArticleNumber = stringOrNull(fd.get(`box_${id}_article_number`));
       const bCaseNumber = stringOrNull(fd.get(`box_${id}_case_number`));
-      const bArticleId = bArticleNumber ? articleIdByNumber.get(bArticleNumber) ?? null : null;
+      const bArticleId = bArticleNumber
+        ? (articleIdByNumber.get(bArticleNumber) ?? null)
+        : null;
       const bNodeIdRaw = stringOrNull(fd.get(`box_${id}_node_id`));
-      const bNodeId = bNodeIdRaw && UUID_RE.test(bNodeIdRaw) ? bNodeIdRaw : null;
+      const bNodeId =
+        bNodeIdRaw && UUID_RE.test(bNodeIdRaw) ? bNodeIdRaw : null;
       const bOxIneligible = fd.get(`box_${id}_ox_ineligible`) === "1";
       const bOxTruthRaw = stringOrNull(fd.get(`box_${id}_ox_truth`));
       const bOxTruth = bOxIneligible
@@ -730,6 +746,7 @@ export async function action({ params, request }: Route.ActionArgs) {
         related_case_number: bChoiceType === "precedent" ? bCaseNumber : null,
         ox_ineligible: bOxIneligible,
         ox_truth: bOxTruth,
+        cross_unit: fd.get(`box_${id}_cross_unit`) === "1",
       };
       const { error: bErr } = await client
         .from("problem_box_items")
@@ -838,10 +855,13 @@ function AdminProblemEditInner({
     problem.polarity ?? "",
   );
   // 전체 정오문제 불가 일괄 체크/해제 — 자식 (ChoiceEditor / BoxItemEditor) 에 epoch 신호로 전파.
-  const [bulkOxSignal, setBulkOxSignal] = useState<{
-    epoch: number;
-    ineligible: boolean;
-  } | undefined>(undefined);
+  const [bulkOxSignal, setBulkOxSignal] = useState<
+    | {
+        epoch: number;
+        ineligible: boolean;
+      }
+    | undefined
+  >(undefined);
   const triggerBulkOx = (ineligible: boolean) =>
     setBulkOxSignal((prev) => ({
       epoch: (prev?.epoch ?? 0) + 1,
@@ -864,20 +884,31 @@ function AdminProblemEditInner({
   const isSaving = submittingIntent === "save" || isPublishSaving;
   const isSavingAndReviewing = submittingIntent === "save_and_review";
   // errata Phase 3 — 저장이 만든 원장 revision 묶음(복수 가능)으로 발행 모달을 연다.
-  const [publishRevisionIds, setPublishRevisionIds] = useState<string[] | null>(null);
+  const [publishRevisionIds, setPublishRevisionIds] = useState<string[] | null>(
+    null,
+  );
   const navigate = useNavigate();
   const deleteFetcher = useFetcher();
   const isDeleting = deleteFetcher.state !== "idle";
-  const reviewFetcher = useFetcher<{ ok?: boolean; kind?: string; error?: string }>();
+  const reviewFetcher = useFetcher<{
+    ok?: boolean;
+    kind?: string;
+    error?: string;
+  }>();
   const isReviewing = reviewFetcher.state !== "idle";
   useEffect(() => {
     const r = reviewFetcher.data;
     if (!r) return;
     if (r.ok && r.kind === "review") toast.success("검토 완료로 표시했습니다");
-    else if (r.ok && r.kind === "unreview") toast.success("검토 표시를 취소했습니다");
+    else if (r.ok && r.kind === "unreview")
+      toast.success("검토 표시를 취소했습니다");
     else if (r.error) toast.error(r.error);
   }, [reviewFetcher.data]);
-  const mismatchFetcher = useFetcher<{ ok?: boolean; kind?: string; error?: string }>();
+  const mismatchFetcher = useFetcher<{
+    ok?: boolean;
+    kind?: string;
+    error?: string;
+  }>();
   const isFlagging = mismatchFetcher.state !== "idle";
   // feat-2-032 — 강사 채점평 추가/삭제 fetcher.
   const gradingNoteFetcher = useFetcher<{
@@ -899,8 +930,10 @@ function AdminProblemEditInner({
   useEffect(() => {
     const r = mismatchFetcher.data;
     if (!r) return;
-    if (r.ok && r.kind === "flag_mismatch") toast.success("재검토 필요로 표시했습니다");
-    else if (r.ok && r.kind === "unflag_mismatch") toast.success("재검토 표시를 취소했습니다");
+    if (r.ok && r.kind === "flag_mismatch")
+      toast.success("재검토 필요로 표시했습니다");
+    else if (r.ok && r.kind === "unflag_mismatch")
+      toast.success("재검토 표시를 취소했습니다");
     else if (r.error) toast.error(r.error);
   }, [mismatchFetcher.data]);
   // 주관식 체계도 배치 추가/삭제 fetcher.
@@ -937,9 +970,12 @@ function AdminProblemEditInner({
       const kind = "kind" in actionData ? actionData.kind : null;
       if (kind === "review") toast.success("검토 완료로 표시했습니다");
       else if (kind === "unreview") toast.success("검토 표시를 취소했습니다");
-      else if (kind === "flag_mismatch") toast.success("재검토 필요로 표시했습니다");
-      else if (kind === "unflag_mismatch") toast.success("재검토 표시를 취소했습니다");
-      else if (kind === "save_and_review") toast.success("저장하고 검토 완료로 표시했습니다");
+      else if (kind === "flag_mismatch")
+        toast.success("재검토 필요로 표시했습니다");
+      else if (kind === "unflag_mismatch")
+        toast.success("재검토 표시를 취소했습니다");
+      else if (kind === "save_and_review")
+        toast.success("저장하고 검토 완료로 표시했습니다");
       else if (kind === "save_for_publish") {
         // 저장 커밋 완료 — 원장 revision 묶음으로 발행 모달을 연다.
         const ids = "revisionIds" in actionData ? actionData.revisionIds : [];
@@ -949,8 +985,7 @@ function AdminProblemEditInner({
         } else {
           toast.success("저장되었습니다 (변경 없음 — 발행할 기록이 없습니다)");
         }
-      }
-      else toast.success("저장되었습니다");
+      } else toast.success("저장되었습니다");
     } else if (actionData.error) {
       toast.error(actionData.error);
     }
@@ -1075,7 +1110,11 @@ function AdminProblemEditInner({
           <div className="flex items-center gap-1.5">
             {prevTo ? (
               <Button asChild size="sm" variant="outline">
-                <Link to={prevTo} prefetch="intent" title="이전 문제 (같은 필터)">
+                <Link
+                  to={prevTo}
+                  prefetch="intent"
+                  title="이전 문제 (같은 필터)"
+                >
                   <ChevronLeftIcon className="size-4" /> 이전
                 </Link>
               </Button>
@@ -1089,7 +1128,11 @@ function AdminProblemEditInner({
             </span>
             {nextTo ? (
               <Button asChild size="sm" variant="outline">
-                <Link to={nextTo} prefetch="intent" title="다음 문제 (같은 필터)">
+                <Link
+                  to={nextTo}
+                  prefetch="intent"
+                  title="다음 문제 (같은 필터)"
+                >
                   다음 <ChevronRightIcon className="size-4" />
                 </Link>
               </Button>
@@ -1250,7 +1293,10 @@ function AdminProblemEditInner({
             </p>
           </CardHeader>
           <CardContent>
-            <ExplanationEditor defaultValue={problem.explanationMd ?? ""} rows={10} />
+            <ExplanationEditor
+              defaultValue={problem.explanationMd ?? ""}
+              rows={10}
+            />
           </CardContent>
         </Card>
 
@@ -1350,9 +1396,7 @@ function AdminProblemEditInner({
                   name="gradingRubricMd"
                   rows={6}
                   defaultValue={problem.gradingRubricMd ?? ""}
-                  placeholder={
-                    "자유 기술 — 학생에게 풀이 방향 안내용"
-                  }
+                  placeholder={"자유 기술 — 학생에게 풀이 방향 안내용"}
                   data-testid="problem-grading-rubric"
                 />
               </CardContent>
@@ -1391,7 +1435,11 @@ function AdminProblemEditInner({
               </p>
             </CardHeader>
             <CardContent className="space-y-3">
-              <input type="hidden" name="boxItemIds" value={problem.boxItems.map((bi) => bi.boxItemId).join(",")} />
+              <input
+                type="hidden"
+                name="boxItemIds"
+                value={problem.boxItems.map((bi) => bi.boxItemId).join(",")}
+              />
               {problem.boxItems.map((bi) => (
                 <BoxItemEditor
                   key={bi.boxItemId}
@@ -1399,7 +1447,9 @@ function AdminProblemEditInner({
                   polarity={polarity || null}
                   format={format}
                   correctChoiceBody={
-                    problem.choices.find((c) => selectedCorrect.has(c.choiceIndex))?.bodyMd ?? null
+                    problem.choices.find((c) =>
+                      selectedCorrect.has(c.choiceIndex),
+                    )?.bodyMd ?? null
                   }
                   bulkOxSignal={bulkOxSignal}
                   subNodeOptions={subNodeOptions}
@@ -1411,53 +1461,58 @@ function AdminProblemEditInner({
 
         {/* 지문·정오문제 도구는 객관식 전용 — 주관식은 지문이 없어 카드 전체 숨김. */}
         {format !== "subjective" ? (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                지문 ({problem.choices.length}){problem.boxItems.length > 0 ? ` + 박스 보기 (${problem.boxItems.length})` : ""}
-              </p>
-              <div className="flex items-center gap-2">
-                {problem.unclassifiedChoices > 0 ? (
-                  <Chip tone="amber">미분류 {problem.unclassifiedChoices}</Chip>
-                ) : null}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => triggerBulkOx(true)}
-                  title="모든 지문/박스 항목의 정오문제 불가를 일괄 체크"
-                >
-                  전체 정오문제 불가
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => triggerBulkOx(false)}
-                  title="정오문제 불가 일괄 해제"
-                >
-                  해제
-                </Button>
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                  지문 ({problem.choices.length})
+                  {problem.boxItems.length > 0
+                    ? ` + 박스 보기 (${problem.boxItems.length})`
+                    : ""}
+                </p>
+                <div className="flex items-center gap-2">
+                  {problem.unclassifiedChoices > 0 ? (
+                    <Chip tone="amber">
+                      미분류 {problem.unclassifiedChoices}
+                    </Chip>
+                  ) : null}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => triggerBulkOx(true)}
+                    title="모든 지문/박스 항목의 정오문제 불가를 일괄 체크"
+                  >
+                    전체 정오문제 불가
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => triggerBulkOx(false)}
+                    title="정오문제 불가 일괄 해제"
+                  >
+                    해제
+                  </Button>
+                </div>
               </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {problem.choices.map((c) => (
-              <ChoiceEditor
-                key={c.choiceId}
-                choice={c}
-                multiCorrect
-                selectedAsCorrect={selectedCorrect.has(c.choiceIndex)}
-                onCorrect={() => toggleCorrect(c.choiceIndex)}
-                polarity={polarity || null}
-                format={format}
-                bulkOxSignal={bulkOxSignal}
-                subNodeOptions={subNodeOptions}
-              />
-            ))}
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {problem.choices.map((c) => (
+                <ChoiceEditor
+                  key={c.choiceId}
+                  choice={c}
+                  multiCorrect
+                  selectedAsCorrect={selectedCorrect.has(c.choiceIndex)}
+                  onCorrect={() => toggleCorrect(c.choiceIndex)}
+                  polarity={polarity || null}
+                  format={format}
+                  bulkOxSignal={bulkOxSignal}
+                  subNodeOptions={subNodeOptions}
+                />
+              ))}
+            </CardContent>
+          </Card>
         ) : null}
 
         <div className="flex items-center justify-end gap-2">
@@ -1468,7 +1523,8 @@ function AdminProblemEditInner({
             variant="outline"
             disabled={isSaving}
           >
-            <SaveIcon className="size-4" /> {isSaving ? "저장 중…" : "내부 수정으로 저장"}
+            <SaveIcon className="size-4" />{" "}
+            {isSaving ? "저장 중…" : "내부 수정으로 저장"}
           </Button>
           <Button
             type="submit"
@@ -1790,7 +1846,6 @@ function FormInput({
   );
 }
 
-
 function stringOrNull(v: FormDataEntryValue | null): string | null {
   if (v == null) return null;
   const s = String(v).trim();
@@ -1810,7 +1865,11 @@ function PublishChecklist({
   mcqPacks,
 }: {
   problem: ProblemDetail;
-  mcqPacks: ReadonlyArray<{ packId: string; title: string; isPublished: boolean }>;
+  mcqPacks: ReadonlyArray<{
+    packId: string;
+    title: string;
+    isPublished: boolean;
+  }>;
 }) {
   const isMcq =
     problem.format === "mc_short" ||
