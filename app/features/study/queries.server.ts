@@ -1603,7 +1603,10 @@ export async function getOverallProgress(
     client
       .from("cases")
       .select("case_id", { head: true, count: "exact" })
-      .is("deleted_at", null),
+      .is("deleted_at", null)
+      // ★분모는 학습과목 목록과 같은 모집단 — 미수록 판례(list_visible=false)를 세면
+      //   허브는 543, 통계는 1341 로 갈려 진도가 영영 100% 가 안 된다.
+      .eq("list_visible", true),
     client
       .from("problems")
       .select("problem_id", { head: true, count: "exact" })
@@ -2599,7 +2602,8 @@ export async function getCaseStudyStats(
   const { count: totalCases } = await client
     .from("cases")
     .select("case_id", { head: true, count: "exact" })
-    .is("deleted_at", null);
+    .is("deleted_at", null)
+    .eq("list_visible", true);
 
   let sessQ = client
     .from("study_sessions")
@@ -2628,6 +2632,7 @@ export async function getCaseStudyStats(
         .from("cases")
         .select("case_id", { head: true, count: "exact" })
         .is("deleted_at", null)
+        .eq("list_visible", true)
         .contains("subject_laws", [slug]);
       totalsBySubject.set(slug, count ?? 0);
     }),

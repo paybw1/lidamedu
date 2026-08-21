@@ -94,7 +94,8 @@ async function listLatestCases(
   let q = client
     .from("cases")
     .select(LIST_COLUMNS, { count: "exact" })
-    .is("deleted_at", null);
+    .is("deleted_at", null)
+    .eq("list_visible", true);
   if (filters.subject) q = q.contains("subject_laws", [filters.subject]);
   if (filters.importantOnly) q = q.gte("importance", 3);
   // feat-3-204: 운영자 설정 노출 기간 — 선고일이 cutoff 이후인 판례만.
