@@ -50,7 +50,10 @@ export interface ErrataSheetData {
   itemCount: number; // applicable + reference + withdrawals
 }
 
-function payloadText(payload: unknown, key: "before_text" | "after_text"): string {
+function payloadText(
+  payload: unknown,
+  key: "before_text" | "after_text",
+): string {
   if (payload == null || typeof payload !== "object") return "";
   const v = (payload as Record<string, unknown>)[key];
   return typeof v === "string" ? v : "";
@@ -77,7 +80,8 @@ function choiceNoOf(sourceRef: unknown): number | null {
 //   항목끼리 비교하면 뒤죽박죽이 된다(1번 문제가 앞 단원 8번보다 앞서는 식). 교재는 체계도
 //   순서대로 인쇄되므로, 체계도 순위(orderRank)를 페이지 번호 대신 쓴다.
 function byPageOrder(a: SheetItem, b: SheetItem): number {
-  if (a.pageNo != null && b.pageNo != null && a.pageNo !== b.pageNo) return a.pageNo - b.pageNo;
+  if (a.pageNo != null && b.pageNo != null && a.pageNo !== b.pageNo)
+    return a.pageNo - b.pageNo;
   if (a.pageNo != null && b.pageNo == null) return -1;
   if (a.pageNo == null && b.pageNo != null) return 1;
   const ra = a.orderRank ?? null;
@@ -85,7 +89,8 @@ function byPageOrder(a: SheetItem, b: SheetItem): number {
   if (ra != null && rb != null && ra !== rb) return ra - rb;
   if (ra != null && rb == null) return -1;
   if (ra == null && rb != null) return 1;
-  if (a.sortKey != null && b.sortKey != null && a.sortKey !== b.sortKey) return a.sortKey - b.sortKey;
+  if (a.sortKey != null && b.sortKey != null && a.sortKey !== b.sortKey)
+    return a.sortKey - b.sortKey;
   return a.publishedAt < b.publishedAt ? -1 : 1;
 }
 
@@ -164,19 +169,19 @@ export async function buildErrataSheetData(
   const items: SheetItem[] = (rows ?? [])
     .filter((r) => r.notice_status === "published")
     .map((r) => ({
-    revisionId: r.revision_id ?? "",
-    kind: r.errata_kind,
-    severity: r.errata_severity,
-    title: r.errata_title,
-    beforeText: payloadText(r.errata_payload, "before_text"),
-    afterText: payloadText(r.errata_payload, "after_text"),
-    reason: r.errata_reason,
-    effectiveDate: r.effective_date,
-    publishedAt: r.published_at ?? "",
-    pageNo: r.page_no,
-    lineHint: r.line_hint,
-    tocPath: r.toc_path,
-    sortKey: r.sort_key,
+      revisionId: r.revision_id ?? "",
+      kind: r.errata_kind,
+      severity: r.errata_severity,
+      title: r.errata_title,
+      beforeText: payloadText(r.errata_payload, "before_text"),
+      afterText: payloadText(r.errata_payload, "after_text"),
+      reason: r.errata_reason,
+      effectiveDate: r.effective_date,
+      publishedAt: r.published_at ?? "",
+      pageNo: r.page_no,
+      lineHint: r.line_hint,
+      tocPath: r.toc_path,
+      sortKey: r.sort_key,
       contentType: r.content_type,
       contentId: r.content_id ?? "",
       choiceNo: choiceNoOf(r.source_ref),
@@ -212,12 +217,21 @@ export function assembleSheet(
     .sort((a, b) => (a.publishedAt < b.publishedAt ? -1 : 1));
   const live = items.filter((i) => !i.isWithdrawalNotice);
 
-  const applicable = live.filter((i) => i.scope === "applicable").sort(byPageOrder);
-  const reference = live.filter((i) => i.scope !== "applicable").sort(byPageOrder);
+  const applicable = live
+    .filter((i) => i.scope === "applicable")
+    .sort(byPageOrder);
+  const reference = live
+    .filter((i) => i.scope !== "applicable")
+    .sort(byPageOrder);
 
   const all = [...live, ...withdrawals];
   const updatedAt =
-    all.length > 0 ? all.map((i) => i.publishedAt).sort().at(-1)! : "";
+    all.length > 0
+      ? all
+          .map((i) => i.publishedAt)
+          .sort()
+          .at(-1)!
+      : "";
   const latestDay = updatedAt.slice(0, 10);
   const recent = all
     .filter((i) => i.publishedAt.slice(0, 10) === latestDay)

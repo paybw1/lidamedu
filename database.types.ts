@@ -9988,6 +9988,7 @@ export type Database = {
           box_item_id: string
           choice_type: Database["public"]["Enums"]["problem_choice_type"] | null
           created_at: string
+          cross_unit: boolean
           explanation_md: string | null
           marker: string
           ox_hidden_at: string | null
@@ -10010,6 +10011,7 @@ export type Database = {
             | Database["public"]["Enums"]["problem_choice_type"]
             | null
           created_at?: string
+          cross_unit?: boolean
           explanation_md?: string | null
           marker: string
           ox_hidden_at?: string | null
@@ -10032,6 +10034,7 @@ export type Database = {
             | Database["public"]["Enums"]["problem_choice_type"]
             | null
           created_at?: string
+          cross_unit?: boolean
           explanation_md?: string | null
           marker?: string
           ox_hidden_at?: string | null
@@ -10158,6 +10161,7 @@ export type Database = {
           choice_index: number
           choice_type: Database["public"]["Enums"]["problem_choice_type"] | null
           created_at: string
+          cross_unit: boolean
           explanation_md: string | null
           is_correct: boolean
           ox_body_md: string | null
@@ -10180,6 +10184,7 @@ export type Database = {
             | Database["public"]["Enums"]["problem_choice_type"]
             | null
           created_at?: string
+          cross_unit?: boolean
           explanation_md?: string | null
           is_correct?: boolean
           ox_body_md?: string | null
@@ -10202,6 +10207,7 @@ export type Database = {
             | Database["public"]["Enums"]["problem_choice_type"]
             | null
           created_at?: string
+          cross_unit?: boolean
           explanation_md?: string | null
           is_correct?: boolean
           ox_body_md?: string | null

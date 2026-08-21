@@ -2212,7 +2212,7 @@ export async function getProblemById(
   const { data: choices, error: cErr } = await client
     .from("problem_choices")
     .select(
-      "choice_id, choice_index, body_md, is_correct, explanation_md, choice_type, related_article_id, related_article_number, related_case_id, related_case_number, related_node_id, ox_ineligible, ox_truth",
+      "choice_id, choice_index, body_md, is_correct, explanation_md, choice_type, related_article_id, related_article_number, related_case_id, related_case_number, related_node_id, ox_ineligible, ox_truth, cross_unit",
     )
     .eq("problem_id", problemId)
     .order("choice_index");
@@ -2222,7 +2222,7 @@ export async function getProblemById(
   const { data: boxRows } = await client
     .from("problem_box_items")
     .select(
-      "box_item_id, position_index, marker, body_md, explanation_md, choice_type, related_article_id, related_article_number, related_case_id, related_case_number, related_node_id, ox_ineligible, ox_truth",
+      "box_item_id, position_index, marker, body_md, explanation_md, choice_type, related_article_id, related_article_number, related_case_id, related_case_number, related_node_id, ox_ineligible, ox_truth, cross_unit",
     )
     .eq("problem_id", problemId)
     .order("position_index");
@@ -2285,6 +2285,7 @@ export async function getProblemById(
       relatedNodeId: c.related_node_id,
       oxIneligible: c.ox_ineligible,
       oxTruth: c.ox_truth,
+      crossUnit: c.cross_unit,
     })),
     boxItems: boxList.map((b) => ({
       boxItemId: b.box_item_id,
@@ -2300,6 +2301,7 @@ export async function getProblemById(
       relatedNodeId: b.related_node_id,
       oxIneligible: b.ox_ineligible,
       oxTruth: b.ox_truth,
+      crossUnit: b.cross_unit,
     })),
   };
 }
@@ -2326,7 +2328,7 @@ export async function getProblemDetailsByIds(
   const { data: boxRows } = await client
     .from("problem_box_items")
     .select(
-      "box_item_id, problem_id, position_index, marker, body_md, explanation_md, choice_type, related_article_id, related_article_number, related_case_id, related_case_number, ox_ineligible, ox_truth",
+      "box_item_id, problem_id, position_index, marker, body_md, explanation_md, choice_type, related_article_id, related_article_number, related_case_id, related_case_number, ox_ineligible, ox_truth, cross_unit",
     )
     .in("problem_id", problemIds)
     .order("position_index");
@@ -2345,6 +2347,7 @@ export async function getProblemDetailsByIds(
       relatedCaseNumber: b.related_case_number,
       oxIneligible: b.ox_ineligible,
       oxTruth: b.ox_truth,
+      crossUnit: b.cross_unit,
     });
     boxItemsByProblem.set(b.problem_id, arr);
   }
@@ -2353,7 +2356,7 @@ export async function getProblemDetailsByIds(
   const { data: choiceRows } = await client
     .from("problem_choices")
     .select(
-      "choice_id, problem_id, choice_index, body_md, is_correct, explanation_md, choice_type, related_article_id, related_article_number, related_case_id, related_case_number, ox_ineligible, ox_truth",
+      "choice_id, problem_id, choice_index, body_md, is_correct, explanation_md, choice_type, related_article_id, related_article_number, related_case_id, related_case_number, ox_ineligible, ox_truth, cross_unit",
     )
     .in("problem_id", problemIds)
     .order("choice_index");
@@ -2372,6 +2375,7 @@ export async function getProblemDetailsByIds(
       relatedCaseNumber: c.related_case_number,
       oxIneligible: c.ox_ineligible,
       oxTruth: c.ox_truth,
+      crossUnit: c.cross_unit,
     });
     choicesByProblem.set(c.problem_id, arr);
   }
@@ -2627,7 +2631,7 @@ export async function getSystematicNodeProblems(
     const { data: boxRows } = await client
       .from("problem_box_items")
       .select(
-        "box_item_id, problem_id, position_index, marker, body_md, explanation_md, choice_type, related_article_id, related_article_number, related_case_id, related_case_number, ox_ineligible, ox_truth",
+        "box_item_id, problem_id, position_index, marker, body_md, explanation_md, choice_type, related_article_id, related_article_number, related_case_id, related_case_number, ox_ineligible, ox_truth, cross_unit",
       )
       .in("problem_id", problemIds)
       .order("position_index");
@@ -2646,6 +2650,7 @@ export async function getSystematicNodeProblems(
         relatedCaseNumber: b.related_case_number,
         oxIneligible: b.ox_ineligible,
         oxTruth: b.ox_truth,
+        crossUnit: b.cross_unit,
       });
       boxItemsByProblem.set(b.problem_id, arr);
     }
@@ -2657,7 +2662,7 @@ export async function getSystematicNodeProblems(
     const { data: choiceRows } = await client
       .from("problem_choices")
       .select(
-        "choice_id, problem_id, choice_index, body_md, is_correct, explanation_md, choice_type, related_article_id, related_article_number, related_case_id, related_case_number, ox_ineligible, ox_truth",
+        "choice_id, problem_id, choice_index, body_md, is_correct, explanation_md, choice_type, related_article_id, related_article_number, related_case_id, related_case_number, ox_ineligible, ox_truth, cross_unit",
       )
       .in("problem_id", problemIds)
       .order("choice_index");
@@ -2676,6 +2681,7 @@ export async function getSystematicNodeProblems(
         relatedCaseNumber: c.related_case_number,
         oxIneligible: c.ox_ineligible,
         oxTruth: c.ox_truth,
+        crossUnit: c.cross_unit,
       });
       choicesByProblem.set(c.problem_id, arr);
     }

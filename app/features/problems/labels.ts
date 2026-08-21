@@ -341,6 +341,11 @@ export interface ProblemChoice {
   relatedNodeId?: string | null;
   oxIneligible: boolean;
   oxTruth: OxTruth | null;
+  /**
+   * 다른 단원의 내용을 포함한 지문 — 종합문제에서 그 단원만 공부해서는 풀 수 없는 지문.
+   * 교재 원본은 기울임체로 구분하나, 화면에서는 배지로 표시한다(가독성).
+   */
+  crossUnit?: boolean;
 }
 
 export interface ProblemBoxItem {
@@ -358,6 +363,11 @@ export interface ProblemBoxItem {
   relatedNodeId?: string | null;
   oxIneligible: boolean;
   oxTruth: OxTruth | null;
+  /**
+   * 다른 단원의 내용을 포함한 지문 — 종합문제에서 그 단원만 공부해서는 풀 수 없는 지문.
+   * 교재 원본은 기울임체로 구분하나, 화면에서는 배지로 표시한다(가독성).
+   */
+  crossUnit?: boolean;
 }
 
 export interface ProblemDetail extends ProblemListItem {

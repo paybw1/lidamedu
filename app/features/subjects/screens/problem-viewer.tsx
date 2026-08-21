@@ -52,13 +52,14 @@ import {
   getSystematicSkeleton,
 } from "~/features/laws/queries.server";
 import { listLectureResources } from "~/features/lectures/queries.server";
+import { CrossUnitBadge } from "~/features/problems/components/cross-unit-badge";
 import { MarkdownView } from "~/features/problems/components/markdown-view";
 import { OxBookmarkToggle } from "~/features/problems/components/ox-bookmark-toggle";
 import { ProblemCodeChip } from "~/features/problems/components/problem-code-chip";
 import {
+  type AnswerCaseGroup,
   FORMAT_LABEL,
   ORIGIN_LABEL,
-  type AnswerCaseGroup,
   POLARITY_LABEL,
   SCOPE_LABEL,
   SUBJECTIVE_KIND_LABEL,
@@ -68,12 +69,12 @@ import {
   isOxEligible,
   problemDisplayNumber,
 } from "~/features/problems/labels";
+import { redactSubjectiveAnswer } from "~/features/problems/lib/answer-visibility";
 import {
   deriveBoxItemOxTruth,
   deriveDisplayChoiceOx,
   stripLeadingOxMark,
 } from "~/features/problems/lib/auto-ox";
-import { redactSubjectiveAnswer } from "~/features/problems/lib/answer-visibility";
 import {
   type AdjacentProblem,
   type ProblemPlacement,
@@ -81,8 +82,8 @@ import {
   getAdjacentProblems,
   getAnswerCitedCaseGroups,
   getCasesCitedByProblem,
-  getExplanationCaseRefsByItem,
   getChoiceLinkRefs,
+  getExplanationCaseRefsByItem,
   getProblemById,
   getProblemPlacementsBulk,
   getRelatedProblems,
@@ -106,26 +107,26 @@ import {
   getSubjectiveAttempt,
   recordStudySession,
 } from "~/features/study/queries.server";
+import { AnswerCaseBadges } from "~/features/subjects/components/answer-case-badges";
 import {
   PanelEdgeHandle,
   panelGridCls,
   useLeftPanelCollapse,
   useRightPanelCollapse,
 } from "~/features/subjects/components/left-panel-collapse";
-import { AnswerCaseBadges } from "~/features/subjects/components/answer-case-badges";
-import { SubjectivePanel } from "~/features/subjects/components/subjective-panel";
-import { RefPreviewBadge } from "~/features/subjects/components/ref-preview-badge";
 import { MobileNavDrawer } from "~/features/subjects/components/mobile-nav-drawer";
 import { ProblemSystematicTree } from "~/features/subjects/components/problem-systematic-tree";
-import {
-  stripSystematicNumber,
-  SystematicNumberBadge,
-} from "~/features/subjects/components/systematic-node-label";
+import { RefPreviewBadge } from "~/features/subjects/components/ref-preview-badge";
 import {
   SortAxisProvider,
   SortAxisToggle,
 } from "~/features/subjects/components/sort-axis";
 import { SubjectBookmarkRail } from "~/features/subjects/components/subject-bookmark-rail";
+import { SubjectivePanel } from "~/features/subjects/components/subjective-panel";
+import {
+  SystematicNumberBadge,
+  stripSystematicNumber,
+} from "~/features/subjects/components/systematic-node-label";
 import { ViewerBackButton } from "~/features/subjects/components/viewer-back-button";
 import {
   listDisplayedProblems,
@@ -143,7 +144,8 @@ import {
 // 파이프표 감지 = 구분선 `|---|` (\|[\s:]*-{3,}). mcq-pack-sheet 와 동일 규칙.
 const MD_IMAGE_RE = /!\[[^\]]*\]\([^)]*\)|<(img|table|div)\b|\|[\s:]*-{3,}/i;
 // 종합해설 마크다운 서식 감지 — **굵게**·헤더·별표 감싼 줄(민법 해설 "*관련 조문·판례*").
-const MD_FORMAT_RE = /\*\*[^*\n]+\*\*|(?:^|\n)#{1,6}\s+\S|(?:^|\n)\*[^*\n]+\*(?=\n|$)/;
+const MD_FORMAT_RE =
+  /\*\*[^*\n]+\*\*|(?:^|\n)#{1,6}\s+\S|(?:^|\n)\*[^*\n]+\*(?=\n|$)/;
 
 // 지문별·박스항목별 해설도 같은 규칙 — 표(HTML/파이프)·이미지·서식이 있으면 MarkdownView,
 // 없으면 기존 plain span. 원시 HTML 이 코드 문자열 그대로 노출되던 문제의 방지책.
@@ -1037,7 +1039,11 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                           nodeStats={problemNodeStats}
                           activeNodeId={activeNodeId ?? undefined}
                           linkBase={`/subjects/${subject.slug}`}
-                          tab={problem.format === "subjective" ? "subjective" : "problems"}
+                          tab={
+                            problem.format === "subjective"
+                              ? "subjective"
+                              : "problems"
+                          }
                         />
                       )}
                     </div>
@@ -1089,7 +1095,11 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                       nodeStats={problemNodeStats}
                       activeNodeId={activeNodeId ?? undefined}
                       linkBase={`/subjects/${subject.slug}`}
-                      tab={problem.format === "subjective" ? "subjective" : "problems"}
+                      tab={
+                        problem.format === "subjective"
+                          ? "subjective"
+                          : "problems"
+                      }
                     />
                   )}
                 </div>
@@ -1447,8 +1457,11 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                         <span className="text-foreground/70 shrink-0 font-semibold">
                           {bi.marker}
                         </span>
-                        <span className="flex-1 whitespace-pre-line">
-                          {bi.bodyMd}
+                        <span className="flex min-w-0 flex-1 flex-col gap-1">
+                          {bi.crossUnit ? <CrossUnitBadge /> : null}
+                          <span className="whitespace-pre-line">
+                            {bi.bodyMd}
+                          </span>
                         </span>
                       </li>
                     ))}
@@ -1478,7 +1491,9 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                   gradingRubricMd={problem.gradingRubricMd}
                   explanationMd={problem.explanationMd}
                   rubricItems={problem.rubricItems}
-                  rubricAiGenerated={Boolean(problem.rubricAiGeneratedAt) && isStaff}
+                  rubricAiGenerated={
+                    Boolean(problem.rubricAiGeneratedAt) && isStaff
+                  }
                   rubricReviewedAt={problem.rubricReviewedAt}
                   viewerIsStaff={isStaff}
                   answerCaseGroups={answerCaseGroups}
@@ -1552,17 +1567,21 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                             >
                               {c.choiceIndex}
                             </span>
-                            {/* 선지 텍스트 — 조문/판례 본문처럼 하이라이트 가능. 선지별 fieldPath. */}
-                            <HighlightOverlay
-                              className="text-foreground min-w-0 flex-1 text-[length:calc(15px*var(--study-fs))] leading-[1.65] tracking-[-0.005em] whitespace-pre-line"
-                              fieldPath={`problem.choice.${c.choiceIndex}`}
-                              targetType="problem"
-                              targetId={problem.problemId}
-                              highlights={highlights}
-                              viewerIsStaff={canEditComment}
-                            >
-                              {c.bodyMd}
-                            </HighlightOverlay>
+                            {/* 선지 텍스트 — 조문/판례 본문처럼 하이라이트 가능. 선지별 fieldPath.
+                                ★"타 단원" 배지는 본문 밖에 둔다 — 안에 넣으면 하이라이트 오프셋이 밀린다. */}
+                            <div className="flex min-w-0 flex-1 flex-col gap-1">
+                              {c.crossUnit ? <CrossUnitBadge /> : null}
+                              <HighlightOverlay
+                                className="text-foreground text-[length:calc(15px*var(--study-fs))] leading-[1.65] tracking-[-0.005em] whitespace-pre-line"
+                                fieldPath={`problem.choice.${c.choiceIndex}`}
+                                targetType="problem"
+                                targetId={problem.problemId}
+                                highlights={highlights}
+                                viewerIsStaff={canEditComment}
+                              >
+                                {c.bodyMd}
+                              </HighlightOverlay>
+                            </div>
                             {showCorrect ? (
                               <CircleCheckIcon className="mt-0.5 size-5 shrink-0 text-emerald-500" />
                             ) : null}
@@ -1824,8 +1843,10 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                                             className="text-muted-foreground text-[length:calc(15px*var(--study-fs))] leading-[1.7]"
                                           />
                                         ) : null}
-                                        {(explanationCaseRefs[bi.boxItemId] ??
-                                          []).length > 0 ? (
+                                        {(
+                                          explanationCaseRefs[bi.boxItemId] ??
+                                          []
+                                        ).length > 0 ? (
                                           <div className="flex flex-wrap gap-1.5">
                                             {(
                                               explanationCaseRefs[
@@ -1976,17 +1997,17 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                                         }
                                         return null;
                                       })()}
-                                      {(explanationCaseRefs[c.choiceId] ?? []).map(
-                                        (r) => (
-                                          <RefPreviewBadge
-                                            key={r.caseId}
-                                            kind="case"
-                                            refId={r.caseId}
-                                            label={r.caseNumber}
-                                            studyHref={`/subjects/${r.subjectSlug}/cases/${r.caseId}`}
-                                          />
-                                        ),
-                                      )}
+                                      {(
+                                        explanationCaseRefs[c.choiceId] ?? []
+                                      ).map((r) => (
+                                        <RefPreviewBadge
+                                          key={r.caseId}
+                                          kind="case"
+                                          refId={r.caseId}
+                                          label={r.caseNumber}
+                                          studyHref={`/subjects/${r.subjectSlug}/cases/${r.caseId}`}
+                                        />
+                                      ))}
                                       <OxBookmarkToggle
                                         refType="choice"
                                         refId={c.choiceId}
