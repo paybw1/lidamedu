@@ -452,11 +452,13 @@ function DiagnosticsForm({
             label="평일 가용(하루)"
             name="weekdayMinutes"
             defaultMinutes={diagnostics?.weekdayMinutes ?? null}
+            required
           />
           <MinutesField
             label="주말 가용(하루)"
             name="weekendMinutes"
             defaultMinutes={diagnostics?.weekendMinutes ?? null}
+            required
           />
         </div>
         <div>

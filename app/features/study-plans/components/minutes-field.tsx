@@ -18,7 +18,10 @@ export function MinutesField({
   label: string;
   name: string;
   defaultMinutes: number | null;
-  /** 0분 제출을 막는다(계획 항목의 하루 목표처럼 1분 이상이어야 하는 곳). */
+  /**
+   * 0분 제출을 막는다. 숨김 필드를 비워 보내 **서버 검증에서 걸리게** 한다 —
+   * 두 칸(시간·분) 각각에 required 를 걸면 "5시간 0분"에도 0 을 타이핑해야 한다.
+   */
   required?: boolean;
   className?: string;
 }) {
@@ -56,7 +59,14 @@ export function MinutesField({
         />
         <span className="text-muted-foreground text-[11px]">분</span>
       </div>
-      <input type="hidden" name={name} value={total} />
+      {required && total === 0 ? (
+        <p className="mt-0.5 text-[11px] text-rose-600">시간을 입력하세요</p>
+      ) : null}
+      <input
+        type="hidden"
+        name={name}
+        value={required && total === 0 ? "" : total}
+      />
     </div>
   );
 }
