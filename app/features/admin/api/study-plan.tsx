@@ -18,6 +18,7 @@ import {
 } from "~/features/study-plans/labels";
 import {
   ensureEditablePlan,
+  resolveSubjectInput,
   upsertStudentDiagnostics,
   upsertSubjectStatusManual,
 } from "~/features/study-plans/queries.server";
@@ -91,6 +92,7 @@ const planItemSchema = z.object({
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   priority: z.coerce.number().int().min(1).max(99).optional(),
   nodeId: z.string().uuid().optional(),
+  subject: z.string().max(60).optional(), // "kind:code"
 });
 
 export async function action({ request }: Route.ActionArgs) {
@@ -230,6 +232,7 @@ export async function action({ request }: Route.ActionArgs) {
       endDate: fd.get("endDate"),
       priority: fd.get("priority") || undefined,
       nodeId: fd.get("nodeId") || undefined,
+      subject: fd.get("subject") || undefined,
     });
     if (!parsed.success) {
       return data({ error: "입력을 확인해 주세요 (하루 시간은 필수입니다)" }, { status: 400 });
@@ -237,6 +240,11 @@ export async function action({ request }: Route.ActionArgs) {
     if (parsed.data.endDate < parsed.data.startDate) {
       return data({ error: "기간이 올바르지 않습니다" }, { status: 400 });
     }
+    const subject = await resolveSubjectInput(
+      client,
+      parsed.data.subject,
+      parsed.data.nodeId ?? null,
+    );
     const row = {
       title: parsed.data.title,
       activity_type: parsed.data.activityType,
@@ -246,6 +254,8 @@ export async function action({ request }: Route.ActionArgs) {
       end_date: parsed.data.endDate,
       priority: parsed.data.priority ?? null,
       node_id: parsed.data.nodeId ?? null,
+      subject_kind: subject?.kind ?? null,
+      subject_code: subject?.code ?? null,
       updated_by: user.id,
     };
     const itemId = String(fd.get("itemId") ?? "");

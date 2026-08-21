@@ -2,7 +2,7 @@
 
 > 입력: `source/종합반운영/오프라인 데이터 수정&추가사항.pdf` (원장, 2026-08-21) + 원장 확인 회신 3건(2026-08-21, §7)
 > 선행: feat-7-047 Phase 3 (`docs/plans/phase3-stage1-design.md` · `phase3-completion-report.md`)
-> 상태: **Stage A·B 완료(2026-08-21) — Stage C 승인 대기**
+> 상태: **Stage A·B·C 완료(2026-08-21) — Stage D 승인 대기**
 
 ## 0. 무엇을 하는 작업인가
 
@@ -327,7 +327,15 @@ create table if not exists public.student_study_prefs (
 - `scripts/ops/phase3-gate-metrics.mjs` — `authored_by` 분리 집계
 - 검증: 파셜 유니크 충돌 3케이스(in-flight 있음/승인본만/없음) · 승인본 잠금 유지 · 학생 RLS 로 남의 계획 편집 차단
 
-### Stage C · 과목 축 · 색상 · 공부 통계 ★분량 최대
+### Stage C · 과목 축 · 색상 · 공부 통계 — ✅ 완료 (2026-08-21)
+
+적용: `scripts/sql/20260821_feat7048_stage_c.sql` · 검증 `tmp/feat7048-verify/stageC.itest.ts` 6/6(집계 순수 5 + 과거 로그 과목 파생 1, 테스트 데이터 잔여 0) · typecheck ✅ · build ✅.
+
+설계 대비 이탈 하나 — **계획 부하 미리보기 달력을 없애지 않고 같은 카드의 옆 탭으로 남겼다**(기본 탭 = 공부 통계). 요구서는 "메인 달력을 공부통계로"지만, 부하 미리보기는 계획을 짜는 동안만 쓰는 다른 정보라 지우면 Phase 3 기능이 사라진다.
+
+날짜 클릭은 곧바로 이동하지 않고 **그 날을 선택**한다(일간 요약이 갱신됨) — 상세로 나가는 링크는 요약 아래 따로 뒀다. 누르자마자 이동하면 일간 요약을 볼 수가 없다.
+
+#### 원래 계획(참고)
 
 - M3 적용
 - `lib/study-stats.ts`(순수) + `components/study-stats/*` 3종

@@ -16,6 +16,7 @@ import { roleAtLeast } from "~/core/lib/roles";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Chip } from "~/features/admin/components/admin-ui";
 import { StaffPlanEditor } from "~/features/admin/components/staff-plan-editor";
+import { StudyStatsCard } from "~/features/study-plans/components/study-stats/study-stats-card";
 import type { CohortExamRound } from "~/features/cohorts/labels";
 import { getCohortById } from "~/features/cohorts/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
@@ -49,8 +50,11 @@ import {
   getStudentDiagnostics,
   listCheckpoints,
   listPeriodAssignments,
+  listLogsForRange,
   listPlanItems,
+  listSubjectColors,
   listSubjectStatus,
+  attachDerivedSubjects,
 } from "~/features/study-plans/queries.server";
 import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
 import { SCIENCE_SUBJECTS } from "~/features/subjects/lib/science";
@@ -173,6 +177,14 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   }
   const compliance = await getPeriodCompliance(client, params.profileId, periodStart, todayISO);
 
+  // 공부 통계(feat-7-048) — 학생 화면과 같은 컴포넌트를 쓴다.
+  const [statLogs, colorOverrides] = await Promise.all([
+    listLogsForRange(client, params.profileId, periodStart, periodEnd).then((rows) =>
+      attachDerivedSubjects(client, rows),
+    ),
+    listSubjectColors(client, params.profileId),
+  ]);
+
   // F3 병기 — 과제 이행률 (합산 금지, 별도 지표).
   const periodAssignments = await listPeriodAssignments(
     client,
@@ -207,6 +219,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     })),
     signals,
     checkpoints,
+    statLogs,
+    colorOverrides,
+    todayISO,
     compliance: compliance.noPlan
       ? null
       : {
@@ -254,6 +269,9 @@ export default function AdminStudentPlanReview({ loaderData }: Route.ComponentPr
     checkpoints,
     compliance,
     assignmentSummary,
+    statLogs,
+    colorOverrides,
+    todayISO,
   } = loaderData;
   const base = `/admin/cohorts/${cohort.cohortId}`;
 
@@ -301,8 +319,25 @@ export default function AdminStudentPlanReview({ loaderData }: Route.ComponentPr
             signals={signals}
             hasDiagnostics={diagnostics !== null}
           />
+          {/* feat-7-048 — 공부 통계. 진행 지표·격주 체크포인트를 이 안으로 접어 넣었다
+              (별도 섹션 삭제). ensureCheckpoints 의 소급 계산은 그대로다. */}
+          <section className="bg-card rounded-xl border shadow-sm">
+            <div className="border-b px-4 py-3">
+              <h2 className="text-sm font-bold tracking-tight">공부 통계</h2>
+              <p className="text-muted-foreground mt-0.5 text-[11px]">
+                날짜를 누르면 그 날의 일간 요약을 봅니다.
+              </p>
+            </div>
+            <div className="p-4">
+              <StudyStatsCard
+                logs={statLogs}
+                monthAnchor={periodStart}
+                todayISO={todayISO}
+                colorOverrides={colorOverrides}
+              />
+            </div>
           {compliance ? (
-            <section className="bg-card rounded-xl border shadow-sm">
+            <div className="border-t">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3">
                 <h2 className="text-sm font-bold tracking-tight">진행 지표</h2>
                 <span className="text-muted-foreground text-[11px] tabular-nums">
@@ -326,9 +361,9 @@ export default function AdminStudentPlanReview({ loaderData }: Route.ComponentPr
                   </li>
                 ))}
               </ul>
-            </section>
+            </div>
           ) : (
-            <p className="text-muted-foreground rounded-xl border border-dashed px-4 py-3 text-[11px]">
+            <p className="text-muted-foreground border-t px-4 py-3 text-[11px]">
               이번 달 승인된 계획이 없어 준수율은 평가 제외(no_plan)입니다.
               {assignmentSummary.total > 0
                 ? ` 과제 이행 ${assignmentSummary.done}/${assignmentSummary.total}.`
@@ -336,7 +371,7 @@ export default function AdminStudentPlanReview({ loaderData }: Route.ComponentPr
             </p>
           )}
           {checkpoints.length > 0 ? (
-            <section className="bg-card rounded-xl border shadow-sm">
+            <div className="border-t">
               <div className="border-b px-4 py-3">
                 <h2 className="text-sm font-bold tracking-tight">격주 체크포인트</h2>
                 <p className="text-muted-foreground mt-0.5 text-[11px]">
@@ -367,8 +402,9 @@ export default function AdminStudentPlanReview({ loaderData }: Route.ComponentPr
                   </li>
                 ))}
               </ul>
-            </section>
+            </div>
           ) : null}
+          </section>
         </div>
       </div>
     </AdminShell>

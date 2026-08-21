@@ -9,7 +9,14 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import {
   createPlanRevision,
   resolveLessonNode,
+  resolveSubjectInput,
+  subjectFromNode,
+  upsertSubjectColor,
 } from "~/features/study-plans/queries.server";
+import {
+  SUBJECT_COLOR_KEYS,
+  isValidSubject,
+} from "~/features/study-plans/subject-axis";
 import { currentMonthPeriod } from "~/features/study-plans/labels";
 
 import type { Route } from "./+types/study-plan";
@@ -32,6 +39,7 @@ const itemSchema = z.object({
   priority: z.coerce.number().int().min(1).max(99).optional(),
   nodeId: z.string().uuid().optional(),
   lessonId: z.string().uuid().optional(),
+  subject: z.string().max(60).optional(), // "kind:code" — 자연과학·기타는 직접 고른다
 });
 
 export async function action({ request }: Route.ActionArgs) {
@@ -147,6 +155,7 @@ export async function action({ request }: Route.ActionArgs) {
       nodeId: z.string().uuid().optional(), // 계획 외 학습만 — 미분류 허용(E1)
       lessonId: z.string().uuid().optional(),
       selfDifficulty: z.coerce.number().int().min(1).max(5).optional(),
+      subject: z.string().max(60).optional(), // "kind:code" — 계획 외 학습에서만
     });
     const parsed = logSchema.safeParse({
       logDate: fd.get("logDate"),
@@ -157,8 +166,18 @@ export async function action({ request }: Route.ActionArgs) {
       nodeId: fd.get("nodeId") || undefined,
       lessonId: fd.get("lessonId") || undefined,
       selfDifficulty: fd.get("selfDifficulty") || undefined,
+      subject: fd.get("subject") || undefined,
     });
     if (!parsed.success) return data({ error: "입력을 확인해 주세요" }, { status: 400 });
+
+    // 과목 귀속(feat-7-048) — 계획 항목 상속 → 사용자 선택 → 노드 파생 → 미분류.
+    // ★원장은 append-only 라 INSERT 시점에만 채운다.
+    let subject: { kind: string; code: string } | null = null;
+    const rawSubject = parsed.data.subject;
+    if (rawSubject) {
+      const [k, c] = rawSubject.split(":");
+      if (k && c && isValidSubject(k, c)) subject = { kind: k, code: c };
+    }
 
     // 노드 귀속 — 계획 항목이면 항목의 노드 상속, 아니면 직접/강의 resolver.
     let nodeId = parsed.data.nodeId ?? null;
@@ -167,18 +186,23 @@ export async function action({ request }: Route.ActionArgs) {
     if (parsed.data.planItemId) {
       const { data: item } = await client
         .from("study_plan_items")
-        .select("node_id, lesson_id, activity_type")
+        .select("node_id, lesson_id, activity_type, subject_kind, subject_code")
         .eq("item_id", parsed.data.planItemId)
         .maybeSingle();
       if (!item) return data({ error: "계획 항목을 찾을 수 없습니다" }, { status: 404 });
       nodeId = item.node_id;
       lessonId = item.lesson_id;
       resolvedFrom = item.node_id ? "direct" : null;
+      if (item.subject_kind && item.subject_code) {
+        subject = { kind: item.subject_kind, code: item.subject_code };
+      }
     }
     if (!nodeId && lessonId) {
       nodeId = await resolveLessonNode(client, lessonId);
       if (nodeId) resolvedFrom = "lesson";
     }
+
+    if (!subject) subject = await subjectFromNode(client, nodeId);
 
     const { error } = await client.from("study_logs").insert({
       user_id: user.id,
@@ -192,6 +216,8 @@ export async function action({ request }: Route.ActionArgs) {
       completion: parsed.data.completion,
       node_resolved_from: resolvedFrom,
       self_difficulty: parsed.data.selfDifficulty ?? null,
+      subject_kind: subject?.kind ?? null,
+      subject_code: subject?.code ?? null,
     });
     if (error) return data({ error: "기록에 실패했습니다" }, { status: 400 });
     return data({ ok: true });
@@ -247,6 +273,7 @@ export async function action({ request }: Route.ActionArgs) {
       priority: fd.get("priority") || undefined,
       nodeId: fd.get("nodeId") || undefined,
       lessonId: fd.get("lessonId") || undefined,
+      subject: fd.get("subject") || undefined,
     });
     if (!parsed.success) {
       return data({ error: "입력을 확인해 주세요 (하루 시간은 필수입니다)" }, { status: 400 });
@@ -260,6 +287,7 @@ export async function action({ request }: Route.ActionArgs) {
     if (!nodeId && parsed.data.lessonId) {
       nodeId = await resolveLessonNode(client, parsed.data.lessonId);
     }
+    const subject = await resolveSubjectInput(client, parsed.data.subject, nodeId);
     const row = {
       title: parsed.data.title,
       activity_type: parsed.data.activityType,
@@ -270,6 +298,8 @@ export async function action({ request }: Route.ActionArgs) {
       priority: parsed.data.priority ?? null,
       node_id: nodeId,
       lesson_id: parsed.data.lessonId ?? null,
+      subject_kind: subject?.kind ?? null,
+      subject_code: subject?.code ?? null,
     };
     if (intent === "add_item") {
       const { error } = await client
@@ -287,6 +317,26 @@ export async function action({ request }: Route.ActionArgs) {
         return data({ error: "수정할 수 없습니다 (승인된 계획은 수정 불가)" }, { status: 400 });
       }
     }
+    return data({ ok: true });
+  }
+
+  // feat-7-048 — 과목 색 오버라이드(팔레트 키만 저장, hex 금지).
+  if (intent === "set_subject_color") {
+    const raw = String(fd.get("subject") ?? "");
+    const colorKey = String(fd.get("colorKey") ?? "");
+    const [kind, code] = raw.split(":");
+    if (!kind || !code || !isValidSubject(kind, code)) {
+      return data({ error: "과목을 확인해 주세요" }, { status: 400 });
+    }
+    if (!(SUBJECT_COLOR_KEYS as readonly string[]).includes(colorKey)) {
+      return data({ error: "색을 확인해 주세요" }, { status: 400 });
+    }
+    await upsertSubjectColor(client, {
+      userId: user.id,
+      subjectKind: kind,
+      subjectCode: code,
+      colorKey,
+    });
     return data({ ok: true });
   }
 

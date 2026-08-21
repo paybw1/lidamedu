@@ -12222,6 +12222,45 @@ export type Database = {
           },
         ]
       }
+      student_subject_colors: {
+        Row: {
+          color_key: string
+          subject_code: string
+          subject_kind: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color_key: string
+          subject_code: string
+          subject_kind: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color_key?: string
+          subject_code?: string
+          subject_kind?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_subject_colors_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "student_subject_colors_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       student_subject_status: {
         Row: {
           basic_course_status: string | null
@@ -12395,6 +12434,7 @@ export type Database = {
           activity_type: string
           completion: string
           created_at: string
+          ended_at: string | null
           lesson_id: string | null
           log_date: string
           log_id: string
@@ -12405,12 +12445,16 @@ export type Database = {
           reverses_log_id: string | null
           self_difficulty: number | null
           source: string
+          started_at: string | null
+          subject_code: string | null
+          subject_kind: string | null
           user_id: string
         }
         Insert: {
           activity_type: string
           completion?: string
           created_at?: string
+          ended_at?: string | null
           lesson_id?: string | null
           log_date: string
           log_id?: string
@@ -12421,12 +12465,16 @@ export type Database = {
           reverses_log_id?: string | null
           self_difficulty?: number | null
           source: string
+          started_at?: string | null
+          subject_code?: string | null
+          subject_kind?: string | null
           user_id: string
         }
         Update: {
           activity_type?: string
           completion?: string
           created_at?: string
+          ended_at?: string | null
           lesson_id?: string | null
           log_date?: string
           log_id?: string
@@ -12437,6 +12485,9 @@ export type Database = {
           reverses_log_id?: string | null
           self_difficulty?: number | null
           source?: string
+          started_at?: string | null
+          subject_code?: string | null
+          subject_kind?: string | null
           user_id?: string
         }
         Relationships: [
@@ -12556,6 +12607,8 @@ export type Database = {
           plan_id: string
           priority: number | null
           start_date: string
+          subject_code: string | null
+          subject_kind: string | null
           title: string
           updated_at: string
           updated_by: string | null
@@ -12573,6 +12626,8 @@ export type Database = {
           plan_id: string
           priority?: number | null
           start_date: string
+          subject_code?: string | null
+          subject_kind?: string | null
           title: string
           updated_at?: string
           updated_by?: string | null
@@ -12590,6 +12645,8 @@ export type Database = {
           plan_id?: string
           priority?: number | null
           start_date?: string
+          subject_code?: string | null
+          subject_kind?: string | null
           title?: string
           updated_at?: string
           updated_by?: string | null

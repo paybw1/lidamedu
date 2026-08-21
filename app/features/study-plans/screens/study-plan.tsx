@@ -23,11 +23,14 @@ import { cn } from "~/core/lib/utils";
 import { getWeakNodes } from "~/features/subjects/lib/weak-nodes.server";
 import { MinutesField } from "~/features/study-plans/components/minutes-field";
 import { NodePicker } from "~/features/study-plans/components/node-picker";
+import { SubjectColorBar } from "~/features/study-plans/components/subject-color-bar";
+import { SubjectSelect } from "~/features/study-plans/components/subject-select";
 import {
   PlanCalendar,
   type CalendarHighlight,
 } from "~/features/study-plans/components/plan-calendar";
 import { buildCalendarDays } from "~/features/study-plans/lib/expected-items";
+import { StudyStatsCard } from "~/features/study-plans/components/study-stats/study-stats-card";
 import {
   DAY_SCOPE_LABEL,
   PLAN_ACTIVITY_LABEL,
@@ -50,6 +53,8 @@ import {
   listPeriodAssignments,
   listPlanItems,
   listRecentPlanNodes,
+  listSubjectColors,
+  attachDerivedSubjects,
 } from "~/features/study-plans/queries.server";
 
 export const meta: Route.MetaFunction = () => [
@@ -137,7 +142,18 @@ export async function loader({ request }: Route.LoaderArgs) {
         )
       : [];
 
+  // 공부 통계(feat-7-048) — 계획 상태와 무관하게 이 달 기록 전부. 과거 로그는
+  // 과목 컬럼이 비어 있어 조회 시점에 파생한다(원장은 append-only).
+  const [statLogs, colorOverrides] = await Promise.all([
+    listLogsForRange(client, user.id, periodStart, periodEnd).then((rows) =>
+      attachDerivedSubjects(client, rows),
+    ),
+    listSubjectColors(client, user.id),
+  ]);
+
   return {
+    statLogs,
+    colorOverrides,
     todayISO,
     monthLogs,
     cohortId,
@@ -149,6 +165,10 @@ export async function loader({ request }: Route.LoaderArgs) {
       nodeLabel: i.nodeId ? (labelByNode.get(i.nodeId) ?? null) : null,
     })),
     versionCount,
+    // 상담자가 손댄 계획인지 — 계획을 대신 쓴 경우(authored_by)와 학생 제출본의
+    // 항목만 손본 경우(items.updated_by) 둘 다 배지를 붙인다(feat-7-048).
+    staffEdited:
+      plan?.authoredBy != null || items.some((i) => i.updatedBy != null),
     diagnostics: diagnostics
       ? {
           weekdayMinutes: diagnostics.weekdayMinutes,
@@ -202,6 +222,7 @@ export default function StudyPlanScreen({ loaderData }: Route.ComponentProps) {
     plan,
     items,
     versionCount,
+    staffEdited,
     diagnostics,
     weakNodes,
     recentNodes,
@@ -211,6 +232,8 @@ export default function StudyPlanScreen({ loaderData }: Route.ComponentProps) {
     compliance,
     todayISO,
     monthLogs,
+    statLogs,
+    colorOverrides,
   } = loaderData;
   // 빈 상태 폴백 — 약점·최근이 모두 비면 수준 기반 제안이 추천 자리를 채운다.
   const pickerWeakNodes = weakNodes.length > 0 ? weakNodes : levelNodes;
@@ -239,6 +262,28 @@ export default function StudyPlanScreen({ loaderData }: Route.ComponentProps) {
 
   // 캘린더 — 날짜별 기대 부하(파생) + 승인 상태면 달성 점.
   // itemId 포함 — 터치(탭 토글)에서 같은 항목 재탭 = 해제 판정용.
+  const [calendarTab, setCalendarTab] = useState<"stats" | "load">("stats");
+  // 이 달 계획·기록에 등장한 과목 — 색 지정 대상(미분류 제외).
+  const usedSubjects = useMemo(() => {
+    const seen = new Map<string, { kind: string; code: string }>();
+    for (const i of items) {
+      if (i.subjectKind && i.subjectCode) {
+        seen.set(`${i.subjectKind}:${i.subjectCode}`, {
+          kind: i.subjectKind,
+          code: i.subjectCode,
+        });
+      }
+    }
+    for (const l of statLogs) {
+      if (l.subjectKind && l.subjectCode) {
+        seen.set(`${l.subjectKind}:${l.subjectCode}`, {
+          kind: l.subjectKind,
+          code: l.subjectCode,
+        });
+      }
+    }
+    return [...seen.values()];
+  }, [items, statLogs]);
   const [calendarHighlight, setCalendarHighlight] = useState<
     (CalendarHighlight & { itemId: string }) | null
   >(null);
@@ -335,7 +380,7 @@ export default function StudyPlanScreen({ loaderData }: Route.ComponentProps) {
               {versionCount > 1 ? ` · 이 달 계획 ${versionCount}회 변경` : ""}
             </span>
             {/* 상담 중에 선생님이 대신 손본 계획임을 밝힌다(feat-7-048 D9). */}
-            {plan.authoredBy ? (
+            {staffEdited ? (
               <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
                 상담자가 수정함
               </span>
@@ -409,26 +454,56 @@ export default function StudyPlanScreen({ loaderData }: Route.ComponentProps) {
             hasDiagnostics={diagnostics !== null}
           />
 
-          {/* 월 캘린더 — 날짜별 부하 미리보기(작성 중) / 달성 현황(승인 후) */}
+          {/* 공부 통계 — 요구서 Ⅱ "메인 달력을 공부통계로".
+              계획 부하 미리보기(Phase 3)는 없애지 않고 옆 탭으로 남긴다. */}
           <section className="bg-card rounded-xl border p-3 shadow-sm sm:p-4">
-            <PlanCalendar
-              variant="full"
-              days={calendarDays}
-              todayISO={todayISO}
-              showStatus={plan.status === "approved"}
-              highlight={calendarHighlight}
-              overloadedDates={overloadedDates}
-              dayHref={
-                plan.status === "approved"
-                  ? (d) => `/study/plan/log?date=${d.date}`
-                  : undefined
-              }
-            />
-            <p className="text-muted-foreground mt-2 text-[11px]">
-              {plan.status === "approved"
-                ? "날짜를 누르면 그 날의 기록 화면으로 이동합니다."
-                : "항목에 마우스를 올리면 적용 기간이 파랗게 표시됩니다. 붉은 날은 계획 합계가 가용시간을 넘는 날입니다."}
-            </p>
+            <div className="bg-muted/60 mb-3 inline-flex rounded-lg p-0.5">
+              {(["stats", "load"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setCalendarTab(t)}
+                  className={cn(
+                    "rounded-md px-3 py-1 text-xs font-medium transition-colors",
+                    calendarTab === t
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  {t === "stats" ? "공부 통계" : "계획 부하"}
+                </button>
+              ))}
+            </div>
+            {calendarTab === "stats" ? (
+              <StudyStatsCard
+                logs={statLogs}
+                monthAnchor={periodStart}
+                todayISO={todayISO}
+                colorOverrides={colorOverrides}
+                dayHref={(d) => `/study/plan/log?date=${d}`}
+              />
+            ) : (
+              <>
+                <PlanCalendar
+                  variant="full"
+                  days={calendarDays}
+                  todayISO={todayISO}
+                  showStatus={plan.status === "approved"}
+                  highlight={calendarHighlight}
+                  overloadedDates={overloadedDates}
+                  dayHref={
+                    plan.status === "approved"
+                      ? (d) => `/study/plan/log?date=${d.date}`
+                      : undefined
+                  }
+                />
+                <p className="text-muted-foreground mt-2 text-[11px]">
+                  {plan.status === "approved"
+                    ? "날짜를 누르면 그 날의 기록 화면으로 이동합니다."
+                    : "항목에 마우스를 올리면 적용 기간이 파랗게 표시됩니다. 붉은 날은 계획 합계가 가용시간을 넘는 날입니다."}
+                </p>
+              </>
+            )}
           </section>
 
           {/* 항목 목록 */}
@@ -444,6 +519,15 @@ export default function StudyPlanScreen({ loaderData }: Route.ComponentProps) {
                 </span>
               ) : null}
             </div>
+            {usedSubjects.length > 0 ? (
+              <div className="border-b px-4 py-2">
+                <SubjectColorBar
+                  subjects={usedSubjects}
+                  colorOverrides={colorOverrides}
+                  onSaved={reload}
+                />
+              </div>
+            ) : null}
             {items.length === 0 ? (
               <p className="text-muted-foreground py-8 text-center text-xs">
                 아래에서 첫 항목을 추가하세요.
@@ -451,12 +535,12 @@ export default function StudyPlanScreen({ loaderData }: Route.ComponentProps) {
             ) : (
               <ul className="divide-border divide-y">
                 {items.map((it) => (
-                  <ItemRow key={it.itemId} item={it} editable={editable} planId={plan.planId} weakNodes={pickerWeakNodes} recentNodes={recentNodes} lessons={lessons} highlighted={calendarHighlight?.itemId === it.itemId} onHighlight={setCalendarHighlight} />
+                  <ItemRow key={it.itemId} item={it} editable={editable} planId={plan.planId} colorOverrides={colorOverrides} weakNodes={pickerWeakNodes} recentNodes={recentNodes} lessons={lessons} highlighted={calendarHighlight?.itemId === it.itemId} onHighlight={setCalendarHighlight} />
                 ))}
               </ul>
             )}
             {editable ? (
-              <ItemForm planId={plan.planId} periodStart={periodStart} periodEnd={periodEnd} weakNodes={pickerWeakNodes} recentNodes={recentNodes} lessons={lessons} />
+              <ItemForm planId={plan.planId} periodStart={periodStart} periodEnd={periodEnd} colorOverrides={colorOverrides} weakNodes={pickerWeakNodes} recentNodes={recentNodes} lessons={lessons} />
             ) : null}
           </section>
 
@@ -609,6 +693,7 @@ function ItemRow({
   item,
   editable,
   planId,
+  colorOverrides,
   weakNodes,
   recentNodes,
   lessons,
@@ -618,6 +703,7 @@ function ItemRow({
   item: LoaderItem;
   editable: boolean;
   planId: string;
+  colorOverrides: Record<string, string>;
   weakNodes: Array<{ nodeId: string; displayLabel: string; sub?: string | null }>;
   recentNodes: Array<{ nodeId: string; displayLabel: string }>;
   lessons: LessonOption[];
@@ -651,6 +737,7 @@ function ItemRow({
           intent="update_item"
           itemId={item.itemId}
           defaults={item}
+          colorOverrides={colorOverrides}
           weakNodes={weakNodes}
           recentNodes={recentNodes}
           lessons={lessons}
@@ -735,6 +822,7 @@ function ItemForm({
   planId,
   periodStart,
   periodEnd,
+  colorOverrides,
   weakNodes,
   recentNodes,
   lessons,
@@ -742,6 +830,7 @@ function ItemForm({
   planId: string;
   periodStart: string;
   periodEnd: string;
+  colorOverrides: Record<string, string>;
   weakNodes: Array<{ nodeId: string; displayLabel: string; sub?: string | null }>;
   recentNodes: Array<{ nodeId: string; displayLabel: string }>;
   lessons: LessonOption[];
@@ -772,7 +861,10 @@ function ItemForm({
           nodeId: null,
           nodeLabel: null,
           lessonId: null,
+          subjectKind: null,
+          subjectCode: null,
         }}
+        colorOverrides={colorOverrides}
         weakNodes={weakNodes}
         recentNodes={recentNodes}
         lessons={lessons}
@@ -788,6 +880,7 @@ function ItemFields({
   intent,
   itemId,
   defaults,
+  colorOverrides,
   weakNodes,
   recentNodes,
   lessons,
@@ -808,7 +901,10 @@ function ItemFields({
     nodeId: string | null;
     nodeLabel?: string | null;
     lessonId: string | null;
+    subjectKind?: string | null;
+    subjectCode?: string | null;
   };
+  colorOverrides: Record<string, string>;
   weakNodes: Array<{ nodeId: string; displayLabel: string; sub?: string | null }>;
   recentNodes: Array<{ nodeId: string; displayLabel: string }>;
   lessons: LessonOption[];
@@ -896,6 +992,12 @@ function ItemFields({
           <Input name="endDate" type="date" required defaultValue={defaults.endDate} className="mt-0.5 h-8 text-xs" />
         </div>
       </div>
+      <SubjectSelect
+        defaultKind={defaults.subjectKind}
+        defaultCode={defaults.subjectCode}
+        colorOverrides={colorOverrides}
+        hint="(자연과학·기타는 직접 고르세요)"
+      />
       <NodePicker
         weakNodes={weakNodes}
         recentNodes={recentNodes}

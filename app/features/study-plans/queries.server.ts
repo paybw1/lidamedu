@@ -33,6 +33,8 @@ import {
   type TierSource,
 } from "./labels";
 
+import { isValidSubject } from "./subject-axis";
+
 // ── 진단 ─────────────────────────────────────────────────────────────────────
 
 export interface StudentDiagnostics {
@@ -220,6 +222,11 @@ export interface StudyPlanItem {
   startDate: string;
   endDate: string;
   isLocked: boolean;
+  /** 상담자가 이 항목을 손봤으면 그 staff id — 학생 경로는 채우지 않는다(feat-7-048). */
+  updatedBy: string | null;
+  /** 과목 축(feat-7-048) — 법과목은 노드에서 파생, 자연과학·기타는 선택. NULL=미분류. */
+  subjectKind: string | null;
+  subjectCode: string | null;
 }
 
 const PLAN_SELECT =
@@ -290,7 +297,7 @@ export async function listPlanItems(
   const { data, error } = await client
     .from("study_plan_items")
     .select(
-      "item_id, plan_id, priority, title, node_id, lesson_id, activity_type, daily_minutes, day_scope, start_date, end_date, is_locked",
+      "item_id, plan_id, priority, title, node_id, lesson_id, activity_type, daily_minutes, day_scope, start_date, end_date, is_locked, updated_by, subject_kind, subject_code",
     )
     .eq("plan_id", planId)
     .order("priority", { ascending: true, nullsFirst: false })
@@ -309,6 +316,9 @@ export async function listPlanItems(
     startDate: r.start_date,
     endDate: r.end_date,
     isLocked: r.is_locked,
+    updatedBy: r.updated_by,
+    subjectKind: r.subject_kind,
+    subjectCode: r.subject_code,
   }));
 }
 
@@ -618,13 +628,17 @@ export interface StudyLogRow {
   lessonId: string | null;
   activityType: PlanActivityType;
   minutes: number;
-  source: "plan_check" | "manual";
+  source: "plan_check" | "manual" | "timer";
   completion: "full" | "partial" | "none";
   reversesLogId: string | null;
+  /** feat-7-048 — INSERT 시점에만 채운다(append-only). 과거 로그는 null. */
+  subjectKind: string | null;
+  subjectCode: string | null;
+  startedAt: string | null;
 }
 
 const LOG_SELECT =
-  "log_id, log_date, plan_item_id, node_id, lesson_id, activity_type, minutes, source, completion, reverses_log_id";
+  "log_id, log_date, plan_item_id, node_id, lesson_id, activity_type, minutes, source, completion, reverses_log_id, subject_kind, subject_code, started_at";
 
 function rowToLog(r: Record<string, unknown>): StudyLogRow {
   return {
@@ -635,9 +649,12 @@ function rowToLog(r: Record<string, unknown>): StudyLogRow {
     lessonId: (r.lesson_id as string | null) ?? null,
     activityType: r.activity_type as PlanActivityType,
     minutes: r.minutes as number,
-    source: r.source as "plan_check" | "manual",
+    source: r.source as "plan_check" | "manual" | "timer",
     completion: r.completion as "full" | "partial" | "none",
     reversesLogId: (r.reverses_log_id as string | null) ?? null,
+    subjectKind: (r.subject_kind as string | null) ?? null,
+    subjectCode: (r.subject_code as string | null) ?? null,
+    startedAt: (r.started_at as string | null) ?? null,
   };
 }
 
@@ -918,4 +935,149 @@ export async function listPeriodAssignments(
   return (data ?? [])
     .filter((a) => !a.target_profile_id || a.target_profile_id === userId)
     .map((a) => ({ assignmentId: a.assignment_id, title: a.title, dueAt: a.due_at }));
+}
+
+// ── feat-7-048 Stage C — 과목 축 파생 · 과목 색상 ────────────────────────────
+
+/**
+ * 과거 로그(subject 컬럼 NULL)의 과목을 조회 시점에 파생한다.
+ * ★원장은 append-only 라 UPDATE 로 메우지 않는다 — 통계는 `저장값 ?? 파생값`.
+ * 파생 경로: 로그 node_id → 계획 항목의 subject/node → systematic_nodes.law_code.
+ */
+export async function attachDerivedSubjects(
+  client: SupabaseClient<Database>,
+  logs: StudyLogRow[],
+): Promise<
+  Array<{
+    logDate: string;
+    minutes: number;
+    subjectKind: string | null;
+    subjectCode: string | null;
+    startedAt: string | null;
+  }>
+> {
+  const missing = logs.filter((l) => !l.subjectCode);
+  const itemIds = [
+    ...new Set(missing.map((l) => l.planItemId).filter((v): v is string => !!v)),
+  ];
+  const itemSubject = new Map<string, { kind: string; code: string }>();
+  const itemNode = new Map<string, string>();
+  for (let i = 0; i < itemIds.length; i += 150) {
+    const { data } = await client
+      .from("study_plan_items")
+      .select("item_id, node_id, subject_kind, subject_code")
+      .in("item_id", itemIds.slice(i, i + 150));
+    for (const r of data ?? []) {
+      if (r.subject_kind && r.subject_code) {
+        itemSubject.set(r.item_id, { kind: r.subject_kind, code: r.subject_code });
+      }
+      if (r.node_id) itemNode.set(r.item_id, r.node_id);
+    }
+  }
+
+  const nodeIds = [
+    ...new Set([
+      ...missing.map((l) => l.nodeId).filter((v): v is string => !!v),
+      ...itemNode.values(),
+    ]),
+  ];
+  const nodeLaw = new Map<string, string>();
+  for (let i = 0; i < nodeIds.length; i += 150) {
+    const { data } = await client
+      .from("systematic_nodes")
+      .select("node_id, law_code")
+      .in("node_id", nodeIds.slice(i, i + 150));
+    for (const r of data ?? []) nodeLaw.set(r.node_id, r.law_code);
+  }
+
+  return logs.map((l) => {
+    if (l.subjectCode) {
+      return {
+        logDate: l.logDate,
+        minutes: l.minutes,
+        subjectKind: l.subjectKind,
+        subjectCode: l.subjectCode,
+        startedAt: l.startedAt,
+      };
+    }
+    const viaItem = l.planItemId ? itemSubject.get(l.planItemId) : undefined;
+    const node = l.nodeId ?? (l.planItemId ? itemNode.get(l.planItemId) : undefined);
+    const law = node ? nodeLaw.get(node) : undefined;
+    return {
+      logDate: l.logDate,
+      minutes: l.minutes,
+      subjectKind: viaItem?.kind ?? (law ? "law" : null),
+      subjectCode: viaItem?.code ?? law ?? null,
+      startedAt: l.startedAt,
+    };
+  });
+}
+
+/** 학생별 과목 색 오버라이드 — 없으면 코드의 기본 매핑이 쓰인다. */
+export async function listSubjectColors(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<Record<string, string>> {
+  const { data, error } = await client
+    .from("student_subject_colors")
+    .select("subject_kind, subject_code, color_key")
+    .eq("user_id", userId);
+  if (error) throw error;
+  const out: Record<string, string> = {};
+  for (const r of data ?? []) {
+    out[`${r.subject_kind}:${r.subject_code}`] = r.color_key;
+  }
+  return out;
+}
+
+export async function upsertSubjectColor(
+  client: SupabaseClient<Database>,
+  input: {
+    userId: string;
+    subjectKind: string;
+    subjectCode: string;
+    colorKey: string;
+  },
+): Promise<void> {
+  const { error } = await client.from("student_subject_colors").upsert(
+    {
+      user_id: input.userId,
+      subject_kind: input.subjectKind,
+      subject_code: input.subjectCode,
+      color_key: input.colorKey,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id,subject_kind,subject_code" },
+  );
+  if (error) throw error;
+}
+
+/** 노드 → 과목(법). 노드가 없거나 못 찾으면 null(미분류). */
+export async function subjectFromNode(
+  client: SupabaseClient<Database>,
+  nodeId: string | null,
+): Promise<{ kind: "law"; code: string } | null> {
+  if (!nodeId) return null;
+  const { data } = await client
+    .from("systematic_nodes")
+    .select("law_code")
+    .eq("node_id", nodeId)
+    .maybeSingle();
+  return data?.law_code ? { kind: "law", code: data.law_code } : null;
+}
+
+/**
+ * 폼의 "kind:code" 선택값 → 과목. 선택이 없으면 노드에서 파생한다(법과목).
+ * 자연과학·기타는 파생할 근거가 없어 선택값이 유일한 출처다.
+ */
+export async function resolveSubjectInput(
+  client: SupabaseClient<Database>,
+  raw: string | undefined,
+  nodeId: string | null,
+): Promise<{ kind: string; code: string } | null> {
+  if (raw) {
+    const [kind, code] = raw.split(":");
+    if (kind && code && isValidSubject(kind, code)) return { kind, code };
+  }
+  return subjectFromNode(client, nodeId);
 }
