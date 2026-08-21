@@ -178,11 +178,19 @@ export function CaseBadge({
             ) : (
               <span />
             )}
-            <Button asChild size="sm" className="gap-1">
-              <Link to={studyHref}>
-                공부하러 가기 <ArrowRightIcon className="size-3.5" />
-              </Link>
-            </Button>
+            {/* 목록 미수록 판례는 학습화면으로 보내지 않는다 — 목록에서 다시 찾을 수
+                없는 판례로 이탈시키지 않기 위함(원장 지시 2026-08-21). */}
+            {c.listVisible === false ? (
+              <span className="text-muted-foreground text-[11px]">
+                목록 미수록 판례 — 여기서만 열람합니다
+              </span>
+            ) : (
+              <Button asChild size="sm" className="gap-1">
+                <Link to={studyHref}>
+                  공부하러 가기 <ArrowRightIcon className="size-3.5" />
+                </Link>
+              </Button>
+            )}
           </div>
         </DialogContent>
       </Dialog>

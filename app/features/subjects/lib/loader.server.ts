@@ -423,7 +423,10 @@ export async function getSubjectAxisCounts(
       .from("cases")
       .select("*", { count: "exact", head: true })
       .contains("subject_laws", [lawCode])
-      .is("deleted_at", null),
+      .is("deleted_at", null)
+      // ★목록에 실리는 판례만 센다 — 미수록분(list_visible=false)까지 세면 배지·진도
+      //   분모가 실제 목록보다 커져 학생이 닿을 수 없는 몫이 남는다.
+      .eq("list_visible", true),
     // ★ 학습과목 문제탭 목록(listProblemsBySubject 기본)과 동일 가시성 필터로 카운트한다.
     //   review_status='approved'(검토 대기 draft 제외) + 미공개 mock 제외 → 탭 배지 수가
     //   실제 목록 수(예: 특허 1106)와 일치(이전엔 1112로 draft 6 포함되어 불일치).
@@ -750,7 +753,10 @@ export async function loadSubjectHub(
       .from("cases")
       .select("*", { count: "exact", head: true })
       .contains("subject_laws", [lawCode])
-      .is("deleted_at", null),
+      .is("deleted_at", null)
+      // ★목록에 실리는 판례만 센다 — 미수록분(list_visible=false)까지 세면 배지·진도
+      //   분모가 실제 목록보다 커져 학생이 닿을 수 없는 몫이 남는다.
+      .eq("list_visible", true),
     // ★ 책갈피 레일 "객관식 N" — getSubjectAxisCounts(뷰어 loader)와 동일 가시성
     //   필터(approved + 미공개 mock 제외)로 세야 허브·뷰어 간 카운트가 일치한다.
     //   deleted_at 만 걸면 검토대기 draft 6건이 포함돼 1112↔1106 로 왔다갔다 했다.

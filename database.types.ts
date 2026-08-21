@@ -2875,6 +2875,8 @@ export type Database = {
           importance: number | null
           is_en_banc: boolean
           law_api_serial_id: string | null
+          list_visible: boolean
+          list_visible_pinned: boolean
           nickname: string | null
           official_text_check_count: number
           official_text_checked_at: string | null
@@ -2915,6 +2917,8 @@ export type Database = {
           importance?: number | null
           is_en_banc?: boolean
           law_api_serial_id?: string | null
+          list_visible?: boolean
+          list_visible_pinned?: boolean
           nickname?: string | null
           official_text_check_count?: number
           official_text_checked_at?: string | null
@@ -2955,6 +2959,8 @@ export type Database = {
           importance?: number | null
           is_en_banc?: boolean
           law_api_serial_id?: string | null
+          list_visible?: boolean
+          list_visible_pinned?: boolean
           nickname?: string | null
           official_text_check_count?: number
           official_text_checked_at?: string | null

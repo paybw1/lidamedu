@@ -137,7 +137,11 @@ export async function listRecentCases(
   limit = 5,
   filters: RecentCasesFilters = {},
 ): Promise<CaseListItem[]> {
-  let q = client.from("cases").select(LIST_COLUMNS).is("deleted_at", null);
+  let q = client
+    .from("cases")
+    .select(LIST_COLUMNS)
+    .is("deleted_at", null)
+    .eq("list_visible", true);
   if (filters.subject) q = q.contains("subject_laws", [filters.subject]);
   if (filters.minImportance != null)
     q = q.gte("importance", filters.minImportance);
@@ -183,6 +187,8 @@ export interface ListCasesBySubjectOptions {
   filterCaseIds?: readonly string[] | null;
   // 강사 체크 중요도 최소값 (importance >= N). undefined/0 = 비활성.
   importanceMin?: number;
+  // 목록 미수록(list_visible=false) 판례까지 포함. 관리 화면 전용.
+  includeUnlisted?: boolean;
 }
 
 // 과목 판례 목록 — 페이지네이션 없이 전체 반환. total 은 KPI 표시용 카운트.
@@ -299,6 +305,9 @@ export async function listCasesBySubject(
       .select(LIST_COLUMNS, { count: "exact" })
       .contains("subject_laws", [lawCode])
       .is("deleted_at", null);
+
+    // ★목록 노출 플래그 — 접근 차단이 아니라 목록·카운트에서만 뺀다(상세·팝업은 열린다).
+    if (!options.includeUnlisted) q = q.eq("list_visible", true);
 
     if (restrictIds !== null) {
       q = q.in("case_id", restrictIds);
@@ -428,11 +437,12 @@ export async function getCaseCountsByArticle(
     const { data, error } = await client
       .from("article_case_links")
       .select(
-        "article_id, case_id, articles!inner(law_id, deleted_at), cases!inner(deleted_at)",
+        "article_id, case_id, articles!inner(law_id, deleted_at), cases!inner(deleted_at, list_visible)",
       )
       .eq("articles.law_id", lawId)
       .is("articles.deleted_at", null)
       .is("cases.deleted_at", null)
+      .eq("cases.list_visible", true)
       .range(from, from + PAGE - 1);
     if (error) throw error;
     if (!data || data.length === 0) break;
@@ -474,6 +484,7 @@ export async function getCasePlacementMaps(
         .select("case_id, primary_article_id, primary_node_id")
         .contains("subject_laws", [lawCode])
         .is("deleted_at", null)
+        .eq("list_visible", true)
         .order("case_id"),
     ),
     fetchAllPages(() =>
@@ -753,7 +764,8 @@ export async function getCaseIdsByPlacement(
         .from("cases")
         .select("case_id")
         .in("primary_node_id", slice)
-        .is("deleted_at", null);
+        .is("deleted_at", null)
+        .eq("list_visible", true);
       if (error) throw error;
       for (const r of data ?? []) out.add(r.case_id);
     }
@@ -768,7 +780,8 @@ export async function getCaseIdsByPlacement(
         .select("case_id")
         .in("primary_article_id", slice)
         .is("primary_node_id", null)
-        .is("deleted_at", null);
+        .is("deleted_at", null)
+        .eq("list_visible", true);
       if (error) throw error;
       for (const r of data ?? []) out.add(r.case_id);
     }
@@ -795,7 +808,8 @@ export async function getCaseIdsByPlacement(
           .in("case_id", slice)
           .is("primary_article_id", null)
           .is("primary_node_id", null)
-          .is("deleted_at", null);
+          .is("deleted_at", null)
+          .eq("list_visible", true);
         if (error) throw error;
         for (const r of data ?? []) out.add(r.case_id);
       }

@@ -22,6 +22,9 @@ export interface CaseMapperRow {
   decidedAt: string;
   court: string;
   importance: number;
+  // 학습과목 판례 목록 노출 여부 + 수동 고정(규칙 백필이 덮지 않음).
+  listVisible: boolean;
+  listVisiblePinned: boolean;
   linkCount: number;
   links: CaseLinkChip[]; // articleNumber + 출처 note
   articleNumbers: string[]; // 단순 number 셋 (client dedupe).
@@ -64,7 +67,7 @@ export async function listCasesForMapper(
   let q = client
     .from("cases")
     .select(
-      "case_id, court, decided_at, case_number, case_title, case_type, summary_title, summary_items, importance, subject_laws",
+      "case_id, court, decided_at, case_number, case_title, case_type, summary_title, summary_items, importance, subject_laws, list_visible, list_visible_pinned",
       { count: "exact" },
     )
     .contains("subject_laws", [options.lawCode])
@@ -174,6 +177,8 @@ export async function listCasesForMapper(
       decidedAt: c.decided_at,
       court: c.court,
       importance: c.importance ?? 1,
+      listVisible: c.list_visible,
+      listVisiblePinned: c.list_visible_pinned,
       linkCount: links.length,
       links,
       articleNumbers,

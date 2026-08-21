@@ -20,6 +20,8 @@ interface PreviewData {
   bodyMd?: string;
   // 판례 — 판결요지 쟁점 단위: 제목(박스) + 내용.
   items?: Array<{ title: string; body: string }>;
+  // 판례 — 목록 미수록(cases.list_visible=false)이면 [공부하러 가기]를 감춘다.
+  listVisible?: boolean;
   error?: string;
 }
 
@@ -101,11 +103,19 @@ export function RefPreviewBadge({
           ) : null}
           </div>
           <div className="flex justify-end pt-1">
-            <Button asChild size="sm" className="gap-1">
-              <Link to={studyHref}>
-                공부하러 가기 <ArrowRightIcon className="size-3.5" />
-              </Link>
-            </Button>
+            {/* ★로딩 중에는 버튼을 내지 않는다 — 미수록 판례인지 알기 전에 눌리면
+                목록에 없는 판례의 학습화면으로 이탈한다. */}
+            {kind === "case" && d?.listVisible === false ? (
+              <span className="text-muted-foreground text-[11px]">
+                목록 미수록 판례 — 여기서만 열람합니다
+              </span>
+            ) : kind === "case" && !d ? null : (
+              <Button asChild size="sm" className="gap-1">
+                <Link to={studyHref}>
+                  공부하러 가기 <ArrowRightIcon className="size-3.5" />
+                </Link>
+              </Button>
+            )}
           </div>
         </DialogContent>
       </Dialog>

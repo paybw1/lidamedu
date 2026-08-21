@@ -297,6 +297,8 @@ export interface AnswerCitedCase {
   subjectSlug: string;
   // 메인 판례(problems.main_case_number 지정) — 그룹 내 맨 앞 정렬 + ★ 강조.
   isMain?: boolean;
+  // 목록 미수록(cases.list_visible=false) — 팝업은 열리되 [공부하러 가기]를 감춘다.
+  listVisible?: boolean;
 }
 export interface AnswerCaseGroup {
   label: string; // "설문(1)" | "공통"

@@ -60,7 +60,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (type === "case") {
     const { data: row } = await client
       .from("cases")
-      .select("case_number, case_title, summary_title, summary_body_md, summary_items, is_en_banc, court")
+      .select(
+        "case_number, case_title, summary_title, summary_body_md, summary_items, is_en_banc, court, list_visible",
+      )
       .eq("case_id", id)
       .is("deleted_at", null)
       .maybeSingle();
@@ -90,6 +92,9 @@ export async function loader({ request }: Route.LoaderArgs) {
       title: null,
       bodyMd: "",
       items: items.map((it) => ({ title: it.title, body: it.body.slice(0, 6000) })),
+      // 목록 미수록 판례 — 팝업으로는 읽히되 학습화면 이동 버튼은 감춘다.
+      //   목록에서 다시 찾을 수 없는 판례로 이탈시키지 않기 위함이다.
+      listVisible: row.list_visible,
     });
   }
 

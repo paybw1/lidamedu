@@ -1182,6 +1182,7 @@ export default [
         "features/admin/api/ai-problem-gen.tsx",
       ),
       route("/api/admin/importance", "features/admin/api/importance.tsx"),
+      route("/api/admin/case-listing", "features/admin/api/case-listing.tsx"),
       // feat-2-023 암기 카드 생성(조문·판례 → srs_items, dry-run·멱등·소프트삭제).
       route("/api/admin/srs-cards", "features/admin/api/srs-cards.tsx"),
       // feat-8-008 학습관리 영역 게이트 (과제) — 종합반 통합(feat-2-031): 종합반 탭 노출.

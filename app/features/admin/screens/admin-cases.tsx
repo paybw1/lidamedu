@@ -5,8 +5,11 @@ import {
   CheckCircle2Icon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  EyeIcon,
+  EyeOffIcon,
   GavelIcon,
   PencilIcon,
+  PinIcon,
   PlusIcon,
   ScaleIcon,
   SearchIcon,
@@ -480,6 +483,7 @@ function CaseMapperCard({
         {item.importance >= 3 ? (
           <Chip tone="amber">★{item.importance}</Chip>
         ) : null}
+        <ListingToggle item={item} />
         {item.linkCount === 0 ? (
           <Chip tone="coral">
             <GavelIcon className="size-3" /> 미매핑
@@ -656,5 +660,42 @@ function ArticleChip({
         </button>
       </fetcher.Form>
     </span>
+  );
+}
+
+// 학습과목 판례 목록 노출 토글 (원장 지시 2026-08-21).
+// 기본 노출 여부는 규칙 백필(apply-case-list-visibility.mjs)이 정하고, 여기서 손으로
+// 바꾸면 고정(pinned)되어 다음 백필이 덮지 않는다. 숨겨도 상세·해설 팝업은 열린다.
+function ListingToggle({ item }: { item: CaseMapperRow }) {
+  const fetcher = useFetcher<{ ok: boolean; listVisible?: boolean; error?: string }>();
+  const submitted = fetcher.formData?.get("listVisible");
+  const visible =
+    submitted != null ? submitted === "true" : item.listVisible;
+  const pinned = submitted != null ? true : item.listVisiblePinned;
+  return (
+    <button
+      type="button"
+      disabled={fetcher.state !== "idle"}
+      onClick={() => {
+        const fd = new FormData();
+        fd.set("caseId", item.caseId);
+        fd.set("listVisible", visible ? "false" : "true");
+        fetcher.submit(fd, { method: "post", action: "/api/admin/case-listing" });
+      }}
+      title={
+        visible
+          ? "학습과목 목록에 노출 중 — 누르면 숨김(상세·팝업은 그대로 열립니다)"
+          : "학습과목 목록에서 숨김 — 누르면 노출"
+      }
+      className="inline-flex items-center gap-1 rounded-full border border-border/70 px-2 py-0.5 text-[11px] disabled:opacity-50"
+    >
+      {visible ? (
+        <EyeIcon className="size-3 text-emerald-600" />
+      ) : (
+        <EyeOffIcon className="text-muted-foreground size-3" />
+      )}
+      {visible ? "노출" : "미수록"}
+      {pinned ? <PinIcon className="size-2.5 text-amber-600" /> : null}
+    </button>
   );
 }
