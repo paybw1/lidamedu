@@ -32,7 +32,11 @@ import {
 } from "~/core/components/ui/sheet";
 import { cn } from "~/core/lib/utils";
 import { MarkdownView } from "~/features/problems/components/markdown-view";
-import { isOldLawLabel } from "~/features/cases/lib/statute-label";
+import {
+  isOldLawLabel,
+  type StatuteRef,
+} from "~/features/cases/lib/statute-label";
+
 import { RefPreviewBadge } from "~/features/subjects/components/ref-preview-badge";
 
 import {
@@ -91,8 +95,8 @@ export function CaseDiagramSheet({
   caseNumber: string;
   /** 조문 학습화면 링크용 과목 slug. */
   subjectSlug?: string;
-  /** 법조문 표기 → article_id. 해석 실패분은 텍스트 칩으로 남는다. */
-  statuteArticleIds?: Record<string, string>;
+  /** 법조문 표기 → 조문 참조. 해석 실패분은 텍스트 칩으로 남는다. */
+  statuteArticleIds?: Record<string, StatuteRef>;
   className?: string;
 }) {
   const draft = diagram.reviewStatus !== "approved";
@@ -231,7 +235,7 @@ function DiagramBody({
   diagram: CaseDiagramView;
   draft: boolean;
   subjectSlug?: string;
-  statuteArticleIds?: Record<string, string>;
+  statuteArticleIds?: Record<string, StatuteRef>;
 }) {
   const caption = factsSourceCaption(diagram);
   return (
@@ -326,14 +330,21 @@ function DiagramBody({
                     본문을 펼쳐 볼 수 있게 한다(원장 요청 2026-08-20). */}
                 <div className="flex flex-wrap gap-1">
                   {b.statutes.map((s) => {
-                    const articleId = statuteArticleIds?.[s];
-                    return articleId && subjectSlug ? (
+                    const ref = statuteArticleIds?.[s];
+                    // 참조 법령(실용신안법·공정거래법 등)은 학습화면이 없어 팝업만 연다.
+                    const canLink =
+                      ref && (ref.kind === "reference" || Boolean(subjectSlug));
+                    return canLink && ref ? (
                       <RefPreviewBadge
                         key={s}
-                        kind="article"
-                        refId={articleId}
+                        kind={ref.kind}
+                        refId={ref.id}
                         label={s}
-                        studyHref={`/subjects/${subjectSlug}/articles/${articleId}`}
+                        studyHref={
+                          ref.kind === "article"
+                            ? `/subjects/${subjectSlug}/articles/${ref.id}`
+                            : undefined
+                        }
                       />
                     ) : (
                       <span

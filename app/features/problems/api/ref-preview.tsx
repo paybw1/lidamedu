@@ -57,6 +57,32 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (!id || !/^[0-9a-f-]{36}$/.test(id))
     return data({ error: "Invalid id" }, { status: 400 });
 
+  // 참조 법령 조문 — 5과목이 아닌 법령(실용신안법·공정거래법 등). 학습화면이 없어
+  // 팝업으로만 읽는다. 판례 도식의 법조문 칩이 유일한 호출부다.
+  if (type === "reference") {
+    const { data: row } = await client
+      .from("reference_articles")
+      .select("article_number, title, content_md, reference_laws!inner(law_name)")
+      .eq("ref_article_id", id)
+      .maybeSingle();
+    if (!row) return data({ error: "Not found" }, { status: 404 });
+    const heading = [
+      row.reference_laws.law_name,
+      `제${row.article_number}조`,
+      row.title ? `(${row.title})` : null,
+    ]
+      .filter(Boolean)
+      .join(" ");
+    return data({
+      kind: "article" as const,
+      heading,
+      title: null,
+      bodyMd: row.content_md,
+      // 학습화면이 없다 — 호출부가 [공부하러 가기]를 내지 않도록 알린다.
+      studyDisabled: true,
+    });
+  }
+
   if (type === "case") {
     const { data: row } = await client
       .from("cases")

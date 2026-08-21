@@ -14,6 +14,13 @@ const ERA_PREFIX = /^(?:(?:\d{4}년\s*)?(?:구|현행|종전|개정)\s+)+/;
 //   "특허법 제5조" 로 읽혀 엉뚱한 조문에 링크된다 — 아예 해석 대상에서 뺀다.
 const NOT_AN_ARTICLE = /(시행령|시행규칙|부칙|조약|규칙\s*제)/;
 
+/** 도식 법조문 표기의 해석 결과. */
+export interface StatuteRef {
+  /** article = 과목 조문(학습화면 있음) · reference = 참조 법령 조문(팝업 전용). */
+  kind: "article" | "reference";
+  id: string;
+}
+
 /** 개정 전·종전 법령 표기인가. UI 에서 "현행 조문으로 이어진다"고 밝히는 데 쓴다. */
 export function isOldLawLabel(raw: string): boolean {
   return ERA_PREFIX.test(raw.trim());
@@ -54,4 +61,25 @@ export function normalizeStatuteLabel(raw: string): string {
       .replace(/\s+/g, " ")
       .trim()
   );
+}
+
+/** 5과목이 아닌 법령의 조문 표기 — "공정거래법 제19조 제1항" → 법령명 + 조문번호. */
+export interface ReferenceStatuteRef {
+  lawName: string;
+  /** articles.article_number 와 같은 표기 — "19", "126의2". */
+  articleNumber: string;
+}
+
+const REFERENCE_RE = /^(.+?)\s*제\s*(\d+)\s*조(?:\s*의\s*(\d+))?(?:\s|$)/;
+
+/**
+ * 정규화된 표기에서 법령명과 조문번호를 뽑는다. 법령명이 실제 존재하는지는 보지 않는다 —
+ * 호출부가 reference_laws 와 대조해 걸러낸다("프랑스 민법", "특허법 시행령"은 거기서 탈락).
+ */
+export function parseReferenceStatute(label: string): ReferenceStatuteRef | null {
+  const m = REFERENCE_RE.exec(normalizeStatuteLabel(label));
+  if (!m) return null;
+  const lawName = m[1].trim();
+  if (!lawName) return null;
+  return { lawName, articleNumber: m[3] ? `${m[2]}의${m[3]}` : m[2] };
 }

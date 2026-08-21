@@ -11540,6 +11540,80 @@ export type Database = {
           },
         ]
       }
+      reference_articles: {
+        Row: {
+          article_number: string
+          content_md: string
+          created_at: string
+          ord: number
+          ref_article_id: string
+          ref_law_id: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          article_number: string
+          content_md: string
+          created_at?: string
+          ord?: number
+          ref_article_id?: string
+          ref_law_id: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          article_number?: string
+          content_md?: string
+          created_at?: string
+          ord?: number
+          ref_article_id?: string
+          ref_law_id?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reference_articles_ref_law_id_fkey"
+            columns: ["ref_law_id"]
+            isOneToOne: false
+            referencedRelation: "reference_laws"
+            referencedColumns: ["ref_law_id"]
+          },
+        ]
+      }
+      reference_laws: {
+        Row: {
+          aliases: string[]
+          created_at: string
+          enforced_at: string | null
+          law_mst: string | null
+          law_name: string
+          ref_law_id: string
+          source_fetched_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          aliases?: string[]
+          created_at?: string
+          enforced_at?: string | null
+          law_mst?: string | null
+          law_name: string
+          ref_law_id?: string
+          source_fetched_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          aliases?: string[]
+          created_at?: string
+          enforced_at?: string | null
+          law_mst?: string | null
+          law_name?: string
+          ref_law_id?: string
+          source_fetched_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       refund_requests: {
         Row: {
           created_at: string

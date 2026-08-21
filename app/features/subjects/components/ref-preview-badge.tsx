@@ -22,6 +22,8 @@ interface PreviewData {
   items?: Array<{ title: string; body: string }>;
   // 판례 — 목록 미수록(cases.list_visible=false)이면 [공부하러 가기]를 감춘다.
   listVisible?: boolean;
+  // 참조 법령 조문 — 학습화면이 없다.
+  studyDisabled?: boolean;
   error?: string;
 }
 
@@ -32,10 +34,11 @@ export function RefPreviewBadge({
   studyHref,
   testId,
 }: {
-  kind: "article" | "case";
+  kind: "article" | "case" | "reference";
   refId: string;
   label: string;
-  studyHref: string;
+  /** 학습화면이 없는 참조(참조 법령 조문 등)는 넘기지 않는다 — 버튼을 내지 않는다. */
+  studyHref?: string;
   testId?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -59,7 +62,7 @@ export function RefPreviewBadge({
         data-testid={testId}
         className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs ${tone}`}
       >
-        {kind === "article" ? "조문" : "판례"} {label}
+        {kind === "case" ? "판례" : "조문"} {label}
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
         {/* 헤더(제목·X)·하단 버튼 고정, 본문만 스크롤 */}
@@ -105,7 +108,11 @@ export function RefPreviewBadge({
           <div className="flex justify-end pt-1">
             {/* ★로딩 중에는 버튼을 내지 않는다 — 미수록 판례인지 알기 전에 눌리면
                 목록에 없는 판례의 학습화면으로 이탈한다. */}
-            {kind === "case" && d?.listVisible === false ? (
+            {!studyHref || d?.studyDisabled ? (
+              <span className="text-muted-foreground text-[11px]">
+                참조 법령 — 여기서만 열람합니다
+              </span>
+            ) : kind === "case" && d?.listVisible === false ? (
               <span className="text-muted-foreground text-[11px]">
                 목록 미수록 판례 — 여기서만 열람합니다
               </span>

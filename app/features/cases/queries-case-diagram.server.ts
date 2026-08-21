@@ -10,7 +10,13 @@ import {
   parseDisplay,
 } from "~/features/laws/lib/identifier";
 
-import { normalizeStatuteLabel } from "./lib/statute-label";
+import {
+  normalizeStatuteLabel,
+  parseReferenceStatute,
+  type StatuteRef,
+} from "./lib/statute-label";
+
+export type { StatuteRef };
 import {
   parseBlocks,
   parseTimeline,
@@ -114,7 +120,7 @@ export async function getCaseDiagramByCaseId(
 export async function resolveStatuteArticleIds(
   client: Client,
   statutes: string[],
-): Promise<Record<string, string>> {
+): Promise<Record<string, StatuteRef>> {
   const unique = [...new Set(statutes.map((s) => s.trim()).filter(Boolean))];
   if (unique.length === 0) return {};
 
@@ -128,7 +134,7 @@ export async function resolveStatuteArticleIds(
   });
   if (parsed.length === 0) return {};
 
-  const out: Record<string, string> = {};
+  const out: Record<string, StatuteRef> = {};
   const byLaw = new Map<string, typeof parsed>();
   for (const p of parsed) {
     const list = byLaw.get(p.lawCode) ?? [];
@@ -155,10 +161,61 @@ export async function resolveStatuteArticleIds(
     );
     for (const i of items) {
       const id = byNumber.get(i.number);
-      if (id) out[i.raw] = id;
+      if (id) out[i.raw] = { kind: "article", id };
     }
   }
+
+  await resolveReferenceStatutes(client, unique, out);
   return out;
+}
+
+/**
+ * 5과목에서 해석되지 않은 표기를 참조 법령(reference_articles)에서 찾는다.
+ * 실용신안법·공정거래법·헌법처럼 도식이 인용하지만 학습 과목이 아닌 법령들이다.
+ * 학습화면이 없으므로 호출부는 팝업만 열어야 한다(kind = "reference").
+ */
+async function resolveReferenceStatutes(
+  client: Client,
+  labels: string[],
+  out: Record<string, StatuteRef>,
+): Promise<void> {
+  const pending = labels.filter((l) => !out[l]);
+  if (pending.length === 0) return;
+
+  // 법령 15건 남짓이라 통째로 읽어 메모리에서 맞춘다(약칭 매칭 때문에 쿼리로는 번거롭다).
+  const { data: laws } = await client
+    .from("reference_laws")
+    .select("ref_law_id, law_name, aliases");
+  if (!laws || laws.length === 0) return;
+  const byName = new Map<string, string>();
+  for (const l of laws) {
+    byName.set(l.law_name, l.ref_law_id);
+    for (const a of l.aliases ?? []) byName.set(a, l.ref_law_id);
+  }
+
+  const wanted = new Map<string, { lawId: string; number: string }>();
+  for (const raw of pending) {
+    const parsed = parseReferenceStatute(raw);
+    if (!parsed) continue;
+    const lawId = byName.get(parsed.lawName);
+    if (!lawId) continue;
+    wanted.set(raw, { lawId, number: parsed.articleNumber });
+  }
+  if (wanted.size === 0) return;
+
+  const lawIds = [...new Set([...wanted.values()].map((w) => w.lawId))];
+  const numbers = [...new Set([...wanted.values()].map((w) => w.number))];
+  const { data: rows } = await client
+    .from("reference_articles")
+    .select("ref_article_id, ref_law_id, article_number")
+    .in("ref_law_id", lawIds)
+    .in("article_number", numbers);
+  const key = (lawId: string, number: string) => `${lawId}::${number}`;
+  const found = new Map((rows ?? []).map((r) => [key(r.ref_law_id, r.article_number), r.ref_article_id]));
+  for (const [raw, w] of wanted) {
+    const id = found.get(key(w.lawId, w.number));
+    if (id) out[raw] = { kind: "reference", id };
+  }
 }
 
 /**
