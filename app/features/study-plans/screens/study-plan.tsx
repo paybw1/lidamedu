@@ -21,6 +21,7 @@ import { Input } from "~/core/components/ui/input";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
 import { getWeakNodes } from "~/features/subjects/lib/weak-nodes.server";
+import { MinutesField } from "~/features/study-plans/components/minutes-field";
 import { NodePicker } from "~/features/study-plans/components/node-picker";
 import {
   PlanCalendar,
@@ -34,6 +35,7 @@ import {
   PLAN_STATUS_LABEL,
   computeOverloadIndex,
   currentMonthPeriod,
+  formatMinutes,
   overloadTone,
   type DayScope,
   type PlanActivityType,
@@ -458,8 +460,8 @@ export default function StudyPlanScreen({ loaderData }: Route.ComponentProps) {
               <div className="flex items-center justify-between border-b px-4 py-3">
                 <h2 className="text-sm font-bold tracking-tight">이번 달 달성 현황</h2>
                 <span className="text-muted-foreground text-[11px] tabular-nums">
-                  전체 {compliance.totalActualMinutes}분 / 기대{" "}
-                  {compliance.totalExpectedMinutes}분
+                  전체 {formatMinutes(compliance.totalActualMinutes)} / 기대{" "}
+                  {formatMinutes(compliance.totalExpectedMinutes)}
                   {compliance.unclassifiedRatio !== null
                     ? ` · 미분류 ${Math.round(compliance.unclassifiedRatio * 100)}%`
                     : ""}
@@ -474,7 +476,7 @@ export default function StudyPlanScreen({ loaderData }: Route.ComponentProps) {
                       <div className="flex items-center justify-between gap-2">
                         <span className="min-w-0 flex-1 truncate">{m.title}</span>
                         <span className="text-muted-foreground tabular-nums">
-                          {m.actualMinutes}/{m.expectedMinutes}분 · 완료{" "}
+                          {formatMinutes(m.actualMinutes)} / {formatMinutes(m.expectedMinutes)} · 완료{" "}
                           {m.fullDays}/{m.expectedDays}일
                         </span>
                       </div>
@@ -543,8 +545,8 @@ function OverloadBanner({
     return (
       <p className="text-muted-foreground rounded-lg border border-dashed px-3 py-2 text-xs">
         가용시간 진단이 아직 입력되지 않았습니다 — 상담 시 선생님이 입력하면
-        계획 대비 여유가 표시됩니다. (현재 계획: 평일 {weekdayPlanned}분 · 주말{" "}
-        {weekendPlanned}분)
+        계획 대비 여유가 표시됩니다. (현재 계획: 평일 {formatMinutes(weekdayPlanned)} · 주말{" "}
+        {formatMinutes(weekendPlanned)})
       </p>
     );
   }
@@ -561,7 +563,7 @@ function OverloadBanner({
               : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
         )}
       >
-        {label} {planned}분
+        {label} {formatMinutes(planned)}
         {ratio !== null ? ` (가용의 ${Math.round(ratio * 100)}%)` : ""}
       </span>
     );
@@ -682,7 +684,7 @@ function ItemRow({
         <p className="text-muted-foreground mt-0.5 flex flex-wrap gap-x-2 text-[11px]">
           <span>{PLAN_ACTIVITY_LABEL[item.activityType]}</span>
           <span>
-            {DAY_SCOPE_LABEL[item.dayScope]} 하루 {item.dailyMinutes}분
+            {DAY_SCOPE_LABEL[item.dayScope]} 하루 {formatMinutes(item.dailyMinutes)}
           </span>
           <span className="tabular-nums">
             {item.startDate.slice(5)} ~ {item.endDate.slice(5)}
@@ -859,18 +861,12 @@ function ItemFields({
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <div>
-          <label className="text-muted-foreground text-[11px]">하루 목표(분) *</label>
-          <Input
-            name="dailyMinutes"
-            type="number"
-            min={1}
-            max={1440}
-            required
-            defaultValue={defaults.dailyMinutes}
-            className="mt-0.5 h-8 text-xs tabular-nums"
-          />
-        </div>
+        <MinutesField
+          label="하루 목표"
+          name="dailyMinutes"
+          defaultMinutes={defaults.dailyMinutes}
+          required
+        />
         <div>
           <label className="text-muted-foreground text-[11px]">요일</label>
           <select

@@ -3591,6 +3591,7 @@ export type Database = {
           deleted_at: string | null
           description: string | null
           ends_on: string | null
+          exam_round: string
           is_archived: boolean
           name: string
           owner_id: string
@@ -3605,6 +3606,7 @@ export type Database = {
           deleted_at?: string | null
           description?: string | null
           ends_on?: string | null
+          exam_round?: string
           is_archived?: boolean
           name: string
           owner_id: string
@@ -3619,6 +3621,7 @@ export type Database = {
           deleted_at?: string | null
           description?: string | null
           ends_on?: string | null
+          exam_round?: string
           is_archived?: boolean
           name?: string
           owner_id?: string
@@ -12078,6 +12081,8 @@ export type Database = {
           attempt_type: string
           cohort_id: string
           created_at: string
+          entry_month: number | null
+          entry_year: number | null
           note: string | null
           updated_at: string
           updated_by: string | null
@@ -12089,6 +12094,8 @@ export type Database = {
           attempt_type: string
           cohort_id: string
           created_at?: string
+          entry_month?: number | null
+          entry_year?: number | null
           note?: string | null
           updated_at?: string
           updated_by?: string | null
@@ -12100,6 +12107,8 @@ export type Database = {
           attempt_type?: string
           cohort_id?: string
           created_at?: string
+          entry_month?: number | null
+          entry_year?: number | null
           note?: string | null
           updated_at?: string
           updated_by?: string | null
@@ -12215,6 +12224,7 @@ export type Database = {
       }
       student_subject_status: {
         Row: {
+          basic_course_status: string | null
           completed_lectures: string | null
           diagnostic_test_id: string | null
           direction: string | null
@@ -12222,6 +12232,7 @@ export type Database = {
           science_score: number | null
           science_tier: string | null
           science_total: number | null
+          study_direction: string | null
           subject_code: string
           subject_kind: string
           tier_source: string | null
@@ -12230,6 +12241,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          basic_course_status?: string | null
           completed_lectures?: string | null
           diagnostic_test_id?: string | null
           direction?: string | null
@@ -12237,6 +12249,7 @@ export type Database = {
           science_score?: number | null
           science_tier?: string | null
           science_total?: number | null
+          study_direction?: string | null
           subject_code: string
           subject_kind: string
           tier_source?: string | null
@@ -12245,6 +12258,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          basic_course_status?: string | null
           completed_lectures?: string | null
           diagnostic_test_id?: string | null
           direction?: string | null
@@ -12252,6 +12266,7 @@ export type Database = {
           science_score?: number | null
           science_tier?: string | null
           science_total?: number | null
+          study_direction?: string | null
           subject_code?: string
           subject_kind?: string
           tier_source?: string | null

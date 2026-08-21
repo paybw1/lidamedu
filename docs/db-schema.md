@@ -841,6 +841,11 @@ create table public.daily_study_stats (
 
 ## 13. cohorts / cohort_members
 
+> 아래 블록은 초기 설계본이라 실제 컬럼과 다르다(실제: owner_id·access_scope·is_archived·deleted_at 등).
+> **feat-7-048(2026-08-21) 적용분**: `cohorts.exam_round text not null default 'first' check (exam_round in ('first','second'))`
+> — 반의 대상 차수. 계획·상담 화면의 법과목 목록이 여기서 파생된다(1차 반은 민사소송법 숨김,
+> 2차 반은 민법 대신 민사소송법). 값 이름은 개인 차수 `profiles.next_exam_round` 와 맞췄다.
+
 ```sql
 create table public.cohorts (
   cohort_id     uuid primary key default gen_random_uuid(),
@@ -1233,8 +1238,9 @@ create table public.popup_notices (
 
 오프라인 종합반 진단·월간 계획·승인·일일 기록 — 설계 SSOT: `docs/plans/phase3-stage1-design.md`.
 
-- **student_diagnostics**: PK user_id, cohort_id FK, attempt_type('first'|'repeat'), weekday/weekend_minutes(0~1440 — 과욕 지수 분모), note, updated_by. 학생당 1행(현재 상태).
+- **student_diagnostics**: PK user_id, cohort_id FK, attempt_type('first'|'repeat'), weekday/weekend_minutes(0~1440 — 과욕 지수 분모), note, updated_by. 학생당 1행(현재 상태). **+ entry_year/entry_month**(feat-7-048 — 수험 진입 시기. 날짜 하나로 두지 않는 이유는 '일'에 의미가 없어서. 수험 개월수는 저장하지 않고 계산).
 - **student_subject_status**: PK(user_id, subject_kind, subject_code — 값 집합은 offline_tests CHECK 와 동일), lecture_stage(법)·science_tier/score/**total**(과학 — 비율 감사용 쌍 저장), tier_source('manual'|'diagnostic_test'|**'diagnostic_retracted'** = 진단 철회 후 재확인 필요), diagnostic_test_id FK. 파생 규칙: 정답률 ≥0.7 상 / ≥0.4 중 / 미만 하 (상수 `study-plans/labels.ts`).
+  - **feat-7-048**: 수기 텍스트(completed_lectures·direction) 대신 드롭다운 2종 — **basic_course_status**('before'|'done'|'retake'|'not_needed' — not_needed 는 자연과학만) + **study_direction**('advanced'|'objective'|'reading_problem'|'problem'). ★DB CHECK 는 합집합이고 **과목 종류별 허용 집합은 `study-plans/labels.ts` 가 SSOT**(zod superRefine 이 강제) — CHECK 를 kind 조건부로 만들지 말 것. 구 `lecture_stage`·`completed_lectures`·`direction` 은 **이력으로 보존**(폼에서 내렸을 뿐, upsert 페이로드에 넣지 않아 갱신되지 않는다). 백필 등가: `none|basic→before` / `advanced|complete→done` — 계획 빈 상태 폴백(`listLevelBasedNodeSuggestions`)의 대상 집합이 이 등가로 유지된다.
 - **study_plans**: (user, period_start, version) unique + **파셜 유니크 2분할**(in-flight draft/submitted/revision_requested 1개 · approved 1개 — v1 승인 유지 중 v2 draft 공존 허용). status 머신 draft→submitted→approved→superseded(+revision_requested), **회수** = submitted→draft(학생, reviewed_at IS NULL 한정). 승인 = `approve_study_plan(p_plan_id, p_comment)` RPC(security definer — staff 역할·반 소유권 검증 + supersede→approve→baseline_locked_at·가용시간 스냅샷→항목 is_locked 원자 수행). root_plan_id = 변경 횟수 집계(★준수율은 최초 baseline 아닌 **현재 승인본** 기준 — 이력은 체크포인트가 보존).
 - **study_plan_items**: plan FK cascade, title(분량 자유 기술)+daily_minutes(필수)+day_scope('weekday'|'weekend'|'all')+start/end_date+activity_type(7종)+node_id nullable(E1 — 센티넬 없음, 분석은 IS NOT NULL 격리)+lesson_id(resolver 입력 원장). 일간 슬롯 테이블 없음 — 기대 항목은 (기간×요일범위) 파생(`study-plans/lib/expected-items.ts`).
 - **study_logs**: **append-only 원장** — 학생 SELECT+INSERT 만(UPDATE/DELETE 정책 자체 없음, staff 도 SELECT 만 = 대리 입력 금지). 취소 = reverses_log_id + 음수 분(역방향 레코드, reversal_uniq 로 이중 취소 차단, insert 시 본인 로그·본인 계획 항목 소유 검증). source('plan_check'|'manual' — 'timer'는 Phase 4). node_id NULL 허용(미분류 — 총 시간엔 포함, 노드 분석에서 격리).

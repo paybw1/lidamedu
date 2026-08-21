@@ -24,12 +24,71 @@ export const PLAN_SCIENCE_CODES = [
   "earth_science",
 ] as const;
 
+// ── 반 차수 — 화면에 뿌릴 법과목 목록이 여기서 파생된다(feat-7-048 D4) ─────────
+// 값 이름은 개인 단위 차수(profiles.next_exam_round)와 맞춘다.
+export type ExamRound = "first" | "second";
+export const EXAM_ROUND_LABEL: Record<ExamRound, string> = {
+  first: "1차",
+  second: "2차",
+};
+
+/**
+ * 계획·상담 화면에 노출할 법과목.
+ * 1차는 민사소송법을 빼고, 2차는 민법 대신 민사소송법을 쓴다.
+ * ★PLAN_LAW_CODES(=DB CHECK 집합의 미러)는 줄이지 않는다 — 화면 목록만 여기서 정한다.
+ */
+export function planLawCodesFor(
+  examRound: ExamRound,
+): readonly (typeof PLAN_LAW_CODES)[number][] {
+  return examRound === "second"
+    ? ["patent", "trademark", "design", "civil-procedure"]
+    : ["patent", "trademark", "design", "civil"];
+}
+
+// ── 과목별 수준 ──────────────────────────────────────────────────────────────
+// lecture_stage 는 basic_course_status 로 대체됐다(feat-7-048 D3). 컬럼·타입은
+// 지난 상담 기록을 읽기 위해 남겨 두고, 새로 쓰지 않는다.
 export type LectureStage = "none" | "basic" | "advanced" | "complete";
 export const LECTURE_STAGE_LABEL: Record<LectureStage, string> = {
   none: "수강 전",
   basic: "기본강의",
   advanced: "심화강의",
   complete: "수강 완료",
+};
+
+export type BasicCourseStatus = "before" | "done" | "retake" | "not_needed";
+export const BASIC_COURSE_STATUS_LABEL: Record<BasicCourseStatus, string> = {
+  before: "수강 전",
+  done: "수강 완료",
+  retake: "재수강 필요",
+  not_needed: "강의 필요 없음",
+};
+// 자연과학만 '강의 필요 없음'을 쓴다 — DB CHECK 는 합집합, 허용 집합은 여기가 SSOT.
+export const BASIC_COURSE_STATUS_BY_KIND: Record<
+  SubjectKind,
+  readonly BasicCourseStatus[]
+> = {
+  law: ["before", "done", "retake"],
+  science: ["before", "done", "retake", "not_needed"],
+};
+
+export type StudyDirection =
+  | "advanced"
+  | "objective"
+  | "reading_problem"
+  | "problem";
+export const STUDY_DIRECTION_LABEL: Record<StudyDirection, string> = {
+  advanced: "심화강의",
+  objective: "객관식 강의",
+  reading_problem: "회독+문제풀이",
+  problem: "문제풀이",
+};
+export const STUDY_DIRECTION_BY_KIND: Record<
+  SubjectKind,
+  readonly StudyDirection[]
+> = {
+  law: ["advanced", "objective", "reading_problem"],
+  science: ["advanced", "objective", "problem"],
 };
 
 export type ScienceTier = "high" | "mid" | "low";
@@ -147,6 +206,54 @@ export function overloadTone(ratio: number | null): "ok" | "caution" | "warn" | 
   if (ratio >= OVERLOAD_WARN_RATIO) return "warn";
   if (ratio >= OVERLOAD_CAUTION_RATIO) return "caution";
   return "ok";
+}
+
+// ── 시간 표기 (feat-7-048 D1) ────────────────────────────────────────────────
+// DB 는 전 구간 '분' 정수로 저장한다(가용시간 CHECK 0~1440·과욕 지수 분모·기대 분).
+// 시/분은 입력창과 화면 표시에서만 쓴다 — 여기가 표기 SSOT, `${n}분` 하드코딩 금지.
+const MINUTES_PER_HOUR = 60;
+
+/** 340 → "5시간 40분" · 300 → "5시간" · 40 → "40분" · 0 → "0분" (음수는 부호 보존) */
+export function formatMinutes(minutes: number): string {
+  const sign = minutes < 0 ? "-" : "";
+  const abs = Math.abs(Math.round(minutes));
+  const h = Math.floor(abs / MINUTES_PER_HOUR);
+  const m = abs % MINUTES_PER_HOUR;
+  if (h === 0) return `${sign}${m}분`;
+  if (m === 0) return `${sign}${h}시간`;
+  return `${sign}${h}시간 ${m}분`;
+}
+
+/** 340 → "5:40" — 달력 셀처럼 폭이 좁은 곳. */
+export function formatMinutesCompact(minutes: number): string {
+  const sign = minutes < 0 ? "-" : "";
+  const abs = Math.abs(Math.round(minutes));
+  const h = Math.floor(abs / MINUTES_PER_HOUR);
+  const m = abs % MINUTES_PER_HOUR;
+  return `${sign}${h}:${String(m).padStart(2, "0")}`;
+}
+
+/** 분 → 입력창용 {시간, 분}. */
+export function splitMinutes(minutes: number | null | undefined): {
+  hours: number | "";
+  mins: number | "";
+} {
+  if (minutes == null) return { hours: "", mins: "" };
+  const abs = Math.max(0, Math.round(minutes));
+  return {
+    hours: Math.floor(abs / MINUTES_PER_HOUR),
+    mins: abs % MINUTES_PER_HOUR,
+  };
+}
+
+/** 입력창 {시간, 분} → 분. 빈 칸은 0으로 본다. */
+export function joinMinutes(
+  hours: number | string | null,
+  mins: number | string | null,
+): number {
+  const h = Number(hours) || 0;
+  const m = Number(mins) || 0;
+  return h * MINUTES_PER_HOUR + m;
 }
 
 // ── 월간 기간 (KST) ──────────────────────────────────────────────────────────

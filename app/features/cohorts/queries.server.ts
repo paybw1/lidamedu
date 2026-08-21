@@ -10,18 +10,20 @@ import type { UserRole } from "~/core/lib/roles";
 
 import type {
   CohortAccessScope,
+  CohortExamRound,
   CohortListItem,
   CohortMember,
 } from "./labels";
 
 export type {
   CohortAccessScope,
+  CohortExamRound,
   CohortListItem,
   CohortMember,
 } from "./labels";
 
 const LIST_COLUMNS =
-  "cohort_id, name, description, owner_id, starts_on, ends_on, is_archived, access_scope, created_at, updated_at, profiles!owner_id(name)";
+  "cohort_id, name, description, owner_id, starts_on, ends_on, is_archived, access_scope, exam_round, created_at, updated_at, profiles!owner_id(name)";
 
 interface CohortRow {
   cohort_id: string;
@@ -32,6 +34,7 @@ interface CohortRow {
   ends_on: string | null;
   is_archived: boolean;
   access_scope: string;
+  exam_round: string;
   created_at: string;
   updated_at: string;
   profiles: { name: string } | null;
@@ -87,6 +90,7 @@ export async function listCohorts(
     endsOn: c.ends_on,
     isArchived: c.is_archived,
     accessScope: (c.access_scope as CohortAccessScope) ?? "full",
+    examRound: (c.exam_round as CohortExamRound) ?? "first",
     memberCount: memberCount.get(c.cohort_id) ?? 0,
     createdAt: c.created_at,
     updatedAt: c.updated_at,
@@ -120,6 +124,7 @@ export async function getCohortById(
     endsOn: c.ends_on,
     isArchived: c.is_archived,
     accessScope: (c.access_scope as CohortAccessScope) ?? "full",
+    examRound: (c.exam_round as CohortExamRound) ?? "first",
     memberCount: count ?? 0,
     createdAt: c.created_at,
     updatedAt: c.updated_at,
@@ -188,6 +193,7 @@ export interface UpsertCohortInput {
   endsOn?: string | null;
   isArchived?: boolean;
   accessScope?: CohortAccessScope;
+  examRound?: CohortExamRound;
 }
 
 export async function createCohort(
@@ -204,6 +210,7 @@ export async function createCohort(
       ends_on: input.endsOn ?? null,
       is_archived: input.isArchived ?? false,
       access_scope: input.accessScope ?? "full",
+      exam_round: input.examRound ?? "first",
     })
     .select("cohort_id")
     .single();
@@ -224,6 +231,7 @@ export async function updateCohort(
   if (patch.endsOn !== undefined) update.ends_on = patch.endsOn;
   if (patch.isArchived !== undefined) update.is_archived = patch.isArchived;
   if (patch.accessScope !== undefined) update.access_scope = patch.accessScope;
+  if (patch.examRound !== undefined) update.exam_round = patch.examRound;
   if (Object.keys(update).length === 0) return { ok: true };
   const { error } = await client
     .from("cohorts")

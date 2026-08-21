@@ -28,7 +28,11 @@ import { Button } from "~/core/components/ui/button";
 import { Input } from "~/core/components/ui/input";
 import { Label } from "~/core/components/ui/label";
 import makeServerClient from "~/core/lib/supa-client.server";
-import type { CohortListItem } from "~/features/cohorts/labels";
+import {
+  COHORT_EXAM_ROUND_LABEL,
+  type CohortExamRound,
+  type CohortListItem,
+} from "~/features/cohorts/labels";
 import { listCohorts } from "~/features/cohorts/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { roleAtLeast } from "~/core/lib/roles";
@@ -389,6 +393,22 @@ function CohortForm({
             rows={3}
             className="border-input bg-background w-full rounded-md border px-2 py-1 text-xs"
           />
+        </FormField>
+        {/* feat-7-048 — 대상 차수. 1차 반은 계획 화면에서 민사소송법을 숨긴다. */}
+        <FormField label="대상 차수">
+          <select
+            name="examRound"
+            defaultValue={cohort?.examRound ?? "first"}
+            className="border-input bg-background h-8 w-full rounded-md border px-2 text-xs"
+          >
+            {(
+              Object.keys(COHORT_EXAM_ROUND_LABEL) as CohortExamRound[]
+            ).map((r) => (
+              <option key={r} value={r}>
+                {COHORT_EXAM_ROUND_LABEL[r]}
+              </option>
+            ))}
+          </select>
         </FormField>
         {/* feat-8-027 — 종합반 종류별 열람 범위. */}
         <FormField label="열람 범위">

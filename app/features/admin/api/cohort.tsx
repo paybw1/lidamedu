@@ -42,6 +42,8 @@ const upsertSchema = z.object({
     .optional(),
   // feat-8-027 — 종합반 종류별 열람 범위. 미지정 시 full.
   accessScope: z.enum(["full", "self_study"]).optional(),
+  // feat-7-048 — 반의 대상 차수. 계획 화면 법과목 목록이 여기서 파생된다.
+  examRound: z.enum(["first", "second"]).optional(),
 });
 
 export async function action({ request }: Route.ActionArgs) {
@@ -66,6 +68,7 @@ export async function action({ request }: Route.ActionArgs) {
       startsOn: emptyToNull(fd.get("startsOn"), 10),
       endsOn: emptyToNull(fd.get("endsOn"), 10),
       accessScope: fd.get("accessScope") ?? undefined,
+      examRound: fd.get("examRound") ?? undefined,
     });
     if (!parsed.success) {
       return data(
@@ -89,6 +92,7 @@ export async function action({ request }: Route.ActionArgs) {
       endsOn: parsed.data.endsOn ?? null,
       isArchived: false,
       accessScope: parsed.data.accessScope ?? "full",
+      examRound: parsed.data.examRound ?? "first",
     });
     if (!res.ok) return data({ error: res.error }, { status: 400 });
     await logAuditEvent({
@@ -119,6 +123,7 @@ export async function action({ request }: Route.ActionArgs) {
       startsOn: emptyToNull(fd.get("startsOn"), 10),
       endsOn: emptyToNull(fd.get("endsOn"), 10),
       accessScope: fd.get("accessScope") ?? undefined,
+      examRound: fd.get("examRound") ?? undefined,
     });
     if (!parsed.success) {
       return data(
@@ -134,6 +139,7 @@ export async function action({ request }: Route.ActionArgs) {
       endsOn: parsed.data.endsOn ?? null,
       isArchived,
       accessScope: parsed.data.accessScope,
+      examRound: parsed.data.examRound,
     });
     if (!res.ok) return data({ error: res.error }, { status: 400 });
     await logAuditEvent({

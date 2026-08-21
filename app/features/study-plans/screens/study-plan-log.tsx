@@ -19,12 +19,14 @@ import { Input } from "~/core/components/ui/input";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { getWeakNodes } from "~/features/subjects/lib/weak-nodes.server";
+import { MinutesField } from "~/features/study-plans/components/minutes-field";
 import { NodePicker } from "~/features/study-plans/components/node-picker";
 import {
   DAY_SCOPE_LABEL,
   PLAN_ACTIVITY_LABEL,
   PLAN_ACTIVITY_TYPES,
   currentMonthPeriod,
+  formatMinutes,
   type PlanActivityType,
 } from "~/features/study-plans/labels";
 import { PlanCalendar } from "~/features/study-plans/components/plan-calendar";
@@ -211,7 +213,7 @@ export default function StudyPlanLog({ loaderData }: Route.ComponentProps) {
             </Link>
           ) : null}
           <span className="text-muted-foreground ml-auto text-xs tabular-nums">
-            합계 {totalMinutes}분
+            합계 {formatMinutes(totalMinutes)}
           </span>
         </div>
       </header>
@@ -262,7 +264,7 @@ export default function StudyPlanLog({ loaderData }: Route.ComponentProps) {
                     <span className="text-muted-foreground"> · 미분류</span>
                   )}
                 </span>
-                <span className="tabular-nums">{l.minutes}분</span>
+                <span className="tabular-nums">{formatMinutes(l.minutes)}</span>
                 <ReverseButton logId={l.logId} />
               </li>
             ))}
@@ -337,13 +339,13 @@ function ExpectedItemCard({
           <p className="truncate text-sm font-medium">{item.title}</p>
           <p className="text-muted-foreground text-[11px]">
             {PLAN_ACTIVITY_LABEL[item.activityType]} · {DAY_SCOPE_LABEL[item.dayScope]} 목표{" "}
-            {item.dailyMinutes}분
+            {formatMinutes(item.dailyMinutes)}
           </p>
         </div>
         {log ? (
           <div className="flex shrink-0 items-center gap-1.5">
             <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-              <CheckCircle2Icon className="size-4" /> {log.minutes}분
+              <CheckCircle2Icon className="size-4" /> {formatMinutes(log.minutes)}
               {log.completion === "partial" ? " (부분)" : ""}
             </span>
             <ReverseButton logId={log.logId} />
@@ -357,7 +359,7 @@ function ExpectedItemCard({
               disabled={fetcher.state !== "idle"}
               onClick={() => submit(item.dailyMinutes, "full")}
             >
-              완료 {item.dailyMinutes}분
+              완료 {formatMinutes(item.dailyMinutes)}
             </Button>
             <Button
               size="sm"
@@ -384,7 +386,7 @@ function ExpectedItemCard({
                   : "border-border text-muted-foreground",
               )}
             >
-              {m}분
+              {formatMinutes(m)}
             </button>
           ))}
           <Input
@@ -497,18 +499,7 @@ function ExtraLogForm({
             ))}
           </select>
         </div>
-        <div>
-          <label className="text-muted-foreground text-[11px]">시간(분)</label>
-          <Input
-            name="minutes"
-            type="number"
-            min={1}
-            max={1440}
-            required
-            defaultValue={30}
-            className="mt-0.5 h-8 text-xs tabular-nums"
-          />
-        </div>
+        <MinutesField label="시간" name="minutes" defaultMinutes={30} required />
       </div>
       {/* 미분류 허용 — 노드는 선택 사항 (E1) */}
       <NodePicker

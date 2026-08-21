@@ -15,22 +15,28 @@ import adminClient from "~/core/lib/supa-admin-client.server";
 import { roleAtLeast } from "~/core/lib/roles";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Chip } from "~/features/admin/components/admin-ui";
+import type { CohortExamRound } from "~/features/cohorts/labels";
 import { getCohortById } from "~/features/cohorts/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { MinutesField } from "~/features/study-plans/components/minutes-field";
 import {
   ATTEMPT_TYPE_LABEL,
+  BASIC_COURSE_STATUS_BY_KIND,
+  BASIC_COURSE_STATUS_LABEL,
   DAY_SCOPE_LABEL,
-  LECTURE_STAGE_LABEL,
   PLAN_ACTIVITY_LABEL,
   PLAN_LAW_CODES,
   PLAN_SCIENCE_CODES,
   PLAN_STATUS_LABEL,
   SCIENCE_TIER_LABEL,
+  STUDY_DIRECTION_BY_KIND,
+  STUDY_DIRECTION_LABEL,
   TIER_SOURCE_LABEL,
   currentMonthPeriod,
+  formatMinutes,
   overloadTone,
+  planLawCodesFor,
   type AttemptType,
-  type LectureStage,
   type ScienceTier,
 } from "~/features/study-plans/labels";
 import {
@@ -61,6 +67,11 @@ const LAW_NAME: Record<string, string> = Object.fromEntries(
 const SCIENCE_NAME: Record<string, string> = Object.fromEntries(
   PLAN_SCIENCE_CODES.map((c) => [c, SCIENCE_SUBJECTS[c]?.name ?? c]),
 );
+
+// 수험 진입 시기 셀렉트 — 올해부터 10년 전까지.
+const CURRENT_YEAR = new Date(Date.now() + 9 * 3_600_000).getUTCFullYear();
+const ENTRY_YEARS = Array.from({ length: 11 }, (_, i) => CURRENT_YEAR - i);
+const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 
 export async function loader({ params, request }: Route.LoaderArgs) {
   if (!params.cohortId || !params.profileId) throw data("Missing params", { status: 404 });
@@ -267,7 +278,12 @@ export default function AdminStudentPlanReview({ loaderData }: Route.ComponentPr
             userId={student.profileId}
             diagnostics={diagnostics}
           />
-          <SubjectStatusPanel userId={student.profileId} cohortId={cohort.cohortId} rows={subjectStatus} />
+          <SubjectStatusPanel
+            userId={student.profileId}
+            cohortId={cohort.cohortId}
+            examRound={cohort.examRound}
+            rows={subjectStatus}
+          />
         </div>
 
         {/* 우: 계획 검토·승인 + 진행 지표·체크포인트 */}
@@ -285,8 +301,8 @@ export default function AdminStudentPlanReview({ loaderData }: Route.ComponentPr
               <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3">
                 <h2 className="text-sm font-bold tracking-tight">진행 지표</h2>
                 <span className="text-muted-foreground text-[11px] tabular-nums">
-                  전체 {compliance.totalActualMinutes}분 / 기대{" "}
-                  {compliance.totalExpectedMinutes}분 · 미분류{" "}
+                  전체 {formatMinutes(compliance.totalActualMinutes)} / 기대{" "}
+                  {formatMinutes(compliance.totalExpectedMinutes)} · 미분류{" "}
                   {compliance.unclassifiedRatio !== null
                     ? `${Math.round(compliance.unclassifiedRatio * 100)}%`
                     : "—"}
@@ -300,7 +316,7 @@ export default function AdminStudentPlanReview({ loaderData }: Route.ComponentPr
                   <li key={m.itemId} className="flex items-center gap-2 px-4 py-1.5 text-[11px]">
                     <span className="min-w-0 flex-1 truncate">{m.title}</span>
                     <span className="text-muted-foreground tabular-nums">
-                      {m.actualMinutes}/{m.expectedMinutes}분 · 완료 {m.fullDays}/{m.expectedDays}일
+                      {formatMinutes(m.actualMinutes)} / {formatMinutes(m.expectedMinutes)} · 완료 {m.fullDays}/{m.expectedDays}일
                     </span>
                   </li>
                 ))}
@@ -328,7 +344,7 @@ export default function AdminStudentPlanReview({ loaderData }: Route.ComponentPr
                     <div className="flex items-center justify-between">
                       <span className="font-semibold tabular-nums">{cp.checkpointDate}</span>
                       <span className="text-muted-foreground tabular-nums">
-                        실제 {cp.actualMinutesToDate}분 / 계획 {cp.plannedMinutesToDate}분
+                        실제 {formatMinutes(cp.actualMinutesToDate)} / 계획 {formatMinutes(cp.plannedMinutesToDate)}
                       </span>
                     </div>
                     {cp.itemBreakdown.length > 0 ? (
@@ -337,7 +353,7 @@ export default function AdminStudentPlanReview({ loaderData }: Route.ComponentPr
                           <li key={b.itemId} className="flex justify-between gap-2">
                             <span className="min-w-0 flex-1 truncate">{b.title}</span>
                             <span className="tabular-nums">
-                              {b.actualMin}/{b.plannedMin}분 · {b.fullDays}/{b.expectedDays}일
+                              {formatMinutes(b.actualMin)} / {formatMinutes(b.plannedMin)} · {b.fullDays}/{b.expectedDays}일
                             </span>
                           </li>
                         ))}
@@ -402,31 +418,46 @@ function DiagnosticsForm({
             ))}
           </div>
         </div>
+        <div>
+          <label className="text-muted-foreground text-[11px]">수험 진입 시기</label>
+          <div className="mt-0.5 flex items-center gap-1.5">
+            <select
+              name="entryYear"
+              defaultValue={diagnostics?.entryYear ?? ""}
+              className="border-input bg-background h-8 rounded-md border px-1.5 text-xs tabular-nums"
+            >
+              <option value="">—</option>
+              {ENTRY_YEARS.map((y) => (
+                <option key={y} value={y}>
+                  {y}년
+                </option>
+              ))}
+            </select>
+            <select
+              name="entryMonth"
+              defaultValue={diagnostics?.entryMonth ?? ""}
+              className="border-input bg-background h-8 rounded-md border px-1.5 text-xs tabular-nums"
+            >
+              <option value="">—</option>
+              {MONTHS.map((m) => (
+                <option key={m} value={m}>
+                  {m}월
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
         <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="text-muted-foreground text-[11px]">평일 가용(분/일)</label>
-            <Input
-              name="weekdayMinutes"
-              type="number"
-              min={0}
-              max={1440}
-              required
-              defaultValue={diagnostics?.weekdayMinutes ?? ""}
-              className="mt-0.5 h-8 text-xs tabular-nums"
-            />
-          </div>
-          <div>
-            <label className="text-muted-foreground text-[11px]">주말 가용(분/일)</label>
-            <Input
-              name="weekendMinutes"
-              type="number"
-              min={0}
-              max={1440}
-              required
-              defaultValue={diagnostics?.weekendMinutes ?? ""}
-              className="mt-0.5 h-8 text-xs tabular-nums"
-            />
-          </div>
+          <MinutesField
+            label="평일 가용(하루)"
+            name="weekdayMinutes"
+            defaultMinutes={diagnostics?.weekdayMinutes ?? null}
+          />
+          <MinutesField
+            label="주말 가용(하루)"
+            name="weekendMinutes"
+            defaultMinutes={diagnostics?.weekendMinutes ?? null}
+          />
         </div>
         <div>
           <label className="text-muted-foreground text-[11px]">메모</label>
@@ -454,10 +485,12 @@ function DiagnosticsForm({
 function SubjectStatusPanel({
   userId,
   cohortId,
+  examRound,
   rows,
 }: {
   userId: string;
   cohortId: string;
+  examRound: CohortExamRound;
   rows: LoaderData["subjectStatus"];
 }) {
   const byKey = new Map(rows.map((r) => [`${r.subjectKind}|${r.subjectCode}`, r]));
@@ -471,7 +504,8 @@ function SubjectStatusPanel({
         </p>
       </div>
       <div className="divide-border divide-y">
-        {PLAN_LAW_CODES.map((code) => (
+        {/* 법과목 목록은 반의 대상 차수에서 파생 — 1차 반은 민사소송법을 숨긴다. */}
+        {planLawCodesFor(examRound).map((code) => (
           <SubjectRow
             key={code}
             userId={userId}
@@ -531,20 +565,7 @@ function SubjectRow({
       <input type="hidden" name="subjectCode" value={subjectCode} />
       <div className="flex flex-wrap items-center gap-2">
         <span className="w-20 text-xs font-semibold">{name}</span>
-        {subjectKind === "law" ? (
-          <select
-            name="lectureStage"
-            defaultValue={row?.lectureStage ?? ""}
-            className="border-input bg-background h-7 rounded-md border px-1.5 text-[11px]"
-          >
-            <option value="">수준 —</option>
-            {(Object.keys(LECTURE_STAGE_LABEL) as LectureStage[]).map((s) => (
-              <option key={s} value={s}>
-                {LECTURE_STAGE_LABEL[s]}
-              </option>
-            ))}
-          </select>
-        ) : (
+        {subjectKind === "science" ? (
           <>
             <select
               name="scienceTier"
@@ -564,7 +585,7 @@ function SubjectRow({
               </span>
             ) : null}
           </>
-        )}
+        ) : null}
         {row?.tierSource ? (
           <Chip
             tone={
@@ -588,22 +609,40 @@ function SubjectRow({
           저장
         </Button>
       </div>
+      {/* 기본강의 수강여부 · 진행 방향 — 허용 값은 과목 종류별로 다르다(labels SSOT). */}
       <div className="grid grid-cols-2 gap-2">
-        <Input
-          name="completedLectures"
-          placeholder="기존 수강 (재시생)"
-          defaultValue={row?.completedLectures ?? ""}
-          maxLength={500}
-          className="h-7 text-[11px]"
-        />
-        <Input
-          name="direction"
-          placeholder="진행 방향 (예: 중급강의 예정)"
-          defaultValue={row?.direction ?? ""}
-          maxLength={500}
-          className="h-7 text-[11px]"
-        />
+        <select
+          name="basicCourseStatus"
+          defaultValue={row?.basicCourseStatus ?? ""}
+          className="border-input bg-background h-7 rounded-md border px-1.5 text-[11px]"
+        >
+          <option value="">기본강의 수강여부 —</option>
+          {BASIC_COURSE_STATUS_BY_KIND[subjectKind].map((s) => (
+            <option key={s} value={s}>
+              {BASIC_COURSE_STATUS_LABEL[s]}
+            </option>
+          ))}
+        </select>
+        <select
+          name="studyDirection"
+          defaultValue={row?.studyDirection ?? ""}
+          className="border-input bg-background h-7 rounded-md border px-1.5 text-[11px]"
+        >
+          <option value="">진행 방향 —</option>
+          {STUDY_DIRECTION_BY_KIND[subjectKind].map((d) => (
+            <option key={d} value={d}>
+              {STUDY_DIRECTION_LABEL[d]}
+            </option>
+          ))}
+        </select>
       </div>
+      {/* 드롭다운 이전에 수기로 적어 둔 내용 — 읽기 전용으로 남긴다. */}
+      {row?.completedLectures || row?.direction ? (
+        <p className="text-muted-foreground text-[11px]">
+          이전 기록:{" "}
+          {[row.completedLectures, row.direction].filter(Boolean).join(" · ")}
+        </p>
+      ) : null}
       {row?.tierSource === "diagnostic_retracted" ? (
         <p className="text-[11px] font-medium text-rose-600 dark:text-rose-400">
           ⚠ 진단 시험 결과가 철회되었습니다 — 수준을 재확인하고 수기로
@@ -751,7 +790,7 @@ function PlanReviewPanel({
                 <p className="truncate font-medium">{it.title}</p>
                 <p className="text-muted-foreground text-[11px]">
                   {PLAN_ACTIVITY_LABEL[it.activityType]} · {DAY_SCOPE_LABEL[it.dayScope]}{" "}
-                  하루 {it.dailyMinutes}분 · {it.startDate.slice(5)}~{it.endDate.slice(5)}
+                  하루 {formatMinutes(it.dailyMinutes)} · {it.startDate.slice(5)}~{it.endDate.slice(5)}
                   {it.nodeId ? (
                     <span className="text-link"> · {it.nodeLabel ?? "단원"}</span>
                   ) : (
@@ -802,8 +841,10 @@ function PlanReviewPanel({
       ) : plan.status === "approved" ? (
         <p className="text-muted-foreground border-t px-4 py-3 text-[11px]">
           {plan.reviewedAt ? `승인 ${plan.reviewedAt.slice(0, 10)}` : "승인됨"} ·
-          가용시간 스냅샷 평일 {plan.plannedWeekdayMinutes ?? "—"}분 / 주말{" "}
-          {plan.plannedWeekendMinutes ?? "—"}분
+          가용시간 스냅샷 평일{" "}
+          {plan.plannedWeekdayMinutes !== null ? formatMinutes(plan.plannedWeekdayMinutes) : "—"}{" "}
+          / 주말{" "}
+          {plan.plannedWeekendMinutes !== null ? formatMinutes(plan.plannedWeekendMinutes) : "—"}
         </p>
       ) : null}
     </section>
@@ -831,7 +872,7 @@ function SignalChip({
             : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
       )}
     >
-      {label} {planned}분{ratio !== null ? ` (${Math.round(ratio * 100)}%)` : ""}
+      {label} {formatMinutes(planned)}{ratio !== null ? ` (${Math.round(ratio * 100)}%)` : ""}
     </span>
   );
 }

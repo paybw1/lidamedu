@@ -11,6 +11,10 @@ import { roleAtLeast } from "~/core/lib/roles";
 import { getCohortById } from "~/features/cohorts/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
+  BASIC_COURSE_STATUS_BY_KIND,
+  STUDY_DIRECTION_BY_KIND,
+} from "~/features/study-plans/labels";
+import {
   upsertStudentDiagnostics,
   upsertSubjectStatusManual,
 } from "~/features/study-plans/queries.server";
@@ -23,18 +27,47 @@ const diagnosticsSchema = z.object({
   attemptType: z.enum(["first", "repeat"]),
   weekdayMinutes: z.coerce.number().int().min(0).max(1440),
   weekendMinutes: z.coerce.number().int().min(0).max(1440),
+  entryYear: z.coerce.number().int().min(2000).max(2100).optional(),
+  entryMonth: z.coerce.number().int().min(1).max(12).optional(),
   note: z.string().trim().max(2000).optional(),
 });
 
-const subjectStatusSchema = z.object({
-  userId: z.string().uuid(),
-  subjectKind: z.enum(["law", "science"]),
-  subjectCode: z.string().min(1).max(40),
-  lectureStage: z.enum(["none", "basic", "advanced", "complete"]).optional(),
-  scienceTier: z.enum(["high", "mid", "low"]).optional(),
-  completedLectures: z.string().trim().max(500).optional(),
-  direction: z.string().trim().max(500).optional(),
-});
+// 과목 종류별 허용 집합은 labels.ts 가 SSOT — DB CHECK 는 합집합이라 여기서 좁힌다.
+const subjectStatusSchema = z
+  .object({
+    userId: z.string().uuid(),
+    subjectKind: z.enum(["law", "science"]),
+    subjectCode: z.string().min(1).max(40),
+    basicCourseStatus: z
+      .enum(["before", "done", "retake", "not_needed"])
+      .optional(),
+    studyDirection: z
+      .enum(["advanced", "objective", "reading_problem", "problem"])
+      .optional(),
+    scienceTier: z.enum(["high", "mid", "low"]).optional(),
+  })
+  .superRefine((v, ctx) => {
+    if (
+      v.basicCourseStatus &&
+      !BASIC_COURSE_STATUS_BY_KIND[v.subjectKind].includes(v.basicCourseStatus)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["basicCourseStatus"],
+        message: "이 과목에서 쓸 수 없는 값입니다",
+      });
+    }
+    if (
+      v.studyDirection &&
+      !STUDY_DIRECTION_BY_KIND[v.subjectKind].includes(v.studyDirection)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["studyDirection"],
+        message: "이 과목에서 쓸 수 없는 값입니다",
+      });
+    }
+  });
 
 export async function action({ request }: Route.ActionArgs) {
   if (request.method !== "POST") {
@@ -77,6 +110,8 @@ export async function action({ request }: Route.ActionArgs) {
       attemptType: fd.get("attemptType"),
       weekdayMinutes: fd.get("weekdayMinutes"),
       weekendMinutes: fd.get("weekendMinutes"),
+      entryYear: fd.get("entryYear") || undefined,
+      entryMonth: fd.get("entryMonth") || undefined,
       note: fd.get("note") || undefined,
     });
     if (!parsed.success) return data({ error: "입력을 확인해 주세요" }, { status: 400 });
@@ -94,6 +129,8 @@ export async function action({ request }: Route.ActionArgs) {
       attemptType: parsed.data.attemptType,
       weekdayMinutes: parsed.data.weekdayMinutes,
       weekendMinutes: parsed.data.weekendMinutes,
+      entryYear: parsed.data.entryYear ?? null,
+      entryMonth: parsed.data.entryMonth ?? null,
       note: parsed.data.note ?? null,
       updatedBy: user.id,
     });
@@ -105,20 +142,18 @@ export async function action({ request }: Route.ActionArgs) {
       userId: fd.get("userId"),
       subjectKind: fd.get("subjectKind"),
       subjectCode: fd.get("subjectCode"),
-      lectureStage: fd.get("lectureStage") || undefined,
+      basicCourseStatus: fd.get("basicCourseStatus") || undefined,
+      studyDirection: fd.get("studyDirection") || undefined,
       scienceTier: fd.get("scienceTier") || undefined,
-      completedLectures: fd.get("completedLectures") || undefined,
-      direction: fd.get("direction") || undefined,
     });
     if (!parsed.success) return data({ error: "입력을 확인해 주세요" }, { status: 400 });
     await upsertSubjectStatusManual(client, {
       userId: parsed.data.userId,
       subjectKind: parsed.data.subjectKind,
       subjectCode: parsed.data.subjectCode,
-      lectureStage: parsed.data.lectureStage ?? null,
+      basicCourseStatus: parsed.data.basicCourseStatus ?? null,
+      studyDirection: parsed.data.studyDirection ?? null,
       scienceTier: parsed.data.scienceTier ?? null,
-      completedLectures: parsed.data.completedLectures ?? null,
-      direction: parsed.data.direction ?? null,
       updatedBy: user.id,
     });
     return data({ ok: true });

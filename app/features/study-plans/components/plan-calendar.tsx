@@ -8,7 +8,7 @@ import { Link } from "react-router";
 
 import { cn } from "~/core/lib/utils";
 
-import type { DayScope } from "../labels";
+import { formatMinutesCompact, type DayScope } from "../labels";
 import { scopeMatches, type CalendarDay } from "../lib/expected-items";
 
 const WEEKDAY_HEADERS = ["일", "월", "화", "수", "목", "금", "토"] as const;
@@ -201,7 +201,7 @@ export function PlanCalendar({
               </span>
               {day.expectedCount > 0 ? (
                 <span className="text-muted-foreground mt-auto text-[10px] leading-tight tabular-nums">
-                  {day.expectedMinutes}분
+                  {formatMinutesCompact(day.expectedMinutes)}
                   <span className="hidden sm:inline"> · {day.expectedCount}건</span>
                 </span>
               ) : null}

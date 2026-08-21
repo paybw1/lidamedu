@@ -21,8 +21,10 @@ import {
 import {
   computeOverloadIndex,
   type AttemptType,
+  type BasicCourseStatus,
   type DayScope,
   type LectureStage,
+  type StudyDirection,
   type OverloadIndex,
   type PlanActivityType,
   type PlanStatus,
@@ -39,6 +41,9 @@ export interface StudentDiagnostics {
   attemptType: AttemptType;
   weekdayMinutes: number;
   weekendMinutes: number;
+  /** 수험 진입 시기 — 수험 개월수는 저장하지 않고 필요할 때 계산한다. */
+  entryYear: number | null;
+  entryMonth: number | null;
   note: string | null;
   updatedAt: string;
 }
@@ -49,7 +54,9 @@ export async function getStudentDiagnostics(
 ): Promise<StudentDiagnostics | null> {
   const { data, error } = await client
     .from("student_diagnostics")
-    .select("user_id, cohort_id, attempt_type, weekday_minutes, weekend_minutes, note, updated_at")
+    .select(
+      "user_id, cohort_id, attempt_type, weekday_minutes, weekend_minutes, entry_year, entry_month, note, updated_at",
+    )
     .eq("user_id", userId)
     .maybeSingle();
   if (error) throw error;
@@ -60,6 +67,8 @@ export async function getStudentDiagnostics(
     attemptType: data.attempt_type as AttemptType,
     weekdayMinutes: data.weekday_minutes,
     weekendMinutes: data.weekend_minutes,
+    entryYear: data.entry_year,
+    entryMonth: data.entry_month,
     note: data.note,
     updatedAt: data.updated_at,
   };
@@ -73,6 +82,8 @@ export async function upsertStudentDiagnostics(
     attemptType: AttemptType;
     weekdayMinutes: number;
     weekendMinutes: number;
+    entryYear: number | null;
+    entryMonth: number | null;
     note: string | null;
     updatedBy: string;
   },
@@ -84,6 +95,8 @@ export async function upsertStudentDiagnostics(
       attempt_type: input.attemptType,
       weekday_minutes: input.weekdayMinutes,
       weekend_minutes: input.weekendMinutes,
+      entry_year: input.entryYear,
+      entry_month: input.entryMonth,
       note: input.note,
       updated_by: input.updatedBy,
       updated_at: new Date().toISOString(),
@@ -96,7 +109,10 @@ export async function upsertStudentDiagnostics(
 export interface SubjectStatusRow {
   subjectKind: SubjectKind;
   subjectCode: string;
+  /** @deprecated basicCourseStatus 로 대체(feat-7-048 D3) — 지난 상담 기록 표시용으로만 읽는다. */
   lectureStage: LectureStage | null;
+  basicCourseStatus: BasicCourseStatus | null;
+  studyDirection: StudyDirection | null;
   scienceTier: ScienceTier | null;
   scienceScore: number | null;
   scienceTotal: number | null;
@@ -114,7 +130,7 @@ export async function listSubjectStatus(
   const { data, error } = await client
     .from("student_subject_status")
     .select(
-      "subject_kind, subject_code, lecture_stage, science_tier, science_score, science_total, tier_source, diagnostic_test_id, completed_lectures, direction, updated_at",
+      "subject_kind, subject_code, lecture_stage, basic_course_status, study_direction, science_tier, science_score, science_total, tier_source, diagnostic_test_id, completed_lectures, direction, updated_at",
     )
     .eq("user_id", userId)
     .order("subject_kind")
@@ -124,6 +140,8 @@ export async function listSubjectStatus(
     subjectKind: r.subject_kind as SubjectKind,
     subjectCode: r.subject_code,
     lectureStage: r.lecture_stage as LectureStage | null,
+    basicCourseStatus: r.basic_course_status as BasicCourseStatus | null,
+    studyDirection: r.study_direction as StudyDirection | null,
     scienceTier: r.science_tier as ScienceTier | null,
     scienceScore: r.science_score,
     scienceTotal: r.science_total,
@@ -142,23 +160,23 @@ export async function upsertSubjectStatusManual(
     userId: string;
     subjectKind: SubjectKind;
     subjectCode: string;
-    lectureStage: LectureStage | null;
+    basicCourseStatus: BasicCourseStatus | null;
+    studyDirection: StudyDirection | null;
     scienceTier: ScienceTier | null;
-    completedLectures: string | null;
-    direction: string | null;
     updatedBy: string;
   },
 ): Promise<void> {
+  // ★lecture_stage·completed_lectures·direction 은 페이로드에 넣지 않는다 —
+  //   upsert 는 보낸 컬럼만 갱신하므로 지난 상담 기록이 그대로 보존된다.
   const { error } = await client.from("student_subject_status").upsert(
     {
       user_id: input.userId,
       subject_kind: input.subjectKind,
       subject_code: input.subjectCode,
-      lecture_stage: input.lectureStage,
+      basic_course_status: input.basicCourseStatus,
+      study_direction: input.studyDirection,
       science_tier: input.scienceTier,
       tier_source: input.scienceTier !== null ? "manual" : null,
-      completed_lectures: input.completedLectures,
-      direction: input.direction,
       updated_by: input.updatedBy,
       updated_at: new Date().toISOString(),
     },
@@ -770,7 +788,9 @@ export { expectedDaysInRange };
 
 // ── Stage 3 — 노드 선택기 빈 상태 폴백 (Stage 2 승인 문서 §1-1 권장안) ───────
 // 신규 학생은 약점·최근이 모두 비어 전체 트리로 떨어진다 — student_subject_status
-// 의 수준 낮은 법과목(lecture_stage none/basic) 상위 노드를 제안한다.
+// 의 수준 낮은 법과목 상위 노드를 제안한다.
+// ★대상 집합은 구 lecture_stage in ('none','basic') 과 같아야 한다(feat-7-048 D3
+//   백필이 그 등가를 지킨다) — 좁히면 신규 학생의 제안이 조용히 사라진다.
 
 export async function listLevelBasedNodeSuggestions(
   client: SupabaseClient<Database>,
@@ -782,7 +802,7 @@ export async function listLevelBasedNodeSuggestions(
     .filter(
       (s) =>
         s.subjectKind === "law" &&
-        (s.lectureStage === "none" || s.lectureStage === "basic") &&
+        (s.basicCourseStatus === "before" || s.basicCourseStatus === "retake") &&
         s.subjectCode !== "civil-procedure", // 체계도 없음
     )
     .map((s) => s.subjectCode as LawSubjectSlug);
