@@ -4,17 +4,22 @@
 //
 //   ① 문항의 지문·선지·해설에서 사건번호를 뽑아 그 과목 판례와 매칭 → problem_case_links insert
 //      (relation_type='cited' 한 방향만 저장, 조회에서 양방향 — 개발 원칙 Layer 2-9)
-//   ② (--importance) 인용 문항 수로 중요도 재산정
+//   ② (--importance) 인용 문항 수로 중요도 재산정 — ★민법 전용
 //      1회 이하 = 미부여(NULL) / 2~3 = ★1 / 4~5 = ★2 / 6+ = ★3
+//   ③ (--null-unexamined) 기출 흔적이 전혀 없는 판례만 중요도 미부여(NULL)로
+//      기출 흔적 = problem_case_links 1건 이상 OR exam_1st_years OR exam_2nd_years
 //
 // ★★②는 민법 전용이다 — 원장 확정 2026-08-21 "기출 인용으로 제한하는 건 민법만".
 //   특허·상표·디자인 판례는 교재 주제배치로 적재한 것이라 중요도도 교재 기반이다.
 //   인용 횟수로 덮으면 안 된다: 실제로 한 번 적용했다가 상표 356건 중 321건이
-//   미부여가 되어 백업으로 되돌렸다. 이 과목들은 --importance 없이 링크만 돌린다.
+//   미부여가 되어 백업으로 되돌렸다. 이 과목들은 --importance 없이 돌린다.
+// ★③은 등급을 재산정하지 않는다 — 기출이 아예 없는 판례의 기본값 ★1(적재 시
+//   일괄 부여분)만 걷어낸다. 교재 기반 ★2·★3 은 건드리지 않는다.
 // ★링크는 멱등(이미 있으면 건너뜀). 문항을 추가 적재하면 다시 돌린다.
 //
 //   node scripts/precedents/link-problem-cases.mjs --law patent            # dry-run
-//   node scripts/precedents/link-problem-cases.mjs --law patent --apply    # 링크만 (민법 외는 이것만)
+//   node scripts/precedents/link-problem-cases.mjs --law patent --apply    # 링크만
+//   node scripts/precedents/link-problem-cases.mjs --law patent --apply --null-unexamined
 //   node scripts/precedents/link-problem-cases.mjs --law civil --apply --importance
 import "dotenv/config";
 import fs from "node:fs";
@@ -24,6 +29,7 @@ import { createClient } from "@supabase/supabase-js";
 const argv = process.argv.slice(2);
 const APPLY = argv.includes("--apply");
 const WITH_IMPORTANCE = argv.includes("--importance");
+const NULL_UNEXAMINED = argv.includes("--null-unexamined");
 const LAW = argv.includes("--law") ? argv[argv.indexOf("--law") + 1] : null;
 const BATCH = 200;
 
@@ -113,7 +119,7 @@ async function main() {
   const cases = await pageAll(() =>
     sb
       .from("cases")
-      .select("case_id, case_number, importance")
+      .select("case_id, case_number, importance, exam_1st_years, exam_2nd_years")
       .contains("subject_laws", [LAW])
       .is("deleted_at", null)
       .order("case_id"),
@@ -173,7 +179,27 @@ async function main() {
   );
   console.log(`링크: 새로 ${rows.length}건 · 기존 ${have.size}건`);
   console.log(
-    `중요도 재산정 후 분포: 미부여 ${dist.null} · ★1 ${dist[1]} · ★2 ${dist[2]} · ★3 ${dist[3]} (변경 ${impChanges.length}건)`,
+    `중요도 재산정(--importance) 후 분포: 미부여 ${dist.null} · ★1 ${dist[1]} · ★2 ${dist[2]} · ★3 ${dist[3]} (변경 ${impChanges.length}건)`,
+  );
+
+  // ③ 기출 흔적이 전혀 없는 판례 — 적재 시 일괄로 들어간 기본값 ★1 만 걷어낸다.
+  const unexamined = cases.filter(
+    (c) =>
+      !(linkedProblems.get(c.case_id)?.size ?? 0) &&
+      (c.exam_1st_years ?? []).length === 0 &&
+      (c.exam_2nd_years ?? []).length === 0 &&
+      c.importance != null,
+  );
+  const byGrade = unexamined.reduce((acc, c) => {
+    acc[c.importance] = (acc[c.importance] ?? 0) + 1;
+    return acc;
+  }, {});
+  console.log(
+    `기출 흔적 없는 판례(--null-unexamined): ${unexamined.length}건 — ${
+      Object.entries(byGrade)
+        .map(([g, n]) => `★${g} ${n}`)
+        .join(" · ") || "없음"
+    }`,
   );
 
   if (!APPLY) {
@@ -187,27 +213,28 @@ async function main() {
   }
   console.log(`링크 ${rows.length}건 반영.`);
 
+  if (NULL_UNEXAMINED) {
+    await backupImportance(cases);
+    await withSuppressWindow(`${LAW} 기출 없는 판례 중요도 미부여`, async () => {
+      const ids = unexamined.map((c) => c.case_id);
+      for (let i = 0; i < ids.length; i += 100) {
+        const { error } = await sb
+          .from("cases")
+          .update({ importance: null })
+          .in("case_id", ids.slice(i, i + 100));
+        if (error) throw new Error(`중요도 갱신 실패: ${error.message}`);
+      }
+    });
+    console.log(`기출 없는 판례 ${unexamined.length}건 중요도 미부여 반영.`);
+  }
+
   if (!WITH_IMPORTANCE) {
-    console.log("중요도는 건드리지 않았습니다(--importance 미지정).");
+    if (!NULL_UNEXAMINED) console.log("중요도는 건드리지 않았습니다(--importance 미지정).");
     return;
   }
 
-  // ★되돌릴 수 있게 현재 값을 먼저 남긴다.
-  fs.writeFileSync(
-    BACKUP,
-    JSON.stringify(cases.map((c) => ({ caseId: c.case_id, caseNumber: c.case_number, importance: c.importance })), null, 2),
-    "utf8",
-  );
-  console.log(`중요도 백업 ${BACKUP}`);
-
-  // 적재·정정은 추록 발행 대상이 아니다 — 개정 원장 억제.
-  const { data: win, error: winErr } = await sb.rpc("fn_open_suppress_window", {
-    p_minutes: 30,
-    p_reason: `${LAW} 판례 중요도 재산정(기출 인용 기준)`,
-    p_scope: ["precedent"],
-  });
-  if (winErr) throw new Error(winErr.message);
-  try {
+  await backupImportance(cases);
+  await withSuppressWindow(`${LAW} 판례 중요도 재산정(기출 인용 기준)`, async () => {
     for (const target of [null, 1, 2, 3]) {
       const batch = impChanges.filter((c) => c.to === target).map((c) => c.caseId);
       for (let i = 0; i < batch.length; i += 100) {
@@ -218,10 +245,40 @@ async function main() {
         if (error) throw new Error(`중요도 갱신 실패: ${error.message}`);
       }
     }
+  });
+  console.log(`중요도 ${impChanges.length}건 반영 완료.`);
+}
+
+/** ★중요도를 덮기 전 현재 값을 남긴다 — 되돌릴 유일한 수단이다. */
+let backedUp = false;
+async function backupImportance(cases) {
+  if (backedUp) return;
+  fs.writeFileSync(
+    BACKUP,
+    JSON.stringify(
+      cases.map((c) => ({ caseId: c.case_id, caseNumber: c.case_number, importance: c.importance })),
+      null,
+      2,
+    ),
+    "utf8",
+  );
+  backedUp = true;
+  console.log(`중요도 백업 ${BACKUP}`);
+}
+
+/** 적재·정정은 추록 발행 대상이 아니다 — 개정 원장을 억제하고 실행한다. */
+async function withSuppressWindow(reason, fn) {
+  const { data: win, error } = await sb.rpc("fn_open_suppress_window", {
+    p_minutes: 30,
+    p_reason: reason,
+    p_scope: ["precedent"],
+  });
+  if (error) throw new Error(error.message);
+  try {
+    await fn();
   } finally {
     await sb.rpc("fn_close_suppress_window", { p_window_id: win });
   }
-  console.log(`중요도 ${impChanges.length}건 반영 완료.`);
 }
 
 main().catch((e) => {
