@@ -7,10 +7,9 @@ import { z } from "zod";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
-import { roleAtLeast } from "~/core/lib/roles";
+import { resolveCohortGate } from "~/features/admin/lib/cohort-gate.server";
 import { runAfterResponse } from "~/core/lib/wait-until.server";
 import { createUserNotifications } from "~/features/notifications/queries.server";
-import { getCohortById } from "~/features/cohorts/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   BASIC_COURSE_STATUS_BY_KIND,
@@ -109,24 +108,15 @@ export async function action({ request }: Route.ActionArgs) {
   const fd = await request.formData();
   const intent = String(fd.get("intent") ?? "");
 
-  // 반 소유권 게이트 — cohortId 직접 or plan 역추적.
-  let cohortId = String(fd.get("cohortId") ?? "");
   const planId = String(fd.get("planId") ?? "");
-  if (!cohortId && planId) {
-    const { data: p } = await adminClient
-      .from("study_plans")
-      .select("cohort_id")
-      .eq("plan_id", planId)
-      .maybeSingle();
-    cohortId = p?.cohort_id ?? "";
-  }
-  if (!cohortId) return data({ error: "대상을 찾을 수 없습니다" }, { status: 404 });
-  if (!roleAtLeast(role, "manager")) {
-    const cohort = await getCohortById(adminClient, cohortId);
-    if (!cohort || cohort.ownerId !== user.id) {
-      return data({ error: "본인 소유 반만 접근 가능합니다" }, { status: 403 });
-    }
-  }
+  const gate = await resolveCohortGate({
+    role,
+    userId: user.id,
+    formCohortId: String(fd.get("cohortId") ?? ""),
+    planId,
+  });
+  if ("error" in gate) return data({ error: gate.error }, { status: gate.status });
+  const cohortId = gate.cohortId;
 
   if (intent === "save_diagnostics") {
     const parsed = diagnosticsSchema.safeParse({

@@ -311,7 +311,12 @@ create table if not exists public.student_study_prefs (
 
 적용: `scripts/sql/20260821_feat7048_stage_b.sql` + `..._notif_kind.sql`(운영 반영·typegen 완료) · 검증 `tmp/feat7048-verify/stageB.itest.ts` 6/6(테스트 데이터 잔여 0 실측) · typecheck ✅ · build ✅.
 
-★설계에 없던 사실 하나를 발견해 함께 고쳤다 — `study_plans`/`study_plan_items` 의 staff 정책이 `FOR ALL` 이라 **승인본까지 고칠 수 있었다**(편집 화면이 없어 드러나지 않았을 뿐). Stage B 로 화면이 생기므로 select 는 넓게 두고 insert/update/delete 를 `status <> 'approved'` 로 좁혔다. 승인은 security definer RPC 라 이 정책에 걸리지 않는다.
+설계에 없던 사실 둘을 발견해 함께 고쳤다.
+
+1. ★`study_plans`/`study_plan_items` 의 staff 정책이 `FOR ALL` 이라 **승인본까지 고칠 수 있었다**(편집 화면이 없어 드러나지 않았을 뿐). Stage B 로 화면이 생기므로 select 는 넓게 두고 insert/update/delete 를 `status <> 'approved'` 로 좁혔다. 승인은 security definer RPC 라 이 정책에 걸리지 않는다.
+2. ★**반 소유권 게이트가 폼의 `cohortId` 를 믿고 있었다.** 기존 intent(승인·반려)는 폼이 cohortId 를 보내지 않아 계획에서 역추적됐지만, 새 편집 폼은 `cohortId`+`planId` 를 함께 보낸다 — "자기 반 id + 남의 반 planId" 조합이면 남의 학생 계획을 고칠 수 있었다. **planId 가 있으면 언제나 계획 행에서 역추적**하도록 바꿨다(`app/features/admin/lib/cohort-gate.server.ts`). 이 파일을 라우트 모듈이 아니라 `.server.ts` 로 둔 이유는 loader/action 외 export 가 서버 모듈을 클라 번들로 끌어와 빌드가 깨지기 때문이다(typecheck 는 통과하고 build 에서만 잡힌다).
+
+미결(경미): 학생이 스스로 제출한 계획을 상담자가 항목만 손보고 승인하면 `authored_by` 가 안 남아 "상담자가 수정함" 배지가 안 뜬다. 게이트 지표는 이 편이 오히려 정확하다(학생이 제출한 것은 맞다) — 배지가 필요해지면 `study_plan_items.updated_by` 에서 파생한다.
 
 
 - M2 적용
