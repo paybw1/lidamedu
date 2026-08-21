@@ -61,6 +61,22 @@ export const meta: Route.MetaFunction = () => [
   { title: "월간 계획 | 리담변리사학원" },
 ];
 
+/** "YYYY-MM" → 그 달의 [1일, 말일]. */
+function monthBounds(month: string): { from: string; to: string } {
+  const y = Number(month.slice(0, 4));
+  const m = Number(month.slice(5, 7));
+  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return { from: `${month}-01`, to: `${month}-${String(last).padStart(2, "0")}` };
+}
+
+/** "YYYY-MM" 를 delta 달 만큼 옮긴다. */
+function shiftMonth(dateISO: string, delta: number): string {
+  const y = Number(dateISO.slice(0, 4));
+  const m = Number(dateISO.slice(5, 7)) - 1 + delta;
+  const d = new Date(Date.UTC(y, m, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
 export async function loader({ request }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);
   const {
@@ -142,10 +158,17 @@ export async function loader({ request }: Route.LoaderArgs) {
         )
       : [];
 
-  // 공부 통계(feat-7-048) — 계획 상태와 무관하게 이 달 기록 전부. 과거 로그는
-  // 과목 컬럼이 비어 있어 조회 시점에 파생한다(원장은 append-only).
+  // 공부 통계(feat-7-048) — 계획 상태와 무관하게 그 달 기록 전부. 지난달도 볼 수
+  // 있도록 ?month 로 이동한다(계획 자체는 이번 달 고정). 과거 로그는 과목 컬럼이
+  // 비어 있어 조회 시점에 파생한다(원장은 append-only).
+  const monthParam = new URL(request.url).searchParams.get("month");
+  const statMonth =
+    monthParam && /^\d{4}-\d{2}$/.test(monthParam)
+      ? monthParam
+      : periodStart.slice(0, 7);
+  const { from: statFrom, to: statTo } = monthBounds(statMonth);
   const [statLogs, colorOverrides] = await Promise.all([
-    listLogsForRange(client, user.id, periodStart, periodEnd).then((rows) =>
+    listLogsForRange(client, user.id, statFrom, statTo).then((rows) =>
       attachDerivedSubjects(client, rows),
     ),
     listSubjectColors(client, user.id),
@@ -153,6 +176,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   return {
     statLogs,
+    statFrom,
     colorOverrides,
     todayISO,
     monthLogs,
@@ -233,6 +257,7 @@ export default function StudyPlanScreen({ loaderData }: Route.ComponentProps) {
     todayISO,
     monthLogs,
     statLogs,
+    statFrom,
     colorOverrides,
   } = loaderData;
   // 빈 상태 폴백 — 약점·최근이 모두 비면 수준 기반 제안이 추천 자리를 채운다.
@@ -477,10 +502,12 @@ export default function StudyPlanScreen({ loaderData }: Route.ComponentProps) {
             {calendarTab === "stats" ? (
               <StudyStatsCard
                 logs={statLogs}
-                monthAnchor={periodStart}
+                monthAnchor={statFrom}
                 todayISO={todayISO}
                 colorOverrides={colorOverrides}
                 dayHref={(d) => `/study/plan/log?date=${d}`}
+                prevHref={`?month=${shiftMonth(statFrom, -1)}`}
+                nextHref={`?month=${shiftMonth(statFrom, 1)}`}
               />
             ) : (
               <>

@@ -951,15 +951,7 @@ export async function listPeriodAssignments(
 export async function attachDerivedSubjects(
   client: SupabaseClient<Database>,
   logs: StudyLogRow[],
-): Promise<
-  Array<{
-    logDate: string;
-    minutes: number;
-    subjectKind: string | null;
-    subjectCode: string | null;
-    startedAt: string | null;
-  }>
-> {
+): Promise<StudyLogRow[]> {
   const missing = logs.filter((l) => !l.subjectCode);
   const itemIds = [
     ...new Set(missing.map((l) => l.planItemId).filter((v): v is string => !!v)),
@@ -995,24 +987,14 @@ export async function attachDerivedSubjects(
   }
 
   return logs.map((l) => {
-    if (l.subjectCode) {
-      return {
-        logDate: l.logDate,
-        minutes: l.minutes,
-        subjectKind: l.subjectKind,
-        subjectCode: l.subjectCode,
-        startedAt: l.startedAt,
-      };
-    }
+    if (l.subjectCode) return l;
     const viaItem = l.planItemId ? itemSubject.get(l.planItemId) : undefined;
     const node = l.nodeId ?? (l.planItemId ? itemNode.get(l.planItemId) : undefined);
     const law = node ? nodeLaw.get(node) : undefined;
     return {
-      logDate: l.logDate,
-      minutes: l.minutes,
+      ...l,
       subjectKind: viaItem?.kind ?? (law ? "law" : null),
       subjectCode: viaItem?.code ?? law ?? null,
-      startedAt: l.startedAt,
     };
   });
 }

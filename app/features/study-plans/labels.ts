@@ -269,3 +269,20 @@ export function currentMonthPeriod(now: Date = new Date()): {
   const end = `${y}-${String(m + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
   return { periodStart: start, periodEnd: end };
 }
+
+// ── KST 시각 헬퍼 (feat-7-048) ───────────────────────────────────────────────
+
+/** 오늘(KST) YYYY-MM-DD. */
+export function todayKST(now: Date = new Date()): string {
+  return new Date(now.getTime() + 9 * 3_600_000).toISOString().slice(0, 10);
+}
+
+/** 아직 오지 않은 날인가 — 미리 완료 처리 금지 판정(feat-7-048 D12). */
+export function isFutureDate(dateISO: string, now: Date = new Date()): boolean {
+  return dateISO > todayKST(now);
+}
+
+/** KST 날짜+시각("HH:MM") → UTC ISO 문자열. 저장은 timestamptz 다. */
+export function kstDateTimeToISO(dateISO: string, timeHHMM: string): string {
+  return new Date(`${dateISO}T${timeHHMM}:00+09:00`).toISOString();
+}

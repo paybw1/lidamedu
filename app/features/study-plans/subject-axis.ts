@@ -157,3 +157,16 @@ export function heatLevel(minutes: number): 0 | 1 | 2 | 3 | 4 {
   if (minutes < STUDY_HEATMAP_STEPS[2]) return 3;
   return 4;
 }
+
+/** 학생 오버라이드 → 없으면 기본 매핑. 미분류는 회색. 색 해석은 이 함수 하나로. */
+export function resolveSubjectColor(
+  overrides: Record<string, string>,
+  kind: string | null,
+  code: string | null,
+): SubjectColorKey {
+  if (!kind || !code) return UNCLASSIFIED_COLOR;
+  const o = overrides[subjectKey(kind, code)];
+  return o && o in SUBJECT_COLOR_CLASS
+    ? (o as SubjectColorKey)
+    : defaultColorFor(kind, code);
+}

@@ -30,6 +30,14 @@ import {
   type PlanActivityType,
 } from "~/features/study-plans/labels";
 import { PlanCalendar } from "~/features/study-plans/components/plan-calendar";
+import { DayTiles } from "~/features/study-plans/components/study-stats/day-tiles";
+import { SubjectSelect } from "~/features/study-plans/components/subject-select";
+import {
+  SUBJECT_COLOR_CLASS,
+  resolveSubjectColor,
+  subjectName,
+} from "~/features/study-plans/subject-axis";
+import { subjectTotalsIn } from "~/features/study-plans/lib/study-stats";
 import {
   addDaysISO,
   buildCalendarDays,
@@ -43,6 +51,8 @@ import {
   listLogsForRange,
   listPlanItems,
   listRecentPlanNodes,
+  listSubjectColors,
+  attachDerivedSubjects,
 } from "~/features/study-plans/queries.server";
 
 export const meta: Route.MetaFunction = () => [
@@ -102,13 +112,16 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   // 미니 캘린더 — 보고 있는 날짜가 속한 달 전체의 달성 현황.
   const { monthStart, monthEnd } = monthRangeOf(date);
-  const [logs, monthLogs, weak, recentNodes, levelNodes] = await Promise.all([
+  const [rawLogs, monthLogs, weak, recentNodes, levelNodes, colorOverrides] = await Promise.all([
     listLogsForDate(client, user.id, date),
     listLogsForRange(client, user.id, monthStart, monthEnd),
     getWeakNodes(client, user.id, ["patent", "trademark", "design", "civil"], 5),
     listRecentPlanNodes(client, user.id),
     listLevelBasedNodeSuggestions(client, user.id),
+    listSubjectColors(client, user.id),
   ]);
+  // 과목은 저장값 우선, 없으면 파생(과거 로그) — feat-7-048 D5.
+  const logs = await attachDerivedSubjects(client, rawLogs);
 
   return {
     date,
@@ -134,12 +147,16 @@ export async function loader({ request }: Route.LoaderArgs) {
     isWeekend: isWeekendDate(date),
     hasApprovedPlan: Boolean(approvedRow),
     inflightStatus: (inflightRow?.status as string | undefined) ?? activePlan?.status ?? null,
+    colorOverrides,
+    isFuture: date > todayKST(),
     expected: expected.map((i) => ({
       itemId: i.itemId,
       title: i.title,
       activityType: i.activityType,
       dailyMinutes: i.dailyMinutes,
       dayScope: i.dayScope,
+      subjectKind: i.subjectKind ?? null,
+      subjectCode: i.subjectCode ?? null,
     })),
     logs,
     weakNodes: weak.map((w) => ({
@@ -170,6 +187,8 @@ export default function StudyPlanLog({ loaderData }: Route.ComponentProps) {
     weakNodes,
     recentNodes,
     levelNodes,
+    colorOverrides,
+    isFuture,
   } = loaderData;
 
   // 미니 캘린더 — 달성 현황 파생 + 월 이동 링크.
@@ -184,10 +203,43 @@ export default function StudyPlanLog({ loaderData }: Route.ComponentProps) {
       .filter((l) => l.minutes > 0 && l.planItemId && !reversedIds.has(l.logId))
       .map((l) => [l.planItemId as string, l]),
   );
+  // ★오늘의 기대 항목에 대응하지 않는 기록은 전부 여기로 — 지워진 항목·지난 버전
+  //   항목에 달린 기록이 목록에서 조용히 사라지지 않게 한다(합계와 눈에 보이는 합이
+  //   어긋나면 버그로 읽힌다).
   const extraLogs = logs.filter(
-    (l) => l.minutes > 0 && !l.planItemId && !reversedIds.has(l.logId),
+    (l) =>
+      l.minutes > 0 &&
+      !reversedIds.has(l.logId) &&
+      (!l.planItemId || !expected.some((e) => e.itemId === l.planItemId)),
   );
   const totalMinutes = logs.reduce((s, l) => s + l.minutes, 0);
+
+  const colorOf = (kind: string | null, code: string | null) =>
+    resolveSubjectColor(colorOverrides, kind, code);
+
+  // 과목별 합계 — 기대 항목의 과목과 기록의 과목을 같은 축에서 센다.
+  const subjectTotals = subjectTotalsIn(
+    logs.map((l) => ({
+      logDate: l.logDate,
+      minutes: l.minutes,
+      subjectKind: l.subjectKind,
+      subjectCode: l.subjectCode,
+    })),
+    date,
+    date,
+  );
+
+  // 그림2 좌측 — 기대 항목을 과목으로 묶는다(미분류는 마지막).
+  const groups = new Map<string, { kind: string | null; code: string | null; items: typeof expected }>();
+  for (const it of expected) {
+    const key = it.subjectKind && it.subjectCode ? `${it.subjectKind}:${it.subjectCode}` : "-";
+    const g = groups.get(key) ?? { kind: it.subjectKind, code: it.subjectCode, items: [] };
+    g.items.push(it);
+    groups.set(key, g);
+  }
+  const expectedGroups = [...groups.values()].sort((a, b) =>
+    a.code === null ? 1 : b.code === null ? -1 : 0,
+  );
 
   return (
     <StudentShell width="narrow">
@@ -212,8 +264,8 @@ export default function StudyPlanLog({ loaderData }: Route.ComponentProps) {
             nextHref={`?date=${nextMonthStart}`}
           />
         </div>
-        <div className="mt-2 flex items-center gap-2 text-sm">
-          <span className="font-medium tabular-nums">
+        <div className="mt-3 flex items-baseline gap-2">
+          <span className="text-sm font-medium tabular-nums">
             {date} ({isWeekend ? "주말" : "평일"})
           </span>
           {date !== today ? (
@@ -221,11 +273,64 @@ export default function StudyPlanLog({ loaderData }: Route.ComponentProps) {
               오늘로
             </Link>
           ) : null}
-          <span className="text-muted-foreground ml-auto text-xs tabular-nums">
-            합계 {formatMinutes(totalMinutes)}
+          <span className="ml-auto text-xl font-semibold tabular-nums">
+            {formatMinutes(totalMinutes)}
           </span>
         </div>
       </header>
+
+      {/* 그림2 — 좌: 과목별 시간 / 우: 시각 축 10분 타일 */}
+      <section className="bg-card mb-4 rounded-xl border p-3 shadow-sm sm:p-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <span className="text-muted-foreground text-[11px] font-semibold tracking-wide uppercase">
+              과목별 시간
+            </span>
+            {subjectTotals.length === 0 ? (
+              <p className="text-muted-foreground mt-1.5 text-[11px]">
+                아직 기록이 없습니다.
+              </p>
+            ) : (
+              <ul className="mt-1.5 space-y-1">
+                {subjectTotals.map((s) => (
+                  <li
+                    key={`${s.kind}:${s.code}`}
+                    className="flex items-center gap-2 text-xs"
+                  >
+                    <span
+                      className={cn(
+                        "size-2.5 shrink-0 rounded-full",
+                        SUBJECT_COLOR_CLASS[colorOf(s.kind, s.code)].dot,
+                      )}
+                    />
+                    <span className="min-w-0 flex-1 truncate">
+                      {subjectName(s.kind, s.code)}
+                    </span>
+                    <span className="tabular-nums">{formatMinutes(s.minutes)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <DayTiles
+            entries={logs
+              .filter((l) => l.minutes > 0 && !reversedIds.has(l.logId))
+              .map((l) => ({
+                minutes: l.minutes,
+                subjectKind: l.subjectKind,
+                subjectCode: l.subjectCode,
+                startedAt: l.startedAt,
+              }))}
+            colorOf={colorOf}
+          />
+        </div>
+      </section>
+
+      {isFuture ? (
+        <p className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+          아직 오지 않은 날입니다 — 미리 완료로 체크할 수 없습니다. 계획만 확인하세요.
+        </p>
+      ) : null}
 
       {hasApprovedPlan && inflightStatus ? (
         <p className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
@@ -243,18 +348,43 @@ export default function StudyPlanLog({ loaderData }: Route.ComponentProps) {
         </p>
       ) : null}
 
-      {/* 기대 항목 — 노드 선택기 없음 */}
+      {/* 기대 항목 — 과목으로 묶어 보여준다(그림2 좌측). 노드 선택기는 없다. */}
       {expected.length > 0 ? (
-        <ul className="space-y-2">
-          {expected.map((item) => (
-            <ExpectedItemCard
-              key={item.itemId}
-              date={date}
-              item={item}
-              log={activeLogByItem.get(item.itemId) ?? null}
-            />
+        <div className="space-y-4">
+          {expectedGroups.map((g) => (
+            <div key={`${g.kind}:${g.code}`}>
+              <div className="mb-1.5 flex items-center gap-2">
+                <span
+                  className={cn(
+                    "size-2.5 shrink-0 rounded-full",
+                    SUBJECT_COLOR_CLASS[colorOf(g.kind, g.code)].dot,
+                  )}
+                />
+                <span className="text-xs font-semibold">
+                  {subjectName(g.kind, g.code)}
+                </span>
+                <span className="text-muted-foreground text-[11px] tabular-nums">
+                  {formatMinutes(
+                    subjectTotals.find(
+                      (s) => s.kind === g.kind && s.code === g.code,
+                    )?.minutes ?? 0,
+                  )}
+                </span>
+              </div>
+              <ul className="space-y-2">
+                {g.items.map((item) => (
+                  <ExpectedItemCard
+                    key={item.itemId}
+                    date={date}
+                    item={item}
+                    log={activeLogByItem.get(item.itemId) ?? null}
+                    disabled={isFuture}
+                  />
+                ))}
+              </ul>
+            </div>
           ))}
-        </ul>
+        </div>
       ) : hasApprovedPlan ? (
         <p className="text-muted-foreground rounded-lg border border-dashed px-3 py-4 text-center text-xs">
           오늘({isWeekend ? "주말" : "평일"}) 해당하는 계획 항목이 없습니다.
@@ -273,11 +403,23 @@ export default function StudyPlanLog({ loaderData }: Route.ComponentProps) {
                 key={l.logId}
                 className="bg-card flex items-center gap-2 rounded-lg border px-3 py-2 text-xs"
               >
+                <span
+                  className={cn(
+                    "size-2.5 shrink-0 rounded-full",
+                    SUBJECT_COLOR_CLASS[colorOf(l.subjectKind, l.subjectCode)].dot,
+                  )}
+                />
                 <span className="min-w-0 flex-1">
                   {PLAN_ACTIVITY_LABEL[l.activityType]}
-                  {l.nodeId ? null : (
-                    <span className="text-muted-foreground"> · 미분류</span>
-                  )}
+                  <span className="text-muted-foreground">
+                    {" · "}
+                    {subjectName(l.subjectKind, l.subjectCode)}
+                  </span>
+                  {/* 계획에서 지워진 항목에 달렸던 기록 — 원장은 지울 수 없으니
+                      '지난 계획'으로 구분만 한다(feat-7-048 D10). */}
+                  {l.source === "plan_check" ? (
+                    <span className="text-muted-foreground opacity-70"> · 지난 계획</span>
+                  ) : null}
                 </span>
                 <span className="tabular-nums">{formatMinutes(l.minutes)}</span>
                 <ReverseButton logId={l.logId} />
@@ -288,11 +430,14 @@ export default function StudyPlanLog({ loaderData }: Route.ComponentProps) {
       ) : null}
 
       {/* 계획 외 학습 추가 — 여기서만 노드 선택기(미분류 허용) */}
+      {isFuture ? null : (
       <ExtraLogForm
         date={date}
         weakNodes={[...weakNodes, ...levelNodes]}
         recentNodes={recentNodes}
+        colorOverrides={colorOverrides}
       />
+      )}
     </StudentShell>
   );
 }
@@ -314,10 +459,13 @@ function ExpectedItemCard({
   date,
   item,
   log,
+  disabled,
 }: {
   date: string;
   item: ExpectedItem;
   log: LogRow | null;
+  /** 미래 날짜 — 미리 완료 처리 금지(서버도 거부한다). */
+  disabled: boolean;
 }) {
   const fetcher = useFetcher<{ ok?: true; error?: string }>();
   const reload = useReload();
@@ -371,7 +519,7 @@ function ExpectedItemCard({
             <Button
               size="sm"
               className="h-8"
-              disabled={fetcher.state !== "idle"}
+              disabled={disabled || fetcher.state !== "idle"}
               onClick={() => submit(item.dailyMinutes, "full")}
             >
               완료 {formatMinutes(item.dailyMinutes)}
@@ -380,6 +528,7 @@ function ExpectedItemCard({
               size="sm"
               variant="outline"
               className="h-8"
+              disabled={disabled}
               onClick={() => setPartial((v) => !v)}
             >
               부분
@@ -415,7 +564,7 @@ function ExpectedItemCard({
           <Button
             size="sm"
             className="h-7"
-            disabled={fetcher.state !== "idle" || !Number(minutes)}
+            disabled={disabled || fetcher.state !== "idle" || !Number(minutes)}
             onClick={() => submit(Number(minutes), "partial")}
           >
             기록
@@ -461,8 +610,10 @@ function ExtraLogForm({
   date,
   weakNodes,
   recentNodes,
+  colorOverrides,
 }: {
   date: string;
+  colorOverrides: Record<string, string>;
   weakNodes: Array<{ nodeId: string; displayLabel: string; sub?: string | null }>;
   recentNodes: Array<{ nodeId: string; displayLabel: string }>;
 }) {
@@ -515,6 +666,19 @@ function ExtraLogForm({
           </select>
         </div>
         <MinutesField label="시간" name="minutes" defaultMinutes={30} required />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <SubjectSelect colorOverrides={colorOverrides} hint="(비우면 단원에서 판단)" />
+        <div>
+          <label className="text-muted-foreground text-[11px]">
+            시작 시각 <span className="opacity-80">(비워도 됩니다)</span>
+          </label>
+          <Input
+            name="startTime"
+            type="time"
+            className="mt-0.5 h-8 text-xs tabular-nums"
+          />
+        </div>
       </div>
       {/* 미분류 허용 — 노드는 선택 사항 (E1) */}
       <NodePicker

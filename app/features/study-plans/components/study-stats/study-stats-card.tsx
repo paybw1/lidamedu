@@ -3,11 +3,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 
-import {
-  SUBJECT_COLOR_CLASS,
-  defaultColorFor,
-  type SubjectColorKey,
-} from "~/features/study-plans/subject-axis";
+import { resolveSubjectColor } from "~/features/study-plans/subject-axis";
 import {
   buildHeatmapDays,
   monthRangeOf,
@@ -39,16 +35,12 @@ export function StudyStatsCard({
   const [selected, setSelected] = useState<string>(
     todayISO >= from && todayISO <= to ? todayISO : from,
   );
+  // 월을 옮기면 이전 선택이 범위 밖이 된다 — 그 달 1일로 되돌린다.
+  const anchor = selected >= from && selected <= to ? selected : from;
   const days = buildHeatmapDays(logs, from, to, todayISO);
 
-  const colorOf = (kind: string | null, code: string | null): SubjectColorKey => {
-    if (!kind || !code) return "slate";
-    const key = `${kind}:${code}`;
-    const override = colorOverrides[key];
-    return override && override in SUBJECT_COLOR_CLASS
-      ? (override as SubjectColorKey)
-      : defaultColorFor(kind, code);
-  };
+  const colorOf = (kind: string | null, code: string | null) =>
+    resolveSubjectColor(colorOverrides, kind, code);
 
   return (
     <div className="grid gap-5 sm:grid-cols-2">
@@ -59,17 +51,17 @@ export function StudyStatsCard({
         monthLabel={`${Number(from.slice(5, 7))}월`}
         prevHref={prevHref}
         nextHref={nextHref}
-        selectedDate={selected}
+        selectedDate={anchor}
         onSelectDate={setSelected}
       />
       <div>
-        <PeriodTabs logs={logs} anchorDate={selected} colorOf={colorOf} />
+        <PeriodTabs logs={logs} anchorDate={anchor} colorOf={colorOf} />
         {dayHref ? (
           <Link
-            to={dayHref(selected)}
+            to={dayHref(anchor)}
             className="text-link mt-3 inline-block text-xs hover:underline"
           >
-            {selected} 기록 보기 →
+            {anchor} 기록 보기 →
           </Link>
         ) : null}
       </div>

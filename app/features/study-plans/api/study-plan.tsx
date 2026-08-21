@@ -17,7 +17,11 @@ import {
   SUBJECT_COLOR_KEYS,
   isValidSubject,
 } from "~/features/study-plans/subject-axis";
-import { currentMonthPeriod } from "~/features/study-plans/labels";
+import {
+  currentMonthPeriod,
+  isFutureDate,
+  kstDateTimeToISO,
+} from "~/features/study-plans/labels";
 
 import type { Route } from "./+types/study-plan";
 
@@ -156,6 +160,7 @@ export async function action({ request }: Route.ActionArgs) {
       lessonId: z.string().uuid().optional(),
       selfDifficulty: z.coerce.number().int().min(1).max(5).optional(),
       subject: z.string().max(60).optional(), // "kind:code" — 계획 외 학습에서만
+      startTime: z.string().regex(/^d{2}:d{2}$/).optional(), // 시각 미지정 허용
     });
     const parsed = logSchema.safeParse({
       logDate: fd.get("logDate"),
@@ -167,8 +172,17 @@ export async function action({ request }: Route.ActionArgs) {
       lessonId: fd.get("lessonId") || undefined,
       selfDifficulty: fd.get("selfDifficulty") || undefined,
       subject: fd.get("subject") || undefined,
+      startTime: fd.get("startTime") || undefined,
     });
     if (!parsed.success) return data({ error: "입력을 확인해 주세요" }, { status: 400 });
+
+    // ★미래 날짜는 미리 완료 처리할 수 없다(feat-7-048 D12). 열람은 허용한다.
+    if (isFutureDate(parsed.data.logDate)) {
+      return data(
+        { error: "아직 오지 않은 날은 기록할 수 없습니다" },
+        { status: 400 },
+      );
+    }
 
     // 과목 귀속(feat-7-048) — 계획 항목 상속 → 사용자 선택 → 노드 파생 → 미분류.
     // ★원장은 append-only 라 INSERT 시점에만 채운다.
@@ -218,6 +232,10 @@ export async function action({ request }: Route.ActionArgs) {
       self_difficulty: parsed.data.selfDifficulty ?? null,
       subject_kind: subject?.kind ?? null,
       subject_code: subject?.code ?? null,
+      // 시각을 적었으면 시간표 타일에 놓인다 — 비우면 "시각 미지정" 띠로 간다.
+      started_at: parsed.data.startTime
+        ? kstDateTimeToISO(parsed.data.logDate, parsed.data.startTime)
+        : null,
     });
     if (error) return data({ error: "기록에 실패했습니다" }, { status: 400 });
     return data({ ok: true });
