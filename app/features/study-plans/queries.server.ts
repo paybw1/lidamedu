@@ -1315,7 +1315,8 @@ export async function getRecordMode(
     .select("record_mode")
     .eq("user_id", userId)
     .maybeSingle();
-  return (data?.record_mode as RecordMode | undefined) ?? "total";
+  // 행이 없으면 타이머 — 원장 결정(2026-08-21). 학생이 고르면 그 값이 우선한다.
+  return (data?.record_mode as RecordMode | undefined) ?? "timer";
 }
 
 export async function setRecordMode(

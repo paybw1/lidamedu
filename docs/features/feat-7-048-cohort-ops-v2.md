@@ -178,7 +178,7 @@ day-detail.tsx         그림2 — 좌: 과목별 시간·달성 체크 / 우: �
 
 학생마다 호불호가 갈리므로 **둘 다 만들고 학생이 고른다.**
 
-- 선택값: `student_study_prefs(user_id pk, record_mode ∈ 'timer'|'total')`. 기본 `total`. 화면은 고른 쪽을 크게 보여주고, 반대 방식은 "다른 방식으로 기록" 링크로 항상 열어 둔다(모드가 기능을 잠그지는 않는다).
+- 선택값: `student_study_prefs(user_id pk, record_mode ∈ 'timer'|'total')`. **기본 `timer`**(2026-08-21 원장 결정 — 처음엔 `total` 이었다). 화면은 고른 쪽을 크게 보여주고, 반대 방식은 "다른 방식으로 기록" 링크로 항상 열어 둔다(모드가 기능을 잠그지는 않는다).
 - **타이머 세션 테이블** `study_timer_sessions` — 진행 중 상태가 필요하므로 원장(`study_logs`)과 분리한다. 세션 행은 UPDATE 가능하고, **종료 시점에 `study_logs` 로 1건 INSERT** 된다. append-only 정책은 그대로 지켜진다.
 - 사용자당 **진행 중 세션 1개**(파셜 유니크 `where ended_at is null`). 과목별 타이머란 동시 다중이 아니라 과목을 골라 재는 것이다.
 - 시작 지점: 계획 항목 카드에서 시작(항목·과목·노드 상속) 또는 과목 칩에서 시작(과목만).
