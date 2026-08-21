@@ -1239,6 +1239,17 @@ export async function stopTimerSession(
     return { ok: true, minutes: 0 };
   }
 
+  // ★먼저 세션을 선점한다(claim-first) — SELECT 후 INSERT 사이에 두 번째 종료
+  //   요청이 끼면 기록이 두 벌 남는다. 원장은 append-only 라 지울 수도 없다.
+  const { data: claimed } = await client
+    .from("study_timer_sessions")
+    .update({ ended_at: endedAt, updated_at: endedAt })
+    .eq("session_id", sessionId)
+    .eq("user_id", userId)
+    .is("ended_at", null)
+    .select("session_id");
+  if (!claimed?.length) return { ok: false, error: "이미 종료된 타이머입니다" };
+
   const parts = splitByKstDate(s.startedAt, endedAt, minutes);
   const { data: inserted, error } = await client
     .from("study_logs")
@@ -1258,15 +1269,19 @@ export async function stopTimerSession(
       })),
     )
     .select("log_id");
-  if (error) return { ok: false, error: "기록 저장에 실패했습니다" };
+  if (error) {
+    // 기록이 안 들어갔으면 선점을 되돌려 타이머를 살려 둔다 — 다시 종료하면 된다.
+    await client
+      .from("study_timer_sessions")
+      .update({ ended_at: null, updated_at: new Date().toISOString() })
+      .eq("session_id", sessionId)
+      .eq("user_id", userId);
+    return { ok: false, error: "기록 저장에 실패했습니다" };
+  }
 
   await client
     .from("study_timer_sessions")
-    .update({
-      ended_at: endedAt,
-      log_id: inserted?.[0]?.log_id ?? null,
-      updated_at: endedAt,
-    })
+    .update({ log_id: inserted?.[0]?.log_id ?? null, updated_at: endedAt })
     .eq("session_id", sessionId)
     .eq("user_id", userId);
   return { ok: true, minutes };
