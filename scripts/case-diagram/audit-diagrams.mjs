@@ -72,11 +72,30 @@ async function main() {
   let q = sb
     .from("case_diagrams")
     .select(
-      "diagram_id, facts_md, facts_source_kind, blocks, review_status, cases:case_id ( case_number, decided_at, official_text_md )",
+      "diagram_id, case_id, facts_md, facts_source_kind, blocks, review_status, cases:case_id ( case_number, decided_at, official_text_md )",
     )
     .is("deleted_at", null);
   const { data, error } = await q;
   if (error) throw new Error(error.message);
+
+  // ★하급심 전문은 로컬 캐시가 유일한 소스가 아니다 — 운영 화면에서 적재한 건은
+  //   DB 에만 있다. 초안 생성기(draft-diagrams)는 DB 를 2차 소스로 읽는데 감사가
+  //   안 읽으면, 그 판결문에서 그대로 옮긴 심판 사건번호(1999당2208 등)가 전부
+  //   "원문에 없는 인용" 으로 잡힌다(2026-08-22 실측 90건 전건 오탐).
+  const lowerById = new Map();
+  {
+    const ids = (data ?? []).map((r) => r.case_id).filter(Boolean);
+    for (let i = 0; i < ids.length; i += 150) {
+      const { data: lower, error: lowErr } = await sb
+        .from("case_lower_courts")
+        .select("case_id, body_text")
+        .in("case_id", ids.slice(i, i + 150))
+        .eq("status", "loaded")
+        .is("deleted_at", null);
+      if (lowErr) throw new Error(lowErr.message);
+      for (const l of lower ?? []) lowerById.set(l.case_id, l.body_text ?? "");
+    }
+  }
 
   const rows = (data ?? []).filter((r) =>
     YEAR ? String(r.cases?.decided_at ?? "").startsWith(YEAR) : true,
@@ -89,7 +108,11 @@ async function main() {
   let warn = 0;
   for (const r of rows) {
     const cn = r.cases?.case_number ?? "?";
-    const source = `${r.cases?.official_text_md ?? ""}\n${loadCache(cn)}`;
+    const source = [
+      r.cases?.official_text_md ?? "",
+      loadCache(cn),
+      lowerById.get(r.case_id) ?? "",
+    ].join("\n");
     const msgs = [];
     const blocks = Array.isArray(r.blocks) ? r.blocks : [];
 

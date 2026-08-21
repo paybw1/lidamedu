@@ -37,6 +37,22 @@ const MODEL = "claude-opus-4-7";
 // pricing.ts 와 동일 단가.
 const COST = { inputPerM: 5.0, outputPerM: 25.0 };
 const MIN_OFFICIAL_TEXT = 200;
+// 조각난 판결문 판정 — 구두점·숫자만 남은 짧은 줄의 비율.
+// 실측 분포는 뚜렷한 이봉형(정상 0.00~0.05 / 조각 0.20~0.39)이라 그 사이를 자른다.
+const SCRAMBLE_MAX = 0.15;
+
+/** 좌표 복원 전 추출기가 만든 "조각난 텍스트" 정도(0~1). */
+function scrambleRatio(text) {
+  const lines = text
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (lines.length < 20) return 0;
+  const junk = lines.filter(
+    (l) => l.length <= 3 && /^[\s.,'"“”‘’()[\]0-9-]+$/.test(l),
+  ).length;
+  return junk / lines.length;
+}
 
 const sb = createClient(
   process.env.SUPABASE_URL,
@@ -358,6 +374,30 @@ async function main() {
         text: r.body_text,
         hasFacts: true,
       };
+    }
+  }
+
+  // ★조각난 판결문은 사실관계 소스로 쓰지 않는다.
+  //   좌표 복원 전 추출기로 올린 PDF 는 문장이 조각나고 숫자가 줄 끝으로 밀려 있다
+  //   ("갑 제호증 5(9)"). 그대로 넣으면 날짜·등록번호를 잘못 옮긴 사실관계가 만들어지는데,
+  //   2차는 이 사실관계를 각색해 출제하므로 틀린 채로 학생에게 간다. 원본을 다시 받아
+  //   재추출할 때까지 소스 없음으로 취급한다(쟁점~결론은 대법원 원문이라 영향 없음).
+  const scrambled = [];
+  for (const t of targets) {
+    if (!t.cache?.text) continue;
+    const ratio = scrambleRatio(t.cache.text);
+    if (ratio <= SCRAMBLE_MAX) continue;
+    scrambled.push({ case: t.kase.case_number, ref: t.cache.sourceRef, ratio });
+    t.cache = null;
+  }
+  if (scrambled.length) {
+    console.log(
+      `[제외] 판결문이 조각난 ${scrambled.length}건은 사실관계 소스에서 뺍니다 — 원본 PDF 재투입 후 재생성하세요.`,
+    );
+    for (const s of scrambled) {
+      console.log(
+        `    ${s.case.padEnd(13)} ${s.ref ?? "-"} (조각 비율 ${s.ratio.toFixed(2)})`,
+      );
     }
   }
 

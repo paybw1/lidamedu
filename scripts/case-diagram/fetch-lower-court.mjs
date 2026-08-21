@@ -27,6 +27,7 @@ import { createClient } from "@supabase/supabase-js";
 import fs from "node:fs";
 import path from "node:path";
 
+import { extractPdfText } from "../../app/features/cases/lib/pdf-extract.server.ts";
 import {
   fetchFullText,
   findSerial,
@@ -73,18 +74,28 @@ function scanManualDir(lawCode) {
   const dir = MANUAL_DIRS[lawCode];
   const map = new Map();
   if (!dir || !fs.existsSync(dir)) return map;
-  for (const name of fs.readdirSync(dir).sort()) {
-    if (name.startsWith(".") || name.toLowerCase() === "readme.md") continue;
-    const ext = path.extname(name).toLowerCase();
-    if (![".pdf", ".txt", ".md"].includes(ext)) continue;
-    const key = name.split(/\s+/)[0];
-    if (!/^\d{4}[가-힣]{1,3}\d+$/.test(key)) {
-      console.warn(`  [무시] 파일명 첫 토큰이 사건번호 형식이 아님: ${name}`);
-      continue;
+  // 하위 폴더까지 훑는다 — 원장이 "업로드 불가 모음" 처럼 묶어 두는 경우가 있다.
+  const walk = (d) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      if (e.name.startsWith(".")) continue;
+      const full = path.join(d, e.name);
+      if (e.isDirectory()) {
+        walk(full);
+        continue;
+      }
+      if (e.name.toLowerCase() === "readme.md") continue;
+      const ext = path.extname(e.name).toLowerCase();
+      if (![".pdf", ".txt", ".md"].includes(ext)) continue;
+      const key = e.name.split(/\s+/)[0];
+      if (!/^\d{4}[가-힣]{1,3}\d+$/.test(key)) {
+        console.warn(`  [무시] 파일명 첫 토큰이 사건번호 형식이 아님: ${e.name}`);
+        continue;
+      }
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push({ name: e.name, full, ext });
     }
-    if (!map.has(key)) map.set(key, []);
-    map.get(key).push({ name, full: path.join(dir, name), ext });
-  }
+  };
+  walk(dir);
   return map;
 }
 
@@ -95,21 +106,10 @@ async function readManualFiles(files) {
   for (const f of files) {
     let text = "";
     if (f.ext === ".pdf") {
-      const mupdf = await import("mupdf");
+      // ★추출은 앱과 같은 SSOT 를 쓴다 — 좌표 기반 줄 복원이 거기 들어 있다.
+      //   사본을 두면 배치만 조각난 텍스트를 캐시에 남긴다.
       const bytes = new Uint8Array(fs.readFileSync(f.full));
-      const doc = mupdf.Document.openDocument(bytes, "application/pdf");
-      const pages = [];
-      for (let i = 0; i < doc.countPages(); i++) {
-        pages.push(
-          doc.loadPage(i).toStructuredText("preserve-whitespace").asText(),
-        );
-      }
-      text = pages
-        .join("\n")
-        .replace(/\r\n?/g, "\n")
-        .replace(/[ \t]+\n/g, "\n")
-        .replace(/\n{3,}/g, "\n\n")
-        .trim();
+      text = (await extractPdfText(bytes)).text;
     } else {
       text = fs.readFileSync(f.full, "utf8").trim();
     }
