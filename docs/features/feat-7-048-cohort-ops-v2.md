@@ -2,7 +2,7 @@
 
 > 입력: `source/종합반운영/오프라인 데이터 수정&추가사항.pdf` (원장, 2026-08-21) + 원장 확인 회신 3건(2026-08-21, §7)
 > 선행: feat-7-047 Phase 3 (`docs/plans/phase3-stage1-design.md` · `phase3-completion-report.md`)
-> 상태: **Stage A 완료(2026-08-21) — Stage B 승인 대기**
+> 상태: **Stage A·B 완료(2026-08-21) — Stage C 승인 대기**
 
 ## 0. 무엇을 하는 작업인가
 
@@ -307,7 +307,12 @@ create table if not exists public.student_study_prefs (
 - "N분" 하드코딩 스윕 4파일(상담 화면·계획 화면·기록 화면·캘린더)
 - 검증: typecheck · build · 폴백 제안이 신규 학생에게 여전히 뜨는지 실측 1건 · 2차 반으로 바꿨을 때 민사소송법이 나타나는지
 
-### Stage B · staff 직접 계획 편집
+### Stage B · staff 직접 계획 편집 — ✅ 완료 (2026-08-21)
+
+적용: `scripts/sql/20260821_feat7048_stage_b.sql` + `..._notif_kind.sql`(운영 반영·typegen 완료) · 검증 `tmp/feat7048-verify/stageB.itest.ts` 6/6(테스트 데이터 잔여 0 실측) · typecheck ✅ · build ✅.
+
+★설계에 없던 사실 하나를 발견해 함께 고쳤다 — `study_plans`/`study_plan_items` 의 staff 정책이 `FOR ALL` 이라 **승인본까지 고칠 수 있었다**(편집 화면이 없어 드러나지 않았을 뿐). Stage B 로 화면이 생기므로 select 는 넓게 두고 insert/update/delete 를 `status <> 'approved'` 로 좁혔다. 승인은 security definer RPC 라 이 정책에 걸리지 않는다.
+
 
 - M2 적용
 - `admin/api/study-plan.tsx` — `ensure_editable_plan`·`upsert_plan_item`·`delete_plan_item`·`save_and_approve`(draft→submitted 후 기존 RPC) intent(RLS 클라이언트 사용, adminClient 금지)

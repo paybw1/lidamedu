@@ -334,6 +334,12 @@ export default function StudyPlanScreen({ loaderData }: Route.ComponentProps) {
               v{plan.version}
               {versionCount > 1 ? ` · 이 달 계획 ${versionCount}회 변경` : ""}
             </span>
+            {/* 상담 중에 선생님이 대신 손본 계획임을 밝힌다(feat-7-048 D9). */}
+            {plan.authoredBy ? (
+              <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                상담자가 수정함
+              </span>
+            ) : null}
             {plan.status === "revision_requested" && plan.reviewComment ? (
               <span className="text-xs text-amber-700 dark:text-amber-400">
                 보완 요청: {plan.reviewComment}

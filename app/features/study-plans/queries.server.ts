@@ -203,6 +203,8 @@ export interface StudyPlan {
   baselineLockedAt: string | null;
   plannedWeekdayMinutes: number | null;
   plannedWeekendMinutes: number | null;
+  /** 상담자가 직접 쓴 계획이면 그 staff id — 학생이 쓴 계획은 null(feat-7-048). */
+  authoredBy: string | null;
 }
 
 export interface StudyPlanItem {
@@ -221,7 +223,7 @@ export interface StudyPlanItem {
 }
 
 const PLAN_SELECT =
-  "plan_id, user_id, cohort_id, period_start, period_end, version, root_plan_id, status, submitted_at, reviewed_by, reviewed_at, review_comment, baseline_locked_at, planned_weekday_minutes, planned_weekend_minutes";
+  "plan_id, user_id, cohort_id, period_start, period_end, version, root_plan_id, status, submitted_at, reviewed_by, reviewed_at, review_comment, baseline_locked_at, planned_weekday_minutes, planned_weekend_minutes, authored_by";
 
 function rowToPlan(r: Record<string, unknown>): StudyPlan {
   return {
@@ -240,6 +242,7 @@ function rowToPlan(r: Record<string, unknown>): StudyPlan {
     baselineLockedAt: (r.baseline_locked_at as string | null) ?? null,
     plannedWeekdayMinutes: (r.planned_weekday_minutes as number | null) ?? null,
     plannedWeekendMinutes: (r.planned_weekend_minutes as number | null) ?? null,
+    authoredBy: (r.authored_by as string | null) ?? null,
   };
 }
 
@@ -360,6 +363,75 @@ export async function createPlanRevision(
     if (iErr) throw iErr;
   }
   return created.plan_id;
+}
+
+/**
+ * 상담자가 편집할 계획을 확보한다(feat-7-048 D9).
+ *
+ * 파셜 유니크가 in-flight 1개만 허용하므로 **새로 만들지 않고 있는 것을 편집**하는 것이
+ * 기본이다. 승인본만 있으면 학생의 개정본 만들기와 같은 경로(createPlanRevision)로
+ * v+1 draft 를 뜬다 — 승인본 자체는 건드리지 않는다.
+ */
+export async function ensureEditablePlan(
+  client: SupabaseClient<Database>,
+  input: {
+    userId: string;
+    cohortId: string;
+    periodStart: string;
+    periodEnd: string;
+    staffId: string;
+  },
+): Promise<{ planId: string; origin: "inflight" | "revision" | "new" }> {
+  const { data: rows, error } = await client
+    .from("study_plans")
+    .select("plan_id, status, version")
+    .eq("user_id", input.userId)
+    .eq("period_start", input.periodStart)
+    .order("version", { ascending: false });
+  if (error) throw error;
+
+  const inflight = (rows ?? []).find((r) =>
+    ["draft", "submitted", "revision_requested"].includes(r.status),
+  );
+  if (inflight) {
+    await stampAuthor(client, inflight.plan_id, input.staffId);
+    return { planId: inflight.plan_id, origin: "inflight" };
+  }
+
+  const approved = (rows ?? []).find((r) => r.status === "approved");
+  if (approved) {
+    const planId = await createPlanRevision(client, approved.plan_id, input.userId);
+    await stampAuthor(client, planId, input.staffId);
+    return { planId, origin: "revision" };
+  }
+
+  const { data: created, error: cErr } = await client
+    .from("study_plans")
+    .insert({
+      user_id: input.userId,
+      cohort_id: input.cohortId,
+      period_start: input.periodStart,
+      period_end: input.periodEnd,
+      status: "draft",
+      authored_by: input.staffId,
+    })
+    .select("plan_id")
+    .single();
+  if (cErr) throw cErr;
+  return { planId: created.plan_id, origin: "new" };
+}
+
+/** 상담자가 손댄 계획임을 남긴다 — 운영 게이트가 학생 제출과 갈라 세는 근거. */
+async function stampAuthor(
+  client: SupabaseClient<Database>,
+  planId: string,
+  staffId: string,
+): Promise<void> {
+  const { error } = await client
+    .from("study_plans")
+    .update({ authored_by: staffId, updated_at: new Date().toISOString() })
+    .eq("plan_id", planId);
+  if (error) throw error;
 }
 
 // ── 승인 큐·검토 신호 (staff) ────────────────────────────────────────────────

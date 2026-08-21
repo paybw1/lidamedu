@@ -45,6 +45,8 @@ export const STUDENT_KINDS: NotificationKind[] = [
   "subscription_lapsed",
   // feat-11-008 보완 — 운영자가 개별 발급한 쿠폰(쿠폰함에서 확인).
   "coupon_granted",
+  // feat-7-048 — 상담자가 월간 계획을 직접 수정·승인함.
+  "study_plan_updated_by_staff",
 ];
 
 export function isStaffKind(k: NotificationKind): boolean {

@@ -15,6 +15,7 @@ import adminClient from "~/core/lib/supa-admin-client.server";
 import { roleAtLeast } from "~/core/lib/roles";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Chip } from "~/features/admin/components/admin-ui";
+import { StaffPlanEditor } from "~/features/admin/components/staff-plan-editor";
 import type { CohortExamRound } from "~/features/cohorts/labels";
 import { getCohortById } from "~/features/cohorts/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
@@ -161,6 +162,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
           baselineLockedAt: full.baseline_locked_at,
           plannedWeekdayMinutes: full.planned_weekday_minutes,
           plannedWeekendMinutes: full.planned_weekend_minutes,
+          authoredBy: null,
         },
         approvedItems,
         user.id,
@@ -290,6 +292,9 @@ export default function AdminStudentPlanReview({ loaderData }: Route.ComponentPr
         <div className="space-y-4">
           <PlanReviewPanel
             cohortId={cohort.cohortId}
+            userId={student.profileId}
+            periodStart={periodStart}
+            periodEnd={periodEnd}
             plan={plan}
             versionCount={versionCount}
             items={items}
@@ -660,6 +665,9 @@ function SubjectRow({
 
 function PlanReviewPanel({
   cohortId,
+  userId,
+  periodStart,
+  periodEnd,
   plan,
   versionCount,
   items,
@@ -667,6 +675,9 @@ function PlanReviewPanel({
   hasDiagnostics,
 }: {
   cohortId: string;
+  userId: string;
+  periodStart: string;
+  periodEnd: string;
   plan: LoaderData["plan"];
   versionCount: number;
   items: LoaderData["items"];
@@ -683,7 +694,6 @@ function PlanReviewPanel({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetcher.state, fetcher.data]);
-  void cohortId;
 
   if (!plan) {
     return (
@@ -691,10 +701,21 @@ function PlanReviewPanel({
         <div className="border-b px-4 py-3">
           <h2 className="text-sm font-bold tracking-tight">이번 달 계획</h2>
         </div>
-        <p className="text-muted-foreground py-10 text-center text-xs">
+        <p className="text-muted-foreground px-4 py-8 text-center text-xs">
           학생이 아직 계획을 만들지 않았습니다 — 준수율은 이 달에 대해 평가
           제외(no_plan)로 처리됩니다.
         </p>
+        <StaffPlanEditor
+          cohortId={cohortId}
+          userId={userId}
+          planId={null}
+          status={null}
+          items={[]}
+          weakNodes={[]}
+          periodStart={periodStart}
+          periodEnd={periodEnd}
+          onDone={reload}
+        />
       </section>
     );
   }
@@ -707,6 +728,12 @@ function PlanReviewPanel({
     fetcher.submit(fd, { method: "post", action: API });
   };
 
+  const weakNodeSuggestions =
+    signals?.weakness.topWeakNodes.map((n) => ({
+      nodeId: n.nodeId,
+      displayLabel: n.displayLabel,
+      sub: `정답률 ${n.accuracyPct}%`,
+    })) ?? [];
   const wk = signals?.overload.weekdayRatio ?? null;
   const we = signals?.overload.weekendRatio ?? null;
 
@@ -849,6 +876,30 @@ function PlanReviewPanel({
           {plan.plannedWeekendMinutes !== null ? formatMinutes(plan.plannedWeekendMinutes) : "—"}
         </p>
       ) : null}
+
+      {/* feat-7-048 Stage B — 상담자 직접 편집. 승인본이면 '새 버전으로 수정'만 뜬다. */}
+      <StaffPlanEditor
+        cohortId={cohortId}
+        userId={userId}
+        planId={plan.planId}
+        status={plan.status}
+        items={items.map((it) => ({
+          itemId: it.itemId,
+          priority: it.priority,
+          title: it.title,
+          nodeId: it.nodeId,
+          nodeLabel: it.nodeLabel,
+          activityType: it.activityType,
+          dailyMinutes: it.dailyMinutes,
+          dayScope: it.dayScope,
+          startDate: it.startDate,
+          endDate: it.endDate,
+        }))}
+        weakNodes={weakNodeSuggestions}
+        periodStart={periodStart}
+        periodEnd={periodEnd}
+        onDone={reload}
+      />
     </section>
   );
 }

@@ -85,6 +85,15 @@ export async function loader({ request }: Route.LoaderArgs) {
     .eq("period_start", periodStart)
     .eq("status", "approved")
     .maybeSingle();
+  // 승인본이 있어도 in-flight 개정본은 따로 확인한다 — "새 계획을 짰는데 화면이
+  // 그대로"의 이유를 배너로 설명하기 위해서다(feat-7-048 D10).
+  const { data: inflightRow } = await client
+    .from("study_plans")
+    .select("status")
+    .eq("user_id", user.id)
+    .eq("period_start", periodStart)
+    .in("status", ["draft", "submitted", "revision_requested"])
+    .maybeSingle();
   const activePlan = approvedRow
     ? null
     : await getActivePlan(client, user.id, periodStart);
@@ -124,7 +133,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     })),
     isWeekend: isWeekendDate(date),
     hasApprovedPlan: Boolean(approvedRow),
-    inflightStatus: activePlan?.status ?? null,
+    inflightStatus: (inflightRow?.status as string | undefined) ?? activePlan?.status ?? null,
     expected: expected.map((i) => ({
       itemId: i.itemId,
       title: i.title,
@@ -218,6 +227,12 @@ export default function StudyPlanLog({ loaderData }: Route.ComponentProps) {
         </div>
       </header>
 
+      {hasApprovedPlan && inflightStatus ? (
+        <p className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+          새 계획이 {inflightStatus === "submitted" ? "검토 중입니다" : "작성 중입니다"} — 승인
+          전까지는 현재 승인된 계획으로 기록합니다.
+        </p>
+      ) : null}
       {!hasApprovedPlan ? (
         <p className="text-muted-foreground mb-4 rounded-lg border border-dashed px-3 py-2 text-xs">
           {inflightStatus === "submitted"

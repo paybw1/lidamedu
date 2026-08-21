@@ -12558,6 +12558,7 @@ export type Database = {
           start_date: string
           title: string
           updated_at: string
+          updated_by: string | null
         }
         Insert: {
           activity_type: string
@@ -12574,6 +12575,7 @@ export type Database = {
           start_date: string
           title: string
           updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           activity_type?: string
@@ -12590,6 +12592,7 @@ export type Database = {
           start_date?: string
           title?: string
           updated_at?: string
+          updated_by?: string | null
         }
         Relationships: [
           {
@@ -12613,10 +12616,25 @@ export type Database = {
             referencedRelation: "study_plans"
             referencedColumns: ["plan_id"]
           },
+          {
+            foreignKeyName: "study_plan_items_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "study_plan_items_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
         ]
       }
       study_plans: {
         Row: {
+          authored_by: string | null
           baseline_locked_at: string | null
           cohort_id: string
           created_at: string
@@ -12636,6 +12654,7 @@ export type Database = {
           version: number
         }
         Insert: {
+          authored_by?: string | null
           baseline_locked_at?: string | null
           cohort_id: string
           created_at?: string
@@ -12655,6 +12674,7 @@ export type Database = {
           version?: number
         }
         Update: {
+          authored_by?: string | null
           baseline_locked_at?: string | null
           cohort_id?: string
           created_at?: string
@@ -12674,6 +12694,20 @@ export type Database = {
           version?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "study_plans_authored_by_fkey"
+            columns: ["authored_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "study_plans_authored_by_fkey"
+            columns: ["authored_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
           {
             foreignKeyName: "study_plans_cohort_id_fkey"
             columns: ["cohort_id"]
@@ -15709,6 +15743,7 @@ export type Database = {
         | "security_alert"
         | "broadcast_message"
         | "coupon_granted"
+        | "study_plan_updated_by_staff"
       student_note_visibility: "staff_only" | "share_with_student"
       subjective_kind: "case_based" | "theory" | "mixed"
       subscription_status: "pending" | "active" | "expired" | "cancelled"
@@ -16007,6 +16042,7 @@ export const Constants = {
         "security_alert",
         "broadcast_message",
         "coupon_granted",
+        "study_plan_updated_by_staff",
       ],
       student_note_visibility: ["staff_only", "share_with_student"],
       subjective_kind: ["case_based", "theory", "mixed"],

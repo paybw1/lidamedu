@@ -72,7 +72,7 @@ console.log(`# Phase 3 운영 게이트 — ${month} (${periodStart}~${obsEnd} �
 
 // ── ① 계획 제출률 — submitted 이상(제출 이력 보유) 학생 / 반 학생 ────────────
 const plans = await q(`
-  select user_id, plan_id, status, version, submitted_at, reviewed_at
+  select user_id, plan_id, status, version, submitted_at, reviewed_at, authored_by
   from study_plans
   where user_id in (${ids}) and period_start = '${periodStart}'
   order by user_id, version`);
@@ -84,7 +84,12 @@ const submittedUsers = new Set(
 const approvedByUser = new Map(
   plans.filter((p) => p.status === 'approved').map((p) => [p.user_id, p.plan_id]),
 );
-console.log(`## ① 계획 제출률: ${submittedUsers.size}/${students.length} = ${pct(submittedUsers.size, students.length)} (목표 70%)`);
+// ★feat-7-048 — 상담자가 대신 쓴 계획(authored_by)은 학생 제출이 아니다.
+//   합쳐 세면 게이트 수치의 의미가 측정 도중에 조용히 바뀐다.
+const staffAuthoredUsers = new Set(plans.filter((p) => p.authored_by !== null).map((p) => p.user_id));
+const selfSubmittedUsers = new Set([...submittedUsers].filter((u) => !staffAuthoredUsers.has(u)));
+console.log(`## ① 계획 제출률(학생 자력): ${selfSubmittedUsers.size}/${students.length} = ${pct(selfSubmittedUsers.size, students.length)} (목표 70%)`);
+console.log(`   · 상담자 대필 포함 전체: ${submittedUsers.size}/${students.length} = ${pct(submittedUsers.size, students.length)} · 대필 ${staffAuthoredUsers.size}명`);
 
 // ── ② 일일 기록률 — 기대 항목≥1 인 (학생×날)만 분모. 계획 없는 학생 제외 ────
 const planIds = [...approvedByUser.values()];
