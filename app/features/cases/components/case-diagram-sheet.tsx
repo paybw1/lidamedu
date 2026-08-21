@@ -32,6 +32,7 @@ import {
 } from "~/core/components/ui/sheet";
 import { cn } from "~/core/lib/utils";
 import { MarkdownView } from "~/features/problems/components/markdown-view";
+import { isOldLawLabel } from "~/features/cases/lib/statute-label";
 import { RefPreviewBadge } from "~/features/subjects/components/ref-preview-badge";
 
 import {
@@ -55,8 +56,9 @@ export interface CaseDiagramView {
 type ViewMode = "sheet" | "dialog";
 const VIEW_MODE_KEY = "caseDiagram.viewMode";
 
-// 쟁점 안쪽 4단은 답안 작성 순서 그대로 원문자로 매긴다(원장 요청 2026-08-20).
-const STEP_MARK = ["①", "②", "③", "④"] as const;
+// 쟁점 안쪽 4단은 답안 작성 순서 그대로 번호를 매긴다.
+// ★원문자(①②③④)가 아니라 "1." 형식 — 답안지에 쓰는 표기와 맞춘다(원장 요청 2026-08-21).
+const STEP_MARK = ["1.", "2.", "3.", "4."] as const;
 
 /**
  * 사실관계 본문의 맨 앞 "# 사실관계" 머리글을 떼어낸다.
@@ -178,8 +180,8 @@ export function CaseDiagramSheet({
 function HeaderHint() {
   return (
     <p className="text-muted-foreground text-[11px]">
-      2차 답안 작성 순서 — 사실관계 → 쟁점 → ① 법조문 → ② 법리 → ③ 사안의 포섭 →
-      ④ 결론
+      2차 답안 작성 순서 — 사실관계 → 쟁점 → 1. 법조문 → 2. 법리 → 3. 사안의 포섭 →
+      4. 결론
     </p>
   );
 }
@@ -296,7 +298,7 @@ function DiagramBody({
         </section>
       ) : null}
 
-      {/* 쟁점 단위 블록 — 쟁점마다 ①법조문 ②법리 ③포섭 ④결론 1세트. */}
+      {/* 쟁점 단위 블록 — 쟁점마다 1.법조문 2.법리 3.포섭 4.결론 1세트. */}
       {diagram.blocks.map((b, i) => {
         const axes = filledAxes(b);
         return (
@@ -313,6 +315,13 @@ function DiagramBody({
 
             {b.statutes.length > 0 ? (
               <Step no={0} label="법조문">
+                {/* ★구법 표기는 현행 조문으로 이어진다 — 판결 당시 조문과 내용이 다를 수
+                    있어 밝혀 둔다(원장 지적 2026-08-21). */}
+                {b.statutes.some((s) => isOldLawLabel(s) && statuteArticleIds?.[s]) ? (
+                  <p className="text-muted-foreground mb-1 text-[11px]">
+                    구법 표기를 누르면 현행 조문이 열립니다
+                  </p>
+                ) : null}
                 {/* 표기만으로는 무슨 규정인지 떠올려야 한다 — 해석된 조문은 그 자리에서
                     본문을 펼쳐 볼 수 있게 한다(원장 요청 2026-08-20). */}
                 <div className="flex flex-wrap gap-1">

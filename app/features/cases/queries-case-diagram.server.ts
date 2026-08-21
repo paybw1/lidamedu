@@ -10,6 +10,7 @@ import {
   parseDisplay,
 } from "~/features/laws/lib/identifier";
 
+import { normalizeStatuteLabel } from "./lib/statute-label";
 import {
   parseBlocks,
   parseTimeline,
@@ -118,8 +119,10 @@ export async function resolveStatuteArticleIds(
   if (unique.length === 0) return {};
 
   // 표기 → {lawCode, article_number}. 파싱 실패분은 버린다.
+  // ★판결문 표기를 그대로 옮긴 문자열이라 "구 특허법 …", "… 제1항 본문" 처럼 쓰인다 —
+  //   해석용으로만 정규화한다(원 표기는 화면에 그대로 남는다).
   const parsed = unique.flatMap((raw) => {
-    const ident = parseDisplay(raw);
+    const ident = parseDisplay(normalizeStatuteLabel(raw));
     if (!ident) return [];
     return [{ raw, lawCode: ident.lawCode, number: articleNumberText(ident) }];
   });
