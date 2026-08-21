@@ -9,8 +9,13 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import {
   createPlanRevision,
   resolveLessonNode,
+  discardTimerSession,
   resolveSubjectInput,
+  setRecordMode,
+  startTimerSession,
+  stopTimerSession,
   subjectFromNode,
+  toggleTimerPause,
   upsertSubjectColor,
 } from "~/features/study-plans/queries.server";
 import {
@@ -335,6 +340,110 @@ export async function action({ request }: Route.ActionArgs) {
         return data({ error: "수정할 수 없습니다 (승인된 계획은 수정 불가)" }, { status: 400 });
       }
     }
+    return data({ ok: true });
+  }
+
+  // ── feat-7-048 Stage E — 학습 타이머 ──────────────────────────────────────
+  // 서버는 시각만 기록한다(서버리스라 타이머를 돌릴 수 없다). 경과는 lib/timer 로 재계산.
+
+  if (intent === "start_timer") {
+    const startSchema = z.object({
+      activityType: z.enum([
+        "lecture",
+        "review",
+        "problem",
+        "memorize",
+        "reading",
+        "essay",
+        "other",
+      ]),
+      planItemId: z.string().uuid().optional(),
+      subject: z.string().max(60).optional(),
+    });
+    const parsed = startSchema.safeParse({
+      activityType: fd.get("activityType") || "review",
+      planItemId: fd.get("planItemId") || undefined,
+      subject: fd.get("subject") || undefined,
+    });
+    if (!parsed.success) return data({ error: "입력을 확인해 주세요" }, { status: 400 });
+
+    // 계획 항목에서 시작하면 항목의 노드·과목을 상속한다(기록 규칙과 동일).
+    let nodeId: string | null = null;
+    let subject: { kind: string; code: string } | null = null;
+    if (parsed.data.planItemId) {
+      const { data: item } = await client
+        .from("study_plan_items")
+        .select("node_id, subject_kind, subject_code, activity_type")
+        .eq("item_id", parsed.data.planItemId)
+        .maybeSingle();
+      if (!item) return data({ error: "계획 항목을 찾을 수 없습니다" }, { status: 404 });
+      nodeId = item.node_id;
+      if (item.subject_kind && item.subject_code) {
+        subject = { kind: item.subject_kind, code: item.subject_code };
+      }
+    }
+    if (!subject) {
+      subject = await resolveSubjectInput(client, parsed.data.subject, nodeId);
+    }
+    const res = await startTimerSession(client, {
+      userId: user.id,
+      planItemId: parsed.data.planItemId ?? null,
+      nodeId,
+      subjectKind: subject?.kind ?? null,
+      subjectCode: subject?.code ?? null,
+      activityType: parsed.data.activityType,
+    });
+    if (!res.ok) return data({ error: res.error }, { status: 409 });
+    return data({ ok: true, sessionId: res.sessionId });
+  }
+
+  if (intent === "pause_timer" || intent === "resume_timer") {
+    const sessionId = String(fd.get("sessionId") ?? "");
+    const ok = await toggleTimerPause(
+      client,
+      user.id,
+      sessionId,
+      intent === "pause_timer",
+    );
+    if (!ok) return data({ error: "진행 중인 타이머가 없습니다" }, { status: 400 });
+    return data({ ok: true });
+  }
+
+  if (intent === "stop_timer") {
+    const sessionId = String(fd.get("sessionId") ?? "");
+    const raw = fd.get("minutes");
+    const override = raw ? Number(raw) : null;
+    if (override !== null && (!Number.isInteger(override) || override < 0)) {
+      return data({ error: "시간을 확인해 주세요" }, { status: 400 });
+    }
+    const res = await stopTimerSession(client, user.id, sessionId, override);
+    if (res.needsConfirm) {
+      return data(
+        {
+          needsConfirm: true as const,
+          elapsedMinutes: res.elapsedMinutes,
+          error: "12시간을 넘겼습니다 — 실제 공부한 시간을 확인해 주세요",
+        },
+        { status: 400 },
+      );
+    }
+    if (!res.ok) return data({ error: res.error ?? "종료할 수 없습니다" }, { status: 400 });
+    return data({ ok: true, minutes: res.minutes });
+  }
+
+  if (intent === "discard_timer") {
+    const sessionId = String(fd.get("sessionId") ?? "");
+    const ok = await discardTimerSession(client, user.id, sessionId);
+    if (!ok) return data({ error: "진행 중인 타이머가 없습니다" }, { status: 400 });
+    return data({ ok: true });
+  }
+
+  if (intent === "set_record_mode") {
+    const mode = String(fd.get("recordMode") ?? "");
+    if (mode !== "timer" && mode !== "total") {
+      return data({ error: "기록 방식을 확인해 주세요" }, { status: 400 });
+    }
+    await setRecordMode(client, user.id, mode);
     return data({ ok: true });
   }
 

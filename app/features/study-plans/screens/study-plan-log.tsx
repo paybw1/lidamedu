@@ -33,9 +33,14 @@ import { PlanCalendar } from "~/features/study-plans/components/plan-calendar";
 import { DayTiles } from "~/features/study-plans/components/study-stats/day-tiles";
 import { SubjectSelect } from "~/features/study-plans/components/subject-select";
 import {
+  TimerBar,
+  TimerStartButton,
+} from "~/features/study-plans/components/timer-bar";
+import {
   SUBJECT_COLOR_CLASS,
   resolveSubjectColor,
   subjectName,
+  subjectOptions,
 } from "~/features/study-plans/subject-axis";
 import { subjectTotalsIn } from "~/features/study-plans/lib/study-stats";
 import {
@@ -53,6 +58,8 @@ import {
   listRecentPlanNodes,
   listSubjectColors,
   attachDerivedSubjects,
+  getActiveTimerSession,
+  getRecordMode,
 } from "~/features/study-plans/queries.server";
 
 export const meta: Route.MetaFunction = () => [
@@ -112,16 +119,29 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   // 미니 캘린더 — 보고 있는 날짜가 속한 달 전체의 달성 현황.
   const { monthStart, monthEnd } = monthRangeOf(date);
-  const [rawLogs, monthLogs, weak, recentNodes, levelNodes, colorOverrides] = await Promise.all([
+  const [rawLogs, monthLogs, weak, recentNodes, levelNodes, colorOverrides, timer, recordMode] = await Promise.all([
     listLogsForDate(client, user.id, date),
     listLogsForRange(client, user.id, monthStart, monthEnd),
     getWeakNodes(client, user.id, ["patent", "trademark", "design", "civil"], 5),
     listRecentPlanNodes(client, user.id),
     listLevelBasedNodeSuggestions(client, user.id),
     listSubjectColors(client, user.id),
+    getActiveTimerSession(client, user.id),
+    getRecordMode(client, user.id),
   ]);
   // 과목은 저장값 우선, 없으면 파생(과거 로그) — feat-7-048 D5.
   const logs = await attachDerivedSubjects(client, rawLogs);
+
+  // 진행 중 타이머 — 계획 항목에서 시작했으면 제목을 붙여 보여준다.
+  let timerItemTitle: string | null = null;
+  if (timer?.planItemId) {
+    const { data: ti } = await client
+      .from("study_plan_items")
+      .select("title")
+      .eq("item_id", timer.planItemId)
+      .maybeSingle();
+    timerItemTitle = ti?.title ?? null;
+  }
 
   return {
     date,
@@ -148,6 +168,18 @@ export async function loader({ request }: Route.LoaderArgs) {
     hasApprovedPlan: Boolean(approvedRow),
     inflightStatus: (inflightRow?.status as string | undefined) ?? activePlan?.status ?? null,
     colorOverrides,
+    recordMode,
+    activeTimer: timer
+      ? {
+          sessionId: timer.sessionId,
+          startedAt: timer.startedAt,
+          pausedMs: timer.pausedMs,
+          pausedAt: timer.pausedAt,
+          subjectKind: timer.subjectKind,
+          subjectCode: timer.subjectCode,
+          planItemTitle: timerItemTitle,
+        }
+      : null,
     isFuture: date > todayKST(),
     expected: expected.map((i) => ({
       itemId: i.itemId,
@@ -189,6 +221,8 @@ export default function StudyPlanLog({ loaderData }: Route.ComponentProps) {
     levelNodes,
     colorOverrides,
     isFuture,
+    recordMode,
+    activeTimer,
   } = loaderData;
 
   // 미니 캘린더 — 달성 현황 파생 + 월 이동 링크.
@@ -213,6 +247,19 @@ export default function StudyPlanLog({ loaderData }: Route.ComponentProps) {
       (!l.planItemId || !expected.some((e) => e.itemId === l.planItemId)),
   );
   const totalMinutes = logs.reduce((s, l) => s + l.minutes, 0);
+
+  const reload = useReload();
+  const modeFetcher = useFetcher<{ ok?: true; error?: string }>();
+  useEffect(() => {
+    if (modeFetcher.state === "idle" && modeFetcher.data && "ok" in modeFetcher.data && modeFetcher.data.ok) {
+      reload();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modeFetcher.state, modeFetcher.data]);
+
+  // 타이머는 하나만 돈다 — 진행 중이거나 미래 날짜면 시작 버튼을 감춘다.
+  const canStartTimer = !activeTimer && !isFuture && date === today;
+  const [showTimerChips, setShowTimerChips] = useState(false);
 
   const colorOf = (kind: string | null, code: string | null) =>
     resolveSubjectColor(colorOverrides, kind, code);
@@ -278,6 +325,52 @@ export default function StudyPlanLog({ loaderData }: Route.ComponentProps) {
           </span>
         </div>
       </header>
+
+      {/* 타이머 — 진행 중이면 언제나 맨 위에. 어제 켠 채로 잊었어도 여기서 정리한다. */}
+      {activeTimer ? (
+        <>
+          {activeTimer.startedAt.slice(0, 10) !== today ? (
+            <p className="mb-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+              어제 켜 둔 타이머가 아직 돌고 있습니다 — 실제 공부한 시간으로 종료하거나
+              버려 주세요.
+            </p>
+          ) : null}
+          <TimerBar
+            active={activeTimer}
+            colorOverrides={colorOverrides}
+            onDone={reload}
+          />
+        </>
+      ) : null}
+
+      {/* 기록 방식 — 호불호가 갈려 학생이 고른다(원장 확정). 반대쪽도 늘 열려 있다. */}
+      {!isFuture ? (
+        <div className="mb-4 flex items-center gap-2">
+          <span className="text-muted-foreground text-[11px]">기록 방식</span>
+          <div className="bg-muted/60 inline-flex rounded-lg p-0.5">
+            {(["timer", "total"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => {
+                  const fd = new FormData();
+                  fd.set("intent", "set_record_mode");
+                  fd.set("recordMode", m);
+                  modeFetcher.submit(fd, { method: "post", action: API });
+                }}
+                className={cn(
+                  "rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors",
+                  recordMode === m
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground",
+                )}
+              >
+                {m === "timer" ? "타이머" : "총량 입력"}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {/* 그림2 — 좌: 과목별 시간 / 우: 시각 축 10분 타일 */}
       <section className="bg-card mb-4 rounded-xl border p-3 shadow-sm sm:p-4">
@@ -379,6 +472,8 @@ export default function StudyPlanLog({ loaderData }: Route.ComponentProps) {
                     item={item}
                     log={activeLogByItem.get(item.itemId) ?? null}
                     disabled={isFuture}
+                    canStartTimer={canStartTimer}
+                    onTimerStarted={reload}
                   />
                 ))}
               </ul>
@@ -430,6 +525,42 @@ export default function StudyPlanLog({ loaderData }: Route.ComponentProps) {
       ) : null}
 
       {/* 계획 외 학습 추가 — 여기서만 노드 선택기(미분류 허용) */}
+      {/* 계획에 없는 학습도 타이머로 잰다 — 과목만 고르면 시작한다.
+          고른 기록 방식 쪽을 펼쳐 두고 반대쪽은 한 번 더 눌러 연다(모드가 기능을
+          잠그지는 않는다 — 원장 확정 §7-1). */}
+      {canStartTimer && (recordMode === "timer" || showTimerChips) ? (
+        <div className="mt-4">
+          <p className="text-muted-foreground mb-1.5 text-[11px] font-semibold tracking-wide uppercase">
+            과목 타이머
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {subjectOptions().map((o) => (
+              <TimerStartButton
+                key={`${o.kind}:${o.code}`}
+                activityType="review"
+                subject={`${o.kind}:${o.code}`}
+                label={o.name}
+                onDone={reload}
+                className={cn(
+                  "h-7 px-2 text-[11px]",
+                  SUBJECT_COLOR_CLASS[colorOf(o.kind, o.code)].chip,
+                )}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {canStartTimer && recordMode === "total" && !showTimerChips ? (
+        <button
+          type="button"
+          onClick={() => setShowTimerChips(true)}
+          className="text-link mt-4 block text-xs hover:underline"
+        >
+          타이머로 재기 →
+        </button>
+      ) : null}
+
       {isFuture ? null : (
       <ExtraLogForm
         date={date}
@@ -460,12 +591,17 @@ function ExpectedItemCard({
   item,
   log,
   disabled,
+  canStartTimer,
+  onTimerStarted,
 }: {
   date: string;
   item: ExpectedItem;
   log: LogRow | null;
   /** 미래 날짜 — 미리 완료 처리 금지(서버도 거부한다). */
   disabled: boolean;
+  /** 타이머로 잴 수 있는 상태(진행 중 타이머가 없고 오늘일 때). */
+  canStartTimer: boolean;
+  onTimerStarted: () => void;
 }) {
   const fetcher = useFetcher<{ ok?: true; error?: string }>();
   const reload = useReload();
@@ -533,6 +669,14 @@ function ExpectedItemCard({
             >
               부분
             </Button>
+            {canStartTimer ? (
+              <TimerStartButton
+                planItemId={item.itemId}
+                activityType={item.activityType}
+                label="타이머"
+                onDone={onTimerStarted}
+              />
+            ) : null}
           </div>
         )}
       </div>

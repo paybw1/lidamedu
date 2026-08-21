@@ -34,6 +34,11 @@ import {
 } from "./labels";
 
 import { isValidSubject } from "./subject-axis";
+import {
+  TIMER_MAX_MINUTES,
+  elapsedMs,
+  splitByKstDate,
+} from "./lib/timer";
 
 // ── 진단 ─────────────────────────────────────────────────────────────────────
 
@@ -1066,4 +1071,246 @@ export async function resolveSubjectInput(
     if (kind && code && isValidSubject(kind, code)) return { kind, code };
   }
   return subjectFromNode(client, nodeId);
+}
+
+// ── feat-7-048 Stage E — 학습 타이머 ─────────────────────────────────────────
+
+export interface TimerSession {
+  sessionId: string;
+  planItemId: string | null;
+  nodeId: string | null;
+  subjectKind: string | null;
+  subjectCode: string | null;
+  activityType: PlanActivityType;
+  startedAt: string;
+  pausedMs: number;
+  pausedAt: string | null;
+}
+
+const TIMER_SELECT =
+  "session_id, plan_item_id, node_id, subject_kind, subject_code, activity_type, started_at, paused_ms, paused_at";
+
+function rowToTimer(r: Record<string, unknown>): TimerSession {
+  return {
+    sessionId: r.session_id as string,
+    planItemId: (r.plan_item_id as string | null) ?? null,
+    nodeId: (r.node_id as string | null) ?? null,
+    subjectKind: (r.subject_kind as string | null) ?? null,
+    subjectCode: (r.subject_code as string | null) ?? null,
+    activityType: r.activity_type as PlanActivityType,
+    startedAt: r.started_at as string,
+    pausedMs: r.paused_ms as number,
+    pausedAt: (r.paused_at as string | null) ?? null,
+  };
+}
+
+/** 진행 중 세션(사용자당 최대 1개). 브라우저가 죽어도 여기서 복원한다. */
+export async function getActiveTimerSession(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<TimerSession | null> {
+  const { data, error } = await client
+    .from("study_timer_sessions")
+    .select(TIMER_SELECT)
+    .eq("user_id", userId)
+    .is("ended_at", null)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? rowToTimer(data as Record<string, unknown>) : null;
+}
+
+export async function startTimerSession(
+  client: SupabaseClient<Database>,
+  input: {
+    userId: string;
+    planItemId: string | null;
+    nodeId: string | null;
+    subjectKind: string | null;
+    subjectCode: string | null;
+    activityType: PlanActivityType;
+  },
+): Promise<{ ok: true; sessionId: string } | { ok: false; error: string }> {
+  const { data, error } = await client
+    .from("study_timer_sessions")
+    .insert({
+      user_id: input.userId,
+      plan_item_id: input.planItemId,
+      node_id: input.nodeId,
+      subject_kind: input.subjectKind,
+      subject_code: input.subjectCode,
+      activity_type: input.activityType,
+      started_at: new Date().toISOString(),
+    })
+    .select("session_id")
+    .single();
+  if (error) {
+    // 파셜 유니크 — 이미 돌고 있는 타이머가 있다.
+    if (error.code === "23505") {
+      return { ok: false, error: "이미 진행 중인 타이머가 있습니다" };
+    }
+    return { ok: false, error: "타이머를 시작할 수 없습니다" };
+  }
+  return { ok: true, sessionId: data.session_id };
+}
+
+/** 일시정지 / 재개 — 정지 구간은 공부 시간에서 빠진다. */
+export async function toggleTimerPause(
+  client: SupabaseClient<Database>,
+  userId: string,
+  sessionId: string,
+  pause: boolean,
+): Promise<boolean> {
+  const { data: cur } = await client
+    .from("study_timer_sessions")
+    .select("paused_ms, paused_at")
+    .eq("session_id", sessionId)
+    .eq("user_id", userId)
+    .is("ended_at", null)
+    .maybeSingle();
+  if (!cur) return false;
+  const now = new Date().toISOString();
+  const patch = pause
+    ? { paused_at: cur.paused_at ?? now }
+    : {
+        paused_at: null,
+        paused_ms:
+          cur.paused_ms +
+          (cur.paused_at ? Math.max(0, Date.parse(now) - Date.parse(cur.paused_at)) : 0),
+      };
+  const { data: updated } = await client
+    .from("study_timer_sessions")
+    .update({ ...patch, updated_at: now })
+    .eq("session_id", sessionId)
+    .eq("user_id", userId)
+    .is("ended_at", null)
+    .select("session_id");
+  return Boolean(updated?.length);
+}
+
+export interface StopTimerResult {
+  ok: boolean;
+  /** 상한을 넘어 사람 확인이 필요한 경우 — 화면이 실제 시간을 묻는다. */
+  needsConfirm?: boolean;
+  elapsedMinutes?: number;
+  minutes?: number;
+  error?: string;
+}
+
+/**
+ * 타이머 종료 → 학습 기록 확정.
+ * ★자정을 넘긴 세션은 날짜별로 쪼개 여러 건으로 넣는다(시간표 축이 0~24시).
+ */
+export async function stopTimerSession(
+  client: SupabaseClient<Database>,
+  userId: string,
+  sessionId: string,
+  overrideMinutes: number | null,
+): Promise<StopTimerResult> {
+  const { data: row } = await client
+    .from("study_timer_sessions")
+    .select(TIMER_SELECT)
+    .eq("session_id", sessionId)
+    .eq("user_id", userId)
+    .is("ended_at", null)
+    .maybeSingle();
+  if (!row) return { ok: false, error: "진행 중인 타이머가 없습니다" };
+  const s = rowToTimer(row as Record<string, unknown>);
+
+  const endedAt = new Date().toISOString();
+  const measured = Math.round(
+    elapsedMs({ startedAt: s.startedAt, pausedMs: s.pausedMs, pausedAt: s.pausedAt }, Date.parse(endedAt)) /
+      60_000,
+  );
+  if (overrideMinutes === null && measured > TIMER_MAX_MINUTES) {
+    return { ok: false, needsConfirm: true, elapsedMinutes: measured };
+  }
+  const minutes = Math.min(
+    overrideMinutes ?? measured,
+    TIMER_MAX_MINUTES,
+  );
+
+  // 1분 미만이면 기록을 남기지 않는다(잘못 눌렀다 만 경우).
+  if (minutes <= 0) {
+    await client
+      .from("study_timer_sessions")
+      .update({ ended_at: endedAt, updated_at: endedAt })
+      .eq("session_id", sessionId)
+      .eq("user_id", userId);
+    return { ok: true, minutes: 0 };
+  }
+
+  const parts = splitByKstDate(s.startedAt, endedAt, minutes);
+  const { data: inserted, error } = await client
+    .from("study_logs")
+    .insert(
+      parts.map((p) => ({
+        user_id: userId,
+        log_date: p.logDate,
+        plan_item_id: s.planItemId,
+        node_id: s.nodeId,
+        activity_type: s.activityType,
+        minutes: p.minutes,
+        source: "timer",
+        completion: "full",
+        subject_kind: s.subjectKind,
+        subject_code: s.subjectCode,
+        started_at: p.startedAt,
+      })),
+    )
+    .select("log_id");
+  if (error) return { ok: false, error: "기록 저장에 실패했습니다" };
+
+  await client
+    .from("study_timer_sessions")
+    .update({
+      ended_at: endedAt,
+      log_id: inserted?.[0]?.log_id ?? null,
+      updated_at: endedAt,
+    })
+    .eq("session_id", sessionId)
+    .eq("user_id", userId);
+  return { ok: true, minutes };
+}
+
+/** 기록 없이 버린다 — 켜두고 잊은 타이머. */
+export async function discardTimerSession(
+  client: SupabaseClient<Database>,
+  userId: string,
+  sessionId: string,
+): Promise<boolean> {
+  const now = new Date().toISOString();
+  const { data } = await client
+    .from("study_timer_sessions")
+    .update({ ended_at: now, updated_at: now })
+    .eq("session_id", sessionId)
+    .eq("user_id", userId)
+    .is("ended_at", null)
+    .select("session_id");
+  return Boolean(data?.length);
+}
+
+export type RecordMode = "timer" | "total";
+
+export async function getRecordMode(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<RecordMode> {
+  const { data } = await client
+    .from("student_study_prefs")
+    .select("record_mode")
+    .eq("user_id", userId)
+    .maybeSingle();
+  return (data?.record_mode as RecordMode | undefined) ?? "total";
+}
+
+export async function setRecordMode(
+  client: SupabaseClient<Database>,
+  userId: string,
+  mode: RecordMode,
+): Promise<void> {
+  const { error } = await client.from("student_study_prefs").upsert(
+    { user_id: userId, record_mode: mode, updated_at: new Date().toISOString() },
+    { onConflict: "user_id" },
+  );
+  if (error) throw error;
 }

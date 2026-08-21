@@ -12222,6 +12222,39 @@ export type Database = {
           },
         ]
       }
+      student_study_prefs: {
+        Row: {
+          record_mode: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          record_mode?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          record_mode?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_study_prefs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "student_study_prefs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       student_subject_colors: {
         Row: {
           color_key: string
@@ -12844,6 +12877,93 @@ export type Database = {
           },
           {
             foreignKeyName: "study_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      study_timer_sessions: {
+        Row: {
+          activity_type: string
+          created_at: string
+          ended_at: string | null
+          log_id: string | null
+          node_id: string | null
+          paused_at: string | null
+          paused_ms: number
+          plan_item_id: string | null
+          session_id: string
+          started_at: string
+          subject_code: string | null
+          subject_kind: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activity_type: string
+          created_at?: string
+          ended_at?: string | null
+          log_id?: string | null
+          node_id?: string | null
+          paused_at?: string | null
+          paused_ms?: number
+          plan_item_id?: string | null
+          session_id?: string
+          started_at: string
+          subject_code?: string | null
+          subject_kind?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string
+          ended_at?: string | null
+          log_id?: string | null
+          node_id?: string | null
+          paused_at?: string | null
+          paused_ms?: number
+          plan_item_id?: string | null
+          session_id?: string
+          started_at?: string
+          subject_code?: string | null
+          subject_kind?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_timer_sessions_log_id_fkey"
+            columns: ["log_id"]
+            isOneToOne: false
+            referencedRelation: "study_logs"
+            referencedColumns: ["log_id"]
+          },
+          {
+            foreignKeyName: "study_timer_sessions_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "systematic_nodes"
+            referencedColumns: ["node_id"]
+          },
+          {
+            foreignKeyName: "study_timer_sessions_plan_item_id_fkey"
+            columns: ["plan_item_id"]
+            isOneToOne: false
+            referencedRelation: "study_plan_items"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "study_timer_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "study_timer_sessions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "public_profiles"

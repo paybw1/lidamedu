@@ -2,7 +2,7 @@
 
 > 입력: `source/종합반운영/오프라인 데이터 수정&추가사항.pdf` (원장, 2026-08-21) + 원장 확인 회신 3건(2026-08-21, §7)
 > 선행: feat-7-047 Phase 3 (`docs/plans/phase3-stage1-design.md` · `phase3-completion-report.md`)
-> 상태: **Stage A~D 완료(2026-08-21) — Stage E(타이머) 승인 대기**
+> 상태: **전 단계(A~E) 완료 — 2026-08-21**
 
 ## 0. 무엇을 하는 작업인가
 
@@ -360,7 +360,17 @@ create table if not exists public.student_study_prefs (
 - ‘지난 계획’ 기록 흐리게 구분(D10)
 - 검증: 기존 하네스 `tmp/phase3-verify/` 전량 재실행(append-only·RLS 회귀) + 미래 날짜 거부 1케이스 + 시각 미지정 기록이 총합에 포함되는지
 
-### Stage E · 과목별 타이머
+### Stage E · 과목별 타이머 — ✅ 완료 (2026-08-21)
+
+적용: scripts/sql/20260821_feat7048_stage_e.sql · 검증 tmp/feat7048-verify/stageE.itest.ts 9/9(순수 4 + 운영 DB 5, 잔여 0) · typecheck ✅ · build ✅.
+
+구조 — 서버는 **시각만** 기록한다(서버리스라 타이머를 돌릴 수 없다). 경과는 lib/timer.ts 로 언제든 재계산하므로 브라우저가 죽거나 다른 기기에서 쫓겨나도 값이 복원된다. 일시정지는 paused_ms 누적 + paused_at(정지 중 표시) 두 컬럼으로 잰다.
+
+종료 시 자정을 넘긴 세션은 **벽시계 비율로 날짜별 분할** 후 각각 study_logs 에 INSERT 된다(원장은 그대로 append-only). 12시간을 넘기면 자동 확정하지 않고 실제 시간을 묻는다 — 켜두고 잊은 타이머가 통계를 왜곡하지 않게.
+
+기록 방식(record_mode)은 고른 쪽을 펼쳐 두고 반대쪽은 링크 한 번으로 연다 — 모드가 기능을 잠그지 않는다.
+
+#### 원래 계획(참고)
 
 - M4 적용
 - 세션 시작·일시정지·종료 API(진행 중 1개 제약, 미래 시작 금지, 12시간 상한)
