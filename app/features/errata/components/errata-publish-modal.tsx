@@ -78,8 +78,15 @@ export function ErrataPublishModal({
     for (const rev of d.revisions) {
       for (const fd of rev.fieldDiffs) {
         const diff = diffLines(fd.beforeText.split("\n"), fd.afterText.split("\n"));
-        const removed = diff.filter((l) => l.kind === "removed").map((l) => l.text);
-        const added = diff.filter((l) => l.kind === "added").map((l) => l.text);
+        // 공백만 다른 줄은 버린다 — 끝의 빈 줄 하나 때문에 내용 없는 항목이 발행됐다.
+        const removed = diff
+          .filter((l) => l.kind === "removed")
+          .map((l) => l.text)
+          .filter((t) => t.trim());
+        const added = diff
+          .filter((l) => l.kind === "added")
+          .map((l) => l.text)
+          .filter((t) => t.trim());
         if (removed.length) before.push(...removed);
         if (added.length) after.push(...added);
       }
@@ -105,6 +112,8 @@ export function ErrataPublishModal({
   }, [publishFetcher.state, publishFetcher.data]);
 
   const submitting = publishFetcher.state !== "idle";
+  // 2건 이상 = 항목별 문구를 서버가 채운다(공유 입력칸 숨김).
+  const multi = (d?.revisions?.length ?? 0) > 1;
   const problemContentId = useMemo(
     () => d?.revisions?.find((r) => r.contentType === "mcq" || r.contentType === "essay")?.contentId ?? null,
     [d],
@@ -225,7 +234,20 @@ export function ErrataPublishModal({
               )}
             </div>
 
-            {/* 변경 전/후 — 프리필 후 편집 가능 (§4.1) */}
+            {/* 변경 전/후 — 프리필 후 편집 가능 (§4.1).
+                ★2건 이상이면 문구 입력을 받지 않는다. 입력칸은 하나뿐인데 항목은 여럿이라,
+                그 하나를 모든 항목에 복사하면 각 항목이 다른 항목의 문장까지 싣게 된다
+                (P-5839 가 같은 문장을 두 번 찍었다, 2026-08-21). 이때는 서버가 각 원장
+                기록의 스냅샷에서 항목별로 문구를 뽑는다. */}
+            {multi ? (
+              <div className="border-border bg-muted/30 rounded-lg border px-3 py-2">
+                <p className="text-muted-foreground text-xs">
+                  원장 기록 {d.revisions?.length ?? 0}건을 함께 발행합니다 — 변경 전/후 문구는
+                  항목마다 각자의 스냅샷에서 자동으로 채웁니다. 문구를 직접 다듬으려면 한 건씩
+                  발행하세요.
+                </p>
+              </div>
+            ) : (
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <p className="text-muted-foreground mb-1 text-xs font-semibold">변경 전 (편집 가능)</p>
@@ -246,6 +268,7 @@ export function ErrataPublishModal({
                 />
               </div>
             </div>
+            )}
             <p className="text-muted-foreground text-[11px]">
               문구를 다듬어도 원장의 변경 스냅샷은 원본 그대로 보존됩니다. 묶인 원장 기록{" "}
               {d.revisions?.length ?? 0}건이 함께 발행됩니다.

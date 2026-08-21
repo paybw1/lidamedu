@@ -6,6 +6,7 @@ import { z } from "zod";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { runAfterResponse } from "~/core/lib/wait-until.server";
+import { diffLines } from "~/core/lib/diff-lines";
 import { regenerateForRevisions } from "~/features/errata/pdf/regenerate.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
@@ -242,6 +243,35 @@ export async function loader({ request }: Route.LoaderArgs) {
   });
 }
 
+/**
+ * 한 revision 의 변경 전/후 문구 — 바뀐 줄만 남긴다(발행 모달의 프리필과 같은 규칙).
+ *
+ * ★여러 건을 한 번에 발행할 때 쓴다. 모달은 문구 입력이 하나뿐이라, 그 하나를 N 건에
+ *   그대로 복사하면 각 항목이 "다른 항목의 문장까지" 함께 싣게 된다 — 실제로 P-5839 가
+ *   같은 문장을 두 번 찍었다(원장 신고 2026-08-21). 2건 이상이면 각자의 스냅샷에서 뽑는다.
+ */
+function revisionDiffText(rev: {
+  before_snapshot: unknown;
+  after_snapshot: unknown;
+  changed_fields: string[] | null;
+}): { beforeText: string; afterText: string } {
+  const before: string[] = [];
+  const after: string[] = [];
+  for (const field of diffFields(rev.changed_fields ?? [])) {
+    const b = snapshotFieldText(rev.before_snapshot, field);
+    const a = snapshotFieldText(rev.after_snapshot, field);
+    const diff = diffLines(b.split("\n"), a.split("\n"));
+    // ★공백만 다른 줄은 버린다 — 본문 끝 빈 줄 하나가 바뀌어도 "변경"으로 잡혀
+    //   내용 없는 정오표 항목(변경 전 — / 변경 후 —)이 발행됐다(P-5839, 2026-08-21).
+    const text = (l: { text: string }) => l.text;
+    before.push(...diff.filter((l) => l.kind === "removed").map(text).filter((t) => t.trim()));
+    after.push(...diff.filter((l) => l.kind === "added").map(text).filter((t) => t.trim()));
+  }
+  const cut = (v: string) =>
+    v.length > MAX_FIELD_TEXT ? v.slice(0, MAX_FIELD_TEXT) + "\n…(생략)" : v;
+  return { beforeText: cut(before.join("\n")), afterText: cut(after.join("\n")) };
+}
+
 const publishSchema = z.object({
   revisionIds: z.array(z.string().uuid()).min(1).max(30),
   kind: z.enum(ERRATA_KINDS.map((k) => k.value) as [string, ...string[]]),
@@ -293,20 +323,53 @@ export async function action({ request }: Route.ActionArgs) {
   }
   const p = parsed.data;
 
-  const { data: published, error } = await client.rpc("fn_publish_errata", {
-    p_revision_ids: p.revisionIds,
-    p_errata_kind: p.kind,
-    p_errata_severity: p.severity,
-    p_errata_title: p.title,
-    p_errata_payload: {
-      before_text: p.beforeText,
-      after_text: p.afterText,
-      regrade_requested: p.regrade,
-    },
-    p_errata_reason: p.reason || "",
-  });
-  if (error) return data({ ok: false, error: error.message }, { status: 400 });
-  const publishedIds = (published ?? []) as string[];
+  // ★내용 없는 항목은 발행하지 않는다 — 공백만 바뀐 변경이 "변경 전 — / 변경 후 —" 로
+  //   찍혀 수험생에게 빈 항목이 배포됐다(P-5839, 2026-08-21). 2건 이상은 서버가
+  //   항목별로 문구를 채우므로 이 검사를 건너뛴다.
+  if (p.revisionIds.length === 1 && !p.beforeText.trim() && !p.afterText.trim()) {
+    return data(
+      { ok: false, error: "변경 전·후 문구가 모두 비어 있습니다. 공백만 달라진 변경은 발행 대상이 아닙니다." },
+      { status: 400 },
+    );
+  }
+
+  // ★문구는 revision 마다 따로 싣는다. 하나를 N 건에 복사하면 각 항목이 다른 항목의
+  //   문장까지 함께 찍는다(P-5839 중복 문장, 2026-08-21). 1건이면 입력한 문구 그대로.
+  const single = p.revisionIds.length === 1;
+  let snapshots: Array<{
+    revision_id: string;
+    before_snapshot: unknown;
+    after_snapshot: unknown;
+    changed_fields: string[] | null;
+  }> = [];
+  if (!single) {
+    const { data: rows, error: snapErr } = await client
+      .from("content_revisions")
+      .select("revision_id, before_snapshot, after_snapshot, changed_fields")
+      .in("revision_id", p.revisionIds);
+    if (snapErr) return data({ ok: false, error: snapErr.message }, { status: 400 });
+    snapshots = rows ?? [];
+  }
+
+  const publishedIds: string[] = [];
+  for (const revisionId of p.revisionIds) {
+    const snap = snapshots.find((r) => r.revision_id === revisionId);
+    const text = single || !snap ? { beforeText: p.beforeText, afterText: p.afterText } : revisionDiffText(snap);
+    const { data: published, error } = await client.rpc("fn_publish_errata", {
+      p_revision_ids: [revisionId],
+      p_errata_kind: p.kind,
+      p_errata_severity: p.severity,
+      p_errata_title: p.title,
+      p_errata_payload: {
+        before_text: text.beforeText,
+        after_text: text.afterText,
+        regrade_requested: p.regrade,
+      },
+      p_errata_reason: p.reason || "",
+    });
+    if (error) return data({ ok: false, error: error.message }, { status: 400 });
+    publishedIds.push(...((published ?? []) as string[]));
+  }
   if (publishedIds.length === 0) {
     return data({ ok: false, error: "발행된 항목이 없습니다 (이미 발행되었거나 대상 아님)" }, { status: 409 });
   }
