@@ -930,6 +930,8 @@ function PlanReviewPanel({
           dayScope: it.dayScope,
           startDate: it.startDate,
           endDate: it.endDate,
+          subjectKind: it.subjectKind,
+          subjectCode: it.subjectCode,
         }))}
         weakNodes={weakNodeSuggestions}
         periodStart={periodStart}

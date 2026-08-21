@@ -1,6 +1,6 @@
 // feat-7-048 D6 — 과목 색 지정. 팔레트 키만 저장한다(hex 금지 — 다크 모드 정합).
 // 계획 항목 탭에 두고, 여기서 고른 색이 공부 통계·하루 상세 타일에 그대로 쓰인다.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useFetcher } from "react-router";
 
 import { cn } from "~/core/lib/utils";
@@ -26,6 +26,12 @@ export function SubjectColorBar({
 }) {
   const fetcher = useFetcher<{ ok?: true; error?: string }>();
   const [open, setOpen] = useState<string | null>(null);
+  useEffect(() => {
+    if (fetcher.state === "idle" && fetcher.data && "ok" in fetcher.data && fetcher.data.ok) {
+      onSaved();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetcher.state, fetcher.data]);
   if (subjects.length === 0) return null;
 
   const colorOf = (kind: string, code: string): SubjectColorKey => {
@@ -42,8 +48,7 @@ export function SubjectColorBar({
     fd.set("colorKey", colorKey);
     fetcher.submit(fd, { method: "post", action: API });
     setOpen(null);
-    // 저장 후 화면 갱신은 호출자가 한다(로더 재실행).
-    setTimeout(onSaved, 300);
+    // 갱신은 위 effect 에서 — 응답 전에 로더를 다시 돌리면 옛 색이 그대로 온다.
   };
 
   return (

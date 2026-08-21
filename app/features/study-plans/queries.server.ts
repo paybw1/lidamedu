@@ -367,6 +367,10 @@ export async function createPlanRevision(
         day_scope: i.dayScope,
         start_date: i.startDate,
         end_date: i.endDate,
+        // ★과목 축도 함께 복사한다 — 빠뜨리면 자연과학 항목은 노드가 없어
+        //   조회 파생으로도 못 살리고 영구 미분류가 된다(feat-7-048 D5).
+        subject_kind: i.subjectKind,
+        subject_code: i.subjectCode,
         is_locked: false,
       })),
     );

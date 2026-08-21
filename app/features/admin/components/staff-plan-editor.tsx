@@ -14,6 +14,7 @@ import {
   NodePicker,
   type NodeSuggestion,
 } from "~/features/study-plans/components/node-picker";
+import { SubjectSelect } from "~/features/study-plans/components/subject-select";
 import {
   DAY_SCOPE_LABEL,
   PLAN_ACTIVITY_LABEL,
@@ -35,6 +36,8 @@ export interface EditableItem {
   dayScope: DayScope;
   startDate: string;
   endDate: string;
+  subjectKind: string | null;
+  subjectCode: string | null;
 }
 
 interface Res {
@@ -350,6 +353,13 @@ function ItemForm({
           </div>
         </div>
       </div>
+
+      {/* 자연과학·기타는 단원에서 파생할 근거가 없어 직접 고른다(feat-7-048 D5) */}
+      <SubjectSelect
+        defaultKind={item?.subjectKind}
+        defaultCode={item?.subjectCode}
+        hint="(자연과학·기타는 직접)"
+      />
 
       {/* 노드 미연결 허용(E1) — 약점 회피 신호는 노드가 있어야 잡힌다 */}
       <NodePicker

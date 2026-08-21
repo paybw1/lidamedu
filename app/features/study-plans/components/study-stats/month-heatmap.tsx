@@ -130,7 +130,7 @@ export function MonthHeatmap({
         {LEVEL_CLASS.map((c, i) => (
           <span key={i} className={cn("size-3 rounded-sm", c)} />
         ))}
-        <span>{formatMinutesCompact(STUDY_HEATMAP_STEPS[2])}+</span>
+        <span>{formatMinutesCompact(STUDY_HEATMAP_STEPS[3])}+</span>
       </div>
     </div>
   );
