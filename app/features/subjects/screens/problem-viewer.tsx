@@ -1186,7 +1186,10 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                     />
                   </div>
                 ) : null}
-                {/* 체계도 위치 — 배치 노드의 번호+제목 경로(루트→소분류). 노드 뷰어로 이동. */}
+                {/* 체계도 위치 — 배치 노드의 번호+제목 경로(루트→소분류).
+                    ★문제 탭의 좌측 체계도로 보낸다 — 단원 뷰어(/systematic/:id)로 보내면
+                    조문 본문 화면이 열려, 문제를 보다 단원을 누른 사람이 조문 쪽으로
+                    떨어진다(원장 지적 2026-08-21). 부모 노드는 subtree 로 묶여 필터된다. */}
                 {placementChain.length > 0 ? (
                   <div
                     className="mb-2 flex flex-wrap items-center gap-1"
@@ -1198,7 +1201,9 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                           <ChevronRightIcon className="text-muted-foreground/50 size-3 flex-none" />
                         ) : null}
                         <Link
-                          to={`/subjects/${subject.slug}/systematic/${n.nodeId}`}
+                          to={`/subjects/${subject.slug}?tab=${
+                            isSubjectiveProblem ? "subjective" : "problems"
+                          }&node=${n.nodeId}`}
                           className="border-border/60 bg-muted/40 text-foreground/80 hover:bg-muted inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium"
                           title={`체계도 — ${n.displayLabel}`}
                         >
