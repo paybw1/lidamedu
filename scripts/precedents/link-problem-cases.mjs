@@ -1,19 +1,21 @@
 // 문항 ↔ 판례 상호 링크 + 중요도 재산정 — 과목 공용 (원장 지시 2026-08-21).
 //
-// link-civil-problem-cases.mjs 를 민법 외 과목으로 일반화한 것. 민법에서 쓴 것과
-// 같은 기준을 특허·상표·디자인에 적용한다.
+// link-civil-problem-cases.mjs 를 과목 공용으로 일반화한 것.
 //
 //   ① 문항의 지문·선지·해설에서 사건번호를 뽑아 그 과목 판례와 매칭 → problem_case_links insert
 //      (relation_type='cited' 한 방향만 저장, 조회에서 양방향 — 개발 원칙 Layer 2-9)
-//   ② 인용 문항 수로 중요도 재산정 — 1회 이하 = 미부여(NULL) / 2~3 = ★1 / 4~5 = ★2 / 6+ = ★3
+//   ② (--importance) 인용 문항 수로 중요도 재산정
+//      1회 이하 = 미부여(NULL) / 2~3 = ★1 / 4~5 = ★2 / 6+ = ★3
 //
-// ★②는 기존 중요도를 덮어쓴다. 상표·디자인의 현재 값은 사실상 전건 ★1 기본값이지만,
-//   특허의 ★3 45건은 교재 기반 큐레이션으로 보인다 — 반영 전 백업 JSON 을 남긴다.
+// ★★②는 민법 전용이다 — 원장 확정 2026-08-21 "기출 인용으로 제한하는 건 민법만".
+//   특허·상표·디자인 판례는 교재 주제배치로 적재한 것이라 중요도도 교재 기반이다.
+//   인용 횟수로 덮으면 안 된다: 실제로 한 번 적용했다가 상표 356건 중 321건이
+//   미부여가 되어 백업으로 되돌렸다. 이 과목들은 --importance 없이 링크만 돌린다.
 // ★링크는 멱등(이미 있으면 건너뜀). 문항을 추가 적재하면 다시 돌린다.
 //
-//   node scripts/precedents/link-problem-cases.mjs --law patent               # dry-run(링크+중요도)
-//   node scripts/precedents/link-problem-cases.mjs --law patent --apply       # 링크만 반영
-//   node scripts/precedents/link-problem-cases.mjs --law patent --apply --importance
+//   node scripts/precedents/link-problem-cases.mjs --law patent            # dry-run
+//   node scripts/precedents/link-problem-cases.mjs --law patent --apply    # 링크만 (민법 외는 이것만)
+//   node scripts/precedents/link-problem-cases.mjs --law civil --apply --importance
 import "dotenv/config";
 import fs from "node:fs";
 import path from "node:path";
