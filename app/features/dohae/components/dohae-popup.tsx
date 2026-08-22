@@ -114,7 +114,24 @@ function columnPercents(
   );
   if (w.some((x) => x <= 0)) return null;
   const total = w.reduce((a, b) => a + b, 0);
-  return w.map((x) => Math.round((x / total) * 1000) / 10);
+  const pct = w.map((x) => (x / total) * 100);
+  // ★아주 좁은 열에 바닥을 깐다 — 교재는 라벨을 세로로 한 글자씩 쌓는 열을 폭의 2~3%
+  //   로 잡는데(참고 1.3 「요건」·25 보정 「요건」), 화면에서 그만큼이면 여백과 테두리를
+  //   빼고 글자 하나도 못 담아 낱말이 표 밖으로 밀린다(원장 보고 2026-08-22).
+  //   글자 하나(≈14px) + 좁은 열 여백(4px×2) + 테두리를 담는 최소치.
+  const MIN_PCT = 4;
+  const short = pct.filter((x) => x < MIN_PCT);
+  if (short.length > 0 && short.length < pct.length) {
+    const need = short.reduce((a, x) => a + (MIN_PCT - x), 0);
+    const spare = pct.reduce((a, x) => a + (x >= MIN_PCT ? x - MIN_PCT : 0), 0);
+    if (spare > need)
+      for (let i = 0; i < pct.length; i++)
+        pct[i] =
+          pct[i] < MIN_PCT
+            ? MIN_PCT
+            : pct[i] - ((pct[i] - MIN_PCT) / spare) * need;
+  }
+  return pct.map((x) => Math.round(x * 10) / 10);
 }
 
 // ★칸 서식(음영·가운데·굵게)은 **원본 값 그대로** 쓴다. 글자수·열 위치로 짐작하던
@@ -228,6 +245,17 @@ function DohaeTable({ cells }: { cells: DohaeCell[][] }) {
   // 열 비율 — 원본 그대로. ★table-layout:fixed 를 함께 걸어야 비율이 선다
   // (auto 면 브라우저가 내용 길이로 다시 나눠 버린다).
   const colPct = columnPercents(cells, startCols);
+  // 이 칸이 차지하는 가로 비율(%) — 좁은 열은 여백을 줄여 글자 자리를 확보한다.
+  const NARROW_PCT = 12;
+  const pctOf = (ri: number, ci: number) => {
+    if (!colPct) return 100;
+    const start = startCols[ri]?.[ci] ?? 0;
+    const span = cells[ri][ci].colSpan;
+    let sum = 0;
+    for (let k = start; k < Math.min(colPct.length, start + span); k++)
+      sum += colPct[k];
+    return sum;
+  };
   return (
     <div className="overflow-x-auto">
       <table
@@ -247,20 +275,26 @@ function DohaeTable({ cells }: { cells: DohaeCell[][] }) {
               {row.map((c, ci) => {
                 // 첫 행의 음영 칸만 머리글로 — 그 밖은 전부 본문 칸(서식은 아래 클래스로).
                 const Tag = ri === 0 && c.shade ? "th" : "td";
+                const narrow = (col: number) => pctOf(ri, col) < NARROW_PCT;
                 return (
                   <Tag
                     key={ci}
                     colSpan={c.colSpan > 1 ? c.colSpan : undefined}
                     rowSpan={c.rowSpan > 1 ? c.rowSpan : undefined}
                     className={cn(
-                      "border-border border px-2.5 py-1.5 text-left leading-[1.65] font-normal whitespace-pre-wrap",
+                      "border-border border py-1.5 text-left leading-[1.65] font-normal whitespace-pre-wrap",
+                      // ★좁은 열은 좌우 여백을 줄인다 — 교재는 라벨 열을 화면 폭의 5% 안팎
+                      //   으로 잡는데(71 비교표의 바깥 라벨 4.6% ≈ 41px), 여기에 10px 씩
+                      //   여백을 주면 글자 자리가 20px 밖에 안 남아 낱말이 표 밖으로 밀린다
+                      //   (원장 보고 2026-08-22 「적법성심리」·「신청/청구」).
+                      narrow(ci) ? "px-1" : "px-2.5",
                       // ★한 낱말이 칸보다 길면 그 낱말만은 잘라 접는다 — 없으면 글자가 표
                       //   밖으로 삐져나온다. 원본 열 비율이 라벨 열을 아주 좁게 잡는 표가
                       //   있다(41 존속기간 조문 비교표의 첫 열은 폭의 5.7%뿐).
                       // ★임의 속성으로 쓴다 — `break-words` 로 쓰면 tailwind-merge 가
-                    //   `break-keep` 과 같은 그룹으로 보고 지워 버린다(2026-08-22 실측:
-                    //   twMerge("break-words","break-keep") → "break-keep").
-                    "[overflow-wrap:anywhere]",
+                      //   `break-keep` 과 같은 그룹으로 보고 지워 버린다(2026-08-22 실측:
+                      //   twMerge("break-words","break-keep") → "break-keep").
+                      "[overflow-wrap:anywhere]",
                       // 조문 비교표에서 항 단위로 쪼갠 행 — 이어지는 자리의 가로줄을 지운다.
                       // (border-collapse 라 위·아래 양쪽을 다 지워야 사라진다)
                       c.contRow && "border-t-0",
