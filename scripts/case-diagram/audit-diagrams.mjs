@@ -35,16 +35,22 @@ const ASSERTIONS = [
   /다수설/,
   /학계의?\s*일반적인?\s*견해/,
 ];
-// audit-essay-answers.mjs 의 ACADEMIC_TERMS 와 같은 취지.
-const ACADEMIC_TERMS = ["주합발명", "조합발명", "주지관용기술의 부가"];
-// 사실관계에 있으면 안 되는 판단·결론 표현.
+// audit-essay-answers.mjs 의 ACADEMIC_TERMS 와 같은 취지 — 목록도 같아야 한다.
+// ★"주지관용기술의 부가·삭제·변경" 을 넣었다가 4건이 전부 오탐이었다(2026-08-22).
+//   이건 강학상 분류용어가 아니라 **대법원이 쓰는 판시 문구**다(확대된 선출원 §29③ 의
+//   발명 동일성 판단 법리). 4건 모두 그 판결 원문에 그대로 있었다. 넣지 말 것.
+const ACADEMIC_TERMS = ["주합발명", "조합발명"];
+// 사실관계에 있으면 안 되는 **이 사건의** 판단·결론 표현.
 const VERDICT_IN_FACTS = [
   /법원은[^.]{0,40}판단하[였였]/,
-  /파기\s*환송/,
-  /상고를\s*기각/,
   /쟁점은/,
   /결론적으로/,
 ];
+// ★"파기환송"·"상고 기각" 은 단어만으로 판정할 수 없다 — 사실관계에는 **종전 소송 경과**가
+//   들어가는 게 정상이고("2004. 10. 28. 대법원 파기환송"), 그건 이 사건의 결론이 아니다.
+//   그래서 같은 문장에 날짜나 사건번호가 없을 때만 이 사건의 결론이 샌 것으로 본다.
+const VERDICT_WORDS = /파기\s*환송|상고를\s*기각/;
+const HISTORY_MARK = /\d{4}\.\s*\d{1,2}\.|\d{2,4}[가-힣]{1,3}\d+/;
 
 function loadCache(caseNumber) {
   const p = path.join(CACHE_DIR, `${caseNumber}.json`);
@@ -162,6 +168,14 @@ async function main() {
     for (const re of VERDICT_IN_FACTS) {
       const m = (r.facts_md ?? "").match(re);
       if (m) msgs.push(["WARN", `사실관계에 판단·결론 표현: "${m[0]}"`]);
+    }
+    // ★문장 분리를 마침표로 하면 안 된다 — 날짜가 "2008. 4. 24." 라 토막나면서
+    //   경과 문장에서 날짜가 떨어져 나가 오탐이 된다. 사실관계는 줄 단위 목록이라 줄로 자른다.
+    for (const sentence of String(r.facts_md ?? "").split(/\n/)) {
+      const m = sentence.match(VERDICT_WORDS);
+      if (m && !HISTORY_MARK.test(sentence)) {
+        msgs.push(["WARN", `사실관계에 이 사건의 결론: "${m[0]}"`]);
+      }
     }
 
     const f = msgs.filter((m) => m[0] === "FAIL").length;
