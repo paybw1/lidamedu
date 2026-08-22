@@ -53,6 +53,33 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   const url = new URL(request.url);
   const type = url.searchParams.get("type");
+
+  // 하위법령(시행령·시행규칙) 조문 — 본문에서 "시행령 제9조" 처럼 이름·번호로만 알 수 있어
+  // uuid 가 아니라 법령명 + 조문번호로 찾는다. 학습화면은 없다(참조 법령).
+  if (type === "ordinance") {
+    const lawName = url.searchParams.get("law")?.trim();
+    const articleNo = url.searchParams.get("article")?.trim();
+    if (!lawName || !articleNo || !/^\d+(?:의\d+)?$/.test(articleNo))
+      return data({ error: "Invalid ordinance ref" }, { status: 400 });
+    const { data: row } = await client
+      .from("reference_articles")
+      .select("article_number, title, content_md, reference_laws!inner(law_name)")
+      .eq("reference_laws.law_name", lawName)
+      .eq("article_number", articleNo)
+      .maybeSingle();
+    if (!row)
+      return data(
+        { error: `${lawName} 제${articleNo}조를 찾지 못했습니다.` },
+        { status: 404 },
+      );
+    return data({
+      kind: "article" as const,
+      heading: `${lawName} 제${row.article_number}조${row.title ? ` (${row.title})` : ""}`,
+      bodyMd: row.content_md ?? "",
+      studyDisabled: true,
+    });
+  }
+
   const id = url.searchParams.get("id");
   if (!id || !/^[0-9a-f-]{36}$/.test(id))
     return data({ error: "Invalid id" }, { status: 400 });

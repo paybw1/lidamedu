@@ -30,12 +30,16 @@ interface PreviewData {
 export function RefPreviewBadge({
   kind,
   refId,
+  query,
   label,
   studyHref,
   testId,
 }: {
-  kind: "article" | "case" | "reference";
-  refId: string;
+  kind: "article" | "case" | "reference" | "ordinance";
+  /** uuid 로 지정하는 경우. 하위법령처럼 id 를 모르면 query 로 넘긴다. */
+  refId?: string;
+  /** "law=상표법 시행령&article=9" — 이름·번호로 찾는 경우(하위법령). */
+  query?: string;
   label: string;
   /** 학습화면이 없는 참조(참조 법령 조문 등)는 넘기지 않는다 — 버튼을 내지 않는다. */
   studyHref?: string;
@@ -45,7 +49,9 @@ export function RefPreviewBadge({
   const fetcher = useFetcher<PreviewData>();
   useEffect(() => {
     if (open && fetcher.state === "idle" && !fetcher.data) {
-      fetcher.load(`/api/problems/ref-preview?type=${kind}&id=${refId}`);
+      fetcher.load(
+        `/api/problems/ref-preview?type=${kind}&${query ?? `id=${refId}`}`,
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -69,7 +75,8 @@ export function RefPreviewBadge({
         <DialogContent className="flex max-h-[80vh] max-w-2xl flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle className="pr-6 text-base leading-snug">
-              {d?.heading ?? (kind === "article" ? `조문 ${label}` : `판례 ${label}`)}
+              {d?.heading ??
+                (kind === "case" ? `판례 ${label}` : `조문 ${label}`)}
             </DialogTitle>
           </DialogHeader>
           <div className="-mr-2 flex-1 space-y-4 overflow-y-auto pr-2">

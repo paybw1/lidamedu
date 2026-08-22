@@ -24,6 +24,7 @@ import {
   inlineTokenLength,
   walkBlocks,
 } from "~/features/blanks/lib/blank-layout";
+import { RefPreviewBadge } from "~/features/subjects/components/ref-preview-badge";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
 interface ArticleBodyContext {
@@ -765,7 +766,15 @@ type TextPart =
       subItem?: string;
     }
   | { type: "annotation"; text: string }
-  | { type: "amendment"; text: string };
+  | { type: "amendment"; text: string }
+  // 하위법령(시행령·시행규칙) 조문 — 본법 조문이 아니다. 팝업으로만 보여준다.
+  | {
+      type: "oref";
+      raw: string;
+      ordinance: "시행령" | "시행규칙";
+      article: number;
+      branch?: number;
+    };
 
 interface RawMatch {
   start: number;
@@ -822,6 +831,28 @@ function splitInlineParts(
       (localAt < 0 || localAt < foreignAt)
     )
       continue;
+    // ★하위법령 컨텍스트 — "시행령 제9조" 는 본법 제9조가 아니다.
+    //   종전엔 수식어를 못 보고 본법 조문으로 링크해 엉뚱한 조문으로 보냈다
+    //   (원장 오류신고 2026-08-22: 상표법 시행령 제9조 → 상표법 제9조).
+    //   본법 이름이 뒤에 다시 나오면(“…시행령 제3조 및 상표법 제9조”) 그쪽이 우선한다.
+    const ordMatch = [...recent.matchAll(/시행규칙|시행령|대통령령|총리령|부령/g)].pop();
+    const ordAt = ordMatch?.index ?? -1;
+    if (ordAt >= 0 && ordAt > localAt) {
+      matches.push({
+        start: m.index,
+        end: m.index + m[0].length,
+        part: {
+          type: "oref",
+          raw: m[0],
+          ordinance: /시행규칙|총리령|부령/.test(ordMatch?.[0] ?? "")
+            ? "시행규칙"
+            : "시행령",
+          article: Number(m[1]),
+          branch: m[2] ? Number(m[2]) : undefined,
+        },
+      });
+      continue;
+    }
     matches.push({
       start: m.index,
       end: m.index + m[0].length,
@@ -898,6 +929,42 @@ function splitInlineParts(
     out.push({ type: "text", text: text.slice(cursor) });
   }
   return out;
+}
+
+// 과목 → 하위법령 이름. reference_laws.law_name 과 정확히 같아야 조회된다.
+const ORDINANCE_LAW_NAME: Record<string, string> = {
+  patent: "특허법",
+  trademark: "상표법",
+  design: "디자인보호법",
+};
+
+/**
+ * 하위법령(시행령·시행규칙) 조문 — 본법 학습화면으로 보내지 않고 **팝업으로만** 보여준다.
+ * 참조 법령이라 학습 대상이 아니다([[reference-laws]] 규칙).
+ */
+function OrdinanceRefLink({
+  raw,
+  ordinance,
+  article,
+  branch,
+}: {
+  raw: string;
+  ordinance: "시행령" | "시행규칙";
+  article: number;
+  branch?: number;
+}) {
+  const { lawCode, insideSubArticle } = useContext(Ctx);
+  const base = lawCode ? ORDINANCE_LAW_NAME[lawCode] : null;
+  if (!base || insideSubArticle) return <Fragment>{raw}</Fragment>;
+  const articleKey = `${article}${branch ? `의${branch}` : ""}`;
+  return (
+    <RefPreviewBadge
+      kind="ordinance"
+      query={`law=${encodeURIComponent(`${base} ${ordinance}`)}&article=${encodeURIComponent(articleKey)}`}
+      label={raw}
+      testId="ordinance-ref"
+    />
+  );
 }
 
 function KoreanRefLink({
@@ -1069,6 +1136,21 @@ function InlineNode({
                   />
                 );
               }
+            } else if (p.type === "oref") {
+              partLen = p.raw.length;
+              rendered = partHasBlankHit(partStart, partLen) ? (
+                <Fragment key={i}>
+                  {renderTextWithBlanks(p.raw, partStart)}
+                </Fragment>
+              ) : (
+                <OrdinanceRefLink
+                  key={i}
+                  raw={p.raw}
+                  ordinance={p.ordinance}
+                  article={p.article}
+                  branch={p.branch}
+                />
+              );
             } else if (p.type === "amendment") {
               partLen = p.text.length;
               if (partHasBlankHit(partStart, partLen)) {

@@ -39,6 +39,14 @@ const TARGETS = [
   { name: "변리사법", aliases: [] },
   { name: "소송촉진 등에 관한 특례법", aliases: ["소송촉진법"] },
   { name: "식품위생법", aliases: [] },
+  // 하위법령(시행령·시행규칙) — 본법 조문이 위임 사항을 가리킬 때 인용한다(원장 오류신고
+  // 2026-08-22: "시행령 제9조"가 상표법 제9조로 링크). 학습 대상이 아니므로 여기에 둔다.
+  { name: "특허법 시행령", aliases: [] },
+  { name: "특허법 시행규칙", aliases: [] },
+  { name: "상표법 시행령", aliases: [] },
+  { name: "상표법 시행규칙", aliases: [] },
+  { name: "디자인보호법 시행령", aliases: [] },
+  { name: "디자인보호법 시행규칙", aliases: [] },
 ];
 
 const sb = createClient(
