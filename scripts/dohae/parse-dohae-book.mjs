@@ -655,6 +655,53 @@ for (const ch of chapters) {
   }
 }
 
+// ── 원고 정정 ────────────────────────────────────────────────────────────────
+// ★DB 를 직접 고치면 안 된다 — 재파싱·동기화가 원고 그대로 되돌려 놓는다(2026-08-22에
+//   실제로 되돌아갔다). 원고(hwpx)와 인쇄본이 다른 곳은 여기에 적어 파싱 직후 고친다.
+const CORRECTIONS = [
+  {
+    unit: "t02",
+    why: "원고에 사건번호가 두 번 들어갔다. ③ 은 인쇄본에 사건번호가 없다(원장 확인 2026-08-22).",
+    replace: [
+      ["大判 98후27098후270", "大判 98후270"],
+      ["大判 2000후22482000후2248", "大判 2000후2248"],
+      ["×(大判 2000후2248法 36④)", "×(法 36④)"],
+    ],
+    // 원장 지시 — 「관련문제」 내용 칸의 굵게 해제.
+    unbold: [{ block: 3, row: 13, col: 1 }],
+  },
+];
+
+{
+  const keyOf = (u) =>
+    u.kind === "topic" ? `t${String(u.no).padStart(2, "0")}` : `r${u.refNo.replace(".", "-")}`;
+  for (const fix of CORRECTIONS) {
+    const u = units.find((x) => keyOf(x) === fix.unit);
+    if (!u) throw new Error(`정정 대상 유닛 없음: ${fix.unit}`);
+    let hits = 0;
+    for (const b of u.blocks) {
+      for (const row of b.cells ?? []) {
+        for (const c of row) {
+          for (const [from, to] of fix.replace ?? []) {
+            if (typeof c.text === "string" && c.text.includes(from)) {
+              c.text = c.text.split(from).join(to);
+              hits++;
+            }
+          }
+        }
+      }
+    }
+    for (const t of fix.unbold ?? []) {
+      const c = u.blocks[t.block]?.cells?.[t.row]?.[t.col];
+      if (!c) throw new Error(`정정 대상 칸 없음: ${fix.unit} b${t.block} r${t.row} c${t.col}`);
+      delete c.bold;
+      hits++;
+    }
+    if (hits === 0) throw new Error(`정정이 하나도 적용되지 않음: ${fix.unit} — 원고가 바뀐 듯`);
+    console.log(`정정 ${fix.unit}: ${hits}건`);
+  }
+}
+
 // ── 검증 2: 통계 ──
 const stats = { topics: 0, references: 0, blocks: 0, tables: 0, cells: 0, chars: 0, diagrams: 0, images: 0, emptyUnits: [] };
 for (const u of units) {
