@@ -391,6 +391,19 @@ function drawingScore(node) {
   return { draw, labeledRect };
 }
 
+/** 표의 최상위 행(hp:tr) — parseTable 의 cellRows 와 같은 순서·개수여야 한다. */
+function topRows(tblNode) {
+  const rows = [];
+  (function walk(n) {
+    if (tagOf(n) === "hp:tr") {
+      rows.push(n);
+      return;
+    }
+    for (const c of childrenOf(n)) walk(c);
+  })(tblNode);
+  return rows;
+}
+
 function tableIsDrawing(node, cells) {
   const { draw, labeledRect } = drawingScore(node);
   if (draw > 0 || labeledRect >= LABELED_RECT_MIN) return true;
@@ -403,6 +416,49 @@ function tableIsDrawing(node, cells) {
     !String(c.text ?? "").trim() && !(c.tables?.length > 0);
   const empty = flat.filter(isEmpty).length;
   return empty / flat.length >= EMPTY_CELL_RATIO;
+}
+
+/**
+ * 그림이 글보다 **앞에** 몰려 있는가.
+ * ★글 사이에 그림이 끼어 있으면 가르면 안 된다 — 크롭은 세로 구간이라 그림 사이의 글까지
+ *   이미지에 들어가고, 그 글을 텍스트로도 내보내면 화면에 두 번 나온다(7 기일과 기간의
+ *   예1~예3 이 그렇다). 그럴 땐 종전대로 통째로 그림.
+ */
+function shapesComeFirst(node) {
+  const seq = [];
+  (function w(n, inShape) {
+    const tag = tagOf(n);
+    if (tag === "hp:shapeComment") return;
+    if (tag === "#text") {
+      const s = String(n["#text"] ?? "").trim();
+      if (s) seq.push(inShape ? "S" : "T");
+      return;
+    }
+    const now = inShape || SHAPE_TAGS.has(tag);
+    for (const c of childrenOf(n)) w(c, now);
+  })(node, false);
+  const firstText = seq.indexOf("T");
+  return firstText < 0 || !seq.slice(firstText).includes("S");
+}
+
+/** 도형 안 글자만 — 그림/글을 가를 때 그림 쪽 probe 로 쓴다. */
+function shapeTextsIn(node) {
+  const out = [];
+  (function w(n, inShape) {
+    const tag = tagOf(n);
+    if (tag === "hp:shapeComment") return;
+    if (tag === "#text") {
+      if (!inShape) return;
+      const s = String(n["#text"] ?? "").trim();
+      if (s) out.push(s);
+      return;
+    }
+    const now = inShape || SHAPE_TAGS.has(tag);
+    for (const c of childrenOf(n)) w(c, now);
+  })(node, false);
+  return [...new Set(out)]
+    .filter((t) => t.length >= 2 && !/묶음 개체/.test(t))
+    .slice(0, 12);
 }
 
 /** 크롭 스크립트의 페이지 매칭 probe — 도형 안 글자(drawText)까지 포함해 긁는다. */
@@ -493,6 +549,51 @@ for (let i = 0; i < paras.length; i++) {
   function pushTable(node, fromShape) {
     const cells = parseTable(node);
     if (tableIsDrawing(node, cells)) {
+      // ★그림과 글이 한 표에 섞여 있으면 통째로 이미지로 보내지 않는다 — 글이 이미지가 되면
+      //   검색·하이라이트를 잃는다(원장 지시 2026-08-22: "그림 삽입 외에 나머지는 텍스트로").
+      //   그림 행이 **앞쪽에 몰려 있을 때만** 그림/글로 가른다. 중간에 끼어 있으면 순서가
+      //   뒤집히므로 종전대로 통째로 그림.
+      const rows = topRows(node);
+      if (rows.length === cells.length && rows.length > 1) {
+        const drawRow = rows.map((r) => {
+          const { draw, labeledRect } = drawingScore(r);
+          return draw > 0 || labeledRect >= LABELED_RECT_MIN;
+        });
+        const lastDraw = drawRow.lastIndexOf(true);
+        const firstDraw = drawRow.indexOf(true);
+        const textAfter = cells
+          .slice(lastDraw + 1)
+          .filter((row) => row.some((c) => String(c.text ?? "").trim() || c.tables?.length));
+        if (firstDraw === 0 && lastDraw >= 0 && textAfter.length > 0) {
+          pushBlock({
+            type: "diagram",
+            fromTable: true,
+            texts: allTextsIn({ [tagOf(rows[0])]: rows.slice(0, lastDraw + 1).flatMap(childrenOf) }),
+          });
+          pushBlock(
+            fromShape
+              ? { type: "table", fromShape: true, cells: cells.slice(lastDraw + 1) }
+              : { type: "table", cells: cells.slice(lastDraw + 1) },
+          );
+          return;
+        }
+      }
+      // ★한 칸 안에 그림 + 글 + 속표가 다 들어 있는 경우(참고 1.2 Ⅲ) — 행으로는 못 가른다.
+      //   칸 안을 갈라 그림만 이미지로 내고, 글과 속표는 그대로 텍스트로 낸다.
+      const rows0 = topRows(node);
+      const flatCells = cells.flat();
+      if (rows0.length === 1 && flatCells.length === 1) {
+        const only = flatCells[0];
+        const prose = String(only.text ?? "").trim();
+        const nested = only.tables ?? [];
+        const shapeOnly = shapeTextsIn(node);
+        if (shapeOnly.length > 0 && (prose || nested.length > 0) && shapesComeFirst(node)) {
+          pushBlock({ type: "diagram", fromTable: true, texts: shapeOnly });
+          if (prose) pushBlock({ type: "p", text: prose });
+          for (const t of nested) pushBlock({ type: "table", cells: t });
+          return;
+        }
+      }
       pushBlock({ type: "diagram", fromTable: true, texts: allTextsIn(node) });
       return;
     }

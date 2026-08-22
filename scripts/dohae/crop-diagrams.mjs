@@ -108,6 +108,16 @@ function headingY(lines, text) {
   return best;
 }
 
+// 규칙으로 못 맞추는 몇 장은 좌표를 손으로 박는다(파일이 없으면 빈 표).
+const OVERRIDES = (() => {
+  const p = resolve(import.meta.dirname, "crop-overrides.json");
+  try {
+    return JSON.parse(readFileSync(p, "utf8"));
+  } catch {
+    return {};
+  }
+})();
+
 const manifest = [];
 let low = 0;
 let stripped = 0;
@@ -227,11 +237,20 @@ for (let ui = 0; ui < data.units.length; ui++) {
     //   같은 페이지에서 표 첫 행을 못 찾으면 그대로 넘어가므로 조건을 넓혀도 안전하다.
     let dbg = null;
     const nextB = u.blocks[bi + 1];
-    if (nextB?.type === "table") {
+    if (nextB?.type === "table" || nextB?.type === "p") {
       // 표의 윗변 = 첫 행이 놓인 줄. 첫 행 칸들이 **같은 y 에 2개 이상** 찍히면 그게 머리행이다.
-      const sigs = (nextB.cells[0] ?? [])
-        .map((c) => ns((c.text ?? "").split("\n")[0]))
-        .filter((s) => s.length >= 2);
+      // ★뒤 블록이 글(p)인 경우도 같다 — 그림 뒤 글을 텍스트로 따로 내보내므로(참고 1.2 Ⅲ)
+      //   크롭이 그 글까지 물면 화면에 두 번 나온다. 글의 첫 줄에서 끊는다.
+      const sigs =
+        nextB.type === "p"
+          ? String(nextB.text ?? "")
+              .split("\n")
+              .map(ns)
+              .filter((s) => s.length >= 2)
+              .slice(0, 4)
+          : (nextB.cells[0] ?? [])
+              .map((c) => ns((c.text ?? "").split("\n")[0]))
+              .filter((s) => s.length >= 2);
       const groups = new Map();
       for (const it of items) {
         if (it.y >= topY - 10) continue;
@@ -260,6 +279,12 @@ for (let ui = 0; ui < data.units.length; ui++) {
       dbg = { sigs: sigs.length, hitRows: groups.size, bestY, bestN };
       if (bestY !== null && bestY + 14 > botY) botY = bestY + 14;
     }
+    // ★손으로 지정한 좌표가 있으면 그게 최종이다 — 규칙을 더 영리하게 만들면 다른 곳이
+    //   깨진다(42장뿐이라 예외는 표로 박는 편이 싸다). scripts/dohae/crop-overrides.json
+    const ov = OVERRIDES[`${key}-b${bi}`];
+    if (ov?.topY !== undefined) topY = ov.topY;
+    if (ov?.botY !== undefined) botY = ov.botY;
+
     // 좌표 오탐 가드 — 구간이 너무 얇으면(40pt 미만) 페이지 본문 전체로 폴백.
     if (topY - botY < 40) { topY = TOP_Y; botY = BOT_Y; }
 
