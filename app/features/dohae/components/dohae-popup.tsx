@@ -15,7 +15,7 @@ import {
   PencilLineIcon,
   SquareIcon,
 } from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
 import { useFetcher, useFetchers } from "react-router";
 
 import {
@@ -43,6 +43,7 @@ import {
   type DohaeUnitSummary,
   dohaeUnitLabel,
 } from "../labels";
+import { labelSegments } from "../lib/label-wrap";
 
 type UnitPayload = Awaited<ReturnType<typeof unitLoader>>;
 
@@ -177,7 +178,38 @@ function BoldSpans({
  * (t22 「다항제 기재방법…」은 【예】 상자가 【해설】 위, t79 「국내단계에서의 보정」은
  *  글 → 도해 → 글 순서다. 뒤에 몰아 그리면 책과 순서가 달라진다.)
  */
+/**
+ * 라벨 글 — 뜻 단위로 끊을 자리에 <wbr> 을 심는다.
+ * ★<wbr> 은 textContent 에 아무것도 더하지 않아 하이라이트 오프셋이 그대로다.
+ *   개행은 그대로 남겨 whitespace-pre-wrap 이 처리하게 둔다.
+ */
+function LabelText({ text }: { text: string }) {
+  return (
+    <>
+      {text.split("\n").map((line, li) => (
+        <Fragment key={li}>
+          {li > 0 ? "\n" : null}
+          {labelSegments(line).map((seg, i) => (
+            <Fragment key={i}>
+              {i > 0 ? <wbr /> : null}
+              {seg}
+            </Fragment>
+          ))}
+        </Fragment>
+      ))}
+    </>
+  );
+}
+
 function CellContent({ cell }: { cell: DohaeCell }) {
+  // 라벨 칸(음영)은 단어 단위로 접으므로, 낱말 안에서 끊을 자리를 알려 준다.
+  if (
+    cell.shade &&
+    !cell.diagram &&
+    !cell.tables?.length &&
+    !cell.boldRanges?.length
+  )
+    return <LabelText text={cell.text} />;
   const nested = cell.tables ?? [];
   const marks: Array<{ at: number; node: ReactNode }> = [];
   if (cell.diagram)
