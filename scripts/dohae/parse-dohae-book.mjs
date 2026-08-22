@@ -891,6 +891,12 @@ for (let i = 0; i < paras.length; i++) {
       });
     };
 
+    /**
+     * 소제목이 같은 항을 기준점(LCS)으로 삼고, 기준점 사이에 남은 항들은 **순서대로** 짝짓는다.
+     * ★소제목만으로 맞추면 이름이 서로 다른 첫 항이 어긋난다 — t71 은 왼쪽이 「(요건)」,
+     *   오른쪽이 「(주체적 및 객체적 요건)」이라 ①끼리 안 붙었다(원장 보고 2026-08-22).
+     *   순서 짝짓기를 덧붙이면 ①↔①·②↔②가 맞고, 한쪽에만 있는 항은 그대로 비워 둔다.
+     */
     const lcs = (a, b) => {
       const n = a.length, m = b.length;
       const dp = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
@@ -899,15 +905,28 @@ for (let i = 0; i < paras.length; i++) {
           dp[i][j] = a[i] && b[j] && a[i] === b[j]
             ? dp[i + 1][j + 1] + 1
             : Math.max(dp[i + 1][j], dp[i][j + 1]);
+      // 1) 소제목이 같은 자리(기준점)만 뽑는다.
+      const anchors = [];
+      {
+        let i = 0, j = 0;
+        while (i < n && j < m) {
+          if (a[i] && b[j] && a[i] === b[j]) { anchors.push([i, j]); i++; j++; }
+          else if (dp[i + 1][j] >= dp[i][j + 1]) i++;
+          else j++;
+        }
+      }
+      // 2) 기준점 사이의 남은 항들을 순서대로 맞춘다.
       const pairs = [];
       let i = 0, j = 0;
-      while (i < n && j < m) {
-        if (a[i] && b[j] && a[i] === b[j]) { pairs.push([i, j]); i++; j++; }
-        else if (dp[i + 1][j] >= dp[i][j + 1]) { pairs.push([i, null]); i++; }
-        else { pairs.push([null, j]); j++; }
+      for (const [mi, mj] of [...anchors, [n, m]]) {
+        const lg = [];
+        const rg = [];
+        while (i < mi) lg.push(i++);
+        while (j < mj) rg.push(j++);
+        for (let k = 0; k < Math.max(lg.length, rg.length); k++)
+          pairs.push([lg[k] ?? null, rg[k] ?? null]);
+        if (mi < n) { pairs.push([mi, mj]); i = mi + 1; j = mj + 1; }
       }
-      while (i < n) pairs.push([i++, null]);
-      while (j < m) pairs.push([null, j++]);
       return pairs;
     };
 

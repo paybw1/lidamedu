@@ -257,7 +257,10 @@ function DohaeTable({ cells }: { cells: DohaeCell[][] }) {
                       // ★한 낱말이 칸보다 길면 그 낱말만은 잘라 접는다 — 없으면 글자가 표
                       //   밖으로 삐져나온다. 원본 열 비율이 라벨 열을 아주 좁게 잡는 표가
                       //   있다(41 존속기간 조문 비교표의 첫 열은 폭의 5.7%뿐).
-                      "break-words",
+                      // ★임의 속성으로 쓴다 — `break-words` 로 쓰면 tailwind-merge 가
+                    //   `break-keep` 과 같은 그룹으로 보고 지워 버린다(2026-08-22 실측:
+                    //   twMerge("break-words","break-keep") → "break-keep").
+                    "[overflow-wrap:anywhere]",
                       // 조문 비교표에서 항 단위로 쪼갠 행 — 이어지는 자리의 가로줄을 지운다.
                       // (border-collapse 라 위·아래 양쪽을 다 지워야 사라진다)
                       c.contRow && "border-t-0",
