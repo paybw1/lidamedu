@@ -227,11 +227,16 @@ function DohaeTable({ cells }: { cells: DohaeCell[][] }) {
                     rowSpan={c.rowSpan > 1 ? c.rowSpan : undefined}
                     className={cn(
                       "border-border border px-2.5 py-1.5 text-left leading-[1.65] font-normal whitespace-pre-wrap",
+                      // ★한 낱말이 칸보다 길면 그 낱말만은 잘라 접는다 — 없으면 글자가 표
+                      //   밖으로 삐져나온다. 원본 열 비율이 라벨 열을 아주 좁게 잡는 표가
+                      //   있다(41 존속기간 조문 비교표의 첫 열은 폭의 5.7%뿐).
+                      "break-words",
                       // ★내용 칸은 위 맞춤 — 가운데 맞춤이면 조문 비교표의 좌우가 서로
                       //   밀려 같은 조문끼리 줄이 안 맞는다(원장 지시 2026-08-22).
                       //   라벨 칸(음영)은 종전대로 가운데 — 여러 행을 세로 병합하기 때문.
                       c.shade ? "align-middle" : "align-top",
                       // 라벨은 단어 단위로 접는다(제목이 글자 단위로 끊기면 읽기 나쁘다).
+                      // 위 break-words 가 "칸보다 긴 낱말" 만 예외로 잘라 준다.
                       c.shade && "break-keep",
                       c.shade && "bg-muted/50",
                       c.align === "center" && "text-center",
