@@ -9,9 +9,9 @@
 //
 // ★재실행하면 반드시 **바뀐 파일을 눈으로 본 뒤** 스토리지에 올린다. 좌표가 휴리스틱이라
 //   한 곳을 고치면 다른 곳이 깨진다(2026-08-21 실측: t25 를 고치려다 t68 이 페이지 전체를
-//   잡아 앞 절 표 2개가 이미지에 들어갔다). 34장뿐이니 검수가 규칙 개선보다 싸다.
-//   현재 미검수 상태로 남은 것: t01-b7 · t17-b5 · t23-b5 · t29-b5 · t44-b7 · t68-b10 ·
-//   t79-b12 · r3-2-b1 (repo·스토리지 모두 종전 이미지 유지).
+//   잡아 앞 절 표 2개가 이미지에 들어갔다). 43장뿐이니 검수가 규칙 개선보다 싸다 —
+//   sharp 로 3장씩 라벨 붙여 합친 대조표를 만들어 보면 금방 끝난다.
+//   2026-08-22 기준 43장 전수 검수 완료.
 
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
@@ -110,6 +110,100 @@ function headingY(lines, text) {
 
 const manifest = [];
 let low = 0;
+let stripped = 0;
+
+// ── 초록 테두리 상자 제거 (원장 지시 2026-08-22) ────────────────────────────
+// 도해는 도해 내용을 둥근 초록 테두리 상자로 두른다. 화면에서는 그 상자가 불필요한
+// 이중 테두리로 보이므로 **안쪽만** 남긴다.
+const FRAME_RGB = [85, 128, 97];
+const FRAME_TOL = 42;
+// 테두리 줄로 인정할 최소 비율 — 모서리가 둥글어 끝까지 안 차므로 가운데 절반만 본다.
+const FRAME_FILL = 0.9;
+// 테두리는 가장자리 근처에 있다. 이 비율 안쪽에서만 찾는다(안쪽 표의 초록 괘선 오검출 방지).
+const FRAME_SEARCH = 0.15;
+
+function isFrameColor(r, g, b) {
+  return (
+    Math.abs(r - FRAME_RGB[0]) <= FRAME_TOL &&
+    Math.abs(g - FRAME_RGB[1]) <= FRAME_TOL &&
+    Math.abs(b - FRAME_RGB[2]) <= FRAME_TOL &&
+    g > r + 15 &&
+    g > b + 10
+  );
+}
+
+/** 초록 테두리를 찾아 그 안쪽만 남긴다. 못 찾으면 원본을 그대로 돌려준다. */
+async function stripGreenFrame(buf) {
+  const { data, info } = await sharp(buf).raw().toBuffer({ resolveWithObject: true });
+  const { width: W, height: H, channels: C } = info;
+  if (W < 80 || H < 80) return buf;
+  const px = (x, y) => {
+    const i = (y * W + x) * C;
+    return isFrameColor(data[i], data[i + 1], data[i + 2]);
+  };
+  const rowFill = (y, x0, x1) => {
+    let n = 0;
+    for (let x = x0; x < x1; x++) if (px(x, y)) n++;
+    return n / (x1 - x0);
+  };
+  const colFill = (x, y0, y1) => {
+    let n = 0;
+    for (let y = y0; y < y1; y++) if (px(x, y)) n++;
+    return n / (y1 - y0);
+  };
+  const xa = Math.floor(W * 0.25), xb = Math.ceil(W * 0.75);
+  const ya = Math.floor(H * 0.25), yb = Math.ceil(H * 0.75);
+  const yLimit = Math.max(4, Math.floor(H * FRAME_SEARCH));
+  const xLimit = Math.max(4, Math.floor(W * FRAME_SEARCH));
+
+  let topB = null, botB = null, leftB = null, rightB = null;
+  for (let y = 0; y < yLimit; y++) if (rowFill(y, xa, xb) >= FRAME_FILL) { topB = y; break; }
+  for (let y = H - 1; y >= H - yLimit; y--) if (rowFill(y, xa, xb) >= FRAME_FILL) { botB = y; break; }
+  for (let x = 0; x < xLimit; x++) if (colFill(x, ya, yb) >= FRAME_FILL) { leftB = x; break; }
+  for (let x = W - 1; x >= W - xLimit; x--) if (colFill(x, ya, yb) >= FRAME_FILL) { rightB = x; break; }
+  // ★네 변을 다 요구하면 안 된다 — 상자가 크롭 경계에서 잘려 아래(또는 위) 변이 아예
+  //   없는 경우가 흔하다(t01: 위·좌·우만 있고 아래는 크롭 밖). 세로 두 변이 상자의
+  //   서명이므로 그것만 필수로 보고, 가로 변은 있는 쪽만 깎는다.
+  if (leftB === null || rightB === null) return buf;
+
+  // 테두리 두께만큼 더 들어간다(선이 2~3px 이라 한 줄만 빼면 잔선이 남는다).
+  const thick = (start, step, limit, probe) => {
+    let t = 0;
+    for (let k = start; k !== limit; k += step, t++) if (!probe(k)) break;
+    return Math.max(1, t);
+  };
+  const tLeft = thick(leftB, 1, Math.min(W, leftB + 8), (x) => colFill(x, ya, yb) >= 0.5);
+  const tRight = thick(rightB, -1, Math.max(-1, rightB - 8), (x) => colFill(x, ya, yb) >= 0.5);
+
+  const left = leftB + tLeft + 1;
+  const right = rightB - tRight - 1;
+  const top =
+    topB === null
+      ? 0
+      : topB + thick(topB, 1, Math.min(H, topB + 8), (y) => rowFill(y, xa, xb) >= 0.5) + 1;
+  const bottom =
+    botB === null
+      ? H - 1
+      : botB - thick(botB, -1, Math.max(-1, botB - 8), (y) => rowFill(y, xa, xb) >= 0.5) - 1;
+  const w = right - left + 1;
+  const h = bottom - top + 1;
+  if (left < 0 || top < 0 || right >= W || bottom >= H || w < 40 || h < 40) return buf;
+  try {
+    // ★extract 와 trim 을 한 파이프라인에 두면 sharp 가 trim 을 먼저 적용해 크기가
+    //   달라지고 extract 가 "bad extract area" 로 죽는다(위 크롭 단계와 같은 함정).
+    const inner = await sharp(buf)
+      .extract({ left, top, width: w, height: h })
+      .png()
+      .toBuffer();
+    return await sharp(inner)
+      .trim({ threshold: 12 })
+      .extend({ top: 10, bottom: 10, left: 10, right: 10, background: "#fff" })
+      .png()
+      .toBuffer();
+  } catch {
+    return buf; // 잘라낸 영역이 비어 trim 이 실패하는 경우 — 원본 유지
+  }
+}
 
 for (let ui = 0; ui < data.units.length; ui++) {
   const u = data.units[ui];
@@ -201,10 +295,14 @@ for (let ui = 0; ui < data.units.length; ui++) {
     // trim: 하단 소제목 부재 시 남는 큰 흰 여백 제거 → 소폭 패딩 복원.
     // (sharp 는 한 파이프라인에서 trim 을 extract 보다 먼저 적용 → 2단계 분리 필수)
     const cropped = await sharp(png).extract({ left, top, width, height }).png().toBuffer();
-    await sharp(cropped)
+    const trimmed = await sharp(cropped)
       .trim({ threshold: 12 })
       .extend({ top: 14, bottom: 14, left: 14, right: 14, background: "#fff" })
-      .toFile(resolve(OUT_DIR, file));
+      .png()
+      .toBuffer();
+    const framed = await stripGreenFrame(trimmed);
+    await sharp(framed).toFile(resolve(OUT_DIR, file));
+    if (framed !== trimmed) stripped++;
     manifest.push({
       unit: key, unitTitle: u.title, blockIndex: bi, page,
       rectPt: { x0: X0, x1: X1, topY: Math.round(topY), botY: Math.round(botY) },
