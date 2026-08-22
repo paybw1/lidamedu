@@ -113,14 +113,18 @@ let low = 0;
 let stripped = 0;
 
 // ── 초록 테두리 상자 제거 (원장 지시 2026-08-22) ────────────────────────────
-// 도해는 도해 내용을 둥근 초록 테두리 상자로 두른다. 화면에서는 그 상자가 불필요한
-// 이중 테두리로 보이므로 **안쪽만** 남긴다.
+// 도해는 내용을 둥근 초록 테두리 상자로 두른다. 화면에서는 불필요한 이중 테두리로 보인다.
+//
+// ★"테두리 안쪽만 잘라내기" 는 못 쓴다 — 상자가 이미지 전체를 감싸고 있다고 전제하는데,
+//   실제로는 상자 아래에 다른 내용이 더 붙어 있는 크롭이 흔하다(t30-b5: 상자는 y 1052 에서
+//   끝나는데 이미지는 1671 까지 이어진다). 그걸 안쪽으로 자르면 아래 내용이 통째로 날아간다.
+//   그래서 **테두리 선만 흰색으로 지운다.** 상자가 몇 겹이든, 이미지 일부만 감싸든 안전하고
+//   둥근 모서리 호도 같이 지워진다(연결된 픽셀을 따라가므로).
 const FRAME_RGB = [85, 128, 97];
 const FRAME_TOL = 42;
-// 테두리 줄로 인정할 최소 비율 — 모서리가 둥글어 끝까지 안 차므로 가운데 절반만 본다.
-const FRAME_FILL = 0.9;
-// 테두리는 가장자리 근처에 있다. 이 비율 안쪽에서만 찾는다(안쪽 표의 초록 괘선 오검출 방지).
-const FRAME_SEARCH = 0.15;
+// 씨앗을 고르는 범위 — 바깥 테두리는 가장자리 가까이에 있다. 안쪽 표의 초록 괘선까지
+// 지우지 않으려고 여기서만 시작한다.
+const FRAME_SEED_MARGIN = 40;
 
 function isFrameColor(r, g, b) {
   return (
@@ -131,79 +135,52 @@ function isFrameColor(r, g, b) {
     g > b + 10
   );
 }
+// 안티에일리어싱된 옅은 초록 — 씨앗에서 번져 나갈 때만 인정한다. 이걸 빼면 실선 자국이 남는다.
+function isFrameish(r, g, b) {
+  if (r > 240 && g > 240 && b > 240) return false;
+  return g >= r && g >= b && g - Math.min(r, b) >= 6;
+}
 
-/** 초록 테두리를 찾아 그 안쪽만 남긴다. 못 찾으면 원본을 그대로 돌려준다. */
-async function stripGreenFrame(buf) {
+/**
+ * 바깥 초록 테두리를 **지운다**(자르지 않는다). 지운 게 없으면 원본을 그대로 돌려준다.
+ */
+async function eraseGreenFrame(buf) {
   const { data, info } = await sharp(buf).raw().toBuffer({ resolveWithObject: true });
   const { width: W, height: H, channels: C } = info;
-  if (W < 80 || H < 80) return buf;
-  const px = (x, y) => {
-    const i = (y * W + x) * C;
-    return isFrameColor(data[i], data[i + 1], data[i + 2]);
-  };
-  const rowFill = (y, x0, x1) => {
-    let n = 0;
-    for (let x = x0; x < x1; x++) if (px(x, y)) n++;
-    return n / (x1 - x0);
-  };
-  const colFill = (x, y0, y1) => {
-    let n = 0;
-    for (let y = y0; y < y1; y++) if (px(x, y)) n++;
-    return n / (y1 - y0);
-  };
-  const xa = Math.floor(W * 0.25), xb = Math.ceil(W * 0.75);
-  const ya = Math.floor(H * 0.25), yb = Math.ceil(H * 0.75);
-  const yLimit = Math.max(4, Math.floor(H * FRAME_SEARCH));
-  const xLimit = Math.max(4, Math.floor(W * FRAME_SEARCH));
-
-  let topB = null, botB = null, leftB = null, rightB = null;
-  for (let y = 0; y < yLimit; y++) if (rowFill(y, xa, xb) >= FRAME_FILL) { topB = y; break; }
-  for (let y = H - 1; y >= H - yLimit; y--) if (rowFill(y, xa, xb) >= FRAME_FILL) { botB = y; break; }
-  for (let x = 0; x < xLimit; x++) if (colFill(x, ya, yb) >= FRAME_FILL) { leftB = x; break; }
-  for (let x = W - 1; x >= W - xLimit; x--) if (colFill(x, ya, yb) >= FRAME_FILL) { rightB = x; break; }
-  // ★네 변을 다 요구하면 안 된다 — 상자가 크롭 경계에서 잘려 아래(또는 위) 변이 아예
-  //   없는 경우가 흔하다(t01: 위·좌·우만 있고 아래는 크롭 밖). 세로 두 변이 상자의
-  //   서명이므로 그것만 필수로 보고, 가로 변은 있는 쪽만 깎는다.
-  if (leftB === null || rightB === null) return buf;
-
-  // 테두리 두께만큼 더 들어간다(선이 2~3px 이라 한 줄만 빼면 잔선이 남는다).
-  const thick = (start, step, limit, probe) => {
-    let t = 0;
-    for (let k = start; k !== limit; k += step, t++) if (!probe(k)) break;
-    return Math.max(1, t);
-  };
-  const tLeft = thick(leftB, 1, Math.min(W, leftB + 8), (x) => colFill(x, ya, yb) >= 0.5);
-  const tRight = thick(rightB, -1, Math.max(-1, rightB - 8), (x) => colFill(x, ya, yb) >= 0.5);
-
-  const left = leftB + tLeft + 1;
-  const right = rightB - tRight - 1;
-  const top =
-    topB === null
-      ? 0
-      : topB + thick(topB, 1, Math.min(H, topB + 8), (y) => rowFill(y, xa, xb) >= 0.5) + 1;
-  const bottom =
-    botB === null
-      ? H - 1
-      : botB - thick(botB, -1, Math.max(-1, botB - 8), (y) => rowFill(y, xa, xb) >= 0.5) - 1;
-  const w = right - left + 1;
-  const h = bottom - top + 1;
-  if (left < 0 || top < 0 || right >= W || bottom >= H || w < 40 || h < 40) return buf;
-  try {
-    // ★extract 와 trim 을 한 파이프라인에 두면 sharp 가 trim 을 먼저 적용해 크기가
-    //   달라지고 extract 가 "bad extract area" 로 죽는다(위 크롭 단계와 같은 함정).
-    const inner = await sharp(buf)
-      .extract({ left, top, width: w, height: h })
-      .png()
-      .toBuffer();
-    return await sharp(inner)
-      .trim({ threshold: 12 })
-      .extend({ top: 10, bottom: 10, left: 10, right: 10, background: "#fff" })
-      .png()
-      .toBuffer();
-  } catch {
-    return buf; // 잘라낸 영역이 비어 trim 이 실패하는 경우 — 원본 유지
+  const idx = (x, y) => (y * W + x) * C;
+  const m = FRAME_SEED_MARGIN;
+  const stack = [];
+  for (let y = 0; y < H; y++) {
+    const edgeRow = y < m || y >= H - m;
+    for (let x = 0; x < W; x++) {
+      if (!edgeRow && x >= m && x < W - m) continue;
+      const i = idx(x, y);
+      if (isFrameColor(data[i], data[i + 1], data[i + 2])) stack.push(x, y);
+    }
   }
+  if (stack.length === 0) return buf;
+
+  const seen = new Uint8Array(W * H);
+  let hit = 0;
+  while (stack.length) {
+    const y = stack.pop();
+    const x = stack.pop();
+    if (x < 0 || y < 0 || x >= W || y >= H) continue;
+    const key = y * W + x;
+    if (seen[key]) continue;
+    seen[key] = 1;
+    const i = idx(x, y);
+    if (!isFrameish(data[i], data[i + 1], data[i + 2])) continue;
+    data[i] = 255;
+    data[i + 1] = 255;
+    data[i + 2] = 255;
+    hit++;
+    stack.push(x + 1, y, x - 1, y, x, y + 1, x, y - 1);
+  }
+  if (hit === 0) return buf;
+  return sharp(data, { raw: { width: W, height: H, channels: C } }).png().toBuffer();
 }
+
 
 for (let ui = 0; ui < data.units.length; ui++) {
   const u = data.units[ui];
@@ -300,7 +277,16 @@ for (let ui = 0; ui < data.units.length; ui++) {
       .extend({ top: 14, bottom: 14, left: 14, right: 14, background: "#fff" })
       .png()
       .toBuffer();
-    const framed = await stripGreenFrame(trimmed);
+    const erased = await eraseGreenFrame(trimmed);
+    // 테두리를 지우면 그 자리가 흰 여백이 되므로 다시 다듬는다.
+    const framed =
+      erased === trimmed
+        ? trimmed
+        : await sharp(erased)
+            .trim({ threshold: 12 })
+            .extend({ top: 10, bottom: 10, left: 10, right: 10, background: "#fff" })
+            .png()
+            .toBuffer();
     await sharp(framed).toFile(resolve(OUT_DIR, file));
     if (framed !== trimmed) stripped++;
     manifest.push({
