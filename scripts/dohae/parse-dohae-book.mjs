@@ -396,7 +396,12 @@ function tableIsDrawing(node, cells) {
   if (draw > 0 || labeledRect >= LABELED_RECT_MIN) return true;
   const flat = cells.flat();
   if (!flat.length) return true;
-  const empty = flat.filter((c) => !String(c.text ?? "").trim()).length;
+  // ★중첩 표를 품은 칸은 "빈 칸"이 아니다 — 내용이 자식 표에 있을 뿐이다.
+  //   이걸 빠뜨려서 참고 1.2 「분류」(바깥 1칸 안에 표 6개)가 그림으로 분류돼
+  //   글표가 이미지로 바뀌었다(원장 지적 2026-08-22).
+  const isEmpty = (c) =>
+    !String(c.text ?? "").trim() && !(c.tables?.length > 0);
+  const empty = flat.filter(isEmpty).length;
   return empty / flat.length >= EMPTY_CELL_RATIO;
 }
 

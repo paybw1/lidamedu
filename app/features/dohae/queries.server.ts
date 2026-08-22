@@ -8,7 +8,7 @@ import type { DohaeBlock, DohaeUnitSummary } from "./labels";
 import { diffTextNodes, type DohaeTextDiff } from "./lib/dohae-edit";
 
 const UNIT_COLS =
-  "dohae_units(unit_id, unit_key, kind, title, chapter_no, chapter_title, unit_no, ref_no)";
+  "dohae_units(unit_id, unit_key, kind, title, chapter_no, chapter_title, unit_no, ref_no, pdf_page)";
 
 type UnitJoinRow = {
   dohae_units: {
@@ -20,6 +20,7 @@ type UnitJoinRow = {
     chapter_title: string;
     unit_no: number | null;
     ref_no: string | null;
+    pdf_page: number | null;
   } | null;
 };
 
@@ -37,12 +38,12 @@ function toSummaries(rows: UnitJoinRow[]): DohaeUnitSummary[] {
       chapterTitle: u.chapter_title,
       unitNo: u.unit_no,
       refNo: u.ref_no,
+      pdfPage: u.pdf_page,
     });
   }
   return [...byId.values()].sort(
     (a, b) =>
-      (a.unitNo ?? 900) - (b.unitNo ?? 900) ||
-      (a.refNo ?? "").localeCompare(b.refNo ?? ""),
+      (a.pdfPage ?? 9999) - (b.pdfPage ?? 9999),
   );
 }
 
@@ -266,6 +267,8 @@ export async function listDohaeUnitsForArticle(
       chapterTitle: u.chapter_title,
       unitNo: u.unit_no,
       refNo: u.ref_no,
+      pdfPage: u.pdf_page,
     }))
-    .sort((a, b) => (a.unitNo ?? 900) - (b.unitNo ?? 900) || (a.refNo ?? "").localeCompare(b.refNo ?? ""));
+    // 책 순서(pdf_page)로 — 참고자료가 장 끝으로 밀리지 않게 한다.
+    .sort((a, b) => (a.pdfPage ?? 9999) - (b.pdfPage ?? 9999));
 }

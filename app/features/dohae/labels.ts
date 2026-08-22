@@ -42,6 +42,8 @@ export interface DohaeUnitSummary {
   chapterTitle: string;
   unitNo: number | null;
   refNo: string | null;
+  /** 책 쪽수 — 목록 정렬의 기준(주제·참고자료가 원본 순서대로 섞인다). */
+  pdfPage: number | null;
 }
 
 /** 유닛 표시 라벨 — "34 심사의 진행" / "참고 2.1 …". */

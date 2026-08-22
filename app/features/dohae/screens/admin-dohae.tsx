@@ -35,9 +35,10 @@ export async function loader({ request }: Route.LoaderArgs) {
       "unit_id, unit_key, kind, title, chapter_no, chapter_title, unit_no, ref_no, pdf_page",
     )
     .eq("book_code", "dohae_patent_20")
+    // ★책 순서 = pdf_page. unit_no 로 정렬하면 참고자료(unit_no null)가 장 끝으로 밀려
+    //   "참고 1.1 은 정의(法 2) 다음" 같은 원본 배치가 무너진다(원장 지적 2026-08-22).
     .order("chapter_no")
-    .order("unit_no", { nullsFirst: false })
-    .order("ref_no");
+    .order("pdf_page", { nullsFirst: false });
   if (error) throw error;
 
   const units = (rows ?? []).map((u) => ({
