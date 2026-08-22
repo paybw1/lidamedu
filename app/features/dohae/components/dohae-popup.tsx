@@ -13,7 +13,7 @@ import {
   PencilLineIcon,
   SquareIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useFetcher, useFetchers } from "react-router";
 
 import {
@@ -120,6 +120,81 @@ function columnPercents(
 //   규칙은 전부 걷어냈다 — 머리행 없이 이어지는 표(참고1.2 분류)의 데이터 행이
 //   머리글로 칠해지고, 같은 열인데 긴 칸만 라벨에서 빠지는 문제의 뿌리였다
 //   (원장 지시 2026-08-17 "원본 형식에 맞춰줘").
+/**
+ * 칸 내용 — 굵게 구간(boldRanges)과 칸 그림(diagram)을 원본 순서대로 그린다.
+ * ★텍스트 노드를 쪼개도 컨테이너의 textContent 는 그대로라 하이라이트 오프셋은 보존된다
+ *   (공백을 새로 넣지 않는 것이 조건).
+ */
+function BoldSpans({ text, ranges }: { text: string; ranges?: [number, number][] }) {
+  if (!ranges?.length) return <>{text}</>;
+  const out: ReactNode[] = [];
+  let at = 0;
+  ranges
+    .slice()
+    .sort((a, b) => a[0] - b[0])
+    .forEach(([s, e], i) => {
+      const from = Math.max(at, s);
+      const to = Math.min(text.length, e);
+      if (to <= from) return;
+      if (from > at) out.push(text.slice(at, from));
+      out.push(
+        <strong key={i} className="font-semibold">
+          {text.slice(from, to)}
+        </strong>,
+      );
+      at = to;
+    });
+  if (at < text.length) out.push(text.slice(at));
+  return <>{out}</>;
+}
+
+/**
+ * 칸 내용을 **원본 순서대로** — 글 / 칸 그림 / 속표를 글자 오프셋에 맞춰 끼워 넣는다.
+ * (t22 「다항제 기재방법…」은 【예】 상자가 【해설】 위, t79 「국내단계에서의 보정」은
+ *  글 → 도해 → 글 순서다. 뒤에 몰아 그리면 책과 순서가 달라진다.)
+ */
+function CellContent({ cell }: { cell: DohaeCell }) {
+  const nested = cell.tables ?? [];
+  const marks: Array<{ at: number; node: ReactNode }> = [];
+  if (cell.diagram)
+    marks.push({
+      at: cell.diagramAt ?? 0,
+      node: cell.signedUrl ? (
+        <img
+          src={cell.signedUrl}
+          alt="도해 다이어그램"
+          className="my-1 w-full max-w-full dark:brightness-[.92]"
+          loading="lazy"
+        />
+      ) : (
+        <span className="text-muted-foreground text-xs">
+          [다이어그램 이미지를 불러오지 못했습니다]
+        </span>
+      ),
+    });
+  nested.forEach((t, i) => {
+    marks.push({ at: cell.tablesAt?.[i] ?? cell.text.length, node: <DohaeTable cells={t} /> });
+  });
+  if (marks.length === 0) return <BoldSpans text={cell.text} ranges={cell.boldRanges} />;
+
+  marks.sort((a, b) => a.at - b.at);
+  const shift = (lo: number, hi: number) =>
+    (cell.boldRanges ?? [])
+      .map(([s, e]) => [Math.max(s, lo) - lo, Math.min(e, hi) - lo] as [number, number])
+      .filter(([s, e]) => e > s);
+  const out: ReactNode[] = [];
+  let at = 0;
+  marks.forEach((m, i) => {
+    const to = Math.min(Math.max(m.at, at), cell.text.length);
+    if (to > at) out.push(<BoldSpans key={`t${i}`} text={cell.text.slice(at, to)} ranges={shift(at, to)} />);
+    out.push(<span key={`m${i}`}>{m.node}</span>);
+    at = to;
+  });
+  if (at < cell.text.length)
+    out.push(<BoldSpans key="tail" text={cell.text.slice(at)} ranges={shift(at, cell.text.length)} />);
+  return <>{out}</>;
+}
+
 function DohaeTable({ cells }: { cells: DohaeCell[][] }) {
   if (cells.length === 0) return null;
   const startCols = gridStartCols(cells);
@@ -151,16 +226,19 @@ function DohaeTable({ cells }: { cells: DohaeCell[][] }) {
                     colSpan={c.colSpan > 1 ? c.colSpan : undefined}
                     rowSpan={c.rowSpan > 1 ? c.rowSpan : undefined}
                     className={cn(
-                      "border-border border px-2.5 py-1.5 text-left align-middle leading-[1.65] font-normal whitespace-pre-wrap",
+                      "border-border border px-2.5 py-1.5 text-left leading-[1.65] font-normal whitespace-pre-wrap",
+                      // ★내용 칸은 위 맞춤 — 가운데 맞춤이면 조문 비교표의 좌우가 서로
+                      //   밀려 같은 조문끼리 줄이 안 맞는다(원장 지시 2026-08-22).
+                      //   라벨 칸(음영)은 종전대로 가운데 — 여러 행을 세로 병합하기 때문.
+                      c.shade ? "align-middle" : "align-top",
+                      // 라벨은 단어 단위로 접는다(제목이 글자 단위로 끊기면 읽기 나쁘다).
+                      c.shade && "break-keep",
                       c.shade && "bg-muted/50",
                       c.align === "center" && "text-center",
                       c.bold && "font-semibold",
                     )}
                   >
-                    {c.text}
-                    {(c.tables ?? []).map((t, ti) => (
-                      <DohaeTable key={ti} cells={t} />
-                    ))}
+                    <CellContent cell={c} />
                   </Tag>
                 );
               })}

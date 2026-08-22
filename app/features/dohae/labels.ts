@@ -11,12 +11,31 @@ export interface DohaeCell {
   shade?: boolean;
   /** 원본 문단 정렬이 가운데. (그 밖은 왼쪽 — 별도 표기 없음) */
   align?: "center";
-  /** 원본 글꼴이 굵은 계열(돋움체 Bold 등). ★hh:bold 플래그는 교재가 거의 안 쓴다. */
+  /** 칸 **전체**가 굵은 계열(돋움체 Bold 등). ★hh:bold 플래그는 교재가 거의 안 쓴다. */
   bold?: boolean;
+  /**
+   * 칸 안에서 **일부만** 굵은 구간 `[시작, 끝)` — text 기준 글자 오프셋.
+   * 교재는 한 칸 안에서 소제목만 굵게 쓴다(조문 비교표의 조문 제목, t65 「공통점」의 ▪항목).
+   */
+  boldRanges?: [number, number][];
   /** 셀 안 중첩 표들. */
   tables?: DohaeCell[][][];
+  /** 각 속표가 놓이는 자리(text 기준 글자 오프셋). 없으면 글 뒤. */
+  tablesAt?: number[];
   /** 셀 안 이미지 binId (현재 미사용 — 시드에 이미지 미포함). */
   imgs?: string[];
+  /**
+   * 이 칸에 도해가 그려져 있다 — 표는 살리고 이 칸만 PDF 에서 잘라 넣는다.
+   * (표째 이미지로 바꾸면 하이라이트·포스트잇을 못 붙인다)
+   */
+  diagram?: boolean;
+  /** 크롭 페이지를 고르는 probe — 그 칸 도형 안 글자. */
+  diagramTexts?: string[];
+  /** 칸 글 안에서 그림이 놓이는 자리(글자 오프셋). 없으면 글 앞. */
+  diagramAt?: number;
+  /** storage 경로(비공개 버킷) — api/unit 이 signedUrl 을 주입한다. */
+  image?: string | null;
+  signedUrl?: string;
 }
 
 export type DohaeBlock =

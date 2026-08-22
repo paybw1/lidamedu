@@ -119,28 +119,97 @@ const LABELED_RECT_MIN = 3;
 const EMPTY_CELL_RATIO = 0.4;
 
 
-// ── 셀·표 파싱 (검증본 그대로) ──
-function cellText(tcNode) {
+// ── 셀·표 파싱 ──
+/**
+ * 칸의 글 + **굵게 구간**.
+ * ★칸 단위 bold 하나로는 원본을 못 옮긴다 — 교재는 한 칸 안에서 소제목만 굵게 쓴다
+ *   (t65 「공통점」 칸: "▪주체적 사유" 만 굵음). 종전엔 run 하나라도 굵으면 칸 전체를
+ *   굵게 칠해, 굵지 않아야 할 본문까지 굵어졌다(원장 지적 2026-08-22 "공통점에서 볼드
+ *   없애기"). 반대로 조문 비교표는 조문 제목만 굵어야 하는데 같은 이유로 칸 전체가 굵었다.
+ * 반환 { text, boldRanges } — 칸 전체가 굵으면 호출부에서 bold 플래그로 접는다.
+ */
+function cellRich(tcNode) {
   const parts = [];
+  // 그림이 글 **사이**에 낀 칸(t79 국내단계에서의 보정)을 위해 그림이 나온 자리를 적어 둔다.
+  // 앞뒤를 안 나누면 화면에서 그림이 글 위나 아래로 밀려 순서가 뒤집힌다.
+  const diagramAtParts = [];
+  const tableAtParts = [];
+  let pendingGap = false;
   (function walk(n) {
     const tag = tagOf(n);
     if (tag === "hp:tbl" || SHAPE_TAGS.has(tag) || tag === "hp:shapeComment") return;
     if (tag === "hp:p") {
-      let t = "";
-      (function tw(m, root) {
+      if (drawingScore(n).draw > 0) diagramAtParts.push(parts.length);
+      // 속표가 이 문단에 있으면 그 자리를 적어 둔다 — 글 뒤에 몰아 그리면 순서가 뒤집힌다
+      // (t22 「다항제 기재방법…」은 【예】 상자가 【해설】보다 **위**다).
+      (function t(x) {
+        if (tagOf(x) === "hp:tbl") { tableAtParts.push(parts.length); return; }
+        for (const c of childrenOf(x)) t(c);
+      })(n);
+      const chars = [];
+      const bolds = [];
+      (function tw(m, root, bold) {
         const mt = tagOf(m);
-        if (mt === "#text") { t += String(m["#text"] ?? ""); return; }
+        if (mt === "#text") {
+          for (const ch of String(m["#text"] ?? "")) { chars.push(ch); bolds.push(bold); }
+          return;
+        }
         if (mt === "hp:tbl" || SHAPE_TAGS.has(mt) || mt === "hp:shapeComment") return;
         if (!root && mt === "hp:p") return;
-        for (const c of childrenOf(m)) tw(c, false);
-      })(n, true);
-      t = t.replace(/[ \t]+/g, " ").trim();
-      if (t) parts.push(t);
+        const b =
+          mt === "hp:run"
+            ? !!CHAR_FONT.get(attrsOf(m)["@_charPrIDRef"])?.boldish
+            : bold;
+        for (const c of childrenOf(m)) tw(c, false, b);
+      })(n, true, false);
+      // 공백 정규화(연속 공백 → 1개, 앞뒤 잘라내기)를 글자와 굵기에 나란히 적용한다.
+      const outC = [];
+      const outB = [];
+      for (let i = 0; i < chars.length; i++) {
+        const ch = chars[i];
+        if (ch === " " || ch === "\t") {
+          if (outC[outC.length - 1] === " ") continue;
+          outC.push(" ");
+          outB.push(bolds[i]);
+          continue;
+        }
+        outC.push(ch);
+        outB.push(bolds[i]);
+      }
+      while (outC.length && outC[0] === " ") { outC.shift(); outB.shift(); }
+      while (outC.length && outC[outC.length - 1] === " ") { outC.pop(); outB.pop(); }
+      // ★빈 문단은 교재가 문단 사이를 띄우려고 넣은 것이다 — 지우면 화면에서 글이 한 덩어리로
+      //   붙는다(원장 지시 2026-08-22 "줄바꿈할 때 한 줄 뛰우기(원본 확인)"). 내용 사이에
+      //   있는 것만, 연속돼도 한 줄만 남긴다.
+      if (!outC.length) { if (parts.length) pendingGap = true; return; }
+      if (pendingGap) { parts.push({ text: "", bolds: [] }); pendingGap = false; }
+      parts.push({ text: outC.join(""), bolds: outB });
       return;
     }
     for (const c of childrenOf(n)) walk(c);
   })(tcNode);
-  return parts.join("\n");
+
+  const text = parts.map((x) => x.text).join("\n");
+  const flags = [];
+  parts.forEach((x, i) => {
+    if (i > 0) flags.push(false); // 문단 구분 개행
+    flags.push(...x.bolds);
+  });
+  const boldRanges = [];
+  for (let i = 0; i < flags.length; i++) {
+    if (!flags[i]) continue;
+    let j = i;
+    while (j + 1 < flags.length && flags[j + 1]) j++;
+    boldRanges.push([i, j + 1]);
+    i = j;
+  }
+  // 그림·속표 자리를 글자 오프셋으로 환산(문단 앞뒤 사이).
+  const offsetOf = (k) => parts.slice(0, k).map((x) => x.text).join("\n").length;
+  const offsets = [...new Set(diagramAtParts)]
+    .map(offsetOf)
+    .filter((v) => v > 0 && v <= text.length);
+  const tablesAt = tableAtParts.map(offsetOf);
+  return { text, boldRanges, diagramAt: offsets[0] ?? null, tablesAt };
 }
 
 function cellNestedTables(tcNode) {
@@ -170,7 +239,6 @@ function cellImages(tcNode) {
  */
 function cellStyle(tcNode) {
   const aligns = [];
-  let bold = false;
   let any = false;
   (function walk(n) {
     const tag = tagOf(n);
@@ -180,16 +248,6 @@ function cellStyle(tcNode) {
       (function t(x) {
         if (tagOf(x) === "hp:t") {
           for (const c of childrenOf(x)) if (typeof c["#text"] === "string") text += c["#text"];
-        }
-        if (tagOf(x) === "hp:run") {
-          const f = CHAR_FONT.get(attrsOf(x)["@_charPrIDRef"]);
-          let runText = "";
-          (function r(y) {
-            if (tagOf(y) === "hp:t")
-              for (const c of childrenOf(y)) if (typeof c["#text"] === "string") runText += c["#text"];
-            childrenOf(y).forEach(r);
-          })(x);
-          if (runText.trim() && f?.boldish) bold = true;
         }
         childrenOf(x).forEach(t);
       })(n);
@@ -205,7 +263,6 @@ function cellStyle(tcNode) {
   return {
     ...(isShaded(attrsOf(tcNode)["@_borderFillIDRef"]) ? { shade: true } : {}),
     ...(align ? { align } : {}),
-    ...(bold ? { bold: true } : {}),
   };
 }
 
@@ -236,13 +293,26 @@ function parseTable(tblNode) {
           })(m);
           const nested = cellNestedTables(m).map(parseTable);
           const imgs = cellImages(m);
+          const { text, boldRanges, diagramAt, tablesAt } = cellRich(m);
+          // 칸 전체가 굵으면 구간 대신 플래그로 — 라벨 칸이 대부분이라 jsonb 가 짧아진다.
+          const bodyLen = text.replace(/\n/g, "").length;
+          const boldLen = boldRanges.reduce((a, [s, e]) => a + (e - s), 0);
+          const allBold = bodyLen > 0 && boldLen >= bodyLen;
           rich.push({
-            text: cellText(m),
+            text,
             colSpan,
             rowSpan,
             ...(width > 0 ? { width } : {}),
             ...style,
+            ...(allBold ? { bold: true } : boldRanges.length ? { boldRanges } : {}),
+            ...(diagramAt != null ? { diagramAt } : {}),
             ...(nested.length ? { tables: nested } : {}),
+            // 속표가 글 앞이나 중간에 있는 경우에만 자리를 남긴다(끝이면 기본 렌더와 같다).
+            ...(nested.length &&
+            tablesAt.length === nested.length &&
+            tablesAt.some((v) => v < text.length)
+              ? { tablesAt }
+              : {}),
             ...(imgs.length ? { imgs } : {}),
           });
           return;
@@ -258,6 +328,82 @@ function parseTable(tblNode) {
 }
 
 // ── 문단 정보 ──
+/**
+ * 도형 프레임(표를 품은 hp:subList)의 **문서 순서** 를 그대로 뽑는다.
+ * ★프레임 안에서 글과 표가 번갈아 나오는데(t44 구체적 예: 판례 소개 → 표 → 다음 판례 →
+ *   표), 종전엔 글을 몰아서 먼저 내고 표를 뒤에 몰아 내어 순서가 무너졌다. t23 의 표 밑
+ *   각주(*, **)는 아예 사라졌다 — 도형 글자로 취급돼 다이어그램 probe 로만 남았다
+ *   (원장 지적 2026-08-22).
+ */
+function frameSequences(paraNode) {
+  const hasTbl = (n) => {
+    let f = false;
+    (function s(x) { if (tagOf(x) === "hp:tbl") { f = true; return; } for (const c of childrenOf(x)) s(c); })(n);
+    return f;
+  };
+  // ★프레임은 여러 겹으로 감싸여 있다 — 표를 품은 subList 가 바깥·안쪽에 겹쳐 있으면
+  //   바깥쪽은 그냥 껍데기다. 다 모은 뒤 **가장 안쪽만** 남긴다(바깥 것을 쓰면 글 문단이
+  //   "표를 품은 문단" 으로 잡혀 글이 사라진다 — t25 에서 실제로 그랬다).
+  const candidates = [];
+  (function w(node, inShape) {
+    if (Array.isArray(node)) return node.forEach((x) => w(x, inShape));
+    const tag = tagOf(node);
+    // ★표 안으로는 내려가지 않는다 — 칸(hp:tc)의 subList 도 표를 품을 수 있어서,
+    //   내려가면 속표가 프레임으로 잡혀 바깥 표에서 떨어져 나온다(r2-2 에서 실제로 그랬다).
+    if (tag === "hp:tbl") return;
+    if (tag === "hp:subList" && inShape && hasTbl(node)) {
+      const ps = [];
+      (function f(x) { if (tagOf(x) === "hp:p") { ps.push(x); return; } for (const c of childrenOf(x)) f(c); })(node);
+      const items = [];
+      const tables = new Set();
+      const texts = [];
+      for (const p of ps) {
+        if (hasTbl(p)) {
+          (function f(x) {
+            if (tagOf(x) === "hp:tbl") { items.push({ type: "table", node: x }); tables.add(x); return; }
+            for (const c of childrenOf(x)) f(c);
+          })(p);
+          continue;
+        }
+        const nodes = [];
+        let t = "";
+        (function tw(m, root) {
+          const mt = tagOf(m);
+          if (mt === "#text") { t += String(m["#text"] ?? ""); nodes.push(m); return; }
+          if (mt === "hp:tbl" || SHAPE_TAGS.has(mt) || mt === "hp:shapeComment") return;
+          if (!root && mt === "hp:p") return;
+          for (const c of childrenOf(m)) tw(c, false);
+        })(p, true);
+        t = t.replace(/[ \t]+/g, " ").trim();
+        if (!t) continue;
+        items.push({ type: "p", text: t });
+        texts.push(...nodes);
+      }
+      if (items.length) candidates.push({ items, tables, texts });
+    }
+    for (const c of childrenOf(node)) w(c, inShape || SHAPE_TAGS.has(tag));
+  })(paraNode, false);
+
+  // 같은 표를 감싼 후보가 여럿이면(껍데기 ⊃ 알맹이) 글을 더 많이 담은 안쪽 것만 남기고,
+  // 다른 후보의 표를 통째로 품은 바깥 후보는 버린다. 안 그러면 같은 표가 두 번 실린다.
+  const tid = new Map();
+  const idsOf = (c) => [...c.tables].map((t) => { if (!tid.has(t)) tid.set(t, tid.size); return tid.get(t); }).sort((a, b) => a - b);
+  const bySig = new Map();
+  for (const c of candidates) {
+    const sig = idsOf(c).join(",");
+    const cur = bySig.get(sig);
+    if (!cur || c.items.length > cur.items.length) bySig.set(sig, c);
+  }
+  const picked = [...bySig.values()];
+  const inner = picked.filter(
+    (c) => !picked.some((o) => o !== c && o.tables.size < c.tables.size && [...o.tables].every((t) => c.tables.has(t))),
+  );
+  const frames = inner.map((c) => c.items);
+  const consumedText = new Set(inner.flatMap((c) => c.texts));
+  const consumedTables = new Set(inner.flatMap((c) => [...c.tables]));
+  return { frames, consumedText, consumedTables };
+}
+
 function paraInfo(p) {
   let plain = "";
   const shapeTexts = [];
@@ -266,17 +412,18 @@ function paraInfo(p) {
   const pics = []; // 본문 그림 binId
   let shapeDraw = 0; // 도형 영역의 그리기 도형(선·타원·다각형…) 수
   let shapeLabeledRect = 0; // 글자를 품은 사각형(라벨 상자) 수
+  const { frames, consumedText, consumedTables } = frameSequences(p);
   (function w(n, root, inShape) {
     const tag = tagOf(n);
     if (tag === "#text") {
       const s = String(n["#text"] ?? "");
-      if (inShape) { if (s.trim()) shapeTexts.push(s.trim()); }
+      if (inShape) { if (s.trim() && !consumedText.has(n)) shapeTexts.push(s.trim()); }
       else plain += s;
       return;
     }
     if (tag === "hp:shapeComment") return; // 그림 캡션("그림입니다…") 제외
     if (tag === "hp:tbl") {
-      (inShape ? shapeTables : tables).push(n);
+      if (!consumedTables.has(n)) (inShape ? shapeTables : tables).push(n);
       return;
     }
     if (inShape && DRAW_TAGS.has(tag)) shapeDraw++;
@@ -301,7 +448,7 @@ function paraInfo(p) {
   })(p, true, false);
   return {
     plain: plain.replace(/[ \t]+/g, " ").trim(),
-    shapeTexts, tables, shapeTables, pics, shapeDraw, shapeLabeledRect,
+    shapeTexts, tables, shapeTables, pics, shapeDraw, shapeLabeledRect, frames,
   };
 }
 
@@ -338,9 +485,12 @@ function topicHeaderOf(p) {
   return { no, title };
 }
 // 참고자료: 아이콘 그림 + 같은 문단 "N.M 제목" 텍스트.
+// ★제8장 참고자료는 장에 하나뿐이라 가지번호 없이 "8 제목" 으로 적혀 있다. 소수점을
+//   강제하던 종전 정규식이 이걸 흘려, 「참고 8 우리나라 특허법 규정에 반영된 특허협력
+//   조약(PCT)」한 장이 통째로 누락됐다(원장 지적 2026-08-22 "원본에서 찾아서 붙이기").
 function refHeaderOf(p) {
   if (p.pics.length === 0) return null;
-  const m = /^(\d+\.\d+)\s+(.+)$/.exec(p.plain);
+  const m = /^(\d+(?:\.\d+)?)\s+(.+)$/.exec(p.plain);
   if (!m) return null;
   return { refNo: m[1], title: m[2].trim() };
 }
@@ -402,6 +552,84 @@ function topRows(tblNode) {
     for (const c of childrenOf(n)) walk(c);
   })(tblNode);
   return rows;
+}
+
+/** 표의 최상위 칸(hp:tc) 노드 — parseTable 의 cells 와 행·열 순서가 같다. */
+function topCellNodes(tblNode) {
+  return topRows(tblNode).map((tr) => {
+    const cells = [];
+    (function walk(n) {
+      if (tagOf(n) === "hp:tc") {
+        cells.push(n);
+        return;
+      }
+      for (const c of childrenOf(n)) walk(c);
+    })(tr);
+    return cells;
+  });
+}
+
+/**
+ * 이 칸 안에 **그림**이 그려져 있는가.
+ * ★칸에서는 라벨 상자 개수를 쓰지 않는다 — 교재는 「A + B + C」 같은 짧은 식을 글자마다
+ *   상자에 담아 조판한다(t45 침해 유형별 검토). 그건 그림이 아니라 글이라 아래
+ *   shapeBoxText 로 글을 되살린다.
+ */
+function cellIsDrawing(tcNode) {
+  return drawingScore(tcNode).draw > 0;
+}
+
+/**
+ * 그리기 도형 없이 **글상자만** 놓인 칸의 글 — 상자 좌표(hp:offset)로 읽기 순서를 복원한다.
+ * 도형 순서 그대로 이으면 "+A+BC" 가 된다(원본은 「A + B + C」).
+ */
+function shapeBoxText(tcNode) {
+  const items = [];
+  (function w(n, ox, oy) {
+    const tag = tagOf(n);
+    if (tag === "hp:shapeComment" || tag === "hp:tbl") return;
+    let x = ox;
+    let y = oy;
+    if (SHAPE_TAGS.has(tag)) {
+      const off = childrenOf(n).find((c) => tagOf(c) === "hp:offset");
+      const a = attrsOf(off ?? {});
+      x += Number(a["@_x"] ?? 0) || 0;
+      y += Number(a["@_y"] ?? 0) || 0;
+    }
+    if (tag === "hp:drawText") {
+      let t = "";
+      (function tw(m) {
+        if (tagOf(m) === "#text") { t += String(m["#text"] ?? ""); return; }
+        for (const c of childrenOf(m)) tw(c);
+      })(n);
+      t = t.replace(/\s+/g, " ").trim();
+      if (t) items.push({ x, y, t });
+      return;
+    }
+    for (const c of childrenOf(n)) w(c, x, y);
+  })(tcNode, 0, 0);
+  if (items.length === 0) return "";
+  // 같은 줄(세로 차 900 이내 = 약 0.3cm) 끼리 묶어 x 순으로 잇는다.
+  items.sort((a, b) => a.y - b.y || a.x - b.x);
+  const lines = [];
+  for (const it of items) {
+    const last = lines[lines.length - 1];
+    if (last && Math.abs(last.y - it.y) <= 900) last.parts.push(it);
+    else lines.push({ y: it.y, parts: [it] });
+  }
+  return lines
+    .map((ln) => {
+      ln.parts.sort((a, b) => a.x - b.x);
+      let s = "";
+      ln.parts.forEach((p, i) => {
+        if (i === 0) { s = p.t; return; }
+        const prev = ln.parts[i - 1].t;
+        // 한두 글자짜리 조각(A, +, C')끼리는 붙여 쓴다 — 식이기 때문이다.
+        s += prev.length <= 2 && p.t.length <= 2 ? p.t : ` ${p.t}`;
+      });
+      return s;
+    })
+    .join("\n");
 }
 
 function tableIsDrawing(node, cells) {
@@ -536,6 +764,12 @@ for (let i = 0; i < paras.length; i++) {
       pushBlock({ type: "p", text: nonBadgeShapes.join("\n") });
     }
   }
+  // 도형 프레임 안 내용은 **원본 순서대로** — 글·표가 번갈아 나온다.
+  for (const items of p.frames)
+    for (const it of items) {
+      if (it.type === "p") pushBlock({ type: "p", text: it.text });
+      else pushTable(it.node, true);
+    }
   for (const t of p.shapeTables) pushTable(t, true);
   for (const t of p.tables) pushTable(t, false);
 
@@ -546,8 +780,124 @@ for (let i = 0; i < paras.length; i++) {
   //   → 그림을 품은 표는 표 대신 **다이어그램(PDF 크롭)** 으로 내보낸다. 표+그림이 한 상자에
   //     섞여 있으면 쪼갤 수 없으므로 상자째 이미지로 가는 게 맞다(하이브리드 원칙의 그림 쪽).
   //   실측(표 255개): 그림 없는 표 247 · 그림 품은 표 8 — 경계가 뚜렷해 오분류 여지가 작다.
+  /**
+   * 조문 박스(한 칸짜리 표)에서 조와 조 사이를 한 줄 띄운다.
+   * ★원고는 조 사이 빈 줄을 넣은 곳도 있고 안 넣은 곳도 있다(t07 은 있고 t08·t20 은 없다).
+   *   화면에서는 조가 붙어 나와 어디서 끊기는지 안 보인다(원장 지시 2026-08-22).
+   *   글자 오프셋이 밀리므로 boldRanges·diagramAt·tablesAt 도 같이 옮긴다.
+   */
+  function spaceOutArticles(cell) {
+    const text = String(cell.text ?? "");
+    const re = /(?:^|\n)((?:[가-힣]{2,8}법\s*)?제\d+조(?:의\d+)?\s*【)/g;
+    const heads = [];
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      heads.push(m.index + (text[m.index] === "\n" ? 1 : 0));
+      re.lastIndex = m.index + 1;
+    }
+    if (heads.length < 2) return;
+    const cuts = heads.filter((at) => at > 0 && text[at - 2] !== "\n");
+    if (cuts.length === 0) return;
+    let out = "";
+    let prev = 0;
+    for (const c of cuts) { out += `${text.slice(prev, c - 1)}\n\n`; prev = c; }
+    cell.text = out + text.slice(prev);
+    const shift = (p) => p + cuts.filter((c) => c <= p).length;
+    if (cell.boldRanges) cell.boldRanges = cell.boldRanges.map(([s, e]) => [shift(s), shift(e)]);
+    if (cell.diagramAt != null) cell.diagramAt = shift(cell.diagramAt);
+    if (cell.tablesAt) cell.tablesAt = cell.tablesAt.map(shift);
+  }
+
+  /**
+   * 조문 비교표(한 행에 좌우로 조문 원문을 나란히 둔 표)의 **조문 제목 줄을 굵게** 맞춘다.
+   * ★원고가 표마다 제각각이다 — t41·t71 은 제목이 굵고 t48 은 굵지 않다. 화면에서는 어디가
+   *   조문 경계인지 안 보인다(원장 지시 2026-08-22 "제목은 볼드로 표시하기 · 조문비교는
+   *   모두 동일하니 전수검사").
+   */
+  function boldArticleTitles(cells) {
+    const ART_TITLE = /^(?:[가-힣]{2,8}법\s*)?제\d+조(?:의\d+)?\s*【[^\n】]*】/;
+    const rows = cells.filter(
+      (row) => row.filter((c) => ART_TITLE.test(String(c.text ?? ""))).length >= 2,
+    );
+    if (rows.length === 0) return;
+    for (const row of cells)
+      for (const c of row) {
+        const m = ART_TITLE.exec(String(c.text ?? ""));
+        if (!m) continue;
+        const end = m[0].length;
+        const ranges = c.boldRanges ?? [];
+        if (c.bold || ranges.some(([s, e]) => s <= 0 && e >= end)) continue;
+        c.boldRanges = [[0, end], ...ranges.filter(([s]) => s >= end)].sort((a, b) => a[0] - b[0]);
+      }
+  }
+
   function pushTable(node, fromShape) {
     const cells = parseTable(node);
+    if (cells.length === 1 && cells[0].length === 1) spaceOutArticles(cells[0][0]);
+    boldArticleTitles(cells);
+    // ★그림이 **일부 칸에만** 있으면 표를 살리고 그 칸에만 그림을 넣는다.
+    //   표를 통째로 이미지로 바꾸면 수험생이 하이라이트·포스트잇을 못 붙인다
+    //   (원장 지시 2026-08-22 "표 안에 그림이 있으면 표를 살려야 해").
+    //   칸 크롭 좌표는 crop-diagrams.mjs 가 그 칸의 도형 글자로 잡는다.
+    {
+      const nodes = topCellNodes(node);
+      const shaped = nodes.length === cells.length &&
+        nodes.every((row, ri) => row.length === cells[ri].length);
+      if (shaped) {
+        // (1) 글상자만 놓인 칸 → 도형 글을 칸 글로 되살린다(t45 「A + B + C」).
+        let restored = 0;
+        nodes.forEach((row, ri) =>
+          row.forEach((tc, ci) => {
+            const s = drawingScore(tc);
+            if (s.draw > 0 || s.labeledRect === 0) return;
+            if (String(cells[ri][ci].text ?? "").trim()) return;
+            const t = shapeBoxText(tc);
+            if (!t) return;
+            cells[ri][ci].text = t;
+            restored++;
+          }),
+        );
+        // (2) 진짜 그림이 그려진 칸 세기
+        let drawn = 0;
+        let textOnly = 0;
+        nodes.forEach((row, ri) =>
+          row.forEach((tc, ci) => {
+            if (cellIsDrawing(tc)) drawn++;
+            else if (String(cells[ri][ci].text ?? "").trim() || cells[ri][ci].tables?.length)
+              textOnly++;
+          }),
+        );
+        const keepTable = () =>
+          pushBlock(
+            fromShape
+              ? { type: "table", fromShape: true, cells }
+              : { type: "table", cells },
+          );
+        // 그림 칸과 글 칸이 함께 있을 때만 — 전부 그림이면 가를 게 없다(종전대로 통째 이미지).
+        if (drawn > 0 && textOnly > 0) {
+          nodes.forEach((row, ri) =>
+            row.forEach((tc, ci) => {
+              if (!cellIsDrawing(tc)) return;
+              cells[ri][ci].diagram = true;
+              cells[ri][ci].diagramTexts = shapeTextsIn(tc);
+              if (process.env.DOHAE_DEBUG_CELLS) {
+                const s = drawingScore(tc);
+                console.log(`  [칸그림] ${curUnit?.no ?? curUnit?.refNo} r${ri}c${ci} draw=${s.draw} rect=${s.labeledRect} texts=${JSON.stringify(shapeTextsIn(tc)).slice(0, 120)}`);
+              }
+            }),
+          );
+          keepTable();
+          return;
+        }
+        // 그림은 없고 글상자만 있던 표 — 이제 글로 다 찼으니 표 그대로.
+        if (drawn === 0 && restored > 0 && textOnly > 0) {
+          if (process.env.DOHAE_DEBUG_CELLS)
+            console.log(`  [글상자복원] ${curUnit?.no ?? curUnit?.refNo} ${restored}칸`);
+          keepTable();
+          return;
+        }
+      }
+    }
     if (tableIsDrawing(node, cells)) {
       // ★그림과 글이 한 표에 섞여 있으면 통째로 이미지로 보내지 않는다 — 글이 이미지가 되면
       //   검색·하이라이트를 잃는다(원장 지시 2026-08-22: "그림 삽입 외에 나머지는 텍스트로").
@@ -667,8 +1017,13 @@ const CORRECTIONS = [
       ["大判 2000후22482000후2248", "大判 2000후2248"],
       ["×(大判 2000후2248法 36④)", "×(法 36④)"],
     ],
-    // 원장 지시 — 「관련문제」 내용 칸의 굵게 해제.
-    unbold: [{ block: 3, row: 13, col: 1 }],
+    // 「관련문제」 칸의 굵게 해제(원장 지시)는 별도 정정이 필요 없다 — 칸 단위 bold 를
+    // 구간 단위(boldRanges)로 바꾸면서 속표의 굵기가 부모 칸으로 번지지 않게 됐다.
+  },
+  {
+    unit: "t68",
+    why: "인쇄본은 사례 표(정정 전/후 명세서)가 먼저고 【해 설】이 그 아래다. 원고는 글상자와 표가 서로 다른 도형이라 문서 순서로는 순서를 알 수 없다(원장 지시 2026-08-22).",
+    swapWithNextTable: ["해 설"],
   },
 ];
 
@@ -695,6 +1050,18 @@ const CORRECTIONS = [
       const c = u.blocks[t.block]?.cells?.[t.row]?.[t.col];
       if (!c) throw new Error(`정정 대상 칸 없음: ${fix.unit} b${t.block} r${t.row} c${t.col}`);
       delete c.bold;
+      delete c.boldRanges;
+      hits++;
+    }
+    // 글 블록과 바로 뒤 표의 자리를 맞바꾼다(원고의 도형 순서가 인쇄본과 다른 경우).
+    for (const prefix of fix.swapWithNextTable ?? []) {
+      const i = u.blocks.findIndex(
+        (b) => b.type === "p" && String(b.text ?? "").startsWith(prefix),
+      );
+      if (i < 0 || u.blocks[i + 1]?.type !== "table")
+        throw new Error(`정정 대상 없음(swapWithNextTable): ${fix.unit} "${prefix}"`);
+      const [p] = u.blocks.splice(i, 1);
+      u.blocks.splice(i + 1, 0, p);
       hits++;
     }
     if (hits === 0) throw new Error(`정정이 하나도 적용되지 않음: ${fix.unit} — 원고가 바뀐 듯`);

@@ -15,7 +15,7 @@ import {
   listMemosByArticleIds,
 } from "~/features/annotations/queries.server";
 
-import type { DohaeBlock } from "../labels";
+import type { DohaeBlock, DohaeCell } from "../labels";
 import { getArticleTitleMap, listDohaeUnitArticles } from "../queries.server";
 
 // 도해특허법 = 특허법 단행본. 다른 과목 도해가 생기면 book_code 로 갈라야 한다.
@@ -45,14 +45,33 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (!row) throw data("Not found", { status: 404 }); // 학생 = RLS 0행 → 동일 404
 
   // 다이어그램 서명 URL 주입 — 비공개 버킷이라 공개 URL 없음.
+  // ★블록 다이어그램뿐 아니라 **표 안 칸 그림**도 같은 경로로 서명한다(표를 살리고 칸만
+  //   이미지로 넣는 방식 — 2026-08-22).
   const blocks = (row.blocks ?? []) as DohaeBlock[];
+  const sign = async (path: string) => {
+    const { data: signed, error: sErr } = await adminClient.storage
+      .from("dohae")
+      .createSignedUrl(path, SIGNED_URL_TTL_SEC);
+    return sErr ? undefined : signed?.signedUrl;
+  };
+  const signCells = async (cells: DohaeCell[][]): Promise<DohaeCell[][]> =>
+    Promise.all(
+      cells.map((r) =>
+        Promise.all(
+          r.map(async (c) => ({
+            ...c,
+            ...(c.image ? { signedUrl: await sign(c.image) } : {}),
+            ...(c.tables ? { tables: await Promise.all(c.tables.map(signCells)) } : {}),
+          })),
+        ),
+      ),
+    );
   const withUrls: DohaeBlock[] = [];
   for (const b of blocks) {
     if (b.type === "diagram" && b.image) {
-      const { data: signed, error: sErr } = await adminClient.storage
-        .from("dohae")
-        .createSignedUrl(b.image, SIGNED_URL_TTL_SEC);
-      withUrls.push({ ...b, signedUrl: sErr ? undefined : signed?.signedUrl });
+      withUrls.push({ ...b, signedUrl: await sign(b.image) });
+    } else if (b.type === "table") {
+      withUrls.push({ ...b, cells: await signCells(b.cells) });
     } else {
       withUrls.push(b);
     }
