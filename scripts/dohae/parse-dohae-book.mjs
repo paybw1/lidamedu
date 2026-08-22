@@ -203,6 +203,11 @@ function cellRich(tcNode) {
     boldRanges.push([i, j + 1]);
     i = j;
   }
+  // 글자 없는 구간(쉼표·공백만)은 굵기로 치지 않는다 — 원고에 자주 남는 조판 잔재라
+  // 그대로 옮기면 본문 한가운데 쉼표 하나가 굵게 찍힌다(t65 「공통점」).
+  const meaningful = (r) => /[\p{L}\p{N}]/u.test(text.slice(r[0], r[1]));
+  for (let i = boldRanges.length - 1; i >= 0; i--) if (!meaningful(boldRanges[i])) boldRanges.splice(i, 1);
+
   // 그림·속표 자리를 글자 오프셋으로 환산(문단 앞뒤 사이).
   const offsetOf = (k) => parts.slice(0, k).map((x) => x.text).join("\n").length;
   const offsets = [...new Set(diagramAtParts)]
