@@ -834,17 +834,27 @@ function splitInlineParts(
     // ★하위법령 컨텍스트 — "시행령 제9조" 는 본법 제9조가 아니다.
     //   종전엔 수식어를 못 보고 본법 조문으로 링크해 엉뚱한 조문으로 보냈다
     //   (원장 오류신고 2026-08-22: 상표법 시행령 제9조 → 상표법 제9조).
-    //   본법 이름이 뒤에 다시 나오면(“…시행령 제3조 및 상표법 제9조”) 그쪽이 우선한다.
-    const ordMatch = [...recent.matchAll(/시행규칙|시행령|대통령령|총리령|부령/g)].pop();
+    //
+    //   ★범위를 **괄호 안으로 한정**한다. 교재 표기가 `대통령령(시행령 제7조)으로 정하는`
+    //   꼴이라, 문장 전체로 넓히면 괄호가 닫힌 뒤의 본법 조문까지 하위법령으로 끌려간다
+    //   (특허법 제89조: "…(시행령 제7조)으로 정하는 발명인 경우에는 **제88조**제1항에도
+    //   불구하고…" — 제88조는 본법이다). 그래서 키워드와 ref 사이에 `)` 가 있으면 제외.
+    //
+    //   ★트리거는 `시행령`·`시행규칙` 뿐이다. `대통령령`·`총리령` 은 법이 위임할 때 쓰는
+    //   말이라 그 자체로는 인용이 아니고, 괄호 안이 다른 대통령령인 경우도 있다
+    //   (특허법 제107조: "대통령령(특허권의 수용·실시 등에 관한 규정 제2조의3)").
+    const ordMatch = [...recent.matchAll(/시행규칙|시행령/g)].pop();
     const ordAt = ordMatch?.index ?? -1;
-    if (ordAt >= 0 && ordAt > localAt) {
+    const closedBeforeRef =
+      ordAt >= 0 && recent.slice(ordAt).includes(")");
+    if (ordAt >= 0 && ordAt > localAt && !closedBeforeRef) {
       matches.push({
         start: m.index,
         end: m.index + m[0].length,
         part: {
           type: "oref",
           raw: m[0],
-          ordinance: /시행규칙|총리령|부령/.test(ordMatch?.[0] ?? "")
+          ordinance: /시행규칙/.test(ordMatch?.[0] ?? "")
             ? "시행규칙"
             : "시행령",
           article: Number(m[1]),
@@ -1240,6 +1250,20 @@ function InlineNode({
         return <Fragment>{renderTextWithBlanks(node.text, 0)}</Fragment>;
       }
       const t = node.text;
+      // "시행령 제7조" 처럼 **한 조문만** 가리키는 라벨은 눌러서 본문을 볼 수 있게 한다.
+      // 범위·복수 인용("시행령 제11조 내지 제16조, …규정")은 어느 조문인지 하나로 못 정하므로
+      // 종전대로 칩만 남긴다.
+      const single = /^\(?\s*(시행령|시행규칙)\s*제\s*(\d+)조(?:의(\d+))?\s*\)?$/.exec(t);
+      if (single) {
+        return (
+          <OrdinanceRefLink
+            raw={t.replace(/^\(|\)$/g, "")}
+            ordinance={single[1] as "시행령" | "시행규칙"}
+            article={Number(single[2])}
+            branch={single[3] ? Number(single[3]) : undefined}
+          />
+        );
+      }
       const alreadyWrapped = t.startsWith("(") && t.endsWith(")");
       return (
         <span
