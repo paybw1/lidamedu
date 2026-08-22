@@ -93,10 +93,16 @@ function headingY(lines, text) {
   let best = null;
   for (const ln of lines) {
     if (ln.text.length < 3 || ln.x > 220) continue;
-    // 줄에 번호 배지(Ⅵ 등)가 붙어 오므로 startsWith 가 아니라 포함 여부로 본다.
+    // 줄 맨 앞의 번호 배지(Ⅵ 등)를 떼고 **앞부분 일치**로 본다.
+    // ★단순 포함(includes)으로 보면 안 된다 — 유닛 제목 "1.2 발명의 분류" 가 소제목
+    //   "분 류" 를 포함해서 그쪽이 잡히고, 크롭이 제목 위에서 시작해 제목이 이미지에
+    //   들어간다(화면에서 제목이 두 번 보인다).
+    // ★뒤쪽 조건(제목이 줄로 시작)은 줄이 충분히 길 때만 — "직접침해" 한 칸이
+    //   소제목 "직접침해의 유형별 검토" 의 앞부분이라는 이유로 표 칸에 걸린다.
+    const body = ln.text.replace(/^[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ]+/, "");
     const hit =
-      ln.text.includes(target.slice(0, 12)) ||
-      (target.length >= 3 && target.startsWith(ln.text));
+      body.startsWith(target.slice(0, 12)) ||
+      (body.length >= Math.min(target.length, 8) && target.startsWith(body));
     if (hit && (best === null || ln.y > best)) best = ln.y;
   }
   return best;
@@ -132,7 +138,13 @@ for (let ui = 0; ui < data.units.length; ui++) {
     let prevH = null, nextH = null;
     for (let k = bi - 1; k >= 0; k--) if (u.blocks[k].type === "h") { prevH = u.blocks[k]; break; }
     for (let k = bi + 1; k < u.blocks.length; k++) if (u.blocks[k].type === "h") { nextH = u.blocks[k]; break; }
-    const yTopHead = prevH ? headingY(lines, prevH.text) : null;
+    // ★앞 소제목이 없으면(유닛 첫 블록) 유닛 제목 아래에서 끊는다 — 안 그러면 크롭이
+    //   본문 맨 위에서 시작해 제목까지 들어간다(참고 3.1).
+    const unitTitleLine =
+      u.kind === "reference" ? `${u.refNo} ${u.title}` : u.title;
+    const yTopHead = prevH
+      ? headingY(lines, prevH.text)
+      : headingY(lines, unitTitleLine);
     const yBotHead = nextH ? headingY(lines, nextH.text) : null;
     let topY = yTopHead !== null ? yTopHead - 6 : TOP_Y;
     let botY = yBotHead !== null && yBotHead < topY ? yBotHead + 16 : BOT_Y;

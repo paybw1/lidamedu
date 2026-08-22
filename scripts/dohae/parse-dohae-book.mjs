@@ -109,6 +109,16 @@ const SHAPE_TAGS = new Set([
 ]);
 const ROMAN = /^[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ]$/;
 
+// 그리기 도형(선·타원·다각형·연결선). 사각형은 뺀다 — 도해는 **내용 상자**를 rect 로 두르므로
+// rect 하나로는 그림이라 할 수 없다. 다만 글자를 품은 rect(=라벨 상자)가 여럿이면 도해다.
+const DRAW_TAGS = new Set([
+  "hp:line", "hp:polygon", "hp:curve", "hp:connectLine", "hp:ellipse", "hp:arc",
+]);
+const LABELED_RECT_MIN = 3;
+// 칸이 이만큼 비어 있으면 내용이 표 밖(도형)에 그려져 있다는 뜻 — HTML 로 내보내면 빈 표가 뜬다.
+const EMPTY_CELL_RATIO = 0.4;
+
+
 // ── 셀·표 파싱 (검증본 그대로) ──
 function cellText(tcNode) {
   const parts = [];
@@ -254,6 +264,8 @@ function paraInfo(p) {
   const tables = [];
   const shapeTables = []; // 도형 프레임 안에 중첩된 표 — 다이어그램 뒤에 별도 블록으로
   const pics = []; // 본문 그림 binId
+  let shapeDraw = 0; // 도형 영역의 그리기 도형(선·타원·다각형…) 수
+  let shapeLabeledRect = 0; // 글자를 품은 사각형(라벨 상자) 수
   (function w(n, root, inShape) {
     const tag = tagOf(n);
     if (tag === "#text") {
@@ -267,6 +279,15 @@ function paraInfo(p) {
       (inShape ? shapeTables : tables).push(n);
       return;
     }
+    if (inShape && DRAW_TAGS.has(tag)) shapeDraw++;
+    if (inShape && tag === "hp:rect") {
+      let labeled = false;
+      (function f(m) {
+        if (tagOf(m) === "hp:drawText") labeled = true;
+        for (const c of childrenOf(m)) f(c);
+      })(n);
+      if (labeled) shapeLabeledRect++;
+    }
     if (tag === "hp:pic") {
       const ref = attrsOf(n)["@_binaryItemIDRef"] ?? attrsOf(n)["@_BinaryItemIDRef"];
       if (ref) pics.push(ref);
@@ -278,7 +299,10 @@ function paraInfo(p) {
     const nowShape = inShape || SHAPE_TAGS.has(tag);
     for (const c of childrenOf(n)) w(c, false, nowShape);
   })(p, true, false);
-  return { plain: plain.replace(/[ \t]+/g, " ").trim(), shapeTexts, tables, shapeTables, pics };
+  return {
+    plain: plain.replace(/[ \t]+/g, " ").trim(),
+    shapeTexts, tables, shapeTables, pics, shapeDraw, shapeLabeledRect,
+  };
 }
 
 let section = null;
@@ -346,6 +370,52 @@ function pushBlock(b) {
   if (curUnit) curUnit.blocks.push(b);
 }
 
+// ── 표가 사실은 그림인가 ────────────────────────────────────────────────────
+
+function drawingScore(node) {
+  let draw = 0;
+  let labeledRect = 0;
+  (function w(n) {
+    const tag = tagOf(n);
+    if (DRAW_TAGS.has(tag)) draw++;
+    if (tag === "hp:rect") {
+      let labeled = false;
+      (function f(m) {
+        if (tagOf(m) === "hp:drawText") labeled = true;
+        for (const c of childrenOf(m)) f(c);
+      })(n);
+      if (labeled) labeledRect++;
+    }
+    for (const c of childrenOf(n)) w(c);
+  })(node);
+  return { draw, labeledRect };
+}
+
+function tableIsDrawing(node, cells) {
+  const { draw, labeledRect } = drawingScore(node);
+  if (draw > 0 || labeledRect >= LABELED_RECT_MIN) return true;
+  const flat = cells.flat();
+  if (!flat.length) return true;
+  const empty = flat.filter((c) => !String(c.text ?? "").trim()).length;
+  return empty / flat.length >= EMPTY_CELL_RATIO;
+}
+
+/** 크롭 스크립트의 페이지 매칭 probe — 도형 안 글자(drawText)까지 포함해 긁는다. */
+function allTextsIn(node) {
+  const out = [];
+  (function w(n) {
+    const tag = tagOf(n);
+    if (tag === "#text") {
+      const s = String(n["#text"] ?? "").trim();
+      if (s) out.push(s);
+      return;
+    }
+    if (tag === "hp:shapeComment") return;
+    for (const c of childrenOf(n)) w(c);
+  })(node);
+  return [...new Set(out)].filter((t) => t.length >= 3).slice(0, 12);
+}
+
 for (let i = 0; i < paras.length; i++) {
   const p = paras[i];
   const cover = coverOf(p, paragraphs[i]);
@@ -393,9 +463,40 @@ for (let i = 0; i < paras.length; i++) {
     pushBlock({ type: "p", text: p.plain });
   }
   if (p.pics.length > 0) pushBlock({ type: "image", binIds: p.pics });
-  if (nonBadgeShapes.length > 0) pushBlock({ type: "diagram", texts: nonBadgeShapes });
-  for (const t of p.shapeTables) pushBlock({ type: "table", fromShape: true, cells: parseTable(t) });
-  for (const t of p.tables) pushBlock({ type: "table", cells: parseTable(t) });
+  // ★그림이 하나도 없는 도형 상자는 다이어그램이 아니다 — 글상자다.
+  //   종전엔 도형 텍스트만 있으면 무조건 diagram 으로 잡아, 해설 글상자까지 PDF 크롭
+  //   대상이 됐다. 그런 블록은 크롭 좌표가 잡히지 않아 페이지 전체를 긁어오고, 결국
+  //   앞 절의 표까지 이미지에 들어간다(t44·t68·t79 — 2026-08-21 원장이 본 중복의 정체).
+  //   글상자는 글로 내보낸다 — 텍스트라 하이라이트·포스트잇도 그대로 붙는다.
+  if (nonBadgeShapes.length > 0) {
+    if (p.shapeDraw > 0 || p.shapeLabeledRect >= LABELED_RECT_MIN) {
+      pushBlock({ type: "diagram", texts: nonBadgeShapes });
+    } else {
+      pushBlock({ type: "p", text: nonBadgeShapes.join("\n") });
+    }
+  }
+  for (const t of p.shapeTables) pushTable(t, true);
+  for (const t of p.tables) pushTable(t, false);
+
+  // ★표 칸 안에 그려진 그림은 HTML 로 옮길 수 없다 — 표로 내보내면 화면에서 그림이 통째로
+  //   사라진다(원장 보고 2026-08-21: 참고 1.2 Ⅲ · 7 Ⅴ 기간의 계산 사례 · 참고 3.1).
+  //   종전 파서는 **도형에 글자가 있을 때만** diagram 을 만들었고(`nonBadgeShapes.length > 0`),
+  //   표 안으로는 아예 내려가지 않아 그림이 어디에도 안 잡혔다.
+  //   → 그림을 품은 표는 표 대신 **다이어그램(PDF 크롭)** 으로 내보낸다. 표+그림이 한 상자에
+  //     섞여 있으면 쪼갤 수 없으므로 상자째 이미지로 가는 게 맞다(하이브리드 원칙의 그림 쪽).
+  //   실측(표 255개): 그림 없는 표 247 · 그림 품은 표 8 — 경계가 뚜렷해 오분류 여지가 작다.
+  function pushTable(node, fromShape) {
+    const cells = parseTable(node);
+    if (tableIsDrawing(node, cells)) {
+      pushBlock({ type: "diagram", fromTable: true, texts: allTextsIn(node) });
+      return;
+    }
+    pushBlock(
+      fromShape
+        ? { type: "table", fromShape: true, cells }
+        : { type: "table", cells },
+    );
+  }
 }
 
 // ── 조문 참조 파싱 ──
