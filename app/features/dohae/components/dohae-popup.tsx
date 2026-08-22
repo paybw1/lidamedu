@@ -2,9 +2,11 @@
 // 표=HTML(선택 가능 — 하이라이트·포스트잇 작동), 다이어그램=서명 URL 이미지(편집 불가).
 // 학습 툴: HighlightOverlay(dohae_unit)+MemoMarksOverlay+우측 MemoList. 선택 툴바는
 // 조문 뷰어의 prop-less HighlightToolbar 가 컨테이너 dataset 으로 대상 판별.
+import type { loader as unitLoader } from "../api/unit";
 
 import {
   BookOpenIcon,
+  ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   Loader2Icon,
@@ -36,12 +38,11 @@ import { ArticleBodyView } from "~/features/laws/components/article-body";
 import { parseArticleBody } from "~/features/laws/lib/article-body";
 
 import {
-  dohaeUnitLabel,
   type DohaeBlock,
   type DohaeCell,
   type DohaeUnitSummary,
+  dohaeUnitLabel,
 } from "../labels";
-import type { loader as unitLoader } from "../api/unit";
 
 type UnitPayload = Awaited<ReturnType<typeof unitLoader>>;
 
@@ -125,7 +126,13 @@ function columnPercents(
  * ★텍스트 노드를 쪼개도 컨테이너의 textContent 는 그대로라 하이라이트 오프셋은 보존된다
  *   (공백을 새로 넣지 않는 것이 조건).
  */
-function BoldSpans({ text, ranges }: { text: string; ranges?: [number, number][] }) {
+function BoldSpans({
+  text,
+  ranges,
+}: {
+  text: string;
+  ranges?: [number, number][];
+}) {
   if (!ranges?.length) return <>{text}</>;
   const out: ReactNode[] = [];
   let at = 0;
@@ -173,25 +180,45 @@ function CellContent({ cell }: { cell: DohaeCell }) {
       ),
     });
   nested.forEach((t, i) => {
-    marks.push({ at: cell.tablesAt?.[i] ?? cell.text.length, node: <DohaeTable cells={t} /> });
+    marks.push({
+      at: cell.tablesAt?.[i] ?? cell.text.length,
+      node: <DohaeTable cells={t} />,
+    });
   });
-  if (marks.length === 0) return <BoldSpans text={cell.text} ranges={cell.boldRanges} />;
+  if (marks.length === 0)
+    return <BoldSpans text={cell.text} ranges={cell.boldRanges} />;
 
   marks.sort((a, b) => a.at - b.at);
   const shift = (lo: number, hi: number) =>
     (cell.boldRanges ?? [])
-      .map(([s, e]) => [Math.max(s, lo) - lo, Math.min(e, hi) - lo] as [number, number])
+      .map(
+        ([s, e]) =>
+          [Math.max(s, lo) - lo, Math.min(e, hi) - lo] as [number, number],
+      )
       .filter(([s, e]) => e > s);
   const out: ReactNode[] = [];
   let at = 0;
   marks.forEach((m, i) => {
     const to = Math.min(Math.max(m.at, at), cell.text.length);
-    if (to > at) out.push(<BoldSpans key={`t${i}`} text={cell.text.slice(at, to)} ranges={shift(at, to)} />);
+    if (to > at)
+      out.push(
+        <BoldSpans
+          key={`t${i}`}
+          text={cell.text.slice(at, to)}
+          ranges={shift(at, to)}
+        />,
+      );
     out.push(<span key={`m${i}`}>{m.node}</span>);
     at = to;
   });
   if (at < cell.text.length)
-    out.push(<BoldSpans key="tail" text={cell.text.slice(at)} ranges={shift(at, cell.text.length)} />);
+    out.push(
+      <BoldSpans
+        key="tail"
+        text={cell.text.slice(at)}
+        ranges={shift(at, cell.text.length)}
+      />,
+    );
   return <>{out}</>;
 }
 
@@ -231,6 +258,10 @@ function DohaeTable({ cells }: { cells: DohaeCell[][] }) {
                       //   밖으로 삐져나온다. 원본 열 비율이 라벨 열을 아주 좁게 잡는 표가
                       //   있다(41 존속기간 조문 비교표의 첫 열은 폭의 5.7%뿐).
                       "break-words",
+                      // 조문 비교표에서 항 단위로 쪼갠 행 — 이어지는 자리의 가로줄을 지운다.
+                      // (border-collapse 라 위·아래 양쪽을 다 지워야 사라진다)
+                      c.contRow && "border-t-0",
+                      c.contMore && "border-b-0",
                       // ★내용 칸은 위 맞춤 — 가운데 맞춤이면 조문 비교표의 좌우가 서로
                       //   밀려 같은 조문끼리 줄이 안 맞는다(원장 지시 2026-08-22).
                       //   라벨 칸(음영)은 종전대로 가운데 — 여러 행을 세로 병합하기 때문.
@@ -328,7 +359,9 @@ function UnitArticles({
                 </HighlightOverlay>
               </MemoMarksOverlay>
             ) : (
-              <p className="text-muted-foreground text-xs">[본문을 불러오지 못했습니다]</p>
+              <p className="text-muted-foreground text-xs">
+                [본문을 불러오지 못했습니다]
+              </p>
             )}
           </div>
         );
@@ -355,70 +388,97 @@ function DohaeBlocks({
   // 조문 원문 박스는 유닛당 정확히 1개(93유닛 중 76개 보유, 나머지는 아예 없음).
   // 그 자리에서만 플랫폼 조문으로 갈아끼운다.
   let articleBoxUsed = false;
+  const renderBlock = (b: DohaeBlock, i: number): ReactNode => {
+    if (b.type === "p")
+      return (
+        <p
+          key={i}
+          className="text-[length:calc(14px*var(--study-fs,1))] leading-[1.75] whitespace-pre-wrap"
+        >
+          {b.text}
+        </p>
+      );
+    if (b.type === "table") {
+      // 1셀 박스 표 + 조문 원문 → 조문 박스.
+      const single = b.cells.length === 1 && b.cells[0]?.length === 1;
+      if (single && /^제\d+조/.test(b.cells[0][0].text)) {
+        // 연결 조문이 있으면 교재 텍스트 대신 플랫폼 조문(개정 반영 + 주석 공유).
+        // 없으면(「조약의 효력」— 조약은 articles 미수록) 교재 텍스트 그대로.
+        if (!articleBoxUsed && articles.length > 0) {
+          articleBoxUsed = true;
+          return (
+            <UnitArticles
+              key={i}
+              articles={articles}
+              highlightsByArticle={articleHighlights}
+              memosByArticle={articleMemos}
+              titleMap={titleMap}
+              viewerIsStaff={viewerIsStaff}
+            />
+          );
+        }
+        return (
+          <div
+            key={i}
+            className="border-primary/50 bg-primary/[0.04] rounded-lg border px-4 py-3 text-[length:calc(14px*var(--study-fs,1))] leading-[1.75] whitespace-pre-wrap"
+          >
+            {b.cells[0][0].text}
+          </div>
+        );
+      }
+      return <DohaeTable key={i} cells={b.cells} />;
+    }
+    if (b.type === "diagram")
+      return b.signedUrl ? (
+        <img
+          key={i}
+          src={b.signedUrl}
+          alt="도해 다이어그램"
+          className="border-border/60 w-full rounded-lg border dark:brightness-[.92]"
+          loading="lazy"
+        />
+      ) : (
+        <p key={i} className="text-muted-foreground text-xs">
+          [다이어그램 이미지를 불러오지 못했습니다]
+        </p>
+      );
+    return null;
+  };
+
+  // ── 로마숫자 소제목(Ⅰ·Ⅱ·Ⅲ…) 단위 접기 ──────────────────────────────────
+  // 한 유닛이 길어 처음에는 전부 접어 둔다(원장 지시 2026-08-22).
+  // ★조건부 렌더가 아니라 <details> 로 감춘다 — 접힌 내용도 DOM 에 남아야 하이라이트·
+  //   포스트잇의 글자 오프셋이 어긋나지 않는다(컨테이너 전체 글을 기준으로 잡기 때문).
+  const lead: ReactNode[] = [];
+  const sections: Array<{ numeral: string; title: string; body: ReactNode[] }> =
+    [];
+  blocks.forEach((b, i) => {
+    if (b.type === "h") {
+      sections.push({ numeral: b.numeral, title: b.text, body: [] });
+      return;
+    }
+    const node = renderBlock(b, i);
+    if (sections.length === 0) lead.push(node);
+    else sections[sections.length - 1].body.push(node);
+  });
   return (
     <div className="space-y-3">
-      {blocks.map((b, i) => {
-        if (b.type === "h")
-          return (
-            <h3 key={i} className="mt-5 flex items-center gap-2 text-[15px] font-bold first:mt-0">
-              <span className="bg-primary text-primary-foreground inline-flex size-5 shrink-0 items-center justify-center rounded-full text-[11px]">
-                {b.numeral}
-              </span>
-              {b.text}
-            </h3>
-          );
-        if (b.type === "p")
-          return (
-            <p key={i} className="text-[length:calc(14px*var(--study-fs,1))] leading-[1.75] whitespace-pre-wrap">
-              {b.text}
-            </p>
-          );
-        if (b.type === "table") {
-          // 1셀 박스 표 + 조문 원문 → 조문 박스.
-          const single = b.cells.length === 1 && b.cells[0]?.length === 1;
-          if (single && /^제\d+조/.test(b.cells[0][0].text)) {
-            // 연결 조문이 있으면 교재 텍스트 대신 플랫폼 조문(개정 반영 + 주석 공유).
-            // 없으면(「조약의 효력」— 조약은 articles 미수록) 교재 텍스트 그대로.
-            if (!articleBoxUsed && articles.length > 0) {
-              articleBoxUsed = true;
-              return (
-                <UnitArticles
-                  key={i}
-                  articles={articles}
-                  highlightsByArticle={articleHighlights}
-                  memosByArticle={articleMemos}
-                  titleMap={titleMap}
-                  viewerIsStaff={viewerIsStaff}
-                />
-              );
-            }
-            return (
-              <div
-                key={i}
-                className="border-primary/50 bg-primary/[0.04] rounded-lg border px-4 py-3 text-[length:calc(14px*var(--study-fs,1))] leading-[1.75] whitespace-pre-wrap"
-              >
-                {b.cells[0][0].text}
-              </div>
-            );
-          }
-          return <DohaeTable key={i} cells={b.cells} />;
-        }
-        if (b.type === "diagram")
-          return b.signedUrl ? (
-            <img
-              key={i}
-              src={b.signedUrl}
-              alt="도해 다이어그램"
-              className="border-border/60 w-full rounded-lg border dark:brightness-[.92]"
-              loading="lazy"
-            />
-          ) : (
-            <p key={i} className="text-muted-foreground text-xs">
-              [다이어그램 이미지를 불러오지 못했습니다]
-            </p>
-          );
-        return null;
-      })}
+      {lead}
+      {sections.map((s, si) => (
+        <details
+          key={si}
+          className="group border-border/70 overflow-hidden rounded-lg border"
+        >
+          <summary className="hover:bg-muted/40 flex cursor-pointer list-none items-center gap-2 px-3 py-2 text-[15px] font-bold [&::-webkit-details-marker]:hidden">
+            <span className="bg-primary text-primary-foreground inline-flex size-5 shrink-0 items-center justify-center rounded-full text-[11px]">
+              {s.numeral}
+            </span>
+            <span className="flex-1">{s.title}</span>
+            <ChevronDownIcon className="text-muted-foreground size-4 shrink-0 transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="space-y-3 px-3 pt-1 pb-3">{s.body}</div>
+        </details>
+      ))}
     </div>
   );
 }
@@ -450,7 +510,9 @@ export function DohaePopup({
     }
   };
   // 조문별 주석 섹션 펼침 상태. 내용이 있으면 기본 펼침, 사용자가 접으면 그 뜻을 따른다.
-  const [expandedArticle, setExpandedArticle] = useState<Record<string, boolean>>({});
+  const [expandedArticle, setExpandedArticle] = useState<
+    Record<string, boolean>
+  >({});
   // 본문에서 "포스트잇 추가"를 누르면 그 조문 섹션을 펼쳐 준다 — 접혀 있으면 입력칸이
   // 화면에 없어 아무 일도 안 일어난 것처럼 보인다. (MemoList 자체는 접혀도 mount 상태라
   // 이벤트는 정상 수신한다.)
@@ -504,7 +566,12 @@ export function DohaePopup({
       /\/api\/annotations\/(highlight|memo)/.test(f.formAction),
   );
   useEffect(() => {
-    if (!annotationBusy && activeUnitId && fetcher.state === "idle" && fetcher.data) {
+    if (
+      !annotationBusy &&
+      activeUnitId &&
+      fetcher.state === "idle" &&
+      fetcher.data
+    ) {
       // busy → idle 전환 직후 1회 재조회. (busy 동안은 스킵)
       fetcher.load(`/api/dohae/unit?unitId=${activeUnitId}`);
     }
@@ -512,7 +579,8 @@ export function DohaePopup({
   }, [annotationBusy]);
 
   const payload = fetcher.data;
-  const unit = activeUnitId && payload?.unit.unitId === activeUnitId ? payload.unit : null;
+  const unit =
+    activeUnitId && payload?.unit.unitId === activeUnitId ? payload.unit : null;
   // 관련조문 표기용 조문 제목표 — ArticleBodyView 가 Map 을 받는다.
   const titleMap = useMemo(() => {
     const src: Record<string, string> = payload?.titleMap ?? {};
@@ -521,61 +589,72 @@ export function DohaePopup({
   // 하이라이트 총계(도해 해설 + 조문 전부) — 접어 둔 "하이라이트 정리" 요약에 표시.
   const highlightTotal =
     (payload?.highlights ?? []).length +
-    Object.values(payload?.articleHighlights ?? {}).reduce((a, v) => a + v.length, 0);
+    Object.values(payload?.articleHighlights ?? {}).reduce(
+      (a, v) => a + v.length,
+      0,
+    );
   const activeIndex = units.findIndex((u) => u.unitId === activeUnitId);
   const activeSummary = activeIndex >= 0 ? units[activeIndex] : null;
   const prevUnit = activeIndex > 0 ? units[activeIndex - 1] : null;
   const nextUnit =
-    activeIndex >= 0 && activeIndex < units.length - 1 ? units[activeIndex + 1] : null;
+    activeIndex >= 0 && activeIndex < units.length - 1
+      ? units[activeIndex + 1]
+      : null;
 
   // 하이라이트 툴바는 이 창 **밖**(앱 루트)에 mount 돼 있어(fixed 좌표계 때문에 안으로
   // 옮길 수 없다) Radix 가 색상 클릭을 '바깥 클릭'으로 보고 창을 닫아버린다.
   // 툴바 안에서 시작된 상호작용은 닫힘에서 제외한다(원장 신고 2026-08-17).
-  const keepOpenOnToolbar = (e: { target: EventTarget | null; preventDefault: () => void }) => {
+  const keepOpenOnToolbar = (e: {
+    target: EventTarget | null;
+    preventDefault: () => void;
+  }) => {
     const el = e.target as HTMLElement | null;
     if (el?.closest?.("[data-testid='highlight-toolbar']")) e.preventDefault();
   };
 
   const body = (
-      <>
-        <DialogHeader className="border-border shrink-0 border-b px-5 py-3.5 pr-12">
-          <DialogTitle className="flex flex-wrap items-center gap-2 text-[15px]">
-            <BookOpenIcon className="text-primary size-4" />
-            도해특허법 <span className="text-muted-foreground text-xs font-normal">제20판 · 강사 전용</span>
-            {activeSummary ? (
-              <span className="text-muted-foreground min-w-0 flex-1 truncate text-[13px] font-medium">
-                — 제{activeSummary.chapterNo}장 {activeSummary.chapterTitle} ·{" "}
-                {dohaeUnitLabel(activeSummary)} {activeSummary.title}
+    <>
+      <DialogHeader className="border-border shrink-0 border-b px-5 py-3.5 pr-12">
+        <DialogTitle className="flex flex-wrap items-center gap-2 text-[15px]">
+          <BookOpenIcon className="text-primary size-4" />
+          도해특허법{" "}
+          <span className="text-muted-foreground text-xs font-normal">
+            제20판 · 강사 전용
+          </span>
+          {activeSummary ? (
+            <span className="text-muted-foreground min-w-0 flex-1 truncate text-[13px] font-medium">
+              — 제{activeSummary.chapterNo}장 {activeSummary.chapterTitle} ·{" "}
+              {dohaeUnitLabel(activeSummary)} {activeSummary.title}
+            </span>
+          ) : null}
+        </DialogTitle>
+        {/* 같은 노드에 묶인 주제 사이 이동 + 표시 방식(팝업/시트) 전환 */}
+        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+          {activeSummary && units.length > 1 ? (
+            <>
+              <UnitStepButton
+                dir="prev"
+                unit={prevUnit}
+                onGo={setActiveUnitId}
+              />
+              <span className="text-muted-foreground text-[11px] tabular-nums">
+                {activeIndex + 1} / {units.length}
               </span>
-            ) : null}
-          </DialogTitle>
-          {/* 같은 노드에 묶인 주제 사이 이동 + 표시 방식(팝업/시트) 전환 */}
-          <div className="mt-1 flex flex-wrap items-center gap-1.5">
-            {activeSummary && units.length > 1 ? (
-              <>
-                <UnitStepButton
-                  dir="prev"
-                  unit={prevUnit}
-                  onGo={setActiveUnitId}
-                />
-                <span className="text-muted-foreground text-[11px] tabular-nums">
-                  {activeIndex + 1} / {units.length}
-                </span>
-                <UnitStepButton
-                  dir="next"
-                  unit={nextUnit}
-                  onGo={setActiveUnitId}
-                />
-                <button
-                  type="button"
-                  onClick={() => setActiveUnitId(null)}
-                  className="text-muted-foreground hover:text-foreground ml-1 text-[11px] underline underline-offset-2"
-                >
-                  목록
-                </button>
-              </>
-            ) : null}
-            <div className="ml-auto flex items-center gap-1.5">
+              <UnitStepButton
+                dir="next"
+                unit={nextUnit}
+                onGo={setActiveUnitId}
+              />
+              <button
+                type="button"
+                onClick={() => setActiveUnitId(null)}
+                className="text-muted-foreground hover:text-foreground ml-1 text-[11px] underline underline-offset-2"
+              >
+                목록
+              </button>
+            </>
+          ) : null}
+          <div className="ml-auto flex items-center gap-1.5">
             {activeSummary && viewerIsStaff ? (
               // 지금 보고 있는 유닛의 편집 화면으로. ★새 탭 — 팝업을 닫지 않아야
               // 원문과 나란히 놓고 고칠 수 있다.
@@ -625,205 +704,210 @@ export function DohaePopup({
                 </>
               )}
             </button>
-            </div>
           </div>
-        </DialogHeader>
+        </div>
+      </DialogHeader>
 
-        {activeUnitId === null ? (
-          // 유닛 선택 목록 (한 조문에 여러 주제가 연결된 경우)
-          <ul className="divide-border divide-y overflow-y-auto px-2 py-1">
-            {units.map((u) => (
-              <li key={u.unitId}>
-                <button
-                  type="button"
-                  onClick={() => setActiveUnitId(u.unitId)}
-                  className="hover:bg-muted/60 flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left"
+      {activeUnitId === null ? (
+        // 유닛 선택 목록 (한 조문에 여러 주제가 연결된 경우)
+        <ul className="divide-border divide-y overflow-y-auto px-2 py-1">
+          {units.map((u) => (
+            <li key={u.unitId}>
+              <button
+                type="button"
+                onClick={() => setActiveUnitId(u.unitId)}
+                className="hover:bg-muted/60 flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left"
+              >
+                <span className="bg-primary/10 text-link inline-flex h-6 min-w-9 items-center justify-center rounded-md px-1.5 text-xs font-bold tabular-nums">
+                  {dohaeUnitLabel(u)}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium">
+                    {u.title}
+                  </span>
+                  <span className="text-muted-foreground text-[11px]">
+                    제{u.chapterNo}장 {u.chapterTitle}
+                  </span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div
+          className={cn(
+            "grid min-h-0 flex-1 grid-cols-1",
+            toolsOpen && "lg:grid-cols-[1fr_300px]",
+          )}
+        >
+          <div className="min-h-0 overflow-y-auto px-5 py-4">
+            {!unit ? (
+              <p className="text-muted-foreground flex items-center gap-2 py-16 text-center text-sm">
+                <Loader2Icon className="mx-auto size-4 animate-spin" /> 불러오는
+                중…
+              </p>
+            ) : (
+              <MemoMarksOverlay memos={payload?.memos ?? []}>
+                <HighlightOverlay
+                  fieldPath={`dohae.${unit.unitKey}`}
+                  targetType="dohae_unit"
+                  targetId={unit.unitId}
+                  highlights={payload?.highlights ?? []}
+                  viewerIsStaff={viewerIsStaff}
                 >
-                  <span className="bg-primary/10 text-link inline-flex h-6 min-w-9 items-center justify-center rounded-md px-1.5 text-xs font-bold tabular-nums">
-                    {dohaeUnitLabel(u)}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">{u.title}</span>
-                    <span className="text-muted-foreground text-[11px]">
-                      제{u.chapterNo}장 {u.chapterTitle}
-                    </span>
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div
-            className={cn(
-              "grid min-h-0 flex-1 grid-cols-1",
-              toolsOpen && "lg:grid-cols-[1fr_300px]",
-            )}
-          >
-            <div className="min-h-0 overflow-y-auto px-5 py-4">
-              {!unit ? (
-                <p className="text-muted-foreground flex items-center gap-2 py-16 text-center text-sm">
-                  <Loader2Icon className="mx-auto size-4 animate-spin" /> 불러오는 중…
-                </p>
-              ) : (
-                <MemoMarksOverlay memos={payload?.memos ?? []}>
-                  <HighlightOverlay
-                    fieldPath={`dohae.${unit.unitKey}`}
-                    targetType="dohae_unit"
-                    targetId={unit.unitId}
-                    highlights={payload?.highlights ?? []}
+                  <DohaeBlocks
+                    blocks={unit.blocks}
+                    articles={payload?.articles ?? []}
+                    articleHighlights={payload?.articleHighlights ?? {}}
+                    articleMemos={payload?.articleMemos ?? {}}
+                    titleMap={titleMap}
                     viewerIsStaff={viewerIsStaff}
-                  >
-                    <DohaeBlocks
-                      blocks={unit.blocks}
-                      articles={payload?.articles ?? []}
-                      articleHighlights={payload?.articleHighlights ?? {}}
-                      articleMemos={payload?.articleMemos ?? {}}
-                      titleMap={titleMap}
-                      viewerIsStaff={viewerIsStaff}
-                    />
-                  </HighlightOverlay>
-                </MemoMarksOverlay>
-              )}
-            </div>
-            {/* ── 오른쪽 학습 툴 — 포스트잇이 주(主), 하이라이트는 접어 둔다.
+                  />
+                </HighlightOverlay>
+              </MemoMarksOverlay>
+            )}
+          </div>
+          {/* ── 오른쪽 학습 툴 — 포스트잇이 주(主), 하이라이트는 접어 둔다.
                 하이라이트는 본문에 색으로 이미 보이니 목록은 고치거나 지울 때만 필요하다
                 (원장 판단 2026-08-17). 좌우 2단은 집중이 흩어져 되돌렸다.
                 ★조문별 MemoList 는 접어도 mount 유지 — 포스트잇 작성 이벤트가
                   targetType+targetId 로 필터링돼 그 대상이 떠 있어야 도달한다. */}
-            <aside
-              className={cn(
-                "border-border bg-muted/20 hidden min-h-0 overflow-y-auto border-l px-3 py-4",
-                toolsOpen && "lg:block",
-              )}
-            >
-              <p className="text-foreground mb-2 flex items-center gap-1.5 text-[11px] font-semibold tracking-wide uppercase">
-                <NotebookPenIcon className="size-3.5" /> 포스트잇
-              </p>
+          <aside
+            className={cn(
+              "border-border bg-muted/20 hidden min-h-0 overflow-y-auto border-l px-3 py-4",
+              toolsOpen && "lg:block",
+            )}
+          >
+            <p className="text-foreground mb-2 flex items-center gap-1.5 text-[11px] font-semibold tracking-wide uppercase">
+              <NotebookPenIcon className="size-3.5" /> 포스트잇
+            </p>
 
-              {unit ? (
-                <div className="space-y-1.5">
-                  {/* 조문 먼저, 도해 해설은 뒤로(원장 지시 2026-08-17). */}
-                  {(payload?.articles ?? []).map((a) => {
-                    const ms = payload?.articleMemos?.[a.articleId] ?? [];
-                    return (
-                      <details
-                        key={a.articleId}
-                        id={`dohae-annot-${a.articleId}`}
-                        open={
-                          expandedArticle[a.articleId] ??
-                          (ms.length > 0 || snippetArticleId === a.articleId)
-                        }
-                        onToggle={(e) =>
-                          setExpandedArticle((prev) => ({
-                            ...prev,
-                            [a.articleId]: e.currentTarget.open,
-                          }))
-                        }
-                        className="border-border bg-background/60 rounded-md border px-2 py-1.5"
-                      >
-                        <summary className="cursor-pointer text-[11px] font-medium">
-                          {a.displayLabel}
-                          <span className="text-link ml-1 text-[10px] font-normal">
-                            메인 공유
-                          </span>
-                          {ms.length > 0 ? (
-                            <span className="text-muted-foreground ml-1 tabular-nums">
-                              {ms.length}
-                            </span>
-                          ) : null}
-                        </summary>
-                        <div className="mt-2">
-                          <MemoList
-                            targetType="article"
-                            targetId={a.articleId}
-                            initial={ms}
-                            viewerIsStaff={viewerIsStaff}
-                          />
-                        </div>
-                      </details>
-                    );
-                  })}
-
-                  <details
-                    open={expandedArticle[DOHAE_AXIS_KEY] ?? true}
-                    onToggle={(e) =>
-                      setExpandedArticle((prev) => ({
-                        ...prev,
-                        [DOHAE_AXIS_KEY]: e.currentTarget.open,
-                      }))
-                    }
-                    className="border-border bg-background/60 rounded-md border px-2 py-1.5"
-                  >
-                    <summary className="cursor-pointer text-[11px] font-medium">
-                      도해 해설
-                      <span className="text-muted-foreground ml-1 text-[10px] font-normal">
-                        이 팝업 전용
-                      </span>
-                      {(payload?.memos ?? []).length > 0 ? (
-                        <span className="text-muted-foreground ml-1 tabular-nums">
-                          {(payload?.memos ?? []).length}
+            {unit ? (
+              <div className="space-y-1.5">
+                {/* 조문 먼저, 도해 해설은 뒤로(원장 지시 2026-08-17). */}
+                {(payload?.articles ?? []).map((a) => {
+                  const ms = payload?.articleMemos?.[a.articleId] ?? [];
+                  return (
+                    <details
+                      key={a.articleId}
+                      id={`dohae-annot-${a.articleId}`}
+                      open={
+                        expandedArticle[a.articleId] ??
+                        (ms.length > 0 || snippetArticleId === a.articleId)
+                      }
+                      onToggle={(e) =>
+                        setExpandedArticle((prev) => ({
+                          ...prev,
+                          [a.articleId]: e.currentTarget.open,
+                        }))
+                      }
+                      className="border-border bg-background/60 rounded-md border px-2 py-1.5"
+                    >
+                      <summary className="cursor-pointer text-[11px] font-medium">
+                        {a.displayLabel}
+                        <span className="text-link ml-1 text-[10px] font-normal">
+                          메인 공유
                         </span>
-                      ) : null}
-                    </summary>
-                    <div className="mt-2">
-                      <MemoList
-                        targetType="dohae_unit"
-                        targetId={unit.unitId}
-                        initial={payload?.memos ?? []}
-                        viewerIsStaff={viewerIsStaff}
-                      />
-                    </div>
-                  </details>
-                </div>
-              ) : null}
+                        {ms.length > 0 ? (
+                          <span className="text-muted-foreground ml-1 tabular-nums">
+                            {ms.length}
+                          </span>
+                        ) : null}
+                      </summary>
+                      <div className="mt-2">
+                        <MemoList
+                          targetType="article"
+                          targetId={a.articleId}
+                          initial={ms}
+                          viewerIsStaff={viewerIsStaff}
+                        />
+                      </div>
+                    </details>
+                  );
+                })}
 
-              {/* 하이라이트 — 본문에 이미 보이므로 기본 접힘. 고치거나 지울 때만 편다. */}
-              {unit ? (
-                <details className="border-border mt-4 rounded-md border px-2 py-1.5">
-                  <summary className="text-muted-foreground cursor-pointer text-[11px] font-semibold tracking-wide uppercase">
-                    하이라이트 정리
-                    {highlightTotal > 0 ? (
-                      <span className="ml-1 tabular-nums">{highlightTotal}</span>
+                <details
+                  open={expandedArticle[DOHAE_AXIS_KEY] ?? true}
+                  onToggle={(e) =>
+                    setExpandedArticle((prev) => ({
+                      ...prev,
+                      [DOHAE_AXIS_KEY]: e.currentTarget.open,
+                    }))
+                  }
+                  className="border-border bg-background/60 rounded-md border px-2 py-1.5"
+                >
+                  <summary className="cursor-pointer text-[11px] font-medium">
+                    도해 해설
+                    <span className="text-muted-foreground ml-1 text-[10px] font-normal">
+                      이 팝업 전용
+                    </span>
+                    {(payload?.memos ?? []).length > 0 ? (
+                      <span className="text-muted-foreground ml-1 tabular-nums">
+                        {(payload?.memos ?? []).length}
+                      </span>
                     ) : null}
                   </summary>
-                  <div className="mt-2 space-y-3">
-                    <div>
+                  <div className="mt-2">
+                    <MemoList
+                      targetType="dohae_unit"
+                      targetId={unit.unitId}
+                      initial={payload?.memos ?? []}
+                      viewerIsStaff={viewerIsStaff}
+                    />
+                  </div>
+                </details>
+              </div>
+            ) : null}
+
+            {/* 하이라이트 — 본문에 이미 보이므로 기본 접힘. 고치거나 지울 때만 편다. */}
+            {unit ? (
+              <details className="border-border mt-4 rounded-md border px-2 py-1.5">
+                <summary className="text-muted-foreground cursor-pointer text-[11px] font-semibold tracking-wide uppercase">
+                  하이라이트 정리
+                  {highlightTotal > 0 ? (
+                    <span className="ml-1 tabular-nums">{highlightTotal}</span>
+                  ) : null}
+                </summary>
+                <div className="mt-2 space-y-3">
+                  <div>
+                    <p className="text-muted-foreground mb-1 text-[10px] font-medium">
+                      도해 해설
+                    </p>
+                    <HighlightList
+                      targetType="dohae_unit"
+                      targetId={unit.unitId}
+                      initial={payload?.highlights ?? []}
+                      viewerIsStaff={viewerIsStaff}
+                      compact
+                    />
+                  </div>
+                  {(payload?.articles ?? []).map((a) => (
+                    <div key={a.articleId}>
                       <p className="text-muted-foreground mb-1 text-[10px] font-medium">
-                        도해 해설
+                        {a.displayLabel}
                       </p>
                       <HighlightList
-                        targetType="dohae_unit"
-                        targetId={unit.unitId}
-                        initial={payload?.highlights ?? []}
+                        targetType="article"
+                        targetId={a.articleId}
+                        initial={
+                          payload?.articleHighlights?.[a.articleId] ?? []
+                        }
                         viewerIsStaff={viewerIsStaff}
                         compact
                       />
                     </div>
-                    {(payload?.articles ?? []).map((a) => (
-                      <div key={a.articleId}>
-                        <p className="text-muted-foreground mb-1 text-[10px] font-medium">
-                          {a.displayLabel}
-                        </p>
-                        <HighlightList
-                          targetType="article"
-                          targetId={a.articleId}
-                          initial={payload?.articleHighlights?.[a.articleId] ?? []}
-                          viewerIsStaff={viewerIsStaff}
-                          compact
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </details>
-              ) : null}
+                  ))}
+                </div>
+              </details>
+            ) : null}
 
-              <p className="text-muted-foreground mt-4 text-[11px] leading-relaxed">
-                다이어그램(이미지) 안 문구는 드래그 대상이 아닙니다.
-              </p>
-            </aside>
-          </div>
-        )}
-      </>
+            <p className="text-muted-foreground mt-4 text-[11px] leading-relaxed">
+              다이어그램(이미지) 안 문구는 드래그 대상이 아닙니다.
+            </p>
+          </aside>
+        </div>
+      )}
+    </>
   );
 
   // 표시 방식 두 가지를 나란히 비교하려고 남겨둔 전환(원장 요청 2026-08-17).
@@ -876,7 +960,11 @@ function UnitStepButton({
     >
       {dir === "prev" ? <Icon className="size-3 shrink-0" /> : null}
       <span className="truncate">
-        {unit ? `${dohaeUnitLabel(unit)} ${unit.title}` : dir === "prev" ? "처음" : "마지막"}
+        {unit
+          ? `${dohaeUnitLabel(unit)} ${unit.title}`
+          : dir === "prev"
+            ? "처음"
+            : "마지막"}
       </span>
       {dir === "next" ? <Icon className="size-3 shrink-0" /> : null}
     </button>

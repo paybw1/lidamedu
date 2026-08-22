@@ -22,6 +22,12 @@ export interface DohaeCell {
   tables?: DohaeCell[][][];
   /** 각 속표가 놓이는 자리(text 기준 글자 오프셋). 없으면 글 뒤. */
   tablesAt?: number[];
+  /**
+   * 조문 비교표에서 한 조문을 항 단위로 쪼갠 행. contRow = 윗 행에서 이어짐,
+   * contMore = 아랫 행으로 이어짐. 이어지는 자리의 가로줄을 지워 한 덩어리로 보이게 한다.
+   */
+  contRow?: boolean;
+  contMore?: boolean;
   /** 셀 안 이미지 binId (현재 미사용 — 시드에 이미지 미포함). */
   imgs?: string[];
   /**

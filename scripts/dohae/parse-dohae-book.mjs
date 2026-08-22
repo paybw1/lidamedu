@@ -836,10 +836,121 @@ for (let i = 0; i < paras.length; i++) {
       }
   }
 
+  /**
+   * 조문 비교표의 좌우를 **항의 소제목끼리** 같은 줄에서 시작하게 맞춘다.
+   *
+   * ★교재는 오른쪽 칸에 빈 문단을 7개씩 넣어 이 줄맞춤을 만든다(제90조 ⑥ 출원서의 보정 ↔
+   *   제92조의3 ④ 출원서의 보정). 화면은 글꼴 크기가 바뀌므로 빈 줄로는 맞출 수 없다 —
+   *   항을 표의 행으로 쪼개 브라우저가 맞추게 한다(원장 보고 2026-08-22 "제89조의 제2항과
+   *   제92조의2 제2항이 시작줄이 일치해야 해").
+   * 짝짓기는 소제목 문자열의 최장공통부분수열(LCS) — 한쪽에만 있는 항은 반대쪽을 비운다.
+   */
+  function alignArticleComparison(cells) {
+    const ART_TITLE = /^(?:[가-힣]{2,8}법\s*)?제\d+조(?:의\d+)?\s*【[^\n】]*】/;
+    const HANG = /^([①②③④⑤⑥⑦⑧⑨⑩⑪⑫])\s*(?:\(([^)]{1,20})\))?/;
+    const isArt = (c) => ART_TITLE.test(String(c.text ?? ""));
+    if (cells.filter((row) => row.filter(isArt).length >= 2).length === 0) return cells;
+
+    // 칸 글을 [제목, 항, 항 …] 으로 나눈다. 굵게 구간도 함께 옮긴다.
+    const split = (c) => {
+      const lines = String(c.text ?? "").split("\n");
+      const segs = [];
+      let at = 0;
+      for (const line of lines) {
+        const start = at;
+        at += line.length + 1; // 개행 포함
+        if (!line.trim()) continue; // 줄맞춤용 빈 문단은 버린다 — 행으로 맞추기 때문
+        if (segs.length === 0 || HANG.test(line.trim())) segs.push({ from: start, lines: [] });
+        segs[segs.length - 1].lines.push({ text: line, from: start });
+      }
+      return segs.map((s) => {
+        const text = s.lines.map((l) => l.text).join("\n");
+        // 원본 오프셋 → 이 조각 안 오프셋
+        const map = [];
+        let cur = 0;
+        for (const l of s.lines) {
+          map.push({ from: l.from, to: l.from + l.text.length, shift: cur - l.from });
+          cur += l.text.length + 1;
+        }
+        const ranges = [];
+        for (const [rs, re] of c.boldRanges ?? [])
+          for (const m of map) {
+            const lo = Math.max(rs, m.from);
+            const hi = Math.min(re, m.to);
+            if (hi > lo) ranges.push([lo + m.shift, hi + m.shift]);
+          }
+        const head = HANG.exec(s.lines[0].text.trim());
+        // 짝짓기 열쇠 — 소제목에서 ":" 뒤 갈래("연장기간: 일반")를 떼어 같은 소제목끼리
+        // 맞춘다. 소제목이 없는 항은 항 번호로 맞춘다.
+        const label = head?.[2] ?? null;
+        return {
+          text,
+          ranges,
+          key: label ? label.replace(/[:：].*$/, "").replace(/\s+/g, "") : head ? `#${head[1]}` : null,
+        };
+      });
+    };
+
+    const lcs = (a, b) => {
+      const n = a.length, m = b.length;
+      const dp = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+      for (let i = n - 1; i >= 0; i--)
+        for (let j = m - 1; j >= 0; j--)
+          dp[i][j] = a[i] && b[j] && a[i] === b[j]
+            ? dp[i + 1][j + 1] + 1
+            : Math.max(dp[i + 1][j], dp[i][j + 1]);
+      const pairs = [];
+      let i = 0, j = 0;
+      while (i < n && j < m) {
+        if (a[i] && b[j] && a[i] === b[j]) { pairs.push([i, j]); i++; j++; }
+        else if (dp[i + 1][j] >= dp[i][j + 1]) { pairs.push([i, null]); i++; }
+        else { pairs.push([null, j]); j++; }
+      }
+      while (i < n) pairs.push([i++, null]);
+      while (j < m) pairs.push([null, j++]);
+      return pairs;
+    };
+
+    const out = [];
+    for (const row of cells) {
+      const artAt = row.map((c, i) => (isArt(c) ? i : -1)).filter((i) => i >= 0);
+      if (artAt.length !== 2) { out.push(row); continue; }
+      const [li, ri] = artAt;
+      const L = split(row[li]);
+      const R = split(row[ri]);
+      const pairs = [[0, 0], ...lcs(L.slice(1).map((s) => s.key), R.slice(1).map((s) => s.key))
+        .map(([a, b]) => [a === null ? null : a + 1, b === null ? null : b + 1])];
+      if (pairs.length <= 1) { out.push(row); continue; }
+      const mk = (src, seg, last, first) => ({
+        ...src,
+        text: seg ? seg.text : "",
+        rowSpan: 1,
+        ...(seg?.ranges.length ? { boldRanges: seg.ranges } : { boldRanges: undefined }),
+        ...(first ? {} : { contRow: true }),
+        ...(last ? {} : { contMore: true }),
+      });
+      pairs.forEach(([a, b], k) => {
+        const first = k === 0;
+        const last = k === pairs.length - 1;
+        const newRow = [];
+        if (first)
+          row.forEach((c, i) => {
+            if (i === li || i === ri) return;
+            newRow.push({ ...c, rowSpan: (c.rowSpan ?? 1) * pairs.length });
+          });
+        newRow.push(mk(row[li], a === null ? null : L[a], last, first));
+        newRow.push(mk(row[ri], b === null ? null : R[b], last, first));
+        out.push(newRow);
+      });
+    }
+    return out;
+  }
+
   function pushTable(node, fromShape) {
-    const cells = parseTable(node);
+    let cells = parseTable(node);
     if (cells.length === 1 && cells[0].length === 1) spaceOutArticles(cells[0][0]);
     boldArticleTitles(cells);
+    cells = alignArticleComparison(cells);
     // ★그림이 **일부 칸에만** 있으면 표를 살리고 그 칸에만 그림을 넣는다.
     //   표를 통째로 이미지로 바꾸면 수험생이 하이라이트·포스트잇을 못 붙인다
     //   (원장 지시 2026-08-22 "표 안에 그림이 있으면 표를 살려야 해").
