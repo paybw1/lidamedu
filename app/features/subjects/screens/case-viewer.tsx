@@ -33,6 +33,7 @@ import { MemoMarksOverlay } from "~/features/annotations/components/memo-marks-o
 import { SrsReturnBar } from "~/features/srs/components/srs-return-bar";
 import {
   getBookmark,
+  listBookmarkedCaseIds,
   listHighlights,
   listMemos,
 } from "~/features/annotations/queries.server";
@@ -317,34 +318,58 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   //   목록에서 도식·법원·기출로 좁혀 들어왔으면 이웃 이동도 그 안에서만 돈다.
   //   ★트리 필터(case_node·case_article)는 위 siblingsPromise 가 이미 반영한다 —
   //     여기서는 그 결과를 나머지 필터로 한 번 더 거른다(순서는 그대로 유지).
-  //   ★검색어(q)는 일부러 반영하지 않는다 — 검색은 목록을 훑는 수단이지 '이웃'의 정의가
-  //     아니고, 매번 달라지는 집합을 이웃으로 삼으면 이동 결과를 예측할 수 없다.
-  //   ★판정 규칙은 listCasesBySubject 와 같아야 한다(narrowCaseIdsByFilters 가 SSOT).
+  //   ★판정 규칙은 listCasesBySubject 와 같아야 한다(narrowCaseIdsByFilters·caseSearchOrExpr
+  //     가 SSOT). 두 곳이 갈리면 "목록엔 있는데 이웃으로는 안 나오는" 어긋남이 생긴다.
   const navSiblings = await (async () => {
     if (!siblings || !backParams) return siblings;
     const wantDiagram = backParams.get("case_diagram") === "1";
     const court = backParams.get("case_court") as CaseCourtFilter | null;
     const exam = backParams.get("case_exam") as CaseExamFilter | null;
+    const navQuery = (backParams.get("q") ?? "").trim();
+    const navImportance = Number(backParams.get("case_importance") ?? "");
+    const navBookmark = Number(backParams.get("case_bookmarked") ?? "");
+    const importanceMin =
+      Number.isInteger(navImportance) && navImportance > 0 ? navImportance : 0;
+    const bookmarkMin =
+      Number.isInteger(navBookmark) && navBookmark > 0 ? navBookmark : 0;
     const hasCourt = court !== null && court !== "all";
     const hasExam = exam !== null && exam !== "any";
-    if (!wantDiagram && !hasCourt && !hasExam) return siblings;
+    if (
+      !wantDiagram &&
+      !hasCourt &&
+      !hasExam &&
+      !navQuery &&
+      !importanceMin &&
+      !bookmarkMin
+    ) {
+      return siblings;
+    }
 
     const ids = siblings.siblings.map((c) => c.caseId);
-    const [allowed, withDiagram] = await Promise.all([
-      hasCourt || hasExam
+    const [allowed, withDiagram, bookmarked] = await Promise.all([
+      hasCourt || hasExam || navQuery || importanceMin
         ? narrowCaseIdsByFilters(client, ids, {
             court: court ?? undefined,
             exam: exam ?? undefined,
+            query: navQuery || undefined,
+            importanceMin: importanceMin || undefined,
           })
         : Promise.resolve<Set<string> | null>(null),
       wantDiagram
         ? listAllCaseIdsWithDiagram(client).then((v) => new Set(v))
         : Promise.resolve<Set<string> | null>(null),
+      // 즐겨찾기는 사용자 축 — 목록 로더와 같은 헬퍼로 본인 별점 N+ 집합을 받는다.
+      bookmarkMin
+        ? listBookmarkedCaseIds(client, user.id, bookmarkMin).then(
+            (v) => new Set(v),
+          )
+        : Promise.resolve<Set<string> | null>(null),
     ]);
     const list = siblings.siblings.filter(
       (c) =>
         (allowed === null || allowed.has(c.caseId)) &&
-        (withDiagram === null || withDiagram.has(c.caseId)),
+        (withDiagram === null || withDiagram.has(c.caseId)) &&
+        (bookmarked === null || bookmarked.has(c.caseId)),
     );
     // 자기 자신이 빠지면(필터에 안 맞는 판례를 URL 로 직접 열었다) 이동 UI 를 감춘다 —
     // 목록에 없는 위치에서 "3 / 240" 을 띄우면 거짓말이 된다.

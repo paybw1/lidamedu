@@ -277,20 +277,53 @@ function attach2ndRefs(
  * 판례 id 집합을 목록 필터(법원·기출)로 좁힌다 — **prev/next 가 목록과 같은 범위를 돌게** 하는 용도.
  *
  * ★판정 규칙은 `listCasesBySubject` 와 같아야 한다(두 곳이 갈리면 목록과 이웃이 어긋난다):
+ *   · 검색어    = 사건번호·사건명·닉네임·유형·요지·판시이유·코멘트 다중 ilike (아래 CASE_SEARCH_COLUMNS)
  *   · 법원      = cases.court 일치
+ *   · 중요도    = importance >= N
  *   · 1차 기출  = 기출 문제가 연결된 판례(getExamProblemsByCase)
  *   · 2차 기출  = exam_2nd_years 가 비어 있지 않음
  *   · 1·2차 모두 = 위 둘을 모두 만족
+ * (즐겨찾기는 사용자 축이라 호출부가 id 집합으로 걸러 넘긴다)
  * ★id 를 통째로 .in() 에 넣으면 URL 이 길어져 PostgREST 가 400 을 던진다 — fetchAllIn 으로 조각낸다.
  */
+/**
+ * 판례 검색 OR 조건식 — 목록 쿼리와 prev/next 범위 계산이 **같은 식**을 써야 한다.
+ * pg_trgm + ilike 다중 컬럼: 사건번호·사건명·닉네임·유형·요지·판시이유·코멘트 본문.
+ * ★%와 , 는 PostgREST or() 문법을 깨뜨리므로 미리 걷어낸다.
+ */
+function caseSearchOrExpr(query: string): string {
+  const escaped = query.trim().replaceAll("%", "").replaceAll(",", " ");
+  const p = `%${escaped}%`;
+  return [
+    `case_number.ilike.${p}`,
+    `case_title.ilike.${p}`,
+    `nickname.ilike.${p}`,
+    `case_type.ilike.${p}`,
+    `summary_title.ilike.${p}`,
+    `summary_body_md.ilike.${p}`,
+    `reasoning_md.ilike.${p}`,
+    `comment_body_md.ilike.${p}`,
+  ].join(",");
+}
+
 export async function narrowCaseIdsByFilters(
   client: SupabaseClient<Database>,
   caseIds: string[],
-  opts: { court?: CaseCourtFilter; exam?: CaseExamFilter },
+  opts: {
+    court?: CaseCourtFilter;
+    exam?: CaseExamFilter;
+    query?: string;
+    importanceMin?: number;
+  },
 ): Promise<Set<string>> {
   const court = opts.court && opts.court !== "all" ? opts.court : null;
   const exam = opts.exam && opts.exam !== "any" ? opts.exam : null;
-  if (caseIds.length === 0 || (!court && !exam)) return new Set(caseIds);
+  const query = opts.query?.trim() || null;
+  const importanceMin =
+    opts.importanceMin && opts.importanceMin > 0 ? opts.importanceMin : null;
+  if (caseIds.length === 0 || (!court && !exam && !query && !importanceMin)) {
+    return new Set(caseIds);
+  }
 
   const needs1st = exam === "exam_1st" || exam === "exam_both";
   const needs2nd = exam === "exam_2nd" || exam === "exam_both";
@@ -298,12 +331,17 @@ export async function narrowCaseIdsByFilters(
   const [rows, examProblemsByCase] = await Promise.all([
     fetchAllIn<{ case_id: string; court: string; exam_2nd_years: number[] | null }>(
       caseIds,
-      (slice) =>
-        client
+      (slice) => {
+        let q = client
           .from("cases")
           .select("case_id, court, exam_2nd_years")
-          .in("case_id", slice)
-          .order("case_id"),
+          .in("case_id", slice);
+        // 검색·중요도는 DB 에서 건다 — 본문 컬럼(reasoning_md 등)을 다 실어 오지 않으려면
+        // 여기서 걸러야 한다(목록 쿼리와 같은 조건식).
+        if (query) q = q.or(caseSearchOrExpr(query));
+        if (importanceMin) q = q.gte("importance", importanceMin);
+        return q.order("case_id");
+      },
     ),
     needs1st
       ? getExamProblemsByCase(client)
@@ -362,12 +400,7 @@ export async function listCasesBySubject(
 
     const trimmed = options.query?.trim();
     if (trimmed) {
-      // pg_trgm + ilike 다중 컬럼 — 사건번호·사건명·닉네임·유형·요지·판시이유·코멘트 본문.
-      const escaped = trimmed.replaceAll("%", "").replaceAll(",", " ");
-      const pattern = `%${escaped}%`;
-      q = q.or(
-        `case_number.ilike.${pattern},case_title.ilike.${pattern},nickname.ilike.${pattern},case_type.ilike.${pattern},summary_title.ilike.${pattern},summary_body_md.ilike.${pattern},reasoning_md.ilike.${pattern},comment_body_md.ilike.${pattern}`,
-      );
+      q = q.or(caseSearchOrExpr(trimmed));
     }
     if (options.court && options.court !== "all") {
       q = q.eq("court", options.court);
