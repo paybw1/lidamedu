@@ -1337,3 +1337,21 @@ create table public.popup_notices (
   화면·API 에서만 걷어내고 **컬럼은 남긴다** — 사용자 학습 데이터 무삭제 원칙(CLAUDE.md Non-negotiable 9). 컬럼 코멘트로 표시.
 - **유지**: `ai_*`(AI 채점 초안) · `timed_limit_min`/`timed_elapsed_sec`(시험 모드 — 오프라인 시간배분 훈련).
 - ★**GS(2차 모의고사)의 강사 채점·첨삭은 별개 시스템**(`gs_answers` 계열)으로 그대로 유지된다. 이번 폐지는 기출 problems 경로 한정.
+
+## announcements.platform_scope (공지 노출 플랫폼)  ✅ 적용됨 (2026-08-23)
+
+```sql
+create type announcement_platform_scope as enum ('study', 'lecture', 'both');
+alter table public.announcements
+  add column platform_scope announcement_platform_scope not null default 'study';
+```
+
+- 공지를 **학습 플랫폼 / 강의 플랫폼 / 둘 다** 중 어디에 띄울지. 기존 4건은 학습 플랫폼
+  진입점(커뮤니티 nav)에서만 도달 가능했으므로 `'study'` 로 백필됨.
+- 표시 필터일 뿐 **보안 경계가 아니다** — 누구에게 가는지는 `audience_kind` + RLS 가 권위.
+  따라서 RLS 정책은 손대지 않았다.
+- 화면: 학습 `/announcements` = `in (study, both)` · 강의 `/lecture/announcements` =
+  `in (lecture, both)`. 필터 SSOT 는 `app/features/announcements/labels.ts` 의
+  `scopesVisibleOn()`.
+- ★강의 플랫폼은 `lecture.layout` 이 비-staff 를 `lidamedu.com` 으로 보내는 개발 중 게이트가
+  걸려 있어, `'lecture'` 공지는 게이트 해제 전까지 staff 에게만 보인다.

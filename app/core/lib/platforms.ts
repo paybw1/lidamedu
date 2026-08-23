@@ -41,26 +41,15 @@ export function getActivePlatform(pathname: string): PlatformId {
   ) {
     return "lecture";
   }
-  // 커뮤니티 영역(자유게시판·스터디·합격수기 + 공지·이용가이드)도 강의 플랫폼 상단바
-  // 컨텍스트에서 렌더(lecture.layout 아래로 이관) — 스위처가 '강의'로 표시되도록 판별.
-  if (isCommunityAreaPath(pathname)) return "lecture";
+  // ★커뮤니티(/community/*)·공지사항·이용가이드는 **학습 플랫폼** 소속이다. 한때
+  //   lecture 로 판별했으나(2026-07-27), 그 뒤 강의 플랫폼 비-staff 차단 게이트가 생겨
+  //   학생이 게시판에서 튕겨 나갔다 — 되돌림(2026-08-23). 강의 상단바 커뮤니티 드롭다운은
+  //   여기로 링크되며, 진입 시 학습 플랫폼으로 컨텍스트가 바뀐다(공유 공간).
   return "study";
-}
-
-// 커뮤니티 영역 — 강의 레이아웃 아래에 있지만 테마 정책이 갈린다(아래 isLightOnlySurface).
-export function isCommunityAreaPath(pathname: string): boolean {
-  return (
-    pathname === "/community" ||
-    pathname.startsWith("/community/") ||
-    pathname === "/announcements" ||
-    pathname === "/guide" ||
-    pathname.startsWith("/guide/")
-  );
 }
 
 // 라이트 단일 테마(원장 2026-08-19 최종) — 강의 플랫폼 전체. 커머스 화면의 상품 이미지·
 // 가격표가 어두운 배경에서 깨진다. 테마 선택은 학습 플랫폼에서만 한다(강의 상단바에 스위처 없음).
-// ★강의 레이아웃 아래 커뮤니티 영역(/community·/announcements·/guide)도 강의 플랫폼이라 포함.
 export function isLightOnlySurface(pathname: string): boolean {
   return getActivePlatform(pathname) === "lecture";
 }
@@ -91,6 +80,7 @@ export const LECTURE_GUIDE_LINKS: ReadonlyArray<{ label: string; to: string }> =
   { label: "인사말", to: "/about" },
   { label: "강사소개", to: "/about/instructors" },
   { label: "시험정보", to: "/lecture/exam-info" },
+  { label: "공지사항", to: "/lecture/announcements" },
   { label: "리담소식", to: "/lecture/news" },
   { label: "학원시설", to: "/lecture/facilities" },
   { label: "찾아오시는 길", to: "/location" },

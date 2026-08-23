@@ -178,6 +178,8 @@ export async function action({ request }: Route.ActionArgs) {
         bodyMd: parts.join("\n\n") || input.title,
         authorId: user.id,
         audienceKind: "all",
+        // 팝업은 두 플랫폼 화면에 모두 뜨므로, 함께 남기는 공지도 양쪽에 건다.
+        platformScope: "both",
         audiences: [],
         isPinned: false,
         publish: true,
@@ -227,6 +229,8 @@ export async function action({ request }: Route.ActionArgs) {
         bodyMd: parts.join("\n\n") || input.title,
         authorId: user.id,
         audienceKind: "all",
+        // 팝업은 두 플랫폼 화면에 모두 뜨므로, 함께 남기는 공지도 양쪽에 건다.
+        platformScope: "both",
         audiences: [],
         isPinned: false,
         publish: true,

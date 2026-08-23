@@ -19,6 +19,9 @@ import type { Route } from "./+types/announcement";
 
 const audienceKindSchema = z.enum(["all", "cohort", "user"]);
 
+// 노출 플랫폼 — 학습 / 강의 / 둘 다. 미지정(레거시 폼)이면 학습.
+const platformScopeSchema = z.enum(["study", "lecture", "both"]).default("study");
+
 const audienceItemSchema = z.object({
   audienceType: z.enum(["cohort", "user"]),
   audienceId: z.string().uuid(),
@@ -29,6 +32,7 @@ const createSchema = z.object({
   bodyMd: z.string().max(20_000).default(""),
   bodyHtml: z.string().max(200_000).default(""),
   audienceKind: audienceKindSchema,
+  platformScope: platformScopeSchema,
   audiences: z.array(audienceItemSchema).max(500),
   isPinned: z.boolean().default(false),
   publish: z.boolean().default(false),
@@ -74,6 +78,7 @@ export async function action({ request }: Route.ActionArgs) {
       bodyMd: fd.get("bodyMd") ?? "",
       bodyHtml: fd.get("bodyHtml") ?? "",
       audienceKind: fd.get("audienceKind"),
+      platformScope: fd.get("platformScope") ?? undefined,
       audiences: parseAudienceArray(fd.get("audiences")),
       isPinned: fd.get("isPinned") === "1",
       publish: fd.get("publish") === "1",
@@ -89,6 +94,7 @@ export async function action({ request }: Route.ActionArgs) {
       bodyHtml: parsed.data.bodyHtml,
       authorId: user.id,
       audienceKind: parsed.data.audienceKind,
+      platformScope: parsed.data.platformScope,
       audiences: parsed.data.audiences,
       isPinned: parsed.data.isPinned,
       publish: parsed.data.publish,
@@ -124,6 +130,7 @@ export async function action({ request }: Route.ActionArgs) {
       bodyMd: fd.get("bodyMd") ?? "",
       bodyHtml: fd.get("bodyHtml") ?? "",
       audienceKind: fd.get("audienceKind"),
+      platformScope: fd.get("platformScope") ?? undefined,
       audiences: parseAudienceArray(fd.get("audiences")),
       isPinned: fd.get("isPinned") === "1",
       publish: fd.get("publish") === "1",
@@ -138,6 +145,7 @@ export async function action({ request }: Route.ActionArgs) {
       title: parsed.data.title,
       bodyHtml: parsed.data.bodyHtml,
       audienceKind: parsed.data.audienceKind,
+      platformScope: parsed.data.platformScope,
       audiences: parsed.data.audiences,
       isPinned: parsed.data.isPinned,
       publish: parsed.data.publish,

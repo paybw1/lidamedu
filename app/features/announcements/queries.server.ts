@@ -7,11 +7,13 @@ import type { Database } from "database.types";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
 
-import type {
-  AnnouncementAudienceKind,
-  AnnouncementAudienceRow,
-  AnnouncementDetail,
-  AnnouncementListItem,
+import {
+  scopesVisibleOn,
+  type AnnouncementAudienceKind,
+  type AnnouncementAudienceRow,
+  type AnnouncementDetail,
+  type AnnouncementListItem,
+  type AnnouncementPlatformScope,
 } from "./labels";
 
 export type {
@@ -19,10 +21,11 @@ export type {
   AnnouncementAudienceRow,
   AnnouncementDetail,
   AnnouncementListItem,
+  AnnouncementPlatformScope,
 } from "./labels";
 
 const STAFF_COLUMNS =
-  "announcement_id, title, body_md, body_html, author_id, audience_kind, is_pinned, published_at, created_at, updated_at, profiles!author_id(name)";
+  "announcement_id, title, body_md, body_html, author_id, audience_kind, platform_scope, is_pinned, published_at, created_at, updated_at, profiles!author_id(name)";
 
 interface RawRow {
   announcement_id: string;
@@ -31,6 +34,7 @@ interface RawRow {
   body_html: string | null;
   author_id: string;
   audience_kind: AnnouncementAudienceKind;
+  platform_scope: AnnouncementPlatformScope;
   is_pinned: boolean;
   published_at: string | null;
   created_at: string;
@@ -52,6 +56,7 @@ function toListItem(
     authorId: r.author_id,
     authorName: r.profiles?.name ?? null,
     audienceKind: r.audience_kind,
+    platformScope: r.platform_scope,
     isPinned: r.is_pinned,
     publishedAt: r.published_at,
     createdAt: r.created_at,
@@ -223,17 +228,20 @@ async function listAudienceRows(
 export interface ListInboxOptions {
   unreadOnly?: boolean;
   limit?: number;
+  /** 이 화면이 속한 제품 플랫폼 — 'both' 공지는 양쪽에 모두 낀다. */
+  platform: "study" | "lecture";
 }
 
 export async function listInboxAnnouncements(
   client: SupabaseClient<Database>,
   profileId: string,
-  options: ListInboxOptions = {},
+  options: ListInboxOptions,
 ): Promise<AnnouncementListItem[]> {
   const limit = Math.max(1, Math.min(200, options.limit ?? 50));
   const { data, error } = await client
     .from("announcements")
     .select(STAFF_COLUMNS)
+    .in("platform_scope", scopesVisibleOn(options.platform))
     .order("is_pinned", { ascending: false })
     .order("published_at", { ascending: false, nullsFirst: false })
     .limit(limit);
@@ -256,6 +264,9 @@ export async function listInboxAnnouncements(
   return items;
 }
 
+// ★현재 호출부 없음(뱃지 미사용). 되살릴 때는 platform 인자를 받아
+//   scopesVisibleOn() 으로 걸러야 한다 — 안 그러면 반대편 플랫폼 공지까지 세어서
+//   "안 읽음 1건인데 목록엔 없음"이 된다.
 export async function countUnreadForUser(
   client: SupabaseClient<Database>,
   profileId: string,
@@ -297,6 +308,7 @@ export interface CreateAnnouncementInput {
   bodyHtml?: string;
   authorId: string;
   audienceKind: AnnouncementAudienceKind;
+  platformScope: AnnouncementPlatformScope;
   audiences: { audienceType: "cohort" | "user"; audienceId: string }[];
   isPinned: boolean;
   publish: boolean;
@@ -325,6 +337,7 @@ export async function createAnnouncement(
       body_html: input.bodyHtml,
       author_id: input.authorId,
       audience_kind: input.audienceKind,
+      platform_scope: input.platformScope,
       is_pinned: input.isPinned,
       published_at: input.publish ? new Date().toISOString() : null,
     })
@@ -361,6 +374,7 @@ export interface UpdateAnnouncementInput {
   bodyHtml?: string;
   isPinned?: boolean;
   audienceKind?: AnnouncementAudienceKind;
+  platformScope?: AnnouncementPlatformScope;
   audiences?: { audienceType: "cohort" | "user"; audienceId: string }[];
   publish?: boolean; // true: 즉시 발행, false: draft 로 되돌리기, undefined: 그대로
 }
@@ -376,6 +390,8 @@ export async function updateAnnouncement(
   if (input.bodyHtml !== undefined) update.body_html = input.bodyHtml;
   if (input.isPinned !== undefined) update.is_pinned = input.isPinned;
   if (input.audienceKind !== undefined) update.audience_kind = input.audienceKind;
+  if (input.platformScope !== undefined)
+    update.platform_scope = input.platformScope;
   if (input.publish === true) update.published_at = new Date().toISOString();
   if (input.publish === false) update.published_at = null;
 

@@ -337,6 +337,12 @@ export default [
       "/lecture/schedule/:scheduleId",
       "features/landing/screens/schedule-detail.tsx",
     ),
+    // 공지사항(강의 플랫폼 면) — 학습 플랫폼 /announcements 와 같은 데이터, 노출 범위만
+    //   다르다(platform_scope). 리담안내 드롭다운에서 진입.
+    route(
+      "/lecture/announcements",
+      "features/announcements/screens/lecture-announcements.tsx",
+    ),
     route("/lecture/news", "features/landing/screens/news.tsx"),
     route("/lecture/news/:newsId", "features/landing/screens/news-detail.tsx"),
     // 시험정보 — 리담안내 하위 공개 정적 페이지(변리사 시험 일정·과목·기준).
@@ -360,48 +366,6 @@ export default [
       "features/instructors/screens/instructor-detail.tsx",
     ),
     route("/location", "features/home/screens/location.tsx"),
-    // ★커뮤니티 영역(자유게시판·스터디 모집·합격 수기 + 공지·이용가이드) — 강의 플랫폼
-    //   상단바 컨텍스트에서 렌더(클릭해도 강의 바 유지). 학습 플랫폼과 같은 /community/*
-    //   URL·기능을 공유(중복 신설 없음). private.layout 을 중첩해 인증·승인·동의 게이트를
-    //   그대로 유지(navigation.layout 밖으로 나왔으므로 게이트를 여기서 재적용).
-    layout("core/layouts/private.layout.tsx", { id: "lecture-private" }, [
-      layout(
-        "features/community/layouts/community.layout.tsx",
-        { id: "community-area" },
-        [
-          route("/community", "features/community/screens/community.tsx"),
-          route(
-            "/community/:board",
-            "features/community/screens/community-board.tsx",
-          ),
-          route(
-            "/community/:board/new",
-            "features/community/screens/community-post-new.tsx",
-          ),
-          route(
-            "/community/:board/:postId",
-            "features/community/screens/community-post-detail.tsx",
-          ),
-          route(
-            "/community/:board/:postId/edit",
-            "features/community/screens/community-post-new.tsx",
-            { id: "community-post-edit" },
-          ),
-          // feat-6 v2.2 — 첨부 signed URL (인증 사용자).
-          route(
-            "/community/attachment/signed-url",
-            "features/community/api/attachment-signed-url.tsx",
-          ),
-          route(
-            "/announcements",
-            "features/announcements/screens/announcements-inbox.tsx",
-          ),
-          // 이용 가이드 허브 — 기능 사용법(글+영상). 운영자 작성(/admin/guides).
-          route("/guide", "features/guide/screens/guide-index.tsx"),
-          route("/guide/:guideId", "features/guide/screens/guide-detail.tsx"),
-        ],
-      ),
-    ]),
   ]),
 
   // Pages with top navigation + footer
@@ -660,6 +624,48 @@ export default [
       // ★커뮤니티 영역(자유게시판·스터디·합격수기 + 공지·가이드)은 강의 플랫폼 상단바
       //   컨텍스트에서 렌더하도록 lecture.layout 아래로 이관(같은 /community/* URL·기능 공유,
       //   private.layout 중첩으로 게이트 유지). 아래 lecture.layout 블록 참조.
+      // ★커뮤니티 영역(자유게시판·스터디 모집·합격 수기 + 공지·이용가이드) — **학습 플랫폼**
+      //   소속. 2026-07-27 에 강의 상단바 유지를 위해 lecture.layout 아래로 옮겼다가
+      //   되돌린 것(2026-08-23): 2026-08-04 의 "개발 중 강의 플랫폼 비-staff 전면 차단"
+      //   게이트가 이 영역까지 함께 막아 학생이 게시판·공지·가이드에서 lidamedu.com 으로
+      //   튕겨 나갔다. 강의 상단바 커뮤니티 드롭다운(LECTURE_COMMUNITY_LINKS)은 여기로
+      //   링크되며, 진입하면 학습 플랫폼 컨텍스트로 넘어간다(게시판은 두 플랫폼 공유 공간).
+      layout(
+        "features/community/layouts/community.layout.tsx",
+        { id: "community-area" },
+        [
+          route("/community", "features/community/screens/community.tsx"),
+          route(
+            "/community/:board",
+            "features/community/screens/community-board.tsx",
+          ),
+          route(
+            "/community/:board/new",
+            "features/community/screens/community-post-new.tsx",
+          ),
+          route(
+            "/community/:board/:postId",
+            "features/community/screens/community-post-detail.tsx",
+          ),
+          route(
+            "/community/:board/:postId/edit",
+            "features/community/screens/community-post-new.tsx",
+            { id: "community-post-edit" },
+          ),
+          // feat-6 v2.2 — 첨부 signed URL (인증 사용자).
+          route(
+            "/community/attachment/signed-url",
+            "features/community/api/attachment-signed-url.tsx",
+          ),
+          route(
+            "/announcements",
+            "features/announcements/screens/announcements-inbox.tsx",
+          ),
+          // 이용 가이드 허브 — 기능 사용법(글+영상). 운영자 작성(/admin/guides).
+          route("/guide", "features/guide/screens/guide-index.tsx"),
+          route("/guide/:guideId", "features/guide/screens/guide-detail.tsx"),
+        ],
+      ),
       // feat-6-010 / feat-2-031 — 반별 게시판(종합반 통합). 접근 통제는 RLS 가 DB 에서 강제.
       //   커뮤니티 → 종합반으로 이관 → 종합반 탭(CohortTabs) strip 부착. 게이트 없음(RLS 권위).
       layout(

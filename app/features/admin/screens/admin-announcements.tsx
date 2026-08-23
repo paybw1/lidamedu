@@ -144,11 +144,11 @@ export default function AdminAnnouncements({
         </div>
       ) : (
         <IndexTable
-          minWidth={760}
+          minWidth={820}
           headers={[
             { label: "상태", width: "5rem" },
             { label: "제목" },
-            { label: "대상", width: "8rem" },
+            { label: "대상 · 노출 위치", width: "11rem" },
             { label: "작성자", width: "7rem" },
             { label: "읽음", align: "right", width: "5rem" },
             { label: "날짜", width: "9rem" },

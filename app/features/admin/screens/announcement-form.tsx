@@ -21,9 +21,12 @@ import { Button } from "~/core/components/ui/button";
 import { Input } from "~/core/components/ui/input";
 import { cn } from "~/core/lib/utils";
 import { HtmlEditor } from "~/features/lms/components/html-editor";
-import type {
-  AnnouncementAudienceKind,
-  AnnouncementListItem,
+import {
+  ANNOUNCEMENT_PLATFORM_SCOPES,
+  announcementPlatformLabel,
+  type AnnouncementAudienceKind,
+  type AnnouncementListItem,
+  type AnnouncementPlatformScope,
 } from "~/features/announcements/labels";
 import {
   AdminSelect,
@@ -133,7 +136,12 @@ export function AnnouncementRow({
         ) : null}
       </TD>
       <TD>
-        <AudienceChip kind={item.audienceKind} count={item.audienceCount} />
+        <div className="flex flex-wrap items-center gap-1">
+          <AudienceChip kind={item.audienceKind} count={item.audienceCount} />
+          <Chip tone={item.platformScope === "both" ? "violet" : "outline"}>
+            {announcementPlatformLabel(item.platformScope)}
+          </Chip>
+        </div>
       </TD>
       <TD soft>{item.authorName ?? "—"}</TD>
       <TD align="right" mono soft>
@@ -253,6 +261,10 @@ export function AnnouncementForm({
     existing?.audienceKind ?? "all",
   );
   const [isPinned, setIsPinned] = useState(existing?.isPinned ?? false);
+  // 노출 위치 — 기본은 학습 플랫폼(공지 대부분이 학습 콘텐츠 안내다).
+  const [platformScope, setPlatformScope] = useState<AnnouncementPlatformScope>(
+    existing?.platformScope ?? "study",
+  );
   const [selectedCohorts, setSelectedCohorts] = useState<string[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<SelectedAudience[]>([]);
   const [userQuery, setUserQuery] = useState("");
@@ -343,6 +355,7 @@ export function AnnouncementForm({
     fd.set("title", title.trim());
     fd.set("bodyHtml", bodyHtml);
     fd.set("audienceKind", audienceKind);
+    fd.set("platformScope", platformScope);
     fd.set("audiences", JSON.stringify(audiencesPayload));
     fd.set("isPinned", isPinned ? "1" : "0");
     fd.set("publish", publish ? "1" : "0");
@@ -389,7 +402,7 @@ export function AnnouncementForm({
         />
       </Field>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-3">
         <Field label="대상" htmlFor="ann-audience">
           <AdminSelect
             id="ann-audience"
@@ -403,6 +416,26 @@ export function AnnouncementForm({
             <option value="cohort">반 선택</option>
             <option value="user">개별 사용자</option>
           </AdminSelect>
+        </Field>
+        <Field label="노출 위치" htmlFor="ann-platform">
+          <AdminSelect
+            id="ann-platform"
+            value={platformScope}
+            onChange={(e) =>
+              setPlatformScope(e.target.value as AnnouncementPlatformScope)
+            }
+            className="w-full"
+          >
+            {ANNOUNCEMENT_PLATFORM_SCOPES.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </AdminSelect>
+          <p className="text-muted-foreground mt-1 text-[11px]">
+            {ANNOUNCEMENT_PLATFORM_SCOPES.find((s) => s.value === platformScope)
+              ?.hint ?? ""}
+          </p>
         </Field>
         <Field>
           <label className="border-input flex h-9 cursor-pointer items-center gap-1.5 rounded-md border px-3 text-[13px]">

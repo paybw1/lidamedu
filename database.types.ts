@@ -395,6 +395,7 @@ export type Database = {
           created_at: string
           deleted_at: string | null
           is_pinned: boolean
+          platform_scope: Database["public"]["Enums"]["announcement_platform_scope"]
           published_at: string | null
           title: string
           updated_at: string
@@ -408,6 +409,7 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           is_pinned?: boolean
+          platform_scope?: Database["public"]["Enums"]["announcement_platform_scope"]
           published_at?: string | null
           title: string
           updated_at?: string
@@ -421,6 +423,7 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           is_pinned?: boolean
+          platform_scope?: Database["public"]["Enums"]["announcement_platform_scope"]
           published_at?: string | null
           title?: string
           updated_at?: string
@@ -15790,6 +15793,7 @@ export type Database = {
         | "dohae_unit"
       announcement_audience_kind: "all" | "cohort" | "user"
       announcement_audience_target: "cohort" | "user"
+      announcement_platform_scope: "study" | "lecture" | "both"
       article_level: "part" | "chapter" | "section" | "article"
       assignment_item_kind:
         | "article_read"
@@ -16079,6 +16083,7 @@ export const Constants = {
       ],
       announcement_audience_kind: ["all", "cohort", "user"],
       announcement_audience_target: ["cohort", "user"],
+      announcement_platform_scope: ["study", "lecture", "both"],
       article_level: ["part", "chapter", "section", "article"],
       assignment_item_kind: [
         "article_read",
