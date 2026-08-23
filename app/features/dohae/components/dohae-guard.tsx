@@ -9,6 +9,9 @@
 //                 막으면 하이라이트를 못 긋는다. "선택은 되지만 복사는 안 됨"이 목표.
 //   ③ 인쇄 차단 — print 매체에서 본문을 숨긴다
 //   ④ 고지·경고 — 첫 열람 시 저작권 고지, 단시간 대량 열람 시 감지 안내
+//
+// ★상시 경고 띠는 두지 않는다(원장 지시 2026-08-23) — 매번 보는 학습 화면이라
+//   본문을 밀어내고 눈에 거슬린다. 고지는 첫 열람 1회 게이트가 맡는다.
 
 import { AlertTriangleIcon, ShieldAlertIcon } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
@@ -49,16 +52,6 @@ export const copyGuardProps = {
   onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
   onDragStart: (e: React.DragEvent) => e.preventDefault(),
 } as const;
-
-/** 상시 경고 띠 — 본문 맨 위. */
-export function DohaeCopyrightBand() {
-  return (
-    <p className="border-amber-300 bg-amber-50 text-[11px] font-semibold text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300 mb-3 flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 print:hidden">
-      <ShieldAlertIcon className="size-3.5 shrink-0" />
-      『도해특허법』 저작물입니다. 열람 기록이 남으며 무단 복제·배포·전송은 금지됩니다.
-    </p>
-  );
-}
 
 /** 첫 열람 1회 고지 모달(기기당). 확인 전에는 본문을 가린다. */
 export function DohaeCopyrightGate({ children }: { children: ReactNode }) {

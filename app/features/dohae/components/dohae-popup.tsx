@@ -23,7 +23,6 @@ import { useFetcher, useFetchers } from "react-router";
 import {
   copyGuardProps,
   DohaeAbnormalNotice,
-  DohaeCopyrightBand,
   DohaeCopyrightGate,
   DohaeWatermark,
 } from "./dohae-guard";
@@ -812,7 +811,6 @@ export function DohaePopup({
             ) : (
               // 유출방지 ④ — 첫 열람 1회 저작권 고지. 확인 전에는 본문을 그리지 않는다.
               <DohaeCopyrightGate>
-                <DohaeCopyrightBand />
                 <DohaeAbnormalNotice abnormal={payload?.abnormal ?? false} />
                 <MemoMarksOverlay memos={payload?.memos ?? []}>
                   <HighlightOverlay
