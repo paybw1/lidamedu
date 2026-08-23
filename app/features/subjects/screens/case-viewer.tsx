@@ -24,6 +24,7 @@ import { LowerCourtSheet } from "~/features/cases/components/lower-court-sheet";
 import { getLowerCourtByCaseId } from "~/features/cases/queries-lower-court.server";
 import {
   getCaseDiagramByCaseId,
+  listAllCaseIdsWithDiagram,
   resolveStatuteArticleIds,
 } from "~/features/cases/queries-case-diagram.server";
 import { cn } from "~/core/lib/utils";
@@ -309,6 +310,25 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     placementMaps.caseSetByNodeId,
   );
 
+  // prev/next 는 **진입한 목록과 같은 범위**여야 한다(원장 보고 2026-08-23).
+  //   목록에서 '도식 있음'으로 좁혀 들어왔으면 이웃 이동도 도식 보유분 안에서만 돈다.
+  //   ★트리 필터(case_node·case_article)는 위 siblingsPromise 가 이미 반영한다 —
+  //     여기서는 그 결과를 도식 유무로 한 번 더 거른다(순서는 그대로 유지).
+  //   ★법원·기출·검색어는 아직 반영 안 됨(종전과 동일) — 필요하면 같은 자리에 붙인다.
+  const navSiblings =
+    siblings && backParams?.get("case_diagram") === "1"
+      ? await (async () => {
+          const withDiagram = new Set(await listAllCaseIdsWithDiagram(client));
+          const list = siblings.siblings.filter((c) =>
+            withDiagram.has(c.caseId),
+          );
+          // 자기 자신이 빠지면(도식 없는 판례를 직접 URL 로 열었다) 이동 UI 를 감춘다.
+          return list.some((c) => c.caseId === kase.caseId)
+            ? { ...siblings, siblings: list }
+            : null;
+        })()
+      : siblings;
+
   // 유출방지 — 판례 도식 패널에 깔 열람자 식별 워터마크. 도식이 없으면 만들지 않는다.
   const diagramWatermark = caseDiagram
     ? await buildViewerWatermark(client, user.id)
@@ -345,7 +365,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     pdfLocations,
     pdfLocationsEnabled,
     caseBlankSets,
-    siblings,
+    siblings: navSiblings,
   };
 }
 
