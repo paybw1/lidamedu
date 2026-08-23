@@ -102,3 +102,40 @@ for (const x of bad) {
       ` ${x.n}회 [${[...x.units].slice(0, 3).join(",")}] 칸 ${x.p.toFixed(1)}%(${Math.round(x.inner)}px) · "${x.line}" → ${x.segs.join("|")} · 넘침 ${x.over.map((s) => `"${s}"(${Math.round(width(s))}px)`).join(" ")}`,
     ),
   );
+
+// ── 추가 점검 ───────────────────────────────────────────────────────────────
+// (1) <wbr> 을 심어도 글자가 그대로인지 (2) 사전에 안 걸려 못 나뉘는 라벨
+{
+  let lines = 0;
+  let mismatch = 0;
+  const miss = new Map();
+  const split = new Map();
+  for (const u of d.units)
+    for (const b of u.blocks)
+      if (b.type === "table")
+        for (const r of b.cells)
+          for (const c of r) {
+            if (!c.shade || c.diagram || c.tables?.length || c.boldRanges?.length) continue;
+            for (const raw of String(c.text ?? "").split("\n")) {
+              const t = raw.trim();
+              if (!t) continue;
+              lines++;
+              const segs = labelSegments(raw, { perChar: true });
+              if (segs.join("") !== raw) {
+                mismatch++;
+                if (mismatch < 4) console.log("  글자 불일치:", JSON.stringify(raw));
+              }
+              if (!/^[가-힣]{4,}$/.test(t)) continue;
+              const s2 = labelSegments(t, { perChar: true });
+              if (s2.length > 1) split.set(t, s2);
+              else miss.set(t, (miss.get(t) ?? 0) + 1);
+            }
+          }
+  console.log(`\n라벨 줄 ${lines}개 · 글자 달라진 것 ${mismatch}개`);
+  console.log(
+    `순한글 4자 이상 라벨 ${split.size + miss.size}종 · 나뉘는 것 ${split.size} · 못 나뉘는 것 ${miss.size}`,
+  );
+  [...miss.entries()].sort((a, b) => b[1] - a[1]).forEach(([t, n]) => console.log(`  ${n}회 ${t}`));
+  if (process.env.DOHAE_LIST_ALL)
+    [...split.entries()].sort().forEach(([t, s2]) => console.log(`  ${t}  →  ${s2.join(" / ")}`));
+}

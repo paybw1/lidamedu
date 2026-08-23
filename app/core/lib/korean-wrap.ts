@@ -278,17 +278,6 @@ const PARTICLE = /(과의|등|들|업|와|과|를|을|의|로)$/;
 
 function splitWord(word: string): string[] {
   if (!HANGUL_ONLY.test(word) || word.length < 4) return [word];
-  // ★조사를 떼어 본 결과가 실제로 나뉠 때만 쓴다 — 실패하면 아래 일반 규칙으로 넘어간다.
-  //   「확정효과」의 끝 "과" 를 조사로 보고 그대로 돌려주면 「효과」 를 못 떼어 낸다.
-  const pm = PARTICLE.exec(word);
-  if (pm) {
-    const body = word.slice(0, word.length - pm[1].length);
-    if (body.length >= 4) {
-      const parts = splitWord(body);
-      if (parts.length > 1)
-        return [...parts.slice(0, -1), parts[parts.length - 1] + pm[1]];
-    }
-  }
   const out: string[] = [];
   let head = word;
   for (;;) {
@@ -298,6 +287,20 @@ function splitWord(word: string): string[] {
     if (!tail) break;
     out.unshift(tail);
     head = head.slice(0, head.length - tail.length);
+  }
+  // ★꼬리말 사전이 먼저다. 조사를 먼저 떼면 「선출원주의」가 「주의」의 끝 "의" 에 걸려
+  //   "선출 / 원주의" 로 갈린다(도해 전수 점검 2026-08-23에서 발견).
+  //   사전에 하나도 안 걸렸을 때만 조사를 떼어 본다.
+  if (out.length === 0) {
+    const pm = PARTICLE.exec(word);
+    if (pm) {
+      const body = word.slice(0, word.length - pm[1].length);
+      if (body.length >= 4) {
+        const parts = splitWord(body);
+        if (parts.length > 1)
+          return [...parts.slice(0, -1), parts[parts.length - 1] + pm[1]];
+      }
+    }
   }
   // 머리말이 한 글자만 남고 뒤가 여럿이면 앞 조각에 붙인다 — 「부 / 등록 / 사유」 보다
   // 「부등록 / 사유」 가 낫다. (뒤가 하나뿐이면 「피 / 청구인」 이 옳으므로 그대로 둔다)

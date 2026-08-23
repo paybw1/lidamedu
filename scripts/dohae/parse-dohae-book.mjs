@@ -54,7 +54,10 @@ const headerTree = parser.parse(
 );
 const FILL_FACE = new Map(); // borderFill id → faceColor
 const PARA_ALIGN = new Map(); // paraPr id → LEFT|CENTER|RIGHT|JUSTIFY
-const CHAR_FONT = new Map(); // charPr id → { boldish }
+const CHAR_FONT = new Map(); // charPr id → { boldish, rank }
+// 글꼴을 못 찾은 자리(문단 구분 개행 등)의 기본값 — 보통 굵기.
+const DEFAULT_FONT = { boldish: false, rank: 2 };
+const SEPARATOR_FONT = { boldish: false, rank: 0 };
 {
   const fontFace = new Map(); // font id → 이름
   (function walk(n) {
@@ -86,9 +89,21 @@ const CHAR_FONT = new Map(); // charPr id → { boldish }
     } else if (t === "hh:charPr") {
       const fr = childrenOf(n).find((c) => tagOf(c) === "hh:fontRef");
       const face = fontFace.get(attrsOf(fr ?? {})["@_hangul"]) ?? "";
+      // ★교재는 본문 강조를 **글꼴을 바꿔서** 한다 — 본문 「KoPubWorld바탕체 Light」 →
+      //   강조 「KoPubWorld돋움체 Medium」. 이름에 Bold 가 든 것만 보면 그 강조가 통째로
+      //   사라진다(원장 보고 2026-08-23, p40 「컴퓨터 프로그램 관련 발명」 등 228곳).
+      //
+      // 그래서 두 가지를 따로 둔다.
+      //   boldish — **그 자체로** 굵은 글꼴(hh:bold·Bold·EB·태고딕…). 라벨 칸 판정용.
+      //   rank    — 굵기 등급(1 Light / 2 보통·Medium / 3 Bold 이상). 칸 안에서 **주변보다
+      //             무거운** run 을 강조로 보는 데 쓴다.
+      //   ★등급만으로 강조를 정하면 안 된다 — 참고 2.1 처럼 칸 전체가 고딕이면 그건
+      //     그 칸의 본문 글꼴이지 강조가 아니다(인쇄본 p84 확인).
+      const heavy = /bold|\bEB\b|heavy|black|태고딕|견고딕/i.test(face);
+      const light = /light|thin|\bL$/i.test(face);
       CHAR_FONT.set(a["@_id"], {
-        boldish:
-          childrenOf(n).some((c) => tagOf(c) === "hh:bold") || /bold/i.test(face),
+        boldish: childrenOf(n).some((c) => tagOf(c) === "hh:bold") || heavy,
+        rank: heavy ? 3 : light ? 1 : 2,
       });
     }
     for (const [k, v] of Object.entries(n)) {
@@ -158,10 +173,10 @@ function cellRich(tcNode) {
         if (!root && mt === "hp:p") return;
         const b =
           mt === "hp:run"
-            ? !!CHAR_FONT.get(attrsOf(m)["@_charPrIDRef"])?.boldish
+            ? (CHAR_FONT.get(attrsOf(m)["@_charPrIDRef"]) ?? { boldish: false, rank: 2 })
             : bold;
         for (const c of childrenOf(m)) tw(c, false, b);
-      })(n, true, false);
+      })(n, true, DEFAULT_FONT);
       // 공백 정규화(연속 공백 → 1개, 앞뒤 잘라내기)를 글자와 굵기에 나란히 적용한다.
       const outC = [];
       const outB = [];
@@ -190,11 +205,25 @@ function cellRich(tcNode) {
   })(tcNode);
 
   const text = parts.map((x) => x.text).join("\n");
-  const flags = [];
+  // 글자별 글꼴 → 굵게 여부.
+  // ★"그 자체로 굵은 글꼴" 이거나, **이 칸의 본문 글꼴보다 무거운** run 이면 강조다.
+  //   칸 전체가 고딕인 표(참고 2.1)는 그게 본문 글꼴이라 강조가 아니다(인쇄본 p84 확인).
+  const fonts = [];
   parts.forEach((x, i) => {
-    if (i > 0) flags.push(false); // 문단 구분 개행
-    flags.push(...x.bolds);
+    // 문단 구분 개행 — rank 0 이라 어떤 본문 글꼴보다도 가볍다(굵게로 잡히지 않는다).
+    if (i > 0) fonts.push(SEPARATOR_FONT);
+    fonts.push(...x.bolds);
   });
+  const seen = new Map();
+  text.split("").forEach((ch, i) => {
+    if (!ch.trim()) return;
+    const r = fonts[i]?.rank ?? 2;
+    seen.set(r, (seen.get(r) ?? 0) + 1);
+  });
+  let baseRank = 2;
+  let most = -1;
+  for (const [r, n] of seen) if (n > most || (n === most && r < baseRank)) { most = n; baseRank = r; }
+  const flags = fonts.map((f) => !!f && (f.boldish || (f.rank ?? 2) > baseRank));
   const boldRanges = [];
   for (let i = 0; i < flags.length; i++) {
     if (!flags[i]) continue;
@@ -205,6 +234,11 @@ function cellRich(tcNode) {
   }
   // 글자 없는 구간(쉼표·공백만)은 굵기로 치지 않는다 — 원고에 자주 남는 조판 잔재라
   // 그대로 옮기면 본문 한가운데 쉼표 하나가 굵게 찍힌다(t65 「공통점」).
+  // 구간 앞뒤의 공백·개행은 굵게에서 뺀다 — <strong> 안에 개행이 들어가면 지저분하다.
+  for (const r of boldRanges) {
+    while (r[0] < r[1] && !text[r[0]].trim()) r[0]++;
+    while (r[1] > r[0] && !text[r[1] - 1].trim()) r[1]--;
+  }
   const meaningful = (r) => /[\p{L}\p{N}]/u.test(text.slice(r[0], r[1]));
   for (let i = boldRanges.length - 1; i >= 0; i--) if (!meaningful(boldRanges[i])) boldRanges.splice(i, 1);
 
