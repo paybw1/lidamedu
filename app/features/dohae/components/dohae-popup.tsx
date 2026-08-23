@@ -1,4 +1,6 @@
-// 도해특허법 팝업 — 조문 뷰어 "도해" 칩에서 열림. ★staff 전용(진입 칩 자체가 RLS 로 숨음).
+// 도해특허법 팝업 — 조문 뷰어 "도해" 칩에서 열림.
+// ★2026-08-23 학생 공개. 편집·검수 UI 는 viewerIsStaff 게이트로 계속 staff 전용이고,
+//   본문에는 유출방지(워터마크·복사차단·고지·열람로그)가 걸린다 — dohae-guard.tsx.
 // 표=HTML(선택 가능 — 하이라이트·포스트잇 작동), 다이어그램=서명 URL 이미지(편집 불가).
 // 학습 툴: HighlightOverlay(dohae_unit)+MemoMarksOverlay+우측 MemoList. 선택 툴바는
 // 조문 뷰어의 prop-less HighlightToolbar 가 컨테이너 dataset 으로 대상 판별.
@@ -17,6 +19,14 @@ import {
 } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useFetcher, useFetchers } from "react-router";
+
+import {
+  copyGuardProps,
+  DohaeAbnormalNotice,
+  DohaeCopyrightBand,
+  DohaeCopyrightGate,
+  DohaeWatermark,
+} from "./dohae-guard";
 
 import { KoreanLabel } from "~/core/components/korean-label";
 import {
@@ -665,7 +675,7 @@ export function DohaePopup({
           <BookOpenIcon className="text-primary size-4" />
           도해특허법{" "}
           <span className="text-muted-foreground text-xs font-normal">
-            제20판 · 강사 전용
+            제20판
           </span>
           {activeSummary ? (
             <span className="text-muted-foreground min-w-0 flex-1 truncate text-[13px] font-medium">
@@ -786,31 +796,43 @@ export function DohaePopup({
             toolsOpen && "lg:grid-cols-[1fr_300px]",
           )}
         >
-          <div className="min-h-0 overflow-y-auto px-5 py-4">
+          <div
+            className="relative min-h-0 overflow-y-auto px-5 py-4 print:hidden"
+            {...copyGuardProps}
+          >
+            {/* 유출방지 ① — 열람자 식별 워터마크. 캡처·촬영물에 신원이 남는다. */}
+            {payload?.watermark ? (
+              <DohaeWatermark text={payload.watermark} />
+            ) : null}
             {!unit ? (
               <p className="text-muted-foreground flex items-center gap-2 py-16 text-center text-sm">
                 <Loader2Icon className="mx-auto size-4 animate-spin" /> 불러오는
                 중…
               </p>
             ) : (
-              <MemoMarksOverlay memos={payload?.memos ?? []}>
-                <HighlightOverlay
-                  fieldPath={`dohae.${unit.unitKey}`}
-                  targetType="dohae_unit"
-                  targetId={unit.unitId}
-                  highlights={payload?.highlights ?? []}
-                  viewerIsStaff={viewerIsStaff}
-                >
-                  <DohaeBlocks
-                    blocks={unit.blocks}
-                    articles={payload?.articles ?? []}
-                    articleHighlights={payload?.articleHighlights ?? {}}
-                    articleMemos={payload?.articleMemos ?? {}}
-                    titleMap={titleMap}
+              // 유출방지 ④ — 첫 열람 1회 저작권 고지. 확인 전에는 본문을 그리지 않는다.
+              <DohaeCopyrightGate>
+                <DohaeCopyrightBand />
+                <DohaeAbnormalNotice abnormal={payload?.abnormal ?? false} />
+                <MemoMarksOverlay memos={payload?.memos ?? []}>
+                  <HighlightOverlay
+                    fieldPath={`dohae.${unit.unitKey}`}
+                    targetType="dohae_unit"
+                    targetId={unit.unitId}
+                    highlights={payload?.highlights ?? []}
                     viewerIsStaff={viewerIsStaff}
-                  />
-                </HighlightOverlay>
-              </MemoMarksOverlay>
+                  >
+                    <DohaeBlocks
+                      blocks={unit.blocks}
+                      articles={payload?.articles ?? []}
+                      articleHighlights={payload?.articleHighlights ?? {}}
+                      articleMemos={payload?.articleMemos ?? {}}
+                      titleMap={titleMap}
+                      viewerIsStaff={viewerIsStaff}
+                    />
+                  </HighlightOverlay>
+                </MemoMarksOverlay>
+              </DohaeCopyrightGate>
             )}
           </div>
           {/* ── 오른쪽 학습 툴 — 포스트잇이 주(主), 하이라이트는 접어 둔다.

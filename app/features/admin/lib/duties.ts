@@ -73,7 +73,7 @@ export const DUTY_META: Record<StaffDuty, DutyMeta> = {
     fallbackRoles: ["instructor", "manager", "admin"],
   },
   lecture_abuse_alert: {
-    label: "강의노트 이상 열람 경보",
+    label: "강의노트·도해 이상 열람 경보",
     desc: "단시간 대량 열람(유출 시도 의심) 감지 경보.",
     kind: "notify",
     fallbackRoles: ["manager", "admin"],

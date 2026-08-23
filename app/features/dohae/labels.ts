@@ -1,5 +1,6 @@
 // 도해특허법 — 블록 타입(서버·클라 공용). blocks jsonb 의 렌더 계약.
-// ★staff 전용 콘텐츠(수험생 비노출) — 노출 게이트는 RLS + api/unit staff 확인.
+// ★2026-08-23 학생 공개(유출방지 동반: 워터마크·복사차단·고지·열람로그 — dohae-guard).
+//   편집·검수는 계속 staff 전용(viewerIsStaff 게이트 + admin API 역할 확인).
 
 export interface DohaeCell {
   text: string;

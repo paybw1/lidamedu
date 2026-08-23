@@ -1369,3 +1369,31 @@ alter type announcement_audience_kind add value 'staff';   -- all | cohort | use
   (폼·서버 검증·대상 목록 조회 스킵이 모두 이걸 쓴다).
 - 용도: staff 전용 콘텐츠(도해특허법 등) 안내를 학생에게 노출하지 않고 보내기.
   종전에는 개별 사용자를 한 명씩 지정하는 수밖에 없었다.
+
+## 도해 학생 공개 + 열람 로그 (dohae_unit_views)  ✅ 적용됨 (2026-08-23)
+
+```sql
+create table public.dohae_unit_views (
+  view_id uuid primary key default gen_random_uuid(),
+  profile_id uuid not null references profiles(profile_id) on delete cascade,
+  unit_id uuid not null references dohae_units(unit_id) on delete cascade,
+  viewed_at timestamptz not null default now()
+);
+create index dohae_unit_views_profile_time on dohae_unit_views (profile_id, viewed_at desc);
+-- SELECT staff 만. INSERT 정책 없음 = 서버(service_role)만 기록.
+
+-- 공개 전환: staff 전용 SELECT → 로그인 사용자 전원
+--   dohae_units / dohae_unit_nodes / dohae_unit_articles 세 테이블 모두.
+--   ★nodes·articles 를 같이 열지 않으면 체계도의 '도해' 버튼이 아예 뜨지 않는다.
+--   UPDATE(편집)는 dohae_units_staff_update 로 계속 staff 만.
+alter type staff_notification_kind add value 'dohae_abuse';
+```
+
+- **강의노트 로그(`lecture_note_views`)와 분리한 이유**: 강의노트는 '페이지 창' 단위, 도해는
+  '유닛' 단위라 집계식과 임계가 다르다. 한 테이블에 섞으면 운영자 강의노트 탭과
+  `countRecentUniquePages` 이상탐지가 오염된다.
+- 임계(`app/features/dohae/abuse.server.ts`): 10분 고유 유닛 **25개**=학생 본인 경고,
+  **40개**=staff 알림(`dohae_abuse`, 24h 재알림 억제). 수신자는 강의노트와 같은 담당
+  (`lecture_abuse_alert` duty).
+- 유출방지 화면단은 `app/features/dohae/components/dohae-guard.tsx` — 워터마크·복사차단·
+  인쇄차단·저작권 고지. ★**선택(selection)은 막지 않는다** — 막으면 하이라이트를 못 긋는다.

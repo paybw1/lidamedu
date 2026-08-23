@@ -5664,6 +5664,49 @@ export type Database = {
           },
         ]
       }
+      dohae_unit_views: {
+        Row: {
+          profile_id: string
+          unit_id: string
+          view_id: string
+          viewed_at: string
+        }
+        Insert: {
+          profile_id: string
+          unit_id: string
+          view_id?: string
+          viewed_at?: string
+        }
+        Update: {
+          profile_id?: string
+          unit_id?: string
+          view_id?: string
+          viewed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dohae_unit_views_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "dohae_unit_views_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "dohae_unit_views_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "dohae_units"
+            referencedColumns: ["unit_id"]
+          },
+        ]
+      }
       dohae_units: {
         Row: {
           blocks: Json
@@ -15925,6 +15968,7 @@ export type Database = {
         | "broadcast_message"
         | "coupon_granted"
         | "study_plan_updated_by_staff"
+        | "dohae_abuse"
       student_note_visibility: "staff_only" | "share_with_student"
       subjective_kind: "case_based" | "theory" | "mixed"
       subscription_status: "pending" | "active" | "expired" | "cancelled"
@@ -16225,6 +16269,7 @@ export const Constants = {
         "broadcast_message",
         "coupon_granted",
         "study_plan_updated_by_staff",
+        "dohae_abuse",
       ],
       student_note_visibility: ["staff_only", "share_with_student"],
       subjective_kind: ["case_based", "theory", "mixed"],

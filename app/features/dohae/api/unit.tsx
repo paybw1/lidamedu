@@ -1,6 +1,9 @@
 // GET /api/dohae/unit?unitId=… — 팝업 콘텐츠(블록 + 다이어그램 서명 URL + 내 주석).
-// ★staff 전용: 유닛 조회는 요청 클라이언트(RLS staff SELECT)로 — 학생이면 404.
-//   서명 URL 발급만 adminClient(비공개 버킷) — RLS 통과가 곧 staff 증명.
+// ★유닛 조회는 요청 클라이언트(RLS)로 — 권한 없으면 0행 → 404. 서명 URL 발급만
+//   adminClient(비공개 버킷)로 하되, **RLS 를 통과한 뒤에만** 발급한다(통과 = 열람 권한 증명).
+// ★유출방지(2026-08-23, 학생 공개와 함께 도입):
+//   ② 열람자 식별 워터마크 문자열을 내려보낸다(팝업이 본문 위에 깐다)
+//   ③ 열람 로그 + 단시간 대량 열람 경보 — staff 열람은 제외
 
 import type { Route } from "./+types/unit";
 
@@ -8,6 +11,8 @@ import { data } from "react-router";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { runAfterResponse } from "~/core/lib/wait-until.server";
+import { getStaffRole } from "~/features/laws/queries.server";
 import {
   listHighlights,
   listHighlightsByArticleIds,
@@ -15,6 +20,7 @@ import {
   listMemosByArticleIds,
 } from "~/features/annotations/queries.server";
 
+import { logDohaeUnitView, STUDENT_WARN_UNITS, STUDENT_WARN_WINDOW_MIN, countRecentUniqueUnits } from "../abuse.server";
 import type { DohaeBlock, DohaeCell } from "../labels";
 import { getArticleTitleMap, listDohaeUnitArticles } from "../queries.server";
 
@@ -82,6 +88,43 @@ export async function loader({ request }: Route.LoaderArgs) {
   const articles = await listDohaeUnitArticles(client, row.unit_id);
   const articleIds = articles.map((a) => a.articleId);
 
+  // 유출방지 ② — 열람자 식별 워터마크(캡처·촬영 유출 시 유출자 특정).
+  const [staffRole, { data: me }] = await Promise.all([
+    getStaffRole(client, user.id),
+    client
+      .from("profiles")
+      .select("name, member_no")
+      .eq("profile_id", user.id)
+      .maybeSingle(),
+  ]);
+  const stampedAt = new Date().toLocaleString("ko-KR", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const watermark = [
+    me?.name ?? "회원",
+    me?.member_no != null ? `No.${me.member_no}` : null,
+    stampedAt,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  // 유출방지 ③ — 열람 로그(응답 후 best-effort, staff 제외) + 학생 본인 경고 신호.
+  let abnormal = false;
+  if (staffRole === null) {
+    abnormal =
+      (await countRecentUniqueUnits(user.id, STUDENT_WARN_WINDOW_MIN)) >=
+      STUDENT_WARN_UNITS;
+    runAfterResponse(
+      logDohaeUnitView({ profileId: user.id, unitId: row.unit_id }),
+    );
+  }
+
   const [memos, highlights, articleMemos, articleHighlights, titleMap] =
     await Promise.all([
       listMemos(client, user.id, "dohae_unit", row.unit_id),
@@ -96,6 +139,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     ]);
 
   return {
+    watermark,
+    abnormal,
     articles,
     articleMemos,
     articleHighlights,

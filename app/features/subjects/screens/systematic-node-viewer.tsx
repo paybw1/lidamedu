@@ -733,12 +733,12 @@ function Inner({
               {/* 모드 토글 버튼 행 */}
               <div className="border-border mt-3 flex flex-wrap items-center gap-1.5 border-t pt-3">
                 {dohaeUnits.length > 0 ? (
-                  // ★staff 전용 — RLS 로 학생은 dohaeUnits 가 항상 빈 배열.
+                  // 도해가 실린 단원에서만 보인다(RLS 통과분만 내려온다).
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setDohaeOpen(true)}
-                    title="도해특허법 (강사 전용)"
+                    title="도해특허법 제20판"
                     className="h-9 gap-1.5 rounded-full border-amber-300 bg-amber-50 text-xs text-amber-800 hover:bg-amber-100 sm:h-7 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
                   >
                     <BookOpenIcon className="size-3.5" />

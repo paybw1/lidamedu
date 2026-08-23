@@ -14,6 +14,8 @@ export const STAFF_KINDS: NotificationKind[] = [
   "bug_report_created",
   "cohort_upgrade_requested",
   "lecture_note_abuse",
+  // 도해 대량 열람 경보 — 강의노트와 집계 단위가 달라 kind 를 나눈다(유닛 vs 페이지).
+  "dohae_abuse",
   // GS AI/OCR 일일 한도 경보 — usage-tracker 가 직접 insert (누락돼 인박스에 안 보이던 것 수정).
   "gs_cap_reached",
   // feat-6-011 — 고객센터 신규 문의 접수.
