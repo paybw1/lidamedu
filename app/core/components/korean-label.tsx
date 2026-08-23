@@ -5,7 +5,7 @@
 //   로 끊기던 이유다(원장 보고 2026-08-23).
 // ★<wbr> 은 textContent 에 아무것도 더하지 않아 하이라이트·포스트잇의 글자 오프셋이
 //   그대로다. (제로폭 공백 U+200B 은 글자로 세어져 오프셋을 민다 — 쓰면 안 된다.)
-import { Fragment } from "react";
+import { Fragment, type ReactNode } from "react";
 
 import { labelSegments } from "~/core/lib/korean-wrap";
 
@@ -34,11 +34,18 @@ export function KoreanLabel({
   );
 }
 
-/** 자식이 순수 문자열일 때만 <wbr> 을 심는다 — 그 밖(굵게·링크 등)은 그대로 둔다. */
-export function wrapIfPlainText(children: React.ReactNode): React.ReactNode {
-  return typeof children === "string" ? (
-    <KoreanLabel text={children} />
-  ) : (
-    children
-  );
+/** 이보다 긴 칸은 건드리지 않는다 — 본문은 띄어쓰기로 충분하고 DOM 만 는다. */
+const LABELISH_MAX = 24;
+
+/** 노드 안의 문자열에만 <wbr> 을 심는다 — 굵게·링크 등 다른 요소는 그대로 둔다. */
+export function withKoreanBreaks(node: ReactNode, keyPrefix = ""): ReactNode {
+  if (typeof node === "string")
+    return node.length <= LABELISH_MAX ? <KoreanLabel text={node} /> : node;
+  if (Array.isArray(node))
+    return node.map((c, i) => (
+      <Fragment key={`${keyPrefix}k${i}`}>
+        {withKoreanBreaks(c, `${keyPrefix}k${i}-`)}
+      </Fragment>
+    ));
+  return node;
 }

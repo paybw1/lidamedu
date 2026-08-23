@@ -84,7 +84,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
         // 기본은 줄바꿈 허용(break-words) — 셀이 nowrap 이면 긴 텍스트가 표를 넓혀
         // PC 에서도 가로 스크롤이 생긴다. 숫자/짧은 컬럼은 그대로 한 줄로 보이고,
         // 한 줄 유지가 꼭 필요한 셀만 개별적으로 whitespace-nowrap 을 지정한다.
-        "p-2 align-middle break-words [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        "p-2 align-middle [overflow-wrap:break-word] break-keep [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
         className,
       )}
       {...props}

@@ -1,8 +1,8 @@
 // 운영자 영역 공통 UI 프리미티브 — 키트 lidam-admin/lib.jsx · Shell.jsx 기반.
 // Chip · Bar · StatusChip · FilterBar · IndexTable · Field(통일 폼) 등 7 패턴 공유.
+import type { ReactNode } from "react";
 
 import { RefreshCwIcon, SearchIcon } from "lucide-react";
-import type { ReactNode } from "react";
 import { Link } from "react-router";
 
 import { cn } from "~/core/lib/utils";
@@ -88,7 +88,9 @@ export function StatusChip({
     return <Chip tone="emerald">{label ?? "완료"}</Chip>;
   if (["pending", "review", "warn", "draft"].includes(status))
     return (
-      <Chip tone="amber">{label ?? (status === "draft" ? "초안" : "대기")}</Chip>
+      <Chip tone="amber">
+        {label ?? (status === "draft" ? "초안" : "대기")}
+      </Chip>
     );
   if (["unmatched", "missing", "error", "rejected"].includes(status))
     return <Chip tone="coral">{label ?? "미배정"}</Chip>;
@@ -218,16 +220,14 @@ export function Bar({
   const pct = Math.max(0, Math.min(100, max > 0 ? (value / max) * 100 : 0));
   let fill = "bg-primary";
   if (tone === "auto")
-    fill = pct < 50 ? "bg-rose-500" : pct < 70 ? "bg-amber-500" : "bg-emerald-500";
+    fill =
+      pct < 50 ? "bg-rose-500" : pct < 70 ? "bg-amber-500" : "bg-emerald-500";
   else if (tone === "emerald") fill = "bg-emerald-500";
   else if (tone === "coral") fill = "bg-rose-500";
   else if (tone === "amber") fill = "bg-amber-500";
   return (
     <div
-      className={cn(
-        "bg-muted h-1.5 overflow-hidden rounded-full",
-        className,
-      )}
+      className={cn("bg-muted h-1.5 overflow-hidden rounded-full", className)}
     >
       <div
         className={cn("h-full rounded-full transition-[width]", fill)}
@@ -406,7 +406,10 @@ export function TD({
     <td
       colSpan={colSpan}
       className={cn(
-        "px-3 py-2.5 align-middle text-[13px] tabular-nums",
+        // 한국어는 낱말 단위로 접는다(break-keep). 칸보다 긴 낱말만 잘라 접는다 —
+        // ★arbitrary 속성으로 쓴다: cn(tailwind-merge)이 break-words 와 같은 그룹으로
+        //   보고 break-keep 을 지운다.
+        "px-3 py-2.5 align-middle text-[13px] [overflow-wrap:break-word] break-keep tabular-nums",
         align === "right"
           ? "text-right"
           : align === "center"

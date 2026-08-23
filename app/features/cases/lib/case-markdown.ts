@@ -8,9 +8,10 @@
 // 텍스트 paragraph 가 marked 처리되지 않는 이유 — staff highlight 의 offset 이
 // textContent 흐름에 의존하기 때문. inline markdown(**bold** 등) 을 풀어버리면
 // 기존 하이라이트 offset 이 깨진다. 새 패턴(이미지/표) 만 점진 도입.
-
 import DOMPurify from "isomorphic-dompurify";
 import { marked } from "marked";
+
+import { labelSegments } from "~/core/lib/korean-wrap";
 
 // `![alt](url "선택 title")` 한 줄 paragraph — alt 와 url 만 캡처.
 // trailing 공백/마침표 허용. url 에 공백 금지.
@@ -99,7 +100,10 @@ export function buildColWidthDirective(
 
 // 렌더된 표 HTML 에 명시 폭 colgroup 을 주입(자동 cmp colgroup override) + colw 클래스
 // (table-layout:fixed). 폭은 이미 검증된 토큰만 담기므로 sanitize 이후 주입해도 안전.
-function applyExplicitColgroup(html: string, widths: (string | null)[]): string {
+function applyExplicitColgroup(
+  html: string,
+  widths: (string | null)[],
+): string {
   const cols = widths
     .map((w) => (w ? `<col style="width:${w}">` : "<col>"))
     .join("");
@@ -107,7 +111,10 @@ function applyExplicitColgroup(html: string, widths: (string | null)[]): string 
   const stripped = html.replace(/<colgroup>[\s\S]*?<\/colgroup>/i, "");
   return stripped.replace(/<table\b([^>]*)>/i, (_m, attrs: string) => {
     const withClass = /\bclass="/.test(attrs)
-      ? attrs.replace(/class="([^"]*)"/i, (_mm, c: string) => `class="${c} colw"`)
+      ? attrs.replace(
+          /class="([^"]*)"/i,
+          (_mm, c: string) => `class="${c} colw"`,
+        )
       : `${attrs} class="colw"`;
     return `<table${withClass}>${colgroup}`;
   });
@@ -193,7 +200,10 @@ function analyzeCmpTable(
   for (const l of lines) {
     // 구분선(| --- | --- |) 은 건너뜀.
     if (/^\|[\s:|-]+\|$/.test(l)) continue;
-    const cells = l.slice(1, -1).split("|").map((s) => s.trim());
+    const cells = l
+      .slice(1, -1)
+      .split("|")
+      .map((s) => s.trim());
     if (cells.length < 2) return null;
     cols = Math.max(cols, cells.length);
     maxFirst = Math.max(maxFirst, cells[0].length);
@@ -337,11 +347,11 @@ function renderMergedTableHtml(p: string): string | null {
     body = rowsRaw.filter((r) => !isSep(r));
   }
   const grid = [...(header ? [header] : []), ...body];
-  if (
-    !grid.some((r) => r.some((c) => c === MERGE_LEFT || c === MERGE_UP))
-  )
+  if (!grid.some((r) => r.some((c) => c === MERGE_LEFT || c === MERGE_UP)))
     return null;
-  const spans = computeCaseCellSpans(grid.map((r) => r.map((text) => ({ text }))));
+  const spans = computeCaseCellSpans(
+    grid.map((r) => r.map((text) => ({ text }))),
+  );
   const cmpInfo = analyzeCmpTable(p);
   const renderRow = (cells: string[], gi: number, tag: "th" | "td") => {
     let out = "<tr>";
@@ -373,6 +383,27 @@ function renderMergedTableHtml(p: string): string | null {
   });
 }
 
+/**
+ * 표의 **순수 글자 칸**(태그 없는 칸)에 한국어 뜻 단위 줄바꿈 자리를 심는다.
+ * ★sanitize 다음에 부른다 — 우리가 만든 문자열이라 안전하고, DOMPurify 가 <wbr> 을
+ *   지울 걱정도 없다. <wbr> 은 글자를 더하지 않아 검색·하이라이트 오프셋이 그대로다.
+ * 라벨 칸(짧은 칸)만 — 긴 본문 칸은 띄어쓰기로 충분하다.
+ */
+const LABELISH_MAX = 24;
+// 정규식 리터럴 대신 생성자 — 닫는 태그의 "/" 를 이스케이프하지 않아도 된다.
+const CELL_RE = new RegExp("(<t[hd](?:>| [^>]*>))([^<]+)(</t[hd]>)", "g");
+// <thead>/<tbody> 는 걸리지 않는다 — [hd] 다음이 ">" 또는 공백이어야 한다.
+function injectWordBreaks(html: string): string {
+  return CELL_RE[Symbol.replace](
+    html,
+    (all: string, open: string, text: string, close: string) => {
+      if (text.length > LABELISH_MAX) return all;
+      const segs = labelSegments(text);
+      return segs.length <= 1 ? all : open + segs.join("<wbr>") + close;
+    },
+  );
+}
+
 export function renderTableHtml(p: string): string {
   // colw 디렉티브(열 폭)를 먼저 떼어내 본문만 렌더 — marked·병합·cmp 판정은 body 로.
   const { widths, body } = extractColWidths(p);
@@ -384,7 +415,7 @@ export function renderTableHtml(p: string): string {
   if (!isRawHtml) {
     // 병합 마커("<"/"^") 표는 직접 조립 — marked GFM 은 셀 병합 불가.
     const merged = renderMergedTableHtml(body);
-    if (merged) return withWidths(merged);
+    if (merged) return injectWordBreaks(withWidths(merged));
   }
   const html = isRawHtml
     ? body
@@ -405,10 +436,12 @@ export function renderTableHtml(p: string): string {
           /(<table\b[^>]*>)/i,
           `$1${buildCmpColgroup(info.cols, info.labelCols, info.colMax)}`,
         );
-      return withWidths(annotateCmpColumns(withClass, info.labelCols));
+      return injectWordBreaks(
+        withWidths(annotateCmpColumns(withClass, info.labelCols)),
+      );
     }
   }
-  return withWidths(clean);
+  return injectWordBreaks(withWidths(clean));
 }
 
 // 사용자 작성용 표 템플릿 — "표 삽입" 버튼이 cursor 위치에 삽입할 markdown 원문.
@@ -432,7 +465,10 @@ export const MARKDOWN_TABLE_TEMPLATE = [
 function sanitizeCell(s: string): string {
   // markdown 표 cell 에 들어가면 안 되는 문자: `|`(컬럼 구분자), 줄넘김.
   // 줄넘김은 `<br>` 으로 바꿀 수도 있지만 GFM 호환성·간단함 위해 공백.
-  return s.trim().replace(/\|/g, "\\|").replace(/[\r\n]+/g, " ");
+  return s
+    .trim()
+    .replace(/\|/g, "\\|")
+    .replace(/[\r\n]+/g, " ");
 }
 
 function buildGfmTable(rows: string[][]): string | null {

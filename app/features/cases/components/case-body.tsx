@@ -1,6 +1,5 @@
 // 판례 본문 렌더 — 학습과목 뷰어(case-viewer)와 학습정보 뷰어(latest-case-viewer) 공용. feat-3-205.
 // highlights 를 전달하면 본문에 하이라이트 오버레이 활성(학습과목), 미전달이면 read-only(학습정보).
-
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -9,9 +8,10 @@ import {
   StarIcon,
   Trash2Icon,
 } from "lucide-react";
-import { Fragment, useState, type ReactNode } from "react";
+import { Fragment, type ReactNode, useState } from "react";
 import { Link, useFetcher, useLocation } from "react-router";
 
+import { withKoreanBreaks } from "~/core/components/korean-label";
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
@@ -21,21 +21,20 @@ import { AskAiButton } from "~/features/ai-qna/components/ask-ai-button";
 import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
 import { CaseReferencesPanel } from "~/features/cases/components/case-references-panel";
 import { CiteCopyButton } from "~/features/cases/components/cite-copy";
-import { ReadingControls } from "~/features/study/components/study-font-control";
 import {
   merge2ndRoundChips,
   mergeFirstRoundChips,
 } from "~/features/cases/components/exam-year-chip";
 import {
-  COURT_LABELS,
-  caseCommentHeading,
   type BookSection,
   type BookSectionBlock,
   type BookSectionCell,
+  COURT_LABELS,
   type CaseDetail,
   type CaseImage,
   type CaseImagePosition,
   type CaseReference,
+  caseCommentHeading,
 } from "~/features/cases/labels";
 import {
   endsWithInlineQuote,
@@ -49,6 +48,7 @@ import {
   splitCaseNumbering,
 } from "~/features/cases/lib/case-numbering";
 import type { ExamProblemRef } from "~/features/problems/labels";
+import { ReadingControls } from "~/features/study/components/study-font-control";
 
 type HighlightsProp = React.ComponentProps<
   typeof HighlightOverlay
@@ -84,7 +84,9 @@ function CaseDeleteButton({
 
   function onDelete() {
     if (
-      !confirm(`판례 ${caseNumber} 을(를) 삭제하시겠습니까?\n삭제 후 목록으로 이동합니다.`)
+      !confirm(
+        `판례 ${caseNumber} 을(를) 삭제하시겠습니까?\n삭제 후 목록으로 이동합니다.`,
+      )
     ) {
       return;
     }
@@ -158,7 +160,8 @@ export function CaseBody({
   // 같은 이미지가 본문 + 그리드 두 곳에 중복 표시되는 것 방지.
   // book 모드에선 쟁점상표 표 셀에 박힌 이미지도 그리드에서 제외.
   const inlineImageUrls = collectInlineImageUrls(kase);
-  for (const url of collectBookSectionImageUrls(bookSections)) inlineImageUrls.add(url);
+  for (const url of collectBookSectionImageUrls(bookSections))
+    inlineImageUrls.add(url);
   const imagesByPosition = groupImagesByPosition(
     kase.images.filter((img) => !inlineImageUrls.has(img.url)),
   );
@@ -183,7 +186,7 @@ export function CaseBody({
         {/* ←/→ 형제 case 이동 + breadcrumb eyebrow — 조문 뷰어의 prev/next 위치와 동일.
             형제가 없거나 placement 미설정 case 면 미노출. */}
         {prevNext ? (
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-3">
+          <div className="border-border/40 mb-3 flex flex-wrap items-center justify-between gap-2 border-b pb-3">
             <p className="text-muted-foreground text-[11px] font-semibold tracking-widest uppercase">
               판례 {prevNext.idx + 1} / {prevNext.total}
             </p>
@@ -356,9 +359,7 @@ export function CaseBody({
                 key={sec.key}
                 title={sec.label}
                 meta={
-                  sec.source
-                    ? `출처: ${sec.source}`
-                    : (sec.title ?? undefined)
+                  sec.source ? `출처: ${sec.source}` : (sec.title ?? undefined)
                 }
               >
                 <MaybeHighlight
@@ -610,8 +611,14 @@ function pseudoTableText(rows: BookSectionCell[][]): string {
 // 연속 p 블록 → 단일 Prose 텍스트("\n\n" 결합) run 으로 그룹화.
 function groupBookBlocks(
   blocks: BookSectionBlock[],
-): ({ type: "p"; text: string } | { type: "table"; rows: BookSectionCell[][] })[] {
-  const out: ({ type: "p"; text: string } | { type: "table"; rows: BookSectionCell[][] })[] = [];
+): (
+  | { type: "p"; text: string }
+  | { type: "table"; rows: BookSectionCell[][] }
+)[] {
+  const out: (
+    | { type: "p"; text: string }
+    | { type: "table"; rows: BookSectionCell[][] }
+  )[] = [];
   for (const b of blocks) {
     if (b.type === "table") {
       out.push(b);
@@ -666,19 +673,25 @@ function BookTable({ rows }: { rows: BookSectionCell[][] }) {
     return (
       <div className="flex flex-wrap items-center justify-center gap-3">
         {allCells.flatMap((c, ci) =>
-          [...cellParts[ci].imgs, ...c.images.map((im) => ({ url: im.url, alt: im.alt }))].map(
-            (im, ii) => (
-              <a
-                key={`${ci}-${ii}`}
-                href={im.url}
-                target="_blank"
-                rel="noreferrer"
-                className="border-border block rounded-lg border bg-white p-1.5 dark:brightness-[.85]"
-              >
-                <img src={im.url} alt="" loading="lazy" className={cellImgClass(im.alt, "row")} />
-              </a>
-            ),
-          ),
+          [
+            ...cellParts[ci].imgs,
+            ...c.images.map((im) => ({ url: im.url, alt: im.alt })),
+          ].map((im, ii) => (
+            <a
+              key={`${ci}-${ii}`}
+              href={im.url}
+              target="_blank"
+              rel="noreferrer"
+              className="border-border block rounded-lg border bg-white p-1.5 dark:brightness-[.85]"
+            >
+              <img
+                src={im.url}
+                alt=""
+                loading="lazy"
+                className={cellImgClass(im.alt, "row")}
+              />
+            </a>
+          )),
         )}
       </div>
     );
@@ -686,7 +699,8 @@ function BookTable({ rows }: { rows: BookSectionCell[][] }) {
   const [head, ...body] = rows;
   // 열 병합: 원본 HWPX 의 cellSpan(colSpan) 이 있으면 그대로, 없으면(구 데이터 폴백)
   // 셀 수가 적은 행의 마지막 셀이 남은 열을 병합해 표 폭을 채운다.
-  const rowWidth = (r: BookSectionCell[]) => r.reduce((a, c) => a + (c.colSpan ?? 1), 0);
+  const rowWidth = (r: BookSectionCell[]) =>
+    r.reduce((a, c) => a + (c.colSpan ?? 1), 0);
   // rowSpan 이월 — 위 행의 rowSpan 셀이 이 행에서 차지하는 열 수. 이를 빼지 않으면
   // 병합 아래 행의 마지막 셀이 잔여 폭을 과확장해 표가 깨진다.
   const carry = rows.map(() => 0);
@@ -714,7 +728,9 @@ function BookTable({ rows }: { rows: BookSectionCell[][] }) {
   const hasCellImg = (c: BookSectionCell) =>
     c.images.length > 0 || splitCellImages(c.text).imgs.length > 0;
   const hasLabelCol =
-    !isGubun && body.length > 0 && body.every((r) => r[0] !== undefined && !hasCellImg(r[0]));
+    !isGubun &&
+    body.length > 0 &&
+    body.every((r) => r[0] !== undefined && !hasCellImg(r[0]));
   return (
     <div className="overflow-x-auto">
       <table
@@ -754,7 +770,8 @@ function BookTable({ rows }: { rows: BookSectionCell[][] }) {
           {body.map((row, ri) => (
             <tr key={ri}>
               {row.map((c, ci) => {
-                const isLabel = (isGubun || hasLabelCol) && ci === 0 && row.length > 1;
+                const isLabel =
+                  (isGubun || hasLabelCol) && ci === 0 && row.length > 1;
                 return (
                   <td
                     key={ci}
@@ -786,7 +803,13 @@ function BookTable({ rows }: { rows: BookSectionCell[][] }) {
   );
 }
 
-function BookCell({ cell, nowrap = false }: { cell: BookSectionCell; nowrap?: boolean }) {
+function BookCell({
+  cell,
+  nowrap = false,
+}: {
+  cell: BookSectionCell;
+  nowrap?: boolean;
+}) {
   // 셀 텍스트: 이미지만 있으면(도표의 표장 셀) 크게 단독 렌더, 글과 섞이면 문장 흐름
   // 안 인라인 글리프(renderWithUnderline 의 ![](url) 처리)로 — "글자 사이 배치" 보존.
   const { textOnly, imgs } = splitCellImages(cell.text);
@@ -795,14 +818,31 @@ function BookCell({ cell, nowrap = false }: { cell: BookSectionCell; nowrap?: bo
     <div className="space-y-1.5">
       {cell.text && !imageOnly ? (
         // 라벨 셀(출원일/등록일 등)은 한 줄 고정 — pre-wrap 이면 "/" 뒤에서 꺾인다.
-        <span className={nowrap ? "whitespace-nowrap" : "whitespace-pre-wrap"}>
-          {renderWithUnderline(cell.text)}
+        <span
+          className={
+            nowrap ? "whitespace-nowrap" : "break-keep whitespace-pre-wrap"
+          }
+        >
+          {nowrap
+            ? renderWithUnderline(cell.text)
+            : withKoreanBreaks(renderWithUnderline(cell.text))}
         </span>
       ) : null}
       {imageOnly
         ? imgs.map((im, i) => (
-            <a key={`io-${i}`} href={im.url} target="_blank" rel="noreferrer" className="mx-auto block w-fit rounded bg-white p-1 dark:brightness-[.85]">
-              <img src={im.url} alt="" loading="lazy" className={cellImgClass(im.alt, "cell")} />
+            <a
+              key={`io-${i}`}
+              href={im.url}
+              target="_blank"
+              rel="noreferrer"
+              className="mx-auto block w-fit rounded bg-white p-1 dark:brightness-[.85]"
+            >
+              <img
+                src={im.url}
+                alt=""
+                loading="lazy"
+                className={cellImgClass(im.alt, "cell")}
+              />
             </a>
           ))
         : null}
@@ -832,7 +872,8 @@ function collectBookSectionImageUrls(sections: BookSection[]): Set<string> {
   for (const s of sections) {
     for (const b of s.blocks) {
       if (b.type !== "table") continue;
-      for (const row of b.rows) for (const c of row) for (const im of c.images) out.add(im.url);
+      for (const row of b.rows)
+        for (const c of row) for (const im of c.images) out.add(im.url);
     }
   }
   return out;
@@ -1073,9 +1114,7 @@ function buildProseBlocks(text: string): ProseBlock[] {
       const prev = blocks.length > 0 ? blocks[blocks.length - 1] : null;
       const next = paras[i + 1] ?? null;
       const prevLast =
-        prev && prev.kind === "para"
-          ? prev.parts[prev.parts.length - 1]
-          : null;
+        prev && prev.kind === "para" ? prev.parts[prev.parts.length - 1] : null;
       const prevText =
         prevLast && prevLast.kind === "text" ? prevLast.text : null;
       const nextIsText = next != null && parseImageParagraph(next) == null;
@@ -1118,7 +1157,8 @@ export function Prose({ text }: { text: string }) {
       {blocks.map((b, i) => {
         if (b.kind === "blockImg")
           return <InlineImage key={i} alt={b.alt} url={b.url} />;
-        if (b.kind === "table") return <InlineTable key={i} markdown={b.markdown} />;
+        if (b.kind === "table")
+          return <InlineTable key={i} markdown={b.markdown} />;
         return (
           // whitespace-pre-wrap — 연속 공백 + 줄넘김 모두 보존(타이핑 그대로 렌더).
           <p key={i} className="whitespace-pre-wrap">

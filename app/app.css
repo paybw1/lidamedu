@@ -509,6 +509,10 @@ body {
   padding: 6px 10px;
   vertical-align: top;
   text-align: left;
+  /* 한국어는 낱말 단위로 접는다 — 낱말 안에서 끊을 자리는 renderTableHtml 이 심은 <wbr>.
+     칸보다 긴 낱말만 잘라 접는다(break-word — 열 최소 폭은 그대로라 열이 찌그러지지 않음). */
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 /* 비교표(table.cmp — renderTableHtml 이 "첫 열이 짧은 라벨" 표에만 자동 부여):
    table-layout: fixed + colgroup(renderTableHtml 주입)으로 열 폭 결정 —
@@ -535,6 +539,8 @@ body {
 .case-md-table table.cmp td.lbl {
   white-space: normal;
   overflow-wrap: break-word;
+  /* 한국어는 낱말 단위로 접는다 — 끊을 자리는 renderTableHtml 이 심은 <wbr>. */
+  word-break: keep-all;
 }
 .case-md-table table.cmp th.val,
 .case-md-table table.cmp td.val {

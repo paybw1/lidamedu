@@ -1,7 +1,7 @@
 // 판례 빈칸 편집/풀기 공용 — 본문을 표(파이프 마크다운)·이미지 인식해 렌더.
 // renderRange(from, to, key) 가 그 원시 구간의 노드(텍스트 세그먼트 + 빈칸 chip/input)를
 // 만들어 주면, 이 컴포넌트는 문단/표/이미지 구조만 책임진다. 오프셋은 전부 원시 텍스트 기준.
-import { useMemo, type ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
 
 import {
   computeCaseCellSpans,
@@ -12,7 +12,8 @@ import {
 import { splitCaseTables } from "../lib/case-tables";
 
 // 마크다운 이미지 — 원시 문법은 렌더에서 감추고 <img> 로 표시(빈칸 대상 아님).
-const MD_IMG_RE = /!\[[^\]]*\]\((https?:\/\/[^)\s]+|\/[^)\s]+)(?:\s+"[^"]*")?\)/g;
+const MD_IMG_RE =
+  /!\[[^\]]*\]\((https?:\/\/[^)\s]+|\/[^)\s]+)(?:\s+"[^"]*")?\)/g;
 
 function TextWithImages({
   text,
@@ -40,7 +41,13 @@ function TextWithImages({
       ? m.index - (before.length - before.replace(/\s+$/, "").length)
       : m.index;
     if (beforeEnd > cursor)
-      nodes.push(renderRange(start + cursor, start + beforeEnd, `${keyPrefix}.t${cursor}`));
+      nodes.push(
+        renderRange(
+          start + cursor,
+          start + beforeEnd,
+          `${keyPrefix}.t${cursor}`,
+        ),
+      );
     nodes.push(
       <img
         key={`${keyPrefix}.img${m.index}`}
@@ -58,8 +65,10 @@ function TextWithImages({
     if (inline) cursor += after.length - after.replace(/^\s+/, "").length;
   }
   if (cursor < text.length)
-    nodes.push(renderRange(start + cursor, start + text.length, `${keyPrefix}.tail`));
-  return <p className="whitespace-pre-wrap leading-[1.9]">{nodes}</p>;
+    nodes.push(
+      renderRange(start + cursor, start + text.length, `${keyPrefix}.tail`),
+    );
+  return <p className="leading-[1.9] whitespace-pre-wrap">{nodes}</p>;
 }
 
 export function CaseBlankParts({
@@ -98,7 +107,9 @@ export function CaseBlankParts({
         }
         const headerRow =
           part.rows.length > 1 && part.rows[1].separator ? part.rows[0] : null;
-        const bodyRows = part.rows.filter((r, ri) => !r.separator && (headerRow ? ri !== 0 : true));
+        const bodyRows = part.rows.filter(
+          (r, ri) => !r.separator && (headerRow ? ri !== 0 : true),
+        );
         // 병합 마커("<" 왼쪽 병합 / "^" 위 병합) — 마커 셀은 렌더하지 않고 이웃 셀의
         // colSpan/rowSpan 으로 흡수. 원시 오프셋 체계는 그대로(마커 문자는 선택 불가일 뿐).
         const grid = [...(headerRow ? [headerRow] : []), ...bodyRows];
@@ -127,9 +138,13 @@ export function CaseBlankParts({
                           key={ci}
                           colSpan={sp.colSpan > 1 ? sp.colSpan : undefined}
                           rowSpan={sp.rowSpan > 1 ? sp.rowSpan : undefined}
-                          className="border-border bg-muted/50 break-words border px-2 py-1 text-left align-top font-semibold"
+                          className="border-border bg-muted/50 border px-2 py-1 text-left align-top font-semibold break-words break-keep"
                         >
-                          {renderRange(c.start, c.start + c.text.length, `h${pi}.${ci}`)}
+                          {renderRange(
+                            c.start,
+                            c.start + c.text.length,
+                            `h${pi}.${ci}`,
+                          )}
                         </th>
                       );
                     })}
@@ -147,9 +162,13 @@ export function CaseBlankParts({
                           key={ci}
                           colSpan={sp.colSpan > 1 ? sp.colSpan : undefined}
                           rowSpan={sp.rowSpan > 1 ? sp.rowSpan : undefined}
-                          className="border-border break-words border px-2 py-1 align-top"
+                          className="border-border border px-2 py-1 align-top break-words break-keep"
                         >
-                          {renderRange(c.start, c.start + c.text.length, `c${pi}.${ri}.${ci}`)}
+                          {renderRange(
+                            c.start,
+                            c.start + c.text.length,
+                            `c${pi}.${ri}.${ci}`,
+                          )}
                         </td>
                       );
                     })}
