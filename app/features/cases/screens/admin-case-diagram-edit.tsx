@@ -4,7 +4,7 @@
 //   서버리스 런타임에서 읽을 수 없다 — 사실관계는 배치 스크립트가 채우거나 여기서 직접 쓴다.
 //   설계 §2 소스 이원화(사실관계=하급심 / 쟁점~결론=대법원)와 같은 경계다.
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeftIcon,
   CheckIcon,
@@ -13,7 +13,14 @@ import {
   Trash2Icon,
   XIcon,
 } from "lucide-react";
-import { Form, Link, data, redirect, useNavigation } from "react-router";
+import {
+  Form,
+  Link,
+  data,
+  redirect,
+  useNavigation,
+  useSearchParams,
+} from "react-router";
 import { z } from "zod";
 
 import { Button } from "~/core/components/ui/button";
@@ -248,10 +255,67 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (intent === "delete") {
     const ctx = await getCaseDiagramEditContext(client, caseId);
     if (ctx?.diagram) await softDeleteCaseDiagram(client, ctx.diagram.diagramId);
-    return redirect("/admin/case-diagrams");
+    // 삭제 후에도 들어온 목록 상태로 돌려보낸다. ★"?" 로 시작하는 값만 신뢰(외부 주입 차단).
+    const backRaw = new URL(request.url).searchParams.get("back") ?? "";
+    const back = backRaw.startsWith("?") ? backRaw : "";
+    return redirect(`/admin/case-diagrams${back}`);
   }
 
   return data({ error: "알 수 없는 요청입니다." }, { status: 400 });
+}
+
+/**
+ * 법조문 입력창 — 쉼표로 여러 건. 쉼표를 찍으면 뒤에 공백을 자동으로 넣는다.
+ *
+ * ★종전 버그(원장 보고 2026-08-23): 매 타건마다 trim + 빈값 제거를 걸고 그 결과를 다시
+ *   그려서, 쉼표를 찍는 순간 빈 항목이 지워지며 **쉼표까지 사라졌다** — 구분자를 입력할
+ *   방법이 없어 둘째 법조문을 추가할 수 없었다.
+ * ★그래서 화면 값과 저장 값을 **정확히 왕복**시킨다: 표시는 항목을 ", " 로 잇고,
+ *   입력은 "," 로 쪼갠 뒤 각 항목의 **앞 공백만** 떼어 낸다. 앞뒤 trim·빈값 제거는
+ *   저장 직전(cleanBlocks)에 한 번만 — 그래야 "특허법 제29조, " 같은 중간 상태가 남는다.
+ * ★공백을 자동으로 끼우면 문자열 길이가 바뀌어 커서가 끝으로 튄다. 캐럿 위치를 직접
+ *   계산해 되돌린다(같은 정규화를 커서 앞 구간에만 적용하면 그 길이가 새 캐럿 위치다).
+ */
+function StatuteInput({
+  statutes,
+  onChange,
+}: {
+  statutes: string[];
+  onChange: (next: string[]) => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  const caretRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    const caret = caretRef.current;
+    if (el && caret !== null) {
+      el.setSelectionRange(caret, caret);
+      caretRef.current = null;
+    }
+  });
+
+  // "A,B" · "A,  B" → "A, B". 첫 항목 앞에는 공백을 붙이지 않는다.
+  const canon = (v: string) =>
+    v
+      .split(",")
+      .map((x, i) => (i === 0 ? x : ` ${x.replace(/^ +/, "")}`))
+      .join(",");
+
+  return (
+    <Input
+      ref={ref}
+      value={statutes.join(", ")}
+      onChange={(e) => {
+        const typed = e.target.value;
+        const caret = e.target.selectionStart ?? typed.length;
+        caretRef.current = canon(typed.slice(0, caret)).length;
+        onChange(canon(typed).split(",").map((x) => x.replace(/^ /, "")));
+      }}
+      placeholder="특허법 제29조 제2항, 특허법 제42조 제4항"
+      className="text-sm"
+    />
+  );
 }
 
 /**
@@ -270,6 +334,12 @@ export default function AdminCaseDiagramEdit({
   actionData,
 }: Route.ComponentProps) {
   const { kase, diagram, role } = loaderData;
+  // "목록으로" — 들어온 목록 상태(연도·상태·검색어)로 되돌아간다. ?back=<encoded query>.
+  //   ★목록 밖(도식 패널의 '검수 화면' 링크 등)에서 들어오면 back 이 없다 → 기본 목록.
+  //   ★값은 우리가 만든 "?..." 형태만 받는다 — 외부 URL 주입을 막는다(open redirect 방지).
+  const [searchParams] = useSearchParams();
+  const backRaw = searchParams.get("back") ?? "";
+  const backTo = backRaw.startsWith("?") ? backRaw : "";
   const nav = useNavigation();
   const busy = nav.state !== "idle";
 
@@ -304,7 +374,7 @@ export default function AdminCaseDiagramEdit({
       width={960}
     >
       <Link
-        to="/admin/case-diagrams"
+        to={`/admin/case-diagrams${backTo}`}
         className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-xs"
       >
         <ArrowLeftIcon className="size-3.5" /> 목록으로
@@ -448,18 +518,9 @@ export default function AdminCaseDiagramEdit({
             </Field>
 
             <Field label="법조문" hint="쉼표로 구분. 판결문에 명시된 것만.">
-              {/* ★타이핑 중에는 다듬지 않는다 — split(",") 과 join(",") 이 정확히 왕복하는
-                  형태여야 입력한 글자가 그대로 남는다. 종전엔 매 타건마다 trim + 빈값
-                  제거를 걸어, 쉼표를 찍는 순간 빈 항목이 지워지며 쉼표까지 사라졌다
-                  (= 둘째 법조문을 아예 추가할 수 없었다. 원장 보고 2026-08-23).
-                  다듬기는 저장 직전 cleanBlocks 에서 한 번만 한다. */}
-              <Input
-                value={b.statutes.join(",")}
-                onChange={(e) =>
-                  patchBlock(idx, { statutes: e.target.value.split(",") })
-                }
-                placeholder="특허법 제29조 제2항, 특허법 제42조 제4항"
-                className="text-sm"
+              <StatuteInput
+                statutes={b.statutes}
+                onChange={(statutes) => patchBlock(idx, { statutes })}
               />
             </Field>
 

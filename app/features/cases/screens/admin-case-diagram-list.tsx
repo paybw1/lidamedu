@@ -78,6 +78,15 @@ export default function AdminCaseDiagramList({
   loaderData,
 }: Route.ComponentProps) {
   const { rows, counts, year, status, q, role } = loaderData;
+  // 편집 화면의 "목록으로" 가 이 목록 상태(연도·상태·검색어)로 정확히 돌아오게 한다.
+  //   ?back=<encoded query> — 값이 비면 붙이지 않는다(URL 이 지저분해진다).
+  const backQs = (() => {
+    const sp = new URLSearchParams();
+    if (year) sp.set("year", String(year));
+    if (status) sp.set("status", status);
+    if (q) sp.set("q", q);
+    return sp.size ? `?back=${encodeURIComponent(`?${sp}`)}` : "";
+  })();
   return (
     <AdminShell
       cluster="cases"
@@ -175,7 +184,7 @@ export default function AdminCaseDiagramList({
               className="border-border bg-card rounded-xl border p-3 shadow-sm"
             >
               <Link
-                to={`/admin/case-diagrams/${r.caseId}`}
+                to={`/admin/case-diagrams/${r.caseId}${backQs}`}
                 className="block"
                 viewTransition
               >
