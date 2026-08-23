@@ -51,6 +51,9 @@ import {
   getCaseById,
   getCaseIdsByArticleLinks,
   getCasePlacementMaps,
+  narrowCaseIdsByFilters,
+  type CaseCourtFilter,
+  type CaseExamFilter,
   getCasesByIds,
   getOverallOrderedCaseSiblings,
   listCaseReferences,
@@ -311,23 +314,44 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   );
 
   // prev/next 는 **진입한 목록과 같은 범위**여야 한다(원장 보고 2026-08-23).
-  //   목록에서 '도식 있음'으로 좁혀 들어왔으면 이웃 이동도 도식 보유분 안에서만 돈다.
+  //   목록에서 도식·법원·기출로 좁혀 들어왔으면 이웃 이동도 그 안에서만 돈다.
   //   ★트리 필터(case_node·case_article)는 위 siblingsPromise 가 이미 반영한다 —
-  //     여기서는 그 결과를 도식 유무로 한 번 더 거른다(순서는 그대로 유지).
-  //   ★법원·기출·검색어는 아직 반영 안 됨(종전과 동일) — 필요하면 같은 자리에 붙인다.
-  const navSiblings =
-    siblings && backParams?.get("case_diagram") === "1"
-      ? await (async () => {
-          const withDiagram = new Set(await listAllCaseIdsWithDiagram(client));
-          const list = siblings.siblings.filter((c) =>
-            withDiagram.has(c.caseId),
-          );
-          // 자기 자신이 빠지면(도식 없는 판례를 직접 URL 로 열었다) 이동 UI 를 감춘다.
-          return list.some((c) => c.caseId === kase.caseId)
-            ? { ...siblings, siblings: list }
-            : null;
-        })()
-      : siblings;
+  //     여기서는 그 결과를 나머지 필터로 한 번 더 거른다(순서는 그대로 유지).
+  //   ★검색어(q)는 일부러 반영하지 않는다 — 검색은 목록을 훑는 수단이지 '이웃'의 정의가
+  //     아니고, 매번 달라지는 집합을 이웃으로 삼으면 이동 결과를 예측할 수 없다.
+  //   ★판정 규칙은 listCasesBySubject 와 같아야 한다(narrowCaseIdsByFilters 가 SSOT).
+  const navSiblings = await (async () => {
+    if (!siblings || !backParams) return siblings;
+    const wantDiagram = backParams.get("case_diagram") === "1";
+    const court = backParams.get("case_court") as CaseCourtFilter | null;
+    const exam = backParams.get("case_exam") as CaseExamFilter | null;
+    const hasCourt = court !== null && court !== "all";
+    const hasExam = exam !== null && exam !== "any";
+    if (!wantDiagram && !hasCourt && !hasExam) return siblings;
+
+    const ids = siblings.siblings.map((c) => c.caseId);
+    const [allowed, withDiagram] = await Promise.all([
+      hasCourt || hasExam
+        ? narrowCaseIdsByFilters(client, ids, {
+            court: court ?? undefined,
+            exam: exam ?? undefined,
+          })
+        : Promise.resolve<Set<string> | null>(null),
+      wantDiagram
+        ? listAllCaseIdsWithDiagram(client).then((v) => new Set(v))
+        : Promise.resolve<Set<string> | null>(null),
+    ]);
+    const list = siblings.siblings.filter(
+      (c) =>
+        (allowed === null || allowed.has(c.caseId)) &&
+        (withDiagram === null || withDiagram.has(c.caseId)),
+    );
+    // 자기 자신이 빠지면(필터에 안 맞는 판례를 URL 로 직접 열었다) 이동 UI 를 감춘다 —
+    // 목록에 없는 위치에서 "3 / 240" 을 띄우면 거짓말이 된다.
+    return list.some((c) => c.caseId === kase.caseId)
+      ? { ...siblings, siblings: list }
+      : null;
+  })();
 
   // 유출방지 — 판례 도식 패널에 깔 열람자 식별 워터마크. 도식이 없으면 만들지 않는다.
   const diagramWatermark = caseDiagram
@@ -369,6 +393,18 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   };
 }
 
+/**
+ * 이웃 링크에 `diagram=1` 을 덧붙인다 — 넘어간 판례에서도 도식 패널이 열린 채로 뜬다.
+ * ★기존 query(?back=…)는 그대로 살린다. 잃으면 "판례 목록으로" 복귀가 깨진다.
+ */
+function withDiagramFlag(href: string | null): string | null {
+  if (!href) return null;
+  const [path, qs] = href.split("?");
+  const params = new URLSearchParams(qs ?? "");
+  params.set("diagram", "1");
+  return `${path}?${params.toString()}`;
+}
+
 export default function CaseViewer({ loaderData }: Route.ComponentProps) {
   const {
     subject,
@@ -404,6 +440,8 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
   } = loaderData;
 
   const [searchParams] = useSearchParams();
+  // 이웃 이동으로 넘어왔으면 도식 패널을 열린 채로 띄운다.
+  const diagramAutoOpen = searchParams.get("diagram") === "1";
 
   // feat-2-029 — 판례 단계별 암기 모드(원문/빈 칸/쟁점만/전체 복원).
   //   ★2026-07-21 수험생 공개(특허법 판례). staff 는 전 과목. 편집(빈칸 추가/제거)은 staff 전용 유지.
@@ -499,6 +537,17 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
       nextLabel: next?.caseNumber ?? null,
     };
   })();
+
+  // 도식 패널 안 이동 — 같은 이웃(prevNext)에 diagram=1 을 붙여, 넘어간 판례에서도
+  //   패널이 열린 채로 뜨게 한다. 검수를 죽 훑는 흐름(원장 2026-08-23).
+  const diagramNav = prevNext
+    ? {
+        idx: prevNext.idx,
+        total: prevNext.total,
+        prevHref: withDiagramFlag(prevNext.prevHref),
+        nextHref: withDiagramFlag(prevNext.nextHref),
+      }
+    : null;
 
   return (
     <div className="bg-background min-h-[calc(100vh-56px)]">
@@ -681,6 +730,8 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                     statuteArticleIds={statuteArticleIds}
                     viewerIsStaff={isStaff}
                     watermark={diagramWatermark}
+                    nav={diagramNav}
+                    defaultOpen={diagramAutoOpen}
                   />
                 ) : null}
                 {/* 원심 판결문 — 운영자 전용(RLS 가 학생에게는 null 을 준다). */}

@@ -7,10 +7,12 @@
 //   근거 없는 축을 채우지 않기로 한 설계가 화면에서 무너진다.
 
 import { useEffect, useState } from "react";
-import { useFetcher } from "react-router";
+import { Link, useFetcher } from "react-router";
 
 import {
   CheckCircle2Icon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   GitBranchIcon,
   Loader2Icon,
   PanelRightIcon,
@@ -99,6 +101,8 @@ export function CaseDiagramSheet({
   statuteArticleIds,
   viewerIsStaff = false,
   watermark,
+  nav,
+  defaultOpen = false,
   className,
 }: {
   diagram: CaseDiagramView;
@@ -113,9 +117,24 @@ export function CaseDiagramSheet({
   viewerIsStaff?: boolean;
   /** 열람자 식별 워터마크 문자열(유출 추적). 없으면 안 깐다. */
   watermark?: string | null;
+  /**
+   * 이웃 판례의 도식으로 바로 이동 — 검수는 한 건씩 여닫는 게 아니라 죽 훑는 작업이다.
+   * href 에 `diagram=1` 이 붙어 있어 다음 판례에서도 이 패널이 열린 채로 뜬다.
+   * 범위는 목록 필터(도식·법원·기출)를 그대로 따른다 — case-viewer prevNext 가 SSOT.
+   */
+  nav?: {
+    prevHref: string | null;
+    nextHref: string | null;
+    idx: number;
+    total: number;
+  } | null;
+  /** URL 에 ?diagram=1 로 들어왔으면 처음부터 열어 둔다(이웃 이동으로 넘어온 경우). */
+  defaultOpen?: boolean;
   className?: string;
 }) {
   const draft = diagram.reviewStatus !== "approved";
+  // ★제어형 — ?diagram=1 로 들어오면 열린 채 시작한다(이웃 판례로 넘어가도 패널 유지).
+  const [open, setOpen] = useState(defaultOpen);
   // localStorage 는 마운트 후에 읽는다 — SSR 결과와 어긋나면 hydration 경고.
   const [mode, setMode] = useState<ViewMode>("sheet");
   useEffect(() => {
@@ -153,6 +172,7 @@ export function CaseDiagramSheet({
         {caseNumber}
       </span>
       <ModeToggle mode={mode} onChange={switchMode} />
+      {nav ? <DiagramNav nav={nav} /> : null}
     </span>
   );
 
@@ -178,7 +198,7 @@ export function CaseDiagramSheet({
 
   if (mode === "dialog") {
     return (
-      <Dialog>
+      <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>{trigger}</DialogTrigger>
         <DialogContent className="max-h-[88vh] w-[min(96vw,900px)] max-w-none overflow-y-auto p-0 sm:max-w-none">
           <DialogHeader className="border-border bg-background sticky top-0 z-10 border-b px-4 py-3">
@@ -192,7 +212,7 @@ export function CaseDiagramSheet({
   }
 
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent
         side="right"
@@ -312,6 +332,41 @@ function AxisReclassify({
         </span>
       ) : null}
     </div>
+  );
+}
+
+/** 도식 패널 안의 이웃 이동 — 목록으로 나갔다 들어오지 않고 다음 도식으로 넘어간다. */
+function DiagramNav({
+  nav,
+}: {
+  nav: { prevHref: string | null; nextHref: string | null; idx: number; total: number };
+}) {
+  const btn =
+    "border-border text-muted-foreground hover:bg-muted inline-flex size-6 items-center justify-center rounded-full border";
+  return (
+    <span className="ml-auto inline-flex items-center gap-1">
+      {nav.prevHref ? (
+        <Link to={nav.prevHref} className={btn} title="이전 판례 도식" prefetch="intent">
+          <ChevronLeftIcon className="size-3.5" />
+        </Link>
+      ) : (
+        <span className={`${btn} opacity-40`} aria-hidden>
+          <ChevronLeftIcon className="size-3.5" />
+        </span>
+      )}
+      <span className="text-muted-foreground text-[11px] font-medium tabular-nums">
+        {nav.idx + 1} / {nav.total}
+      </span>
+      {nav.nextHref ? (
+        <Link to={nav.nextHref} className={btn} title="다음 판례 도식" prefetch="intent">
+          <ChevronRightIcon className="size-3.5" />
+        </Link>
+      ) : (
+        <span className={`${btn} opacity-40`} aria-hidden>
+          <ChevronRightIcon className="size-3.5" />
+        </span>
+      )}
+    </span>
   );
 }
 

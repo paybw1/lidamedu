@@ -273,6 +273,53 @@ function attach2ndRefs(
   if (mainYears.length > 0) item.exam2ndMainYears = mainYears;
 }
 
+/**
+ * 판례 id 집합을 목록 필터(법원·기출)로 좁힌다 — **prev/next 가 목록과 같은 범위를 돌게** 하는 용도.
+ *
+ * ★판정 규칙은 `listCasesBySubject` 와 같아야 한다(두 곳이 갈리면 목록과 이웃이 어긋난다):
+ *   · 법원      = cases.court 일치
+ *   · 1차 기출  = 기출 문제가 연결된 판례(getExamProblemsByCase)
+ *   · 2차 기출  = exam_2nd_years 가 비어 있지 않음
+ *   · 1·2차 모두 = 위 둘을 모두 만족
+ * ★id 를 통째로 .in() 에 넣으면 URL 이 길어져 PostgREST 가 400 을 던진다 — fetchAllIn 으로 조각낸다.
+ */
+export async function narrowCaseIdsByFilters(
+  client: SupabaseClient<Database>,
+  caseIds: string[],
+  opts: { court?: CaseCourtFilter; exam?: CaseExamFilter },
+): Promise<Set<string>> {
+  const court = opts.court && opts.court !== "all" ? opts.court : null;
+  const exam = opts.exam && opts.exam !== "any" ? opts.exam : null;
+  if (caseIds.length === 0 || (!court && !exam)) return new Set(caseIds);
+
+  const needs1st = exam === "exam_1st" || exam === "exam_both";
+  const needs2nd = exam === "exam_2nd" || exam === "exam_both";
+
+  const [rows, examProblemsByCase] = await Promise.all([
+    fetchAllIn<{ case_id: string; court: string; exam_2nd_years: number[] | null }>(
+      caseIds,
+      (slice) =>
+        client
+          .from("cases")
+          .select("case_id, court, exam_2nd_years")
+          .in("case_id", slice)
+          .order("case_id"),
+    ),
+    needs1st
+      ? getExamProblemsByCase(client)
+      : Promise.resolve(new Map<string, unknown>()),
+  ]);
+
+  const out = new Set<string>();
+  for (const r of rows) {
+    if (court && r.court !== court) continue;
+    if (needs1st && !examProblemsByCase.has(r.case_id)) continue;
+    if (needs2nd && (r.exam_2nd_years ?? []).length === 0) continue;
+    out.add(r.case_id);
+  }
+  return out;
+}
+
 export async function listCasesBySubject(
   client: SupabaseClient<Database>,
   lawCode: LawSubjectSlug,
