@@ -15791,7 +15791,7 @@ export type Database = {
         | "problem_choice"
         | "problem_box_item"
         | "dohae_unit"
-      announcement_audience_kind: "all" | "cohort" | "user"
+      announcement_audience_kind: "all" | "cohort" | "user" | "staff"
       announcement_audience_target: "cohort" | "user"
       announcement_platform_scope: "study" | "lecture" | "both"
       article_level: "part" | "chapter" | "section" | "article"
@@ -16081,7 +16081,7 @@ export const Constants = {
         "problem_box_item",
         "dohae_unit",
       ],
-      announcement_audience_kind: ["all", "cohort", "user"],
+      announcement_audience_kind: ["all", "cohort", "user", "staff"],
       announcement_audience_target: ["cohort", "user"],
       announcement_platform_scope: ["study", "lecture", "both"],
       article_level: ["part", "chapter", "section", "article"],

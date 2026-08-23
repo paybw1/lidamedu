@@ -88,7 +88,15 @@ function InboxCard({ item }: { item: AnnouncementListItem }) {
         {item.isPinned ? (
           <PinIcon className="size-3 text-amber-500" aria-label="고정" />
         ) : null}
-        <Chip tone={item.audienceKind === "all" ? "primary" : "violet"}>
+        <Chip
+          tone={
+            item.audienceKind === "all"
+              ? "primary"
+              : item.audienceKind === "staff"
+                ? "amber"
+                : "violet"
+          }
+        >
           <AudienceLabel kind={item.audienceKind} />
         </Chip>
         {isUnread ? (
@@ -149,6 +157,13 @@ function AudienceLabel({ kind }: { kind: AnnouncementAudienceKind }) {
     return (
       <>
         <UsersIcon className="size-2.5" /> 전체 공지
+      </>
+    );
+  }
+  if (kind === "staff") {
+    return (
+      <>
+        <UsersIcon className="size-2.5" /> 강사·운영자 공지
       </>
     );
   }

@@ -1,6 +1,14 @@
 // 공지사항 (feat-7-011) 클라이언트·서버 공용 타입.
 
-export type AnnouncementAudienceKind = "all" | "cohort" | "user";
+export type AnnouncementAudienceKind = "all" | "cohort" | "user" | "staff";
+
+/**
+ * 대상 행(announcement_audiences)을 쓰지 않고 정책이 직접 판정하는 대상 종류.
+ * 'all' = 전원 / 'staff' = 강사·운영자 전원. 폼·서버 검증이 공유한다.
+ */
+export function isBroadcastAudience(kind: AnnouncementAudienceKind): boolean {
+  return kind === "all" || kind === "staff";
+}
 
 /**
  * 공지를 어느 제품 플랫폼에 띄울지 — 학습 / 강의 / 둘 다.

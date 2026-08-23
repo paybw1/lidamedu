@@ -24,6 +24,7 @@ import { HtmlEditor } from "~/features/lms/components/html-editor";
 import {
   ANNOUNCEMENT_PLATFORM_SCOPES,
   announcementPlatformLabel,
+  isBroadcastAudience,
   type AnnouncementAudienceKind,
   type AnnouncementListItem,
   type AnnouncementPlatformScope,
@@ -49,6 +50,13 @@ export function AudienceChip({
     return (
       <Chip tone="blue">
         <UsersIcon className="size-2.5" /> 전체
+      </Chip>
+    );
+  }
+  if (kind === "staff") {
+    return (
+      <Chip tone="amber">
+        <UsersIcon className="size-2.5" /> 강사·운영자
       </Chip>
     );
   }
@@ -280,7 +288,7 @@ export function AnnouncementForm({
     if (
       mode === "update" &&
       existing &&
-      audienceKind !== "all" &&
+      !isBroadcastAudience(audienceKind) &&
       detailFetcher.state === "idle" &&
       !detailFetcher.data
     ) {
@@ -413,6 +421,7 @@ export function AnnouncementForm({
             className="w-full"
           >
             <option value="all">전체 사용자</option>
+            <option value="staff">강사·운영자</option>
             <option value="cohort">반 선택</option>
             <option value="user">개별 사용자</option>
           </AdminSelect>

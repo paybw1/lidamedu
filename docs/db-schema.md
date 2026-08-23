@@ -1355,3 +1355,17 @@ alter table public.announcements
   `scopesVisibleOn()`.
 - ★강의 플랫폼은 `lecture.layout` 이 비-staff 를 `lidamedu.com` 으로 보내는 개발 중 게이트가
   걸려 있어, `'lecture'` 공지는 게이트 해제 전까지 staff 에게만 보인다.
+
+## announcements 대상에 'staff' 추가 (강사·운영자 공지)  ✅ 적용됨 (2026-08-23)
+
+```sql
+alter type announcement_audience_kind add value 'staff';   -- all | cohort | user | staff
+-- SELECT 정책에 staff 분기 추가 (announcements_audience_read)
+--   audience_kind='staff' and private.is_staff(auth.uid())
+```
+
+- `'staff'` 는 `'all'` 과 같은 **브로드캐스트** 종류다 — `announcement_audiences` 행을 만들지
+  않고 정책이 직접 판정한다. 판정 SSOT 는 `labels.ts` 의 `isBroadcastAudience()`
+  (폼·서버 검증·대상 목록 조회 스킵이 모두 이걸 쓴다).
+- 용도: staff 전용 콘텐츠(도해특허법 등) 안내를 학생에게 노출하지 않고 보내기.
+  종전에는 개별 사용자를 한 명씩 지정하는 수밖에 없었다.

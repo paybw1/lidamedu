@@ -8,6 +8,7 @@ import type { Database } from "database.types";
 import adminClient from "~/core/lib/supa-admin-client.server";
 
 import {
+  isBroadcastAudience,
   scopesVisibleOn,
   type AnnouncementAudienceKind,
   type AnnouncementAudienceRow,
@@ -318,11 +319,11 @@ export async function createAnnouncement(
   client: SupabaseClient<Database>,
   input: CreateAnnouncementInput,
 ): Promise<{ ok: true; announcementId: string } | { ok: false; error: string }> {
-  if (input.audienceKind !== "all" && input.audiences.length === 0) {
+if (!isBroadcastAudience(input.audienceKind) && input.audiences.length === 0) {
     return { ok: false, error: "대상이 비어 있습니다" };
   }
-  if (input.audienceKind === "all" && input.audiences.length > 0) {
-    return { ok: false, error: "전체 공지에 대상을 지정할 수 없습니다" };
+  if (isBroadcastAudience(input.audienceKind) && input.audiences.length > 0) {
+    return { ok: false, error: "전체·강사 공지에는 대상을 지정할 수 없습니다" };
   }
   for (const a of input.audiences) {
     if (a.audienceType !== input.audienceKind) {
@@ -405,10 +406,10 @@ export async function updateAnnouncement(
 
   if (input.audiences !== undefined) {
     const kind = input.audienceKind;
-    if (kind === "all" && input.audiences.length > 0) {
-      return { ok: false, error: "전체 공지에 대상을 지정할 수 없습니다" };
+    if (kind !== undefined && isBroadcastAudience(kind) && input.audiences.length > 0) {
+      return { ok: false, error: "전체·강사 공지에는 대상을 지정할 수 없습니다" };
     }
-    if (kind !== "all" && kind !== undefined && input.audiences.length === 0) {
+    if (kind !== undefined && !isBroadcastAudience(kind) && input.audiences.length === 0) {
       return { ok: false, error: "대상이 비어 있습니다" };
     }
     const { error: delErr } = await client

@@ -17,7 +17,7 @@ import { roleAtLeast } from "~/core/lib/roles";
 
 import type { Route } from "./+types/announcement";
 
-const audienceKindSchema = z.enum(["all", "cohort", "user"]);
+const audienceKindSchema = z.enum(["all", "cohort", "user", "staff"]);
 
 // 노출 플랫폼 — 학습 / 강의 / 둘 다. 미지정(레거시 폼)이면 학습.
 const platformScopeSchema = z.enum(["study", "lecture", "both"]).default("study");
