@@ -76,7 +76,7 @@ for (const u of d.units)
           if (!line.trim()) continue;
           checked++;
           // 공백도 줄바꿈 기회다 — 조각을 다시 공백으로 쪼개 재 본다.
-          const segs = labelSegments(line).flatMap((x) => x.split(" ").filter(Boolean));
+          const segs = labelSegments(line, { perChar: true }).flatMap((x) => x.split(" ").filter(Boolean));
           // 각 조각이 칸 안쪽 폭보다 넓으면 그 조각 안에서 임의로 잘린다.
           // 조각이 3자 이상인데 칸을 넘으면 = 더 나눌 자리가 있었을지 모르는 경우
           const over = segs.filter((s) => width(s) > inner && [...s].filter((ch)=>/[가-힣]/.test(ch)).length >= 3);

@@ -9,13 +9,20 @@ import { Fragment } from "react";
 
 import { labelSegments } from "~/core/lib/korean-wrap";
 
-export function KoreanLabel({ text }: { text: string }) {
+export function KoreanLabel({
+  text,
+  perChar = false,
+}: {
+  text: string;
+  /** 3자 한 덩어리를 글자마다 끊는다 — 열 폭이 고정된 표(도해)에서만 켠다. */
+  perChar?: boolean;
+}) {
   return (
     <>
       {text.split("\n").map((line, li) => (
         <Fragment key={li}>
           {li > 0 ? "\n" : null}
-          {labelSegments(line).map((seg, i) => (
+          {labelSegments(line, { perChar }).map((seg, i) => (
             <Fragment key={i}>
               {i > 0 ? <wbr /> : null}
               {seg}

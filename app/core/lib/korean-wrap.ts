@@ -279,13 +279,14 @@ function splitWord(word: string): string[] {
   }
   // 사전에 안 걸리는 넉 자 한자어는 2+2 로 나눈다 — 「권리소진」·「하자해소」처럼
   // 두 형태소가 붙은 말이 대부분이다.
-  // ★조사(…등)나 「…적」으로 끝나면 넣지 않는다 — 「출원료등」이 "출원 / 료등",
-  //   「비상업적」이 "비상 / 업적" 으로 잘못 갈린다.
+  // ★조사(…등)나 한 글자 접미사(…적·형·성·권·자·인·죄·효)로 끝나면 넣지 않는다 —
+  //   「출원료등」이 "출원 / 료등", 「비상업적」이 "비상 / 업적", 「반폐쇄형」이
+  //   "반폐 / 쇄형" 으로 잘못 갈린다.
   if (
     out.length === 0 &&
     head.length === 4 &&
     !PARTICLE.test(head) &&
-    !head.endsWith("적")
+    !/[적형성권자인죄효]$/.test(head)
   )
     return [head.slice(0, 2), head.slice(2)];
   return head ? [head, ...out] : out;
@@ -295,7 +296,10 @@ function splitWord(word: string): string[] {
  * 라벨 한 줄 → 줄바꿈 기회로 나눈 조각들. 조각 사이에 <wbr> 을 넣어 그린다.
  * 빗금(/·ㆍ) 뒤에서도 끊을 수 있게 한다 — 「결정/심결」처럼 붙여 쓴 라벨이 많다.
  */
-export function labelSegments(line: string): string[] {
+export function labelSegments(
+  line: string,
+  opts: { perChar?: boolean } = {},
+): string[] {
   const out: string[] = [];
   let buf = "";
   for (const ch of line) {
@@ -310,20 +314,29 @@ export function labelSegments(line: string): string[] {
   //   자리를 둔다 — 칸이 한 글자만 담으면 세로로 쌓이고, 두 글자를 담으면 「주체 / 적」이
   //   된다(원장 지시 2026-08-23). 여러 조각으로 이미 나뉜 라벨은 건드리지 않는다 —
   //   「적법성 / 심리」의 앞 조각까지 쪼개면 「심리」가 갈라질 수 있다.
+  //   ★열 폭이 원본 비율로 고정된 표(도해)에서만 켠다. 내용에 따라 폭이 자동 배분되는
+  //     표(마크다운 해설)에서 켜면 최소 폭이 한 글자까지 내려가 열이 찌그러진다.
   const perChar = (segs: string[]) =>
-    segs.length === 1 && /^[가-힣]{3}$/.test(segs[0]) ? [...segs[0]] : segs;
+    opts.perChar && segs.length === 1 && /^[가-힣]{3}$/.test(segs[0])
+      ? [...segs[0]]
+      : segs;
   return out.flatMap((part) => {
     // 끝의 빗금은 떼어 두고 나눈 뒤 되붙인다 — 붙어 있으면 한글이 아니라 안 나뉜다.
     const sep = /[/·ㆍ]$/.test(part) ? part.slice(-1) : "";
     const body = sep ? part.slice(0, -1) : part;
     const back = (parts: string[]) =>
       sep ? [...parts.slice(0, -1), parts[parts.length - 1] + sep] : parts;
+    // ★글자 단위(perChar)는 **라벨 전체가 한 낱말일 때만** 쓴다. 낱말마다 걸면
+    //   「특허를 받을 수 있는 발명」이 "특 / 허 / 를 …" 로 산산이 흩어진다
+    //   (객관식 해설 표 실물 확인 2026-08-23).
+    const words = body.split(" ");
+    if (words.length === 1) return back(perChar(splitWord(words[0])));
     // 낱말마다 따로 나눈다. 공백은 앞 조각 끝에 붙여 원문 글자를 그대로 보존한다
     // (공백 자체가 이미 줄바꿈 기회다).
     const segs: string[] = [];
-    body.split(" ").forEach((word, i) => {
+    words.forEach((word, i) => {
       if (i > 0) segs[segs.length - 1] += " ";
-      segs.push(...perChar(splitWord(word)));
+      segs.push(...splitWord(word));
     });
     return back(segs);
   });

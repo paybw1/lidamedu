@@ -3,15 +3,17 @@
 //
 // 주의: @tailwindcss/typography 플러그인을 쓰지 않으므로 prose-* 변형은 무효.
 // 표·코드·이미지 등 핵심 요소는 components 매핑으로 직접 클래스 주입한다.
+import type { Components } from "react-markdown";
+
 import { Fragment, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
-import type { Components } from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 
+import { labelSegments } from "~/core/lib/korean-wrap";
 import { cn } from "~/core/lib/utils";
 
 // GFM 취소선은 `~~이중틸드~~` 만 인정 — 단일 `~`(예: "9월~1월" 기간 표기)를 취소선으로
@@ -26,30 +28,74 @@ function splitByEnumMarkers(text: string): string[] {
   // 줄바꿈 대상: 숫자(1./2.), 원형 숫자(①②), 원형 한글(㈀㈎㉠), 불릿(▪•‣◦▸), 하위불릿(- ).
   // 제외: 로마숫자(ⅰ)/ⅱ)/Ⅰ./Ⅱ.) — 운영자 요청에 따라 줄바꿈 안 함.
   // \s+ — 하위불릿 "  - " 처럼 공백 2개로 구분된 항목도 처리.
-  const regex =
-    /(?<=[^\s|])\s+(?=\d+\.\s|[①-⑳]|[㈀-㈎]|[㉠-㉻]|[▪•‣◦▸]|-\s)/g;
+  const regex = /(?<=[^\s|])\s+(?=\d+\.\s|[①-⑳]|[㈀-㈎]|[㉠-㉻]|[▪•‣◦▸]|-\s)/g;
   return text.split(regex);
 }
 
-function injectLineBreaks(node: ReactNode, keyPrefix = ""): ReactNode {
+/**
+ * 한국어 복합어를 **뜻 단위**로 끊을 수 있게 <wbr> 을 심는다(규칙은 core/lib/korean-wrap).
+ * ★CSS 는 낱말의 짜임을 모른다 — 「적법성심리」가 "적법성심 / 리" 로 잘리던 이유다
+ *   (원장 보고 2026-08-23. 도해 표에서 먼저 고치고 학습과목 전체로 넓혔다).
+ * ★<wbr> 은 textContent 에 아무것도 더하지 않아 하이라이트·검색 오프셋이 그대로다.
+ */
+function withWordBreaks(text: string, keyPrefix: string): ReactNode {
+  const segs = labelSegments(text);
+  if (segs.length <= 1) return text;
+  return segs.map((s, i) => (
+    <Fragment key={`${keyPrefix}w${i}`}>
+      {i > 0 ? <wbr /> : null}
+      {s}
+    </Fragment>
+  ));
+}
+
+/** 칸의 글만 이어 붙인다 — 라벨(짧은 칸)인지 판단하는 데 쓴다. */
+function plainText(node: ReactNode): string {
+  if (typeof node === "string") return node;
+  if (Array.isArray(node)) return node.map(plainText).join("");
+  return "";
+}
+/** 이보다 짧은 칸에만 낱말 단위 끊을 자리를 심는다 — 긴 본문 칸은 띄어쓰기로 충분하다. */
+const LABELISH_MAX = 24;
+
+function injectLineBreaks(
+  node: ReactNode,
+  keyPrefix = "",
+  wordBreaks = false,
+): ReactNode {
   if (typeof node === "string") {
     const parts = splitByEnumMarkers(node);
-    if (parts.length === 1) return node;
+    const piece = (p: string, i: number) =>
+      wordBreaks ? withWordBreaks(p, `${keyPrefix}${i}`) : p;
+    if (parts.length === 1) return piece(node, 0);
     return parts.map((p, i) =>
-      i === 0 ? p : (
+      i === 0 ? (
+        piece(p, 0)
+      ) : (
         <Fragment key={`${keyPrefix}${i}`}>
           <br />
-          {p}
+          {piece(p, i)}
         </Fragment>
       ),
     );
   }
   if (Array.isArray(node)) {
     return node.map((c, i) => (
-      <Fragment key={`a${i}`}>{injectLineBreaks(c, `a${i}-`)}</Fragment>
+      <Fragment key={`a${i}`}>
+        {injectLineBreaks(c, `a${i}-`, wordBreaks)}
+      </Fragment>
     ));
   }
   return node;
+}
+
+/** 표 칸 렌더 — 짧은 칸(라벨)에만 낱말 단위 끊을 자리를 심는다. */
+function cellContent(children: ReactNode): ReactNode {
+  return injectLineBreaks(
+    children,
+    "",
+    plainText(children).length <= LABELISH_MAX,
+  );
 }
 
 const components: Components = {
@@ -61,7 +107,7 @@ const components: Components = {
         // break-words 로 긴 한자/단어도 셀 안에서 줄바꿈.
         // 글자 크기 3단(--study-fs) 따라감 — 표 형식 지문도 발문과 함께 커지도록(기본 1=무변화).
         // 얼룩무늬(even 행 배경) — 긴 비교표에서 행 추적 가독성. 셀 스타일은 th/td 매핑에서.
-        className="w-full border-collapse text-left text-[length:calc(13px*var(--study-fs))] [&_td]:break-words [&_th]:break-words [&_tbody_tr:nth-child(even)]:bg-muted/30"
+        className="[&_tbody_tr:nth-child(even)]:bg-muted/30 w-full border-collapse text-left text-[length:calc(13px*var(--study-fs))] [&_td]:break-words [&_td]:break-keep [&_th]:break-words [&_th]:break-keep"
         {...props}
       />
     </div>
@@ -72,7 +118,7 @@ const components: Components = {
       className="border-border border px-3 py-1.5 leading-relaxed font-semibold"
       {...props}
     >
-      {injectLineBreaks(children)}
+      {cellContent(children)}
     </th>
   ),
   td: ({ children, ...props }) => (
@@ -80,7 +126,7 @@ const components: Components = {
       className="border-border border px-3 py-1.5 align-top leading-relaxed"
       {...props}
     >
-      {injectLineBreaks(children)}
+      {cellContent(children)}
     </td>
   ),
   p: (props) => <p className="my-1 leading-relaxed" {...props} />,
@@ -143,10 +189,7 @@ const components: Components = {
     />
   ),
   img: (props) => (
-    <img
-      className="my-2 inline-block max-w-full rounded border"
-      {...props}
-    />
+    <img className="my-2 inline-block max-w-full rounded border" {...props} />
   ),
   hr: (props) => <hr className="border-border my-3" {...props} />,
   a: (props) => (
@@ -161,12 +204,15 @@ const components: Components = {
   em: (props) => <em className="italic" {...props} />,
   mark: (props) => (
     <mark
-      className="rounded-sm bg-amber-200/70 px-0.5 text-foreground"
+      className="text-foreground rounded-sm bg-amber-200/70 px-0.5"
       {...props}
     />
   ),
   u: (props) => (
-    <u className="decoration-sky-500 decoration-2 underline-offset-2" {...props} />
+    <u
+      className="decoration-sky-500 decoration-2 underline-offset-2"
+      {...props}
+    />
   ),
 };
 

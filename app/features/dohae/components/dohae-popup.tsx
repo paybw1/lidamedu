@@ -186,7 +186,7 @@ function CellContent({ cell }: { cell: DohaeCell }) {
     !cell.tables?.length &&
     !cell.boldRanges?.length
   )
-    return <KoreanLabel text={cell.text} />;
+    return <KoreanLabel text={cell.text} perChar />;
   const nested = cell.tables ?? [];
   const marks: Array<{ at: number; node: ReactNode }> = [];
   if (cell.diagram)
