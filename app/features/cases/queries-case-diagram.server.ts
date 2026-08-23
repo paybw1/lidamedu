@@ -1,6 +1,5 @@
 // feat-2-035 — 판례 도식(case_diagrams) 쿼리.
 // RLS 가 권한 제어(학생=approved 만 / staff=전건) → 일반 supa-client 사용. service_role 불필요.
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "~/../database.types";
@@ -11,19 +10,19 @@ import {
 } from "~/features/laws/lib/identifier";
 
 import {
-  normalizeStatuteLabel,
-  parseReferenceStatute,
-  type StatuteRef,
-} from "./lib/statute-label";
-
-export type { StatuteRef };
-import {
-  parseBlocks,
-  parseTimeline,
   type CaseDiagramBlock,
   type FactsSourceKind,
   type TimelineEvent,
+  parseBlocks,
+  parseTimeline,
 } from "./lib/case-diagram";
+import {
+  type StatuteRef,
+  normalizeStatuteLabel,
+  parseReferenceStatute,
+} from "./lib/statute-label";
+
+export type { StatuteRef };
 
 type Client = SupabaseClient<Database>;
 
@@ -211,7 +210,12 @@ async function resolveReferenceStatutes(
     .in("ref_law_id", lawIds)
     .in("article_number", numbers);
   const key = (lawId: string, number: string) => `${lawId}::${number}`;
-  const found = new Map((rows ?? []).map((r) => [key(r.ref_law_id, r.article_number), r.ref_article_id]));
+  const found = new Map(
+    (rows ?? []).map((r) => [
+      key(r.ref_law_id, r.article_number),
+      r.ref_article_id,
+    ]),
+  );
   for (const [raw, w] of wanted) {
     const id = found.get(key(w.lawId, w.number));
     if (id) out[raw] = { kind: "reference", id };
@@ -377,7 +381,9 @@ export function applyDiagramListFilters(
           ? r.diagram === null
           : r.diagram?.reviewStatus === f.status,
     )
-    .filter((r) => !f.q || r.caseNumber.includes(f.q) || r.caseTitle.includes(f.q));
+    .filter(
+      (r) => !f.q || r.caseNumber.includes(f.q) || r.caseTitle.includes(f.q),
+    );
 }
 
 /** 판례 메타 + 도식 — 편집 화면 loader. */
@@ -518,6 +524,22 @@ export async function updateCaseDiagramBlocksByStaff(
   const { error } = await client
     .from("case_diagrams")
     .update({ blocks: args.blocks, generated_by: "staff" })
+    .eq("diagram_id", args.diagramId);
+  if (error) throw error;
+}
+
+/**
+ * 사실관계만 갱신 — 도식 패널 인라인 편집용. blocks 는 건드리지 않는다.
+ * ★facts_source_kind 는 그대로 둔다 — 출처 표기는 검수 화면에서 명시적으로 고른다.
+ *   여기서 임의로 'manual' 로 바꾸면 하급심 근거로 채운 이력이 조용히 지워진다.
+ */
+export async function updateCaseDiagramFactsByStaff(
+  client: Client,
+  args: { diagramId: string; factsMd: string },
+): Promise<void> {
+  const { error } = await client
+    .from("case_diagrams")
+    .update({ facts_md: args.factsMd })
     .eq("diagram_id", args.diagramId);
   if (error) throw error;
 }

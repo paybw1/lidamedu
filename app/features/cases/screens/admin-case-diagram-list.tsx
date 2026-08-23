@@ -1,28 +1,27 @@
 // feat-2-035 — 판례 도식 목록(staff). 대상 판례를 나열하고 도식 유무·상태·사실관계 출처를 붙인다.
 // 도식이 없는 판례도 보여야 해서 case_diagrams 가 아니라 cases 기준으로 나열한다.
+import type { Route } from "./+types/admin-case-diagram-list";
 
 import { CircleDashedIcon, FileTextIcon, SearchIcon } from "lucide-react";
 import { Form, Link, data } from "react-router";
 
-import { cn } from "~/core/lib/utils";
 import { Input } from "~/core/components/ui/input";
-import { AdminShell } from "~/features/admin/components/admin-shell";
 import makeServerClient from "~/core/lib/supa-client.server";
-import { Chip } from "~/features/community/components/community-ui";
+import { cn } from "~/core/lib/utils";
+import { AdminShell } from "~/features/admin/components/admin-shell";
 import {
   FACTS_SOURCE_LABEL,
   isLowerCourtSource,
 } from "~/features/cases/lib/case-diagram";
 import {
-  applyDiagramListFilters,
   DIAGRAM_TARGET_FROM,
   DIAGRAM_TARGET_LAW,
+  applyDiagramListFilters,
   listCaseDiagramTargets,
   parseDiagramListFilters,
 } from "~/features/cases/queries-case-diagram.server";
+import { Chip } from "~/features/community/components/community-ui";
 import { getStaffRole } from "~/features/laws/queries.server";
-
-import type { Route } from "./+types/admin-case-diagram-list";
 
 // 생성·노출 범위(설계 §1) — 스키마 제약이 아니라 운영 범위라 화면 상수로 둔다.
 

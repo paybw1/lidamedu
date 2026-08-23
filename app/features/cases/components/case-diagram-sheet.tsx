@@ -5,10 +5,6 @@
 //
 // ★법리 4축은 "있는 축만" 렌더한다. 빈 축의 자리를 만들어 두면 "비어 있음"이 정보처럼 읽혀,
 //   근거 없는 축을 채우지 않기로 한 설계가 화면에서 무너진다.
-
-import { useEffect, useState } from "react";
-import { Link, useFetcher } from "react-router";
-
 import {
   CheckCircle2Icon,
   ChevronLeftIcon,
@@ -21,8 +17,10 @@ import {
   ScaleIcon,
   SquareIcon,
 } from "lucide-react";
+import { type ReactNode, useEffect, useState } from "react";
+import { Link, useFetcher } from "react-router";
 
-import { copyGuardProps, ViewerWatermark } from "~/core/components/leak-guard";
+import { ViewerWatermark, copyGuardProps } from "~/core/components/leak-guard";
 import { Badge } from "~/core/components/ui/badge";
 import {
   Dialog,
@@ -39,23 +37,22 @@ import {
   SheetTrigger,
 } from "~/core/components/ui/sheet";
 import { cn } from "~/core/lib/utils";
-import { MarkdownView } from "~/features/problems/components/markdown-view";
 import {
-  isOldLawLabel,
   type StatuteRef,
+  isOldLawLabel,
 } from "~/features/cases/lib/statute-label";
-
+import { MarkdownView } from "~/features/problems/components/markdown-view";
 import { RefPreviewBadge } from "~/features/subjects/components/ref-preview-badge";
 
 import {
-  DOCTRINE_AXES,
-  TIMELINE_KIND_LABEL,
-  filledAxes,
-  isLowerCourtSource,
   type CaseDiagramBlock,
+  DOCTRINE_AXES,
   type DoctrineAxisKey,
   type FactsSourceKind,
+  TIMELINE_KIND_LABEL,
   type TimelineEvent,
+  filledAxes,
+  isLowerCourtSource,
 } from "../lib/case-diagram";
 
 export interface CaseDiagramView {
@@ -181,9 +178,7 @@ export function CaseDiagramSheet({
   //   복사 차단은 본문 컨테이너에. 선택은 막지 않는다 — 읽기·조문 링크를 해친다.
   const body = (
     <>
-      {viewerIsStaff ? (
-        <ApproveBar caseId={caseId} approved={!draft} />
-      ) : null}
+      {viewerIsStaff ? <ApproveBar caseId={caseId} approved={!draft} /> : null}
       <div className="relative print:hidden" {...copyGuardProps}>
         {watermark ? <ViewerWatermark text={watermark} /> : null}
         <DiagramBody
@@ -234,7 +229,13 @@ export function CaseDiagramSheet({
  * 서버(admin-case-diagram-edit action)가 역할과 승인 조건을 다시 확인하므로,
  * 이 버튼은 진입점일 뿐 권한 판정이 아니다.
  */
-function ApproveBar({ caseId, approved }: { caseId: string; approved: boolean }) {
+function ApproveBar({
+  caseId,
+  approved,
+}: {
+  caseId: string;
+  approved: boolean;
+}) {
   const fetcher = useFetcher<{ ok?: string; error?: string }>();
   const busy = fetcher.state !== "idle";
   const msg = fetcher.data?.error ?? fetcher.data?.ok ?? null;
@@ -273,7 +274,9 @@ function ApproveBar({ caseId, approved }: { caseId: string; approved: boolean })
         <span
           className={cn(
             "text-[11px] font-medium",
-            failed ? "text-rose-600 dark:text-rose-400" : "text-muted-foreground",
+            failed
+              ? "text-rose-600 dark:text-rose-400"
+              : "text-muted-foreground",
           )}
         >
           {msg}
@@ -340,14 +343,24 @@ function AxisReclassify({
 function DiagramNav({
   nav,
 }: {
-  nav: { prevHref: string | null; nextHref: string | null; idx: number; total: number };
+  nav: {
+    prevHref: string | null;
+    nextHref: string | null;
+    idx: number;
+    total: number;
+  };
 }) {
   const btn =
     "border-border text-muted-foreground hover:bg-muted inline-flex size-6 items-center justify-center rounded-full border";
   return (
     <span className="ml-auto inline-flex items-center gap-1">
       {nav.prevHref ? (
-        <Link to={nav.prevHref} className={btn} title="이전 판례 도식" prefetch="intent">
+        <Link
+          to={nav.prevHref}
+          className={btn}
+          title="이전 판례 도식"
+          prefetch="intent"
+        >
           <ChevronLeftIcon className="size-3.5" />
         </Link>
       ) : (
@@ -359,7 +372,12 @@ function DiagramNav({
         {nav.idx + 1} / {nav.total}
       </span>
       {nav.nextHref ? (
-        <Link to={nav.nextHref} className={btn} title="다음 판례 도식" prefetch="intent">
+        <Link
+          to={nav.nextHref}
+          className={btn}
+          title="다음 판례 도식"
+          prefetch="intent"
+        >
           <ChevronRightIcon className="size-3.5" />
         </Link>
       ) : (
@@ -372,10 +390,8 @@ function DiagramNav({
 }
 
 /**
- * 쟁점 코멘트 — staff 면 읽던 자리에서 바로 쓰고 저장한다(검수 화면으로 안 나가도 된다).
- * caseId 가 없으면(=staff 아님) 읽기 전용. 서버 action 이 역할을 다시 확인한다.
- * ★저장 payload 는 blockIndex + 코멘트뿐 — 본문을 통째로 보내지 않아 다른 탭에서
- *   편집 중인 내용을 덮어쓰지 않는다.
+ * 쟁점 코멘트 — 판결문 서술이 아니라 강사가 덧붙이는 말. 편집 조작은 InlineEdit 로 위임한다.
+ * caseId 가 없고(=staff 아님) 내용도 없으면 아예 그리지 않는다 — 빈 상자를 남기지 않는다.
  */
 function CommentBox({
   caseId,
@@ -386,33 +402,22 @@ function CommentBox({
   blockIndex: number;
   comment: string;
 }) {
-  const fetcher = useFetcher<{ ok?: string; error?: string }>();
-  const [draft, setDraft] = useState(comment);
-  const [editing, setEditing] = useState(false);
-  // 서버 반영분이 바뀌면(저장·이웃 이동) 편집 중이 아닐 때만 따라간다.
-  useEffect(() => {
-    if (!editing) setDraft(comment);
-  }, [comment, editing]);
-  const busy = fetcher.state !== "idle";
-
-  if (!caseId) {
-    if (!comment.trim()) return null;
-    return (
-      <div className="border-primary/30 bg-primary/[0.04] mt-2.5 rounded-lg border border-dashed px-3 py-2">
-        <p className="text-link mb-0.5 inline-flex items-center gap-1 text-[11px] font-bold">
-          <MessageSquareIcon className="size-3" /> 코멘트
-        </p>
-        <p className="text-[14px] leading-[1.7] whitespace-pre-line">{comment}</p>
-      </div>
-    );
-  }
-
-  if (!editing) {
-    return (
-      <div className="border-primary/30 bg-primary/[0.04] mt-2.5 rounded-lg border border-dashed px-3 py-2">
-        <p className="text-link mb-0.5 inline-flex items-center gap-1 text-[11px] font-bold">
-          <MessageSquareIcon className="size-3" /> 코멘트
-        </p>
+  if (!caseId && !comment.trim()) return null;
+  return (
+    <div className="border-primary/30 bg-primary/[0.04] mt-2.5 rounded-lg border border-dashed px-3 py-2">
+      <p className="text-link mb-0.5 inline-flex items-center gap-1 text-[11px] font-bold">
+        <MessageSquareIcon className="size-3" /> 코멘트
+      </p>
+      <InlineEdit
+        caseId={caseId}
+        intent="set_comment"
+        name="comment"
+        value={comment}
+        fields={{ blockIndex }}
+        rows={3}
+        label={comment.trim() ? "코멘트 수정" : "코멘트 쓰기"}
+        placeholder="예: 이 쟁점은 2차에서 사실관계를 바꿔 반복 출제됨"
+      >
         {comment.trim() ? (
           <p className="text-[14px] leading-[1.7] whitespace-pre-line">
             {comment}
@@ -422,15 +427,71 @@ function CommentBox({
             출제 포인트·주의점을 남길 수 있습니다.
           </p>
         )}
+      </InlineEdit>
+    </div>
+  );
+}
+
+/**
+ * 인라인 편집기 — 읽던 자리에서 바로 고친다(검수 화면으로 나갔다 오지 않아도 된다).
+ *
+ * ★보내는 건 **바꾸는 칸만**(intent + fields + 값). 본문을 통째로 싣지 않아, 다른 탭에서
+ *   검수 화면을 열어 둔 채여도 그 편집분을 덮어쓰지 않는다.
+ * ★입력 중에는 서버 값이 바뀌어도 입력칸을 건드리지 않는다 — 쓰는 도중 글자가 바뀌면 곤란하다.
+ * ★caseId 가 없으면(= staff 아님) 편집 UI 자체가 없다. 권한은 서버 action 이 다시 확인한다.
+ */
+function InlineEdit({
+  caseId,
+  intent,
+  name,
+  value,
+  fields,
+  rows,
+  placeholder,
+  label,
+  children,
+}: {
+  caseId?: string;
+  intent: string;
+  /** 값이 실릴 form field 이름. */
+  name: string;
+  value: string;
+  /** 함께 보낼 고정 필드(blockIndex 등). */
+  fields?: Record<string, string | number>;
+  rows: number;
+  placeholder?: string;
+  /** 편집 버튼 문구 — "쟁점 수정" 등. */
+  label: string;
+  /** 읽기 상태의 표시. */
+  children: ReactNode;
+}) {
+  const fetcher = useFetcher<{ ok?: string; error?: string }>();
+  const [draft, setDraft] = useState(value);
+  const [editing, setEditing] = useState(false);
+  useEffect(() => {
+    if (!editing) setDraft(value);
+  }, [value, editing]);
+  const busy = fetcher.state !== "idle";
+
+  if (!caseId) return <>{children}</>;
+
+  if (!editing) {
+    return (
+      <>
+        {children}
         <button
           type="button"
           onClick={() => setEditing(true)}
           className="text-muted-foreground hover:text-link mt-1 inline-flex items-center gap-1 text-[11px] font-semibold"
         >
-          <PencilLineIcon className="size-3" />
-          {comment.trim() ? "코멘트 수정" : "코멘트 쓰기"}
+          <PencilLineIcon className="size-3" /> {label}
         </button>
-      </div>
+        {fetcher.data?.error ? (
+          <span className="ml-2 text-[11px] font-medium text-rose-600 dark:text-rose-400">
+            {fetcher.data.error}
+          </span>
+        ) : null}
+      </>
     );
   }
 
@@ -439,20 +500,17 @@ function CommentBox({
       method="post"
       action={`/admin/case-diagrams/${caseId}`}
       onSubmit={() => setEditing(false)}
-      className="border-primary/30 bg-primary/[0.04] mt-2.5 rounded-lg border border-dashed px-3 py-2"
     >
-      <input type="hidden" name="intent" value="set_comment" />
-      <input type="hidden" name="blockIndex" value={blockIndex} />
-      <p className="text-link mb-1 inline-flex items-center gap-1 text-[11px] font-bold">
-        <MessageSquareIcon className="size-3" /> 코멘트
-      </p>
+      <input type="hidden" name="intent" value={intent} />
+      {Object.entries(fields ?? {}).map(([k, v]) => (
+        <input key={k} type="hidden" name={k} value={v} />
+      ))}
       <textarea
-        name="comment"
+        name={name}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
-        rows={3}
-        maxLength={2000}
-        placeholder="예: 이 쟁점은 2차에서 사실관계를 바꿔 반복 출제됨"
+        rows={rows}
+        placeholder={placeholder}
         className="border-border bg-background w-full rounded-md border px-2 py-1.5 text-[14px] leading-[1.7]"
       />
       <div className="mt-1 flex items-center gap-1.5">
@@ -466,18 +524,13 @@ function CommentBox({
         <button
           type="button"
           onClick={() => {
-            setDraft(comment);
+            setDraft(value);
             setEditing(false);
           }}
           className="text-muted-foreground hover:text-foreground text-[11px]"
         >
           취소
         </button>
-        {fetcher.data?.error ? (
-          <span className="text-[11px] font-medium text-rose-600 dark:text-rose-400">
-            {fetcher.data.error}
-          </span>
-        ) : null}
       </div>
     </fetcher.Form>
   );
@@ -486,8 +539,8 @@ function CommentBox({
 function HeaderHint() {
   return (
     <p className="text-muted-foreground text-[11px]">
-      2차 답안 작성 순서 — 사실관계 → 쟁점 → 1. 법조문 → 2. 법리 → 3. 사안의 포섭 →
-      4. 결론
+      2차 답안 작성 순서 — 사실관계 → 쟁점 → 1. 법조문 → 2. 법리 → 3. 사안의
+      포섭 → 4. 결론
     </p>
   );
 }
@@ -557,26 +610,37 @@ function DiagramBody({
             </span>
           ) : null}
         </h3>
-        {diagram.factsMd.trim() ? (
-          <div className="border-border bg-muted/30 diagram-facts rounded-lg border p-3">
-            {/* ★markdown 으로 저장된다 — 그대로 텍스트로 뿌리면 ##·**·- 가 노출된다.
+        <InlineEdit
+          caseId={reclassifyCaseId}
+          intent="set_facts"
+          name="factsMd"
+          value={diagram.factsMd}
+          rows={10}
+          label={diagram.factsMd.trim() ? "사실관계 수정" : "사실관계 쓰기"}
+          placeholder="하급심 판결문에 나온 사실만. 없으면 비워 두세요(창작 금지)."
+        >
+          {diagram.factsMd.trim() ? (
+            <div className="border-border bg-muted/30 diagram-facts rounded-lg border p-3">
+              {/* ★markdown 으로 저장된다 — 그대로 텍스트로 뿌리면 ##·**·- 가 노출된다.
                 trusted=false: 원시 HTML 을 파싱하지 않는다(도식에 HTML 은 불필요). */}
-            {/* ★literalNumbering — 사실관계는 "- 2022. 1. 18. 피고, …" 처럼 날짜로
+              {/* ★literalNumbering — 사실관계는 "- 2022. 1. 18. 피고, …" 처럼 날짜로
                 시작하는 줄이 대부분인데, markdown 은 그 "2022." 를 번호 목록 마커로
                 읽어 날짜를 통째로 빼앗아 간다(원장 지적 2026-08-20). 손으로 친 번호는
                 친 그대로 표시한다. */}
-            <MarkdownView
-              text={stripFactsHeading(diagram.factsMd)}
-              trusted={false}
-              literalNumbering
-              className="text-[15px] leading-[1.75]"
-            />
-          </div>
-        ) : (
-          <p className="border-border text-muted-foreground rounded-lg border border-dashed p-3 text-xs">
-            이 판례는 사실관계가 아직 정리되지 않았습니다. 쟁점부터 확인하세요.
-          </p>
-        )}
+              <MarkdownView
+                text={stripFactsHeading(diagram.factsMd)}
+                trusted={false}
+                literalNumbering
+                className="text-[15px] leading-[1.75]"
+              />
+            </div>
+          ) : (
+            <p className="border-border text-muted-foreground rounded-lg border border-dashed p-3 text-xs">
+              이 판례는 사실관계가 아직 정리되지 않았습니다. 쟁점부터
+              확인하세요.
+            </p>
+          )}
+        </InlineEdit>
       </section>
 
       {/* 경과 타임라인 — 같은 사실을 시간축으로. 2차는 출원·공지·심판의 선후가
@@ -615,18 +679,33 @@ function DiagramBody({
             key={i}
             className="border-border bg-card rounded-xl border p-3 shadow-sm"
           >
-            <h3 className="mb-2 flex items-start gap-1.5 text-[15px] font-bold">
-              <Badge className="mt-0.5 shrink-0 rounded-sm px-1.5 py-0">
-                쟁점 {i + 1}
-              </Badge>
-              <span className="leading-snug">{b.issue}</span>
-            </h3>
+            <div className="mb-2">
+              <InlineEdit
+                caseId={reclassifyCaseId}
+                intent="set_issue"
+                name="issue"
+                value={b.issue}
+                fields={{ blockIndex: i }}
+                rows={2}
+                label="쟁점 수정"
+                placeholder="이 쟁점에서 무엇이 문제되는가"
+              >
+                <h3 className="flex items-start gap-1.5 text-[15px] font-bold">
+                  <Badge className="mt-0.5 shrink-0 rounded-sm px-1.5 py-0">
+                    쟁점 {i + 1}
+                  </Badge>
+                  <span className="leading-snug">{b.issue}</span>
+                </h3>
+              </InlineEdit>
+            </div>
 
             {b.statutes.length > 0 ? (
               <Step no={0} label="법조문">
                 {/* ★구법 표기는 현행 조문으로 이어진다 — 판결 당시 조문과 내용이 다를 수
                     있어 밝혀 둔다(원장 지적 2026-08-21). */}
-                {b.statutes.some((s) => isOldLawLabel(s) && statuteArticleIds?.[s]) ? (
+                {b.statutes.some(
+                  (s) => isOldLawLabel(s) && statuteArticleIds?.[s],
+                ) ? (
                   <p className="text-muted-foreground mb-1 text-[11px]">
                     구법 표기를 누르면 현행 조문이 열립니다
                   </p>

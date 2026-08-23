@@ -3,18 +3,19 @@
 // ★AI 초안은 "쟁점~결론"만 만든다. 사실관계의 근거는 하급심 판결문이고 그 전문은 로컬 캐시라
 //   서버리스 런타임에서 읽을 수 없다 — 사실관계는 배치 스크립트가 채우거나 여기서 직접 쓴다.
 //   설계 §2 소스 이원화(사실관계=하급심 / 쟁점~결론=대법원)와 같은 경계다.
+import type { Route } from "./+types/admin-case-diagram-edit";
 
-import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeftIcon,
+  CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  CheckIcon,
   PlusIcon,
   SparklesIcon,
   Trash2Icon,
   XIcon,
 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import {
   Form,
   Link,
@@ -29,28 +30,27 @@ import { Button } from "~/core/components/ui/button";
 import { Input } from "~/core/components/ui/input";
 import { Textarea } from "~/core/components/ui/textarea";
 import makeServerClient from "~/core/lib/supa-client.server";
-import { AdminShell } from "~/features/admin/components/admin-shell";
 import { runAfterResponse } from "~/core/lib/wait-until.server";
-import { Chip } from "~/features/community/components/community-ui";
+import { AdminShell } from "~/features/admin/components/admin-shell";
 import { draftCaseDiagramBlocks } from "~/features/cases/lib/ai-case-diagram-drafter.server";
 import {
+  type CaseDiagramBlock,
   DOCTRINE_AXES,
   DOCTRINE_AXIS_KEYS,
   DOCTRINE_AXIS_LABEL,
   FACTS_SOURCE_KINDS,
   FACTS_SOURCE_LABEL,
+  type FactsSourceKind,
   caseDiagramBlocksSchema,
   diagramApprovable,
   emptyBlock,
   moveDoctrineAxis,
-  type CaseDiagramBlock,
-  type FactsSourceKind,
 } from "~/features/cases/lib/case-diagram";
 import {
-  applyDiagramListFilters,
-  approveCaseDiagram,
   DIAGRAM_TARGET_FROM,
   DIAGRAM_TARGET_LAW,
+  applyDiagramListFilters,
+  approveCaseDiagram,
   getCaseDiagramEditContext,
   listCaseDiagramTargets,
   parseDiagramListFilters,
@@ -58,8 +58,10 @@ import {
   replaceCaseDiagramBlocks,
   softDeleteCaseDiagram,
   updateCaseDiagramBlocksByStaff,
+  updateCaseDiagramFactsByStaff,
   upsertCaseDiagram,
 } from "~/features/cases/queries-case-diagram.server";
+import { Chip } from "~/features/community/components/community-ui";
 import {
   capBlockedMessage,
   checkAiCap,
@@ -67,8 +69,6 @@ import {
   recordAiUsage,
 } from "~/features/gs/lib/usage-tracker.server";
 import { getStaffRole } from "~/features/laws/queries.server";
-
-import type { Route } from "./+types/admin-case-diagram-edit";
 
 const MIN_OFFICIAL_TEXT = 200;
 
@@ -105,7 +105,13 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   };
 }
 
-// 도식 패널에서 바로 쓰는 쟁점 코멘트. 본문 전체를 싣지 않아 다른 탭의 편집을 덮지 않는다.
+// ── 도식 패널 인라인 편집 ───────────────────────────────────────────────
+// 셋 다 **바꾸는 칸만** 싣는다 — 본문 전체를 보내지 않아 다른 탭의 편집을 덮지 않는다.
+const factsSchema = z.object({ factsMd: z.string().trim().max(20_000) });
+const issueSchema = z.object({
+  blockIndex: z.number().int().min(0).max(99),
+  issue: z.string().trim().min(2, "쟁점을 입력하세요").max(400),
+});
 const commentSchema = z.object({
   blockIndex: z.number().int().min(0).max(99),
   comment: z.string().trim().max(2000),
@@ -171,7 +177,8 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   if (intent === "draft") {
     const ctx = await getCaseDiagramEditContext(client, caseId);
-    if (!ctx) return data({ error: "판례를 찾지 못했습니다." }, { status: 404 });
+    if (!ctx)
+      return data({ error: "판례를 찾지 못했습니다." }, { status: 404 });
     const officialText = ctx.kase.officialTextMd?.trim() ?? "";
     if (officialText.length < MIN_OFFICIAL_TEXT) {
       return data({
@@ -203,7 +210,9 @@ export async function action({ request, params }: Route.ActionArgs) {
       usage: { meta: { userId: user.id } },
     });
     if (!blocks) {
-      return data({ error: "AI 초안 생성에 실패했습니다. 다시 시도해 주세요." });
+      return data({
+        error: "AI 초안 생성에 실패했습니다. 다시 시도해 주세요.",
+      });
     }
     await replaceCaseDiagramBlocks(client, {
       caseId,
@@ -221,7 +230,8 @@ export async function action({ request, params }: Route.ActionArgs) {
       from: fd.get("from"),
       to: fd.get("to"),
     });
-    if (!moved.success) return data({ error: "이동 대상이 올바르지 않습니다." });
+    if (!moved.success)
+      return data({ error: "이동 대상이 올바르지 않습니다." });
     const ctx = await getCaseDiagramEditContext(client, caseId);
     if (!ctx?.diagram) return data({ error: "도식이 없습니다." });
     const blocks = ctx.diagram.blocks;
@@ -239,6 +249,45 @@ export async function action({ request, params }: Route.ActionArgs) {
     return data({
       ok: `${DOCTRINE_AXIS_LABEL[moved.data.from]} → ${DOCTRINE_AXIS_LABEL[moved.data.to]} 로 옮겼습니다.`,
     });
+  }
+
+  // 사실관계 저장 — 도식 패널 인라인.
+  if (intent === "set_facts") {
+    const parsed = factsSchema.safeParse({ factsMd: fd.get("factsMd") ?? "" });
+    if (!parsed.success) return data({ error: "사실관계가 너무 깁니다." });
+    const ctx = await getCaseDiagramEditContext(client, caseId);
+    if (!ctx?.diagram) return data({ error: "도식이 없습니다." });
+    await updateCaseDiagramFactsByStaff(client, {
+      diagramId: ctx.diagram.diagramId,
+      factsMd: parsed.data.factsMd,
+    });
+    return data({ ok: "사실관계를 저장했습니다." });
+  }
+
+  // 쟁점 문구 저장 — 도식 패널 인라인.
+  if (intent === "set_issue") {
+    const parsed = issueSchema.safeParse({
+      blockIndex: Number(fd.get("blockIndex")),
+      issue: fd.get("issue") ?? "",
+    });
+    if (!parsed.success) {
+      return data({
+        error: parsed.error.issues[0]?.message ?? "쟁점을 입력하세요.",
+      });
+    }
+    const ctx = await getCaseDiagramEditContext(client, caseId);
+    if (!ctx?.diagram) return data({ error: "도식이 없습니다." });
+    if (!ctx.diagram.blocks[parsed.data.blockIndex]) {
+      return data({ error: "쟁점을 찾지 못했습니다." });
+    }
+    const next = ctx.diagram.blocks.map((b, i) =>
+      i === parsed.data.blockIndex ? { ...b, issue: parsed.data.issue } : b,
+    );
+    await updateCaseDiagramBlocksByStaff(client, {
+      diagramId: ctx.diagram.diagramId,
+      blocks: next,
+    });
+    return data({ ok: "쟁점을 저장했습니다." });
   }
 
   // 쟁점 코멘트 저장 — 도식 패널(시트/팝업)에서 읽던 자리에서 바로 남긴다.
@@ -260,7 +309,9 @@ export async function action({ request, params }: Route.ActionArgs) {
       blocks: next,
     });
     return data({
-      ok: parsed.data.comment ? "코멘트를 저장했습니다." : "코멘트를 지웠습니다.",
+      ok: parsed.data.comment
+        ? "코멘트를 저장했습니다."
+        : "코멘트를 지웠습니다.",
     });
   }
 
@@ -269,7 +320,8 @@ export async function action({ request, params }: Route.ActionArgs) {
     if (!ctx?.diagram) return data({ error: "도식이 없습니다." });
     if (!diagramApprovable(ctx.diagram.blocks)) {
       return data({
-        error: "쟁점이 1개 이상 있어야 하고, 각 쟁점에 결론이 있어야 승인됩니다.",
+        error:
+          "쟁점이 1개 이상 있어야 하고, 각 쟁점에 결론이 있어야 승인됩니다.",
       });
     }
     await approveCaseDiagram(client, {
@@ -295,7 +347,8 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   if (intent === "delete") {
     const ctx = await getCaseDiagramEditContext(client, caseId);
-    if (ctx?.diagram) await softDeleteCaseDiagram(client, ctx.diagram.diagramId);
+    if (ctx?.diagram)
+      await softDeleteCaseDiagram(client, ctx.diagram.diagramId);
     // 삭제 후에도 들어온 목록 상태로 돌려보낸다. ★"?" 로 시작하는 값만 신뢰(외부 주입 차단).
     const backRaw = new URL(request.url).searchParams.get("back") ?? "";
     const back = backRaw.startsWith("?") ? backRaw : "";
@@ -383,7 +436,11 @@ function StatuteInput({
         const typed = e.target.value;
         const caret = e.target.selectionStart ?? typed.length;
         caretRef.current = canon(typed.slice(0, caret)).length;
-        onChange(canon(typed).split(",").map((x) => x.replace(/^ /, "")));
+        onChange(
+          canon(typed)
+            .split(",")
+            .map((x) => x.replace(/^ /, "")),
+        );
       }}
       placeholder="특허법 제29조 제2항, 특허법 제42조 제4항"
       className="text-sm"
@@ -492,19 +549,11 @@ export default function AdminCaseDiagramEdit({
         {/* 이전/다음 — 목록으로 나갔다 들어오지 않고 죽 훑는다. 범위·순서는 목록과 동일. */}
         {neighbors ? (
           <span className="ml-auto inline-flex items-center gap-1">
-            <NeighborLink
-              caseId={neighbors.prevId}
-              back={backTo}
-              dir="prev"
-            />
+            <NeighborLink caseId={neighbors.prevId} back={backTo} dir="prev" />
             <span className="text-muted-foreground text-[11px] font-medium tabular-nums">
               {neighbors.idx + 1} / {neighbors.total}
             </span>
-            <NeighborLink
-              caseId={neighbors.nextId}
-              back={backTo}
-              dir="next"
-            />
+            <NeighborLink caseId={neighbors.nextId} back={backTo} dir="next" />
           </span>
         ) : null}
       </div>
@@ -526,7 +575,9 @@ export default function AdminCaseDiagramEdit({
           <Chip tone="outline">
             {kase.court} {kase.decidedAt}
           </Chip>
-          <Chip tone="outline">전문 {kase.officialTextLen.toLocaleString()}자</Chip>
+          <Chip tone="outline">
+            전문 {kase.officialTextLen.toLocaleString()}자
+          </Chip>
         </div>
         <h1 className="text-lg font-bold">{kase.caseTitle}</h1>
         {diagram?.rejectedReason ? (
@@ -554,9 +605,10 @@ export default function AdminCaseDiagramEdit({
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold">AI 초안 — 쟁점 ~ 결론</p>
             <p className="text-muted-foreground mt-0.5 text-xs">
-              대법원 판결문에서 쟁점·법조문·법리(근거 있는 축만)·포섭·결론을 만듭니다.
-              사실관계는 하급심이 근거라 여기서 만들지 않습니다 — 아래에 직접 쓰거나
-              배치 스크립트로 채웁니다. ★기존 쟁점 블록은 교체됩니다.
+              대법원 판결문에서 쟁점·법조문·법리(근거 있는 축만)·포섭·결론을
+              만듭니다. 사실관계는 하급심이 근거라 여기서 만들지 않습니다 —
+              아래에 직접 쓰거나 배치 스크립트로 채웁니다. ★기존 쟁점 블록은
+              교체됩니다.
             </p>
           </div>
           <Button
@@ -582,8 +634,8 @@ export default function AdminCaseDiagramEdit({
         <section className="border-border bg-card rounded-xl border p-4 shadow-sm">
           <h2 className="mb-1 text-sm font-bold">사실관계</h2>
           <p className="text-muted-foreground mb-3 text-xs">
-            2차는 이 사실관계를 각색해 출제됩니다. 근거는 하급심 판결문 —
-            없으면 비워 두세요(창작 금지).
+            2차는 이 사실관계를 각색해 출제됩니다. 근거는 하급심 판결문 — 없으면
+            비워 두세요(창작 금지).
           </p>
           <Textarea
             name="factsMd"
@@ -811,8 +863,8 @@ export default function AdminCaseDiagramEdit({
             </Form>
           </div>
           <p className="text-muted-foreground text-xs">
-            승인 조건 — 쟁점 1개 이상 + 각 쟁점에 결론. 저장 후 승인하세요(저장하면
-            검수 대기로 되돌아갑니다).
+            승인 조건 — 쟁점 1개 이상 + 각 쟁점에 결론. 저장 후
+            승인하세요(저장하면 검수 대기로 되돌아갑니다).
           </p>
         </div>
       ) : null}
@@ -834,7 +886,10 @@ function Field({
       <label className="text-muted-foreground mb-1 block text-[11px] font-semibold">
         {label}
         {hint ? (
-          <span className="text-muted-foreground/70 font-normal"> — {hint}</span>
+          <span className="text-muted-foreground/70 font-normal">
+            {" "}
+            — {hint}
+          </span>
         ) : null}
       </label>
       {children}
