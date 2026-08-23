@@ -254,6 +254,17 @@ export async function action({ request, params }: Route.ActionArgs) {
   return data({ error: "알 수 없는 요청입니다." }, { status: 400 });
 }
 
+/**
+ * 저장 직전 정리 — 법조문 칸은 타이핑 중 다듬지 않으므로(입력이 깨진다) 여기서 한 번만 한다.
+ * 앞뒤 공백 제거 + 빈 항목 제거. ★서버 zod(statutes: trimmed.min(1))가 빈 문자열을 거부한다.
+ */
+function cleanBlocks(blocks: CaseDiagramBlock[]): CaseDiagramBlock[] {
+  return blocks.map((b) => ({
+    ...b,
+    statutes: b.statutes.map((x) => x.trim()).filter(Boolean),
+  }));
+}
+
 export default function AdminCaseDiagramEdit({
   loaderData,
   actionData,
@@ -365,7 +376,7 @@ export default function AdminCaseDiagramEdit({
         <input
           type="hidden"
           name="blocksJson"
-          value={JSON.stringify(blocks)}
+          value={JSON.stringify(cleanBlocks(blocks))}
         />
 
         {/* ── 사실관계 ─────────────────────────────────────────────── */}
@@ -437,17 +448,17 @@ export default function AdminCaseDiagramEdit({
             </Field>
 
             <Field label="법조문" hint="쉼표로 구분. 판결문에 명시된 것만.">
+              {/* ★타이핑 중에는 다듬지 않는다 — split(",") 과 join(",") 이 정확히 왕복하는
+                  형태여야 입력한 글자가 그대로 남는다. 종전엔 매 타건마다 trim + 빈값
+                  제거를 걸어, 쉼표를 찍는 순간 빈 항목이 지워지며 쉼표까지 사라졌다
+                  (= 둘째 법조문을 아예 추가할 수 없었다. 원장 보고 2026-08-23).
+                  다듬기는 저장 직전 cleanBlocks 에서 한 번만 한다. */}
               <Input
-                value={b.statutes.join(", ")}
+                value={b.statutes.join(",")}
                 onChange={(e) =>
-                  patchBlock(idx, {
-                    statutes: e.target.value
-                      .split(",")
-                      .map((s) => s.trim())
-                      .filter(Boolean),
-                  })
+                  patchBlock(idx, { statutes: e.target.value.split(",") })
                 }
-                placeholder="특허법 제29조 제2항"
+                placeholder="특허법 제29조 제2항, 특허법 제42조 제4항"
                 className="text-sm"
               />
             </Field>
