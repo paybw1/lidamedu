@@ -242,6 +242,24 @@ export async function listCaseIdsWithDiagram(
 }
 
 /**
+ * 도식이 있는 판례 id 전량. 목록 필터('도식 있는 것만')가 쓴다 — 그 판정은 조회 **전에**
+ * 범위를 좁혀야 하므로, 페이지 범위만 보는 `listCaseIdsWithDiagram` 으로는 안 된다.
+ * ★과목으로 거르지 않는다 — 호출부(listCasesBySubject)가 이미 과목을 건다.
+ * ★RLS 가 권한을 건다 — staff 아니면 0건(도식은 staff 전용, 2026-08-23).
+ */
+export async function listAllCaseIdsWithDiagram(
+  client: Client,
+): Promise<string[]> {
+  const { data, error } = await client
+    .from("case_diagrams")
+    .select("case_id")
+    .is("deleted_at", null)
+    .limit(20000);
+  if (error) throw error;
+  return (data ?? []).map((r) => r.case_id);
+}
+
+/**
  * staff 목록 — 대상 판례를 나열하고 도식 유무·상태를 붙인다.
  * 생성 범위(특허 2005~)는 화면이 아니라 호출부 인자로 넘긴다(스키마는 과목 무관).
  */

@@ -22,7 +22,10 @@ import {
   getCasePlacementMaps,
   listCasesBySubject,
 } from "~/features/cases/queries.server";
-import { listCaseIdsWithDiagram } from "~/features/cases/queries-case-diagram.server";
+import {
+  listAllCaseIdsWithDiagram,
+  listCaseIdsWithDiagram,
+} from "~/features/cases/queries-case-diagram.server";
 import {
   type ArticleNode,
   type LawHeader,
@@ -126,6 +129,8 @@ export interface CaseFiltersApplied {
   bookmarkMin: number;
   // 강사 체크 중요도 최소 별 (0=전체, 1~3) — ?case_importance=N.
   importanceMin: number;
+  // 도식이 있는 판례만 — ?case_diagram=1. ★staff 전용(도식 RLS)이라 학생에겐 늘 0건.
+  diagramOnly: boolean;
 }
 
 export interface CaseTreeCounts {
@@ -231,6 +236,7 @@ function parseCaseFilters(url: URL): CaseFiltersApplied {
   const exam = (CASE_EXAM_FILTERS as readonly string[]).includes(examRaw)
     ? (examRaw as CaseExamFilter)
     : "any";
+  const diagramOnly = url.searchParams.get("case_diagram") === "1";
   // 트리 필터 — 우선순위 article > chapter > node (한 번에 하나만 활성).
   const articleId = url.searchParams.get("case_article")?.trim();
   const chapterId = url.searchParams.get("case_chapter")?.trim();
@@ -261,7 +267,16 @@ function parseCaseFilters(url: URL): CaseFiltersApplied {
   }
   const bookmarkMin = parseLevel(url.searchParams.get("case_bookmarked"), 5);
   const importanceMin = parseLevel(url.searchParams.get("case_importance"), 3);
-  return { q, court, exam, sort, tree, bookmarkMin, importanceMin };
+  return {
+    q,
+    court,
+    exam,
+    sort,
+    tree,
+    bookmarkMin,
+    importanceMin,
+    diagramOnly,
+  };
 }
 
 // articles 트리에서 한 노드 + 모든 자손 article 의 articleId 목록.
@@ -835,6 +850,18 @@ export async function loadSubjectHub(
         const bset = new Set(bookmarkedIds);
         filterCaseIds = filterCaseIds.filter((id) => bset.has(id));
       }
+    }
+  }
+
+  // 도식 보유분만 — 조회 전에 id 범위를 좁힌다(페이지 뒤에 거르면 총건수가 틀린다).
+  //   ★RLS 로 학생은 0건이므로 결과도 0건이 된다. 칩 자체를 staff 에게만 노출한다.
+  if (activeTabIsCases && caseFilters.diagramOnly) {
+    const withDiagram = await listAllCaseIdsWithDiagram(client);
+    if (filterCaseIds === null) {
+      filterCaseIds = withDiagram;
+    } else {
+      const dset = new Set(withDiagram);
+      filterCaseIds = filterCaseIds.filter((id) => dset.has(id));
     }
   }
 

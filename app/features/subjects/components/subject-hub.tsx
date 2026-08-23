@@ -247,6 +247,7 @@ function SubjectHubInner({
               cases={cases ?? []}
               casesTotal={casesTotal ?? cases?.length ?? 0}
               diagramCaseIds={diagramCaseIds}
+              isStaff={isStaff}
               caseFilters={caseFilters}
               initialQuery={caseQuery ?? ""}
               articles={articles ?? []}

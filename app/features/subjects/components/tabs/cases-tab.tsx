@@ -72,6 +72,13 @@ const COURT_OPTIONS = [
   { value: "district_court", label: "지방법원" },
 ] as const;
 
+// 값이 ""(전체) / "1"(도식만) 뿐인 2지 필터 — FilterGroup 은 문자열 value 를 그대로 URL 에
+// 싣는다. ""는 파라미터가 빠지는 것과 같아 기본값으로 안전하다.
+const DIAGRAM_OPTIONS = [
+  { value: "", label: "도식 전체" },
+  { value: "1", label: "도식 있음" },
+] as const;
+
 const EXAM_OPTIONS = [
   { value: "any", label: "전체" },
   { value: "exam_1st", label: "1차 기출" },
@@ -89,6 +96,7 @@ const SORT_OPTIONS = [
 ] as const;
 
 const DEFAULT_FILTERS: CaseFiltersApplied = {
+  diagramOnly: false,
   q: "",
   court: "all",
   exam: "any",
@@ -102,6 +110,7 @@ export function CasesTab({
   cases,
   casesTotal,
   diagramCaseIds,
+  isStaff = false,
   caseFilters,
   initialQuery,
   articles,
@@ -114,6 +123,8 @@ export function CasesTab({
   casesTotal: number;
   /** feat-2-035 — 도식 보유 판례 id(학생=승인분만). */
   diagramCaseIds?: string[];
+  /** 도식 필터 칩은 staff 에게만 — 도식이 staff 전용이라 학생이 켜면 늘 0건이다. */
+  isStaff?: boolean;
   caseFilters?: CaseFiltersApplied;
   initialQuery: string;
   articles: ArticleNode[];
@@ -244,6 +255,7 @@ export function CasesTab({
       name: "case_importance",
       value: String(filters.importanceMin),
     });
+  if (filters.diagramOnly) hidden.push({ name: "case_diagram", value: "1" });
 
   // FilterGroup 들의 hidden — 트리 필터·검색어 보존.
   const baseHidden: Array<{ name: string; value: string }> = [
@@ -266,6 +278,8 @@ export function CasesTab({
       name: "case_importance",
       value: String(filters.importanceMin),
     });
+  if (filters.diagramOnly)
+    baseHidden.push({ name: "case_diagram", value: "1" });
 
   // 트리 패널 — 데스크톱 사이드바 / 모바일 드로어에서 동일 마크업 재사용.
   // 좌패널 뷰 토글 — 체계도/조문(전역 axis) + 주제(로컬). 공유 컴포넌트(case-viewer 와 통일).
@@ -517,6 +531,20 @@ export function CasesTab({
             paramName="case_bookmarked"
             value={filters.bookmarkMin}
           />
+          {isStaff ? (
+            <FilterGroup
+              label="도식"
+              name="case_diagram"
+              value={filters.diagramOnly ? "1" : ""}
+              options={DIAGRAM_OPTIONS}
+              hidden={[
+                ...baseHidden.filter((h) => h.name !== "case_diagram"),
+                { name: "case_court", value: filters.court },
+                { name: "case_exam", value: filters.exam },
+                { name: "case_sort", value: filters.sort },
+              ]}
+            />
+          ) : null}
           <span className="text-muted-foreground ml-auto text-xs tabular-nums">
             {filters.q ? `"${filters.q}" · ` : ""}총{" "}
             {casesTotal.toLocaleString("ko-KR")}건
