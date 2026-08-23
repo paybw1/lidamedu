@@ -2,7 +2,7 @@
 //   node tmp/dohae-fix/audit-labels.mjs [표폭px]
 // 화면 폭 기준: 팝업 lg(1024) − 학습도구 패널(300) − 여백 ≈ 676, 그보다 좁은 md 는 ≈ 548.
 import { readFileSync } from "node:fs";
-import { labelSegments } from "../../app/features/dohae/lib/label-wrap.ts";
+import { labelSegments } from "../../app/core/lib/korean-wrap.ts";
 
 const TABLE_W = Number(process.argv[2] ?? 548);
 const FS = 13.5; // 표 글자 크기(--study-fs = 1)
