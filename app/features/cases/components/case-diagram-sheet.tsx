@@ -44,10 +44,12 @@ import {
 import { RefPreviewBadge } from "~/features/subjects/components/ref-preview-badge";
 
 import {
+  DOCTRINE_AXES,
   TIMELINE_KIND_LABEL,
   filledAxes,
   isLowerCourtSource,
   type CaseDiagramBlock,
+  type DoctrineAxisKey,
   type FactsSourceKind,
   type TimelineEvent,
 } from "../lib/case-diagram";
@@ -160,6 +162,7 @@ export function CaseDiagramSheet({
         draft={draft}
         subjectSlug={subjectSlug}
         statuteArticleIds={statuteArticleIds}
+        reclassifyCaseId={viewerIsStaff ? caseId : undefined}
       />
     </>
   );
@@ -250,6 +253,59 @@ function ApproveBar({ caseId, approved }: { caseId: string; approved: boolean })
   );
 }
 
+/**
+ * 법리 축 재분류 — 검수에서 가장 잦은 수정이 "이 서술은 취지가 아니라 목적"류다.
+ * 다른 축 칩을 누르면 그 자리에서 옮긴다(운영 화면으로 나가지 않는다).
+ * ★대상 축에 이미 서술이 있으면 덮어쓰지 않고 이어붙인다 — 서버 moveDoctrineAxis 규칙.
+ */
+function AxisReclassify({
+  caseId,
+  blockIndex,
+  current,
+}: {
+  caseId: string;
+  blockIndex: number;
+  current: DoctrineAxisKey;
+}) {
+  const fetcher = useFetcher<{ ok?: string; error?: string }>();
+  const busy = fetcher.state !== "idle";
+  return (
+    <div className="mt-1.5 flex flex-wrap items-center gap-1">
+      <span className="text-muted-foreground text-[10px] font-medium">
+        축 옮기기
+      </span>
+      {DOCTRINE_AXES.filter((ax) => ax.key !== current).map((ax) => (
+        <fetcher.Form
+          key={ax.key}
+          method="post"
+          action={`/admin/case-diagrams/${caseId}`}
+        >
+          <input type="hidden" name="intent" value="move_doctrine" />
+          <input type="hidden" name="blockIndex" value={blockIndex} />
+          <input type="hidden" name="from" value={current} />
+          <input type="hidden" name="to" value={ax.key} />
+          <button
+            type="submit"
+            disabled={busy}
+            title={ax.hint}
+            className="border-border text-muted-foreground hover:border-primary hover:text-link rounded-full border px-2 py-0.5 text-[11px] font-medium disabled:opacity-50"
+          >
+            {ax.label}
+          </button>
+        </fetcher.Form>
+      ))}
+      {busy ? (
+        <Loader2Icon className="text-muted-foreground size-3 animate-spin" />
+      ) : null}
+      {fetcher.data?.error ? (
+        <span className="text-[10px] font-medium text-rose-600 dark:text-rose-400">
+          {fetcher.data.error}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 function HeaderHint() {
   return (
     <p className="text-muted-foreground text-[11px]">
@@ -300,11 +356,14 @@ function DiagramBody({
   draft,
   subjectSlug,
   statuteArticleIds,
+  reclassifyCaseId,
 }: {
   diagram: CaseDiagramView;
   draft: boolean;
   subjectSlug?: string;
   statuteArticleIds?: Record<string, StatuteRef>;
+  /** 있으면 법리 축을 클릭으로 재분류할 수 있다(staff 전용 — 값 자체가 게이트). */
+  reclassifyCaseId?: string;
 }) {
   const caption = factsSourceCaption(diagram);
   return (
@@ -439,6 +498,13 @@ function DiagramBody({
                       <p className="mt-1 text-[15px] leading-[1.75]">
                         {ax.body}
                       </p>
+                      {reclassifyCaseId ? (
+                        <AxisReclassify
+                          caseId={reclassifyCaseId}
+                          blockIndex={i}
+                          current={ax.key}
+                        />
+                      ) : null}
                     </div>
                   ))}
                 </div>

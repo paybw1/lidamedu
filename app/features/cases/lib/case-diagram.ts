@@ -34,6 +34,12 @@ export const DOCTRINE_AXES = [
 
 export type DoctrineAxisKey = (typeof DOCTRINE_AXES)[number]["key"];
 
+/** zod enum·순회용 키 목록 — DOCTRINE_AXES 와 항상 같은 순서. */
+export const DOCTRINE_AXIS_KEYS = DOCTRINE_AXES.map((ax) => ax.key) as [
+  DoctrineAxisKey,
+  ...DoctrineAxisKey[],
+];
+
 export const DOCTRINE_AXIS_LABEL: Record<DoctrineAxisKey, string> =
   DOCTRINE_AXES.reduce(
     (acc, ax) => ({ ...acc, [ax.key]: ax.label }),
@@ -160,6 +166,29 @@ export function filledAxes(
     const body = block.doctrine[ax.key]?.trim();
     return body ? [{ key: ax.key, label: ax.label, body }] : [];
   });
+}
+
+/**
+ * 법리 한 축의 내용을 다른 축으로 옮긴다 — 검수에서 가장 잦은 수정이 '분류가 틀림'이다.
+ * ★대상 축에 이미 내용이 있으면 **덮어쓰지 않고 이어붙인다**(빈 줄로 구분).
+ *   검수 중 실수로 다른 축의 서술을 날리는 편이 잘못 분류된 채 두는 것보다 나쁘다.
+ * from 과 to 가 같거나 from 이 비어 있으면 원본을 그대로 돌려준다.
+ */
+export function moveDoctrineAxis(
+  block: CaseDiagramBlock,
+  from: DoctrineAxisKey,
+  to: DoctrineAxisKey,
+): CaseDiagramBlock {
+  if (from === to) return block;
+  const body = block.doctrine[from]?.trim();
+  if (!body) return block;
+  const target = block.doctrine[to]?.trim();
+  const doctrine = { ...block.doctrine };
+  delete doctrine[from];
+  doctrine[to] = target ? `${target}
+
+${body}` : body;
+  return { ...block, doctrine };
 }
 
 export function emptyBlock(): CaseDiagramBlock {

@@ -26,11 +26,14 @@ import { Chip } from "~/features/community/components/community-ui";
 import { draftCaseDiagramBlocks } from "~/features/cases/lib/ai-case-diagram-drafter.server";
 import {
   DOCTRINE_AXES,
+  DOCTRINE_AXIS_KEYS,
+  DOCTRINE_AXIS_LABEL,
   FACTS_SOURCE_KINDS,
   FACTS_SOURCE_LABEL,
   caseDiagramBlocksSchema,
   diagramApprovable,
   emptyBlock,
+  moveDoctrineAxis,
   type CaseDiagramBlock,
   type FactsSourceKind,
 } from "~/features/cases/lib/case-diagram";
@@ -40,6 +43,7 @@ import {
   rejectCaseDiagram,
   replaceCaseDiagramBlocks,
   softDeleteCaseDiagram,
+  updateCaseDiagramBlocksByStaff,
   upsertCaseDiagram,
 } from "~/features/cases/queries-case-diagram.server";
 import {
@@ -81,6 +85,12 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     diagram: ctx.diagram,
   };
 }
+
+const moveSchema = z.object({
+  blockIndex: z.number().int().min(0).max(99),
+  from: z.enum(DOCTRINE_AXIS_KEYS),
+  to: z.enum(DOCTRINE_AXIS_KEYS),
+});
 
 const saveSchema = z.object({
   factsMd: z.string().trim().max(20000),
@@ -176,6 +186,34 @@ export async function action({ request, params }: Route.ActionArgs) {
       userId: user.id,
     });
     return data({ ok: `쟁점 ${blocks.length}개 초안을 생성했습니다.` });
+  }
+
+  // 법리 축 재분류 — 도식 패널(시트/팝업)에서 칩 하나로 옮긴다. 전체 저장과 달리
+  //   본문을 싣지 않아, 다른 탭에서 편집 중인 내용을 덮어쓰지 않는다.
+  if (intent === "move_doctrine") {
+    const moved = moveSchema.safeParse({
+      blockIndex: Number(fd.get("blockIndex")),
+      from: fd.get("from"),
+      to: fd.get("to"),
+    });
+    if (!moved.success) return data({ error: "이동 대상이 올바르지 않습니다." });
+    const ctx = await getCaseDiagramEditContext(client, caseId);
+    if (!ctx?.diagram) return data({ error: "도식이 없습니다." });
+    const blocks = ctx.diagram.blocks;
+    const target = blocks[moved.data.blockIndex];
+    if (!target) return data({ error: "쟁점을 찾지 못했습니다." });
+    const next = blocks.map((b, i) =>
+      i === moved.data.blockIndex
+        ? moveDoctrineAxis(b, moved.data.from, moved.data.to)
+        : b,
+    );
+    await updateCaseDiagramBlocksByStaff(client, {
+      diagramId: ctx.diagram.diagramId,
+      blocks: next,
+    });
+    return data({
+      ok: `${DOCTRINE_AXIS_LABEL[moved.data.from]} → ${DOCTRINE_AXIS_LABEL[moved.data.to]} 로 옮겼습니다.`,
+    });
   }
 
   if (intent === "approve") {

@@ -441,6 +441,23 @@ export async function replaceCaseDiagramBlocks(
   return existing.diagramId;
 }
 
+/**
+ * staff 가 손으로 고친 blocks 저장. `replaceCaseDiagramBlocks` 와 달리
+ * **review_status 를 되돌리지 않는다** — 검수 화면에서 분류를 고치고 곧바로 승인하는
+ * 흐름이라, 고칠 때마다 draft 로 떨어지면 승인이 계속 밀린다.
+ * generated_by 는 'staff' 로 — 사람 손이 닿은 도식이다.
+ */
+export async function updateCaseDiagramBlocksByStaff(
+  client: Client,
+  args: { diagramId: string; blocks: CaseDiagramBlock[] },
+): Promise<void> {
+  const { error } = await client
+    .from("case_diagrams")
+    .update({ blocks: args.blocks, generated_by: "staff" })
+    .eq("diagram_id", args.diagramId);
+  if (error) throw error;
+}
+
 export async function approveCaseDiagram(
   client: Client,
   args: { diagramId: string; userId: string },
