@@ -647,6 +647,38 @@ export default function AdminCaseDiagramEdit({
                       rows={2}
                       className="text-sm"
                     />
+                    {/* 축 옮기기 — 검수에서 가장 잦은 수정이 '분류가 틀림'이다.
+                        ★여기서는 서버를 부르지 않고 화면 상태만 바꾼다. 이 화면은
+                        '저장'을 눌러야 반영되는 곳이라, 축만 즉시 서버에 쓰면
+                        본문 편집분과 어긋난다(도식 패널은 편집이 없어 즉시 저장). */}
+                    {(b.doctrine[ax.key] ?? "").trim() ? (
+                      <div className="mt-1 flex flex-wrap items-center gap-1">
+                        <span className="text-muted-foreground text-[10px] font-medium">
+                          축 옮기기
+                        </span>
+                        {DOCTRINE_AXES.filter((t) => t.key !== ax.key).map(
+                          (t) => (
+                            <button
+                              key={t.key}
+                              type="button"
+                              title={t.hint}
+                              onClick={() =>
+                                setBlocks((prev) =>
+                                  prev.map((blk, i) =>
+                                    i === idx
+                                      ? moveDoctrineAxis(blk, ax.key, t.key)
+                                      : blk,
+                                  ),
+                                )
+                              }
+                              className="border-border text-muted-foreground hover:border-primary hover:text-link rounded-full border px-2 py-0.5 text-[11px] font-medium"
+                            >
+                              {t.label}
+                            </button>
+                          ),
+                        )}
+                      </div>
+                    ) : null}
                   </div>
                 ))}
               </div>
