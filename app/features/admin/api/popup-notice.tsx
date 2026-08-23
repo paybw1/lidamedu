@@ -12,6 +12,8 @@ import {
   deletePopupNotice,
   updatePopupNotice,
 } from "~/features/admin/queries/popup-notices.server";
+import { runAfterResponse } from "~/core/lib/wait-until.server";
+import { notifyAnnouncementPublished } from "~/features/announcements/notify.server";
 import { createAnnouncement } from "~/features/announcements/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 
@@ -190,6 +192,7 @@ export async function action({ request }: Route.ActionArgs) {
           { status: 400 },
         );
       }
+      runAfterResponse(notifyAnnouncementPublished(ann.announcementId));
     }
     return data({ ok: true });
   }

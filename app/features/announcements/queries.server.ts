@@ -265,27 +265,8 @@ export async function listInboxAnnouncements(
   return items;
 }
 
-// ★현재 호출부 없음(뱃지 미사용). 되살릴 때는 platform 인자를 받아
-//   scopesVisibleOn() 으로 걸러야 한다 — 안 그러면 반대편 플랫폼 공지까지 세어서
-//   "안 읽음 1건인데 목록엔 없음"이 된다.
-export async function countUnreadForUser(
-  client: SupabaseClient<Database>,
-  profileId: string,
-): Promise<number> {
-  const { data: anns } = await client
-    .from("announcements")
-    .select("announcement_id")
-    .limit(200);
-  const ids = (anns ?? []).map((a) => a.announcement_id);
-  if (ids.length === 0) return 0;
-  const { data: reads } = await client
-    .from("announcement_reads")
-    .select("announcement_id")
-    .eq("profile_id", profileId)
-    .in("announcement_id", ids);
-  const readSet = new Set((reads ?? []).map((r) => r.announcement_id));
-  return ids.filter((id) => !readSet.has(id)).length;
-}
+// 안 읽음 뱃지는 알림(user_notifications, kind='announcement')에서 나온다 —
+// 발행 시 notify.server.ts 가 팬아웃한다. 공지 테이블을 따로 세던 함수는 제거(2026-08-23).
 
 export async function markAnnouncementRead(
   client: SupabaseClient<Database>,

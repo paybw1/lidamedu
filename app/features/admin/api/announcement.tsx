@@ -4,6 +4,8 @@ import { data } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { runAfterResponse } from "~/core/lib/wait-until.server";
+import { notifyAnnouncementPublished } from "~/features/announcements/notify.server";
 import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
 import {
   createAnnouncement,
@@ -100,6 +102,10 @@ export async function action({ request }: Route.ActionArgs) {
       publish: parsed.data.publish,
     });
     if (!res.ok) return data({ error: res.error }, { status: 400 });
+    // 발행과 동시에 대상자 인박스로. 응답 후 실행 — 서버리스는 응답 반환 뒤 종료된다.
+    if (parsed.data.publish) {
+      runAfterResponse(notifyAnnouncementPublished(res.announcementId));
+    }
     await logAuditEvent({
       actorId: user.id,
       actorRole: role,
@@ -151,6 +157,10 @@ export async function action({ request }: Route.ActionArgs) {
       publish: parsed.data.publish,
     });
     if (!res.ok) return data({ error: res.error }, { status: 400 });
+    // 초안 → 발행 전환에서만 보낸다. (notify 쪽도 멱등이라 이중 방어)
+    if (parsed.data.publish && ann.publishedAt === null) {
+      runAfterResponse(notifyAnnouncementPublished(announcementId));
+    }
     await logAuditEvent({
       actorId: user.id,
       actorRole: role,
@@ -176,6 +186,10 @@ export async function action({ request }: Route.ActionArgs) {
       publish: intent === "publish",
     });
     if (!res.ok) return data({ error: res.error }, { status: 400 });
+    // 초안 → 발행 전환에서만. 언발행 후 재발행해도 notify 가 멱등이라 두 번 가지 않는다.
+    if (intent === "publish" && ann.publishedAt === null) {
+      runAfterResponse(notifyAnnouncementPublished(announcementId));
+    }
     await logAuditEvent({
       actorId: user.id,
       actorRole: role,

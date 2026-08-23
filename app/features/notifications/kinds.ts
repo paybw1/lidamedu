@@ -22,6 +22,9 @@ export const STAFF_KINDS: NotificationKind[] = [
   "cs_inquiry_created",
   // 감사 이상(권한 변경·완전삭제) 실시간 경보.
   "security_alert",
+  // 공지 발행 알림 — '강사·운영자' 대상 공지는 staff 가 유일한 수신자다.
+  //   여기 빠지면 배지·인박스가 STAFF_KINDS 로 걸러 안 보여준다.
+  "announcement",
 ];
 
 // 학생용 kinds.
