@@ -242,6 +242,8 @@ export async function draftCaseDiagramBlocks(
       doctrine: normalizeDoctrine(r.doctrine),
       application: clampText(r.application),
       conclusion: clampText(r.conclusion),
+      // 코멘트는 강사가 덧붙이는 칸 — AI 는 채우지 않는다(판결문 근거 밖 서술 금지).
+      comment: "",
     };
   });
 

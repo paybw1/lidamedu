@@ -94,6 +94,13 @@ export const caseDiagramBlockSchema = z.object({
   doctrine: doctrineSchema.default({}),
   application: trimmed.default(""),
   conclusion: trimmed.default(""),
+  /**
+   * 쟁점별 코멘트 — 판결문 서술이 아니라 **강사가 덧붙이는 말**(출제 포인트·주의점·
+   * 관련 논점 등). 도식의 나머지 칸은 판결문 근거로만 채우는 규칙이라(창작 금지),
+   * 그 규칙 밖의 서술은 이 칸으로 분리한다.
+   * ★새 필드라 기존 블록에는 없다 — default("") 로 읽어야 파싱이 깨지지 않는다.
+   */
+  comment: trimmed.default(""),
 });
 
 export const caseDiagramBlocksSchema = z.array(caseDiagramBlockSchema);
@@ -191,6 +198,11 @@ ${body}` : body;
   return { ...block, doctrine };
 }
 
+/** 코멘트가 달린 쟁점 수 — 검수 목록·배지에서 쓴다. */
+export function commentedBlockCount(blocks: CaseDiagramBlock[]): number {
+  return blocks.filter((b) => (b.comment ?? "").trim().length > 0).length;
+}
+
 export function emptyBlock(): CaseDiagramBlock {
   return {
     issue: "",
@@ -198,6 +210,7 @@ export function emptyBlock(): CaseDiagramBlock {
     doctrine: {},
     application: "",
     conclusion: "",
+    comment: "",
   };
 }
 

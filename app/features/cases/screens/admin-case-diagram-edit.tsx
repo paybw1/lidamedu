@@ -684,6 +684,19 @@ export default function AdminCaseDiagramEdit({
               </div>
             </div>
 
+            <Field
+              label="코멘트"
+              hint="강사가 덧붙이는 말 — 출제 포인트·주의점. 비워도 됩니다."
+            >
+              <Textarea
+                value={b.comment ?? ""}
+                onChange={(e) => patchBlock(idx, { comment: e.target.value })}
+                rows={2}
+                placeholder="예: 이 쟁점은 2차에서 사실관계를 바꿔 반복 출제됨"
+                className="text-sm"
+              />
+            </Field>
+
             <Field label="사안의 포섭">
               <Textarea
                 value={b.application}

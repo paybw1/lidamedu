@@ -15,6 +15,7 @@ import {
   ChevronRightIcon,
   GitBranchIcon,
   Loader2Icon,
+  MessageSquareIcon,
   PanelRightIcon,
   PencilLineIcon,
   ScaleIcon,
@@ -587,6 +588,19 @@ function DiagramBody({
                   {b.conclusion}
                 </p>
               </Step>
+            ) : null}
+
+            {/* 강사 코멘트 — 판결문 서술이 아니라 덧붙이는 말이다. 번호 없는 별도
+                블록으로 띄워, 답안 순서(1.법조문 2.법리 3.포섭 4.결론)와 섞이지 않게 한다. */}
+            {(b.comment ?? "").trim() ? (
+              <div className="border-primary/30 bg-primary/[0.04] mt-2.5 rounded-lg border border-dashed px-3 py-2">
+                <p className="text-link mb-0.5 inline-flex items-center gap-1 text-[11px] font-bold">
+                  <MessageSquareIcon className="size-3" /> 코멘트
+                </p>
+                <p className="text-[14px] leading-[1.7] whitespace-pre-line">
+                  {b.comment}
+                </p>
+              </div>
             ) : null}
           </section>
         );
