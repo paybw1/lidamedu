@@ -334,6 +334,52 @@ export async function listCaseDiagramTargets(
   return rows.filter((r) => r.diagram?.reviewStatus === opts.status);
 }
 
+// ── 검수 목록 필터 (목록 화면 ↔ 편집 화면 이전/다음 공용 SSOT) ──────────────
+// 생성 범위는 특허 2005~ (feat-2-035). 과목이 늘면 여기와 화면 상수를 같이 옮긴다.
+export const DIAGRAM_TARGET_LAW = "patent" as const;
+export const DIAGRAM_TARGET_FROM = "2005-01-01";
+
+export interface DiagramListFilters {
+  year: number | null;
+  status: DiagramReviewStatus | "none" | null;
+  q: string;
+}
+
+/** URL 파라미터 → 필터. 편집 화면은 `?back=` 안의 query 를 풀어 같은 함수에 넣는다. */
+export function parseDiagramListFilters(
+  params: URLSearchParams,
+): DiagramListFilters {
+  const yearRaw = params.get("year");
+  const statusRaw = params.get("status");
+  return {
+    year: yearRaw && /^d{4}$/.test(yearRaw) ? Number(yearRaw) : null,
+    status:
+      statusRaw === "draft" ||
+      statusRaw === "approved" ||
+      statusRaw === "rejected" ||
+      statusRaw === "none"
+        ? statusRaw
+        : null,
+    q: (params.get("q") ?? "").trim(),
+  };
+}
+
+/** 상태·검색어 필터(연도는 DB 쿼리에서 건다). 목록 표시 순서를 그대로 유지한다. */
+export function applyDiagramListFilters(
+  rows: CaseDiagramListRow[],
+  f: DiagramListFilters,
+): CaseDiagramListRow[] {
+  return rows
+    .filter((r) =>
+      !f.status
+        ? true
+        : f.status === "none"
+          ? r.diagram === null
+          : r.diagram?.reviewStatus === f.status,
+    )
+    .filter((r) => !f.q || r.caseNumber.includes(f.q) || r.caseTitle.includes(f.q));
+}
+
 /** 판례 메타 + 도식 — 편집 화면 loader. */
 export async function getCaseDiagramEditContext(
   client: Client,

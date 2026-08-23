@@ -7,6 +7,8 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeftIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   CheckIcon,
   PlusIcon,
   SparklesIcon,
@@ -45,8 +47,13 @@ import {
   type FactsSourceKind,
 } from "~/features/cases/lib/case-diagram";
 import {
+  applyDiagramListFilters,
   approveCaseDiagram,
+  DIAGRAM_TARGET_FROM,
+  DIAGRAM_TARGET_LAW,
   getCaseDiagramEditContext,
+  listCaseDiagramTargets,
+  parseDiagramListFilters,
   rejectCaseDiagram,
   replaceCaseDiagramBlocks,
   softDeleteCaseDiagram,
@@ -79,10 +86,15 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   if (!role) throw data("Forbidden", { status: 403 });
 
   if (!params.caseId) throw data("Not found", { status: 404 });
-  const ctx = await getCaseDiagramEditContext(client, params.caseId);
+  const backRaw = new URL(request.url).searchParams.get("back") ?? "";
+  const [ctx, neighbors] = await Promise.all([
+    getCaseDiagramEditContext(client, params.caseId),
+    loadNeighbors(client, params.caseId, backRaw),
+  ]);
   if (!ctx) throw data("Not found", { status: 404 });
   return {
     role,
+    neighbors,
     kase: {
       ...ctx.kase,
       // 전문은 화면에서 쓰지 않는다(길이만 필요) — 페이로드 절감.
@@ -264,6 +276,38 @@ export async function action({ request, params }: Route.ActionArgs) {
   return data({ error: "알 수 없는 요청입니다." }, { status: 400 });
 }
 
+/** 이전/다음 판례 — 끝이면 비활성(자리를 지켜 버튼이 흔들리지 않게 한다). */
+function NeighborLink({
+  caseId,
+  back,
+  dir,
+}: {
+  caseId: string | null;
+  back: string;
+  dir: "prev" | "next";
+}) {
+  const Icon = dir === "prev" ? ChevronLeftIcon : ChevronRightIcon;
+  const cls =
+    "border-border text-muted-foreground hover:bg-muted inline-flex size-6 items-center justify-center rounded-full border";
+  if (!caseId) {
+    return (
+      <span className={`${cls} opacity-40`} aria-hidden>
+        <Icon className="size-3.5" />
+      </span>
+    );
+  }
+  return (
+    <Link
+      to={`/admin/case-diagrams/${caseId}${back ? `?back=${encodeURIComponent(back)}` : ""}`}
+      title={dir === "prev" ? "이전 판례" : "다음 판례"}
+      className={cls}
+      prefetch="intent"
+    >
+      <Icon className="size-3.5" />
+    </Link>
+  );
+}
+
 /**
  * 법조문 입력창 — 쉼표로 여러 건. 쉼표를 찍으면 뒤에 공백을 자동으로 넣는다.
  *
@@ -329,11 +373,47 @@ function cleanBlocks(blocks: CaseDiagramBlock[]): CaseDiagramBlock[] {
   }));
 }
 
+/**
+ * 검수 화면의 이전/다음 — **들어온 목록과 같은 순서·같은 범위**여야 한다.
+ * ?back 안의 query(연도·상태·검색어)를 목록 화면과 **같은 헬퍼**로 풀어 순서를 재현한다.
+ * ★back 이 없으면(도식 패널 '검수 화면' 링크 등) 필터 없는 전체 목록 순서를 쓴다.
+ */
+async function loadNeighbors(
+  client: Parameters<typeof listCaseDiagramTargets>[0],
+  caseId: string,
+  backRaw: string,
+): Promise<{
+  idx: number;
+  total: number;
+  prevId: string | null;
+  nextId: string | null;
+} | null> {
+  const params = new URLSearchParams(
+    backRaw.startsWith("?") ? backRaw.slice(1) : "",
+  );
+  const filters = parseDiagramListFilters(params);
+  const all = await listCaseDiagramTargets(client, {
+    lawCode: DIAGRAM_TARGET_LAW,
+    decidedFrom: DIAGRAM_TARGET_FROM,
+    year: filters.year,
+  });
+  const rows = applyDiagramListFilters(all, filters);
+  const idx = rows.findIndex((r) => r.caseId === caseId);
+  // 목록에 없는 판례(필터 밖에서 직접 열었다)면 이동 UI 를 감춘다 — 위치 표기가 거짓이 된다.
+  if (idx < 0 || rows.length <= 1) return null;
+  return {
+    idx,
+    total: rows.length,
+    prevId: idx > 0 ? rows[idx - 1].caseId : null,
+    nextId: idx < rows.length - 1 ? rows[idx + 1].caseId : null,
+  };
+}
+
 export default function AdminCaseDiagramEdit({
   loaderData,
   actionData,
 }: Route.ComponentProps) {
-  const { kase, diagram, role } = loaderData;
+  const { kase, diagram, role, neighbors } = loaderData;
   // "목록으로" — 들어온 목록 상태(연도·상태·검색어)로 되돌아간다. ?back=<encoded query>.
   //   ★목록 밖(도식 패널의 '검수 화면' 링크 등)에서 들어오면 back 이 없다 → 기본 목록.
   //   ★값은 우리가 만든 "?..." 형태만 받는다 — 외부 URL 주입을 막는다(open redirect 방지).
@@ -373,12 +453,32 @@ export default function AdminCaseDiagramEdit({
       desc={`${kase.caseNumber} · ${kase.court} ${kase.decidedAt}`}
       width={960}
     >
-      <Link
-        to={`/admin/case-diagrams${backTo}`}
-        className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-xs"
-      >
-        <ArrowLeftIcon className="size-3.5" /> 목록으로
-      </Link>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <Link
+          to={`/admin/case-diagrams${backTo}`}
+          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs"
+        >
+          <ArrowLeftIcon className="size-3.5" /> 목록으로
+        </Link>
+        {/* 이전/다음 — 목록으로 나갔다 들어오지 않고 죽 훑는다. 범위·순서는 목록과 동일. */}
+        {neighbors ? (
+          <span className="ml-auto inline-flex items-center gap-1">
+            <NeighborLink
+              caseId={neighbors.prevId}
+              back={backTo}
+              dir="prev"
+            />
+            <span className="text-muted-foreground text-[11px] font-medium tabular-nums">
+              {neighbors.idx + 1} / {neighbors.total}
+            </span>
+            <NeighborLink
+              caseId={neighbors.nextId}
+              back={backTo}
+              dir="next"
+            />
+          </span>
+        ) : null}
+      </div>
 
       <header className="mb-5">
         <div className="mb-1.5 flex flex-wrap items-center gap-1.5">

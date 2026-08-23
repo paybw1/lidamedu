@@ -13,14 +13,18 @@ import {
   FACTS_SOURCE_LABEL,
   isLowerCourtSource,
 } from "~/features/cases/lib/case-diagram";
-import { listCaseDiagramTargets } from "~/features/cases/queries-case-diagram.server";
+import {
+  applyDiagramListFilters,
+  DIAGRAM_TARGET_FROM,
+  DIAGRAM_TARGET_LAW,
+  listCaseDiagramTargets,
+  parseDiagramListFilters,
+} from "~/features/cases/queries-case-diagram.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 
 import type { Route } from "./+types/admin-case-diagram-list";
 
 // 생성·노출 범위(설계 §1) — 스키마 제약이 아니라 운영 범위라 화면 상수로 둔다.
-const TARGET_LAW = "patent";
-const TARGET_FROM = "2005-01-01";
 
 export const meta: Route.MetaFunction = () => [
   { title: "판례 도식 — 출제 관리 | 리담변리사학원" },
@@ -36,23 +40,13 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (!role) throw data("Forbidden", { status: 403 });
 
   const url = new URL(request.url);
-  const yearRaw = url.searchParams.get("year");
-  const year = yearRaw && /^\d{4}$/.test(yearRaw) ? Number(yearRaw) : null;
-  const statusRaw = url.searchParams.get("status");
-  const status =
-    statusRaw === "draft" ||
-    statusRaw === "approved" ||
-    statusRaw === "rejected" ||
-    statusRaw === "none"
-      ? statusRaw
-      : null;
-  const q = (url.searchParams.get("q") ?? "").trim();
+  const { year, status, q } = parseDiagramListFilters(url.searchParams);
 
   // 상태 필터는 목록에만 걸고, 헤더 카운트는 항상 전체 기준으로 낸다
   // (필터를 걸 때마다 "총 N건"이 바뀌면 진척도를 읽을 수 없다).
   const all = await listCaseDiagramTargets(client, {
-    lawCode: TARGET_LAW,
-    decidedFrom: TARGET_FROM,
+    lawCode: DIAGRAM_TARGET_LAW,
+    decidedFrom: DIAGRAM_TARGET_FROM,
     year,
   });
   const counts = {
@@ -62,15 +56,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     none: all.filter((r) => r.diagram === null).length,
   };
 
-  const rows = all
-    .filter((r) =>
-      !status
-        ? true
-        : status === "none"
-          ? r.diagram === null
-          : r.diagram?.reviewStatus === status,
-    )
-    .filter((r) => !q || r.caseNumber.includes(q) || r.caseTitle.includes(q));
+  const rows = applyDiagramListFilters(all, { year, status, q });
   return { rows, counts, year, status, q, role };
 }
 
