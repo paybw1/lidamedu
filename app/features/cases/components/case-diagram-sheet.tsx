@@ -410,10 +410,10 @@ function CommentBox({
       </p>
       <InlineEdit
         caseId={caseId}
-        intent="set_comment"
-        name="comment"
+        intent="set_block_field"
+        name="value"
         value={comment}
-        fields={{ blockIndex }}
+        fields={{ blockIndex, field: "comment" }}
         rows={3}
         label={comment.trim() ? "코멘트 수정" : "코멘트 쓰기"}
         placeholder="예: 이 쟁점은 2차에서 사실관계를 바꿔 반복 출제됨"
@@ -682,10 +682,10 @@ function DiagramBody({
             <div className="mb-2">
               <InlineEdit
                 caseId={reclassifyCaseId}
-                intent="set_issue"
-                name="issue"
+                intent="set_block_field"
+                name="value"
                 value={b.issue}
-                fields={{ blockIndex: i }}
+                fields={{ blockIndex: i, field: "issue" }}
                 rows={2}
                 label="쟁점 수정"
                 placeholder="이 쟁점에서 무엇이 문제되는가"
@@ -699,47 +699,66 @@ function DiagramBody({
               </InlineEdit>
             </div>
 
-            {b.statutes.length > 0 ? (
+            {/* staff 는 비어 있어도 칸을 연다(쓸 자리가 있어야 채운다).
+                학생·비-staff 에게는 종전대로 값이 있을 때만 보인다. */}
+            {b.statutes.length > 0 || reclassifyCaseId ? (
               <Step no={0} label="법조문">
-                {/* ★구법 표기는 현행 조문으로 이어진다 — 판결 당시 조문과 내용이 다를 수
+                <InlineEdit
+                  caseId={reclassifyCaseId}
+                  intent="set_block_field"
+                  name="value"
+                  value={b.statutes.join(", ")}
+                  fields={{ blockIndex: i, field: "statutes" }}
+                  rows={2}
+                  label={b.statutes.length > 0 ? "법조문 수정" : "법조문 쓰기"}
+                  placeholder="특허법 제29조 제2항, 특허법 제42조 제4항"
+                >
+                  {/* ★구법 표기는 현행 조문으로 이어진다 — 판결 당시 조문과 내용이 다를 수
                     있어 밝혀 둔다(원장 지적 2026-08-21). */}
-                {b.statutes.some(
-                  (s) => isOldLawLabel(s) && statuteArticleIds?.[s],
-                ) ? (
-                  <p className="text-muted-foreground mb-1 text-[11px]">
-                    구법 표기를 누르면 현행 조문이 열립니다
-                  </p>
-                ) : null}
-                {/* 표기만으로는 무슨 규정인지 떠올려야 한다 — 해석된 조문은 그 자리에서
+                  {b.statutes.some(
+                    (s) => isOldLawLabel(s) && statuteArticleIds?.[s],
+                  ) ? (
+                    <p className="text-muted-foreground mb-1 text-[11px]">
+                      구법 표기를 누르면 현행 조문이 열립니다
+                    </p>
+                  ) : null}
+                  {/* 표기만으로는 무슨 규정인지 떠올려야 한다 — 해석된 조문은 그 자리에서
                     본문을 펼쳐 볼 수 있게 한다(원장 요청 2026-08-20). */}
-                <div className="flex flex-wrap gap-1">
-                  {b.statutes.map((s) => {
-                    const ref = statuteArticleIds?.[s];
-                    // 참조 법령(실용신안법·공정거래법 등)은 학습화면이 없어 팝업만 연다.
-                    const canLink =
-                      ref && (ref.kind === "reference" || Boolean(subjectSlug));
-                    return canLink && ref ? (
-                      <RefPreviewBadge
-                        key={s}
-                        kind={ref.kind}
-                        refId={ref.id}
-                        label={s}
-                        studyHref={
-                          ref.kind === "article"
-                            ? `/subjects/${subjectSlug}/articles/${ref.id}`
-                            : undefined
-                        }
-                      />
-                    ) : (
-                      <span
-                        key={s}
-                        className="border-border text-muted-foreground rounded border px-2 py-0.5 text-[13px]"
-                      >
-                        {s}
-                      </span>
-                    );
-                  })}
-                </div>
+                  {b.statutes.length === 0 ? (
+                    <p className="text-muted-foreground text-[12px]">
+                      판결문에 명시된 조문만 씁니다. 쉼표로 구분하세요.
+                    </p>
+                  ) : null}
+                  <div className="flex flex-wrap gap-1">
+                    {b.statutes.map((s) => {
+                      const ref = statuteArticleIds?.[s];
+                      // 참조 법령(실용신안법·공정거래법 등)은 학습화면이 없어 팝업만 연다.
+                      const canLink =
+                        ref &&
+                        (ref.kind === "reference" || Boolean(subjectSlug));
+                      return canLink && ref ? (
+                        <RefPreviewBadge
+                          key={s}
+                          kind={ref.kind}
+                          refId={ref.id}
+                          label={s}
+                          studyHref={
+                            ref.kind === "article"
+                              ? `/subjects/${subjectSlug}/articles/${ref.id}`
+                              : undefined
+                          }
+                        />
+                      ) : (
+                        <span
+                          key={s}
+                          className="border-border text-muted-foreground rounded border px-2 py-0.5 text-[13px]"
+                        >
+                          {s}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </InlineEdit>
               </Step>
             ) : null}
 
@@ -767,17 +786,53 @@ function DiagramBody({
               </Step>
             ) : null}
 
-            {b.application ? (
+            {b.application || reclassifyCaseId ? (
               <Step no={2} label="사안의 포섭">
-                <p className="text-[15px] leading-[1.75]">{b.application}</p>
+                <InlineEdit
+                  caseId={reclassifyCaseId}
+                  intent="set_block_field"
+                  name="value"
+                  value={b.application}
+                  fields={{ blockIndex: i, field: "application" }}
+                  rows={4}
+                  label={b.application ? "포섭 수정" : "포섭 쓰기"}
+                  placeholder="이 사건 사실을 그 법리에 포섭한 부분"
+                >
+                  {b.application ? (
+                    <p className="text-[15px] leading-[1.75]">
+                      {b.application}
+                    </p>
+                  ) : (
+                    <p className="text-muted-foreground text-[12px]">
+                      판결문의 판단 부분을 요약합니다.
+                    </p>
+                  )}
+                </InlineEdit>
               </Step>
             ) : null}
 
-            {b.conclusion ? (
+            {b.conclusion || reclassifyCaseId ? (
               <Step no={3} label="결론">
-                <p className="text-[15px] leading-[1.75] font-medium">
-                  {b.conclusion}
-                </p>
+                <InlineEdit
+                  caseId={reclassifyCaseId}
+                  intent="set_block_field"
+                  name="value"
+                  value={b.conclusion}
+                  fields={{ blockIndex: i, field: "conclusion" }}
+                  rows={3}
+                  label={b.conclusion ? "결론 수정" : "결론 쓰기"}
+                  placeholder="그 쟁점에 대한 결론(파기/기각/속함 등)"
+                >
+                  {b.conclusion ? (
+                    <p className="text-[15px] leading-[1.75] font-medium">
+                      {b.conclusion}
+                    </p>
+                  ) : (
+                    <p className="text-muted-foreground text-[12px]">
+                      ★승인하려면 각 쟁점에 결론이 있어야 합니다.
+                    </p>
+                  )}
+                </InlineEdit>
               </Step>
             ) : null}
 

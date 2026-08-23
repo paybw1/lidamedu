@@ -47,13 +47,9 @@ import {
   moveDoctrineAxis,
 } from "~/features/cases/lib/case-diagram";
 import {
-  DIAGRAM_TARGET_FROM,
-  DIAGRAM_TARGET_LAW,
-  applyDiagramListFilters,
   approveCaseDiagram,
   getCaseDiagramEditContext,
-  listCaseDiagramTargets,
-  parseDiagramListFilters,
+  getDiagramNeighbors,
   rejectCaseDiagram,
   replaceCaseDiagramBlocks,
   softDeleteCaseDiagram,
@@ -89,7 +85,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const backRaw = new URL(request.url).searchParams.get("back") ?? "";
   const [ctx, neighbors] = await Promise.all([
     getCaseDiagramEditContext(client, params.caseId),
-    loadNeighbors(client, params.caseId, backRaw),
+    getDiagramNeighbors(client, params.caseId, backRaw),
   ]);
   if (!ctx) throw data("Not found", { status: 404 });
   return {
@@ -108,13 +104,25 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 // ── 도식 패널 인라인 편집 ───────────────────────────────────────────────
 // 셋 다 **바꾸는 칸만** 싣는다 — 본문 전체를 보내지 않아 다른 탭의 편집을 덮지 않는다.
 const factsSchema = z.object({ factsMd: z.string().trim().max(20_000) });
-const issueSchema = z.object({
+// 패널에서 한 칸씩 고칠 수 있는 필드. statutes 는 쉼표 구분 문자열로 오간다.
+const BLOCK_FIELDS = [
+  "issue",
+  "statutes",
+  "application",
+  "conclusion",
+  "comment",
+] as const;
+const BLOCK_FIELD_LABEL: Record<(typeof BLOCK_FIELDS)[number], string> = {
+  issue: "쟁점",
+  statutes: "법조문",
+  application: "사안의 포섭",
+  conclusion: "결론",
+  comment: "코멘트",
+};
+const blockFieldSchema = z.object({
   blockIndex: z.number().int().min(0).max(99),
-  issue: z.string().trim().min(2, "쟁점을 입력하세요").max(400),
-});
-const commentSchema = z.object({
-  blockIndex: z.number().int().min(0).max(99),
-  comment: z.string().trim().max(2000),
+  field: z.enum(BLOCK_FIELDS),
+  value: z.string().max(20_000),
 });
 
 const moveSchema = z.object({
@@ -264,55 +272,46 @@ export async function action({ request, params }: Route.ActionArgs) {
     return data({ ok: "사실관계를 저장했습니다." });
   }
 
-  // 쟁점 문구 저장 — 도식 패널 인라인.
-  if (intent === "set_issue") {
-    const parsed = issueSchema.safeParse({
+  // 쟁점 블록의 한 칸만 저장 — 도식 패널(시트/팝업) 인라인 편집 공용.
+  //   ★본문을 통째로 싣지 않는다 — 다른 탭에서 검수 화면을 열어 둔 채여도 덮어쓰지 않는다.
+  if (intent === "set_block_field") {
+    const parsed = blockFieldSchema.safeParse({
       blockIndex: Number(fd.get("blockIndex")),
-      issue: fd.get("issue") ?? "",
+      field: fd.get("field"),
+      value: fd.get("value") ?? "",
     });
     if (!parsed.success) {
-      return data({
-        error: parsed.error.issues[0]?.message ?? "쟁점을 입력하세요.",
-      });
+      return data({ error: "입력값이 올바르지 않습니다." });
+    }
+    const { blockIndex, field, value } = parsed.data;
+    // 쟁점은 도식의 뼈대라 비울 수 없다(빈 쟁점 블록은 의미가 없다 — 스키마와 같은 규칙).
+    if (field === "issue" && value.trim().length < 2) {
+      return data({ error: "쟁점을 2자 이상 입력하세요." });
     }
     const ctx = await getCaseDiagramEditContext(client, caseId);
     if (!ctx?.diagram) return data({ error: "도식이 없습니다." });
-    if (!ctx.diagram.blocks[parsed.data.blockIndex]) {
+    if (!ctx.diagram.blocks[blockIndex]) {
       return data({ error: "쟁점을 찾지 못했습니다." });
     }
-    const next = ctx.diagram.blocks.map((b, i) =>
-      i === parsed.data.blockIndex ? { ...b, issue: parsed.data.issue } : b,
-    );
+    const next = ctx.diagram.blocks.map((b, i) => {
+      if (i !== blockIndex) return b;
+      // 법조문은 쉼표 구분 문자열로 받아 배열로 되돌린다(패널 입력 형식 = 검수 화면과 동일).
+      if (field === "statutes") {
+        return {
+          ...b,
+          statutes: value
+            .split(",")
+            .map((x) => x.trim())
+            .filter(Boolean),
+        };
+      }
+      return { ...b, [field]: value.trim() };
+    });
     await updateCaseDiagramBlocksByStaff(client, {
       diagramId: ctx.diagram.diagramId,
       blocks: next,
     });
-    return data({ ok: "쟁점을 저장했습니다." });
-  }
-
-  // 쟁점 코멘트 저장 — 도식 패널(시트/팝업)에서 읽던 자리에서 바로 남긴다.
-  if (intent === "set_comment") {
-    const parsed = commentSchema.safeParse({
-      blockIndex: Number(fd.get("blockIndex")),
-      comment: fd.get("comment") ?? "",
-    });
-    if (!parsed.success) return data({ error: "코멘트가 너무 깁니다." });
-    const ctx = await getCaseDiagramEditContext(client, caseId);
-    if (!ctx?.diagram) return data({ error: "도식이 없습니다." });
-    const target = ctx.diagram.blocks[parsed.data.blockIndex];
-    if (!target) return data({ error: "쟁점을 찾지 못했습니다." });
-    const next = ctx.diagram.blocks.map((b, i) =>
-      i === parsed.data.blockIndex ? { ...b, comment: parsed.data.comment } : b,
-    );
-    await updateCaseDiagramBlocksByStaff(client, {
-      diagramId: ctx.diagram.diagramId,
-      blocks: next,
-    });
-    return data({
-      ok: parsed.data.comment
-        ? "코멘트를 저장했습니다."
-        : "코멘트를 지웠습니다.",
-    });
+    return data({ ok: `${BLOCK_FIELD_LABEL[field]}을(를) 저장했습니다.` });
   }
 
   if (intent === "approve") {
@@ -457,42 +456,6 @@ function cleanBlocks(blocks: CaseDiagramBlock[]): CaseDiagramBlock[] {
     ...b,
     statutes: b.statutes.map((x) => x.trim()).filter(Boolean),
   }));
-}
-
-/**
- * 검수 화면의 이전/다음 — **들어온 목록과 같은 순서·같은 범위**여야 한다.
- * ?back 안의 query(연도·상태·검색어)를 목록 화면과 **같은 헬퍼**로 풀어 순서를 재현한다.
- * ★back 이 없으면(도식 패널 '검수 화면' 링크 등) 필터 없는 전체 목록 순서를 쓴다.
- */
-async function loadNeighbors(
-  client: Parameters<typeof listCaseDiagramTargets>[0],
-  caseId: string,
-  backRaw: string,
-): Promise<{
-  idx: number;
-  total: number;
-  prevId: string | null;
-  nextId: string | null;
-} | null> {
-  const params = new URLSearchParams(
-    backRaw.startsWith("?") ? backRaw.slice(1) : "",
-  );
-  const filters = parseDiagramListFilters(params);
-  const all = await listCaseDiagramTargets(client, {
-    lawCode: DIAGRAM_TARGET_LAW,
-    decidedFrom: DIAGRAM_TARGET_FROM,
-    year: filters.year,
-  });
-  const rows = applyDiagramListFilters(all, filters);
-  const idx = rows.findIndex((r) => r.caseId === caseId);
-  // 목록에 없는 판례(필터 밖에서 직접 열었다)면 이동 UI 를 감춘다 — 위치 표기가 거짓이 된다.
-  if (idx < 0 || rows.length <= 1) return null;
-  return {
-    idx,
-    total: rows.length,
-    prevId: idx > 0 ? rows[idx - 1].caseId : null,
-    nextId: idx < rows.length - 1 ? rows[idx + 1].caseId : null,
-  };
 }
 
 export default function AdminCaseDiagramEdit({

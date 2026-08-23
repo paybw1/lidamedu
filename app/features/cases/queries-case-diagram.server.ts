@@ -386,6 +386,44 @@ export function applyDiagramListFilters(
     );
 }
 
+/**
+ * 검수 화면의 이전/다음 — **들어온 목록과 같은 순서·같은 범위**여야 한다.
+ * `?back` 안의 query(연도·상태·검색어)를 목록 화면과 같은 헬퍼로 풀어 순서를 재현한다.
+ * ★back 이 없으면(도식 패널 '검수 화면' 링크 등) 필터 없는 전체 목록 순서.
+ * ★이 함수는 반드시 **서버 모듈**에 둔다 — 라우트 파일의 모듈 스코프에 두면
+ *   "Server-only module referenced by client" 로 빌드가 깨진다(loader/action 만 서버 취급).
+ */
+export async function getDiagramNeighbors(
+  client: Client,
+  caseId: string,
+  backRaw: string,
+): Promise<{
+  idx: number;
+  total: number;
+  prevId: string | null;
+  nextId: string | null;
+} | null> {
+  const params = new URLSearchParams(
+    backRaw.startsWith("?") ? backRaw.slice(1) : "",
+  );
+  const filters = parseDiagramListFilters(params);
+  const all = await listCaseDiagramTargets(client, {
+    lawCode: DIAGRAM_TARGET_LAW,
+    decidedFrom: DIAGRAM_TARGET_FROM,
+    year: filters.year,
+  });
+  const rows = applyDiagramListFilters(all, filters);
+  const idx = rows.findIndex((r) => r.caseId === caseId);
+  // 목록에 없는 판례(필터 밖에서 직접 열었다)면 이동 UI 를 감춘다 — 위치 표기가 거짓이 된다.
+  if (idx < 0 || rows.length <= 1) return null;
+  return {
+    idx,
+    total: rows.length,
+    prevId: idx > 0 ? rows[idx - 1].caseId : null,
+    nextId: idx < rows.length - 1 ? rows[idx + 1].caseId : null,
+  };
+}
+
 /** 판례 메타 + 도식 — 편집 화면 loader. */
 export async function getCaseDiagramEditContext(
   client: Client,
