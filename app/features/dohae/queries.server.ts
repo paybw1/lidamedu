@@ -1,10 +1,10 @@
-// 도해특허법 조회 — 요청 클라이언트(RLS: staff 전용 SELECT) 경유.
-// 학생 요청이면 RLS 가 0행을 돌려 버튼이 자연히 숨는다(수험생 비노출).
+// 도해특허법 조회 — 요청 클라이언트(RLS) 경유.
+// ★2026-08-23 학생 공개 — RLS 는 로그인 사용자 전원 읽기. 편집(UPDATE)만 staff.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
-import type { DohaeBlock, DohaeUnitSummary } from "./labels";
+import { dohaeUnitLabel, type DohaeBlock, type DohaeUnitSummary } from "./labels";
 import { diffTextNodes, type DohaeTextDiff } from "./lib/dohae-edit";
 
 const UNIT_COLS =
@@ -52,6 +52,57 @@ function toSummaries(rows: UnitJoinRow[]): DohaeUnitSummary[] {
  * 노드 뷰어가 조문·판례·문제를 서브트리 기준으로 모으므로 도해도 같은 규칙을 쓴다
  * (정확일치로 두면 부모 노드에서 늘 0 이 된다).
  */
+/**
+ * 학습노트(하이라이트·포스트잇 모아보기)가 도해 항목을 그릴 때 쓰는 최소 정보.
+ * 진입은 체계도 노드 뷰어 + `?dohae=<unitId>` — 팝업이 그 유닛으로 열린다.
+ * ★노드 연결이 없는 유닛이 1건 있다(94 중 93 연결). 그런 항목은 nodeId=null 로 두고
+ *   호출부가 과목 허브로 보낸다 — 목록에서 빼면 개수 배지와 어긋난다.
+ */
+export interface DohaeUnitRef {
+  unitId: string;
+  /** "14 협의의 특허요건" — 유닛 라벨 + 제목. */
+  primaryLabel: string;
+  /** "제2장 특허요건" */
+  secondaryLabel: string;
+  nodeId: string | null;
+}
+
+export async function getDohaeUnitRefs(
+  client: SupabaseClient<Database>,
+  unitIds: string[],
+): Promise<Map<string, DohaeUnitRef>> {
+  const out = new Map<string, DohaeUnitRef>();
+  if (unitIds.length === 0) return out;
+
+  const [{ data: units }, { data: links }] = await Promise.all([
+    client
+      .from("dohae_units")
+      .select("unit_id, kind, title, chapter_no, chapter_title, unit_no, ref_no")
+      .in("unit_id", unitIds),
+    client.from("dohae_unit_nodes").select("unit_id, node_id").in("unit_id", unitIds),
+  ]);
+
+  const nodeByUnit = new Map<string, string>();
+  for (const l of links ?? []) {
+    if (!nodeByUnit.has(l.unit_id)) nodeByUnit.set(l.unit_id, l.node_id);
+  }
+
+  for (const u of units ?? []) {
+    const label = dohaeUnitLabel({
+      kind: u.kind as "topic" | "reference",
+      unitNo: u.unit_no,
+      refNo: u.ref_no,
+    });
+    out.set(u.unit_id, {
+      unitId: u.unit_id,
+      primaryLabel: `${label} ${u.title}`.trim(),
+      secondaryLabel: `제${u.chapter_no}장 ${u.chapter_title}`,
+      nodeId: nodeByUnit.get(u.unit_id) ?? null,
+    });
+  }
+  return out;
+}
+
 export async function listDohaeUnitsForNodes(
   client: SupabaseClient<Database>,
   nodeIds: string[],

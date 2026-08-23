@@ -2,6 +2,21 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchAllPages } from "~/core/lib/supa-batch.server";
 import type { Database } from "database.types";
 
+import { getDohaeUnitRefs } from "~/features/dohae/queries.server";
+
+// 도해특허법 = 특허법 단행본. 다른 과목 도해가 생기면 유닛의 book_code 로 갈라야 한다.
+const DOHAE_LAW_CODE = "patent";
+
+/**
+ * 도해 항목 진입 — 체계도 노드 뷰어에서 그 유닛 팝업을 연다.
+ * ★노드 연결이 없는 유닛(94 중 1)은 과목 허브로. 목록에서 빼면 개수 배지와 어긋난다.
+ */
+function dohaeHref(nodeId: string | null, unitId: string): string {
+  return nodeId
+    ? `/subjects/${DOHAE_LAW_CODE}/systematic/${nodeId}?dohae=${unitId}`
+    : `/subjects/${DOHAE_LAW_CODE}`;
+}
+
 import type {
   AnnotationTargetType,
   BookmarkRecord,
@@ -1098,6 +1113,11 @@ export async function listAllMemos(
     }
   }
 
+  const dohaeRefs = await getDohaeUnitRefs(
+    client,
+    list.filter((r) => r.target_type === "dohae_unit").map((r) => r.target_id),
+  );
+
   const memoItems = list.flatMap((r): MemoListItem[] => {
     const base = {
       memoId: r.memo_id,
@@ -1111,6 +1131,21 @@ export async function listAllMemos(
       anchorTitle: null as string | null,
       anchorBody: null as string | null,
     };
+    if (r.target_type === "dohae_unit") {
+      const d = dohaeRefs.get(r.target_id);
+      if (!d) return [];
+      return [
+        {
+          ...base,
+          lawCode: DOHAE_LAW_CODE,
+          scienceSubject: null,
+          primaryLabel: d.primaryLabel,
+          secondaryLabel: d.secondaryLabel,
+          bodySnippet: null,
+          href: dohaeHref(d.nodeId, r.target_id),
+        },
+      ];
+    }
     if (r.target_type === "article") {
       const a = articleMap.get(r.target_id);
       if (!a) return [];
@@ -1387,6 +1422,13 @@ export async function listAllHighlights(
     }
   }
 
+  // 도해 유닛 — 2026-08-23 학생 공개 후 학생도 하이라이트를 긋는다. 여기서 빠뜨리면
+  // 개수 배지(전 target_type 합산)와 목록 길이가 어긋난다.
+  const dohaeRefs = await getDohaeUnitRefs(
+    client,
+    list.filter((r) => r.target_type === "dohae_unit").map((r) => r.target_id),
+  );
+
   return list.flatMap((r): HighlightListItem[] => {
     const base = {
       highlightId: r.highlight_id,
@@ -1399,6 +1441,21 @@ export async function listAllHighlights(
       fieldPath: r.field_path,
       createdAt: r.created_at,
     };
+    if (r.target_type === "dohae_unit") {
+      const d = dohaeRefs.get(r.target_id);
+      if (!d) return [];
+      return [
+        {
+          ...base,
+          lawCode: DOHAE_LAW_CODE,
+          scienceSubject: null,
+          primaryLabel: d.primaryLabel,
+          secondaryLabel: d.secondaryLabel,
+          bodySnippet: null,
+          href: dohaeHref(d.nodeId, r.target_id),
+        },
+      ];
+    }
     if (r.target_type === "article") {
       const a = articleMap.get(r.target_id);
       if (!a) return [];

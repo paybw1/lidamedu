@@ -1,4 +1,5 @@
-// /admin/dohae — 도해특허법 전체 유닛 목록(장별) + 팝업 열람. ★staff 전용.
+// /admin/dohae — 도해특허법 전체 유닛 목록(장별) + 팝업 열람. ★이 운영 화면은 staff 전용
+// (콘텐츠 자체는 2026-08-23 수험생 공개 — 열람 전원 / 편집 staff).
 // 조문 뷰어 칩으로 못 가는 유닛(조문 참조 없는 참고자료 등)의 진입로이자 검수 화면.
 // 원본 대조: 각 유닛에 PDF 페이지 번호 표기(교재 원본과 나란히 놓고 확인).
 
@@ -73,7 +74,7 @@ export default function AdminDohae({ loaderData }: Route.ComponentProps) {
       cluster="laws"
       role={role}
       title="도해특허법"
-      desc={`제20판 · 주제 ${units.filter((u) => u.kind === "topic").length} + 참고자료 ${units.filter((u) => u.kind === "reference").length} — 강사 전용(수험생 비노출). 각 유닛의 p.N 은 원본 PDF 페이지(검수 대조용).`}
+      desc={`제20판 · 주제 ${units.filter((u) => u.kind === "topic").length} + 참고자료 ${units.filter((u) => u.kind === "reference").length} — 수험생 공개(2026-08-23) — 열람은 전원, 편집은 강사·운영자만. 각 유닛의 p.N 은 원본 PDF 페이지(검수 대조용).`}
     >
       <HighlightToolbar />
       {active ? (

@@ -543,11 +543,14 @@ export function DohaePopup({
   open,
   onOpenChange,
   viewerIsStaff,
+  initialUnitId,
 }: {
   units: DohaeUnitSummary[];
   open: boolean;
   onOpenChange: (v: boolean) => void;
   viewerIsStaff: boolean;
+  /** 열 때 바로 펼칠 유닛 — 학습노트에서 도해 하이라이트를 눌러 들어온 경우. */
+  initialUnitId?: string | null;
 }) {
   const [activeUnitId, setActiveUnitId] = useState<string | null>(null);
   // 표시 방식 — 팝업(가운데) vs 시트(오른쪽). 비교해 보려고 남긴 전환이라 브라우저에 기억한다.
@@ -599,14 +602,20 @@ export function DohaePopup({
   const fetcher = useFetcher<UnitPayload>();
   const fetchers = useFetchers();
 
-  // 열릴 때 유닛 1개면 자동 선택.
+  // 열릴 때 — 지정된 유닛이 있으면 그것으로(학습노트 진입), 없고 유닛이 1개면 자동 선택.
   useEffect(() => {
-    if (open && activeUnitId === null && units.length === 1) {
-      setActiveUnitId(units[0].unitId);
+    if (open && activeUnitId === null) {
+      const wanted =
+        initialUnitId && units.some((u) => u.unitId === initialUnitId)
+          ? initialUnitId
+          : units.length === 1
+            ? units[0].unitId
+            : null;
+      if (wanted) setActiveUnitId(wanted);
     }
     if (!open) setActiveUnitId(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, initialUnitId]);
 
   useEffect(() => {
     if (activeUnitId) fetcher.load(`/api/dohae/unit?unitId=${activeUnitId}`);

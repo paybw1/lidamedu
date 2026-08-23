@@ -14,8 +14,8 @@ import {
   PencilLineIcon,
   ScrollTextIcon,
 } from "lucide-react";
-import { useMemo, useState } from "react";
-import { Link, data } from "react-router";
+import { useEffect, useMemo, useState } from "react";
+import { Link, data, useSearchParams } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
@@ -457,8 +457,14 @@ function Inner({
   const systematicEmpty = systematicNodes.length === 0;
   const renderSystematic = axis === "systematic" && !systematicEmpty;
   const [subtitlesOnly, setSubtitlesOnly] = useState(false);
-  // 도해특허법 팝업 — staff 전용(RLS 로 dohaeUnits 가 학생에겐 항상 빈 배열).
+  // 도해특허법 팝업. ★2026-08-23 학생 공개 — dohaeUnits 는 도해가 실린 노드에서만 채워진다.
+  //   ?dohae=<unitId> — 학습노트에서 도해 하이라이트·포스트잇을 눌러 들어온 진입.
+  const [searchParams] = useSearchParams();
+  const dohaeParam = searchParams.get("dohae");
   const [dohaeOpen, setDohaeOpen] = useState(false);
+  useEffect(() => {
+    if (dohaeParam) setDohaeOpen(true);
+  }, [dohaeParam]);
   const [blankMode, setBlankMode] = useState(false);
   const [subjectBlankMode, setSubjectBlankMode] = useState(false);
   const [periodBlankMode, setPeriodBlankMode] = useState(false);
@@ -529,6 +535,7 @@ function Inner({
           open={dohaeOpen}
           onOpenChange={setDohaeOpen}
           viewerIsStaff={loaderData.isStaff}
+          initialUnitId={dohaeParam}
         />
       ) : null}
 
