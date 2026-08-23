@@ -105,6 +105,12 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   };
 }
 
+// 도식 패널에서 바로 쓰는 쟁점 코멘트. 본문 전체를 싣지 않아 다른 탭의 편집을 덮지 않는다.
+const commentSchema = z.object({
+  blockIndex: z.number().int().min(0).max(99),
+  comment: z.string().trim().max(2000),
+});
+
 const moveSchema = z.object({
   blockIndex: z.number().int().min(0).max(99),
   from: z.enum(DOCTRINE_AXIS_KEYS),
@@ -232,6 +238,29 @@ export async function action({ request, params }: Route.ActionArgs) {
     });
     return data({
       ok: `${DOCTRINE_AXIS_LABEL[moved.data.from]} → ${DOCTRINE_AXIS_LABEL[moved.data.to]} 로 옮겼습니다.`,
+    });
+  }
+
+  // 쟁점 코멘트 저장 — 도식 패널(시트/팝업)에서 읽던 자리에서 바로 남긴다.
+  if (intent === "set_comment") {
+    const parsed = commentSchema.safeParse({
+      blockIndex: Number(fd.get("blockIndex")),
+      comment: fd.get("comment") ?? "",
+    });
+    if (!parsed.success) return data({ error: "코멘트가 너무 깁니다." });
+    const ctx = await getCaseDiagramEditContext(client, caseId);
+    if (!ctx?.diagram) return data({ error: "도식이 없습니다." });
+    const target = ctx.diagram.blocks[parsed.data.blockIndex];
+    if (!target) return data({ error: "쟁점을 찾지 못했습니다." });
+    const next = ctx.diagram.blocks.map((b, i) =>
+      i === parsed.data.blockIndex ? { ...b, comment: parsed.data.comment } : b,
+    );
+    await updateCaseDiagramBlocksByStaff(client, {
+      diagramId: ctx.diagram.diagramId,
+      blocks: next,
+    });
+    return data({
+      ok: parsed.data.comment ? "코멘트를 저장했습니다." : "코멘트를 지웠습니다.",
     });
   }
 
@@ -684,19 +713,6 @@ export default function AdminCaseDiagramEdit({
               </div>
             </div>
 
-            <Field
-              label="코멘트"
-              hint="강사가 덧붙이는 말 — 출제 포인트·주의점. 비워도 됩니다."
-            >
-              <Textarea
-                value={b.comment ?? ""}
-                onChange={(e) => patchBlock(idx, { comment: e.target.value })}
-                rows={2}
-                placeholder="예: 이 쟁점은 2차에서 사실관계를 바꿔 반복 출제됨"
-                className="text-sm"
-              />
-            </Field>
-
             <Field label="사안의 포섭">
               <Textarea
                 value={b.application}
@@ -715,6 +731,19 @@ export default function AdminCaseDiagramEdit({
                   patchBlock(idx, { conclusion: e.target.value })
                 }
                 rows={2}
+                className="text-sm"
+              />
+            </Field>
+
+            <Field
+              label="코멘트"
+              hint="강사가 덧붙이는 말 — 출제 포인트·주의점. 비워도 됩니다."
+            >
+              <Textarea
+                value={b.comment ?? ""}
+                onChange={(e) => patchBlock(idx, { comment: e.target.value })}
+                rows={2}
+                placeholder="예: 이 쟁점은 2차에서 사실관계를 바꿔 반복 출제됨"
                 className="text-sm"
               />
             </Field>

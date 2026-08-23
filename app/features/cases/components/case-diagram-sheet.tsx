@@ -371,6 +371,118 @@ function DiagramNav({
   );
 }
 
+/**
+ * 쟁점 코멘트 — staff 면 읽던 자리에서 바로 쓰고 저장한다(검수 화면으로 안 나가도 된다).
+ * caseId 가 없으면(=staff 아님) 읽기 전용. 서버 action 이 역할을 다시 확인한다.
+ * ★저장 payload 는 blockIndex + 코멘트뿐 — 본문을 통째로 보내지 않아 다른 탭에서
+ *   편집 중인 내용을 덮어쓰지 않는다.
+ */
+function CommentBox({
+  caseId,
+  blockIndex,
+  comment,
+}: {
+  caseId?: string;
+  blockIndex: number;
+  comment: string;
+}) {
+  const fetcher = useFetcher<{ ok?: string; error?: string }>();
+  const [draft, setDraft] = useState(comment);
+  const [editing, setEditing] = useState(false);
+  // 서버 반영분이 바뀌면(저장·이웃 이동) 편집 중이 아닐 때만 따라간다.
+  useEffect(() => {
+    if (!editing) setDraft(comment);
+  }, [comment, editing]);
+  const busy = fetcher.state !== "idle";
+
+  if (!caseId) {
+    if (!comment.trim()) return null;
+    return (
+      <div className="border-primary/30 bg-primary/[0.04] mt-2.5 rounded-lg border border-dashed px-3 py-2">
+        <p className="text-link mb-0.5 inline-flex items-center gap-1 text-[11px] font-bold">
+          <MessageSquareIcon className="size-3" /> 코멘트
+        </p>
+        <p className="text-[14px] leading-[1.7] whitespace-pre-line">{comment}</p>
+      </div>
+    );
+  }
+
+  if (!editing) {
+    return (
+      <div className="border-primary/30 bg-primary/[0.04] mt-2.5 rounded-lg border border-dashed px-3 py-2">
+        <p className="text-link mb-0.5 inline-flex items-center gap-1 text-[11px] font-bold">
+          <MessageSquareIcon className="size-3" /> 코멘트
+        </p>
+        {comment.trim() ? (
+          <p className="text-[14px] leading-[1.7] whitespace-pre-line">
+            {comment}
+          </p>
+        ) : (
+          <p className="text-muted-foreground text-[12px]">
+            출제 포인트·주의점을 남길 수 있습니다.
+          </p>
+        )}
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          className="text-muted-foreground hover:text-link mt-1 inline-flex items-center gap-1 text-[11px] font-semibold"
+        >
+          <PencilLineIcon className="size-3" />
+          {comment.trim() ? "코멘트 수정" : "코멘트 쓰기"}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <fetcher.Form
+      method="post"
+      action={`/admin/case-diagrams/${caseId}`}
+      onSubmit={() => setEditing(false)}
+      className="border-primary/30 bg-primary/[0.04] mt-2.5 rounded-lg border border-dashed px-3 py-2"
+    >
+      <input type="hidden" name="intent" value="set_comment" />
+      <input type="hidden" name="blockIndex" value={blockIndex} />
+      <p className="text-link mb-1 inline-flex items-center gap-1 text-[11px] font-bold">
+        <MessageSquareIcon className="size-3" /> 코멘트
+      </p>
+      <textarea
+        name="comment"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        rows={3}
+        maxLength={2000}
+        placeholder="예: 이 쟁점은 2차에서 사실관계를 바꿔 반복 출제됨"
+        className="border-border bg-background w-full rounded-md border px-2 py-1.5 text-[14px] leading-[1.7]"
+      />
+      <div className="mt-1 flex items-center gap-1.5">
+        <button
+          type="submit"
+          disabled={busy}
+          className="bg-primary text-primary-foreground inline-flex h-6 items-center gap-1 rounded-full px-2.5 text-[11px] font-semibold disabled:opacity-50"
+        >
+          {busy ? <Loader2Icon className="size-3 animate-spin" /> : null} 저장
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setDraft(comment);
+            setEditing(false);
+          }}
+          className="text-muted-foreground hover:text-foreground text-[11px]"
+        >
+          취소
+        </button>
+        {fetcher.data?.error ? (
+          <span className="text-[11px] font-medium text-rose-600 dark:text-rose-400">
+            {fetcher.data.error}
+          </span>
+        ) : null}
+      </div>
+    </fetcher.Form>
+  );
+}
+
 function HeaderHint() {
   return (
     <p className="text-muted-foreground text-[11px]">
@@ -590,18 +702,13 @@ function DiagramBody({
               </Step>
             ) : null}
 
-            {/* 강사 코멘트 — 판결문 서술이 아니라 덧붙이는 말이다. 번호 없는 별도
-                블록으로 띄워, 답안 순서(1.법조문 2.법리 3.포섭 4.결론)와 섞이지 않게 한다. */}
-            {(b.comment ?? "").trim() ? (
-              <div className="border-primary/30 bg-primary/[0.04] mt-2.5 rounded-lg border border-dashed px-3 py-2">
-                <p className="text-link mb-0.5 inline-flex items-center gap-1 text-[11px] font-bold">
-                  <MessageSquareIcon className="size-3" /> 코멘트
-                </p>
-                <p className="text-[14px] leading-[1.7] whitespace-pre-line">
-                  {b.comment}
-                </p>
-              </div>
-            ) : null}
+            {/* 강사 코멘트 — 판결문 서술이 아니라 덧붙이는 말이다. 결론 **다음**에,
+                번호 없는 별도 블록으로 띄운다(답안 순서 1.법조문~4.결론과 섞이지 않게). */}
+            <CommentBox
+              caseId={reclassifyCaseId}
+              blockIndex={i}
+              comment={b.comment ?? ""}
+            />
           </section>
         );
       })}
