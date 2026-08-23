@@ -1397,3 +1397,18 @@ alter type staff_notification_kind add value 'dohae_abuse';
   (`lecture_abuse_alert` duty).
 - 유출방지 화면단은 `app/features/dohae/components/dohae-guard.tsx` — 워터마크·복사차단·
   인쇄차단·저작권 고지. ★**선택(selection)은 막지 않는다** — 막으면 하이라이트를 못 긋는다.
+
+## 판례 도식 staff 전용 전환  ✅ 적용됨 (2026-08-23)
+
+```sql
+-- 종전: 학생도 approved 도식을 봤다.
+drop policy case_diagrams_read_approved on public.case_diagrams;
+-- 이후: case_diagrams_staff_all (ALL, private.is_staff) 만 남아 staff 전용.
+```
+
+- 전환 시점 현황: 도식 240건 = approved 1 · draft 239. 학생에게 실제로 보이던 건 1건뿐.
+- **review_status 는 그대로 둔다** — 승인은 이제 '검수 완료' 표시로 쓰인다. 학생 공개로
+  되돌리려면 위 정책을 되살리면 되고, 그때 `admin-case-diagram-edit` 의 승인 안내 문구
+  ("승인(검수 완료) 했습니다.")도 함께 고쳐야 한다.
+- 도식 패널(`case-diagram-sheet`)에 **승인 버튼**을 붙였다(staff 만). 서버(`admin-case-diagram-edit`
+  action)가 역할·승인조건(`diagramApprovable`)을 다시 확인하므로 버튼은 진입점일 뿐이다.

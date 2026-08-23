@@ -7,10 +7,14 @@
 //   근거 없는 축을 채우지 않기로 한 설계가 화면에서 무너진다.
 
 import { useEffect, useState } from "react";
+import { useFetcher } from "react-router";
 
 import {
+  CheckCircle2Icon,
   GitBranchIcon,
+  Loader2Icon,
   PanelRightIcon,
+  PencilLineIcon,
   ScaleIcon,
   SquareIcon,
 } from "lucide-react";
@@ -86,17 +90,23 @@ function factsSourceCaption(d: CaseDiagramView): string | null {
 
 export function CaseDiagramSheet({
   diagram,
+  caseId,
   caseNumber,
   subjectSlug,
   statuteArticleIds,
+  viewerIsStaff = false,
   className,
 }: {
   diagram: CaseDiagramView;
+  /** 승인 버튼이 쓰는 대상 — /admin/case-diagrams/:caseId 로 POST. */
+  caseId: string;
   caseNumber: string;
   /** 조문 학습화면 링크용 과목 slug. */
   subjectSlug?: string;
   /** 법조문 표기 → 조문 참조. 해석 실패분은 텍스트 칩으로 남는다. */
   statuteArticleIds?: Record<string, StatuteRef>;
+  /** staff 면 패널에서 바로 승인할 수 있다(검수 화면으로 안 나가도 된다). */
+  viewerIsStaff?: boolean;
   className?: string;
 }) {
   const draft = diagram.reviewStatus !== "approved";
@@ -141,12 +151,17 @@ export function CaseDiagramSheet({
   );
 
   const body = (
-    <DiagramBody
-      diagram={diagram}
-      draft={draft}
-      subjectSlug={subjectSlug}
-      statuteArticleIds={statuteArticleIds}
-    />
+    <>
+      {viewerIsStaff ? (
+        <ApproveBar caseId={caseId} approved={!draft} />
+      ) : null}
+      <DiagramBody
+        diagram={diagram}
+        draft={draft}
+        subjectSlug={subjectSlug}
+        statuteArticleIds={statuteArticleIds}
+      />
+    </>
   );
 
   if (mode === "dialog") {
@@ -178,6 +193,60 @@ export function CaseDiagramSheet({
         <div className="px-4 pb-4">{body}</div>
       </SheetContent>
     </Sheet>
+  );
+}
+
+/**
+ * 검수 바 — 도식을 읽던 자리에서 바로 승인한다(운영 화면으로 나갔다 오지 않아도 된다).
+ * 서버(admin-case-diagram-edit action)가 역할과 승인 조건을 다시 확인하므로,
+ * 이 버튼은 진입점일 뿐 권한 판정이 아니다.
+ */
+function ApproveBar({ caseId, approved }: { caseId: string; approved: boolean }) {
+  const fetcher = useFetcher<{ ok?: string; error?: string }>();
+  const busy = fetcher.state !== "idle";
+  const msg = fetcher.data?.error ?? fetcher.data?.ok ?? null;
+  const failed = Boolean(fetcher.data?.error);
+
+  return (
+    <div className="border-border bg-muted/40 mb-3 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2">
+      {approved ? (
+        <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-emerald-700 dark:text-emerald-400">
+          <CheckCircle2Icon className="size-3.5" /> 승인됨
+        </span>
+      ) : (
+        <fetcher.Form method="post" action={`/admin/case-diagrams/${caseId}`}>
+          <input type="hidden" name="intent" value="approve" />
+          <button
+            type="submit"
+            disabled={busy}
+            className="bg-primary text-primary-foreground inline-flex h-7 items-center gap-1 rounded-full px-3 text-xs font-semibold disabled:opacity-50"
+          >
+            {busy ? (
+              <Loader2Icon className="size-3.5 animate-spin" />
+            ) : (
+              <CheckCircle2Icon className="size-3.5" />
+            )}
+            승인
+          </button>
+        </fetcher.Form>
+      )}
+      <a
+        href={`/admin/case-diagrams/${caseId}`}
+        className="border-border text-muted-foreground hover:bg-muted inline-flex h-7 items-center gap-1 rounded-full border px-3 text-xs font-medium"
+      >
+        <PencilLineIcon className="size-3" /> 검수 화면
+      </a>
+      {msg ? (
+        <span
+          className={cn(
+            "text-[11px] font-medium",
+            failed ? "text-rose-600 dark:text-rose-400" : "text-muted-foreground",
+          )}
+        >
+          {msg}
+        </span>
+      ) : null}
+    </div>
   );
 }
 

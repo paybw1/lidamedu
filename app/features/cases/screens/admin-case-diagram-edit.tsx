@@ -190,7 +190,9 @@ export async function action({ request, params }: Route.ActionArgs) {
       diagramId: ctx.diagram.diagramId,
       userId: user.id,
     });
-    return data({ ok: "승인했습니다. 학생에게 공개됩니다." });
+    // ★도식은 staff 전용(2026-08-23 원장 지시) — 승인해도 학생에게는 안 보인다.
+    //   승인은 '검수 완료' 표시로만 쓰인다. 학생 공개로 되돌리면 문구도 함께 고칠 것.
+    return data({ ok: "승인(검수 완료) 했습니다." });
   }
 
   if (intent === "reject") {

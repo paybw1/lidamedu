@@ -642,13 +642,16 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
               {/* 암기 모드 토글(원문/빈 칸/쟁점만 보기/전체 복원) + 읽기 모드.
                   ★수험생 공개(특허법 판례, 2026-07-21). 편집 서브토글은 staff 전용 유지. */}
               <div className="mb-3 flex flex-wrap items-center gap-1.5">
-                {/* feat-2-035 — 2차 답안 순서 도식. 승인분만 학생에게 보인다(RLS). */}
+                {/* feat-2-035 — 2차 답안 순서 도식. ★staff 전용(2026-08-23 원장 지시) —
+                    RLS 가 학생에게 null 을 주므로 배지 자체가 뜨지 않는다. */}
                 {caseDiagram ? (
                   <CaseDiagramSheet
                     diagram={caseDiagram}
+                    caseId={kase.caseId}
                     caseNumber={kase.caseNumber}
                     subjectSlug={subject.slug}
                     statuteArticleIds={statuteArticleIds}
+                    viewerIsStaff={isStaff}
                   />
                 ) : null}
                 {/* 원심 판결문 — 운영자 전용(RLS 가 학생에게는 null 을 준다). */}
