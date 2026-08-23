@@ -303,17 +303,25 @@ export function labelSegments(line: string): string[] {
     }
   }
   if (buf) out.push(buf);
+  // ★더 나눌 뜻 경계가 없는 3자 한 덩어리(객체적·주체적·시기적·청구인)는 글자마다 끊을
+  //   자리를 둔다 — 칸이 한 글자만 담으면 세로로 쌓이고, 두 글자를 담으면 「주체 / 적」이
+  //   된다(원장 지시 2026-08-23). 여러 조각으로 이미 나뉜 라벨은 건드리지 않는다 —
+  //   「적법성 / 심리」의 앞 조각까지 쪼개면 「심리」가 갈라질 수 있다.
+  const perChar = (segs: string[]) =>
+    segs.length === 1 && /^[가-힣]{3}$/.test(segs[0]) ? [...segs[0]] : segs;
   return out.flatMap((part) => {
     // 끝의 빗금은 떼어 두고 나눈 뒤 되붙인다 — 붙어 있으면 한글이 아니라 안 나뉜다.
     const sep = /[/·ㆍ]$/.test(part) ? part.slice(-1) : "";
     const body = sep ? part.slice(0, -1) : part;
     const back = (parts: string[]) =>
       sep ? [...parts.slice(0, -1), parts[parts.length - 1] + sep] : parts;
-    // 조각 안의 공백은 이미 줄바꿈 기회다 — 마지막 낱말만 나눠 본다.
-    const at = body.lastIndexOf(" ");
-    if (at < 0) return back(splitWord(body));
-    const [lead, last] = [body.slice(0, at + 1), body.slice(at + 1)];
-    const parts = splitWord(last);
-    return back([lead + parts[0], ...parts.slice(1)]);
+    // 낱말마다 따로 나눈다. 공백은 앞 조각 끝에 붙여 원문 글자를 그대로 보존한다
+    // (공백 자체가 이미 줄바꿈 기회다).
+    const segs: string[] = [];
+    body.split(" ").forEach((word, i) => {
+      if (i > 0) segs[segs.length - 1] += " ";
+      segs.push(...perChar(splitWord(word)));
+    });
+    return back(segs);
   });
 }
