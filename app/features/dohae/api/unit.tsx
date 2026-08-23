@@ -11,6 +11,7 @@ import { data } from "react-router";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { buildViewerWatermark } from "~/core/lib/viewer-watermark.server";
 import { runAfterResponse } from "~/core/lib/wait-until.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
@@ -89,30 +90,10 @@ export async function loader({ request }: Route.LoaderArgs) {
   const articleIds = articles.map((a) => a.articleId);
 
   // 유출방지 ② — 열람자 식별 워터마크(캡처·촬영 유출 시 유출자 특정).
-  const [staffRole, { data: me }] = await Promise.all([
+  const [staffRole, watermark] = await Promise.all([
     getStaffRole(client, user.id),
-    client
-      .from("profiles")
-      .select("name, member_no")
-      .eq("profile_id", user.id)
-      .maybeSingle(),
+    buildViewerWatermark(client, user.id),
   ]);
-  const stampedAt = new Date().toLocaleString("ko-KR", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-  const watermark = [
-    me?.name ?? "회원",
-    me?.member_no != null ? `No.${me.member_no}` : null,
-    stampedAt,
-  ]
-    .filter(Boolean)
-    .join(" · ");
 
   // 유출방지 ③ — 열람 로그(응답 후 best-effort, staff 제외) + 학생 본인 경고 신호.
   let abnormal = false;

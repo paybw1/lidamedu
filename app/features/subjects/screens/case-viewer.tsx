@@ -18,6 +18,7 @@ import { Button } from "~/core/components/ui/button";
 import { Card, CardHeader } from "~/core/components/ui/card";
 import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { buildViewerWatermark } from "~/core/lib/viewer-watermark.server";
 import { CaseDiagramSheet } from "~/features/cases/components/case-diagram-sheet";
 import { LowerCourtSheet } from "~/features/cases/components/lower-court-sheet";
 import { getLowerCourtByCaseId } from "~/features/cases/queries-lower-court.server";
@@ -308,6 +309,11 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     placementMaps.caseSetByNodeId,
   );
 
+  // 유출방지 — 판례 도식 패널에 깔 열람자 식별 워터마크. 도식이 없으면 만들지 않는다.
+  const diagramWatermark = caseDiagram
+    ? await buildViewerWatermark(client, user.id)
+    : null;
+
   return {
     subject: LAW_SUBJECTS[lawCode],
     axisCounts,
@@ -317,6 +323,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     systematicNodes,
     caseTreeCounts,
     caseDiagram,
+    diagramWatermark,
     lowerCourt: lowerCourt?.status === "loaded" ? lowerCourt : null,
     statuteArticleIds,
     relatedArticles,
@@ -351,6 +358,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
     systematicNodes,
     caseTreeCounts,
     caseDiagram,
+    diagramWatermark,
     statuteArticleIds,
     lowerCourt,
     relatedArticles,
@@ -652,6 +660,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                     subjectSlug={subject.slug}
                     statuteArticleIds={statuteArticleIds}
                     viewerIsStaff={isStaff}
+                    watermark={diagramWatermark}
                   />
                 ) : null}
                 {/* 원심 판결문 — 운영자 전용(RLS 가 학생에게는 null 을 준다). */}

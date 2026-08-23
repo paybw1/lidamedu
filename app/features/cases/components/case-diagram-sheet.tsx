@@ -19,6 +19,7 @@ import {
   SquareIcon,
 } from "lucide-react";
 
+import { copyGuardProps, ViewerWatermark } from "~/core/components/leak-guard";
 import { Badge } from "~/core/components/ui/badge";
 import {
   Dialog,
@@ -97,6 +98,7 @@ export function CaseDiagramSheet({
   subjectSlug,
   statuteArticleIds,
   viewerIsStaff = false,
+  watermark,
   className,
 }: {
   diagram: CaseDiagramView;
@@ -109,6 +111,8 @@ export function CaseDiagramSheet({
   statuteArticleIds?: Record<string, StatuteRef>;
   /** staff 면 패널에서 바로 승인할 수 있다(검수 화면으로 안 나가도 된다). */
   viewerIsStaff?: boolean;
+  /** 열람자 식별 워터마크 문자열(유출 추적). 없으면 안 깐다. */
+  watermark?: string | null;
   className?: string;
 }) {
   const draft = diagram.reviewStatus !== "approved";
@@ -152,18 +156,23 @@ export function CaseDiagramSheet({
     </span>
   );
 
+  // ★유출방지 — 워터마크는 본문에만 깐다(검수 바는 조작 영역이라 제외).
+  //   복사 차단은 본문 컨테이너에. 선택은 막지 않는다 — 읽기·조문 링크를 해친다.
   const body = (
     <>
       {viewerIsStaff ? (
         <ApproveBar caseId={caseId} approved={!draft} />
       ) : null}
-      <DiagramBody
-        diagram={diagram}
-        draft={draft}
-        subjectSlug={subjectSlug}
-        statuteArticleIds={statuteArticleIds}
-        reclassifyCaseId={viewerIsStaff ? caseId : undefined}
-      />
+      <div className="relative print:hidden" {...copyGuardProps}>
+        {watermark ? <ViewerWatermark text={watermark} /> : null}
+        <DiagramBody
+          diagram={diagram}
+          draft={draft}
+          subjectSlug={subjectSlug}
+          statuteArticleIds={statuteArticleIds}
+          reclassifyCaseId={viewerIsStaff ? caseId : undefined}
+        />
+      </div>
     </>
   );
 

@@ -18,40 +18,11 @@ import { useEffect, useState, type ReactNode } from "react";
 
 import { Button } from "~/core/components/ui/button";
 
+// 워터마크·복사차단은 판례 도식과 공유한다(core/components/leak-guard).
+export { ViewerWatermark as DohaeWatermark, copyGuardProps } from "~/core/components/leak-guard";
+
 /** 고지 문구를 고치면 키 버전을 올린다(다시 한 번 받는다). */
 const NOTICE_KEY = "dohae-copyright-notice-v1";
-
-/** 본문 위에 까는 열람자 식별 워터마크. 선택·클릭을 방해하지 않는다. */
-export function DohaeWatermark({ text }: { text: string }) {
-  return (
-    <div
-      aria-hidden
-      className="pointer-events-none absolute inset-0 z-20 overflow-hidden select-none print:hidden"
-    >
-      <div className="absolute -inset-[40%] flex rotate-[-20deg] flex-wrap content-around justify-around gap-x-16 gap-y-20">
-        {Array.from({ length: 24 }, (_, i) => (
-          <span
-            key={i}
-            className="text-[13px] font-semibold whitespace-nowrap text-[rgba(51,65,85,0.10)] dark:text-[rgba(226,232,240,0.10)]"
-          >
-            {text}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/**
- * 복사 차단 핸들러 묶음 — 본문 컨테이너에 그대로 편다.
- * ★선택은 허용한다(하이라이트 기능). 복사·잘라내기·드래그·우클릭만 막는다.
- */
-export const copyGuardProps = {
-  onCopy: (e: React.ClipboardEvent) => e.preventDefault(),
-  onCut: (e: React.ClipboardEvent) => e.preventDefault(),
-  onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
-  onDragStart: (e: React.DragEvent) => e.preventDefault(),
-} as const;
 
 /** 첫 열람 1회 고지 모달(기기당). 확인 전에는 본문을 가린다. */
 export function DohaeCopyrightGate({ children }: { children: ReactNode }) {
