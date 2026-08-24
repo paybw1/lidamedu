@@ -1,4 +1,3 @@
-import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
 import type { Route } from "./+types/case-viewer";
@@ -12,52 +11,52 @@ import {
   PencilLineIcon,
   ScrollTextIcon,
 } from "lucide-react";
+import { useMemo, useState } from "react";
 import { Link, data, redirect, useSearchParams } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Card, CardHeader } from "~/core/components/ui/card";
 import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
 import makeServerClient from "~/core/lib/supa-client.server";
-import { buildViewerWatermark } from "~/core/lib/viewer-watermark.server";
-import { CaseDiagramSheet } from "~/features/cases/components/case-diagram-sheet";
-import { LowerCourtSheet } from "~/features/cases/components/lower-court-sheet";
-import { getLowerCourtByCaseId } from "~/features/cases/queries-lower-court.server";
-import {
-  getCaseDiagramByCaseId,
-  listAllCaseIdsWithDiagram,
-  resolveStatuteArticleIds,
-} from "~/features/cases/queries-case-diagram.server";
 import { cn } from "~/core/lib/utils";
+import { buildViewerWatermark } from "~/core/lib/viewer-watermark.server";
 import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
 import { MemoMarksOverlay } from "~/features/annotations/components/memo-marks-overlay";
-import { SrsReturnBar } from "~/features/srs/components/srs-return-bar";
 import {
   getBookmark,
   listBookmarkedCaseIds,
   listHighlights,
   listMemos,
 } from "~/features/annotations/queries.server";
-import { CaseBody } from "~/features/cases/components/case-body";
-import { CaseMetaLine } from "~/features/cases/components/case-meta-line";
-import {
-  CaseMemorizeView,
-  type CaseMemorizeMode,
-} from "~/features/cases/components/case-memorize-view";
+import { listCaseBlankSetsByCase } from "~/features/blanks/case-queries.server";
 import { CaseBlankEditView } from "~/features/blanks/components/case-blank-edit-view";
 import { CaseBlankFillView } from "~/features/blanks/components/case-blank-fill-view";
-import { listCaseBlankSetsByCase } from "~/features/blanks/case-queries.server";
+import { CaseBody } from "~/features/cases/components/case-body";
+import { CaseDiagramSheet } from "~/features/cases/components/case-diagram-sheet";
 import {
+  type CaseMemorizeMode,
+  CaseMemorizeView,
+} from "~/features/cases/components/case-memorize-view";
+import { CaseMetaLine } from "~/features/cases/components/case-meta-line";
+import { LowerCourtSheet } from "~/features/cases/components/lower-court-sheet";
+import {
+  getCaseDiagramByCaseId,
+  listAllCaseIdsWithDiagram,
+  resolveStatuteArticleIds,
+} from "~/features/cases/queries-case-diagram.server";
+import { getLowerCourtByCaseId } from "~/features/cases/queries-lower-court.server";
+import {
+  type CaseCourtFilter,
+  type CaseExamFilter,
   type CaseSibling,
   findActiveCaseByDeletedId,
   getCaseById,
   getCaseIdsByArticleLinks,
   getCasePlacementMaps,
-  narrowCaseIdsByFilters,
-  type CaseCourtFilter,
-  type CaseExamFilter,
   getCasesByIds,
   getOverallOrderedCaseSiblings,
   listCaseReferences,
+  narrowCaseIdsByFilters,
 } from "~/features/cases/queries.server";
 import { listComments } from "~/features/comments/queries.server";
 import { ArticleRightPanel } from "~/features/laws/components/article-right-panel";
@@ -84,6 +83,7 @@ import {
 } from "~/features/problems/queries.server";
 import { listThreadsForTarget } from "~/features/qna/queries.server";
 import { getRelatedArticlesByCase } from "~/features/relations/queries.server";
+import { SrsReturnBar } from "~/features/srs/components/srs-return-bar";
 import { FlowNav } from "~/features/study/components/flow-nav";
 import { recordStudySession } from "~/features/study/queries.server";
 import {
@@ -91,8 +91,6 @@ import {
   CaseTreeViewToggle,
   CasesTree,
 } from "~/features/subjects/components/cases-tree";
-import { subjectUsesCaseTopics } from "~/features/subjects/lib/subjects";
-import { SubjectBookmarkRail } from "~/features/subjects/components/subject-bookmark-rail";
 import {
   LeftPanelResizer,
   PanelEdgeHandle,
@@ -106,6 +104,7 @@ import {
   SortAxisProvider,
   useSortAxis,
 } from "~/features/subjects/components/sort-axis";
+import { SubjectBookmarkRail } from "~/features/subjects/components/subject-bookmark-rail";
 import { ViewerBackButton } from "~/features/subjects/components/viewer-back-button";
 import {
   type CaseTreeCounts,
@@ -114,6 +113,7 @@ import {
   getSubjectAxisCounts,
   systematicSubtreeNodeIds,
 } from "~/features/subjects/lib/loader.server";
+import { subjectUsesCaseTopics } from "~/features/subjects/lib/subjects";
 import {
   LAW_SUBJECTS,
   lawSubjectSlugSchema,
@@ -610,36 +610,40 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
               ) : null}
               {leftCollapsed ? (
                 <div className="flex h-[70vh] items-center justify-start">
-                  <PanelEdgeHandle side="left" collapsed onToggle={toggleLeft} />
+                  <PanelEdgeHandle
+                    side="left"
+                    collapsed
+                    onToggle={toggleLeft}
+                  />
                 </div>
               ) : (
                 <>
-                <div className="flex items-start">
-                <SubjectBookmarkRail
-                  subjectSlug={subject.slug}
-                  active="cases"
-                  counts={axisCounts}
-                  showSubjective={isStaff}
-                />
-                <div className="border-border bg-card min-w-0 flex-1 rounded-xl border shadow-sm lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
-                  {/* 조문 뷰어와 동일 — [축 언더라인 탭] / [체계도·조문] sticky 헤더. */}
-                  <CaseTreeSidebar
-                    subjectSlug={subject.slug}
-                    articles={articles}
-                    systematicNodes={systematicNodes}
-                    caseTreeCounts={caseTreeCounts}
-                    activeFilter={activeCaseTreeFilter}
-                    desktopHeader
-                  />
-                </div>
-                {/* 경계 손잡이 — 패널 오른쪽 변 세로 중앙(국가법령정보센터식). */}
-                <PanelEdgeHandle
-                  side="left"
-                  collapsed={false}
-                  onToggle={toggleLeft}
-                  className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2"
-                />
-                </div>
+                  <div className="flex items-start">
+                    <SubjectBookmarkRail
+                      subjectSlug={subject.slug}
+                      active="cases"
+                      counts={axisCounts}
+                      showSubjective={isStaff}
+                    />
+                    <div className="border-border bg-card min-w-0 flex-1 rounded-xl border shadow-sm lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+                      {/* 조문 뷰어와 동일 — [축 언더라인 탭] / [체계도·조문] sticky 헤더. */}
+                      <CaseTreeSidebar
+                        subjectSlug={subject.slug}
+                        articles={articles}
+                        systematicNodes={systematicNodes}
+                        caseTreeCounts={caseTreeCounts}
+                        activeFilter={activeCaseTreeFilter}
+                        desktopHeader
+                      />
+                    </div>
+                    {/* 경계 손잡이 — 패널 오른쪽 변 세로 중앙(국가법령정보센터식). */}
+                    <PanelEdgeHandle
+                      side="left"
+                      collapsed={false}
+                      onToggle={toggleLeft}
+                      className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2"
+                    />
+                  </div>
                 </>
               )}
             </aside>
@@ -760,7 +764,9 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                   />
                 ) : null}
                 {/* 원심 판결문 — 운영자 전용(RLS 가 학생에게는 null 을 준다). */}
-                {lowerCourt ? <LowerCourtSheet lower={lowerCourt} /> : null}
+                {lowerCourt ? (
+                  <LowerCourtSheet lower={lowerCourt} caseId={kase.caseId} />
+                ) : null}
                 {memEnabled && (hasMem || hasCaseBlanks)
                   ? memToggles.map(([m, label]) => (
                       <button
@@ -848,12 +854,18 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                       : null}
                     {prevNext ? (
                       <div className="ml-auto flex items-center gap-1.5">
-                        {(
+                        {[
                           [
-                            ["prev", prevNext.prevHref, prevNext.prevLabel] as const,
-                            ["next", prevNext.nextHref, prevNext.nextLabel] as const,
-                          ]
-                        ).map(([dir, href, label]) =>
+                            "prev",
+                            prevNext.prevHref,
+                            prevNext.prevLabel,
+                          ] as const,
+                          [
+                            "next",
+                            prevNext.nextHref,
+                            prevNext.nextLabel,
+                          ] as const,
+                        ].map(([dir, href, label]) =>
                           href ? (
                             <Link
                               key={dir}
@@ -932,32 +944,32 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                 </div>
               ) : (
                 <>
-                <div className="border-border bg-card rounded-xl border shadow-sm lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
-                  <ArticleRightPanel
-                    target={{ type: "case", id: kase.caseId }}
-                    bookmark={bookmark}
-                    memos={memos}
-                    highlights={highlights}
-                    qnaThreads={qnaThreads}
-                    relatedProblems={relatedProblems}
-                    comments={caseComments}
-                    canEditComment={canEditComment}
-                    currentUserId={currentUserId}
-                    isAdmin={isAdmin}
-                    viewerIsStaff={canEditCase}
-                    importance={kase.importance ?? undefined}
-                    lectureResources={lectureResources}
-                    pdfLocations={pdfLocations}
-                    pdfLocationsEnabled={pdfLocationsEnabled}
+                  <div className="border-border bg-card rounded-xl border shadow-sm lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+                    <ArticleRightPanel
+                      target={{ type: "case", id: kase.caseId }}
+                      bookmark={bookmark}
+                      memos={memos}
+                      highlights={highlights}
+                      qnaThreads={qnaThreads}
+                      relatedProblems={relatedProblems}
+                      comments={caseComments}
+                      canEditComment={canEditComment}
+                      currentUserId={currentUserId}
+                      isAdmin={isAdmin}
+                      viewerIsStaff={canEditCase}
+                      importance={kase.importance ?? undefined}
+                      lectureResources={lectureResources}
+                      pdfLocations={pdfLocations}
+                      pdfLocationsEnabled={pdfLocationsEnabled}
+                    />
+                  </div>
+                  {/* 경계 손잡이 — 패널 왼쪽 변 세로 중앙(국가법령정보센터식). */}
+                  <PanelEdgeHandle
+                    side="right"
+                    collapsed={false}
+                    onToggle={toggleRight}
+                    className="absolute top-1/2 -left-2.5 z-20 -translate-y-1/2"
                   />
-                </div>
-                {/* 경계 손잡이 — 패널 왼쪽 변 세로 중앙(국가법령정보센터식). */}
-                <PanelEdgeHandle
-                  side="right"
-                  collapsed={false}
-                  onToggle={toggleRight}
-                  className="absolute top-1/2 -left-2.5 z-20 -translate-y-1/2"
-                />
                 </>
               )}
             </aside>
@@ -1052,7 +1064,9 @@ function CaseTreeSidebarInner({
           </div>
         </div>
       ) : (
-        <div className="flex items-center justify-end gap-2 pb-2">{viewToggle}</div>
+        <div className="flex items-center justify-end gap-2 pb-2">
+          {viewToggle}
+        </div>
       )}
       <div className={desktopHeader ? "px-1.5 py-2" : ""}>
         {topicMode ? (

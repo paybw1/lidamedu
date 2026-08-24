@@ -847,6 +847,10 @@ export default [
         "/admin/cases/lower-court",
         "features/cases/screens/admin-lower-court-list.tsx",
       ),
+      route(
+        "/admin/cases/lower-court/:caseId/print",
+        "features/cases/screens/lower-court-print.tsx",
+      ),
       route("/admin/cases/edit", "features/admin/screens/admin-case-edit.tsx", {
         id: "admin-case-new",
       }),

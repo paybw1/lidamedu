@@ -3,8 +3,8 @@
 // 도식의 사실관계가 어디서 왔는지 원문으로 확인하는 용도. 학생에게는 보이지 않는다 —
 // 저작물 전문이고 학습 콘텐츠가 아니라서, RLS(case_lower_courts staff 전용)가
 // 데이터 단계에서 막고 화면은 데이터가 없으면 배지를 그리지 않는다.
-
-import { GavelIcon, ScrollTextIcon } from "lucide-react";
+import { GavelIcon, PrinterIcon, ScrollTextIcon } from "lucide-react";
+import { Link } from "react-router";
 
 import {
   Sheet,
@@ -13,6 +13,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "~/core/components/ui/sheet";
+import { reflowJudgmentText } from "~/features/cases/lib/lower-court-text";
 
 export interface LowerCourtView {
   sourceRef: string | null;
@@ -22,7 +23,14 @@ export interface LowerCourtView {
   bodyText: string;
 }
 
-export function LowerCourtSheet({ lower }: { lower: LowerCourtView }) {
+export function LowerCourtSheet({
+  lower,
+  caseId,
+}: {
+  lower: LowerCourtView;
+  /** 인쇄(PDF 저장) 화면 링크용. */
+  caseId: string;
+}) {
   const label =
     lower.sourceRef ??
     [lower.lowerCourt, lower.lowerCaseNumber].filter(Boolean).join(" ") ??
@@ -57,11 +65,27 @@ export function LowerCourtSheet({ lower }: { lower: LowerCourtView }) {
             도식의 사실관계 근거 · {lower.charCount.toLocaleString("ko-KR")}자 ·
             운영자에게만 보입니다
           </p>
+          <Link
+            to={`/admin/cases/lower-court/${caseId}/print`}
+            target="_blank"
+            rel="noreferrer"
+            className="border-border text-muted-foreground hover:bg-muted mt-1 inline-flex h-7 w-fit items-center gap-1 rounded-full border px-3 text-[11px] font-semibold"
+          >
+            <PrinterIcon className="size-3" /> 인쇄 · PDF로 저장
+          </Link>
         </SheetHeader>
-        {/* 판결문 전문은 마크다운이 아니라 평문이다 — 줄바꿈만 살려 그대로 보여준다. */}
-        <pre className="text-foreground px-4 py-4 text-[13px] leading-[1.8] whitespace-pre-wrap">
-          {lower.bodyText}
-        </pre>
+        {/* ★평문 그대로 그리면 PDF 추출본의 줄바꿈 때문에 한 문장이 조각나 보인다
+            (원장 보고 2026-08-24) — 문단을 복원해 그린다. */}
+        <div className="space-y-2.5 px-4 py-4">
+          {reflowJudgmentText(lower.bodyText).map((para, i) => (
+            <p
+              key={i}
+              className="text-foreground text-[13px] leading-[1.85] [overflow-wrap:break-word] break-keep"
+            >
+              {para}
+            </p>
+          ))}
+        </div>
       </SheetContent>
     </Sheet>
   );
