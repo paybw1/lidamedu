@@ -106,6 +106,9 @@ function substituteForFont(s: string): string {
     .replace(/∼/g, "~")
     // ․(U+2024 ONE DOT LEADER) — 미커버. 마침표로.
     .replace(/․/g, ".")
+    // ≒(U+2252 APPROXIMATELY EQUAL TO OR THE IMAGE OF) — 미커버. 같은 뜻의 ≈(U+2248)는 커버.
+    // 판결문에서 근사값 표기로 쓰인다("약 347줄(≒ 208,049줄 ÷ 600초)") — 의미 손실 없음.
+    .replace(/≒/g, "≈")
     // ˝(U+02DD DOUBLE ACUTE ACCENT) — 미커버. 인용부호 용례라 큰따옴표로.
     .replace(/˝/g, '"')
     // 아래첨자 ₀–₉ (U+2080–U+2089) — Noto Serif CJK KR 미커버. 평문 0–9 로.
