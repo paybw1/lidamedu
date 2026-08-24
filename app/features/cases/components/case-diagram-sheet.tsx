@@ -762,18 +762,53 @@ function DiagramBody({
               </Step>
             ) : null}
 
-            {axes.length > 0 ? (
+            {/* ★읽기에서는 "있는 축만" 그린다 — 빈 축의 자리를 만들어 두면 '비어 있음'이
+                정보처럼 읽혀, 근거 없는 축을 채우지 않기로 한 설계가 화면에서 무너진다.
+                staff 에게만 빈 축을 흐리게 열어 둔다(고칠 자리가 있어야 채운다). */}
+            {axes.length > 0 || reclassifyCaseId ? (
               <Step no={1} label="법리">
                 <div className="space-y-2">
-                  {axes.map((ax) => (
+                  {(reclassifyCaseId
+                    ? DOCTRINE_AXES.map((ax) => ({
+                        key: ax.key,
+                        label: ax.label,
+                        hint: ax.hint,
+                        body: b.doctrine[ax.key]?.trim() ?? "",
+                      }))
+                    : axes.map((ax) => ({ ...ax, hint: "" }))
+                  ).map((ax) => (
                     <div key={ax.key}>
-                      <span className="bg-primary/10 text-link rounded px-2 py-0.5 text-[12px] font-semibold">
+                      <span
+                        className={cn(
+                          "rounded px-2 py-0.5 text-[12px] font-semibold",
+                          ax.body
+                            ? "bg-primary/10 text-link"
+                            : "bg-muted text-muted-foreground",
+                        )}
+                      >
                         {ax.label}
                       </span>
-                      <p className="mt-1 text-[15px] leading-[1.75]">
-                        {ax.body}
-                      </p>
-                      {reclassifyCaseId ? (
+                      <InlineEdit
+                        caseId={reclassifyCaseId}
+                        intent="set_doctrine"
+                        name="value"
+                        value={ax.body}
+                        fields={{ blockIndex: i, axis: ax.key }}
+                        rows={4}
+                        label={ax.body ? "법리 수정" : "법리 쓰기"}
+                        placeholder={ax.hint}
+                      >
+                        {ax.body ? (
+                          <p className="mt-1 text-[15px] leading-[1.75]">
+                            {ax.body}
+                          </p>
+                        ) : (
+                          <p className="text-muted-foreground mt-1 text-[12px]">
+                            판결문에서 확인되는 축만 채웁니다 — {ax.hint}
+                          </p>
+                        )}
+                      </InlineEdit>
+                      {reclassifyCaseId && ax.body ? (
                         <AxisReclassify
                           caseId={reclassifyCaseId}
                           blockIndex={i}

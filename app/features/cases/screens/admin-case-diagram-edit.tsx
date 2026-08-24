@@ -119,6 +119,14 @@ const BLOCK_FIELD_LABEL: Record<(typeof BLOCK_FIELDS)[number], string> = {
   conclusion: "결론",
   comment: "코멘트",
 };
+// 법리는 4축 중첩이라 별도 — field 하나로 뭉치면 "doctrine.textual" 같은 경로 문자열을
+// 파싱해야 해서 오히려 검증이 헐거워진다.
+const doctrineSchema2 = z.object({
+  blockIndex: z.number().int().min(0).max(99),
+  axis: z.enum(DOCTRINE_AXIS_KEYS),
+  value: z.string().trim().max(20_000),
+});
+
 const blockFieldSchema = z.object({
   blockIndex: z.number().int().min(0).max(99),
   field: z.enum(BLOCK_FIELDS),
@@ -312,6 +320,38 @@ export async function action({ request, params }: Route.ActionArgs) {
       blocks: next,
     });
     return data({ ok: `${BLOCK_FIELD_LABEL[field]}을(를) 저장했습니다.` });
+  }
+
+  // 법리 한 축 저장 — 도식 패널 인라인.
+  if (intent === "set_doctrine") {
+    const parsed = doctrineSchema2.safeParse({
+      blockIndex: Number(fd.get("blockIndex")),
+      axis: fd.get("axis"),
+      value: fd.get("value") ?? "",
+    });
+    if (!parsed.success) return data({ error: "입력값이 올바르지 않습니다." });
+    const { blockIndex, axis, value } = parsed.data;
+    const ctx = await getCaseDiagramEditContext(client, caseId);
+    if (!ctx?.diagram) return data({ error: "도식이 없습니다." });
+    if (!ctx.diagram.blocks[blockIndex]) {
+      return data({ error: "쟁점을 찾지 못했습니다." });
+    }
+    const next = ctx.diagram.blocks.map((b, i) => {
+      if (i !== blockIndex) return b;
+      const doctrine = { ...b.doctrine };
+      // ★빈 값이면 키를 지운다 — 빈 문자열로 두면 filledAxes 가 '있는 축'으로 세어
+      //   화면에 빈 축이 남는다(근거 없는 축을 만들지 않는다는 설계).
+      if (value) doctrine[axis] = value;
+      else delete doctrine[axis];
+      return { ...b, doctrine };
+    });
+    await updateCaseDiagramBlocksByStaff(client, {
+      diagramId: ctx.diagram.diagramId,
+      blocks: next,
+    });
+    return data({
+      ok: `${DOCTRINE_AXIS_LABEL[axis]}${value ? "을(를) 저장했습니다." : " 축을 비웠습니다."}`,
+    });
   }
 
   if (intent === "approve") {
