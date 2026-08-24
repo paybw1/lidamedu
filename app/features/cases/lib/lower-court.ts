@@ -57,6 +57,14 @@ export function parseLowerCourtFiles(raw: unknown): LowerCourtFile[] {
   });
 }
 
+/**
+ * 원본 다운로드 경로. ★`/api/admin/…` 이다 — routes.ts 가 /api 안에 /admin 을 중첩한다.
+ *   화면 경로(/admin/cases/lower-court/…)와 헷갈리기 쉬워 한 곳에서만 만든다.
+ */
+export function lowerCourtFileHref(caseId: string, index: number): string {
+  return `/api/admin/cases/lower-court/${caseId}/file?i=${index}`;
+}
+
 /** "2.4MB" — 목록에 크기를 보여 원본이 맞는지 가늠하게 한다. */
 export function formatFileSize(bytes: number): string {
   if (bytes <= 0) return "";

@@ -234,7 +234,7 @@ AI 입력으로 쓰면 사실을 잘못 옮긴 채 승인 큐를 통과한다. `
 
 - Storage 키는 **ASCII 만**(`<case_id>/<stamp>-<n>.pdf`) — 한글 키는 서명 URL 단계에서 깨진다.
   한글 원본명은 `files[].name` 에만 두고 다운로드할 때 그 이름으로 내려 준다.
-- 다운로드는 `/admin/cases/lower-court/:caseId/file?i=<n>` — staff 확인 후 **60초 서명 URL** 로 리다이렉트.
+- 다운로드는 `/api/admin/cases/lower-court/:caseId/file?i=<n>` — staff 확인 후 **60초 서명 URL** 로 리다이렉트.
   버킷에 사용자 정책을 두지 않아 이 경로가 유일한 출구다.
 - ★**본문을 갈아끼우면 원본을 지운다** — 전문 붙여넣기·자동 재수집은 `files` 를 비우고 Storage 객체도
   제거한다(`upsertLower` 한 곳에서). 본문과 어긋난 "원본"은 없느니만 못하다.

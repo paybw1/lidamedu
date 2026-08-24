@@ -21,6 +21,7 @@ import {
 import {
   type LowerCourtFile,
   formatFileSize,
+  lowerCourtFileHref,
 } from "~/features/cases/lib/lower-court";
 import { reflowJudgmentText } from "~/features/cases/lib/lower-court-text";
 
@@ -89,7 +90,7 @@ export function LowerCourtSheet({
           {lower.files.map((f, i) => (
             <a
               key={f.path}
-              href={`/admin/cases/lower-court/${caseId}/file?i=${i}`}
+              href={lowerCourtFileHref(caseId, i)}
               className="border-border text-muted-foreground hover:bg-muted mt-1 inline-flex h-7 w-fit items-center gap-1 rounded-full border px-3 text-[11px] font-semibold"
             >
               <DownloadIcon className="size-3" />

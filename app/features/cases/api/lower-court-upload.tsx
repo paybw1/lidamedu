@@ -7,7 +7,7 @@
 // ★별도 리소스 라우트인 이유: mupdf(PDF 텍스트 추출)를 화면 모듈 그래프에 끌어들이지 않기 위해.
 // ★원본 파일도 Storage(private)에 보관한다 — 예전에는 텍스트만 뽑고 바이트를 버렸는데,
 //   나중에 원본 PDF 가 필요해졌을 때 되찾을 방법이 전혀 없었다(원장 2026-08-24).
-//   다운로드는 /admin/cases/lower-court/:caseId/file 이 서명 URL 로 내보낸다.
+//   다운로드는 /api/admin/cases/lower-court/:caseId/file 이 서명 URL 로 내보낸다.
 import type { Route } from "./+types/lower-court-upload";
 
 import { data } from "react-router";

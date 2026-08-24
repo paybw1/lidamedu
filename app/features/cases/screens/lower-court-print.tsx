@@ -10,6 +10,7 @@ import { DownloadIcon } from "lucide-react";
 import { data } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { lowerCourtFileHref } from "~/features/cases/lib/lower-court";
 import { reflowJudgmentText } from "~/features/cases/lib/lower-court-text";
 import { getLowerCourtByCaseId } from "~/features/cases/queries-lower-court.server";
 import { getCaseById } from "~/features/cases/queries.server";
@@ -70,7 +71,7 @@ export default function LowerCourtPrint({ loaderData }: Route.ComponentProps) {
         {files.map((f, i) => (
           <a
             key={f.path}
-            href={`/admin/cases/lower-court/${caseId}/file?i=${i}`}
+            href={lowerCourtFileHref(caseId, i)}
             className="border-border hover:bg-muted inline-flex h-8 items-center gap-1.5 rounded-full border px-4 text-xs font-semibold"
           >
             <DownloadIcon className="size-3.5" />

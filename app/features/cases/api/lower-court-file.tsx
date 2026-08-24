@@ -1,4 +1,5 @@
-// feat-2-035 — 하급심 판결문 **원본 파일 다운로드**(staff). `/admin/cases/lower-court/:caseId/file?i=0`
+// feat-2-035 — 하급심 판결문 **원본 파일 다운로드**(staff).
+// `/api/admin/cases/lower-court/:caseId/file?i=0` — ★/api 안에 /admin 이 중첩된 경로다.
 //
 // 버킷이 private 이라 URL 을 그대로 노출할 수 없다(저작물 전문). 운영자 확인을 통과한 요청에만
 // 짧은 수명의 서명 URL 을 발급해 그리로 넘긴다 — 링크가 새어 나가도 곧 죽는다.
