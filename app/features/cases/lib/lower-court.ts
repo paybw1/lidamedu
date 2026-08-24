@@ -30,6 +30,14 @@ export function needsManualWork(status: LowerCourtStatus): boolean {
 // 업로드 경로는 원래 텍스트만 뽑고 원본 바이트를 버렸다. 나중에 원본이 필요해졌을 때
 // 되찾을 방법이 없어(원장 2026-08-24) 파일을 함께 보관하도록 바꿨다.
 
+/**
+ * original = 운영자가 올린 판결문 원본 파일.
+ * generated = 적재된 본문에서 만들어 낸 PDF(자동 수집분은 애초에 파일이 없었다).
+ * ★둘을 반드시 구분한다 — 생성본을 "원본"이라 표시하면 API 텍스트를 판결문 원본으로
+ *   오인하게 된다. 서식·표·서명란이 없는 다른 물건이다.
+ */
+export type LowerCourtFileKind = "original" | "generated";
+
 export interface LowerCourtFile {
   /** 업로드 당시 파일명 — 한글 그대로. 다운로드 표시·저장 이름. */
   name: string;
@@ -37,7 +45,14 @@ export interface LowerCourtFile {
   path: string;
   size: number;
   mime: string;
+  kind: LowerCourtFileKind;
 }
+
+/** 화면 표기 — 생성본은 무엇으로 만든 것인지 이름에 드러낸다. */
+export const FILE_KIND_LABEL: Record<LowerCourtFileKind, string> = {
+  original: "원본 내려받기",
+  generated: "PDF 내려받기",
+};
 
 /** jsonb 컬럼 → 화면이 믿고 쓸 수 있는 배열. 형태가 어긋난 원소는 버린다. */
 export function parseLowerCourtFiles(raw: unknown): LowerCourtFile[] {
@@ -52,6 +67,8 @@ export function parseLowerCourtFiles(raw: unknown): LowerCourtFile[] {
         path: o.path,
         size: typeof o.size === "number" ? o.size : 0,
         mime: typeof o.mime === "string" ? o.mime : "application/octet-stream",
+        // kind 도입(2026-08-24) 전 항목은 전부 업로드 원본이다.
+        kind: o.kind === "generated" ? "generated" : "original",
       },
     ];
   });

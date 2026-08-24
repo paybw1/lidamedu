@@ -29,6 +29,7 @@ function filesToJson(files: LowerCourtFile[]): Json {
     path: f.path,
     size: f.size,
     mime: f.mime,
+    kind: f.kind,
   }));
 }
 

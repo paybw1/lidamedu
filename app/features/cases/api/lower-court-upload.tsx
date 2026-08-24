@@ -145,7 +145,13 @@ export async function action({ request }: Route.ActionArgs) {
       .from(LOWER_COURT_BUCKET)
       .upload(path, o.bytes, { contentType: o.mime, upsert: false });
     if (upErr) return fail(`${o.name} — 원본 보관 실패: ${upErr.message}`);
-    stored.push({ path, name: o.name, size: o.bytes.byteLength, mime: o.mime });
+    stored.push({
+      path,
+      name: o.name,
+      size: o.bytes.byteLength,
+      mime: o.mime,
+      kind: "original",
+    });
   }
 
   const result = await saveLowerCourtText(client, caseId, {

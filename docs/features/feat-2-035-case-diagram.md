@@ -240,6 +240,27 @@ AI 입력으로 쓰면 사실을 잘못 옮긴 채 승인 큐를 통과한다. `
   제거한다(`upsertLower` 한 곳에서). 본문과 어긋난 "원본"은 없느니만 못하다.
 - **2026-08-24 이전 적재분에는 원본이 없다**(수기 86건). 필요하면 다시 올려야 한다.
 
+**★자동 수집분 PDF 생성**(2026-08-24). 자동 수집(`lower_auto` 111건)은 국가법령정보센터 API
+텍스트라 내려받을 파일이 애초에 없다. **판례 전문 PDF 와 같은 규칙**으로 조판해 같은 버킷에
+넣고 `files` 에 `kind:"generated"` 로 등록한다.
+
+```bash
+npx tsx scripts/case-diagram/build-lower-court-pdfs.ts            # 생성본 없는 것만
+npx tsx scripts/case-diagram/build-lower-court-pdfs.ts --force    # 전체 재생성
+npx tsx scripts/case-diagram/build-lower-court-pdfs.ts --all-kinds # lower_self 까지
+```
+
+- ★**조판 규칙은 `renderOfficialTextPdf` 하나뿐이다**(pdf-lib + NotoSerifKR TTF · A4 · 글자 단위
+  wrap · 원문자 평문 대체). 사본을 만들지 않는다 — 판례 전문 PDF 와 다른 모양이 나오면
+  그때부터 두 벌을 관리해야 한다.
+- ★**미커버 정책도 그대로** — 폰트가 못 그리는 글자가 1자라도 있으면 그 건은 skip + 보고한다
+  ("□ 로 조용히 내보내지 말 것").
+- 자동 수집 본문은 문단이 이미 살아 있다(API 텍스트) — `reflowJudgmentText` 를 태우지 않는다.
+  그건 **PDF 추출본**의 줄바꿈 깨짐을 되돌리는 용도이고, 문단 신호(들여쓰기)가 없는 API
+  텍스트에 걸면 전체가 한 문단으로 뭉친다.
+- 경로는 `<case_id>/generated.pdf` 고정 — 재생성해도 파일이 쌓이지 않는다.
+- ★**재수집·붙여넣기 뒤에는 다시 돌려야 한다** — 본문이 바뀌면 `upsertLower` 가 생성본까지 지운다.
+
 **★생성기의 2차 소스.** 화면에서 적재한 판결문은 로컬 캐시에 없으므로,
 `draft-diagrams.mjs` 는 캐시가 없으면 `case_lower_courts`(status=`loaded`)를 읽는다.
 이 연결이 없으면 화면에서 구해 넣은 판결문이 도식 생성에 반영되지 않는다.

@@ -19,6 +19,7 @@ import {
   SheetTrigger,
 } from "~/core/components/ui/sheet";
 import {
+  FILE_KIND_LABEL,
   type LowerCourtFile,
   formatFileSize,
   lowerCourtFileHref,
@@ -85,8 +86,8 @@ export function LowerCourtSheet({
           >
             <PrinterIcon className="size-3" /> 인쇄 · PDF로 저장
           </Link>
-          {/* ★원본이 있으면 그걸 먼저 준다 — 위 인쇄본은 추출 텍스트를 다시 그린 것이라
-              원본 판결문 서식(표·서명란)이 남아 있지 않다. */}
+          {/* ★원본과 생성본을 라벨로 구분한다 — 생성본은 적재된 본문으로 만든 PDF 라
+              원본 판결문 서식(표·서명란)이 없다. */}
           {lower.files.map((f, i) => (
             <a
               key={f.path}
@@ -94,8 +95,9 @@ export function LowerCourtSheet({
               className="border-border text-muted-foreground hover:bg-muted mt-1 inline-flex h-7 w-fit items-center gap-1 rounded-full border px-3 text-[11px] font-semibold"
             >
               <DownloadIcon className="size-3" />
-              원본 내려받기
+              {FILE_KIND_LABEL[f.kind]}
               <span className="text-muted-foreground/70 font-normal">
+                {f.kind === "generated" ? "본문 생성본 · " : ""}
                 {f.name}
                 {formatFileSize(f.size) ? ` · ${formatFileSize(f.size)}` : ""}
               </span>

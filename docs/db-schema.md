@@ -1412,3 +1412,45 @@ drop policy case_diagrams_read_approved on public.case_diagrams;
   ("승인(검수 완료) 했습니다.")도 함께 고쳐야 한다.
 - 도식 패널(`case-diagram-sheet`)에 **승인 버튼**을 붙였다(staff 만). 서버(`admin-case-diagram-edit`
   action)가 역할·승인조건(`diagramApprovable`)을 다시 확인하므로 버튼은 진입점일 뿐이다.
+
+## case_lower_courts (하급심 판결문)  ✅ 적용됨 (2026-08-20 · files 2026-08-24)
+
+판례 도식(feat-2-035)의 **사실관계 근거**. 대법원은 법률심이라 사실관계가 "원심이 인정한
+사실은 …" 으로 압축돼 있어, 2차 각색 출제의 원형이 되는 구체적 사실이 남지 않는다.
+
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| `lower_id` | uuid PK | |
+| `case_id` | uuid **unique** → `cases` | 대상 판례 1:1 |
+| `status` | text | `loaded` 전문 확보 / `not_in_api` 원심번호는 알지만 API 미수록 / `summary_only` 요지만 / `no_ref` 원심 표기 없음 |
+| `source_kind` | text | `lower_auto` API 자동 / `lower_self` 판례 자체가 하급심 / `lower_manual` 수기 |
+| `source_ref` | text | `특허법원 2022허4635` — 화면 표기·출처 캡션 |
+| `lower_case_number` · `lower_court` · `lower_decided_at` | text | 원심 식별. **미확보 건도 채운다** |
+| `law_serial_id` | text | 국가법령정보센터 판례일련번호 |
+| `body_text` · `char_count` | text · int | 판결문 전문 |
+| `files` | jsonb | `[{name,path,size,mime,kind}]` — 아래 |
+| `fetched_at` · `created_at` · `updated_at` · `deleted_at` | timestamptz | |
+
+- **미확보 건도 행을 남긴다** — "무엇을 아직 못 구했는지"와 "그때 필요한 원심 사건번호가
+  무엇인지"가 목록의 핵심 정보다. 확보분만 넣으면 미확보 목록을 매번 다시 만들어야 한다.
+- **RLS: staff 전용 한 줄**(`case_lower_courts_staff_all`) — 저작물 전문이라 학생에게는
+  어떤 경로로도 보이지 않는다.
+
+### files — 원본 파일 · 생성 PDF
+
+버킷 `case-lower-courts`(**private**, 20MB). 사용자 정책을 두지 않는다 — 접근은
+`adminClient` 한 경로뿐이고, 다운로드는 `/api/admin/cases/lower-court/:caseId/file?i=<n>`
+이 staff 확인 후 **60초 서명 URL** 로 넘긴다.
+
+| `kind` | 무엇 | 어디서 |
+|---|---|---|
+| `original` | 운영자가 올린 판결문 원본 파일 | 화면 업로드(`/api/admin/lower-court-upload`) |
+| `generated` | 적재된 본문으로 조판한 PDF | `scripts/case-diagram/build-lower-court-pdfs.ts` |
+
+- ★**둘을 라벨로 구분한다**(`FILE_KIND_LABEL`) — 생성본을 "원본"이라 표시하면 API 텍스트를
+  판결문 원본으로 오인하게 된다. 서식·표·서명란이 없는 다른 물건이다.
+- ★`path` 는 **ASCII 만**(`<case_id>/<stamp>-<n>.pdf`, 생성본은 `<case_id>/generated.pdf`) —
+  한글 키는 서명 URL 단계에서 깨진다. 한글 원본명은 `name` 에만 둔다.
+- ★**본문을 갈아끼우면 files 를 비우고 Storage 객체도 지운다**(`upsertLower` 한 곳) —
+  본문과 어긋난 "원본"은 없느니만 못하다. 재수집·붙여넣기 뒤에는 생성 스크립트를 다시 돌린다.
+- **2026-08-24 이전 업로드분(수기 86건)에는 원본이 없다** — 그때는 텍스트만 뽑고 바이트를 버렸다.

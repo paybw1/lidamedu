@@ -10,7 +10,10 @@ import { DownloadIcon } from "lucide-react";
 import { data } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
-import { lowerCourtFileHref } from "~/features/cases/lib/lower-court";
+import {
+  FILE_KIND_LABEL,
+  lowerCourtFileHref,
+} from "~/features/cases/lib/lower-court";
 import { reflowJudgmentText } from "~/features/cases/lib/lower-court-text";
 import { getLowerCourtByCaseId } from "~/features/cases/queries-lower-court.server";
 import { getCaseById } from "~/features/cases/queries.server";
@@ -75,8 +78,11 @@ export default function LowerCourtPrint({ loaderData }: Route.ComponentProps) {
             className="border-border hover:bg-muted inline-flex h-8 items-center gap-1.5 rounded-full border px-4 text-xs font-semibold"
           >
             <DownloadIcon className="size-3.5" />
-            원본 내려받기
-            <span className="text-muted-foreground font-normal">{f.name}</span>
+            {FILE_KIND_LABEL[f.kind]}
+            <span className="text-muted-foreground font-normal">
+              {f.kind === "generated" ? "본문 생성본 · " : ""}
+              {f.name}
+            </span>
           </a>
         ))}
         <span className="text-muted-foreground text-[11px]">
