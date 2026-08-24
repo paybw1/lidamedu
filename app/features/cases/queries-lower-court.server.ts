@@ -255,6 +255,25 @@ export async function collectLowerCourt(
     };
   }
 
+  // ★강등 방지 — 이미 전문이 있는 행을 실패 결과로 덮어쓰지 않는다.
+  //   목록의 「다시 수집」은 loaded 행에도 뜨는데, API 에 없는 건(2026다202753 등)을 누르면
+  //   본문이 빈 문자열로 갈리고 **업로드해 둔 원본 파일까지 지워진다**(upsertLower 가 정리한다).
+  //   배치(load-lower-court.mjs)는 같은 가드를 이미 갖고 있다.
+  const { data: existing } = await client
+    .from("case_lower_courts")
+    .select("status, char_count, source_ref")
+    .eq("case_id", caseId)
+    .maybeSingle();
+  const alreadyLoaded =
+    existing?.status === "loaded" && (existing.char_count ?? 0) > 0;
+  const keepLoaded = (reason: string): CollectResult => ({
+    caseId,
+    caseNumber: kase.case_number,
+    status: "loaded",
+    ok: false,
+    message: `이미 전문 ${(existing?.char_count ?? 0).toLocaleString("ko-KR")}자가 적재돼 있어 덮어쓰지 않았습니다(${existing?.source_ref ?? "출처 미상"}). — ${reason}`,
+  });
+
   const outcome = await resolveLowerCourtText({
     supremeCaseNumber: kase.case_number,
     supremeDecidedAt: kase.decided_at,
@@ -263,6 +282,8 @@ export async function collectLowerCourt(
   });
 
   if (outcome.status === "no_ref") {
+    if (alreadyLoaded)
+      return keepLoaded(`원심을 특정하지 못했습니다 — ${outcome.reason}`);
     await upsertLower(client, {
       case_id: caseId,
       status: "no_ref",
@@ -286,6 +307,8 @@ export async function collectLowerCourt(
   const ref = outcome.ref;
   const refLabel = `${ref.court || "?"} ${ref.caseNumber}`;
   if (outcome.status === "not_in_api") {
+    if (alreadyLoaded)
+      return keepLoaded(`원심 ${refLabel} — ${outcome.reason}`);
     await upsertLower(client, {
       case_id: caseId,
       status: "not_in_api",
@@ -308,6 +331,8 @@ export async function collectLowerCourt(
   }
 
   // loaded / summary_only — 전문은 받았다. 요지만이면 사실관계 소스가 못 되므로 갈라 둔다.
+  if (outcome.status === "summary_only" && alreadyLoaded)
+    return keepLoaded(`원심 ${refLabel} — 수록됐으나 판시사항·요지뿐입니다.`);
   await upsertLower(client, {
     case_id: caseId,
     status: outcome.status,
