@@ -45,7 +45,7 @@ function Legend() {
     </span>
   );
   return (
-    <p className="text-muted-foreground mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px]">
+    <p className="text-muted-foreground mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[12px]">
       {item(<span className="size-1.5 rounded-full bg-emerald-500" />, "완료")}
       {item(<span className="size-1.5 rounded-full bg-amber-500" />, "부분")}
       {item(
@@ -116,7 +116,7 @@ export function PlanCalendar({
           <span
             key={h}
             className={cn(
-              "text-muted-foreground pb-1 text-center text-[10px] font-semibold",
+              "text-muted-foreground pb-1 text-center text-[12px] font-semibold",
               dayNumberColor(i),
             )}
           >
@@ -145,7 +145,7 @@ export function PlanCalendar({
               <>
                 <span
                   className={cn(
-                    "grid size-6 place-items-center rounded-full text-xs tabular-nums",
+                    "grid size-7 place-items-center rounded-full text-[14px] tabular-nums",
                     dayNumberColor(col),
                     future && "opacity-40",
                     selected
@@ -179,7 +179,7 @@ export function PlanCalendar({
 
           // full — 날짜별 부하 셀
           const cellCls = cn(
-            "relative flex min-h-14 flex-col rounded-lg border p-1 text-left transition-colors sm:min-h-16 sm:p-1.5",
+            "relative flex min-h-16 flex-col rounded-lg border p-1.5 text-left transition-colors sm:min-h-[4.5rem] sm:p-2",
             highlighted
               ? "border-primary/60 bg-primary/10"
               : overloaded
@@ -191,7 +191,7 @@ export function PlanCalendar({
             <>
               <span
                 className={cn(
-                  "self-start text-[11px] font-medium tabular-nums",
+                  "self-start text-[13px] font-semibold tabular-nums",
                   dayNumberColor(col),
                   isToday &&
                     "bg-foreground text-background -mx-0.5 rounded-full px-1.5",
@@ -200,7 +200,7 @@ export function PlanCalendar({
                 {dayNo}
               </span>
               {day.expectedCount > 0 ? (
-                <span className="text-muted-foreground mt-auto text-[10px] leading-tight tabular-nums">
+                <span className="text-muted-foreground mt-auto text-[12px] leading-tight tabular-nums">
                   {formatMinutesCompact(day.expectedMinutes)}
                   <span className="hidden sm:inline"> · {day.expectedCount}건</span>
                 </span>

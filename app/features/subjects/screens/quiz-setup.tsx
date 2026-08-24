@@ -17,6 +17,7 @@ import {
   FORMAT_LABEL,
   ORIGIN_LABEL,
   POLARITY_LABEL,
+  MC_FORMATS,
   SCOPE_LABEL,
   type ProblemFormat,
   type ProblemOrigin,
@@ -101,13 +102,18 @@ export async function action({ params, request }: Route.ActionArgs) {
   const { origin, year, format, polarity, scope, count, mode } = parsed.data;
   const shuffle = parsed.data.shuffle !== "off"; // 기본 on
 
-  const candidates = await listProblemsBySubject(client, lawCode, {
-    origin,
-    year,
-    format,
-    polarity,
-    scope,
-  });
+  // ★객관식 러너다 — 주관식이 섞이면 선지가 없어 화면이 조문만 남고 진행이 막힌다
+  //   (오류신고 2026-08-24: "다음 문제로 넘겼는데 조문으로만 넘어가고, 다음 문제가 안뜹니다").
+  //   폼의 형식 선택은 객관식 3종뿐이지만 '전체'(미지정)면 주관식까지 딸려 온다.
+  const candidates = (
+    await listProblemsBySubject(client, lawCode, {
+      origin,
+      year,
+      format,
+      polarity,
+      scope,
+    })
+  ).filter((p) => MC_FORMATS.includes(p.format));
   if (candidates.length === 0) {
     return data(
       { error: "조건에 맞는 문제가 없습니다. 필터를 완화해 주세요." },
