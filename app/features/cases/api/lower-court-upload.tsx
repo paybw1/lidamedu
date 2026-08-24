@@ -5,16 +5,22 @@
 //   → 앞 토큰(대법원 사건번호)은 떼고 나머지가 출처 표기가 된다.
 //
 // ★별도 리소스 라우트인 이유: mupdf(PDF 텍스트 추출)를 화면 모듈 그래프에 끌어들이지 않기 위해.
-// ★Storage 에 원본을 남기지 않는다 — 쓰는 쪽은 body_text 뿐이고, 배치 강등 방지 가드가 이미 DB 를 지킨다.
+// ★원본 파일도 Storage(private)에 보관한다 — 예전에는 텍스트만 뽑고 바이트를 버렸는데,
+//   나중에 원본 PDF 가 필요해졌을 때 되찾을 방법이 전혀 없었다(원장 2026-08-24).
+//   다운로드는 /admin/cases/lower-court/:caseId/file 이 서명 URL 로 내보낸다.
+import type { Route } from "./+types/lower-court-upload";
 
 import { data } from "react-router";
 
+import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
+import type { LowerCourtFile } from "~/features/cases/lib/lower-court";
 import { extractPdfText } from "~/features/cases/lib/pdf-extract.server";
-import { saveLowerCourtText } from "~/features/cases/queries-lower-court.server";
+import {
+  LOWER_COURT_BUCKET,
+  saveLowerCourtText,
+} from "~/features/cases/queries-lower-court.server";
 import { getStaffRole } from "~/features/laws/queries.server";
-
-import type { Route } from "./+types/lower-court-upload";
 
 // ★Vercel 서버리스 요청 본문 상한이 4.5MB 라 그 이상은 액션에 닿기 전에 잘린다.
 //   여러 파일을 올리면 합계 기준. 화면에도 같은 숫자를 적어 둔다.
@@ -78,6 +84,7 @@ export async function action({ request }: Route.ActionArgs) {
   // 심급이 여러 개면 파일도 여러 개다(1심+2심). 파일명 머리표와 구분선을 붙여 합친다 —
   // 배치 수집기(readManualFiles)와 같은 형식이라 도식 생성기가 동일하게 읽는다.
   const parts: string[] = [];
+  const originals: { bytes: Uint8Array; name: string; mime: string }[] = [];
   for (const file of usable) {
     const name = file.name;
     const lower = name.toLowerCase();
@@ -108,6 +115,11 @@ export async function action({ request }: Route.ActionArgs) {
       return fail(`${name} — .pdf · .txt · .md 만 올릴 수 있습니다.`);
     }
     parts.push(`[${name}]\n${text.trim()}`);
+    originals.push({
+      bytes,
+      name,
+      mime: lower.endsWith(".pdf") ? "application/pdf" : "text/plain",
+    });
   }
 
   const bodyText = parts.join("\n\n———\n\n");
@@ -121,9 +133,25 @@ export async function action({ request }: Route.ActionArgs) {
     .map((f) => sourceRefFromFilename(f.name))
     .filter(Boolean)
     .join(" / ");
+  // ★원본은 텍스트 검증을 모두 통과한 뒤에 올린다 — 되돌릴 일이 없어진다.
+  //   Storage 키는 ASCII 만 쓴다(한글 키는 서명 URL 단계에서 깨진다). 한글 파일명은
+  //   files[].name 에만 남겨 두고 다운로드할 때 그 이름으로 내려 준다.
+  const stamp = Date.now();
+  const stored: LowerCourtFile[] = [];
+  for (const [i, o] of originals.entries()) {
+    const ext = o.mime === "application/pdf" ? "pdf" : "txt";
+    const path = `${caseId}/${stamp}-${i}.${ext}`;
+    const { error: upErr } = await adminClient.storage
+      .from(LOWER_COURT_BUCKET)
+      .upload(path, o.bytes, { contentType: o.mime, upsert: false });
+    if (upErr) return fail(`${o.name} — 원본 보관 실패: ${upErr.message}`);
+    stored.push({ path, name: o.name, size: o.bytes.byteLength, mime: o.mime });
+  }
+
   const result = await saveLowerCourtText(client, caseId, {
     bodyText,
     sourceRef,
+    files: stored,
   });
   return data({ kind: "single" as const, result });
 }

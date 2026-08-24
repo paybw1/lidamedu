@@ -2,10 +2,11 @@
 //
 // 시트에서 읽으면 PDF 추출본의 줄바꿈 때문에 문장이 조각나 보인다는 보고(원장 2026-08-24).
 // 여기서는 문단을 복원해 A4 인쇄에 맞춰 그린다 — 브라우저 인쇄로 **PDF 저장**까지 된다.
-// ★원본 PDF 는 서버에 보관하지 않는다(업로드 경로가 원본을 남기지 않음). 그래서 파일을
-//   내려주는 대신 본문을 인쇄 가능한 형태로 다시 그린다.
+// ★이 화면은 **추출 텍스트를 다시 그린 것**이라 원본 서식(표·서명란)이 없다. 2026-08-24 이후
+//   업로드분은 원본 파일을 그대로 보관하므로, 원본이 있으면 아래 버튼으로 내려받는 쪽이 낫다.
 import type { Route } from "./+types/lower-court-print";
 
+import { DownloadIcon } from "lucide-react";
 import { data } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
@@ -42,6 +43,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     "원심 판결문";
 
   return {
+    caseId: params.caseId,
+    files: lower.files,
     label,
     caseNumber: kase?.caseNumber ?? "",
     caseTitle: kase?.caseTitle ?? "",
@@ -51,7 +54,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 }
 
 export default function LowerCourtPrint({ loaderData }: Route.ComponentProps) {
-  const { label, caseNumber, caseTitle, charCount, paragraphs } = loaderData;
+  const { caseId, files, label, caseNumber, caseTitle, charCount, paragraphs } =
+    loaderData;
   return (
     <div className="mx-auto max-w-[820px] px-6 py-8 print:max-w-none print:px-0 print:py-0">
       {/* 인쇄에는 안 나가는 조작 줄 */}
@@ -63,6 +67,17 @@ export default function LowerCourtPrint({ loaderData }: Route.ComponentProps) {
         >
           인쇄 · PDF로 저장
         </button>
+        {files.map((f, i) => (
+          <a
+            key={f.path}
+            href={`/admin/cases/lower-court/${caseId}/file?i=${i}`}
+            className="border-border hover:bg-muted inline-flex h-8 items-center gap-1.5 rounded-full border px-4 text-xs font-semibold"
+          >
+            <DownloadIcon className="size-3.5" />
+            원본 내려받기
+            <span className="text-muted-foreground font-normal">{f.name}</span>
+          </a>
+        ))}
         <span className="text-muted-foreground text-[11px]">
           인쇄 대화상자에서 대상을 「PDF로 저장」으로 고르세요 · 운영자 전용
         </span>

@@ -24,3 +24,43 @@ export const LOWER_STATUS_LABEL: Record<LowerCourtStatus, string> = {
 export function needsManualWork(status: LowerCourtStatus): boolean {
   return status !== "loaded";
 }
+
+// ───────────────────────── 업로드 원본 파일 ─────────────────────────
+//
+// 업로드 경로는 원래 텍스트만 뽑고 원본 바이트를 버렸다. 나중에 원본이 필요해졌을 때
+// 되찾을 방법이 없어(원장 2026-08-24) 파일을 함께 보관하도록 바꿨다.
+
+export interface LowerCourtFile {
+  /** 업로드 당시 파일명 — 한글 그대로. 다운로드 표시·저장 이름. */
+  name: string;
+  /** Storage 키(ASCII). 한글을 키에 넣으면 서명 URL 단계에서 깨진다. */
+  path: string;
+  size: number;
+  mime: string;
+}
+
+/** jsonb 컬럼 → 화면이 믿고 쓸 수 있는 배열. 형태가 어긋난 원소는 버린다. */
+export function parseLowerCourtFiles(raw: unknown): LowerCourtFile[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((v) => {
+    if (typeof v !== "object" || v === null) return [];
+    const o = v as Record<string, unknown>;
+    if (typeof o.name !== "string" || typeof o.path !== "string") return [];
+    return [
+      {
+        name: o.name,
+        path: o.path,
+        size: typeof o.size === "number" ? o.size : 0,
+        mime: typeof o.mime === "string" ? o.mime : "application/octet-stream",
+      },
+    ];
+  });
+}
+
+/** "2.4MB" — 목록에 크기를 보여 원본이 맞는지 가늠하게 한다. */
+export function formatFileSize(bytes: number): string {
+  if (bytes <= 0) return "";
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)}KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
+}

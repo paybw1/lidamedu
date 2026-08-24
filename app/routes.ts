@@ -175,9 +175,11 @@ export default [
       route("/case-official-pdf", "features/admin/api/case-official-pdf.tsx"),
       route("/case-citations", "features/admin/api/case-citations.tsx"),
       // feat-2-035 — 하급심 판결문 파일 업로드(행별 버튼). 화면 모듈에 mupdf 를 끌어들이지 않으려 분리.
+      route("/lower-court-upload", "features/cases/api/lower-court-upload.tsx"),
+      // feat-2-035 — 업로드 원본 파일 다운로드(서명 URL 리다이렉트).
       route(
-        "/lower-court-upload",
-        "features/cases/api/lower-court-upload.tsx",
+        "/cases/lower-court/:caseId/file",
+        "features/cases/api/lower-court-file.tsx",
       ),
       route("/problem-create", "features/admin/api/problem-create.tsx"),
       route("/case-reference", "features/admin/api/case-reference.tsx"),
@@ -230,10 +232,7 @@ export default [
         "features/study/api/session-from-weakness.tsx",
       ),
       // 약점 → 개인 과제 직접 추가(종합반 학생 셀프).
-      route(
-        "/weak-to-assignment",
-        "features/study/api/weak-to-assignment.tsx",
-      ),
+      route("/weak-to-assignment", "features/study/api/weak-to-assignment.tsx"),
       route(
         "/session-from-bookmarks",
         "features/study/api/session-from-bookmarks.tsx",
@@ -293,7 +292,10 @@ export default [
     // 내 강의실(수강현황) — 구 /me/courses 를 여기로 이관(아래 redirect 유지).
     route("/lecture", "features/lms/screens/my-courses.tsx"),
     // 강의실(회차 선택) — 수강권 단위 입장 → 회차 고르기.
-    route("/lecture/room/:enrollmentId", "features/lms/screens/lecture-room.tsx"),
+    route(
+      "/lecture/room/:enrollmentId",
+      "features/lms/screens/lecture-room.tsx",
+    ),
     // 강의 재생(Kollus 웹플레이어) — 회차 단위.
     route("/lecture/watch/:lessonId", "features/lms/screens/lecture-watch.tsx"),
     route("/lecture/catalog", "features/lms/screens/lecture-catalog.tsx"),
@@ -315,7 +317,10 @@ export default [
     // feat-8-029 P3 — 학생 환불요청 접수.
     route("/api/refund-request", "features/orders/api/refund-request.tsx"),
     // feat-12 마이페이지 하위 — 증명서·결제내역·쿠폰·포인트(오픈 예정).
-    route("/lecture/certificates", "features/lms/screens/lecture-certificates.tsx"),
+    route(
+      "/lecture/certificates",
+      "features/lms/screens/lecture-certificates.tsx",
+    ),
     route("/lecture/payments", "features/lms/screens/lecture-payments.tsx"),
     route("/lecture/coupons", "features/lms/screens/lecture-coupons.tsx"),
     route("/lecture/points", "features/lms/screens/lecture-points.tsx"),
@@ -707,7 +712,10 @@ export default [
         "features/cs-inquiries/screens/admin-cs-inquiries.tsx",
       ),
       // 고객센터 FAQ 관리(/lecture/support 상단 노출).
-      route("/admin/support-faqs", "features/cs-inquiries/screens/admin-faqs.tsx"),
+      route(
+        "/admin/support-faqs",
+        "features/cs-inquiries/screens/admin-faqs.tsx",
+      ),
       route(
         "/admin/support-faqs/new",
         "features/cs-inquiries/screens/admin-faq-edit.tsx",
@@ -717,7 +725,10 @@ export default [
         "/admin/support-faqs/:faqId/edit",
         "features/cs-inquiries/screens/admin-faq-edit.tsx",
       ),
-      route("/api/admin/support-faq", "features/cs-inquiries/api/admin-faq.tsx"),
+      route(
+        "/api/admin/support-faq",
+        "features/cs-inquiries/api/admin-faq.tsx",
+      ),
       // feat-6-012 — 강사소개 관리(프로필: 경력·저서·철학·사진, /about/instructors 노출).
       // 경로는 feat-7-041 강사 담당·배분(/admin/instructors)과 충돌 방지 위해 분리.
       route(
@@ -751,10 +762,7 @@ export default [
         "/admin/lecture-schedules/:scheduleId/edit",
         "features/landing/screens/admin-schedule-edit.tsx",
       ),
-      route(
-        "/admin/lecture-news",
-        "features/landing/screens/admin-news.tsx",
-      ),
+      route("/admin/lecture-news", "features/landing/screens/admin-news.tsx"),
       route(
         "/admin/lecture-news/new",
         "features/landing/screens/admin-news-edit.tsx",
@@ -790,10 +798,7 @@ export default [
         "/admin/landing-banners/:bannerId/edit",
         "features/landing/screens/admin-banner-edit.tsx",
       ),
-      route(
-        "/admin/exam-info",
-        "features/landing/screens/admin-exam-info.tsx",
-      ),
+      route("/admin/exam-info", "features/landing/screens/admin-exam-info.tsx"),
       route(
         "/admin/exam-notices",
         "features/landing/screens/admin-exam-notices.tsx",
@@ -829,10 +834,7 @@ export default [
         "features/admin/screens/admin-announcements.tsx",
       ),
       // 세그먼트 대량 안내 발송(인앱+이메일).
-      route(
-        "/admin/broadcasts",
-        "features/admin/screens/admin-broadcasts.tsx",
-      ),
+      route("/admin/broadcasts", "features/admin/screens/admin-broadcasts.tsx"),
       route(
         "/admin/announcements/audiences",
         "features/admin/screens/admin-announcement-audiences.tsx",
@@ -878,10 +880,7 @@ export default [
         "/admin/lms/contents",
         "features/lms/screens/admin-lms-contents.tsx",
       ),
-      route(
-        "/admin/lms/reviews",
-        "features/lms/screens/admin-lms-reviews.tsx",
-      ),
+      route("/admin/lms/reviews", "features/lms/screens/admin-lms-reviews.tsx"),
       route(
         "/admin/lms/enrollments",
         "features/lms/screens/admin-lms-enrollments.tsx",
@@ -889,10 +888,16 @@ export default [
       route("/admin/lms/devices", "features/lms/screens/admin-lms-devices.tsx"),
       // feat-11-004 4a — 주문 관리(항목 부분 환불) + 4b 무통장.
       route("/admin/orders", "features/orders/screens/admin-orders.tsx"),
-      route("/api/orders/bank-transfer", "features/orders/api/bank-transfer.tsx"),
+      route(
+        "/api/orders/bank-transfer",
+        "features/orders/api/bank-transfer.tsx",
+      ),
       // feat-11-004 4c — 도서몰·배송 + 학생 마이페이지.
       route("/admin/books", "features/bookstore/screens/admin-books.tsx"),
-      route("/admin/books/new", "features/bookstore/screens/admin-book-new.tsx"),
+      route(
+        "/admin/books/new",
+        "features/bookstore/screens/admin-book-new.tsx",
+      ),
       route(
         "/admin/books/:bookId/edit",
         "features/bookstore/screens/admin-book-edit.tsx",
@@ -905,7 +910,10 @@ export default [
         "/api/admin/book-preview",
         "features/bookstore/api/book-preview.tsx",
       ),
-      route("/admin/shipments", "features/bookstore/screens/admin-shipments.tsx"),
+      route(
+        "/admin/shipments",
+        "features/bookstore/screens/admin-shipments.tsx",
+      ),
       route("/me/courses", "features/lms/screens/my-courses-redirect.tsx"),
       route("/me/orders", "features/orders/screens/my-orders-redirect.tsx"),
       route(
@@ -1134,10 +1142,7 @@ export default [
         "features/cron/api/subscription-maintenance.tsx",
       ),
       // feat-8-028 Stage 5 — 자동결제 갱신 청구 cron.
-      route(
-        "/api/cron/billing-charge",
-        "features/cron/api/billing-charge.tsx",
-      ),
+      route("/api/cron/billing-charge", "features/cron/api/billing-charge.tsx"),
       // feat-11-006 — 콜러스 콘텐츠 라이브러리 자동 동기화 cron.
       route(
         "/api/cron/kollus-content-sync",
@@ -1156,7 +1161,10 @@ export default [
       // 인앱 강의노트(교재 PDF) 뷰어 — 위치 링크(?page=N)가 통합본의 해당 페이지를 연다.
       // :sourcePdfId 는 통합본 source_pdf_id 또는 (통합본 미매핑 조각의) resource_id.
       // 경로는 /note/* (구 /lecture-note/* — "lecture" 는 신규 강의 플랫폼이 사용).
-      route("/note/:sourcePdfId", "features/lectures/screens/lecture-note-viewer.tsx"),
+      route(
+        "/note/:sourcePdfId",
+        "features/lectures/screens/lecture-note-viewer.tsx",
+      ),
       // 구 경로 북마크 보존 redirect.
       route(
         "/lecture-note/:sourcePdfId",
@@ -1174,10 +1182,7 @@ export default [
         "/api/admin/lesson-completion",
         "features/admin/api/lesson-completion.tsx",
       ),
-      route(
-        "/api/admin/member-points",
-        "features/admin/api/member-points.tsx",
-      ),
+      route("/api/admin/member-points", "features/admin/api/member-points.tsx"),
       route(
         "/api/admin/problem-review",
         "features/admin/api/problem-review.tsx",
@@ -1209,10 +1214,7 @@ export default [
             "features/assignments/screens/student-assignment-detail.tsx",
           ),
           // Phase 3 — 학생 월간 계획 작성·제출 + 일일 기록.
-          route(
-            "/study/plan",
-            "features/study-plans/screens/study-plan.tsx",
-          ),
+          route("/study/plan", "features/study-plans/screens/study-plan.tsx"),
           route(
             "/study/plan/log",
             "features/study-plans/screens/study-plan-log.tsx",
@@ -1223,10 +1225,7 @@ export default [
       route("/api/dohae/unit", "features/dohae/api/unit.tsx"),
       // Phase 3 — 계획 학생 액션 + 노드 선택기 데이터.
       route("/api/study-plan", "features/study-plans/api/study-plan.tsx"),
-      route(
-        "/api/study-plan/nodes",
-        "features/study-plans/api/plan-nodes.tsx",
-      ),
+      route("/api/study-plan/nodes", "features/study-plans/api/plan-nodes.tsx"),
       // 응시 결과·정오문제 이력은 모의고사 그룹에서 편입 제외(허브·약점 탭) → 모의고사
       // area 토글(mock.layout) 미부착. 평범한 leaf 라우트(화면이 자체 "뒤로" 제공).
       route(
@@ -1425,10 +1424,7 @@ export default [
         "features/subscriptions/api/admin-settlement.tsx",
       ),
       // feat-8-028 — 상품·요금 관리 (manager+).
-      route(
-        "/admin/pricing",
-        "features/subscriptions/screens/admin-plans.tsx",
-      ),
+      route("/admin/pricing", "features/subscriptions/screens/admin-plans.tsx"),
       route("/api/admin/plan", "features/subscriptions/api/admin-plan.tsx"),
       // feat-8-028 — 할인 관리 (manager+).
       route(
@@ -1469,7 +1465,10 @@ export default [
       // 도해특허법 전체 열람·검수 — ★staff 전용(수험생 비노출).
       route("/admin/dohae", "features/dohae/screens/admin-dohae.tsx"),
       // 도해 유닛 텍스트 편집 — ★staff 전용. 구조는 못 바꾼다(원본 재파싱의 몫).
-      route("/admin/dohae/:unitKey", "features/dohae/screens/admin-dohae-edit.tsx"),
+      route(
+        "/admin/dohae/:unitKey",
+        "features/dohae/screens/admin-dohae-edit.tsx",
+      ),
       // feat-7-041 — 전체 학습현황(학원 전체 집계·익명, manager+).
       route(
         "/admin/analytics/students",
@@ -1579,10 +1578,7 @@ export default [
       // 목록·편집 키가 itemId 가 아니라 caseId 다.
       ...prefix("/admin/case-diagrams", [
         index("features/cases/screens/admin-case-diagram-list.tsx"),
-        route(
-          "/:caseId",
-          "features/cases/screens/admin-case-diagram-edit.tsx",
-        ),
+        route("/:caseId", "features/cases/screens/admin-case-diagram-edit.tsx"),
       ]),
       ...prefix("/admin/blanks", [
         index("features/blanks/screens/admin-blanks-list.tsx"),
@@ -1707,7 +1703,10 @@ export default [
     // feat-8-030 — 가입 후 필수정보 입력 게이트(자체 인증, private.layout 밖 = 루프 회피).
     route("/onboarding/profile", "features/onboarding/screens/profile.tsx"),
     // 서비스 접근 승인 대기(자체 인증, private.layout 밖 = 루프 회피).
-    route("/pending-approval", "features/onboarding/screens/pending-approval.tsx"),
+    route(
+      "/pending-approval",
+      "features/onboarding/screens/pending-approval.tsx",
+    ),
   ]),
 
   ...prefix("/legal", [route("/:slug", "features/legal/screens/policy.tsx")]),

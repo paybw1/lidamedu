@@ -1,27 +1,44 @@
 // feat-2-035 — 하급심 판결문(case_lower_courts) 쿼리.
 // RLS 가 staff 전용이라 학생 호출은 자동으로 빈 결과가 된다 — 화면에서 역할을 다시 거르지 않는다.
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { Database } from "~/../database.types";
+import type { Database, Json } from "~/../database.types";
+import adminClient from "~/core/lib/supa-admin-client.server";
 
 import { COURT_LABELS, type CaseCourt } from "./labels";
+import {
+  type LowerCourtFile,
+  type LowerCourtStatus,
+  needsManualWork,
+  parseLowerCourtFiles,
+} from "./lib/lower-court";
 import {
   hasFactSection,
   resolveLowerCourtText,
 } from "./lib/lower-court-fetch.server";
-import {
-  needsManualWork,
-  type LowerCourtStatus,
-} from "./lib/lower-court";
 
 type Client = SupabaseClient<Database>;
+
+/** 원본 파일 Storage 버킷(private). 업로드·다운로드·정리가 공유하는 SSOT. */
+export const LOWER_COURT_BUCKET = "case-lower-courts";
+
+/** LowerCourtFile[] → jsonb 컬럼 값. 필드를 하나씩 옮겨 스키마를 눈에 보이게 둔다. */
+function filesToJson(files: LowerCourtFile[]): Json {
+  return files.map((f) => ({
+    name: f.name,
+    path: f.path,
+    size: f.size,
+    mime: f.mime,
+  }));
+}
 
 // 상태 라벨은 클라이언트 안전 모듈이 SSOT — 화면이 .server 를 참조하면 빌드가 깨진다.
 export {
   LOWER_STATUSES,
   LOWER_STATUS_LABEL,
   needsManualWork,
+  parseLowerCourtFiles,
+  type LowerCourtFile,
   type LowerCourtStatus,
 } from "./lib/lower-court";
 
@@ -46,11 +63,13 @@ export interface LowerCourtListItem extends LowerCourtRow {
 export async function getLowerCourtByCaseId(
   client: Client,
   caseId: string,
-): Promise<(LowerCourtRow & { bodyText: string }) | null> {
+): Promise<
+  (LowerCourtRow & { bodyText: string; files: LowerCourtFile[] }) | null
+> {
   const { data, error } = await client
     .from("case_lower_courts")
     .select(
-      "case_id, status, source_kind, source_ref, lower_case_number, lower_court, char_count, body_text",
+      "case_id, status, source_kind, source_ref, lower_case_number, lower_court, char_count, body_text, files",
     )
     .eq("case_id", caseId)
     .is("deleted_at", null)
@@ -66,6 +85,7 @@ export async function getLowerCourtByCaseId(
     lowerCourt: data.lower_court,
     charCount: data.char_count,
     bodyText: data.body_text,
+    files: parseLowerCourtFiles(data.files),
   };
 }
 
@@ -162,11 +182,24 @@ export interface CollectResult {
   message: string;
 }
 
+/**
+ * ★본문을 갈아끼우는 모든 경로가 여기를 지난다 — 원본 파일 정리도 여기서 한 번만 한다.
+ *   row.files 를 안 넘기면 "이전 원본은 이제 이 본문과 무관하다"는 뜻이라 Storage 에서 지운다.
+ *   (남겨 두면 화면 본문과 다운로드 파일이 서로 다른 판결문이 된다.)
+ */
 async function upsertLower(client: Client, row: LowerInsert): Promise<void> {
+  const keep = new Set(parseLowerCourtFiles(row.files).map((f) => f.path));
+  const stale = (await getLowerCourtFilePaths(client, row.case_id)).filter(
+    (path) => !keep.has(path),
+  );
   const { error } = await client
     .from("case_lower_courts")
-    .upsert(row, { onConflict: "case_id" });
+    .upsert({ ...row, files: row.files ?? [] }, { onConflict: "case_id" });
   if (error) throw error;
+  // 행이 먼저다 — 지우기에 실패해도 Storage 에 고아 객체가 남을 뿐, 데이터는 어긋나지 않는다.
+  if (stale.length) {
+    await adminClient.storage.from(LOWER_COURT_BUCKET).remove(stale);
+  }
 }
 
 /**
@@ -302,11 +335,29 @@ export async function collectLowerCourt(
   };
 }
 
-/** 운영자가 판결문 전문을 직접 붙여넣어 적재. API 에 없는 건의 마지막 경로. */
+/** 지금 보관 중인 원본 파일의 Storage 키 — 교체·삭제 전 청소용. */
+export async function getLowerCourtFilePaths(
+  client: Client,
+  caseId: string,
+): Promise<string[]> {
+  const { data, error } = await client
+    .from("case_lower_courts")
+    .select("files")
+    .eq("case_id", caseId)
+    .maybeSingle();
+  if (error) throw error;
+  return parseLowerCourtFiles(data?.files).map((f) => f.path);
+}
+
+/**
+ * 운영자가 판결문 전문을 직접 붙여넣어 적재. API 에 없는 건의 마지막 경로.
+ * ★files 를 넘기지 않으면 **비운다** — 붙여넣기로 본문을 갈아끼웠는데 이전 업로드의
+ *   원본이 남아 있으면, 화면의 본문과 다운로드되는 파일이 서로 다른 판결문이 된다.
+ */
 export async function saveLowerCourtText(
   client: Client,
   caseId: string,
-  input: { bodyText: string; sourceRef: string },
+  input: { bodyText: string; sourceRef: string; files?: LowerCourtFile[] },
 ): Promise<CollectResult> {
   const body = input.bodyText.replace(/\r\n?/g, "\n").trim();
   const { data: kase, error } = await client
@@ -327,6 +378,7 @@ export async function saveLowerCourtText(
     lower_court: ref ? ref.split(/\s+/)[0] : null,
     body_text: body,
     char_count: body.length,
+    files: filesToJson(input.files ?? []),
     fetched_at: new Date().toISOString(),
     deleted_at: null,
   });

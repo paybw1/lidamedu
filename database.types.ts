@@ -2560,6 +2560,7 @@ export type Database = {
           created_at: string
           deleted_at: string | null
           fetched_at: string | null
+          files: Json
           law_serial_id: string | null
           lower_case_number: string | null
           lower_court: string | null
@@ -2577,6 +2578,7 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           fetched_at?: string | null
+          files?: Json
           law_serial_id?: string | null
           lower_case_number?: string | null
           lower_court?: string | null
@@ -2594,6 +2596,7 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           fetched_at?: string | null
+          files?: Json
           law_serial_id?: string | null
           lower_case_number?: string | null
           lower_court?: string | null

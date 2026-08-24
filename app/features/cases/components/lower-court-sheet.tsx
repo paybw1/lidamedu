@@ -3,7 +3,12 @@
 // 도식의 사실관계가 어디서 왔는지 원문으로 확인하는 용도. 학생에게는 보이지 않는다 —
 // 저작물 전문이고 학습 콘텐츠가 아니라서, RLS(case_lower_courts staff 전용)가
 // 데이터 단계에서 막고 화면은 데이터가 없으면 배지를 그리지 않는다.
-import { GavelIcon, PrinterIcon, ScrollTextIcon } from "lucide-react";
+import {
+  DownloadIcon,
+  GavelIcon,
+  PrinterIcon,
+  ScrollTextIcon,
+} from "lucide-react";
 import { Link } from "react-router";
 
 import {
@@ -13,6 +18,10 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "~/core/components/ui/sheet";
+import {
+  type LowerCourtFile,
+  formatFileSize,
+} from "~/features/cases/lib/lower-court";
 import { reflowJudgmentText } from "~/features/cases/lib/lower-court-text";
 
 export interface LowerCourtView {
@@ -21,6 +30,8 @@ export interface LowerCourtView {
   lowerCaseNumber: string | null;
   charCount: number;
   bodyText: string;
+  /** 업로드 원본. 2026-08-24 이전 적재분은 원본을 버렸기 때문에 비어 있다. */
+  files: LowerCourtFile[];
 }
 
 export function LowerCourtSheet({
@@ -73,6 +84,22 @@ export function LowerCourtSheet({
           >
             <PrinterIcon className="size-3" /> 인쇄 · PDF로 저장
           </Link>
+          {/* ★원본이 있으면 그걸 먼저 준다 — 위 인쇄본은 추출 텍스트를 다시 그린 것이라
+              원본 판결문 서식(표·서명란)이 남아 있지 않다. */}
+          {lower.files.map((f, i) => (
+            <a
+              key={f.path}
+              href={`/admin/cases/lower-court/${caseId}/file?i=${i}`}
+              className="border-border text-muted-foreground hover:bg-muted mt-1 inline-flex h-7 w-fit items-center gap-1 rounded-full border px-3 text-[11px] font-semibold"
+            >
+              <DownloadIcon className="size-3" />
+              원본 내려받기
+              <span className="text-muted-foreground/70 font-normal">
+                {f.name}
+                {formatFileSize(f.size) ? ` · ${formatFileSize(f.size)}` : ""}
+              </span>
+            </a>
+          ))}
         </SheetHeader>
         {/* ★평문 그대로 그리면 PDF 추출본의 줄바꿈 때문에 한 문장이 조각나 보인다
             (원장 보고 2026-08-24) — 문단을 복원해 그린다. */}
