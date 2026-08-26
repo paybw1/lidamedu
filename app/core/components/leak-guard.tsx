@@ -5,7 +5,6 @@
 //
 // ★선택(selection)은 막지 않는다 — 막으면 하이라이트를 못 긋는다.
 //   "선택은 되지만 복사는 안 됨"이 목표. 브라우저 단 억제이지 DRM 이 아니다.
-
 import type { ClipboardEvent, DragEvent, MouseEvent } from "react";
 
 /** 본문 위에 까는 열람자 식별 워터마크. 선택·클릭을 방해하지 않는다(pointer-events:none). */
@@ -29,7 +28,13 @@ export function ViewerWatermark({ text }: { text: string }) {
   );
 }
 
-/** 복사 차단 핸들러 묶음 — 본문 컨테이너에 그대로 편다(`{...copyGuardProps}`). */
+/**
+ * 복사 차단 핸들러 묶음 — 본문 컨테이너에 그대로 편다(`{...copyGuardProps}`).
+ *
+ * ★**운영자에게는 걸지 않는다** — 검수·출제 과정에서 본문을 그대로 옮겨 써야 한다.
+ *   호출부에서 `viewerIsStaff ? {} : copyGuardProps` 로 가른다(판례 도식 패널이 그 예).
+ *   워터마크는 역할과 무관하게 깐다 — 누가 열었는지는 계속 남아야 한다.
+ */
 export const copyGuardProps = {
   onCopy: (e: ClipboardEvent) => e.preventDefault(),
   onCut: (e: ClipboardEvent) => e.preventDefault(),

@@ -176,10 +176,15 @@ export function CaseDiagramSheet({
 
   // ★유출방지 — 워터마크는 본문에만 깐다(검수 바는 조작 영역이라 제외).
   //   복사 차단은 본문 컨테이너에. 선택은 막지 않는다 — 읽기·조문 링크를 해친다.
+  //
+  // ★운영자는 복사할 수 있다(원장 지시 2026-08-26) — 검수·출제 과정에서 도식 문구를
+  //   그대로 옮겨 쓴다. 유출방지는 학생을 향한 장치이고, 운영자에게 걸면 자기 콘텐츠를
+  //   자기가 못 쓰는 상태가 된다. 워터마크는 그대로 둔다(누가 열었는지는 계속 남는다).
+  const guard = viewerIsStaff ? {} : copyGuardProps;
   const body = (
     <>
       {viewerIsStaff ? <ApproveBar caseId={caseId} approved={!draft} /> : null}
-      <div className="relative print:hidden" {...copyGuardProps}>
+      <div className="relative print:hidden" {...guard}>
         {watermark ? <ViewerWatermark text={watermark} /> : null}
         <DiagramBody
           diagram={diagram}
