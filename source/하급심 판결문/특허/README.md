@@ -13,7 +13,20 @@ feat-2-035 판례 도식화의 **사실관계** 소스. 대법원 판결문은 �
 **★화면 업로드는 원본 파일도 보관한다**(2026-08-24부터) — 나중에 원본 PDF 가 필요할 때
 `/admin/cases/lower-court` 의 원심 판결문 시트에서 「원본 내려받기」로 그대로 받을 수 있다.
 반대로 **이 폴더 배치와 전문 붙여넣기는 텍스트만 적재한다**(원본 미보관). 원본을 남기고 싶으면
-화면에서 올려야 한다.
+화면에서 올리거나, 아래 일괄 보관 스크립트를 쓴다.
+
+**원본 일괄 보관**(2026-08-26). 2026-08-24 이전 수기 적재분 86건은 원본이 없었다. 원장이
+`source/판례데이터/특허_하급심판례` 에 원본을 다시 모아 주어 일괄로 넣었다(84건 · 파일 86개).
+
+```bash
+npx tsx scripts/case-diagram/upload-lower-court-originals.ts          # 예행
+npx tsx scripts/case-diagram/upload-lower-court-originals.ts --apply
+npx tsx scripts/case-diagram/upload-lower-court-originals.ts --dir <다른 폴더>
+```
+
+이 폴더(투입용)와 달리 저쪽은 **보관 전용**이라 파일명 규약이 다르다 — `<법원>_<하급심 사건번호>.pdf`.
+매칭은 업로드 당시 파일명이 남아 있는 `source_ref` 를 먼저 보고, 안 되면 하급심 사건번호로 맞춘다.
+본문(`body_text`)은 건드리지 않는다 — 원본만 붙인다.
 
 ## 배치 자동 수집
 
