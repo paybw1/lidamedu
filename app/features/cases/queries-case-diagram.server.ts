@@ -17,6 +17,11 @@ import {
   parseTimeline,
 } from "./lib/case-diagram";
 import {
+  type OldLawRenumberEvent,
+  findRenumberEvent,
+  mapOldArticleNumber,
+} from "./lib/old-law-map";
+import {
   type StatuteRef,
   hasAmendmentRef,
   isOldLawLabel,
@@ -134,32 +139,50 @@ export async function resolveStatuteArticleIds(
   //   (일부개정 판본)까지 싸잡아 끊으면 멀쩡한 링크를 잃는다.
   const lawNameOf = (raw: string) =>
     parseReferenceStatute(raw)?.lawName ?? null;
-  const renumberedLaws = new Set(
-    unique.filter(isRenumberedOldLaw).flatMap((raw) => {
-      const name = lawNameOf(raw);
-      return name ? [name] : [];
-    }),
-  );
-  const unmapped = (raw: string) => {
-    if (isRenumberedOldLaw(raw)) return true;
-    // 판본을 괄호로 밝힌 표기는 스스로 어느 판본인지 말한다 — 같은 법의 전문개정 표기가
-    // 옆에 있다고 해서 끊지 않는다("…로 개정되기 전의 것" = 일부개정이라 번호가 유지된다).
-    if (!isOldLawLabel(raw) || hasAmendmentRef(raw)) return false;
+  // 법령명 → 그 도식이 인용한 전문개정 사건. 사건을 알아내면 매칭표를 볼 수 있다.
+  const renumberedLaws = new Map<string, OldLawRenumberEvent | null>();
+  for (const raw of unique) {
+    if (!isRenumberedOldLaw(raw)) continue;
     const name = lawNameOf(raw);
-    return name !== null && renumberedLaws.has(name);
+    if (!name) continue;
+    // ★사건을 특정 못 해도(매칭표에 없는 전문개정) 항목은 남긴다 — 값이 null 이면
+    //   "번호가 다시 매겨졌다는 것만 알고 대응은 모른다" 는 뜻이라 링크를 걸지 않는다.
+    const found = findRenumberEvent(raw, name);
+    if (found || !renumberedLaws.has(name)) renumberedLaws.set(name, found);
+  }
+
+  /**
+   * 이 표기에 적용할 전문개정 사건. 없으면 null(= 번호를 그대로 써도 되는 표기).
+   *   ⓐ 표기가 스스로 밝힌 사건 — "구 특허법(1990. 1. 13. … 전문 개정되기 전의 것)"
+   *   ⓑ 판본을 안 밝힌 구법 표기는 같은 도식의 사건을 물려받는다 — "구 특허법 제11조"
+   * 일부개정을 괄호로 밝힌 표기는 번호가 유지되므로 ⓑ 를 물려받지 않는다.
+   */
+  const eventFor = (raw: string): OldLawRenumberEvent | null | undefined => {
+    const name = lawNameOf(raw);
+    if (isRenumberedOldLaw(raw)) return findRenumberEvent(raw, name);
+    if (!isOldLawLabel(raw) || hasAmendmentRef(raw)) return undefined;
+    return name !== null && renumberedLaws.has(name)
+      ? renumberedLaws.get(name)
+      : undefined;
   };
 
   // 표기 → {lawCode, article_number}. 파싱 실패분은 버린다.
   // ★판결문 표기를 그대로 옮긴 문자열이라 "구 특허법 …", "… 제1항 본문" 처럼 쓰인다 —
   //   해석용으로만 정규화한다(원 표기는 화면에 그대로 남는다).
   const parsed = unique.flatMap((raw) => {
-    // ★번호가 다시 매겨진 판본은 현행 조문과 대응하지 않는다. 매칭표가 없으므로 아예
-    //   해석하지 않는다 — 화면은 표기만 남기고 링크를 걸지 않는다(틀린 조문을 펼치는
-    //   것보다 아무것도 안 펼치는 편이 낫다).
-    if (unmapped(raw)) return [];
     const ident = parseDisplay(normalizeStatuteLabel(raw));
     if (!ident) return [];
-    return [{ raw, lawCode: ident.lawCode, number: articleNumberText(ident) }];
+    let number = articleNumberText(ident);
+    // ★번호가 다시 매겨진 판본은 표기 그대로의 번호가 현행과 대응하지 않는다.
+    //   매칭표에 있으면 현행 번호로 갈아 끼우고, 없으면 아예 해석하지 않는다 —
+    //   틀린 조문을 펼치는 것보다 아무것도 안 펼치는 편이 낫다.
+    const event = eventFor(raw);
+    if (event !== undefined) {
+      const mapped = event ? mapOldArticleNumber(event, number) : null;
+      if (!mapped) return [];
+      number = mapped;
+    }
+    return [{ raw, lawCode: ident.lawCode, number }];
   });
   if (parsed.length === 0) return {};
 
@@ -194,10 +217,10 @@ export async function resolveStatuteArticleIds(
     }
   }
 
-  // 참조 법령에서도 같은 이유로 잇지 않는다 — 대응이 확인된 표기만 넘긴다.
+  // 참조 법령에는 매칭표가 없다 — 번호가 다시 매겨진 표기는 넘기지 않는다.
   await resolveReferenceStatutes(
     client,
-    unique.filter((raw) => !unmapped(raw)),
+    unique.filter((raw) => eventFor(raw) === undefined),
     out,
   );
   return out;

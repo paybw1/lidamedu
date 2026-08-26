@@ -549,8 +549,7 @@ function InlineEdit({
 function HeaderHint() {
   return (
     <p className="text-muted-foreground text-[11px]">
-      2차 답안 작성 순서 — 사실관계 → 쟁점 → 1. 법조문 → 2. 법리 → 3. 사안의
-      포섭 → 4. 결론
+      사실관계 → 쟁점 → 1. 법조문 → 2. 법리 → 3. 사안의 포섭 → 4. 결론
     </p>
   );
 }
