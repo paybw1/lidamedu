@@ -3,7 +3,6 @@
 // DB(case_diagrams.blocks jsonb)는 배열 여부만 보장하고, 필드 검증은 여기 Zod 가 단독으로 한다
 // (action 경계 1곳에서만 검증 — 개발원칙 Layer 2 "단일 진입점").
 // 순수 모듈 — 서버 전용 import 금지(화면·스크립트 양쪽에서 쓴다).
-
 import { z } from "zod";
 
 // ── 법리 4축 (원장 지정) ───────────────────────────────────────────────────
@@ -176,9 +175,40 @@ export function filledAxes(
 }
 
 /**
+ * 합쳐진 법리 축의 조각들. "1. …
+
+2. …" 로 번호가 붙어 있으면 그 단위로 자른다.
+ * 번호가 없으면 통째로 한 조각 — 사람이 손으로 쓴 여러 문단을 쪼개면 문장이 흩어진다.
+ */
+function splitNumbered(text: string): string[] {
+  const t = text.trim();
+  if (!t) return [];
+  // 줄머리의 "1. " — 문단 첫 줄에만 온다(본문 중간의 "제1. " 등과 섞이지 않게).
+  const marker = /^(?:\d{1,2})\. +/;
+  const paras = t.split(/\n\s*\n/);
+  if (!paras.every((x) => marker.test(x.trim()))) return [t];
+  return paras.map((x) => x.trim().replace(marker, "").trim()).filter(Boolean);
+}
+
+/**
+ * 조각들을 하나의 축 본문으로. 두 개 이상이면 번호를 붙인다(원장 요청 2026-08-26) —
+ * 서로 다른 법리를 한 축으로 합치면 어디까지가 한 갈래인지 읽히지 않는다.
+ * 하나뿐이면 번호를 붙이지 않는다("1." 만 덩그러니 남는 게 더 이상하다).
+ */
+function joinNumbered(parts: string[]): string {
+  const list = parts.map((x) => x.trim()).filter(Boolean);
+  if (list.length <= 1) return list[0] ?? "";
+  return list.map((x, i) => `${i + 1}. ${x}`).join("\n\n");
+}
+/**
  * 법리 한 축의 내용을 다른 축으로 옮긴다 — 검수에서 가장 잦은 수정이 '분류가 틀림'이다.
- * ★대상 축에 이미 내용이 있으면 **덮어쓰지 않고 이어붙인다**(빈 줄로 구분).
+ * ★대상 축에 이미 내용이 있으면 **덮어쓰지 않고 이어붙이면서 번호를 매긴다**.
  *   검수 중 실수로 다른 축의 서술을 날리는 편이 잘못 분류된 채 두는 것보다 나쁘다.
+ *   서로 다른 법리가 한 축에 모이므로, 어디까지가 한 갈래인지 번호로 갈라 준다.
+ *     문언적 해석 "A" + 취지의 해석 "B"  →  문언적 해석 "1. A
+
+2. B"
+ *   이미 번호가 붙은 축에 또 옮기면 전체를 다시 매긴다(1. 2. 3. …).
  * from 과 to 가 같거나 from 이 비어 있으면 원본을 그대로 돌려준다.
  */
 export function moveDoctrineAxis(
@@ -192,9 +222,9 @@ export function moveDoctrineAxis(
   const target = block.doctrine[to]?.trim();
   const doctrine = { ...block.doctrine };
   delete doctrine[from];
-  doctrine[to] = target ? `${target}
-
-${body}` : body;
+  doctrine[to] = target
+    ? joinNumbered([...splitNumbered(target), ...splitNumbered(body)])
+    : body;
   return { ...block, doctrine };
 }
 
