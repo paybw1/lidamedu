@@ -503,12 +503,25 @@ export default function AdminCaseDiagramEdit({
   actionData,
 }: Route.ComponentProps) {
   const { kase, diagram, role, neighbors } = loaderData;
-  // "목록으로" — 들어온 목록 상태(연도·상태·검색어)로 되돌아간다. ?back=<encoded query>.
-  //   ★목록 밖(도식 패널의 '검수 화면' 링크 등)에서 들어오면 back 이 없다 → 기본 목록.
-  //   ★값은 우리가 만든 "?..." 형태만 받는다 — 외부 URL 주입을 막는다(open redirect 방지).
+  // 돌아가기 — **들어온 자리로** 되돌린다. 들어오는 길이 두 갈래라 파라미터도 둘이다.
+  //   ?back=<encoded query>  목록에서 왔다 → 그 목록 상태(연도·상태·검색어)로.
+  //   ?from=<encoded path>   판례 화면 도식 패널에서 왔다 → 읽던 판례로(쿼리 포함).
+  // ★from 이 없던 시절엔 패널에서 들어온 사람이 전부 운영관리 도식 목록으로 튕겼다
+  //   (원장 지적 2026-08-26) — 판례를 읽다 들어왔는데 읽던 자리를 잃는다.
+  // ★두 값 모두 **우리가 만든 형태만** 받는다 — 외부 URL 주입을 막는다(open redirect 방지).
+  //   from 은 앱 내부 절대경로 한정: "/" 로 시작하되 "//" · "/\" 는 외부 호스트로 해석된다.
+  //   ★prev/next 로 다른 판례로 옮겨가면 from 은 넘기지 않는다(NeighborLink 는 back 만) —
+  //     읽던 판례가 아닌 곳을 "판례로 돌아가기" 라고 가리키면 거짓말이 된다.
   const [searchParams] = useSearchParams();
   const backRaw = searchParams.get("back") ?? "";
   const backTo = backRaw.startsWith("?") ? backRaw : "";
+  const fromRaw = searchParams.get("from") ?? "";
+  const fromTo =
+    fromRaw.startsWith("/") &&
+    !fromRaw.startsWith("//") &&
+    !fromRaw.startsWith("/\\")
+      ? fromRaw
+      : "";
   const nav = useNavigation();
   const busy = nav.state !== "idle";
 
@@ -544,10 +557,11 @@ export default function AdminCaseDiagramEdit({
     >
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Link
-          to={`/admin/case-diagrams${backTo}`}
+          to={fromTo || `/admin/case-diagrams${backTo}`}
           className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs"
         >
-          <ArrowLeftIcon className="size-3.5" /> 목록으로
+          <ArrowLeftIcon className="size-3.5" />
+          {fromTo ? "판례로 돌아가기" : "목록으로"}
         </Link>
         {/* 이전/다음 — 목록으로 나갔다 들어오지 않고 죽 훑는다. 범위·순서는 목록과 동일. */}
         {neighbors ? (

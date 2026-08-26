@@ -18,7 +18,7 @@ import {
   SquareIcon,
 } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
-import { Link, useFetcher } from "react-router";
+import { Link, useFetcher, useLocation } from "react-router";
 
 import { ViewerWatermark, copyGuardProps } from "~/core/components/leak-guard";
 import { Badge } from "~/core/components/ui/badge";
@@ -244,6 +244,11 @@ function ApproveBar({
   const fetcher = useFetcher<{ ok?: string; error?: string }>();
   const busy = fetcher.state !== "idle";
   const msg = fetcher.data?.error ?? fetcher.data?.ok ?? null;
+  // ★검수 화면에 **돌아올 곳**을 넘긴다 — 안 넘기면 그쪽 "목록으로" 가 운영관리 도식 목록으로
+  //   빠져, 판례를 읽다 들어온 사람이 읽던 자리를 잃는다(원장 지적 2026-08-26).
+  //   지금 보고 있는 경로 그대로(쿼리 포함 — ?diagram=1 이 있으면 패널도 열린 채 복귀).
+  const loc = useLocation();
+  const from = encodeURIComponent(`${loc.pathname}${loc.search}`);
   const failed = Boolean(fetcher.data?.error);
 
   return (
@@ -270,7 +275,7 @@ function ApproveBar({
         </fetcher.Form>
       )}
       <a
-        href={`/admin/case-diagrams/${caseId}`}
+        href={`/admin/case-diagrams/${caseId}?from=${from}`}
         className="border-border text-muted-foreground hover:bg-muted inline-flex h-7 items-center gap-1 rounded-full border px-3 text-xs font-medium"
       >
         <PencilLineIcon className="size-3" /> 검수 화면
@@ -636,6 +641,7 @@ function DiagramBody({
                 text={stripFactsHeading(diagram.factsMd)}
                 trusted={false}
                 literalNumbering
+                breaks
                 className="text-[15px] leading-[1.75]"
               />
             </div>
@@ -669,14 +675,19 @@ function DiagramBody({
                     {TIMELINE_KIND_LABEL[ev.kind]}
                   </span>
                 </div>
-                <p className="text-[15px] leading-[1.6]">{ev.what}</p>
+                <p className="text-[15px] leading-[1.6] whitespace-pre-line">
+                  {ev.what}
+                </p>
               </li>
             ))}
           </ol>
         </section>
       ) : null}
 
-      {/* 쟁점 단위 블록 — 쟁점마다 1.법조문 2.법리 3.포섭 4.결론 1세트. */}
+      {/* 쟁점 단위 블록 — 쟁점마다 1.법조문 2.법리 3.포섭 4.결론 1세트.
+          ★모든 본문 칸은 whitespace-pre-line — 검수 화면 textarea 에서 넣은 줄바꿈이
+            표시에서 사라져 문단이 통째로 붙어 보였다(원장 지적 2026-08-26).
+            pre-line 이라 들여쓰기 공백은 접히고 줄바꿈만 산다. */}
       {diagram.blocks.map((b, i) => {
         const axes = filledAxes(b);
         return (
@@ -699,7 +710,9 @@ function DiagramBody({
                   <Badge className="mt-0.5 shrink-0 rounded-sm px-1.5 py-0">
                     쟁점 {i + 1}
                   </Badge>
-                  <span className="leading-snug">{b.issue}</span>
+                  <span className="leading-snug whitespace-pre-line">
+                    {b.issue}
+                  </span>
                 </h3>
               </InlineEdit>
             </div>
@@ -804,7 +817,7 @@ function DiagramBody({
                         placeholder={ax.hint}
                       >
                         {ax.body ? (
-                          <p className="mt-1 text-[15px] leading-[1.75]">
+                          <p className="mt-1 text-[15px] leading-[1.75] whitespace-pre-line">
                             {ax.body}
                           </p>
                         ) : (
@@ -839,7 +852,7 @@ function DiagramBody({
                   placeholder="이 사건 사실을 그 법리에 포섭한 부분"
                 >
                   {b.application ? (
-                    <p className="text-[15px] leading-[1.75]">
+                    <p className="text-[15px] leading-[1.75] whitespace-pre-line">
                       {b.application}
                     </p>
                   ) : (
@@ -864,7 +877,7 @@ function DiagramBody({
                   placeholder="그 쟁점에 대한 결론(파기/기각/속함 등)"
                 >
                   {b.conclusion ? (
-                    <p className="text-[15px] leading-[1.75] font-medium">
+                    <p className="text-[15px] leading-[1.75] font-medium whitespace-pre-line">
                       {b.conclusion}
                     </p>
                   ) : (
