@@ -35,6 +35,9 @@ import {
   normalizeForComparison,
 } from "../lib/similarity";
 
+// 표시용(유사도 칩·진행률) state 를 묶어서 갱신하는 주기. 타이핑 중 렌더를 만들지 않기 위한 값.
+const DISPLAY_SYNC_MS = 250;
+
 interface RecitationBlock {
   blockIndex: number;
   label: string; // ① / 1. / 가. 등
@@ -71,6 +74,14 @@ export function RecitationView({ articleId, articleLabel, body }: Props) {
   const [activeVoiceIdx, setActiveVoiceIdx] = useState<number | null>(null);
   const [resetKey, setResetKey] = useState(0);
   const textareaRefs = useRef<Map<number, HTMLTextAreaElement>>(new Map());
+  // ★입력값의 소유자는 textarea(DOM) — 아래 ref 는 그 사본이다.
+  //   value={...} 제어 컴포넌트로 두면 렌더 결과를 매번 textarea 에 되써서, 렌더가 타이핑을
+  //   못 따라가는 순간 한글 조합이 끊긴다(아이패드에서 "타이핑이 매우 느려짐" · "직전 글자가
+  //   따라옴", 2026-08-26 신고 2건). 렌더는 화면 표시만 담당하고 값은 DOM 이 갖는다.
+  const valuesRef = useRef<Map<number, string>>(new Map());
+  const syncTimerRef = useRef<number | null>(null);
+  // 한글 조합 확정용 throwaway input — onPointerDownCapture 주석 참조.
+  const flushInputRef = useRef<HTMLInputElement | null>(null);
 
   // walkBlocks pre-order 와 정합되는 bi(block_index) 를 계산하면서 본문 순서대로 항목을 추출.
   // 추출 대상:
@@ -169,22 +180,61 @@ export function RecitationView({ articleId, articleLabel, body }: Props) {
     [items],
   );
 
-  const setInputAt = useCallback((blockIndex: number, value: string) => {
-    setInputs((prev) => ({ ...prev, [blockIndex]: value }));
+  const snapshot = useCallback((): Record<number, string> => {
+    const out: Record<number, string> = {};
+    for (const [k, v] of valuesRef.current) out[k] = v;
+    return out;
   }, []);
+
+  /** 표시용 state 를 지금 즉시 맞춘다(저장·포커스 이탈·음성 입력 직후). */
+  const flushDisplay = useCallback(() => {
+    if (syncTimerRef.current !== null) {
+      window.clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = null;
+    }
+    setInputs(snapshot());
+  }, [snapshot]);
+
+  // 키 입력 경로 — ref 기록은 즉시(렌더 없음), 화면 표시는 DISPLAY_SYNC_MS 마다 한 번.
+  //   타이머를 되감지 않으므로(throttle) 계속 입력해도 유사도가 주기적으로 따라온다.
+  const setInputAt = useCallback((blockIndex: number, value: string) => {
+    valuesRef.current.set(blockIndex, value);
+    if (syncTimerRef.current !== null) return;
+    syncTimerRef.current = window.setTimeout(() => {
+      syncTimerRef.current = null;
+      setInputs(snapshot());
+    }, DISPLAY_SYNC_MS);
+  }, [snapshot]);
+
+  /** 포커스를 벗어날 때 — 조합 확정분까지 반영하고 표시를 즉시 맞춘다. */
+  const commitInputAt = useCallback(
+    (blockIndex: number, value: string) => {
+      valuesRef.current.set(blockIndex, value);
+      flushDisplay();
+    },
+    [flushDisplay],
+  );
+
+  useEffect(
+    () => () => {
+      if (syncTimerRef.current !== null)
+        window.clearTimeout(syncTimerRef.current);
+    },
+    [],
+  );
 
   // 음성 인식 — final transcript 가 들어올 때마다 active textarea 에 append.
   const voice = useVoiceRecognition({
     lang: "ko-KR",
     onFinal: (text) => {
       if (activeVoiceIdx === null) return;
-      setInputs((prev) => ({
-        ...prev,
-        [activeVoiceIdx]:
-          (prev[activeVoiceIdx] ?? "") +
-          (prev[activeVoiceIdx] ? " " : "") +
-          text,
-      }));
+      // ★값의 소유자는 DOM — 표시용 state 를 읽어 이어붙이면 직전 타이핑을 덮어쓴다.
+      const ta = textareaRefs.current.get(activeVoiceIdx);
+      const prev = ta?.value ?? valuesRef.current.get(activeVoiceIdx) ?? "";
+      const next = prev + (prev ? " " : "") + text;
+      if (ta) ta.value = next;
+      valuesRef.current.set(activeVoiceIdx, next);
+      flushDisplay();
     },
   });
 
@@ -269,28 +319,77 @@ export function RecitationView({ articleId, articleLabel, body }: Props) {
       : 0;
 
   const handleSubmit = useCallback(() => {
+    // ★저장 직전에 textarea 를 다시 읽는다 — 표시용 state 는 묶어서 갱신하므로 마지막 몇 글자가
+    //   아직 반영되지 않았을 수 있다. 유사도도 저장할 그 값으로 계산해 둘이 어긋나지 않게 한다.
     const attempts = recitationBlocks
-      .filter((rb) => (inputs[rb.blockIndex] ?? "").trim().length > 0)
       .map((rb) => ({
-        blockIndex: rb.blockIndex,
-        userInput: inputs[rb.blockIndex] ?? "",
-        expectedText: rb.expectedText,
-        similarity: similarities[rb.blockIndex] ?? 0,
-      }));
+        rb,
+        userInput:
+          textareaRefs.current.get(rb.blockIndex)?.value ??
+          valuesRef.current.get(rb.blockIndex) ??
+          "",
+      }))
+      .filter(({ userInput }) => userInput.trim().length > 0)
+      .map(({ rb, userInput }) => {
+        valuesRef.current.set(rb.blockIndex, userInput);
+        return {
+          blockIndex: rb.blockIndex,
+          userInput,
+          expectedText: rb.expectedText,
+          similarity: computeSimilarityNormalized(userInput, rb.expectedNorm),
+        };
+      });
+    flushDisplay();
     if (attempts.length === 0) return;
     const fd = new FormData();
     fd.set("articleId", articleId);
     fd.set("attempts", JSON.stringify(attempts));
     fetcher.submit(fd, { method: "post", action: "/api/recitation/attempt" });
-  }, [articleId, inputs, recitationBlocks, similarities, fetcher]);
+  }, [articleId, recitationBlocks, fetcher, flushDisplay]);
 
   const handleReset = useCallback(() => {
     if (voice.listening) voice.stop();
     setActiveVoiceIdx(null);
+    valuesRef.current.clear();
     setInputs({});
     setReveal(false);
     setResetKey((k) => k + 1);
   }, [voice]);
+
+  // ★아이패드에서 다른 입력창으로 터치 이동할 때의 한글 조합 이월 차단(2026-08-26 신고).
+  //   iOS 는 조합 중인 글자를 확정하지 않은 채 캐럿만 옮겨, 직전 칸의 마지막 글자가 새로 누른
+  //   칸 첫머리에 붙는다. 빈칸 모드에서 검증된 방법과 같다 — 화면 밖 throwaway input 으로
+  //   포커스를 잠깐 옮겨(=다른 텍스트 필드로 이동) 조합을 직전 칸에 확정시킨 뒤, 다음 프레임에
+  //   목표 textarea 로 착지한다.
+  //   ★이미 내용이 있는 칸에는 개입하지 않는다 — 누른 자리에 캐럿을 놓는 기본 동작을 살려야
+  //     오타 수정을 할 수 있다(이월 방어는 '빈 칸에 새 글자가 나타난다'가 전제).
+  const onPointerDownCapture = (e: React.PointerEvent<HTMLDivElement>) => {
+    const active = document.activeElement;
+    if (!(active instanceof HTMLTextAreaElement)) return;
+    if (active.dataset.lidamRecite !== "1") return;
+    const target =
+      e.target instanceof Element
+        ? e.target.closest<HTMLTextAreaElement>(
+            'textarea[data-lidam-recite="1"]',
+          )
+        : null;
+    // ★입력창 밖(빈 공간·버튼) 탭에는 개입하지 않는다 — 여기서 blur 하면 화면을 스크롤하려고
+    //   짚었을 뿐인데 키보드가 닫힌다.
+    if (!target || target === active) return;
+    const flush = flushInputRef.current;
+    if (target.value === "" && flush && e.pointerType !== "mouse") {
+      e.preventDefault();
+      flush.focus({ preventScroll: true });
+      requestAnimationFrame(() => {
+        target.focus({ preventScroll: true });
+        const end = target.value.length;
+        target.setSelectionRange(end, end);
+      });
+      return;
+    }
+    // 그 밖(마우스 클릭·이미 내용이 있는 칸) — 최소 개입으로 조합을 지금 칸에 확정시킨다.
+    active.blur();
+  };
 
   const submitting = fetcher.state !== "idle";
   const submitResult = fetcher.data as
@@ -298,7 +397,33 @@ export function RecitationView({ articleId, articleLabel, body }: Props) {
     | undefined;
 
   return (
-    <div className="space-y-3" key={resetKey}>
+    <div
+      className="space-y-3"
+      key={resetKey}
+      onPointerDownCapture={onPointerDownCapture}
+    >
+      {/* 한글 조합 확정용 throwaway input — 화면 밖(포커스만 받고 보이지 않음). 텍스트 필드라
+          소프트 키보드가 유지되고, tabIndex=-1 이라 Tab 순회에 끼지 않는다. */}
+      <input
+        ref={flushInputRef}
+        type="text"
+        tabIndex={-1}
+        aria-hidden="true"
+        inputMode="text"
+        autoComplete="off"
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: 1,
+          height: 1,
+          opacity: 0,
+          pointerEvents: "none",
+          border: 0,
+          padding: 0,
+          zIndex: -1,
+        }}
+      />
       <div className="bg-muted/40 flex flex-wrap items-center gap-3 rounded-md border border-dashed px-3 py-2 text-xs">
         <span className="font-medium">
           암기 진행: {totalCompleted} / {recitationBlocks.length}
@@ -382,6 +507,7 @@ export function RecitationView({ articleId, articleLabel, body }: Props) {
               voiceSupported={voice.isSupported}
               interim={voiceActive ? voice.interim : ""}
               onInput={setInputAt}
+              onCommit={commitInputAt}
               onToggleVoice={stableToggleVoice}
               registerRef={registerTextarea}
             />
@@ -410,6 +536,7 @@ const ReciteRow = memo(function ReciteRow({
   voiceSupported,
   interim,
   onInput,
+  onCommit,
   onToggleVoice,
   registerRef,
 }: {
@@ -421,6 +548,7 @@ const ReciteRow = memo(function ReciteRow({
   voiceSupported: boolean;
   interim: string;
   onInput: (blockIndex: number, value: string) => void;
+  onCommit: (blockIndex: number, value: string) => void;
   onToggleVoice: (blockIndex: number) => void;
   registerRef: (blockIndex: number, el: HTMLTextAreaElement | null) => void;
 }) {
@@ -438,8 +566,12 @@ const ReciteRow = memo(function ReciteRow({
       <div className="flex items-start gap-2">
         <textarea
           ref={(el) => registerRef(rb.blockIndex, el)}
-          value={input}
+          data-lidam-recite="1"
+          // ★비제어 — 값의 소유자는 이 textarea 다(부모 주석 참조). defaultValue 는 마운트
+          //   시점에만 쓰이고, "다시 풀기"는 key 리마운트로 초기화된다.
+          defaultValue={input}
           onChange={(e) => onInput(rb.blockIndex, e.target.value)}
+          onBlur={(e) => onCommit(rb.blockIndex, e.currentTarget.value)}
           rows={Math.max(2, Math.ceil(rb.expectedText.length / 60))}
           placeholder="여기에 외운 본문을 입력하거나 마이크로 말하세요."
           className={cn(
