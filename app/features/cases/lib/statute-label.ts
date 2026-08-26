@@ -27,6 +27,30 @@ export function isOldLawLabel(raw: string): boolean {
 }
 
 /**
+ * **조문 번호가 통째로 다시 매겨진** 구법 표기인가 — "…전문 개정되기 전의 것" 류.
+ *
+ * ★전문개정(전부개정)은 조문을 새로 매긴다. 수식어만 떼고 같은 번호의 현행 조문으로 잇는
+ *   것은 **다른 조문을 보여주는 일**이다 — 원장 지적 2026-08-26:
+ *   "구 특허법(1990. 1. 13. 법률 제4207호로 전문 개정되기 전의 것) 제11조 제1항"(선출원)을
+ *   누르면 현행 제11조(대리권의 범위)가 열렸다. 실제 대응 조문은 현행 제36조다.
+ * ★구법↔현행 조문 매칭표가 없으므로 **링크하지 않고 표기만 남긴다**. 틀린 조문을 펼쳐 주는
+ *   것보다 아무것도 안 펼치는 편이 낫다.
+ * 일부개정("…로 개정되기 전의 것")은 번호가 유지되므로 종전대로 현행 조문에 잇는다.
+ */
+export function isRenumberedOldLaw(raw: string): boolean {
+  return /(?:전문|전부)\s*개정/.test(raw);
+}
+
+/**
+ * 자기 판본을 **괄호로 밝힌** 표기인가 — "구 특허법(2001. 2. 3. 법률 제6411호로 개정되기
+ * 전의 것) 제136조" 처럼. 이런 표기는 어느 판본인지 스스로 말하므로, 같은 법의 다른
+ * 전문개정 표기 때문에 싸잡아 끊지 않는다. 맨 "구 특허법 제11조" 는 판본을 말하지 않는다.
+ */
+export function hasAmendmentRef(raw: string): boolean {
+  return /\([^)]*개정[^)]*\)/.test(raw);
+}
+
+/**
  * 해석용 정규화. 실패해도 원 표기는 그대로 화면에 남으므로 공격적으로 다듬어도 안전하다.
  *
  *   "구 특허법 제89조 제1항"                              → "특허법 제89조 제1항"
@@ -76,7 +100,9 @@ const REFERENCE_RE = /^(.+?)\s*제\s*(\d+)\s*조(?:\s*의\s*(\d+))?(?:\s|$)/;
  * 정규화된 표기에서 법령명과 조문번호를 뽑는다. 법령명이 실제 존재하는지는 보지 않는다 —
  * 호출부가 reference_laws 와 대조해 걸러낸다("프랑스 민법", "특허법 시행령"은 거기서 탈락).
  */
-export function parseReferenceStatute(label: string): ReferenceStatuteRef | null {
+export function parseReferenceStatute(
+  label: string,
+): ReferenceStatuteRef | null {
   const m = REFERENCE_RE.exec(normalizeStatuteLabel(label));
   if (!m) return null;
   const lawName = m[1].trim();

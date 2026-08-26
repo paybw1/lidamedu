@@ -18,6 +18,9 @@ import {
 } from "./lib/case-diagram";
 import {
   type StatuteRef,
+  hasAmendmentRef,
+  isOldLawLabel,
+  isRenumberedOldLaw,
   normalizeStatuteLabel,
   parseReferenceStatute,
 } from "./lib/statute-label";
@@ -123,10 +126,37 @@ export async function resolveStatuteArticleIds(
   const unique = [...new Set(statutes.map((s) => s.trim()).filter(Boolean))];
   if (unique.length === 0) return {};
 
+  // ★한 도식 안에서 어떤 법이 "전문개정 이전" 으로 인용됐다면, 같은 법의 **수식어만 붙은**
+  //   구법 표기("구 특허법 제11조 제1항")도 그 옛 판본을 가리킨다고 본다.
+  //   실제 사례(원장 지적 2026-08-26): 한 도식에 전문개정 표기 1개 + 맨 "구 특허법 제11조
+  //   제1항" 3개가 함께 있었고, 넷 다 현행 제11조가 아니라 제36조에 대응했다.
+  //   판단 범위를 이 도식으로 한정하는 게 핵심이다 — 다른 도식의 "구 특허법 제42조 제3항"
+  //   (일부개정 판본)까지 싸잡아 끊으면 멀쩡한 링크를 잃는다.
+  const lawNameOf = (raw: string) =>
+    parseReferenceStatute(raw)?.lawName ?? null;
+  const renumberedLaws = new Set(
+    unique.filter(isRenumberedOldLaw).flatMap((raw) => {
+      const name = lawNameOf(raw);
+      return name ? [name] : [];
+    }),
+  );
+  const unmapped = (raw: string) => {
+    if (isRenumberedOldLaw(raw)) return true;
+    // 판본을 괄호로 밝힌 표기는 스스로 어느 판본인지 말한다 — 같은 법의 전문개정 표기가
+    // 옆에 있다고 해서 끊지 않는다("…로 개정되기 전의 것" = 일부개정이라 번호가 유지된다).
+    if (!isOldLawLabel(raw) || hasAmendmentRef(raw)) return false;
+    const name = lawNameOf(raw);
+    return name !== null && renumberedLaws.has(name);
+  };
+
   // 표기 → {lawCode, article_number}. 파싱 실패분은 버린다.
   // ★판결문 표기를 그대로 옮긴 문자열이라 "구 특허법 …", "… 제1항 본문" 처럼 쓰인다 —
   //   해석용으로만 정규화한다(원 표기는 화면에 그대로 남는다).
   const parsed = unique.flatMap((raw) => {
+    // ★번호가 다시 매겨진 판본은 현행 조문과 대응하지 않는다. 매칭표가 없으므로 아예
+    //   해석하지 않는다 — 화면은 표기만 남기고 링크를 걸지 않는다(틀린 조문을 펼치는
+    //   것보다 아무것도 안 펼치는 편이 낫다).
+    if (unmapped(raw)) return [];
     const ident = parseDisplay(normalizeStatuteLabel(raw));
     if (!ident) return [];
     return [{ raw, lawCode: ident.lawCode, number: articleNumberText(ident) }];
@@ -164,7 +194,12 @@ export async function resolveStatuteArticleIds(
     }
   }
 
-  await resolveReferenceStatutes(client, unique, out);
+  // 참조 법령에서도 같은 이유로 잇지 않는다 — 대응이 확인된 표기만 넘긴다.
+  await resolveReferenceStatutes(
+    client,
+    unique.filter((raw) => !unmapped(raw)),
+    out,
+  );
   return out;
 }
 
