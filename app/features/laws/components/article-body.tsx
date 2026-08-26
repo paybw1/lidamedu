@@ -1,8 +1,9 @@
-import type {
-  ArticleBody,
-  Block,
-  Inline,
-  SubArticleEntry,
+import {
+  TRAILING_RAW_REFS_RE,
+  type ArticleBody,
+  type Block,
+  type Inline,
+  type SubArticleEntry,
 } from "../lib/article-body";
 
 import { ChevronRightIcon, ScrollIcon, StickyNoteIcon } from "lucide-react";
@@ -355,8 +356,6 @@ function RefsCollapsible({
 // 옮긴다. 매핑은 정상 파싱된 ref_article 토큰 (법 67의2①, 법 30③Ⅱ 등) 의 target 규칙과 동일:
 //   "의N" → branch, "①②…" → clause, "ⅠⅡ…" → item.
 // law_code 가 없거나 article 이 정수 변환 안 되면 raw text 그대로 fallback.
-const TRAILING_RAW_REFS_RE =
-  /(?:[\s,·、，/]*法\s*\d+(?:의\d+)?[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮]*[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]*)+\s*$/;
 const SINGLE_RAW_REF_RE_G =
   /法\s*(\d+)(?:의(\d+))?([①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮])?([ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ])?/g;
 const CIRCLED_TO_INT: Record<string, number> = {

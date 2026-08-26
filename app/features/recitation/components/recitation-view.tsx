@@ -21,11 +21,12 @@ import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { useVoiceRecognition } from "~/core/hooks/use-voice-recognition";
 import { cn } from "~/core/lib/utils";
-import type {
-  ArticleBody,
-  Block,
-  Inline,
-  SubArticleEntry,
+import {
+  stripRefsAndNotes,
+  type ArticleBody,
+  type Block,
+  type Inline,
+  type SubArticleEntry,
 } from "~/features/laws/lib/article-body";
 
 import {
@@ -124,6 +125,8 @@ export function RecitationView({ articleId, articleLabel, body }: Props) {
           const expected = cleanupExpected(
             block.inline.map(inlineCumulativeText).join(""),
           );
+          // 관련조문·개정표기를 걷어내면 남는 게 없는 항이 있을 수 있다 — 빈 입력창을 만들지 않는다.
+          if (hasSubstance(expected))
           out.push({
             type: "recite",
             block: {
@@ -567,6 +570,13 @@ const ReciteRow = memo(function ReciteRow({
         <textarea
           ref={(el) => registerRef(rb.blockIndex, el)}
           data-lidam-recite="1"
+          // ★브라우저 자동 보정 끄기 — 사파리는 빠른데 크롬만 느리다는 보고(2026-08-26).
+          //   맞춤법·자동완성 검사는 긴 한글 본문에서 키 입력마다 비용이 붙고, 조문 원문은
+          //   교정 대상이 아니다(고유명사·구두점이 그대로 남아야 한다).
+          spellCheck={false}
+          autoCorrect="off"
+          autoCapitalize="off"
+          autoComplete="off"
           // ★비제어 — 값의 소유자는 이 textarea 다(부모 주석 참조). defaultValue 는 마운트
           //   시점에만 쓰이고, "다시 풀기"는 key 리마운트로 초기화된다.
           defaultValue={input}
@@ -761,8 +771,11 @@ function inlineCumulativeText(t: Inline): string {
 }
 
 // ref/라벨 토큰 제거 후 남는 구분자 꼬리(", , ")·앞뒤 공백 정리.
+// ★관련조문 참조("法 200의2①")와 개정 표기("<개정 2014.6.11.>")는 정답이 아니다 —
+//   화면에 정답으로 보이면 학생이 그것까지 외우려 하고, 유사도에 섞이면 본문을 다 써도
+//   100%가 안 나온다(특허 42조 ①은 최대 86% — 2026-08-26 신고 2건).
 function cleanupExpected(s: string): string {
-  return s.replace(/[\s,、·]+$/g, "").replace(/^\s+/, "");
+  return stripRefsAndNotes(s).replace(/[\s,、·]+$/g, "").replace(/^\s+/, "");
 }
 
 // 실제 외울 내용이 있는지 — 구분자·구두점만 남은 block(관련조문 나열 para 등)은 암기 항목에서 제외.
