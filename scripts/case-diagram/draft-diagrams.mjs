@@ -5,9 +5,18 @@
 //   ② 쟁점~결론 ← 대법원 원문 + 판결요지만 입력
 //   한 번에 넣으면 모델이 두 소스를 섞어 "대법원이 압축한 사실"을 사실관계로 쓰게 된다.
 //
-//   node scripts/case-diagram/draft-diagrams.mjs --year 2025            # dry-run(대상·비용 추정)
-//   node scripts/case-diagram/draft-diagrams.mjs --year 2025 --apply
-//   node scripts/case-diagram/draft-diagrams.mjs --case 2023후10712 --apply --force
+//   npx tsx scripts/case-diagram/draft-diagrams.mjs --year 2025            # dry-run(대상·비용 추정)
+//   npx tsx scripts/case-diagram/draft-diagrams.mjs --year 2025 --apply
+//   npx tsx scripts/case-diagram/draft-diagrams.mjs --case 2023후10712 --apply --force
+//
+// ★--facts-only — **사실관계만** 채운다(쟁점~결론은 그대로 둔다).
+//   도식을 먼저 만들고 하급심 판결문을 나중에 구한 건들이 생긴다(2025년분 7건이 그랬다:
+//   도식 08-19 생성 → 판결문 08-20 적재). 전체 재생성하면 검수를 마친 쟁점~결론까지
+//   날아가므로, 빠진 사실관계만 붙인다. **승인본도 대상**이지만 검수 안 한 서술이 학생에게
+//   바로 가면 안 되므로 **검수 대기로 되돌린다** — 다시 승인해야 학생에게 보인다.
+//
+//   npx tsx scripts/case-diagram/draft-diagrams.mjs --facts-only            # dry-run
+//   npx tsx scripts/case-diagram/draft-diagrams.mjs --facts-only --apply
 //
 // --force 없이는 이미 도식이 있는 판례를 건너뛴다(멱등). 승인된 도식은 --force 여도 건드리지 않는다.
 import "dotenv/config";
@@ -15,6 +24,12 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import fs from "node:fs";
 import path from "node:path";
+// ★조각남 판정은 재추출 스크립트와 **같은 것**을 쓴다 — 사본을 두면 한쪽이 뺀 것을
+//   다른 쪽이 통과시킨다. 그래서 이 파일은 node 가 아니라 tsx 로 돌린다.
+import {
+  SCRAMBLE_MAX,
+  scrambleRatio,
+} from "../../app/features/cases/lib/lower-court-text.ts";
 
 const argv = process.argv.slice(2);
 const argOf = (n) => {
@@ -29,6 +44,8 @@ const LIMIT = argOf("--limit") ? Number(argOf("--limit")) : Infinity;
 // ★사실관계 소스(하급심)가 있는 건만 생성 — 없는 건 쟁점~결론만 남아 반쪽 도식이 되고,
 //   나중에 하급심을 구하면 --force 로 다시 돌려야 한다. 그럴 바엔 확보된 것부터 채운다.
 const WITH_FACTS_ONLY = argv.includes("--with-facts");
+// 사실관계가 비어 있는 기존 도식만 골라 그 칸만 채운다(쟁점~결론·검수 이력 보존).
+const FACTS_ONLY = argv.includes("--facts-only");
 const LAW = argOf("--law") ?? "patent";
 
 const CACHE_DIR = path.resolve(process.cwd(), "source", "하급심 판결문", ".cache");
@@ -37,22 +54,6 @@ const MODEL = "claude-opus-4-7";
 // pricing.ts 와 동일 단가.
 const COST = { inputPerM: 5.0, outputPerM: 25.0 };
 const MIN_OFFICIAL_TEXT = 200;
-// 조각난 판결문 판정 — 구두점·숫자만 남은 짧은 줄의 비율.
-// 실측 분포는 뚜렷한 이봉형(정상 0.00~0.05 / 조각 0.20~0.39)이라 그 사이를 자른다.
-const SCRAMBLE_MAX = 0.15;
-
-/** 좌표 복원 전 추출기가 만든 "조각난 텍스트" 정도(0~1). */
-function scrambleRatio(text) {
-  const lines = text
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean);
-  if (lines.length < 20) return 0;
-  const junk = lines.filter(
-    (l) => l.length <= 3 && /^[\s.,'"“”‘’()[\]0-9-]+$/.test(l),
-  ).length;
-  return junk / lines.length;
-}
 
 const sb = createClient(
   process.env.SUPABASE_URL,
@@ -321,7 +322,9 @@ async function main() {
   const ids = cases.map((c) => c.case_id);
   const { data: existing } = await sb
     .from("case_diagrams")
-    .select("case_id, diagram_id, review_status, facts_md, blocks")
+    .select(
+      "case_id, diagram_id, review_status, facts_md, facts_source_kind, blocks",
+    )
     .in("case_id", ids)
     .is("deleted_at", null);
   const byCase = new Map((existing ?? []).map((d) => [d.case_id, d]));
@@ -330,6 +333,19 @@ async function main() {
   const skipped = [];
   for (const c of cases) {
     const prev = byCase.get(c.case_id) ?? null;
+    if (FACTS_ONLY) {
+      // 사실관계가 비어 있는 **기존** 도식만. 승인 여부는 보지 않는다(쟁점~결론은 안 건드린다).
+      if (!prev) {
+        skipped.push({ case: c.case_number, why: "도식 없음(--facts-only)" });
+        continue;
+      }
+      const hasFacts =
+        prev.facts_source_kind !== "none" &&
+        (prev.facts_md ?? "").trim().length > 0;
+      if (hasFacts) continue; // 이미 있는 건 조용히 넘긴다 — 대부분이라 목록이 의미 없다.
+      targets.push({ kase: c, prev, cache: readCache(c.case_number) });
+      continue;
+    }
     if (prev?.review_status === "approved") {
       skipped.push({ case: c.case_number, why: "이미 승인됨" });
       continue;
@@ -402,6 +418,17 @@ async function main() {
   }
 
   // ★LIMIT 은 사실관계 필터 뒤에 적용한다 — 먼저 자르면 --with-facts 가 한 줌만 남긴다.
+  if (FACTS_ONLY) {
+    // 소스가 없으면 채울 것이 없다 — 판결문을 먼저 구해야 한다.
+    const dropped = targets.filter((t) => !t.cache);
+    targets = targets.filter((t) => t.cache);
+    if (dropped.length) {
+      console.log(
+        `[--facts-only] 하급심 판결문이 없는 ${dropped.length}건 제외 — 판결문부터 구하세요.`,
+      );
+      for (const t of dropped) console.log(`    ${t.kase.case_number}`);
+    }
+  }
   if (WITH_FACTS_ONLY) {
     const dropped = targets.filter((t) => !t.cache);
     targets = targets.filter((t) => t.cache);
@@ -417,6 +444,22 @@ async function main() {
     `대상 ${targets.length}건 (사실관계 소스 있음 ${targets.filter((t) => t.cache).length}) · 건너뜀 ${skipped.length}`,
   );
   for (const s of skipped) console.log(`  skip ${s.case} — ${s.why}`);
+  if (!APPLY && FACTS_ONLY) {
+    console.log("\n[dry-run] 사실관계를 채울 대상:");
+    for (const t of targets) {
+      console.log(
+        `  ${t.kase.case_number.padEnd(13)} ${t.kase.decided_at}  ${t.prev.review_status.padEnd(8)} 쟁점 ${(t.prev.blocks ?? []).length}개 유지  소스=${t.cache.sourceRef} (${t.cache.text.length}자)`,
+      );
+    }
+    const demote = targets.filter((t) => t.prev.review_status === "approved");
+    if (demote.length) {
+      console.log(
+        `\n★승인본 ${demote.length}건은 검수 대기로 되돌립니다 — 다시 승인해야 학생에게 보입니다.`,
+      );
+    }
+    console.log("\n--apply 를 붙이면 실행합니다.");
+    return;
+  }
   if (!APPLY) {
     console.log("\n[dry-run] 생성 대상:");
     for (const t of targets) {
@@ -446,6 +489,42 @@ async function main() {
   for (const [i, t] of targets.entries()) {
     const cn = t.kase.case_number;
     try {
+      if (FACTS_ONLY) {
+        // 사실관계 칸만 갱신 — blocks·generated_by 는 손대지 않는다(검수 결과 보존).
+        const only = await draftFacts(t.kase, t.cache);
+        if (!only.factsMd) throw new Error("사실관계 0자");
+        const demote = t.prev.review_status === "approved";
+        const { error: fErr } = await sb
+          .from("case_diagrams")
+          .update({
+            facts_md: only.factsMd,
+            timeline: only.timeline,
+            facts_source_kind: t.cache.sourceKind,
+            facts_source_ref: t.cache.sourceRef,
+            facts_source_meta: {
+              serial: t.cache.serial ?? null,
+              files: t.cache.files ?? null,
+              fetchedAt: t.cache.fetchedAt ?? null,
+            },
+            // ★검수하지 않은 서술이 학생에게 바로 가면 안 된다 — 승인본은 검수 대기로.
+            ...(demote
+              ? { review_status: "draft", approved_at: null, approved_by: null }
+              : {}),
+          })
+          .eq("case_id", t.kase.case_id);
+        if (fErr) throw new Error(fErr.message);
+        results.push({
+          case: cn,
+          blocks: (t.prev.blocks ?? []).length,
+          factsChars: only.factsMd.length,
+          timeline: only.timeline.length,
+          axes: [],
+        });
+        console.log(
+          `[${i + 1}/${targets.length}] ${cn.padEnd(13)} 사실관계 ${only.factsMd.length}자 · 경과 ${only.timeline.length}${demote ? " · 승인→검수 대기" : ""} · 누적 ${usd().toFixed(2)}`,
+        );
+        continue;
+      }
       const facts = t.cache
         ? await draftFacts(t.kase, t.cache)
         : { factsMd: "", timeline: [] };

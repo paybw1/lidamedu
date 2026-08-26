@@ -62,3 +62,28 @@ export function reflowJudgmentText(raw: string): string[] {
   flush();
   return paras;
 }
+
+/**
+ * 좌표 복원 전 추출기가 만든 **"조각난 텍스트"** 정도(0~1).
+ *
+ * 예전 추출기는 판결문 PDF 의 텍스트 런을 순서대로 이어 붙여, 문장이 조각나고 숫자가
+ * 줄 끝으로 밀렸다("갑 제호증 5(9)"). 사실관계는 날짜·번호가 그대로 남아야 하는 자료라
+ * 이런 텍스트를 AI 입력으로 쓰면 사실을 잘못 옮긴다 — 소스에서 뺀다.
+ *
+ * 실측 분포가 뚜렷한 이봉형이라(정상 0.00~0.05 / 조각 0.20~0.39) 그 사이를 자른다.
+ * ★배치 생성기(draft-diagrams)와 재추출 스크립트가 **같은 판정**을 써야 한다 —
+ *   따로 두면 한쪽이 뺀 것을 다른 쪽이 통과시킨다.
+ */
+export const SCRAMBLE_MAX = 0.15;
+
+export function scrambleRatio(text: string): number {
+  const lines = text
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (lines.length < 20) return 0;
+  const junk = lines.filter(
+    (l) => l.length <= 3 && /^[\s.,'"“”‘’()[\]0-9-]+$/.test(l),
+  ).length;
+  return junk / lines.length;
+}
