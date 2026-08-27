@@ -201,6 +201,10 @@ export function CaseDiagramSheet({
       <div className="relative print:hidden" {...guard}>
         {watermark ? <ViewerWatermark text={watermark} /> : null}
         <DiagramBody
+          // ★판례를 갈아끼울 때 통째로 다시 마운트한다. 이웃 이동(DiagramNav)은 같은
+          //   라우트라 컴포넌트가 재사용되는데, 그러면 접힘 상태와 **연습 입력·채점
+          //   결과가 다음 판례로 따라간다** — 앞 판례 답안이 다음 판례 칸에 남는다.
+          key={caseId}
           diagram={diagram}
           draft={draft}
           caseId={caseId}
