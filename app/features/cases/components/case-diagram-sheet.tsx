@@ -16,6 +16,7 @@ import {
   PencilLineIcon,
   ScaleIcon,
   SquareIcon,
+  Trash2Icon,
 } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { Link, useFetcher, useLocation } from "react-router";
@@ -290,6 +291,71 @@ function ApproveBar({
           )}
         >
           {msg}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * 쟁점 하나 삭제 — 판례 화면에서 바로(원장 요청 2026-08-27). 검수 화면까지 나가지 않는다.
+ * ★한 번 눌러 지워지지 않는다 — 되돌릴 수 없는 조작이라 그 자리에서 확인을 받는다.
+ * ★마지막 쟁점은 버튼을 열지 않는다 — 쟁점 0개 도식은 승인도 안 되는 반쪽 상태다.
+ *   서버도 같은 판정을 하지만(delete_block), 누를 수 있는 버튼을 두고 거절하지는 않는다.
+ */
+function DeleteBlockButton({
+  caseId,
+  blockIndex,
+  last,
+}: {
+  caseId: string;
+  blockIndex: number;
+  last: boolean;
+}) {
+  const fetcher = useFetcher<{ ok?: string; error?: string }>();
+  const [confirming, setConfirming] = useState(false);
+  const busy = fetcher.state !== "idle";
+  if (last) return null;
+  if (!confirming) {
+    return (
+      <button
+        type="button"
+        onClick={() => setConfirming(true)}
+        title="이 쟁점 삭제"
+        aria-label={`쟁점 ${blockIndex + 1} 삭제`}
+        className="text-muted-foreground hover:bg-muted mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-md hover:text-rose-600 dark:hover:text-rose-400"
+      >
+        <Trash2Icon className="size-3.5" />
+      </button>
+    );
+  }
+  return (
+    <div className="mt-0.5 flex shrink-0 flex-wrap items-center gap-1">
+      <span className="text-muted-foreground text-[11px]">
+        이 쟁점을 지울까요?
+      </span>
+      <fetcher.Form method="post" action={`/admin/case-diagrams/${caseId}`}>
+        <input type="hidden" name="intent" value="delete_block" />
+        <input type="hidden" name="blockIndex" value={blockIndex} />
+        <button
+          type="submit"
+          disabled={busy}
+          className="inline-flex h-6 items-center gap-1 rounded-full bg-rose-600 px-2.5 text-[11px] font-semibold text-white disabled:opacity-50"
+        >
+          {busy ? <Loader2Icon className="size-3 animate-spin" /> : null}
+          삭제
+        </button>
+      </fetcher.Form>
+      <button
+        type="button"
+        onClick={() => setConfirming(false)}
+        className="border-border text-muted-foreground hover:bg-muted h-6 rounded-full border px-2.5 text-[11px] font-medium"
+      >
+        취소
+      </button>
+      {fetcher.data?.error ? (
+        <span className="text-[11px] font-medium text-rose-600 dark:text-rose-400">
+          {fetcher.data.error}
         </span>
       ) : null}
     </div>
@@ -695,26 +761,35 @@ function DiagramBody({
             key={i}
             className="border-border bg-card rounded-xl border p-3 shadow-sm"
           >
-            <div className="mb-2">
-              <InlineEdit
-                caseId={reclassifyCaseId}
-                intent="set_block_field"
-                name="value"
-                value={b.issue}
-                fields={{ blockIndex: i, field: "issue" }}
-                rows={2}
-                label="쟁점 수정"
-                placeholder="이 쟁점에서 무엇이 문제되는가"
-              >
-                <h3 className="flex items-start gap-1.5 text-[15px] font-bold">
-                  <Badge className="mt-0.5 shrink-0 rounded-sm px-1.5 py-0">
-                    쟁점 {i + 1}
-                  </Badge>
-                  <span className="leading-snug whitespace-pre-line">
-                    {b.issue}
-                  </span>
-                </h3>
-              </InlineEdit>
+            <div className="mb-2 flex items-start gap-2">
+              <div className="min-w-0 flex-1">
+                <InlineEdit
+                  caseId={reclassifyCaseId}
+                  intent="set_block_field"
+                  name="value"
+                  value={b.issue}
+                  fields={{ blockIndex: i, field: "issue" }}
+                  rows={2}
+                  label="쟁점 수정"
+                  placeholder="이 쟁점에서 무엇이 문제되는가"
+                >
+                  <h3 className="flex items-start gap-1.5 text-[15px] font-bold">
+                    <Badge className="mt-0.5 shrink-0 rounded-sm px-1.5 py-0">
+                      쟁점 {i + 1}
+                    </Badge>
+                    <span className="leading-snug whitespace-pre-line">
+                      {b.issue}
+                    </span>
+                  </h3>
+                </InlineEdit>
+              </div>
+              {reclassifyCaseId ? (
+                <DeleteBlockButton
+                  caseId={reclassifyCaseId}
+                  blockIndex={i}
+                  last={diagram.blocks.length <= 1}
+                />
+              ) : null}
             </div>
 
             {/* staff 는 비어 있어도 칸을 연다(쓸 자리가 있어야 채운다).

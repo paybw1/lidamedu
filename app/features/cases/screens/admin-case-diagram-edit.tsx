@@ -133,6 +133,10 @@ const blockFieldSchema = z.object({
   value: z.string().max(20_000),
 });
 
+const deleteBlockSchema = z.object({
+  blockIndex: z.number().int().min(0).max(99),
+});
+
 const moveSchema = z.object({
   blockIndex: z.number().int().min(0).max(99),
   from: z.enum(DOCTRINE_AXIS_KEYS),
@@ -240,6 +244,34 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   // 법리 축 재분류 — 도식 패널(시트/팝업)에서 칩 하나로 옮긴다. 전체 저장과 달리
   //   본문을 싣지 않아, 다른 탭에서 편집 중인 내용을 덮어쓰지 않는다.
+  // 쟁점 하나 삭제 — 도식 패널(판례 화면)에서 바로 지운다.
+  //   ★마지막 하나는 지우지 않는다 — 쟁점 0개인 도식은 승인도 안 되고 화면에서
+  //     "아직 쟁점이 정리되지 않았습니다" 만 남는 반쪽 상태가 된다. 그 경우는
+  //     도식 자체를 지우는 게 맞아서 그렇게 안내한다.
+  if (intent === "delete_block") {
+    const parsed = deleteBlockSchema.safeParse({
+      blockIndex: Number(fd.get("blockIndex")),
+    });
+    if (!parsed.success)
+      return data({ error: "삭제 대상이 올바르지 않습니다." });
+    const ctx = await getCaseDiagramEditContext(client, caseId);
+    if (!ctx?.diagram) return data({ error: "도식이 없습니다." });
+    const blocks = ctx.diagram.blocks;
+    const target = blocks[parsed.data.blockIndex];
+    if (!target) return data({ error: "쟁점을 찾지 못했습니다." });
+    if (blocks.length <= 1) {
+      return data({
+        error:
+          "마지막 쟁점은 지울 수 없습니다 — 검수 화면의 「도식 삭제」를 쓰세요.",
+      });
+    }
+    await updateCaseDiagramBlocksByStaff(client, {
+      diagramId: ctx.diagram.diagramId,
+      blocks: blocks.filter((_, i) => i !== parsed.data.blockIndex),
+    });
+    return data({ ok: `쟁점 ${parsed.data.blockIndex + 1} 을 지웠습니다.` });
+  }
+
   if (intent === "move_doctrine") {
     const moved = moveSchema.safeParse({
       blockIndex: Number(fd.get("blockIndex")),
