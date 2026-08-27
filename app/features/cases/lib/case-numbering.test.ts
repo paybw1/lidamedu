@@ -16,10 +16,21 @@ describe("splitCaseNumbering", () => {
   });
 
   it("계층 마커에서 분할하고 깊이를 매긴다", () => {
-    const text = "1. 판단 가. 법리 1) 사실 (1) 세부";
+    // ★판결문은 마커가 **줄머리**에 온다. "N)"·"가)" 는 줄 맨 앞일 때만 마커로 인정하므로
+    //   (아래 "줄 중간의 …" 테스트), 한 줄로 이어 쓰면 depth 2·3 이 잡히지 않는다.
+    const text = "1. 판단\n가. 법리\n1) 사실\n(1) 세부";
     const segs = splitCaseNumbering(text);
     expect(segs.map((s) => s.depth)).toEqual([0, 1, 2, 4]);
     expect(segs[1].text.startsWith("가. ")).toBe(true);
+    expect(join(text)).toBe(text);
+  });
+
+  it('줄 중간의 "N)" 열거는 마커가 아니다 — 문장을 쪼개면 안 된다', () => {
+    const text =
+      "여러 사정이 있으나 달리 1) 첫째 점, 2) 둘째 점에 특색이 있다.";
+    const segs = splitCaseNumbering(text);
+    expect(segs).toHaveLength(1);
+    expect(segs[0].depth).toBeNull();
   });
 
   it("날짜 사슬(2011. 9. 8. 선고)은 분할하지 않는다", () => {
