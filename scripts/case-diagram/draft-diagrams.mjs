@@ -39,7 +39,11 @@ const argOf = (n) => {
 const APPLY = argv.includes("--apply");
 const FORCE = argv.includes("--force");
 const YEAR = argOf("--year");
+// 쉼표로 여러 건 지정 가능 — "--case 2015라20296,2013다14361".
 const ONE_CASE = argOf("--case");
+const CASE_LIST = ONE_CASE
+  ? ONE_CASE.split(",").map((x) => x.trim()).filter(Boolean)
+  : [];
 const LIMIT = argOf("--limit") ? Number(argOf("--limit")) : Infinity;
 // ★사실관계 소스(하급심)가 있는 건만 생성 — 없는 건 쟁점~결론만 남아 반쪽 도식이 되고,
 //   나중에 하급심을 구하면 --force 로 다시 돌려야 한다. 그럴 바엔 확보된 것부터 채운다.
@@ -310,7 +314,8 @@ async function main() {
     .is("deleted_at", null)
     .contains("subject_laws", [LAW])
     .order("decided_at");
-  if (ONE_CASE) q = q.eq("case_number", ONE_CASE);
+  if (CASE_LIST.length === 1) q = q.eq("case_number", CASE_LIST[0]);
+  else if (CASE_LIST.length > 1) q = q.in("case_number", CASE_LIST);
   else if (YEAR)
     q = q
       .gte("decided_at", `${YEAR}-01-01`)
@@ -342,7 +347,9 @@ async function main() {
       const hasFacts =
         prev.facts_source_kind !== "none" &&
         (prev.facts_md ?? "").trim().length > 0;
-      if (hasFacts) continue; // 이미 있는 건 조용히 넘긴다 — 대부분이라 목록이 의미 없다.
+      // ★--force 는 **이미 채워진 사실관계를 다시 만든다**. 대상을 --case 로 좁히지 않으면
+      //   전건이 대상이 되니 주의(예행에서 대상 수를 먼저 확인할 것).
+      if (hasFacts && !FORCE) continue; // 대부분이라 건너뛴 목록은 찍지 않는다.
       targets.push({ kase: c, prev, cache: readCache(c.case_number) });
       continue;
     }
