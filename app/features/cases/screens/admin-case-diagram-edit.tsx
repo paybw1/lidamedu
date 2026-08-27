@@ -45,6 +45,7 @@ import {
   diagramApprovable,
   emptyBlock,
   moveDoctrineAxis,
+  moveDoctrinePart,
 } from "~/features/cases/lib/case-diagram";
 import {
   approveCaseDiagram,
@@ -141,6 +142,11 @@ const moveSchema = z.object({
   blockIndex: z.number().int().min(0).max(99),
   from: z.enum(DOCTRINE_AXIS_KEYS),
   to: z.enum(DOCTRINE_AXIS_KEYS),
+});
+
+// 축 안의 갈래 하나만 옮기기 — 번호로 묶인 서술을 다시 나눈다.
+const movePartSchema = moveSchema.extend({
+  partIndex: z.number().int().min(0).max(19),
 });
 
 const saveSchema = z.object({
@@ -270,6 +276,43 @@ export async function action({ request, params }: Route.ActionArgs) {
       blocks: blocks.filter((_, i) => i !== parsed.data.blockIndex),
     });
     return data({ ok: `쟁점 ${parsed.data.blockIndex + 1} 을 지웠습니다.` });
+  }
+
+  // 한 축에 번호로 묶인 갈래 중 **하나만** 다른 축으로. 남는 쪽은 다시 번호를 매긴다.
+  if (intent === "move_doctrine_part") {
+    const moved = movePartSchema.safeParse({
+      blockIndex: Number(fd.get("blockIndex")),
+      from: fd.get("from"),
+      to: fd.get("to"),
+      partIndex: Number(fd.get("partIndex")),
+    });
+    if (!moved.success)
+      return data({ error: "이동 대상이 올바르지 않습니다." });
+    const ctx = await getCaseDiagramEditContext(client, caseId);
+    if (!ctx?.diagram) return data({ error: "도식이 없습니다." });
+    const blocks = ctx.diagram.blocks;
+    const target = blocks[moved.data.blockIndex];
+    if (!target) return data({ error: "쟁점을 찾지 못했습니다." });
+    const nextBlock = moveDoctrinePart(
+      target,
+      moved.data.from,
+      moved.data.to,
+      moved.data.partIndex,
+    );
+    // 화면이 본 갈래 수와 서버가 센 것이 다르면(다른 탭에서 이미 옮겼다면) 아무 일도 안 일어난다.
+    if (nextBlock === target)
+      return data({
+        error: "그 갈래를 찾지 못했습니다 — 새로고침 후 다시 시도하세요.",
+      });
+    await updateCaseDiagramBlocksByStaff(client, {
+      diagramId: ctx.diagram.diagramId,
+      blocks: blocks.map((b, i) =>
+        i === moved.data.blockIndex ? nextBlock : b,
+      ),
+    });
+    return data({
+      ok: `${moved.data.partIndex + 1}번 갈래를 ${DOCTRINE_AXIS_LABEL[moved.data.to]} 로 옮겼습니다.`,
+    });
   }
 
   if (intent === "move_doctrine") {

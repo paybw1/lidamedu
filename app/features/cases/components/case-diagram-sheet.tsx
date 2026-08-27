@@ -52,6 +52,7 @@ import {
   type FactsSourceKind,
   TIMELINE_KIND_LABEL,
   type TimelineEvent,
+  doctrineParts,
   filledAxes,
   isLowerCourtSource,
 } from "../lib/case-diagram";
@@ -367,33 +368,48 @@ function DeleteBlockButton({
  * 다른 축 칩을 누르면 그 자리에서 옮긴다(운영 화면으로 나가지 않는다).
  * ★대상 축에 이미 서술이 있으면 덮어쓰지 않고 **번호를 매겨** 이어붙인다
  *   (1. 기존 서술 / 2. 옮겨온 서술) — 규칙은 moveDoctrineAxis 한 곳에 있다.
+ * ★번호로 묶여 있으면 **갈래별로 따로 옮길 수 있다**(원장 요청 2026-08-27) — 합칠 수만
+ *   있고 되돌릴 길이 없으면 잘못 합쳤을 때 손으로 잘라 붙여야 한다.
  */
 function AxisReclassify({
   caseId,
   blockIndex,
   current,
+  parts,
 }: {
   caseId: string;
   blockIndex: number;
   current: DoctrineAxisKey;
+  /** 이 축의 갈래들 — 번호가 매겨져 있으면 여럿, 아니면 하나. */
+  parts: string[];
 }) {
   const fetcher = useFetcher<{ ok?: string; error?: string }>();
   const busy = fetcher.state !== "idle";
-  return (
-    <div className="mt-1.5 flex flex-wrap items-center gap-1">
-      <span className="text-muted-foreground text-[10px] font-medium">
-        축 옮기기
+  const others = DOCTRINE_AXES.filter((ax) => ax.key !== current);
+  const split = parts.length > 1;
+
+  const row = (label: ReactNode, partIndex: number | null, key: string) => (
+    <div key={key} className="flex flex-wrap items-center gap-1">
+      <span className="text-muted-foreground shrink-0 text-[10px] font-medium">
+        {label}
       </span>
-      {DOCTRINE_AXES.filter((ax) => ax.key !== current).map((ax) => (
+      {others.map((ax) => (
         <fetcher.Form
           key={ax.key}
           method="post"
-          action={`/admin/case-diagrams/${caseId}`}
+          action={"/admin/case-diagrams/" + caseId}
         >
-          <input type="hidden" name="intent" value="move_doctrine" />
+          <input
+            type="hidden"
+            name="intent"
+            value={partIndex === null ? "move_doctrine" : "move_doctrine_part"}
+          />
           <input type="hidden" name="blockIndex" value={blockIndex} />
           <input type="hidden" name="from" value={current} />
           <input type="hidden" name="to" value={ax.key} />
+          {partIndex === null ? null : (
+            <input type="hidden" name="partIndex" value={partIndex} />
+          )}
           <button
             type="submit"
             disabled={busy}
@@ -404,6 +420,24 @@ function AxisReclassify({
           </button>
         </fetcher.Form>
       ))}
+    </div>
+  );
+
+  return (
+    <div className="mt-1.5 space-y-1">
+      {split
+        ? parts.map((p, n) =>
+            row(
+              <>
+                {n + 1}번 「{p.trim().slice(0, 16)}
+                {p.trim().length > 16 ? "…" : ""}」 옮기기
+              </>,
+              n,
+              "part-" + n,
+            ),
+          )
+        : null}
+      {row(split ? "축 전체 옮기기" : "축 옮기기", null, "whole")}
       {busy ? (
         <Loader2Icon className="text-muted-foreground size-3 animate-spin" />
       ) : null}
@@ -906,6 +940,7 @@ function DiagramBody({
                           caseId={reclassifyCaseId}
                           blockIndex={i}
                           current={ax.key}
+                          parts={doctrineParts(b, ax.key)}
                         />
                       ) : null}
                     </div>

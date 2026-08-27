@@ -228,6 +228,47 @@ export function moveDoctrineAxis(
   return { ...block, doctrine };
 }
 
+/**
+ * 한 축의 본문을 갈래 단위로 읽는다 — 번호가 매겨져 있으면 그 조각들, 아니면 통째로 하나.
+ * 화면이 "몇 번째 갈래를 옮길지" 고르게 하려면 같은 기준으로 세야 해서 공개한다.
+ */
+export function doctrineParts(
+  block: CaseDiagramBlock,
+  axis: DoctrineAxisKey,
+): string[] {
+  return splitNumbered(block.doctrine[axis] ?? "");
+}
+
+/**
+ * 한 축에 묶여 있던 갈래 **하나만** 떼어 다른 축으로 옮긴다(원장 요청 2026-08-27).
+ * 합칠 때 번호를 매겨 두었으므로(moveDoctrineAxis), 잘못 합친 것을 되돌리거나 셋 중
+ * 하나만 다시 분류하는 길이 필요하다.
+ * ★남는 쪽도 다시 번호를 매긴다 — 2번을 떼면 3번이 2번이 된다. 하나만 남으면 번호를
+ *   떼고, 남는 게 없으면 축 자체를 비운다.
+ * 범위를 벗어난 partIndex·같은 축이면 원본을 그대로 돌려준다.
+ */
+export function moveDoctrinePart(
+  block: CaseDiagramBlock,
+  from: DoctrineAxisKey,
+  to: DoctrineAxisKey,
+  partIndex: number,
+): CaseDiagramBlock {
+  if (from === to) return block;
+  const parts = splitNumbered(block.doctrine[from] ?? "");
+  const moved = parts[partIndex];
+  if (!moved) return block;
+  const rest = parts.filter((_, i) => i !== partIndex);
+  const target = block.doctrine[to]?.trim();
+  const doctrine = { ...block.doctrine };
+  const remain = joinNumbered(rest);
+  if (remain) doctrine[from] = remain;
+  else delete doctrine[from];
+  doctrine[to] = target
+    ? joinNumbered([...splitNumbered(target), moved])
+    : moved;
+  return { ...block, doctrine };
+}
+
 /** 코멘트가 달린 쟁점 수 — 검수 목록·배지에서 쓴다. */
 export function commentedBlockCount(blocks: CaseDiagramBlock[]): number {
   return blocks.filter((b) => (b.comment ?? "").trim().length > 0).length;
