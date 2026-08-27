@@ -207,6 +207,14 @@ const DISPLAY_STOP = new Set([
   "이라",
   "라는",
   "다고",
+  "만큼",
+  "뿐만",
+  "앞서",
+  "그에",
+  "것과",
+  "하는지",
+  "있는지",
+  "때문",
 ]);
 
 function displayable(t: string): boolean {
