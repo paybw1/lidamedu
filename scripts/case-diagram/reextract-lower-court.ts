@@ -27,7 +27,9 @@ import { createClient } from "@supabase/supabase-js";
 import { parseLowerCourtFiles } from "../../app/features/cases/lib/lower-court";
 import {
   SCRAMBLE_MAX,
+  isBoilerplateOnly,
   scrambleRatio,
+  substantiveLength,
 } from "../../app/features/cases/lib/lower-court-text";
 import { extractPdfText } from "../../app/features/cases/lib/pdf-extract.server";
 
@@ -132,6 +134,15 @@ async function main(): Promise<void> {
     if (after > SCRAMBLE_MAX) {
       rejected.push(
         `${r.source_ref} — 재추출해도 조각 ${after.toFixed(2)} (이전 ${ratio.toFixed(2)})`,
+      );
+      continue;
+    }
+    // ★안내문만 남은 껍데기는 "고쳐진" 게 아니다 — 본문이 이미지인 스캔본이라
+    //   재추출해도 판결서 인터넷열람 안내문만 나온다. 저장하면 조각남 판정만
+    //   통과한 껍데기가 사실관계 소스로 올라간다.
+    if (isBoilerplateOnly(text)) {
+      rejected.push(
+        `${r.source_ref} — 안내문뿐인 껍데기(실질 ${substantiveLength(text)}자) · 본문이 이미지인 스캔본`,
       );
       continue;
     }

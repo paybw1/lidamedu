@@ -7,6 +7,7 @@
 //   근거 없는 축을 채우지 않기로 한 설계가 화면에서 무너진다.
 import {
   CheckCircle2Icon,
+  ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   GitBranchIcon,
@@ -706,6 +707,15 @@ function DiagramBody({
   reclassifyCaseId?: string;
 }) {
   const caption = factsSourceCaption(diagram);
+  // 접힌 쟁점 — **기본은 모두 펼침**. 도식은 읽으러 여는 화면이라 닫힌 채로 시작하면
+  // 매번 다시 펼쳐야 한다. 쟁점이 여럿일 때 관심 없는 쟁점을 치우는 용도다.
+  const [collapsed, setCollapsed] = useState<ReadonlySet<number>>(new Set());
+  const toggleBlock = (i: number) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(i)) next.add(i);
+      return next;
+    });
   return (
     <div className="space-y-4 py-4">
       {/* 사실관계 — 판례당 1개. 2차는 이 부분을 각색해 출제된다. */}
@@ -790,12 +800,29 @@ function DiagramBody({
             pre-line 이라 들여쓰기 공백은 접히고 줄바꿈만 산다. */}
       {diagram.blocks.map((b, i) => {
         const axes = filledAxes(b);
+        const open = !collapsed.has(i);
         return (
           <section
             key={i}
             className="border-border bg-card rounded-xl border p-3 shadow-sm"
           >
             <div className="mb-2 flex items-start gap-2">
+              <button
+                type="button"
+                onClick={() => toggleBlock(i)}
+                aria-expanded={open}
+                aria-label={
+                  open ? `쟁점 ${i + 1} 접기` : `쟁점 ${i + 1} 펼치기`
+                }
+                className="text-muted-foreground hover:text-foreground mt-0.5 shrink-0 rounded p-0.5"
+              >
+                <ChevronDownIcon
+                  className={cn(
+                    "size-4 transition-transform",
+                    open ? "" : "-rotate-90",
+                  )}
+                />
+              </button>
               <div className="min-w-0 flex-1">
                 <InlineEdit
                   caseId={reclassifyCaseId}
@@ -828,184 +855,194 @@ function DiagramBody({
 
             {/* staff 는 비어 있어도 칸을 연다(쓸 자리가 있어야 채운다).
                 학생·비-staff 에게는 종전대로 값이 있을 때만 보인다. */}
-            {b.statutes.length > 0 || reclassifyCaseId ? (
-              <Step no={0} label="법조문">
-                <InlineEdit
-                  caseId={reclassifyCaseId}
-                  intent="set_block_field"
-                  name="value"
-                  value={b.statutes.join(", ")}
-                  fields={{ blockIndex: i, field: "statutes" }}
-                  rows={2}
-                  label={b.statutes.length > 0 ? "법조문 수정" : "법조문 쓰기"}
-                  placeholder="특허법 제29조 제2항, 특허법 제42조 제4항"
-                >
-                  {/* ★구법 표기는 현행 조문으로 이어진다 — 판결 당시 조문과 내용이 다를 수
+            {open ? (
+              <>
+                {b.statutes.length > 0 || reclassifyCaseId ? (
+                  <Step no={0} label="법조문">
+                    <InlineEdit
+                      caseId={reclassifyCaseId}
+                      intent="set_block_field"
+                      name="value"
+                      value={b.statutes.join(", ")}
+                      fields={{ blockIndex: i, field: "statutes" }}
+                      rows={2}
+                      label={
+                        b.statutes.length > 0 ? "법조문 수정" : "법조문 쓰기"
+                      }
+                      placeholder="특허법 제29조 제2항, 특허법 제42조 제4항"
+                    >
+                      {/* ★구법 표기는 현행 조문으로 이어진다 — 판결 당시 조문과 내용이 다를 수
                     있어 밝혀 둔다(원장 지적 2026-08-21). */}
-                  {b.statutes.some(
-                    (s) => isOldLawLabel(s) && statuteArticleIds?.[s],
-                  ) ? (
-                    <p className="text-muted-foreground mb-1 text-[11px]">
-                      구법 표기를 누르면 현행 조문이 열립니다
-                    </p>
-                  ) : null}
-                  {/* 표기만으로는 무슨 규정인지 떠올려야 한다 — 해석된 조문은 그 자리에서
+                      {b.statutes.some(
+                        (s) => isOldLawLabel(s) && statuteArticleIds?.[s],
+                      ) ? (
+                        <p className="text-muted-foreground mb-1 text-[11px]">
+                          구법 표기를 누르면 현행 조문이 열립니다
+                        </p>
+                      ) : null}
+                      {/* 표기만으로는 무슨 규정인지 떠올려야 한다 — 해석된 조문은 그 자리에서
                     본문을 펼쳐 볼 수 있게 한다(원장 요청 2026-08-20). */}
-                  {b.statutes.length === 0 ? (
-                    <p className="text-muted-foreground text-[12px]">
-                      판결문에 명시된 조문만 씁니다. 쉼표로 구분하세요.
-                    </p>
-                  ) : null}
-                  <div className="flex flex-wrap gap-1">
-                    {b.statutes.map((s) => {
-                      const ref = statuteArticleIds?.[s];
-                      // 참조 법령(실용신안법·공정거래법 등)은 학습화면이 없어 팝업만 연다.
-                      const canLink =
-                        ref &&
-                        (ref.kind === "reference" || Boolean(subjectSlug));
-                      return canLink && ref ? (
-                        <RefPreviewBadge
-                          key={s}
-                          kind={ref.kind}
-                          refId={ref.id}
-                          label={s}
-                          studyHref={
-                            ref.kind === "article"
-                              ? `/subjects/${subjectSlug}/articles/${ref.id}`
-                              : undefined
-                          }
-                        />
-                      ) : (
-                        <span
-                          key={s}
-                          className="border-border text-muted-foreground rounded border px-2 py-0.5 text-[13px]"
-                        >
-                          {s}
-                        </span>
-                      );
-                    })}
-                  </div>
-                </InlineEdit>
-              </Step>
-            ) : null}
+                      {b.statutes.length === 0 ? (
+                        <p className="text-muted-foreground text-[12px]">
+                          판결문에 명시된 조문만 씁니다. 쉼표로 구분하세요.
+                        </p>
+                      ) : null}
+                      <div className="flex flex-wrap gap-1">
+                        {b.statutes.map((s) => {
+                          const ref = statuteArticleIds?.[s];
+                          // 참조 법령(실용신안법·공정거래법 등)은 학습화면이 없어 팝업만 연다.
+                          const canLink =
+                            ref &&
+                            (ref.kind === "reference" || Boolean(subjectSlug));
+                          return canLink && ref ? (
+                            <RefPreviewBadge
+                              key={s}
+                              kind={ref.kind}
+                              refId={ref.id}
+                              label={s}
+                              studyHref={
+                                ref.kind === "article"
+                                  ? `/subjects/${subjectSlug}/articles/${ref.id}`
+                                  : undefined
+                              }
+                            />
+                          ) : (
+                            <span
+                              key={s}
+                              className="border-border text-muted-foreground rounded border px-2 py-0.5 text-[13px]"
+                            >
+                              {s}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </InlineEdit>
+                  </Step>
+                ) : null}
 
-            {/* ★읽기에서는 "있는 축만" 그린다 — 빈 축의 자리를 만들어 두면 '비어 있음'이
+                {/* ★읽기에서는 "있는 축만" 그린다 — 빈 축의 자리를 만들어 두면 '비어 있음'이
                 정보처럼 읽혀, 근거 없는 축을 채우지 않기로 한 설계가 화면에서 무너진다.
                 staff 에게만 빈 축을 흐리게 열어 둔다(고칠 자리가 있어야 채운다). */}
-            {axes.length > 0 || reclassifyCaseId ? (
-              <Step no={1} label="법리">
-                <div className="space-y-2">
-                  {(reclassifyCaseId
-                    ? DOCTRINE_AXES.map((ax) => ({
-                        key: ax.key,
-                        label: ax.label,
-                        hint: ax.hint,
-                        body: b.doctrine[ax.key]?.trim() ?? "",
-                      }))
-                    : axes.map((ax) => ({ ...ax, hint: "" }))
-                  ).map((ax) => (
-                    <div key={ax.key}>
-                      <span
-                        className={cn(
-                          "rounded px-2 py-0.5 text-[12px] font-semibold",
-                          ax.body
-                            ? "bg-primary/10 text-link"
-                            : "bg-muted text-muted-foreground",
-                        )}
-                      >
-                        {ax.label}
-                      </span>
-                      <InlineEdit
-                        caseId={reclassifyCaseId}
-                        intent="set_doctrine"
-                        name="value"
-                        value={ax.body}
-                        fields={{ blockIndex: i, axis: ax.key }}
-                        rows={4}
-                        label={ax.body ? "법리 수정" : "법리 쓰기"}
-                        placeholder={ax.hint}
-                      >
-                        {ax.body ? (
-                          <p className="mt-1 text-[15px] leading-[1.75] whitespace-pre-line">
-                            {ax.body}
-                          </p>
-                        ) : (
-                          <p className="text-muted-foreground mt-1 text-[12px]">
-                            판결문에서 확인되는 축만 채웁니다 — {ax.hint}
-                          </p>
-                        )}
-                      </InlineEdit>
-                      {reclassifyCaseId && ax.body ? (
-                        <AxisReclassify
-                          caseId={reclassifyCaseId}
-                          blockIndex={i}
-                          current={ax.key}
-                          parts={doctrineParts(b, ax.key)}
-                        />
-                      ) : null}
+                {axes.length > 0 || reclassifyCaseId ? (
+                  <Step no={1} label="법리">
+                    <div className="space-y-2">
+                      {(reclassifyCaseId
+                        ? DOCTRINE_AXES.map((ax) => ({
+                            key: ax.key,
+                            label: ax.label,
+                            hint: ax.hint,
+                            body: b.doctrine[ax.key]?.trim() ?? "",
+                          }))
+                        : axes.map((ax) => ({ ...ax, hint: "" }))
+                      ).map((ax) => (
+                        <div key={ax.key}>
+                          <span
+                            className={cn(
+                              "rounded px-2 py-0.5 text-[12px] font-semibold",
+                              ax.body
+                                ? "bg-primary/10 text-link"
+                                : "bg-muted text-muted-foreground",
+                            )}
+                          >
+                            {ax.label}
+                          </span>
+                          <InlineEdit
+                            caseId={reclassifyCaseId}
+                            intent="set_doctrine"
+                            name="value"
+                            value={ax.body}
+                            fields={{ blockIndex: i, axis: ax.key }}
+                            rows={4}
+                            label={ax.body ? "법리 수정" : "법리 쓰기"}
+                            placeholder={ax.hint}
+                          >
+                            {ax.body ? (
+                              <p className="mt-1 text-[15px] leading-[1.75] whitespace-pre-line">
+                                {ax.body}
+                              </p>
+                            ) : (
+                              <p className="text-muted-foreground mt-1 text-[12px]">
+                                판결문에서 확인되는 축만 채웁니다 — {ax.hint}
+                              </p>
+                            )}
+                          </InlineEdit>
+                          {reclassifyCaseId && ax.body ? (
+                            <AxisReclassify
+                              caseId={reclassifyCaseId}
+                              blockIndex={i}
+                              current={ax.key}
+                              parts={doctrineParts(b, ax.key)}
+                            />
+                          ) : null}
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </Step>
-            ) : null}
+                  </Step>
+                ) : null}
 
-            {b.application || reclassifyCaseId ? (
-              <Step no={2} label="사안의 포섭">
-                <InlineEdit
-                  caseId={reclassifyCaseId}
-                  intent="set_block_field"
-                  name="value"
-                  value={b.application}
-                  fields={{ blockIndex: i, field: "application" }}
-                  rows={4}
-                  label={b.application ? "포섭 수정" : "포섭 쓰기"}
-                  placeholder="이 사건 사실을 그 법리에 포섭한 부분"
-                >
-                  {b.application ? (
-                    <p className="text-[15px] leading-[1.75] whitespace-pre-line">
-                      {b.application}
-                    </p>
-                  ) : (
-                    <p className="text-muted-foreground text-[12px]">
-                      판결문의 판단 부분을 요약합니다.
-                    </p>
-                  )}
-                </InlineEdit>
-              </Step>
-            ) : null}
+                {b.application || reclassifyCaseId ? (
+                  <Step no={2} label="사안의 포섭">
+                    <InlineEdit
+                      caseId={reclassifyCaseId}
+                      intent="set_block_field"
+                      name="value"
+                      value={b.application}
+                      fields={{ blockIndex: i, field: "application" }}
+                      rows={4}
+                      label={b.application ? "포섭 수정" : "포섭 쓰기"}
+                      placeholder="이 사건 사실을 그 법리에 포섭한 부분"
+                    >
+                      {b.application ? (
+                        <p className="text-[15px] leading-[1.75] whitespace-pre-line">
+                          {b.application}
+                        </p>
+                      ) : (
+                        <p className="text-muted-foreground text-[12px]">
+                          판결문의 판단 부분을 요약합니다.
+                        </p>
+                      )}
+                    </InlineEdit>
+                  </Step>
+                ) : null}
 
-            {b.conclusion || reclassifyCaseId ? (
-              <Step no={3} label="결론">
-                <InlineEdit
-                  caseId={reclassifyCaseId}
-                  intent="set_block_field"
-                  name="value"
-                  value={b.conclusion}
-                  fields={{ blockIndex: i, field: "conclusion" }}
-                  rows={3}
-                  label={b.conclusion ? "결론 수정" : "결론 쓰기"}
-                  placeholder="그 쟁점에 대한 결론(파기/기각/속함 등)"
-                >
-                  {b.conclusion ? (
-                    <p className="text-[15px] leading-[1.75] font-medium whitespace-pre-line">
-                      {b.conclusion}
-                    </p>
-                  ) : (
-                    <p className="text-muted-foreground text-[12px]">
-                      ★승인하려면 각 쟁점에 결론이 있어야 합니다.
-                    </p>
-                  )}
-                </InlineEdit>
-              </Step>
-            ) : null}
+                {b.conclusion || reclassifyCaseId ? (
+                  <Step no={3} label="결론">
+                    <InlineEdit
+                      caseId={reclassifyCaseId}
+                      intent="set_block_field"
+                      name="value"
+                      value={b.conclusion}
+                      fields={{ blockIndex: i, field: "conclusion" }}
+                      rows={3}
+                      label={b.conclusion ? "결론 수정" : "결론 쓰기"}
+                      placeholder="그 쟁점에 대한 결론(파기/기각/속함 등)"
+                    >
+                      {b.conclusion ? (
+                        <p className="text-[15px] leading-[1.75] font-medium whitespace-pre-line">
+                          {b.conclusion}
+                        </p>
+                      ) : (
+                        <p className="text-muted-foreground text-[12px]">
+                          ★승인하려면 각 쟁점에 결론이 있어야 합니다.
+                        </p>
+                      )}
+                    </InlineEdit>
+                  </Step>
+                ) : null}
 
-            {/* 강사 코멘트 — 판결문 서술이 아니라 덧붙이는 말이다. 결론 **다음**에,
+                {/* 강사 코멘트 — 판결문 서술이 아니라 덧붙이는 말이다. 결론 **다음**에,
                 번호 없는 별도 블록으로 띄운다(답안 순서 1.법조문~4.결론과 섞이지 않게). */}
-            <CommentBox
-              caseId={reclassifyCaseId}
-              blockIndex={i}
-              comment={b.comment ?? ""}
-            />
+                <CommentBox
+                  caseId={reclassifyCaseId}
+                  blockIndex={i}
+                  comment={b.comment ?? ""}
+                />
+              </>
+            ) : b.conclusion ? (
+              <p className="text-muted-foreground truncate text-[13px]">
+                결론 · {b.conclusion}
+              </p>
+            ) : null}
           </section>
         );
       })}

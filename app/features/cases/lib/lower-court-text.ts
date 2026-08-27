@@ -87,3 +87,43 @@ export function scrambleRatio(text: string): number {
   ).length;
   return junk / lines.length;
 }
+
+/**
+ * 판결서 인터넷열람 사이트가 **쪽마다 찍는 안내 문구**. 본문이 아니다.
+ *
+ * ★스캔 PDF(본문이 이미지)를 추출하면 이 안내문만 텍스트로 남는다 — 95쪽짜리
+ *   판결문(서울고등법원 2015라20296)이 7,622자를 내놓지만 실질은 0자다.
+ *   그대로 AI 에 넣으면 "판결문 본문이 제공되지 않아…" 같은 **사과문**이
+ *   사실관계 칸에 들어앉아, 정리된 것처럼 보이면서 내용이 없다(원장 지적 2026-08-27).
+ */
+const NOTICE_LINES: readonly RegExp[] = [
+  /판결서\s*인터넷\s*열람/,
+  /영리목적으로\s*이용하거나\s*무단\s*배포를\s*금합니다/,
+  /게시일자\s*[:：]/,
+  /^\[.*\.pdf\]$/i,
+];
+
+/** 안내문·파일명 머리글을 걷어낸 **실질 본문 글자 수**. */
+export function substantiveLength(text: string): number {
+  return text
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l && !NOTICE_LINES.some((re) => re.test(l)))
+    .join("").length;
+}
+
+/**
+ * 사실관계 소스로 쓸 수 있는 최소 실질 글자 수.
+ *
+ * 실측(하급심 261건, 2026-08-27): 껍데기 6건은 실질 **0자**, 그다음으로 짧은 실물
+ * 판결문이 **550자**(2012나2197)다. 사이가 통째로 비어 있어 300 으로 자른다 —
+ * 실물을 잘못 걸러낼 여지가 없고, 껍데기는 전부 잡힌다.
+ * ★scrambleRatio 와 같은 이유로 여기 한 곳에만 둔다 — 생성기와 재추출기가 서로
+ *   다른 판정을 쓰면 한쪽이 뺀 것을 다른 쪽이 통과시킨다.
+ */
+export const SUBSTANTIVE_MIN = 300;
+
+/** 안내문만 있고 판결 내용이 없는 껍데기인가. */
+export function isBoilerplateOnly(text: string): boolean {
+  return substantiveLength(text) < SUBSTANTIVE_MIN;
+}

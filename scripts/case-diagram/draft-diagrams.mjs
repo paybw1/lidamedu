@@ -28,7 +28,9 @@ import path from "node:path";
 //   다른 쪽이 통과시킨다. 그래서 이 파일은 node 가 아니라 tsx 로 돌린다.
 import {
   SCRAMBLE_MAX,
+  isBoilerplateOnly,
   scrambleRatio,
+  substantiveLength,
 } from "../../app/features/cases/lib/lower-court-text.ts";
 
 const argv = process.argv.slice(2);
@@ -420,6 +422,34 @@ async function main() {
     for (const s of scrambled) {
       console.log(
         `    ${s.case.padEnd(13)} ${s.ref ?? "-"} (조각 비율 ${s.ratio.toFixed(2)})`,
+      );
+    }
+  }
+
+  // ★안내문만 있는 껍데기 판결문도 소스로 쓰지 않는다.
+  //   본문이 이미지인 스캔 PDF 는 "판결서 인터넷열람 …" 안내문만 텍스트로 남는다.
+  //   조각난 텍스트와 달리 **형식은 멀쩡해 보여서** 그대로 통과했고, 모델은 읽을 게
+  //   없으니 "판결문 본문이 제공되지 않아…" 라는 사과문을 사실관계 칸에 써 넣었다.
+  //   정리된 것처럼 보이면서 내용이 없는 게 가장 나쁘다 — 없는 것으로 둔다.
+  const shells = [];
+  for (const t of targets) {
+    if (!t.cache?.text) continue;
+    if (!isBoilerplateOnly(t.cache.text)) continue;
+    shells.push({
+      case: t.kase.case_number,
+      ref: t.cache.sourceRef,
+      total: t.cache.text.length,
+      sub: substantiveLength(t.cache.text),
+    });
+    t.cache = null;
+  }
+  if (shells.length) {
+    console.log(
+      `[제외] 안내문만 있는 껍데기 판결문 ${shells.length}건은 사실관계 소스에서 뺍니다 — 본문이 이미지인 스캔본입니다(OCR 또는 텍스트 판본 재확보 필요).`,
+    );
+    for (const s2 of shells) {
+      console.log(
+        `    ${s2.case.padEnd(13)} ${s2.ref ?? "-"} (전체 ${s2.total}자 · 실질 ${s2.sub}자)`,
       );
     }
   }
