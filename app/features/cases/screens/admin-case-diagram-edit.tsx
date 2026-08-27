@@ -15,7 +15,7 @@ import {
   Trash2Icon,
   XIcon,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import {
   Form,
   Link,
@@ -38,11 +38,13 @@ import {
   DOCTRINE_AXES,
   DOCTRINE_AXIS_KEYS,
   DOCTRINE_AXIS_LABEL,
+  type DoctrineAxisKey,
   FACTS_SOURCE_KINDS,
   FACTS_SOURCE_LABEL,
   type FactsSourceKind,
   caseDiagramBlocksSchema,
   diagramApprovable,
+  doctrineParts,
   emptyBlock,
   moveDoctrineAxis,
   moveDoctrinePart,
@@ -472,6 +474,68 @@ export async function action({ request, params }: Route.ActionArgs) {
   return data({ error: "알 수 없는 요청입니다." }, { status: 400 });
 }
 
+/**
+ * 축 옮기기 — 축 전체 / 번호로 묶인 갈래 하나(원장 요청 2026-08-27, 패널과 같은 조작).
+ * ★여기서는 서버를 부르지 않고 화면 상태만 바꾼다. 이 화면은 '저장'을 눌러야 반영되는
+ *   곳이라, 축만 즉시 서버에 쓰면 본문 편집분과 어긋난다(도식 패널은 편집이 없어 즉시 저장).
+ * ★옮기는 계산은 moveDoctrineAxis / moveDoctrinePart 한 곳에 있다 — 두 화면은 호출만 다르다.
+ */
+function AxisMoveRows({
+  block,
+  axis,
+  onApply,
+}: {
+  block: CaseDiagramBlock;
+  axis: DoctrineAxisKey;
+  onApply: (fn: (blk: CaseDiagramBlock) => CaseDiagramBlock) => void;
+}) {
+  const parts = doctrineParts(block, axis);
+  if (parts.length === 0) return null;
+  const others = DOCTRINE_AXES.filter((t) => t.key !== axis);
+  const split = parts.length > 1;
+  const row = (label: ReactNode, partIndex: number | null, key: string) => (
+    <div key={key} className="flex flex-wrap items-center gap-1">
+      <span className="text-muted-foreground shrink-0 text-[10px] font-medium">
+        {label}
+      </span>
+      {others.map((t) => (
+        <button
+          key={t.key}
+          type="button"
+          title={t.hint}
+          onClick={() =>
+            onApply((blk) =>
+              partIndex === null
+                ? moveDoctrineAxis(blk, axis, t.key)
+                : moveDoctrinePart(blk, axis, t.key, partIndex),
+            )
+          }
+          className="border-border text-muted-foreground hover:border-primary hover:text-link rounded-full border px-2 py-0.5 text-[11px] font-medium"
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+  return (
+    <div className="mt-1 space-y-1">
+      {split
+        ? parts.map((p, n) =>
+            row(
+              <>
+                {n + 1}번 「{p.trim().slice(0, 16)}
+                {p.trim().length > 16 ? "…" : ""}」 옮기기
+              </>,
+              n,
+              "part-" + n,
+            ),
+          )
+        : null}
+      {row(split ? "축 전체 옮기기" : "축 옮기기", null, "whole")}
+    </div>
+  );
+}
+
 /** 이전/다음 판례 — 끝이면 비활성(자리를 지켜 버튼이 흔들리지 않게 한다). */
 function NeighborLink({
   caseId,
@@ -820,38 +884,15 @@ export default function AdminCaseDiagramEdit({
                       rows={2}
                       className="text-sm"
                     />
-                    {/* 축 옮기기 — 검수에서 가장 잦은 수정이 '분류가 틀림'이다.
-                        ★여기서는 서버를 부르지 않고 화면 상태만 바꾼다. 이 화면은
-                        '저장'을 눌러야 반영되는 곳이라, 축만 즉시 서버에 쓰면
-                        본문 편집분과 어긋난다(도식 패널은 편집이 없어 즉시 저장). */}
-                    {(b.doctrine[ax.key] ?? "").trim() ? (
-                      <div className="mt-1 flex flex-wrap items-center gap-1">
-                        <span className="text-muted-foreground text-[10px] font-medium">
-                          축 옮기기
-                        </span>
-                        {DOCTRINE_AXES.filter((t) => t.key !== ax.key).map(
-                          (t) => (
-                            <button
-                              key={t.key}
-                              type="button"
-                              title={t.hint}
-                              onClick={() =>
-                                setBlocks((prev) =>
-                                  prev.map((blk, i) =>
-                                    i === idx
-                                      ? moveDoctrineAxis(blk, ax.key, t.key)
-                                      : blk,
-                                  ),
-                                )
-                              }
-                              className="border-border text-muted-foreground hover:border-primary hover:text-link rounded-full border px-2 py-0.5 text-[11px] font-medium"
-                            >
-                              {t.label}
-                            </button>
-                          ),
-                        )}
-                      </div>
-                    ) : null}
+                    <AxisMoveRows
+                      block={b}
+                      axis={ax.key}
+                      onApply={(fn) =>
+                        setBlocks((prev) =>
+                          prev.map((blk, i) => (i === idx ? fn(blk) : blk)),
+                        )
+                      }
+                    />
                   </div>
                 ))}
               </div>
