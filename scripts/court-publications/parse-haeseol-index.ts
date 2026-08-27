@@ -10,7 +10,6 @@
 //
 // 권호는 그룹 중앙에 홀로 놓인다("146호"). 같은 발간년도가 이어지는 구간마다 하나씩
 // 들어 있으므로, 구간 안에서 찾는다.
-
 import { readFileSync } from "node:fs";
 
 import { extractPdfText } from "../../app/features/cases/lib/pdf-extract.server";
@@ -59,7 +58,8 @@ function splitAuthor(head: string): [string, string] {
   if (parts.length === 0) return ["", ""];
   let take = 1;
   if (parts[parts.length - 1].length === 1) {
-    while (take < parts.length && parts[parts.length - 1 - take].length === 1) take++;
+    while (take < parts.length && parts[parts.length - 1 - take].length === 1)
+      take++;
   }
   const author = parts.slice(parts.length - take).join("");
   if (!/^[가-힣]{2,4}$/.test(author)) return [head.trim(), ""];
@@ -168,8 +168,12 @@ if (process.argv[1]?.includes("parse-haeseol-index")) {
   }
   console.log("\n권호 → 발간년도 (1:1 이어야 한다)");
   for (const [v, s] of byVol)
-    console.log(`  ${v.padStart(5)} → ${[...s].join(", ")}${s.size > 1 ? "  ★여러 개!" : ""}`);
+    console.log(
+      `  ${v.padStart(5)} → ${[...s].join(", ")}${s.size > 1 ? "  ★여러 개!" : ""}`,
+    );
   console.log("\n표본 5건");
   for (const e of list.slice(0, 5))
-    console.log(`  ${e.volume} · ${e.issued} · ${e.author} · ${e.page}면 · ${e.titleHint.slice(0, 40)}`);
+    console.log(
+      `  ${e.volume} · ${e.issued} · ${e.author} · ${e.page}면 · ${e.titleHint.slice(0, 40)}`,
+    );
 }
