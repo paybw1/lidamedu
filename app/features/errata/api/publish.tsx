@@ -22,6 +22,7 @@ import {
 import {
   MAX_FIELD_TEXT,
   diffFields,
+  joinFieldDiffs,
   revisionDiffText,
   snapshotFieldText,
 } from "~/features/errata/lib/revision-diff-text";
@@ -40,7 +41,16 @@ export interface PublishRevisionInfo {
   op: string;
   changedFields: string[];
   effectiveDate: string | null;
-  fieldDiffs: PublishFieldDiff[];
+  /**
+   * ★모달에 그대로 채워 넣을 **완성된** 변경 전/후 문구.
+   *   예전에는 필드별 덤프(fieldDiffs)만 내려 주고 모달이 직접 이어 붙였는데, 그 경로에는
+   *   구간 라벨([지문]·[해설])도 정답 O/X 표기도 없었다. 단건 발행은 모달이 만든 문구를
+   *   그대로 싣기 때문에, 문제집(지문)과 해설집(해설) 중 어디가 고쳐졌는지 알 수 없는
+   *   정오표가 발행됐다(P-6099, 원장 지적 2026-08-27).
+   *   생성 규칙은 revisionDiffText 하나뿐이다 — 모달이 다시 만들지 않는다.
+   */
+  beforeText: string;
+  afterText: string;
 }
 export interface PublishLocation {
   publicationTitle: string;
@@ -175,24 +185,38 @@ export async function loader({ request }: Route.LoaderArgs) {
     );
   }
 
-  const revisions: PublishRevisionInfo[] = revisionsRaw.map((r) => ({
-    revisionId: r.revision_id,
-    contentType: r.content_type,
-    contentId: r.content_id,
-    op: r.op,
-    changedFields: r.changed_fields ?? [],
-    effectiveDate: r.effective_date,
-    fieldDiffs:
-      // 도해의 blocks 는 유닛 전체 구조를 담은 jsonb — 그대로 덤프하면 사람이 못 읽고
-      // 20k 로 잘려 정작 바뀐 곳이 안 보인다. 텍스트 경로 단위 diff 로 바꿔 싣는다.
+  const revisions: PublishRevisionInfo[] = revisionsRaw.map((r) => {
+    // 도해의 blocks 는 유닛 전체 구조를 담은 jsonb — 그대로 덤프하면 사람이 못 읽고
+    // 20k 로 잘려 정작 바뀐 곳이 안 보인다. 텍스트 경로 단위 diff 로 바꿔 싣는다.
+    const fieldDiffs =
       r.content_type === "dohae"
         ? dohaeFieldDiffs(r.before_snapshot, r.after_snapshot)
         : diffFields(r.changed_fields ?? []).map((field) => ({
             field,
             beforeText: snapshotFieldText(r.before_snapshot, field),
             afterText: snapshotFieldText(r.after_snapshot, field),
-          })),
-  }));
+          }));
+    // 도해는 필드가 텍스트 경로라 구간 라벨이 없다 — 칸별 diff 를 그대로 잇는다.
+    // 그 밖은 공용 규칙(구간 라벨·정답 O/X)을 그대로 쓴다.
+    const text =
+      r.content_type === "dohae"
+        ? joinFieldDiffs(fieldDiffs)
+        : revisionDiffText({
+            before_snapshot: r.before_snapshot,
+            after_snapshot: r.after_snapshot,
+            changed_fields: r.changed_fields ?? [],
+          });
+    return {
+      revisionId: r.revision_id,
+      contentType: r.content_type,
+      contentId: r.content_id,
+      op: r.op,
+      changedFields: r.changed_fields ?? [],
+      effectiveDate: r.effective_date,
+      beforeText: text.beforeText,
+      afterText: text.afterText,
+    };
+  });
 
   // 대상 위치 — publication_content_map 역참조 (매핑 없으면 빈 배열: 발행은 막지 않는다 §4.4)
   const contentIds = [...new Set(revisions.map((r) => r.contentId))];

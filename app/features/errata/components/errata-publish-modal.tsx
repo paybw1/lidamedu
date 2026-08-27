@@ -15,7 +15,6 @@ import {
 } from "~/core/components/ui/dialog";
 import { Input } from "~/core/components/ui/input";
 import { Textarea } from "~/core/components/ui/textarea";
-import { diffLines } from "~/core/lib/diff-lines";
 import { cn } from "~/core/lib/utils";
 import {
   ERRATA_KINDS,
@@ -70,27 +69,13 @@ export function ErrataPublishModal({
   const d = loadFetcher.data;
   const loading = loadFetcher.state !== "idle" || (!d && open);
 
-  // diff 프리필 — 원장 스냅샷의 변경 필드별 before/after 를 문구 초안으로.
+  // diff 프리필 — ★문구는 서버(revisionDiffText)가 만든 것을 그대로 채운다.
+  //   여기서 다시 만들면 구간 라벨([지문]·[해설])과 정답 O/X 가 빠진 채 발행된다
+  //   — 단건 발행은 이 문구를 그대로 싣기 때문이다(P-6099, 원장 지적 2026-08-27).
   useEffect(() => {
     if (!d?.ok || !d.revisions || prefilled) return;
-    const before: string[] = [];
-    const after: string[] = [];
-    for (const rev of d.revisions) {
-      for (const fd of rev.fieldDiffs) {
-        const diff = diffLines(fd.beforeText.split("\n"), fd.afterText.split("\n"));
-        // 공백만 다른 줄은 버린다 — 끝의 빈 줄 하나 때문에 내용 없는 항목이 발행됐다.
-        const removed = diff
-          .filter((l) => l.kind === "removed")
-          .map((l) => l.text)
-          .filter((t) => t.trim());
-        const added = diff
-          .filter((l) => l.kind === "added")
-          .map((l) => l.text)
-          .filter((t) => t.trim());
-        if (removed.length) before.push(...removed);
-        if (added.length) after.push(...added);
-      }
-    }
+    const before = d.revisions.map((r) => r.beforeText).filter(Boolean);
+    const after = d.revisions.map((r) => r.afterText).filter(Boolean);
     setBeforeText(before.join("\n"));
     setAfterText(after.join("\n"));
     setTitle(d.contentLabel ?? "");
