@@ -6,6 +6,7 @@
 // ★법리 4축은 "있는 축만" 렌더한다. 빈 축의 자리를 만들어 두면 "비어 있음"이 정보처럼 읽혀,
 //   근거 없는 축을 채우지 않기로 한 설계가 화면에서 무너진다.
 import {
+  BookOpenIcon,
   CheckCircle2Icon,
   ChevronDownIcon,
   ChevronLeftIcon,
@@ -39,6 +40,7 @@ import {
   SheetTrigger,
 } from "~/core/components/ui/sheet";
 import { cn } from "~/core/lib/utils";
+import { BlockPractice } from "~/features/cases/components/case-diagram-practice";
 import {
   type StatuteRef,
   isOldLawLabel,
@@ -69,6 +71,8 @@ export interface CaseDiagramView {
 
 type ViewMode = "sheet" | "dialog";
 const VIEW_MODE_KEY = "caseDiagram.viewMode";
+/** 읽기/연습 선택도 남긴다 — 연습하러 온 학생은 판례마다 다시 고르고 싶지 않다. */
+const PRACTICE_KEY = "caseDiagram.practice.on";
 
 // 쟁점 안쪽 4단은 답안 작성 순서 그대로 번호를 매긴다.
 // ★원문자(①②③④)가 아니라 "1." 형식 — 답안지에 쓰는 표기와 맞춘다(원장 요청 2026-08-21).
@@ -138,10 +142,16 @@ export function CaseDiagramSheet({
   const [open, setOpen] = useState(defaultOpen);
   // localStorage 는 마운트 후에 읽는다 — SSR 결과와 어긋나면 hydration 경고.
   const [mode, setMode] = useState<ViewMode>("sheet");
+  const [practice, setPractice] = useState(false);
   useEffect(() => {
     const saved = window.localStorage.getItem(VIEW_MODE_KEY);
     if (saved === "dialog" || saved === "sheet") setMode(saved);
+    setPractice(window.localStorage.getItem(PRACTICE_KEY) === "1");
   }, []);
+  const switchPractice = (next: boolean) => {
+    setPractice(next);
+    window.localStorage.setItem(PRACTICE_KEY, next ? "1" : "0");
+  };
   const switchMode = (next: ViewMode) => {
     setMode(next);
     window.localStorage.setItem(VIEW_MODE_KEY, next);
@@ -172,6 +182,7 @@ export function CaseDiagramSheet({
       <span className="text-muted-foreground font-mono text-xs font-normal">
         {caseNumber}
       </span>
+      <PracticeToggle on={practice} onChange={switchPractice} />
       <ModeToggle mode={mode} onChange={switchMode} />
       {nav ? <DiagramNav nav={nav} /> : null}
     </span>
@@ -192,9 +203,13 @@ export function CaseDiagramSheet({
         <DiagramBody
           diagram={diagram}
           draft={draft}
+          caseId={caseId}
+          practice={practice}
           subjectSlug={subjectSlug}
           statuteArticleIds={statuteArticleIds}
-          reclassifyCaseId={viewerIsStaff ? caseId : undefined}
+          // ★연습 중에는 편집 버튼을 걷는다 — 답을 가려 둔 화면에서 "수정"을 누르면
+          //   textarea 에 모범답안이 그대로 뜬다(운영자도 연습할 수 있어야 한다).
+          reclassifyCaseId={viewerIsStaff && !practice ? caseId : undefined}
         />
       </div>
     </>
@@ -692,15 +707,62 @@ function ModeToggle({
   );
 }
 
+/**
+ * 읽기 ↔ 연습 전환 — 연습에서는 법리·포섭이 빈칸이 되고 결론이 가려진다.
+ * ★도식은 답안 순서 그대로 배열돼 있어, 두 칸만 가리면 그대로 답안 연습이 된다.
+ *   별도 러너를 만들면 같은 판례를 두 화면에서 보게 된다(feat-2-035 §10.1).
+ */
+function PracticeToggle({
+  on,
+  onChange,
+}: {
+  on: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <span className="border-border inline-flex overflow-hidden rounded-full border">
+      {(
+        [
+          [false, "읽기", BookOpenIcon],
+          [true, "연습", PencilLineIcon],
+        ] as const
+      ).map(([val, label, Icon]) => (
+        <button
+          key={label}
+          type="button"
+          onClick={() => onChange(val)}
+          aria-pressed={on === val}
+          title={val ? "법리·포섭을 직접 써 보기" : "정리된 도식을 그대로 읽기"}
+          className={cn(
+            "inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold transition-colors",
+            on === val
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:bg-muted",
+          )}
+        >
+          <Icon className="size-3" />
+          {label}
+        </button>
+      ))}
+    </span>
+  );
+}
+
 function DiagramBody({
   diagram,
   draft,
+  caseId,
+  practice,
   subjectSlug,
   statuteArticleIds,
   reclassifyCaseId,
 }: {
   diagram: CaseDiagramView;
   draft: boolean;
+  /** 연습 초안을 판례별로 나눠 저장하는 키. */
+  caseId: string;
+  /** 법리·포섭을 가리고 학생이 직접 쓰게 한다. */
+  practice: boolean;
   subjectSlug?: string;
   statuteArticleIds?: Record<string, StatuteRef>;
   /** 있으면 법리 축을 클릭으로 재분류할 수 있다(staff 전용 — 값 자체가 게이트). */
@@ -920,125 +982,138 @@ function DiagramBody({
                   </Step>
                 ) : null}
 
-                {/* ★읽기에서는 "있는 축만" 그린다 — 빈 축의 자리를 만들어 두면 '비어 있음'이
+                {practice ? (
+                  <BlockPractice
+                    caseId={caseId}
+                    blockIndex={i}
+                    block={b}
+                    comment={b.comment ?? ""}
+                  />
+                ) : (
+                  <>
+                    {/* ★읽기에서는 "있는 축만" 그린다 — 빈 축의 자리를 만들어 두면 '비어 있음'이
                 정보처럼 읽혀, 근거 없는 축을 채우지 않기로 한 설계가 화면에서 무너진다.
                 staff 에게만 빈 축을 흐리게 열어 둔다(고칠 자리가 있어야 채운다). */}
-                {axes.length > 0 || reclassifyCaseId ? (
-                  <Step no={1} label="법리">
-                    <div className="space-y-2">
-                      {(reclassifyCaseId
-                        ? DOCTRINE_AXES.map((ax) => ({
-                            key: ax.key,
-                            label: ax.label,
-                            hint: ax.hint,
-                            body: b.doctrine[ax.key]?.trim() ?? "",
-                          }))
-                        : axes.map((ax) => ({ ...ax, hint: "" }))
-                      ).map((ax) => (
-                        <div key={ax.key}>
-                          <span
-                            className={cn(
-                              "rounded px-2 py-0.5 text-[12px] font-semibold",
-                              ax.body
-                                ? "bg-primary/10 text-link"
-                                : "bg-muted text-muted-foreground",
-                            )}
-                          >
-                            {ax.label}
-                          </span>
-                          <InlineEdit
-                            caseId={reclassifyCaseId}
-                            intent="set_doctrine"
-                            name="value"
-                            value={ax.body}
-                            fields={{ blockIndex: i, axis: ax.key }}
-                            rows={4}
-                            label={ax.body ? "법리 수정" : "법리 쓰기"}
-                            placeholder={ax.hint}
-                          >
-                            {ax.body ? (
-                              <p className="mt-1 text-[15px] leading-[1.75] whitespace-pre-line">
-                                {ax.body}
-                              </p>
-                            ) : (
-                              <p className="text-muted-foreground mt-1 text-[12px]">
-                                판결문에서 확인되는 축만 채웁니다 — {ax.hint}
-                              </p>
-                            )}
-                          </InlineEdit>
-                          {reclassifyCaseId && ax.body ? (
-                            <AxisReclassify
-                              caseId={reclassifyCaseId}
-                              blockIndex={i}
-                              current={ax.key}
-                              parts={doctrineParts(b, ax.key)}
-                            />
-                          ) : null}
+                    {axes.length > 0 || reclassifyCaseId ? (
+                      <Step no={1} label="법리">
+                        <div className="space-y-2">
+                          {(reclassifyCaseId
+                            ? DOCTRINE_AXES.map((ax) => ({
+                                key: ax.key,
+                                label: ax.label,
+                                hint: ax.hint,
+                                body: b.doctrine[ax.key]?.trim() ?? "",
+                              }))
+                            : axes.map((ax) => ({ ...ax, hint: "" }))
+                          ).map((ax) => (
+                            <div key={ax.key}>
+                              <span
+                                className={cn(
+                                  "rounded px-2 py-0.5 text-[12px] font-semibold",
+                                  ax.body
+                                    ? "bg-primary/10 text-link"
+                                    : "bg-muted text-muted-foreground",
+                                )}
+                              >
+                                {ax.label}
+                              </span>
+                              <InlineEdit
+                                caseId={reclassifyCaseId}
+                                intent="set_doctrine"
+                                name="value"
+                                value={ax.body}
+                                fields={{ blockIndex: i, axis: ax.key }}
+                                rows={4}
+                                label={ax.body ? "법리 수정" : "법리 쓰기"}
+                                placeholder={ax.hint}
+                              >
+                                {ax.body ? (
+                                  <p className="mt-1 text-[15px] leading-[1.75] whitespace-pre-line">
+                                    {ax.body}
+                                  </p>
+                                ) : (
+                                  <p className="text-muted-foreground mt-1 text-[12px]">
+                                    판결문에서 확인되는 축만 채웁니다 —{" "}
+                                    {ax.hint}
+                                  </p>
+                                )}
+                              </InlineEdit>
+                              {reclassifyCaseId && ax.body ? (
+                                <AxisReclassify
+                                  caseId={reclassifyCaseId}
+                                  blockIndex={i}
+                                  current={ax.key}
+                                  parts={doctrineParts(b, ax.key)}
+                                />
+                              ) : null}
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  </Step>
-                ) : null}
+                      </Step>
+                    ) : null}
 
-                {b.application || reclassifyCaseId ? (
-                  <Step no={2} label="사안의 포섭">
-                    <InlineEdit
-                      caseId={reclassifyCaseId}
-                      intent="set_block_field"
-                      name="value"
-                      value={b.application}
-                      fields={{ blockIndex: i, field: "application" }}
-                      rows={4}
-                      label={b.application ? "포섭 수정" : "포섭 쓰기"}
-                      placeholder="이 사건 사실을 그 법리에 포섭한 부분"
-                    >
-                      {b.application ? (
-                        <p className="text-[15px] leading-[1.75] whitespace-pre-line">
-                          {b.application}
-                        </p>
-                      ) : (
-                        <p className="text-muted-foreground text-[12px]">
-                          판결문의 판단 부분을 요약합니다.
-                        </p>
-                      )}
-                    </InlineEdit>
-                  </Step>
-                ) : null}
+                    {b.application || reclassifyCaseId ? (
+                      <Step no={2} label="사안의 포섭">
+                        <InlineEdit
+                          caseId={reclassifyCaseId}
+                          intent="set_block_field"
+                          name="value"
+                          value={b.application}
+                          fields={{ blockIndex: i, field: "application" }}
+                          rows={4}
+                          label={b.application ? "포섭 수정" : "포섭 쓰기"}
+                          placeholder="이 사건 사실을 그 법리에 포섭한 부분"
+                        >
+                          {b.application ? (
+                            <p className="text-[15px] leading-[1.75] whitespace-pre-line">
+                              {b.application}
+                            </p>
+                          ) : (
+                            <p className="text-muted-foreground text-[12px]">
+                              판결문의 판단 부분을 요약합니다.
+                            </p>
+                          )}
+                        </InlineEdit>
+                      </Step>
+                    ) : null}
 
-                {b.conclusion || reclassifyCaseId ? (
-                  <Step no={3} label="결론">
-                    <InlineEdit
-                      caseId={reclassifyCaseId}
-                      intent="set_block_field"
-                      name="value"
-                      value={b.conclusion}
-                      fields={{ blockIndex: i, field: "conclusion" }}
-                      rows={3}
-                      label={b.conclusion ? "결론 수정" : "결론 쓰기"}
-                      placeholder="그 쟁점에 대한 결론(파기/기각/속함 등)"
-                    >
-                      {b.conclusion ? (
-                        <p className="text-[15px] leading-[1.75] font-medium whitespace-pre-line">
-                          {b.conclusion}
-                        </p>
-                      ) : (
-                        <p className="text-muted-foreground text-[12px]">
-                          ★승인하려면 각 쟁점에 결론이 있어야 합니다.
-                        </p>
-                      )}
-                    </InlineEdit>
-                  </Step>
-                ) : null}
+                    {b.conclusion || reclassifyCaseId ? (
+                      <Step no={3} label="결론">
+                        <InlineEdit
+                          caseId={reclassifyCaseId}
+                          intent="set_block_field"
+                          name="value"
+                          value={b.conclusion}
+                          fields={{ blockIndex: i, field: "conclusion" }}
+                          rows={3}
+                          label={b.conclusion ? "결론 수정" : "결론 쓰기"}
+                          placeholder="그 쟁점에 대한 결론(파기/기각/속함 등)"
+                        >
+                          {b.conclusion ? (
+                            <p className="text-[15px] leading-[1.75] font-medium whitespace-pre-line">
+                              {b.conclusion}
+                            </p>
+                          ) : (
+                            <p className="text-muted-foreground text-[12px]">
+                              ★승인하려면 각 쟁점에 결론이 있어야 합니다.
+                            </p>
+                          )}
+                        </InlineEdit>
+                      </Step>
+                    ) : null}
 
-                {/* 강사 코멘트 — 판결문 서술이 아니라 덧붙이는 말이다. 결론 **다음**에,
+                    {/* 강사 코멘트 — 판결문 서술이 아니라 덧붙이는 말이다. 결론 **다음**에,
                 번호 없는 별도 블록으로 띄운다(답안 순서 1.법조문~4.결론과 섞이지 않게). */}
-                <CommentBox
-                  caseId={reclassifyCaseId}
-                  blockIndex={i}
-                  comment={b.comment ?? ""}
-                />
+                    <CommentBox
+                      caseId={reclassifyCaseId}
+                      blockIndex={i}
+                      comment={b.comment ?? ""}
+                    />
+                  </>
+                )}
               </>
-            ) : b.conclusion ? (
+            ) : !practice && b.conclusion ? (
+              // ★연습 중에는 접어도 결론을 비추지 않는다 — 미리보기로 답이 샌다.
               <p className="text-muted-foreground truncate text-[13px]">
                 결론 · {b.conclusion}
               </p>
