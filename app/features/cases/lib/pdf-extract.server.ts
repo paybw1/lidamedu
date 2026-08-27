@@ -77,11 +77,23 @@ function pageText(page: mupdf.Page): string {
 export async function extractPdfText(
   bytes: Uint8Array,
 ): Promise<PdfExtractResult> {
+  // ★doc·page 는 WASM 힙을 잡는다 — 안 놓아주면 여러 파일을 잇달아 읽을 때
+  //   "malloc failed" 로 죽는다(해설 PDF 390편 중 350편쯤에서 실측, 2026-08-27).
+  //   요청당 한 건만 읽는 서버 경로에서는 안 드러나던 누수다.
   const doc = mupdf.Document.openDocument(bytes, "application/pdf");
   const pageCount = doc.countPages();
   const parts: string[] = [];
-  for (let i = 0; i < pageCount; i++) {
-    parts.push(pageText(doc.loadPage(i) as mupdf.Page));
+  try {
+    for (let i = 0; i < pageCount; i++) {
+      const page = doc.loadPage(i) as mupdf.Page;
+      try {
+        parts.push(pageText(page));
+      } finally {
+        page.destroy();
+      }
+    }
+  } finally {
+    doc.destroy();
   }
   const text = parts
     .join("\n")
@@ -90,4 +102,30 @@ export async function extractPdfText(
     .replace(/\n{3,}/g, "\n\n")
     .trim();
   return { text, pageCount };
+}
+
+/**
+ * 첫 몇 쪽만 읽는다 — 표제부(사건번호·시작면)만 필요할 때.
+ * 해설 PDF 수백 편을 훑는 배치에서 전 쪽을 읽으면 시간도 힙도 낭비다.
+ */
+export async function extractPdfHeadText(
+  bytes: Uint8Array,
+  pages = 1,
+): Promise<string> {
+  const doc = mupdf.Document.openDocument(bytes, "application/pdf");
+  const parts: string[] = [];
+  try {
+    const n = Math.min(pages, doc.countPages());
+    for (let i = 0; i < n; i++) {
+      const page = doc.loadPage(i) as mupdf.Page;
+      try {
+        parts.push(pageText(page));
+      } finally {
+        page.destroy();
+      }
+    }
+  } finally {
+    doc.destroy();
+  }
+  return parts.join("\n").replace(/\r\n?/g, "\n").trim();
 }
