@@ -94,6 +94,9 @@ for (const { seq: s, c } of order) {
   const commentMd = buildCommentMd(c);
   const patch = {
     source_seq: s,
+    // ★별칭도 교재를 따른다 — 제16판은 별칭을 헤더 괄호에서 별도 줄로 옮기면서
+    //   몇 건의 오배정(2018다221676 "독점적 통상실시권"→"올란자핀")을 바로잡았다.
+    nickname: c.nickname ?? null,
     summary_items: summaryItems,
     summary_title: summaryItems[0]?.title ?? null,
     summary_body_md: null,
