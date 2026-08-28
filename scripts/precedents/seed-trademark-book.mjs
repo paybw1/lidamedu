@@ -20,10 +20,8 @@ import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
-import AdmZip from "adm-zip";
-import sharp from "sharp";
-import bmp from "bmp-js";
 import { createClient } from "@supabase/supabase-js";
+import { IMAGE_BUCKET, openBook, storagePathFor } from "./lib-tm-images.mjs";
 import "dotenv/config";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -32,8 +30,20 @@ const APPLY = process.argv.includes("--apply");
 const TOPIC_ARG = process.argv.map((a) => /^--topic=(\d+)$/.exec(a)).find(Boolean);
 const ONLY_TOPIC = TOPIC_ARG ? +TOPIC_ARG[1] : null;
 
-const data = JSON.parse(readFileSync(resolve(ROOT, "source/_converted/tm-precedents.json"), "utf8"));
-const zip = new AdmZip(resolve(ROOT, "source/상표업로드/판례.hwpx"));
+const argOf = (name, dflt) => {
+  const i = process.argv.indexOf(name);
+  return i >= 0 ? process.argv[i + 1] : dflt;
+};
+const data = JSON.parse(
+  readFileSync(resolve(ROOT, argOf("--json", "source/_converted/tm-precedents.json")), "utf8"),
+);
+const book = openBook(
+  resolve(
+    ROOT,
+    argOf("--hwpx", "source/상표법/상표법 판례(제16판)/[완0825+내지] 리담상표법 판례 (제16판).hwpx"),
+  ),
+);
+const { hashOf, toWebp } = book;
 
 const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
@@ -46,57 +56,12 @@ const COURT_MAP = {
   서울지방법원: "district_court",
   서울중앙지방법원: "district_court",
 };
-const IMAGE_BUCKET = "case-images";
 const COMMENT_SOURCE = "리담상표법 판례 [제16판]";
-
-// ── BinData 매핑 (binId → zip entry) ──
-const binByStem = new Map();
-for (const e of zip.getEntries()) {
-  const m = /^BinData\/([^.]+)\.(\w+)$/.exec(e.entryName);
-  if (m) binByStem.set(m[1].toLowerCase(), { entry: e, ext: m[2].toLowerCase() });
-}
-
-async function toWebp(binId) {
-  const hit = binByStem.get(binId.toLowerCase());
-  if (!hit) return { error: "binData 없음" };
-  const buf = hit.entry.getData();
-  try {
-    let img;
-    if (hit.ext === "bmp") {
-      const decoded = bmp.decode(buf);
-      // bmp-js 는 ABGR 순 — sharp raw 는 RGBA 기대. 채널 스왑.
-      // ★24비트 BMP 는 bmp-js 가 알파를 0 으로 채움 → 그대로 두면 전면 투명(백지).
-      //   알파가 전부 0 이면 불투명(255)으로 보정.
-      const px = decoded.data;
-      let hasAlpha = false;
-      for (let i = 0; i < px.length; i += 4) {
-        if (px[i] !== 0) {
-          hasAlpha = true;
-          break;
-        }
-      }
-      for (let i = 0; i < px.length; i += 4) {
-        const a = px[i], b = px[i + 1], g = px[i + 2], r = px[i + 3];
-        px[i] = r; px[i + 1] = g; px[i + 2] = b; px[i + 3] = hasAlpha ? a : 255;
-      }
-      img = sharp(px, { raw: { width: decoded.width, height: decoded.height, channels: 4 } });
-    } else if (["wmf", "emf", "ole"].includes(hit.ext)) {
-      return { error: `미지원 형식 ${hit.ext}` }; // 벡터/OLE — 변환 불가
-    } else {
-      // jpg/png/gif/tif + 확장자 오기(.tmp 등) — sharp 가 매직바이트로 판별, 손상 JPEG 관용
-      img = sharp(buf, { failOn: "none" });
-    }
-    const out = await img.webp({ quality: 88 }).toBuffer({ resolveWithObject: true });
-    return { buffer: out.data, width: out.info.width, height: out.info.height };
-  } catch (e) {
-    return { error: e.message };
-  }
-}
 
 // ── 체계도 노드 매칭 ──
 const { data: nodes, error: nErr } = await sb
   .from("systematic_nodes")
-  .select("node_id, parent_id, path, display_label, ord")
+  .select("node_id, parent_id, path, display_label, ord, case_only")
   .eq("law_code", "trademark");
 if (nErr) throw nErr;
 const normLabel = (s) =>
@@ -109,6 +74,23 @@ for (const n of nodes) {
     byLabel.get(key).push(n);
   }
 }
+// ★제16판(0825) 신설 주제 둘은 교재에 부모 체계도 라벨이 없다. 규칙 4(임의 배치 금지)에 따라
+//   여기서 명시한다 — 둘 다 이미 있는 노드로 들어간다(원장 승인 2026-08-28).
+const TOPIC_PARENT_OVERRIDE = new Map([
+  ["특유표장", "13 기타"],
+  ["상표 외의 권리", "10 상표 외의 권리"],
+]);
+
+// 기존 주제 노드 색인 — 제목(번호 뗀 것)으로 찾는다.
+const titleKey = (s) => String(s ?? "").replace(/^주제\s*\d+\s*/, "").replace(/\s+/g, "");
+const topicNodeByTitle = new Map();
+for (const n of nodes) {
+  if (!n.case_only) continue;
+  if (!/^주제\s*\d+\s/.test(n.display_label)) continue; // "13 기타" 같은 상위 컨테이너 제외
+  const k = titleKey(n.display_label);
+  if (!topicNodeByTitle.has(k)) topicNodeByTitle.set(k, n);
+}
+
 function matchParent(label) {
   const hits = byLabel.get(normLabel(label)) ?? [];
   if (hits.length === 0) return null;
@@ -118,7 +100,10 @@ function matchParent(label) {
 
 // ── md 조립 ──
 // 파서 위치 마커(⟦IMG:binId⟧/⟦TBL⟧)는 검색용 미러(md)에서 제거 — 렌더는 book_sections 가 담당.
-const stripMarkers = (s) => s.replace(/⟦IMG:[^⟧]*⟧/g, "").replace(/⟦TBL⟧/g, "");
+// ★밑줄 마커도 벗긴다 — 미러(목록 제목·검색 tsv·요지)는 글자만 담는다.
+//   렌더용 밑줄은 book_sections 안에만 있다(규칙 1).
+const stripMarkers = (s) =>
+  s.replace(/⟦IMG:[^⟧]*⟧/g, "").replace(/⟦TBL⟧/g, "").replace(/<\/?u>/g, "");
 const stripNum = (s) => stripMarkers(s).replace(/^\[\d+\]\s*/, "").replace(/^\(\d+\)\s*/, "").trim();
 const mdEscapeCell = (s) => stripMarkers(s).replace(/\|/g, "\\|").replace(/\n/g, "<br>");
 function tableMd(rows) {
@@ -177,7 +162,7 @@ const failures = [];
 
 for (const topic of data.topics) {
   const active = !ONLY_TOPIC || topic.no === ONLY_TOPIC;
-  const parent = matchParent(topic.parentLabel);
+  const parent = matchParent(topic.parentLabel ?? TOPIC_PARENT_OVERRIDE.get(topic.title));
   if (!parent) {
     console.log(`✗ 주제${topic.no} 부모 미매칭: ${topic.parentLabel}`);
     continue;
@@ -189,11 +174,24 @@ for (const topic of data.topics) {
 
   // 주제 노드 (재사용 우선) — 라벨 = "주제N 제목" (2026-07-07 원장 지시)
   const topicLabel = `주제${topic.no} ${topic.title}`;
-  let topicNode = nodes.find(
-    (n) =>
-      n.parent_id === parent.node_id &&
-      (n.display_label === topicLabel || n.display_label === topic.title),
-  );
+  // ★판본이 바뀌면 주제 번호가 밀린다(구 주제40 권리범위확인심판 → 신 주제39).
+  //   번호까지 붙여 라벨로 비교하면 매번 새 노드가 생기고 판례는 옛 노드에 남는다.
+  //   그래서 **제목이 같으면 같은 주제**로 보고 라벨만 새 번호로 고친다.
+  // ★부모까지 같은지는 보지 않는다 — 최초 적재 뒤 체계도에서 손으로 더 깊이 옮겨 둔 주제가
+  //   여럿이라(주제21 은 교재 라벨상 b2.b2.b1 인데 실제로는 b2.b2.b1.b5 에 있다),
+  //   부모를 조건에 넣으면 그 손보정을 무시하고 노드를 새로 만든다.
+  let topicNode = topicNodeByTitle.get(titleKey(topic.title)) ?? null;
+  if (topicNode && topicNode.display_label !== topicLabel) {
+    console.log(`  ↻ 주제 노드 라벨 갱신: "${topicNode.display_label}" → "${topicLabel}"`);
+    if (APPLY) {
+      const { error } = await sb
+        .from("systematic_nodes")
+        .update({ display_label: topicLabel, case_display_label: topicLabel })
+        .eq("node_id", topicNode.node_id);
+      if (error) throw new Error(`주제${topic.no} 라벨 갱신: ${error.message}`);
+      topicNode.display_label = topicLabel;
+    }
+  }
   if (!topicNode && APPLY) {
     const { data: sibs } = await sb
       .from("systematic_nodes")
@@ -213,7 +211,7 @@ for (const topic of data.topics) {
         case_display_label: topicLabel,
         case_only: true,
       })
-      .select("node_id, parent_id, path, display_label, ord")
+      .select("node_id, parent_id, path, display_label, ord, case_only")
       .single();
     if (error) throw new Error(`주제${topic.no} 노드 생성: ${error.message}`);
     topicNode = created;
@@ -288,7 +286,7 @@ for (const topic of data.topics) {
         failures.push({ caseNumber: c.caseNumber, reason: `이미지 ${c.images[i]}: ${conv.error}` });
         continue;
       }
-      const storagePath = `${insertedRow.case_id}/tm16-${c.images[i]}.webp`;
+      const storagePath = storagePathFor(insertedRow.case_id, hashOf(c.images[i]));
       const { error: upErr } = await sb.storage
         .from(IMAGE_BUCKET)
         .upload(storagePath, conv.buffer, { contentType: "image/webp", upsert: true });

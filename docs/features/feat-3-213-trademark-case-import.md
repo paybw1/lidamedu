@@ -191,22 +191,41 @@
 - `2022후10128` 은 기본법리 부착 + 인덱스 메타 두 단계가 겹친 건 — 체인으로 복구됨
 - `2020후11943`("대법원판레해설" 오타) · `2013후1146`("기타 …주요사례모음") 은 인덱스 메타 변형 — 체인으로 복구됨
 
-### 7.5 반영 순서
+### 7.5 반영 결과 (2026-08-28 완료)
 
-**0. 롤백 백업** — 356건의 `book_sections` · `images` · 미러 컬럼(`summary_items`·`summary_title`·`reasoning_md`·`comment_body_md`) · `case_references` · `exam_2nd_years` · `primary_node_id` · `source_seq` 를 `tmp/tm16-rev-backup.json` 으로 덤프. 반영 후 `--compare` 로 이 백업과 대조해 7.4 의 잔여 목록이 정확히 그것뿐인지 확인한다.
+| 단계 | 도구 | 결과 |
+|---|---|---|
+| 0 롤백 백업 | `tmp/tm16/backup.mjs` | cases 356 · case_references 190 → `tmp/tm16-rev-backup.json` |
+| 1 파싱 | `parse-trademark-book.mjs` | 주제 47 · 판례 364(고유 359) · 밑줄 624구간 |
+| 2 시드 | `seed-trademark-book.mjs --apply` | 신규 3건 · 주제 노드 라벨 갱신 45 · 신설 2 |
+| 3 배치 | `replace-tm-placements.mjs --apply --prune` | 주제 이동 3 · 최신판례 예약 4 · 순번 재부여 273 · 빈 노드 1 삭제 |
+| 4 이미지 | `sync-tm-images.mjs --apply` | 해시 업로드 773 · 재사용 31 · 파생본 보존 10 · 실패 0 |
+| 5 백필 | `backfill-tm-book-sections.mjs --apply` | 359건 재구성 |
+| 6 글상자 참고 | `attach-tm-interstitial-refs.mjs` | 4건 부착 |
+| 7 인덱스 메타 | `extract-tm-index-meta.mjs` | 130건 정리 · 기출 7 · 문헌 +1 |
+| 8 미러 | `resync-tm-mirrors.mjs --apply` | 359건 |
+| 9 조직명 | `replace-kipo-in-cases.mjs --law trademark --apply` | 32건 |
+| 10 요지 마커 | `fix-trademark-active-passive-markers.mjs --apply` | 176건 |
+| 11 수기 보정 | `reapply-tm-manual-patches.mjs --apply` | 4건(멱등) |
+| 12 목록 노출 | — | **건너뜀**(아래) |
+| 13 전문·PDF | `import-law-precedents.ts --law trademark --apply` | 1건 적재(2건 API 미수록) |
 
-1. 파싱 → `tm-precedents.json` (신판·section1)
-2. `seed-trademark-book.mjs` — 신규 3건 insert + 주제 노드 생성
-3. **주제 재배치(신규 스크립트 필요)** — ★`seed` 는 기존 판례를 `case_number` 로 skip 하고, `resync-tm-mirrors` 는 `primary_node_id` 를 "건드리지 않는다"고 못박혀 있다. 주제 번호가 40→39 처럼 밀리면 노드 라벨("주제N 제목")이 달라져 **새 노드가 생기고 판례는 옛 노드에 남는다.** 43건(번호 이동 36 + 실제 이동 7)의 `primary_node_id` 를 옮기고 빈 노드를 정리하는 단계를 별도로 만든다.
-4. 이미지: 신판 BinData → 해시 이름(`tmc-{sha1 12}.webp`)으로 변환·업로드 → `cases.images` 재구성 (규칙 2)
-5. `backfill-tm-book-sections.mjs --apply --json … --hwpx …`
-6. `attach-tm-interstitial-refs.mjs` (`TMHWPX_SECTION`=신판 **section1**)
-7. `extract-tm-index-meta.mjs` — ★`case_references` 는 백필이 지우지 않으므로 **재실행 시 중복 적재되는지 먼저 확인**
-8. `resync-tm-mirrors.mjs` — ★`<u>` strip 을 넣은 뒤 실행(규칙 1)
-9. `replace-kipo-in-cases.mjs --apply` — 특허청→지식재산처 재적용
-10. 요지 적극/소극 마커 통일
-11. 7.4 의 수기 보정 6건 재적용
-12. `apply-case-list-visibility.mjs` — 안 돌리면 "판례가 사라졌어요"
-13. 신규 3건 전문: `import-law-precedents.ts --law trademark` → `build-case-pdfs`. ★2023후10118(2026-06-05)·2023후10736(2026-08-12)은 선고 직후라 국가법령정보 API 미수록 가능 — 실패 시 조용히 넘기지 말고 미적재로 기록한다.
+**★12단계는 돌리면 안 된다.** `apply-case-list-visibility.mjs` 의 노출 제한(전합 OR 기출 2회 이상 OR 2020년 이후)은 **민법 전용**이다(원장 2026-08-21). 상표에 돌리면 359건 중 269건이 목록에서 사라진다. [[case-list-visibility]]
 
-**측정된 사전 조건**: 상표 판례에 걸린 사용자 하이라이트·메모·즐겨찾기 **0건** → 본문 재작성으로 인한 앵커 유실 위험 없음.
+**최종 검증**
+
+| 항목 | 값 |
+|---|---|
+| 판례 / 교재구조 | 359 / 359 |
+| 밑줄 | 336판례 · 620구간 (교재 336/624 — 차이는 경계 보정으로 옮긴 블록) |
+| 이미지 픽셀 검증 | 699장 전수 — 전면투명·단색·극소 0 |
+| 미러에 `<u>` 샘 | 0 |
+| 특허청 잔존 / 대시 마커 잔존 | 0 / 0 |
+| 배치 없는 판례 | 0 |
+| 주제 노드 | 47 |
+
+교재 파싱본과의 잔여 차이 154건은 **전부 설명된다** — 조직명 치환 19 · 인덱스 메타 추출 129 · 글상자 부착 4 · 수기 보정 4(2012후2951 그리드 분할표 · 2005후1905 종합표→참고 · 2015후2006 광고이미지 참고 · 2015후2174 `![lg]`).
+
+**전문 미적재 2건**(국가법령정보 API 미수록): `2003후1260`(2003 선고 거절결정) · `2023후10736`(2026-08-12 선고, 16일 전). 교재 본문은 정상 적재됐고 원문 PDF만 없다.
+
+**남은 한계(이번 개정판과 무관한 기존 사항)**: 교재 중복 수록 5건은 최초 수록 주제의 본문만 싣는다(다중 배치 모델 없음). 그중 `96후1866`(주제9 276자 vs 주제19 1,574자) · `2002후567`(주제25 323자 vs 주제40 1,221자) · `2000후3708`(주제26 1,549자 vs 주제27 2,378자)은 뒤 주제의 서술이 더 두껍다. 구판도 같았다.

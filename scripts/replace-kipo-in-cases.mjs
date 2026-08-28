@@ -50,22 +50,27 @@ const c = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY,
 );
 
+// ★한 번에 1000행씩 book_sections 까지 끌어오면 응답이 너무 커 fetch 가 끊긴다(실측 2026-08-28).
+//   200행씩 끊고, 과목을 지정하면 그 과목만 본다(--law trademark).
+const lawIdx = process.argv.indexOf("--law");
+const ONLY_LAW = lawIdx >= 0 ? process.argv[lawIdx + 1] : null;
+const PAGE = 200;
 let all = [];
-for (let from = 0; ; from += 1000) {
-  const { data, error } = await c
+for (let from = 0; ; from += PAGE) {
+  let q = c
     .from("cases")
-    .select(
-      "case_id," + TEXT_COLS.join(",") + "," + JSON_COLS.join(","),
-    )
-    .is("deleted_at", null)
-    .range(from, from + 999);
+    .select("case_id," + TEXT_COLS.join(",") + "," + JSON_COLS.join(","))
+    .is("deleted_at", null);
+  if (ONLY_LAW) q = q.contains("subject_laws", [ONLY_LAW]);
+  const { data, error } = await q.order("case_id").range(from, from + PAGE - 1);
   if (error) {
     console.error("load err", error.message);
     process.exit(1);
   }
   all = all.concat(data);
-  if (data.length < 1000) break;
+  if (data.length < PAGE) break;
 }
+console.log(`대상 ${all.length}행 (${ONLY_LAW ?? "전체 과목"})`);
 
 const changes = []; // { case_id, updates:{col:new}, backup:{col:old} }
 let colCounts = {};
@@ -133,7 +138,7 @@ if (!APPLY) {
 }
 
 // 백업 저장
-const backupPath = "scripts/assets/kipo-rename-backup.json";
+const backupPath = "tmp/kipo-rename-backup.json";
 writeFileSync(backupPath, JSON.stringify(changes.map((c) => ({ case_id: c.case_id, backup: c.backup })), null, 2), "utf8");
 console.log(`백업 저장: ${backupPath} (${changes.length}건)`);
 

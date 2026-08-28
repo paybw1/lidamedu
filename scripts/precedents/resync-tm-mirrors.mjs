@@ -15,7 +15,10 @@ const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_R
 });
 const data = JSON.parse(readFileSync("source/_converted/tm-precedents.json", "utf8"));
 
-const stripMarkers = (s) => s.replace(/⟦IMG:[^⟧]*⟧/g, "").replace(/⟦TBL⟧/g, "");
+// ★밑줄 마커도 벗긴다 — 미러(목록 제목·검색 tsv·요지)는 글자만 담는다.
+//   렌더용 밑줄은 book_sections 안에만 있다(규칙 1).
+const stripMarkers = (s) =>
+  s.replace(/⟦IMG:[^⟧]*⟧/g, "").replace(/⟦TBL⟧/g, "").replace(/<\/?u>/g, "");
 const stripNum = (s) => stripMarkers(s).replace(/^\[\d+\]\s*/, "").replace(/^\(\d+\)\s*/, "").trim();
 const mdEscapeCell = (s) => stripMarkers(s).replace(/\|/g, "\\|").replace(/\n/g, "<br>");
 function tableMd(rows) {

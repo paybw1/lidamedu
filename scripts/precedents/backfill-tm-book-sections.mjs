@@ -1,17 +1,15 @@
 // tm-precedents.json → cases.book_sections 백필 (상표 337건)
 //   교재 구조 그대로: 쟁점상표(표+도형 셀) / 사안의 쟁점 / 사실관계 / 전심의 판단 /
 //   관련 법리 / 본심의 판단 / 인덱스 / 평석
-//   셀 이미지: binId → cases.images 의 storagePath(tm16-{binId}.webp) 매칭 → URL
+//   셀 이미지: binId → **원본 해시** → cases.images 의 storagePath(tmc-{sha1}.webp) 매칭 → URL
 //
 //   node scripts/precedents/backfill-tm-book-sections.mjs           # dry-run(1건 미리보기)
 //   node scripts/precedents/backfill-tm-book-sections.mjs --apply
 import "dotenv/config";
 import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
-import AdmZip from "adm-zip";
-import sharp from "sharp";
-import bmp from "bmp-js";
 import { createClient } from "@supabase/supabase-js";
+import { binIdsOf, hashFromPath, openBook } from "./lib-tm-images.mjs";
 
 const APPLY = process.argv.includes("--apply");
 // --compare : DB 의 현재 book_sections 와 교재에서 새로 만든 것을 글자로 대조만 한다.
@@ -28,95 +26,19 @@ const data = JSON.parse(
   readFileSync(argOf("--json", "source/_converted/tm-precedents.json"), "utf8"),
 );
 
-// ── 이미지 업로드 동기화 — 파서가 새로 발견한 인라인 binId(본문 문장 속 표장)가
-//    cases.images 에 없으면 변환·업로드 후 append (seed 는 기존 판례 skip 이라 여기서 보충).
-// 이미지 원본 hwpx — 판본이 바뀌면 경로도 바뀐다(파서와 같은 파일을 봐야 binId 가 맞는다).
-const zip = new AdmZip(
-  argOf(
-    "--hwpx",
-    "source/상표법/상표법 판례(제16판)/[완0825+내지] 리담상표법 판례 (제16판).hwpx",
-  ),
+// 이미지는 sync-tm-images.mjs 가 올린다. 여기선 binId → 해시 로 URL 만 찾는다.
+const { hashOf } = openBook(
+  argOf("--hwpx", "source/상표법/상표법 판례(제16판)/[완0825+내지] 리담상표법 판례 (제16판).hwpx"),
 );
-const binByStem = new Map();
-for (const e of zip.getEntries()) {
-  const m = /^BinData\/([^.]+)\.(\w+)$/.exec(e.entryName);
-  if (m) binByStem.set(m[1].toLowerCase(), { entry: e, ext: m[2].toLowerCase() });
-}
-async function toWebp(binId) {
-  const hit = binByStem.get(binId.toLowerCase());
-  if (!hit) return { error: "binData 없음" };
-  const buf = hit.entry.getData();
-  try {
-    let img;
-    const magic = buf.slice(0, 3).toString("hex");
-    if (magic.startsWith("ffd8")) img = sharp(buf, { failOn: "none" });
-    else if (hit.ext === "bmp") {
-      const d = bmp.decode(buf);
-      const px = d.data;
-      let hasAlpha = false;
-      for (let i = 0; i < px.length; i += 4) if (px[i] !== 0) { hasAlpha = true; break; }
-      for (let i = 0; i < px.length; i += 4) {
-        const a = px[i], b = px[i + 1], g = px[i + 2], r = px[i + 3];
-        px[i] = r; px[i + 1] = g; px[i + 2] = b; px[i + 3] = hasAlpha ? a : 255;
-      }
-      img = sharp(px, { raw: { width: d.width, height: d.height, channels: 4 } });
-    } else if (["wmf", "emf", "ole"].includes(hit.ext)) return { error: `미지원 ${hit.ext}` };
-    else img = sharp(buf, { failOn: "none" });
-    const out = await img.webp({ quality: 88 }).toBuffer({ resolveWithObject: true });
-    return { buffer: out.data, width: out.info.width, height: out.info.height };
-  } catch (e) {
-    return { error: e.message };
-  }
-}
-async function syncMissingImages(row, bookImages) {
-  const have = new Set(
-    (row.images ?? [])
-      .map((i) => /tm16-([^./]+)\.webp$/.exec(i.storagePath ?? "")?.[1]?.toLowerCase())
-      .filter(Boolean),
-  );
-  const missing = bookImages.filter((b) => !have.has(b.toLowerCase()));
-  if (!missing.length || !APPLY) return { images: row.images ?? [], added: 0 };
-  const next = [...(row.images ?? [])];
-  let added = 0;
-  for (const bin of missing) {
-    const conv = await toWebp(bin);
-    if (conv.error) {
-      console.log(`  ! ${row.case_number} 인라인 ${bin}: ${conv.error}`);
-      continue;
-    }
-    const storagePath = `${row.case_id}/tm16-${bin}.webp`;
-    const { error } = await sb.storage
-      .from("case-images")
-      .upload(storagePath, conv.buffer, { contentType: "image/webp", upsert: true });
-    if (error) {
-      console.log(`  ! ${row.case_number} 업로드 ${bin}: ${error.message}`);
-      continue;
-    }
-    const { data: pub } = sb.storage.from("case-images").getPublicUrl(storagePath);
-    next.push({
-      id: randomUUID(),
-      url: pub.publicUrl,
-      storagePath,
-      mimeType: "image/webp",
-      width: conv.width,
-      height: conv.height,
-      alt: "",
-      position: "summary",
-      sortOrder: next.length,
-    });
-    added++;
-  }
-  if (added > 0) {
-    const { error } = await sb.from("cases").update({ images: next }).eq("case_id", row.case_id);
-    if (error) console.log(`  ! ${row.case_number} images 갱신: ${error.message}`);
-  }
-  return { images: next, added };
-}
+const missingImg = [];
 
 // 케이스 경계 수동 보정(원장 지시) — 앞 판례 인덱스 말미에 붙은 법리 블록을 다음 판례의 참고로.
+// ★anchor(from)는 판본마다 바뀐다 — 제16판(0825)은 "분리관찰 기본법리" 를 2023도352 인덱스에서
+//   신규 판례 2023후10118 의 본심 말미로 옮겼다(둘 다 바로 다음 판례가 2006후4086 인 건 그대로).
+//   그래서 섹션도 고정하지 않고 전 섹션에서 제목을 찾는다.
 const CROSS_MOVES = [
   { from: "2015후1348", heading: "요부관찰 기본법리", to: "2017후2208" },
-  { from: "2023도352", heading: "분리관찰 기본법리", to: "2006후4086" },
+  { from: "2023후10118", heading: "분리관찰 기본법리", to: "2006후4086" },
 ];
 
 // 최초 수록분 기준 (시드와 동일 정책)
@@ -128,12 +50,24 @@ for (const mv of CROSS_MOVES) {
   const src = bookCase.get(mv.from);
   const dst = bookCase.get(mv.to);
   if (!src || !dst) continue;
-  const idx = src.sections.index ?? [];
-  const at = idx.findIndex((p) => p.replace(/⟦[^⟧]*⟧/g, "").trim() === mv.heading);
-  if (at < 0) continue;
-  const moved = idx.splice(at);
+  const clean = (p) => p.replace(/⟦[^⟧]*⟧/g, "").replace(/<\/?u>/g, "").trim();
+  let hit = null;
+  for (const key of ["index", "holding", "doctrine", "comment", "lower", "facts"]) {
+    const arr = src.sections[key];
+    if (!Array.isArray(arr)) continue;
+    const at = arr.findIndex((p) => clean(p) === mv.heading);
+    if (at >= 0) {
+      hit = { key, arr, at };
+      break;
+    }
+  }
+  if (!hit) {
+    console.log(`! 경계 보정 앵커 없음: ${mv.from} "${mv.heading}" — CROSS_MOVES 확인 필요`);
+    continue;
+  }
+  const moved = hit.arr.splice(hit.at);
   (dst.sections.__refExtra ??= []).push({ title: mv.heading, paras: moved.slice(1) });
-  console.log(`경계 보정: ${mv.from} 인덱스 "${mv.heading}"(${moved.length - 1}문단) → ${mv.to} 참고`);
+  console.log(`경계 보정: ${mv.from} ${hit.key} "${mv.heading}"(${moved.length - 1}문단) → ${mv.to} 참고`);
 }
 
 const SECTION_DEFS = [
@@ -403,7 +337,7 @@ const linesOfSections = (secs) =>
     )
     .filter(Boolean);
 
-let updated = 0, noBook = 0, failed = 0, imgAdded = 0;
+let updated = 0, noBook = 0, failed = 0;
 let cmpSame = 0;
 const cmpDiff = [];
 for (const r of rows) {
@@ -413,13 +347,18 @@ for (const r of rows) {
     console.log("? 교재 미수록:", r.case_number);
     continue;
   }
-  // 인라인 신규 이미지 업로드 동기화 → binId → URL 맵
-  const { images: syncedImages, added } = await syncMissingImages(r, c.images ?? []);
-  imgAdded += added;
+  // binId → URL. ★식별은 해시로 한다(규칙 2) — 판본마다 binId 가 밀려서
+  //   tm16-{binId} 로 맞추면 그림이 엉뚱한 판례에 붙는다. 업로드는 sync-tm-images 가 맡는다.
+  const urlByHash = new Map();
+  for (const img of r.images ?? []) {
+    const h = hashFromPath(img.storagePath);
+    if (h) urlByHash.set(h, img.url);
+  }
   const imageUrlByBin = new Map();
-  for (const img of syncedImages) {
-    const m = /tm16-([^./]+)\.webp$/.exec(img.storagePath ?? "");
-    if (m) imageUrlByBin.set(m[1].toLowerCase(), img.url);
+  for (const bin of binIdsOf(c)) {
+    const url = urlByHash.get(hashOf(bin) ?? "");
+    if (url) imageUrlByBin.set(bin, url);
+    else missingImg.push(`${r.case_number}:${bin}`);
   }
   const sections = buildSections(c, imageUrlByBin);
   if (COMPARE) {
@@ -494,7 +433,9 @@ if (COMPARE) {
       `  [상이] ${d.no}  DB만 ${d.onlyDb.length} / 교재만 ${d.onlyBook.length}  예DB: ${d.onlyDb[0]?.slice(0, 50) ?? "-"}  예교재: ${d.onlyBook[0]?.slice(0, 50) ?? "-"}`,
     );
 } else {
+  if (missingImg.length)
+    console.log(`  ! 이미지 URL 미확보 ${missingImg.length}건: ${missingImg.slice(0, 10).join(", ")}`);
   console.log(
-    `${APPLY ? "적용" : "dry-run"}: 대상 ${rows.length} / 갱신 ${updated} / 교재외 ${noBook} / 실패 ${failed} / 인라인 이미지 추가 ${imgAdded}`,
+    `${APPLY ? "적용" : "dry-run"}: 대상 ${rows.length} / 갱신 ${updated} / 교재외 ${noBook} / 실패 ${failed} `,
   );
 }
