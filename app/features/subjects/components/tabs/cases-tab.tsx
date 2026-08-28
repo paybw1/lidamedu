@@ -644,10 +644,15 @@ export function CasesTab({
                     item={c}
                     topicColumn={topicNodes.length > 0}
                     topicShort={
-                      c.primaryNodeId
-                        ? (topicShortByNodeId.get(c.primaryNodeId) ?? null)
-                        : null
+                      // 주제로 걸러 보고 있으면 그 주제를 보여 준다 — 다중 배치 판례는
+                      // 대표 주제("주제9")를 보여 주면 지금 보는 목록과 어긋난다.
+                      activeTopicNodeId
+                        ? (topicShortByNodeId.get(activeTopicNodeId) ?? null)
+                        : c.primaryNodeId
+                          ? (topicShortByNodeId.get(c.primaryNodeId) ?? null)
+                          : null
                     }
+                    fromNodeId={activeTopicNodeId ?? null}
                     hasDiagram={diagramSet.has(c.caseId)}
                   />
                 ))}
@@ -811,6 +816,7 @@ function CaseRow({
   item,
   topicColumn = false,
   topicShort = null,
+  fromNodeId = null,
   hasDiagram = false,
 }: {
   subject: LawSubjectMeta;
@@ -821,12 +827,21 @@ function CaseRow({
   topicColumn?: boolean;
   /** 이 판례의 주제 축약 라벨("주제N"). 클릭 시 해당 주제 필터. */
   topicShort?: string | null;
+  /**
+   * feat-3-214 — 지금 걸러 보고 있는 주제. 뷰어에 ?node= 로 넘겨 **그 주제의 서술**을
+   * 열게 한다(교재가 같은 판결을 두 주제에서 다른 각도로 다루는 경우).
+   */
+  fromNodeId?: string | null;
 }) {
   // 사건 본문 link 에 `back=` query 로 현재 목록 URL search 를 넘긴다.
   // case-viewer 의 "판례 목록으로" 가 이 값으로 원래 page·필터 페이지로 복귀.
   const location = useLocation();
+  const detailParams = new URLSearchParams();
+  if (location.search) detailParams.set("back", location.search);
+  if (fromNodeId) detailParams.set("node", fromNodeId);
+  const detailQuery = detailParams.toString();
   const detailHref = `/subjects/${subject.slug}/cases/${item.caseId}${
-    location.search ? `?back=${encodeURIComponent(location.search)}` : ""
+    detailQuery ? `?${detailQuery}` : ""
   }`;
   // 사건명 컬럼은 항상 case_title 만 표시 — 요지 [1] 제목/legacy summary_title 폴백을
   // 폐지(2017허4501 처럼 case_title 과 summary_title 이 서로 다른 긴 문장이라 둘 다

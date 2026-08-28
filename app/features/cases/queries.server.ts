@@ -9,6 +9,7 @@ import {
   type CaseCommentLabel,
   type CaseCourt,
   type CaseDetail,
+  type CasePlacement,
   type CaseListItem,
   type CaseReference,
   type CaseReferenceKind,
@@ -1162,6 +1163,11 @@ export async function getCasesByIds(
 export async function getCaseById(
   client: SupabaseClient<Database>,
   caseId: string,
+  /**
+   * feat-3-214 — 어느 주제에서 들어왔는지. 교재가 같은 판결을 두 주제에서 다른 각도로
+   * 다루면 그 주제의 서술을 보여 준다. 없거나 못 찾으면 대표 배치 본문.
+   */
+  nodeId?: string | null,
 ): Promise<CaseDetail | null> {
   const { data, error } = await client
     .from("cases")
@@ -1177,6 +1183,28 @@ export async function getCaseById(
 
   // 2차 주관식 기출 칩(미리보기)·메인 ★ 강조 — 이 판례의 과목 주관식 인용·메인 파생.
   const refsByNum = await getSubjective2ndRefs(client, data.subject_laws ?? []);
+
+  // feat-3-214 — 교재에서 이 판례를 다루는 자리들 + 지금 볼 자리의 서술.
+  const { data: linkRows, error: linkErr } = await client
+    .from("case_systematic_links")
+    .select("node_id, is_primary, seq, book_sections, systematic_nodes(display_label)")
+    .eq("case_id", caseId)
+    .order("seq");
+  if (linkErr) throw linkErr;
+  const placements: CasePlacement[] = (linkRows ?? []).map((l) => ({
+    nodeId: l.node_id,
+    label:
+      (l.systematic_nodes as { display_label: string } | null)?.display_label ?? "배치",
+    isPrimary: l.is_primary,
+    hasOwnBody: l.book_sections != null,
+  }));
+  const active =
+    (nodeId ? (linkRows ?? []).find((l) => l.node_id === nodeId) : null) ??
+    (linkRows ?? []).find((l) => l.is_primary) ??
+    null;
+  // 그 자리에 서술이 따로 있으면 그것을, 없으면 판례 본문(cases.book_sections).
+  const activeBook =
+    active?.book_sections != null ? active.book_sections : data.book_sections;
 
   const detail: CaseDetail = {
     ...rowToListItem(data as CaseListRow),
@@ -1197,7 +1225,9 @@ export async function getCaseById(
     primaryArticleId: data.primary_article_id,
     primaryNodeId: data.primary_node_id,
     officialTextPdfPath: data.official_text_pdf_path,
-    bookSections: parseBookSections(data.book_sections),
+    bookSections: parseBookSections(activeBook),
+    placements,
+    activeNodeId: active?.node_id ?? data.primary_node_id ?? null,
   };
   attach2ndRefs(detail, refsByNum);
   return detail;

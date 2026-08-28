@@ -151,8 +151,12 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     throw data("Law not seeded", { status: 404 });
   }
 
+  // feat-3-214 — 어느 주제에서 들어왔는지. 교재가 같은 판결을 두 주제에서 다른 각도로
+  // 다루면 그 주제의 서술을 보여 준다(없으면 대표 배치 본문).
+  const fromNodeId = new URL(request.url).searchParams.get("node");
+
   const [kase, articles, systematicNodes, placementMaps] = await Promise.all([
-    getCaseById(client, params.caseId),
+    getCaseById(client, params.caseId, fromNodeId),
     getArticleSkeleton(client, law.lawId),
     getSystematicSkeleton(client, lawCode),
     getCasePlacementMaps(client, lawCode, law.lawId),

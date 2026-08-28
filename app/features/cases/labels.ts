@@ -268,8 +268,24 @@ export interface CaseDetail extends CaseListItem {
   officialTextPdfPath: string | null;
   /** feat-3-213 — 판례집 구조화 본문. 비어 있으면 기존 필드(summary/reasoning/comment) 렌더. */
   bookSections: BookSection[];
+  /**
+   * feat-3-214 — 이 판례가 교재에서 다뤄지는 자리들(체계도 주제).
+   * 교재가 같은 판결을 두 주제에서 **다른 각도로** 쓰면 자리마다 서술이 다르다.
+   * 2개 이상일 때만 뷰어가 주제 전환 칩을 띄운다.
+   */
+  placements: CasePlacement[];
+  /** 지금 보고 있는 자리(주제) 노드. 대표 배치를 보고 있으면 primary 노드. */
+  activeNodeId: string | null;
   /** 관련 판례 인용 목록(구조화). 예: "의정부지방법원 2011. 9. 8. 선고 2009가합7325". */
   relatedCases: RelatedCaseCitation[];
+}
+
+export interface CasePlacement {
+  nodeId: string;
+  label: string;
+  isPrimary: boolean;
+  /** 그 주제에서의 서술이 따로 있는가(없으면 대표 본문을 보여 준다). */
+  hasOwnBody: boolean;
 }
 
 // 관련 판례 인용 한 건 — 자유 인용 텍스트 + 선택 사건명 + 요지/내용(긴 마크다운).

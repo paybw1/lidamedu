@@ -33,6 +33,7 @@ import {
   type CaseDetail,
   type CaseImage,
   type CaseImagePosition,
+  type CasePlacement,
   type CaseReference,
   caseCommentHeading,
 } from "~/features/cases/labels";
@@ -108,6 +109,52 @@ function CaseDeleteButton({
     >
       <Trash2Icon className="size-3" /> {submitting ? "삭제 중…" : "삭제"}
     </Button>
+  );
+}
+
+// feat-3-214 — 교재가 같은 판결을 두 주제에서 다른 각도로 다룰 때, 지금 보는 자리를
+// 밝히고 다른 자리로 건너뛰게 한다. 링크는 같은 판례 + ?node= 만 바꾼다(back 은 보존).
+function TopicPlacementChips({
+  placements,
+  activeNodeId,
+}: {
+  placements: CasePlacement[];
+  activeNodeId: string | null;
+}) {
+  const location = useLocation();
+  const hrefFor = (nodeId: string) => {
+    const sp = new URLSearchParams(location.search);
+    sp.set("node", nodeId);
+    return `${location.pathname}?${sp.toString()}`;
+  };
+  return (
+    <div className="border-border bg-muted/30 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2">
+      <span className="text-muted-foreground text-[11px] font-semibold tracking-widest uppercase">
+        교재 수록
+      </span>
+      {placements.map((p) => {
+        const active = p.nodeId === activeNodeId;
+        return (
+          <Link
+            key={p.nodeId}
+            to={hrefFor(p.nodeId)}
+            preventScrollReset
+            aria-current={active ? "page" : undefined}
+            className={cn(
+              "rounded-full border px-2.5 py-1 text-[12px] font-medium transition-colors",
+              active
+                ? "border-primary/40 bg-primary/10 text-link"
+                : "border-border text-muted-foreground hover:text-foreground hover:bg-accent",
+            )}
+          >
+            {p.label}
+          </Link>
+        );
+      })}
+      <span className="text-muted-foreground/80 text-[11px]">
+        같은 판결을 주제마다 다르게 다룹니다
+      </span>
+    </div>
   );
 }
 
@@ -352,6 +399,14 @@ export function CaseBody({
 
       {/* 본문 섹션들 */}
       <CardContent className="space-y-8 px-6 py-7">
+        {/* feat-3-214 — 교재가 같은 판결을 두 주제에서 다른 각도로 다루면, 어느 주제의
+            서술을 보고 있는지 밝히고 서로 오갈 수 있게 한다. 배치가 하나면 안 띄운다. */}
+        {kase.placements.length > 1 ? (
+          <TopicPlacementChips
+            placements={kase.placements}
+            activeNodeId={kase.activeNodeId}
+          />
+        ) : null}
         {/* feat-3-213 — 판례집 구조(쟁점상표 표 → 사안의 쟁점 → … → 평석). 상표 제16판 등. */}
         {bookMode
           ? bookSections.map((sec) => (
