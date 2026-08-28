@@ -51,6 +51,11 @@ export interface Paper {
 
 const FILE_NAME = /^(\d+)\.(.+)\((.+)\)\.pdf$/;
 
+/** 저자 이름 정규화 — 공백·가운뎃점 제거. "李 憲" 과 "李憲" 을 같게 본다. */
+function squashName(s: string): string {
+  return s.replace(/[\s·ㆍ.]/g, "");
+}
+
 async function readPaper(file: string): Promise<Paper | null> {
   const m = FILE_NAME.exec(file);
   if (!m) return null;
@@ -77,7 +82,9 @@ async function readPaper(file: string): Promise<Paper | null> {
   return {
     seq: Number(m[1]),
     file,
-    title: m[2].trim(),
+    // ★일부 파일명에 "지식재산권01" 같은 머리가 붙어 있다 — 총목록엔 없는 글자라
+    //   그대로 두면 제목이 통째로 안 맞는다.
+    title: m[2].replace(/^\s*지식재산권\s*\d*\s*/, "").trim(),
     author: m[3].trim(),
     caseNos,
     decidedAt: hn ? hn[1].replace(/\s+/g, " ") : "",
@@ -169,6 +176,7 @@ async function main(): Promise<void> {
 
   let matched = 0;
   const unmatched: Paper[] = [];
+  const claimed = new Set<IndexEntryRef>();
   const vol = new Map<
     number,
     { volume: string; issued: string; page: number }
@@ -185,6 +193,7 @@ async function main(): Promise<void> {
     if (!pick) pick = findByTitle(p.title, index);
     if (pick) {
       matched++;
+      claimed.add(pick);
       vol.set(p.seq, {
         volume: pick.volume,
         issued: pick.issued,
@@ -194,8 +203,81 @@ async function main(): Promise<void> {
   }
   console.log(
     `
-총목록 대조: 맞춘 것 ${matched}편 / ${papers.length}편 · 못 맞춘 것 ${unmatched.length}편`,
+총목록 대조(제목·면수): 맞춘 것 ${matched}편 / ${papers.length}편 · 못 맞춘 것 ${unmatched.length}편`,
   );
+
+  // ── 3단계: 저자로 잇기 ─────────────────────────────────────────────────
+  // ★남은 제목이 안 맞는 이유는 대개 **한자 표기**다("特許法 제163조 一事不再理…").
+  //   총목록은 한글로 쓰므로 글자로는 영영 안 맞는다. 그런데 파일명의 저자(한자)와
+  //   총목록의 저자(한글)는 **이미 맞춘 행들이 짝을 알려 준다** — 그 대응표를 만들어
+  //   아직 임자 없는 총목록 항목 중 같은 저자를 찾는다. 하나만 남으면 그 행이다.
+  const hanjaToHangul = new Map<string, string>();
+  for (const p of papers) {
+    const v = vol.get(p.seq);
+    if (!v) continue;
+    const e = index.find(
+      (x) => x.page === v.page && x.volume === v.volume && claimed.has(x),
+    );
+    if (e && p.author !== e.author)
+      hanjaToHangul.set(squashName(p.author), e.author);
+  }
+  let byAuthor = 0;
+  const stillUnmatched: Paper[] = [];
+  for (const p of unmatched) {
+    const name =
+      hanjaToHangul.get(squashName(p.author)) ?? squashName(p.author);
+    const free = index.filter((e) => !claimed.has(e) && e.author === name);
+    let pick: IndexEntryRef | undefined;
+    if (free.length === 1) pick = free[0];
+    else if (free.length > 1) {
+      // 여럿이면 제목의 **한글 조각**으로 가른다(한자 제목이라도 조사·용언은 한글이다).
+      pick = findByTitle(p.title, free);
+    }
+    if (pick) {
+      byAuthor++;
+      matched++;
+      claimed.add(pick);
+      vol.set(p.seq, {
+        volume: pick.volume,
+        issued: pick.issued,
+        page: pick.page,
+      });
+    } else stillUnmatched.push(p);
+  }
+  unmatched.length = 0;
+  unmatched.push(...stillUnmatched);
+  console.log(
+    `저자로 추가 연결 ${byAuthor}편 (한자↔한글 대응 ${hanjaToHangul.size}명) · 최종 못 맞춘 것 ${unmatched.length}편`,
+  );
+
+  // ── 자체 검증 ────────────────────────────────────────────────────────────
+  // ★배정이 맞았는지 **독립된 신호**로 확인한다. 해설 PDF 에서 읽은 선고일은 총목록
+  //   대조에 쓰지 않았으므로, 그 날짜가 배정된 발간반기 안에 들면 배정이 옳다는 뜻이다.
+  //   (실측: 선고월 − 반기 시작월이 0~5개월. fill-case-no-by-title 의 창과 같은 근거.)
+  let inWindow = 0;
+  let outWindow = 0;
+  const outliers: string[] = [];
+  for (const p of papers) {
+    const v = vol.get(p.seq);
+    if (!v || !p.decidedAt) continue;
+    const d = /^(\d{4})\s*\.\s*(\d{1,2})/.exec(p.decidedAt);
+    const w = /^(\d{4})년\s*([상하])?$/.exec(v.issued);
+    if (!d || !w) continue;
+    const months = Number(d[1]) * 12 + Number(d[2]);
+    const base = Number(w[1]) * 12 + (w[2] === "하" ? 7 : 1);
+    if (months - base >= 0 && months - base <= 5) inWindow++;
+    else {
+      outWindow++;
+      if (outliers.length < 10)
+        outliers.push(
+          `   ${String(p.seq).padStart(3)} 선고 ${p.decidedAt} ↔ 배정 ${v.volume} ${v.issued} — ${p.title.slice(0, 40)}`,
+        );
+    }
+  }
+  console.log(
+    `[검증] 선고일이 배정된 발간반기 안: ${inWindow} · 벗어남 ${outWindow} (벗어나면 배정이 틀린 것)`,
+  );
+  if (outliers.length) console.log(outliers.join("\n"));
   for (const p of unmatched.slice(0, 15))
     console.log(
       `   ${String(p.seq).padStart(3)} ${p.startPage ?? "-"}면  ${p.title.slice(0, 50)}`,
@@ -217,6 +299,7 @@ async function main(): Promise<void> {
     "권호",
     "발간년도",
   ];
+  header.push("판례번호 출처");
   const next: string[][] = [header];
   let filled = 0;
   const missing: string[] = [];
@@ -226,15 +309,21 @@ async function main(): Promise<void> {
     const v = vol.get(seq);
     if (p?.caseNos) filled++;
     else missing.push(`${seq} ${row[2]?.slice(0, 40)}`);
+    // ★이미 채워진 값을 지우지 않는다. 이 스크립트는 해설 PDF 에서 읽을 수 있는 것만
+    //   아는데, 판례번호 일부는 fill-case-no-by-title 이 제목 검색으로 채웠다.
+    //   행을 통째로 다시 쓰면 그게 날아간다 — 빈 칸만 메운다.
+    const keep = (fresh: string | undefined, old: string | undefined) =>
+      fresh?.trim() ? fresh : (old ?? "");
     next.push([
       row[0] ?? "",
       row[1] ?? "",
       row[2] ?? "",
       row[3] ?? "",
-      p?.caseNos ?? "",
-      p?.decidedAt ?? "",
-      v?.volume ?? "",
-      v?.issued ?? "",
+      keep(p?.caseNos, row[4]),
+      keep(p?.decidedAt, row[5]),
+      keep(v?.volume, row[6]),
+      keep(v?.issued, row[7]),
+      p?.caseNos?.trim() ? "해설 PDF" : (row[8] ?? ""),
     ]);
   }
   console.log(`판례번호 채운 행 ${filled} / ${next.length - 1}`);

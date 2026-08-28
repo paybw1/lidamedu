@@ -31,6 +31,8 @@ const LIMIT = Number(
   process.argv.find((a) => a.startsWith("--limit="))?.split("=")[1] ?? "0",
 );
 
+// ★display=20 을 유지한다. 100 으로 늘려 봤더니 커버리지는 그대로인데(45%) 정답과
+//   비슷한 문구의 다른 판결이 창을 통과해 정확도만 100%→92.6% 로 떨어졌다(실측).
 const API = "https://www.law.go.kr/DRF/lawSearch.do";
 /** 국가법령정보센터가 막지 않도록 사이를 둔다. */
 const DELAY_MS = 350;
