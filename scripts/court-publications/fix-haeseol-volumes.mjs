@@ -12,73 +12,17 @@
 //   node scripts/court-publications/fix-haeseol-volumes.mjs --apply
 import "dotenv/config";
 import fs from "node:fs";
-import * as mupdf from "mupdf";
 import { createClient } from "@supabase/supabase-js";
 
+import { cleanTitle as clean, makeFinder, parseToc } from "./lib-haeseol-toc.mjs";
+
 const APPLY = process.argv.includes("--apply");
-const TOC_PDF = "source/법원간행물/category_146.pdf";
-/** 총목록 안에서 지식재산권 분야가 실린 쪽 범위(쪽머리로 확인). */
-const TOC_FROM = 305, TOC_TO = 338;
 const GUBUNS = ["특", "상", "디", "부", "저", "기", "발"];
 const BACKUP = "tmp/haeseol-volume-fix-backup.json";
 
-const clean = (t) =>
-  (t ?? "")
-    .replace(/^\s*지식재산권\s*\d+\s*/, "")
-    .replace(/\s+\d{4}\.\s*\d{1,2}\.\s*\d{1,2}\.\s*선고[\s\S]*$/, "")
-    .replace(/\s+/g, " ")
-    .trim();
-// ★구두점은 전부 버린다 — 목록과 총목록이 같은 자리를 ㆍ / _ / ? 로 제각각 쓴다
-//   ("상품 출처의 오인_혼동" vs "오인ㆍ혼동", "수입?판매" vs "수입ㆍ판매").
-const norm = (s) =>
-  clean(s).replace(/[^0-9a-zA-Z가-힣]/g, "").toLowerCase();
-
-// ── 총목록 파싱 ─────────────────────────────────────────────────────────────
-const doc = mupdf.Document.openDocument(fs.readFileSync(TOC_PDF), "application/pdf");
-const AUTHOR_YEAR = /^(.*?)((?:19|20)\d{2}년(?:\s*[상하])?)$/;
-const VOL = /^(\d+)호$/;
-const toc = [];
-{
-  let vol = null, title = [];
-  for (let p = TOC_FROM; p <= TOC_TO; p++) {
-    const st = JSON.parse(doc.loadPage(p - 1).toStructuredText().asJSON());
-    const lines = [];
-    for (const b of st.blocks ?? []) for (const l of b.lines ?? []) if ((l.text ?? "").trim()) lines.push(l.text.trim());
-    for (let i = 0; i < lines.length; i++) {
-      let l = lines[i].replace(/^지식재산권\s*[^\s\d]?\s*\d+\s*/, "").trim();
-      if (!l || /총목록\(분야별\)|^권호$|^논 ?제$|^저 ?자$|^발간년도$|^면수$/.test(l)) continue;
-      const v = VOL.exec(l);
-      if (v) { vol = Number(v[1]); continue; }
-      const m = AUTHOR_YEAR.exec(l);
-      if (m && title.length) {
-        toc.push({
-          vol, page: Number((lines[i + 1] ?? "").replace(/[^\d]/g, "")),
-          title: title.join(" ").replace(/\s+/g, " ").trim(), author: m[1].trim(), pub: m[2].trim(),
-        });
-        title = []; i += 1; continue;
-      }
-      title.push(l);
-    }
-  }
-}
-console.log(`총목록 지식재산권 ${toc.length}건 (권호 ${Math.min(...toc.map((t) => t.vol))}~${Math.max(...toc.map((t) => t.vol))})`);
-const tocIdx = toc.map((e) => ({ e, key: norm(e.title) }));
-
-function findToc(title, author) {
-  const k = norm(title);
-  let best = null, score = 0;
-  for (const { e, key } of tocIdx) {
-    if (!key || !k) continue;
-    const [short, long] = key.length < k.length ? [key, k] : [k, key];
-    if (!long.startsWith(short) || short.length < 8) continue;
-    // ★짧은 제목("도형상표의 유사")은 저자까지 같아야 인정한다 — 같은 논제가 여러 호에 있다.
-    const sameAuthor = norm(e.author) === norm(author);
-    if (short.length < 12 && !sameAuthor) continue;
-    const s = short.length + (sameAuthor ? 100 : 0);
-    if (s > score) { best = e; score = s; }
-  }
-  return best;
-}
+const toc = parseToc();
+const findToc = makeFinder(toc);
+console.log(`총목록 지식재산권 ${toc.length}건 (권호 ${toc.at(-1)?.vol}~${toc[0]?.vol})`);
 
 // ── xlsx 대조분(compare 산출물) ─────────────────────────────────────────────
 const rows = [];
@@ -111,7 +55,9 @@ for (const r of mine) {
   if (!row) { unmatched.push({ ...r, why: "목록 행 못 찾음" }); continue; }
   const e = findToc(row.title, row.author);
   if (!e) { unmatched.push({ ...r, why: "총목록에 없음" }); continue; }
-  const source = `대법원 판례해설 ${e.vol}호 ${e.page}면 (${e.pub})`;
+  // 총목록에서 발간반기를 못 읽은 항목이 몇 있다 — 그럴 땐 지금 값을 지키고 덮지 않는다.
+  const pub = e.pub || /\(([^)]+)\)\s*$/.exec(r.source ?? "")?.[1] || row.pub || "";
+  const source = `대법원 판례해설 ${e.vol}호 ${e.page}면${pub ? ` (${pub})` : ""}`;
   if (source === r.source) continue;
   plan.push({ reference_id: r.reference_id, caseNo: row.hit.case_number, before: r.source, after: source, xlsxVol: row.vol, tocVol: `${e.vol}호` });
 }
