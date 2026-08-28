@@ -30,14 +30,29 @@ function colName(i: number): string {
   return s;
 }
 
-export function readSheet(zip: AdmZip): string[][] {
+/** 통합 목록처럼 시트가 여럿인 파일도 있다 — 이름을 주면 그 시트를 읽는다. */
+export function sheetNames(zip: AdmZip): Array<{ name: string; entry: string }> {
+  const wb = zip.readAsText("xl/workbook.xml");
+  const rels = zip.readAsText("xl/_rels/workbook.xml.rels");
+  const target = new Map<string, string>();
+  for (const m of rels.matchAll(/Id="([^"]+)"[^>]*Target="([^"]+)"/g))
+    target.set(m[1], `xl/${m[2].replace(/^\//, "")}`);
+  const out: Array<{ name: string; entry: string }> = [];
+  for (const m of wb.matchAll(/<sheet[^>]*name="([^"]*)"[^>]*r:id="([^"]*)"/g)) {
+    const entry = target.get(m[2]);
+    if (entry) out.push({ name: m[1], entry });
+  }
+  return out;
+}
+
+export function readSheet(zip: AdmZip, entry = "xl/worksheets/sheet1.xml"): string[][] {
   const ssXml = zip.readAsText("xl/sharedStrings.xml");
   const shared = [...ssXml.matchAll(/<si>([\s\S]*?)<\/si>/g)].map((m) =>
     unesc(
       [...m[1].matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)].map((x) => x[1]).join(""),
     ),
   );
-  const sheet = zip.readAsText("xl/worksheets/sheet1.xml");
+  const sheet = zip.readAsText(entry);
   const out: string[][] = [];
   for (const r of sheet.matchAll(/<row[^>]*>([\s\S]*?)<\/row>/g)) {
     const row: string[] = [];
@@ -66,7 +81,11 @@ export function readSheet(zip: AdmZip): string[][] {
   return out;
 }
 
-export function writeSheet(zip: AdmZip, rows: string[][]): void {
+export function writeSheet(
+  zip: AdmZip,
+  rows: string[][],
+  entry = "xl/worksheets/sheet1.xml",
+): void {
   const body = rows
     .map((row, r) => {
       const cells = row
