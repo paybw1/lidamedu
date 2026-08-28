@@ -569,6 +569,49 @@ create table public.problem_systematic_links (
 
 ---
 
+### 7.5 case_systematic_links (판례 ↔ 체계도 복수 배치, 2026-08-28 · feat-3-214)
+
+리담 판례집은 **같은 판결을 두 주제에서 다른 각도로** 다룬다(상표 5건: 96후1866 ·
+2002후567 · 2000후3708 · 2017나1148 · 2019허6747). 판례 1건 = 배치 1곳이던 모델에서는
+뒤 주제의 서술이 통째로 안 보였다(2002후567 주제40 = 63회 기출 포함).
+
+★**배치만 늘리면 문제가 안 풀린다** — 본문이 하나면 주제19 에서 눌러도 주제9 내용이
+나온다. 그래서 **주제별 서술을 링크에 담는다**(book_sections, null 이면
+cases.book_sections 로 폴백).
+
+cases.primary_node_id 는 **남긴다** — 27개 파일이 읽고 있어 한 번에 걷어내면 위험하다.
+그 열이 계속 권위이고 대표 링크(is_primary)와 **양방향 트리거**로 맞춘다
+(sync_case_primary_link / sync_link_to_case_primary, pg_trigger_depth() 가드로 상호 재귀
+차단). 최신판례 강제 배치·승인 플로우가 그대로 동작한다.
+
+마이그레이션 scripts/sql/20260828_case_systematic_links.sql ·
+백필 20260828_case_links_backfill.sql(대표 링크) + backfill-tm-book-sections.mjs --links(주제별 본문).
+
+```sql
+create table public.case_systematic_links (
+  link_id       uuid primary key default gen_random_uuid(),
+  case_id       uuid not null references cases(case_id) on delete cascade,
+  node_id       uuid not null references systematic_nodes(node_id) on delete cascade,
+  seq           smallint not null default 1,    -- 교재 수록 순서
+  is_primary    boolean not null default false, -- 대표 배치(판례당 1개, 부분 unique index)
+  book_sections jsonb,      -- 그 주제에서의 교재 서술. null 이면 cases.book_sections
+  source_seq    integer,    -- 그 주제 안에서의 교재 순번
+  note          text,
+  created_by    uuid references profiles(profile_id),
+  created_at    timestamptz not null default now(),
+  unique (case_id, node_id)
+);
+create unique index csl_one_primary on case_systematic_links (case_id) where is_primary;
+-- RLS: select 전체 공개 / write staff (private.is_staff)
+```
+
+현재: 링크 2,003(전 과목 대표 1,998 + 상표 다중 5). 상표 364개 링크 전부 본문 보유.
+
+**★읽기 경로는 아직 primary_node_id 를 본다**(feat-3-214 B단계에서 전환). 지금은 데이터만
+들어가 있고 화면 동작은 그대로다.
+
+---
+
 ## 8. user_problem_attempts (객관식 시도)
 
 ```sql

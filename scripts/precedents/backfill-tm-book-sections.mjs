@@ -12,6 +12,10 @@ import { createClient } from "@supabase/supabase-js";
 import { binIdsOf, hashFromPath, openBook } from "./lib-tm-images.mjs";
 
 const APPLY = process.argv.includes("--apply");
+// --links : feat-3-214 다중 배치. 교재에 수록된 **자리마다** 링크를 만들고
+//   그 주제에서의 서술을 case_systematic_links.book_sections 에 담는다.
+//   (cases.book_sections 는 건드리지 않는다 — 대표 배치 본문 그대로.)
+const LINKS = process.argv.includes("--links");
 // --compare : DB 의 현재 book_sections 와 교재에서 새로 만든 것을 글자로 대조만 한다.
 //   개정판 반영 전에 "지금 DB 가 교재 파싱본에서 얼마나 벗어나 있나"(수기 보정분)를 재는 용도.
 const COMPARE = process.argv.includes("--compare");
@@ -44,6 +48,15 @@ const CROSS_MOVES = [
 // 최초 수록분 기준 (시드와 동일 정책)
 const bookCase = new Map();
 for (const t of data.topics) for (const c of t.cases) if (!bookCase.has(c.caseNumber)) bookCase.set(c.caseNumber, c);
+
+// ★교재는 같은 판결을 두 주제에서 **다른 각도로** 다룬다(상표 5건). 위 map 은 최초 1곳만
+//   담으므로 다중 배치(feat-3-214)에서는 수록된 자리를 전부 들고 있어야 한다.
+const bookOccurrences = new Map(); // case_number → [{ topic, kase }]
+for (const t of data.topics)
+  for (const c of t.cases) {
+    if (!bookOccurrences.has(c.caseNumber)) bookOccurrences.set(c.caseNumber, []);
+    bookOccurrences.get(c.caseNumber).push({ topic: t, kase: c });
+  }
 
 // CROSS_MOVES 적용 — from 판례 인덱스에서 heading 부터 끝까지 잘라 to 판례의 참고로.
 for (const mv of CROSS_MOVES) {
@@ -297,6 +310,77 @@ const { data: rows, error } = await sb
   .contains("subject_laws", ["trademark"])
   .is("deleted_at", null);
 if (error) throw error;
+
+if (LINKS) {
+  // 주제 노드 색인 — 라벨 "주제N 제목" 에서 번호를 떼고 제목으로 찾는다(판본마다 번호가 밀린다).
+  const { data: nodes, error: nErr } = await sb
+    .from("systematic_nodes")
+    .select("node_id, display_label, case_only")
+    .eq("law_code", "trademark");
+  if (nErr) throw nErr;
+  const titleKey = (s) => String(s ?? "").replace(/^주제\s*\d+\s*/, "").replace(/\s+/g, "");
+  const nodeByTitle = new Map();
+  for (const n of nodes ?? []) {
+    if (!n.case_only || !/^주제\s*\d+\s/.test(n.display_label)) continue;
+    if (!nodeByTitle.has(titleKey(n.display_label))) nodeByTitle.set(titleKey(n.display_label), n);
+  }
+
+  // 교재 전체 순번(주제 순 → 주제 내 순) — 링크별 source_seq.
+  const seqOf = new Map();
+  let running = 0;
+  for (const t of data.topics)
+    for (const c of t.cases) seqOf.set(`${c.caseNumber}@${t.no}`, ++running);
+
+  const byNumber = new Map(rows.map((r) => [r.case_number, r]));
+  let made = 0, skipped = 0, noNode = 0;
+  const multi = [];
+  for (const [caseNumber, occs] of bookOccurrences) {
+    const row = byNumber.get(caseNumber);
+    if (!row) continue;
+    if (occs.length > 1) multi.push(`${caseNumber}(${occs.map((o) => `주제${o.topic.no}`).join("+")})`);
+    const urlByHash = new Map();
+    for (const img of row.images ?? []) {
+      const h = hashFromPath(img.storagePath);
+      if (h) urlByHash.set(h, img.url);
+    }
+    for (const { topic, kase } of occs) {
+      const node = nodeByTitle.get(titleKey(topic.title));
+      if (!node) {
+        noNode++;
+        console.log(`  ? 주제 노드 없음: 주제${topic.no} ${topic.title}`);
+        continue;
+      }
+      const imageUrlByBin = new Map();
+      for (const bin of binIdsOf(kase)) {
+        const url = urlByHash.get(hashOf(bin) ?? "");
+        if (url) imageUrlByBin.set(bin, url);
+      }
+      const sections = buildSections(kase, imageUrlByBin);
+      const payload = {
+        case_id: row.case_id,
+        node_id: node.node_id,
+        seq: occs.findIndex((o) => o.topic.no === topic.no) + 1,
+        book_sections: { kind: "tm-book", sections },
+        source_seq: seqOf.get(`${caseNumber}@${topic.no}`) ?? null,
+      };
+      if (!APPLY) {
+        skipped++;
+        continue;
+      }
+      const { error: uErr } = await sb
+        .from("case_systematic_links")
+        .upsert(payload, { onConflict: "case_id,node_id", ignoreDuplicates: false })
+        .select("link_id");
+      if (uErr) console.log(`  ! ${caseNumber} 주제${topic.no}: ${uErr.message}`);
+      else made++;
+    }
+  }
+  console.log(
+    `${APPLY ? "적용" : "dry-run"}: 판례 ${rows.length} / 링크 기록 ${APPLY ? made : skipped} / 주제노드 미매칭 ${noNode}`,
+  );
+  console.log(`다중 배치 판례 ${multi.length}건: ${multi.join(", ")}`);
+  process.exit(0);
+}
 
 // 대조용 정규화 — 이미지 URL·공백·밑줄 마커를 걷어내고 "글자"만 남긴다.
 // URL 은 case_id 를 품고 있어 그대로 비교하면 전건이 달라 보인다.

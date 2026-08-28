@@ -2690,6 +2690,74 @@ export type Database = {
           },
         ]
       }
+      case_systematic_links: {
+        Row: {
+          book_sections: Json | null
+          case_id: string
+          created_at: string
+          created_by: string | null
+          is_primary: boolean
+          link_id: string
+          node_id: string
+          note: string | null
+          seq: number
+          source_seq: number | null
+        }
+        Insert: {
+          book_sections?: Json | null
+          case_id: string
+          created_at?: string
+          created_by?: string | null
+          is_primary?: boolean
+          link_id?: string
+          node_id: string
+          note?: string | null
+          seq?: number
+          source_seq?: number | null
+        }
+        Update: {
+          book_sections?: Json | null
+          case_id?: string
+          created_at?: string
+          created_by?: string | null
+          is_primary?: boolean
+          link_id?: string
+          node_id?: string
+          note?: string | null
+          seq?: number
+          source_seq?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_systematic_links_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "case_systematic_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "case_systematic_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "case_systematic_links_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "systematic_nodes"
+            referencedColumns: ["node_id"]
+          },
+        ]
+      }
       case_training_issues: {
         Row: {
           approved_at: string | null
