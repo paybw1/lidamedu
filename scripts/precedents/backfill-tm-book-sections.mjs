@@ -14,14 +14,29 @@ import bmp from "bmp-js";
 import { createClient } from "@supabase/supabase-js";
 
 const APPLY = process.argv.includes("--apply");
+// --compare : DB 의 현재 book_sections 와 교재에서 새로 만든 것을 글자로 대조만 한다.
+//   개정판 반영 전에 "지금 DB 가 교재 파싱본에서 얼마나 벗어나 있나"(수기 보정분)를 재는 용도.
+const COMPARE = process.argv.includes("--compare");
+const argOf = (name, dflt) => {
+  const i = process.argv.indexOf(name);
+  return i >= 0 ? process.argv[i + 1] : dflt;
+};
 const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
 });
-const data = JSON.parse(readFileSync("source/_converted/tm-precedents.json", "utf8"));
+const data = JSON.parse(
+  readFileSync(argOf("--json", "source/_converted/tm-precedents.json"), "utf8"),
+);
 
 // ── 이미지 업로드 동기화 — 파서가 새로 발견한 인라인 binId(본문 문장 속 표장)가
 //    cases.images 에 없으면 변환·업로드 후 append (seed 는 기존 판례 skip 이라 여기서 보충).
-const zip = new AdmZip("source/상표업로드/판례.hwpx");
+// 이미지 원본 hwpx — 판본이 바뀌면 경로도 바뀐다(파서와 같은 파일을 봐야 binId 가 맞는다).
+const zip = new AdmZip(
+  argOf(
+    "--hwpx",
+    "source/상표법/상표법 판례(제16판)/[완0825+내지] 리담상표법 판례 (제16판).hwpx",
+  ),
+);
 const binByStem = new Map();
 for (const e of zip.getEntries()) {
   const m = /^BinData\/([^.]+)\.(\w+)$/.exec(e.entryName);
@@ -344,12 +359,53 @@ function buildSections(c, imageUrlByBin) {
 
 const { data: rows, error } = await sb
   .from("cases")
-  .select("case_id, case_number, images")
+  .select(`case_id, case_number, images${COMPARE ? ", book_sections" : ""}`)
   .contains("subject_laws", ["trademark"])
   .is("deleted_at", null);
 if (error) throw error;
 
+// 대조용 정규화 — 이미지 URL·공백·밑줄 마커를 걷어내고 "글자"만 남긴다.
+// URL 은 case_id 를 품고 있어 그대로 비교하면 전건이 달라 보인다.
+const textOfSections = (secs) =>
+  (secs ?? [])
+    .map((s) => {
+      const blocks = (s.blocks ?? [])
+        .map((b) =>
+          b.type === "table"
+            ? (b.rows ?? []).flat().map((c) => c.text ?? "").join(" ")
+            : (b.text ?? ""),
+        )
+        .join("\n");
+      return `[${s.key}]${s.title ?? ""}\n${blocks}\n${s.source ?? ""}`;
+    })
+    .join("\n")
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, "[img]")
+    .replace(/<\/?u>/g, "")
+    .replace(/\s+/g, "")
+    .trim();
+
+// 줄 단위 — 사라진/늘어난 문단을 짚어 원인을 가르는 용도.
+const linesOfSections = (secs) =>
+  (secs ?? [])
+    .flatMap((s) =>
+      (s.blocks ?? []).map((b) =>
+        b.type === "table"
+          ? `⟨표⟩${(b.rows ?? []).flat().map((c) => c.text ?? "").join("|")}`
+          : b.text ?? "",
+      ),
+    )
+    .map((t) =>
+      t
+        .replace(/!\[[^\]]*\]\([^)]*\)/g, "[img]")
+        .replace(/<\/?u>/g, "")
+        .replace(/\s+/g, "")
+        .trim(),
+    )
+    .filter(Boolean);
+
 let updated = 0, noBook = 0, failed = 0, imgAdded = 0;
+let cmpSame = 0;
+const cmpDiff = [];
 for (const r of rows) {
   const c = bookCase.get(r.case_number);
   if (!c) {
@@ -366,6 +422,27 @@ for (const r of rows) {
     if (m) imageUrlByBin.set(m[1].toLowerCase(), img.url);
   }
   const sections = buildSections(c, imageUrlByBin);
+  if (COMPARE) {
+    const now = textOfSections(r.book_sections?.sections);
+    const next = textOfSections(sections);
+    if (now === next) cmpSame++;
+    else {
+      // 어느 줄이 빠지고 어느 줄이 늘었는지 — 후처리 단계가 지운 줄인지 수기 보정인지 가른다.
+      const lines = (secs) => linesOfSections(secs);
+      const a = lines(r.book_sections?.sections);
+      const b = lines(sections);
+      const bs = new Set(b);
+      const as = new Set(a);
+      cmpDiff.push({
+        no: r.case_number,
+        db: now.length,
+        book: next.length,
+        onlyDb: a.filter((l) => !bs.has(l)),
+        onlyBook: b.filter((l) => !as.has(l)),
+      });
+    }
+    continue;
+  }
   if (!APPLY) {
     if (r.case_number === "2017도7236") {
       console.log(JSON.stringify({ kind: "tm-book", sections }, null, 1).slice(0, 2500));
@@ -381,6 +458,43 @@ for (const r of rows) {
     console.log("!", r.case_number, uErr.message);
   } else updated++;
 }
-console.log(
-  `${APPLY ? "적용" : "dry-run"}: 대상 ${rows.length} / 갱신 ${updated} / 교재외 ${noBook} / 실패 ${failed} / 인라인 이미지 추가 ${imgAdded}`,
-);
+if (COMPARE) {
+  console.log(
+    `대조: 대상 ${rows.length} / 교재와 동일 ${cmpSame} / 다름 ${cmpDiff.length} / 교재외 ${noBook}`,
+  );
+  // 원인 분류 — 알려진 후처리(인덱스 메타 추출·글상자 참고 부착)로 설명되는지.
+  // extract-tm-index-meta 가 인덱스에서 걷어 case_references·exam_2nd_years 로 옮기는 줄들.
+  const IDX_META =
+    /^(대법원판례해설|지식재산법?\s*중요판례평석|중요판례평석|특허판례연구|\d+회\(\d{4}\)기출)/;
+  // 특허청→지식재산처 치환(2026-07-20 원장 지시)은 교재에는 없고 DB 에만 있다 —
+  // 교재쪽 줄에 같은 치환을 걸어 맞아떨어지면 그 차이는 치환분이다.
+  const kipo = (l) => l.replace(/특허청(?!구)/g, "지식재산처");
+  const buckets = { indexMeta: [], refAttach: [], kipoRename: [], other: [] };
+  for (const d of cmpDiff) {
+    const rest = (arr, other) => {
+      const s = new Set(other.map(kipo));
+      return arr.filter((l) => !s.has(kipo(l)));
+    };
+    const dbLeft = rest(d.onlyDb, d.onlyBook);
+    const bookLeft = rest(d.onlyBook, d.onlyDb);
+    const removedAllMeta =
+      bookLeft.length > 0 && bookLeft.every((l) => IDX_META.test(l)) && dbLeft.length === 0;
+    if (dbLeft.length === 0 && bookLeft.length === 0) buckets.kipoRename.push(d);
+    else if (removedAllMeta) buckets.indexMeta.push(d);
+    else if (dbLeft.length > 0 && bookLeft.length === 0) buckets.refAttach.push({ ...d, onlyDb: dbLeft });
+    else buckets.other.push({ ...d, onlyDb: dbLeft, onlyBook: bookLeft });
+  }
+  console.log(
+    `  분류: 특허청→지식재산처 치환분 ${buckets.kipoRename.length} / 인덱스메타 추출분 ${buckets.indexMeta.length} / DB 에만 있는 문단(수기·부착) ${buckets.refAttach.length} / 그 밖의 상이 ${buckets.other.length}`,
+  );
+  for (const d of buckets.refAttach)
+    console.log(`  [DB에만] ${d.no}  +${d.onlyDb.length}문단  예: ${d.onlyDb[0]?.slice(0, 60)}`);
+  for (const d of buckets.other.sort((a, b) => b.onlyDb.length - a.onlyDb.length))
+    console.log(
+      `  [상이] ${d.no}  DB만 ${d.onlyDb.length} / 교재만 ${d.onlyBook.length}  예DB: ${d.onlyDb[0]?.slice(0, 50) ?? "-"}  예교재: ${d.onlyBook[0]?.slice(0, 50) ?? "-"}`,
+    );
+} else {
+  console.log(
+    `${APPLY ? "적용" : "dry-run"}: 대상 ${rows.length} / 갱신 ${updated} / 교재외 ${noBook} / 실패 ${failed} / 인라인 이미지 추가 ${imgAdded}`,
+  );
+}

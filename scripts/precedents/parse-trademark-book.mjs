@@ -21,12 +21,40 @@ import { XMLParser } from "fast-xml-parser";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "../..");
-const HWPX = resolve(ROOT, "source/상표업로드/판례.hwpx");
-const OUT = resolve(ROOT, "source/_converted/tm-precedents.json");
+
+// ★판본마다 파일 경로·본문 섹션·주제 문단 스타일이 달라진다 —
+//   제16판(0825)은 section0=목차(글상자), section1=본문. 상수로 박으면 개정판마다 깨진다.
+const argOf = (name, dflt) => {
+  const i = process.argv.indexOf(name);
+  return i >= 0 ? process.argv[i + 1] : dflt;
+};
+const HWPX = resolve(
+  ROOT,
+  argOf(
+    "--hwpx",
+    "source/상표법/상표법 판례(제16판)/[완0825+내지] 리담상표법 판례 (제16판).hwpx",
+  ),
+);
+const OUT = resolve(ROOT, argOf("--out", "source/_converted/tm-precedents.json"));
+const PUBLICATION = argOf("--publication", "리담상표법 판례 [제16판]");
 
 // ── XML 로드 ──
 const zip = new AdmZip(HWPX);
-const xml = zip.getEntry("Contents/section0.xml").getData().toString("utf8");
+const sectionNames = zip
+  .getEntries()
+  .map((e) => e.entryName)
+  .filter((n) => /^Contents\/section\d+\.xml$/.test(n))
+  .sort();
+// 본문 섹션 = 판례 헤더("… 선고 …")가 가장 많은 섹션. 목차 섹션은 제목만 나열돼 탈락한다.
+const bodyScore = (name) => {
+  const s = zip.getEntry(name).getData().toString("utf8");
+  return (s.match(/선고/g) ?? []).length;
+};
+const SECTION =
+  argOf("--section", null) ??
+  sectionNames.reduce((a, b) => (bodyScore(b) > bodyScore(a) ? b : a));
+const xml = zip.getEntry(SECTION).getData().toString("utf8");
+const headerXml = zip.getEntry("Contents/header.xml")?.getData().toString("utf8") ?? "";
 const parser = new XMLParser({
   ignoreAttributes: false,
   preserveOrder: true,
@@ -34,6 +62,49 @@ const parser = new XMLParser({
   trimValues: false,
 });
 const tree = parser.parse(xml);
+
+// ── 밑줄(underline) ──
+// ★교재는 중요 문구에 밑줄을 그어 둔다. hwpx 에서 밑줄은 문자 자체가 아니라
+//   hh:charPr(header.xml)의 속성이라, 본문만 읽으면 통째로 사라진다.
+//   그래서 밑줄 charPr id 집합을 먼저 만들고, 본문 hp:run 의 charPrIDRef 로 대조한다.
+const U_RE = /<\/?u>/g;
+const stripU = (s) => String(s ?? "").replace(U_RE, "");
+const ulIds = new Set();
+for (const m of headerXml.matchAll(/<hh:charPr\s+([^>]*?)>([\s\S]*?)<\/hh:charPr>/g)) {
+  const idM = /\bid="(\d+)"/.exec(m[1]);
+  if (!idM) continue;
+  const uM = /<hh:underline\s+type="([^"]+)"/.exec(m[2]);
+  if (uM && uM[1] !== "NONE") ulIds.add(idM[1]);
+}
+
+// 마커 정리 — 빈 마커·연속 마커 병합 + 이미지 마커에 걸친 밑줄 분리.
+// ★case-body.tsx 는 "![" 로 먼저 쪼갠 뒤 조각별로 밑줄을 푼다. 이미지를 감싼 <u>…</u>
+//   는 그 시점에 짝이 어긋나 밑줄이 통째로 사라지거나 문장 끝까지 번진다.
+function normalizeU(s) {
+  if (!s.includes("<u>")) return s;
+  let out = s;
+  for (;;) {
+    const next = out.replace(/<u>(\s*)<\/u>/g, "$1").replace(/<\/u>(\s*)<u>/g, "$1");
+    if (next === out) break;
+    out = next;
+  }
+  out = out.replace(/<u>([\s\S]*?)<\/u>/g, (whole, inner) => {
+    if (!inner.includes("⟦IMG:")) return whole;
+    return inner
+      .split(/(⟦IMG:[^⟧]*⟧)/)
+      .map((part) =>
+        !part ? "" : part.startsWith("⟦IMG:") ? part : `<u>${part}</u>`,
+      )
+      .join("");
+  });
+  // ★줄머리 번호 마커([1]·(2)·가.)를 밑줄이 감싸면 case-body 의 층위 판정이 줄머리를
+  //   못 알아봐 들여쓰기가 사라진다. 마커는 밑줄 밖으로 빼고 그 뒤부터 긋는다.
+  out = out.replace(
+    /(^|\n)<u>(\[\d+\]|\(\d+\)|\d+[.)]|[가-힣][.)]|[①-⑳])(\s*)/g,
+    "$1$2$3<u>",
+  );
+  return out.replace(/<u>(\s*)<\/u>/g, "$1");
+}
 
 const childrenOf = (node) => {
   const keys = Object.keys(node).filter((k) => k !== ":@");
@@ -58,6 +129,10 @@ function textOf(node, { skipTables = true, root = true } = {}) {
   if (ref) return `⟦IMG:${ref}⟧`;
   let s = "";
   for (const c of childrenOf(node)) s += textOf(c, { skipTables, root: false });
+  if (tag === "hp:run" && s) {
+    const cid = attrsOf(node)["@_charPrIDRef"];
+    if (cid != null && ulIds.has(String(cid))) return `<u>${s}</u>`;
+  }
   return s;
 }
 const IMG_MARKER_RE = /⟦IMG:[^⟧]*⟧/g;
@@ -129,12 +204,21 @@ function cellText(node) {
           s += `⟦IMG:${ref}⟧`;
           return;
         }
+        // 밑줄 run — 본문과 같은 규칙(표 셀에도 밑줄이 그어져 있다)
+        if (t === "hp:run") {
+          const cid = attrsOf(m)["@_charPrIDRef"];
+          const on = cid != null && ulIds.has(String(cid));
+          const before = s.length;
+          for (const c of childrenOf(m)) tWalk(c);
+          if (on && s.length > before) s = `${s.slice(0, before)}<u>${s.slice(before)}</u>`;
+          return;
+        }
         for (const c of childrenOf(m)) tWalk(c);
       };
       for (const c of childrenOf(n)) tWalk(c);
       // 문단 내 중첩 p (드묾)
       for (const c of childrenOf(n)) walk(c);
-      const line = s.replace(/\s+/g, " ").trim();
+      const line = normalizeU(s.replace(/\s+/g, " ").trim());
       if (line) parts.push(line);
       return;
     }
@@ -230,7 +314,7 @@ const paras = [];
 for (const p of paragraphs) {
   paras.push({
     style: String(attrsOf(p)["@_paraPrIDRef"] ?? ""),
-    text: textOf(p).replace(/\s+/g, " ").trim(),
+    text: normalizeU(textOf(p).replace(/\s+/g, " ").trim()),
     tables: tablesOf(p).map(parseTable),
     images: imagesOf(p),
   });
@@ -240,7 +324,7 @@ for (const p of paragraphs) {
     const bp = queue.shift();
     paras.push({
       style: String(attrsOf(bp)["@_paraPrIDRef"] ?? ""),
-      text: textOf(bp).replace(/\s+/g, " ").trim(),
+      text: normalizeU(textOf(bp).replace(/\s+/g, " ").trim()),
       tables: tablesOf(bp).map(parseTable),
       images: [],
     });
@@ -248,6 +332,39 @@ for (const p of paragraphs) {
   }
 }
 console.log(`paragraphs: ${paras.length}`);
+
+// 판본이 바뀌면 문단 스타일·라벨 표기가 달라져 파싱이 조용히 빗나간다 —
+// 원문 문단 스트림을 그대로 떨궈 눈으로 대조할 수 있게 한다.
+const DUMP = argOf("--dump", null);
+if (DUMP) {
+  writeFileSync(
+    resolve(ROOT, DUMP),
+    paras
+      .map((p, i) => `${i}\t${p.style}\ttbl=${p.tables.length}\timg=${p.images.length}\t${p.text}`)
+      .join("\n"),
+    "utf8",
+  );
+  console.log(`✓ dump ${DUMP}`);
+}
+
+// 주제 문단 스타일 — 판본마다 paraPrIDRef 가 달라진다(제16판 0825 는 27 이 아니다).
+// "주제N …(부모라벨)" 꼴 문단이 가장 많이 쓰는 스타일을 주제 스타일로 본다.
+const TOPIC_STYLE =
+  argOf("--topic-style", null) ??
+  (() => {
+    const tally = new Map();
+    for (const p of paras) {
+      const t = stripU(p.text).replace(IMG_MARKER_RE, "").trim();
+      if (/^주제\s*\d+\s*\S/.test(t) && /\(.*\)\s*$/.test(t))
+        tally.set(p.style, (tally.get(p.style) ?? 0) + 1);
+    }
+    let best = "27";
+    let bestN = 0;
+    for (const [k, v] of tally) if (v > bestN) [best, bestN] = [k, v];
+    return best;
+  })();
+console.log(`topic style: paraPrIDRef=${TOPIC_STYLE}`);
+
 
 // ── 주제 파싱 ──
 function parseTopic(text) {
@@ -362,6 +479,31 @@ const SECTION_KEYS = {
   Index: "index",
 };
 
+// 닉네임 문단 스타일 — ★제16판(0825)은 판례 별칭을 헤더 괄호에서 빼내
+//   헤더 바로 다음 줄로 옮겼다("(라이트리움) 대법원 …" → "대법원 …" + "라이트리움").
+//   구판에는 이런 줄이 없으므로, 판례 절반 이상이 같은 스타일의 짧은 줄을 달고 있을 때만 인정한다.
+const NICK_STYLE = (() => {
+  const clean = (s) => stripU(s).replace(IMG_MARKER_RE, "").replace(/\s+/g, " ").trim();
+  const tally = new Map();
+  let headers = 0;
+  for (let i = 0; i < paras.length; i++) {
+    if (!isHeaderLine({ text: clean(paras[i].text) })) continue;
+    headers++;
+    for (let j = i + 1; j < paras.length; j++) {
+      const nx = clean(paras[j].text);
+      if (!nx) continue;
+      if (nx.length <= 40 && !/^[[【]/.test(nx))
+        tally.set(paras[j].style, (tally.get(paras[j].style) ?? 0) + 1);
+      break;
+    }
+  }
+  let best = null;
+  let bestN = 0;
+  for (const [k, v] of tally) if (v > bestN) [best, bestN] = [k, v];
+  return bestN >= headers * 0.5 ? best : null;
+})();
+console.log(`nickname style: ${NICK_STYLE ?? "(없음 — 헤더 괄호형)"}`);
+
 // ── 본문 walk ──
 const topics = [];
 let curTopic = null;
@@ -377,11 +519,39 @@ function pushText(kase, section, text) {
 for (let i = 0; i < paras.length; i++) {
   const p = paras[i];
   // 구조 판정(주제/헤더/섹션라벨)은 이미지 마커 제거본으로 — 본문 push 는 마커 보존.
-  const plain = p.text.replace(IMG_MARKER_RE, "").replace(/\s+/g, " ").trim();
+  // 구조 판정(주제/헤더/섹션라벨)은 밑줄 마커도 제거한 텍스트로 — 교재가 헤더에도
+  // 밑줄을 긋는 경우가 있어, 마커가 남으면 정규식이 통째로 빗나간다.
+  const plain = stripU(p.text).replace(IMG_MARKER_RE, "").replace(/\s+/g, " ").trim();
 
   // 주제 마커
-  if (p.style === "27" && /주제\s*\d+/.test(plain)) {
-    const t = parseTopic(plain);
+  // ★제16판(0825)은 주제 제목이 여러 스타일(623·624·625·653)로 흩어져 있어 스타일만으로는
+  //   못 가른다. 대신 두 가지로 판정한다 —
+  //   ① 러닝헤더("주제N 제목 ·")는 가운뎃점으로 끝난다(쪽번호 구분자) → 제외.
+  //   ② 주제 번호는 1부터 빠짐없이 올라간다 → 다음 번호일 때만 새 주제로 연다.
+  //   ②가 없으면 주제 본문에서 되풀이되는 러닝헤더가 주제를 덧연다.
+  // ★구판은 번호와 제목이 붙어 있다("주제1등록요건으로서의…") — 번호 뒤 구분자를 요구하면 안 된다.
+  const topicM = /^주제\s*(\d+)/.exec(plain);
+  if (
+    topicM &&
+    !/·\s*$/.test(plain) &&
+    Number(topicM[1]) === topics.length + 1 &&
+    (p.style === TOPIC_STYLE || !/^\d+\)/.test(plain))
+  ) {
+    // ★제16판은 주제 제목과 부모 체계도 라벨이 두 문단으로 갈라졌다.
+    //   "주제1 등록요건으로서의 사용 또는 사용의사" / "(상표등록을 받을 수 있는 자 및 없는 자(法 3))"
+    let headText = plain;
+    if (!/\)\s*$/.test(headText)) {
+      for (let j = i + 1; j < paras.length; j++) {
+        const nx = stripU(paras[j].text).replace(IMG_MARKER_RE, "").replace(/\s+/g, " ").trim();
+        if (!nx) continue;
+        if (paras[j].style === p.style && /^\(.*\)$/.test(nx)) {
+          headText = `${headText} ${nx}`;
+          i = j; // 소비 — 부모 라벨 문단이 본문으로 새지 않게
+        }
+        break;
+      }
+    }
+    const t = parseTopic(headText);
     if (t) {
       curTopic = { ...t, cases: [] };
       topics.push(curTopic);
@@ -425,7 +595,8 @@ for (let i = 0; i < paras.length; i++) {
   // ★판정은 이미지 마커 제거본으로 — 라벨(로고 이미지) 셀이 마커 때문에 길어 보이면 안 됨.
   if (p.tables.length > 0) {
     for (const { rows, cellRows } of p.tables) {
-      const cleanCell = (c) => c.replace(IMG_MARKER_RE, "").replace(/⟦TBL⟧/g, "").trim();
+      const cleanCell = (c) =>
+        stripU(c).replace(IMG_MARKER_RE, "").replace(/⟦TBL⟧/g, "").trim();
       const flat = rows.flat().map(cleanCell);
       // 평석 박스: ≤2행, 라벨(이미지/특수글자 → 빈 값 또는 ≤6자) 셀들 + 긴 본문 셀
       const firstRowShort = (rows[0] ?? []).every((c) => cleanCell(c).length <= 6);
@@ -459,15 +630,52 @@ for (let i = 0; i < paras.length; i++) {
     if (p.text) pushText(curCase, curSection, p.text);
     continue;
   }
-  if (p.images.length > 0) {
+  // 닉네임 줄 — 헤더 바로 뒤, 쟁점상표 표 앞. 본문으로 새면 preamble 에 이름만 덩그러니 남는다.
+  if (
+    NICK_STYLE &&
+    p.style === NICK_STYLE &&
+    curSection === "preamble" &&
+    !curCase.nickname &&
+    plain &&
+    plain.length <= 40
+  ) {
+    // ★"[관련판례 N]" 은 별칭이 아니라 **앞 판례의 참고**다. 신판이 이 블록을 판례 헤더처럼
+    //   조판해 놓아(구판은 "[관련판례 1] 대법원 … 판결" 한 줄) 그대로 두면 없는 판례가 하나 생긴다.
+    //   구판 표기로 되돌려 앞 판례의 인덱스에 넣으면 기존 백필이 '관련판례' 섹션으로 갈라낸다.
+    if (/^\[관련\s*판례/.test(plain)) {
+      const demoted = curTopic.cases.pop();
+      const prev = curTopic.cases[curTopic.cases.length - 1] ?? null;
+      if (!prev) {
+        curTopic.cases.push(demoted); // 주제 첫 항목이면 되돌릴 앞 판례가 없다
+        curCase.nickname = plain;
+        continue;
+      }
+      for (const img of demoted.images) if (!prev.images.includes(img)) prev.images.push(img);
+      prev.infoTables.push(...demoted.infoTables);
+      curCase = prev;
+      curSection = "index";
+      pushText(prev, "index", `${plain} ${demoted.headerText}`);
+      for (const arr of Object.values(demoted.sections))
+        for (const s of arr) pushText(prev, "index", s);
+      continue;
+    }
+    curCase.nickname = plain;
+    continue;
+  }
+
+  // 섹션 라벨 — ★제16판(0825)부터 표기가 [사실관계] → 【사실관계】 로 바뀌었고,
+  //   라벨 앞에 장식용 불릿 그림이 한 장 붙는다. 라벨 판정을 이미지 수집보다
+  //   먼저 해야 그 불릿이 판례 이미지 목록에 섞이지 않는다.
+  const secM = /^[[【]([^\]】]{1,20})[\]】]$/.exec(plain);
+  const isSectionLabel = !!(secM && SECTION_KEYS[secM[1]]);
+
+  if (p.images.length > 0 && !isSectionLabel) {
     for (const img of p.images) if (!curCase.images.includes(img)) curCase.images.push(img);
   }
 
   if (!p.text) continue;
 
-  // 섹션 라벨
-  const secM = /^\[([^\]]{1,20})\]$/.exec(plain);
-  if (secM && SECTION_KEYS[secM[1]]) {
+  if (isSectionLabel) {
     curSection = SECTION_KEYS[secM[1]];
     // 원래 명칭 보존(첫 등장) — 백필이 lower/holding 을 "전심/본심의 판단" 으로
     // 정규화하므로, 워크북 원문 헤딩(특허법원의 판단·대법원의 판단·심판원의 판단 등)을 별도 기록.
@@ -487,10 +695,18 @@ for (let i = 0; i < paras.length; i++) {
 }
 
 // ── 후처리: 중복 문단 제거(개요선 중복 수록분), md 조립 ──
+// ★개요선/본문 중복 수록분은 **밑줄을 뺀 글자**로 같은지 본다 —
+//   두 번 실린 같은 문단이 한쪽만 밑줄이 그어진 경우가 있어, 마커째 비교하면 둘 다 남는다.
+//   남길 쪽은 밑줄이 있는 사본(교재가 강조한 정보를 버리지 않는다).
 function dedupeAdjacent(arr) {
   const out = [];
   for (const s of arr) {
-    if (out.length && out[out.length - 1] === s) continue;
+    const prev = out.length ? out[out.length - 1] : null;
+    if (prev != null && stripU(prev) === stripU(s)) {
+      if ((s.match(/<u>/g) ?? []).length > (prev.match(/<u>/g) ?? []).length)
+        out[out.length - 1] = s;
+      continue;
+    }
     out.push(s);
   }
   return out;
@@ -503,7 +719,9 @@ for (const t of topics) {
     for (const k of Object.keys(c.sections)) c.sections[k] = dedupeAdjacent(c.sections[k]);
     // preamble 에 헤더 재등장 등 잡문 제거
     if (c.sections.preamble) {
-      c.sections.preamble = c.sections.preamble.filter((s) => s !== c.headerText);
+      c.sections.preamble = c.sections.preamble.filter(
+        (s) => stripU(s).replace(IMG_MARKER_RE, "").trim() !== c.headerText,
+      );
       if (c.sections.preamble.length === 0) delete c.sections.preamble;
     }
   }
@@ -518,13 +736,37 @@ const stats = {
   withHolding: topics.flatMap((t) => t.cases).filter((c) => c.sections.holding).length,
   withComment: topics.flatMap((t) => t.cases).filter((c) => c.sections.comment).length,
   withImages: topics.flatMap((t) => t.cases).filter((c) => c.images.length > 0).length,
+  underlineCharPrIds: ulIds.size,
+  casesWithUnderline: topics
+    .flatMap((t) => t.cases)
+    .filter((c) =>
+      Object.values(c.sections).some((arr) => arr.some((s) => s.includes("<u>"))),
+    ).length,
+  underlineSpans: topics
+    .flatMap((t) => t.cases)
+    .reduce(
+      (n, c) =>
+        n +
+        Object.values(c.sections).reduce(
+          (m, arr) => m + arr.reduce((k, s) => k + (s.match(/<u>/g) ?? []).length, 0),
+          0,
+        ),
+      0,
+    ),
   warnings: warnings.length,
 };
 
 writeFileSync(
   OUT,
   JSON.stringify(
-    { publication: "리담상표법 판례 [제16판]", source: "source/상표업로드/판례.hwpx", stats, warnings, topics },
+    {
+      publication: PUBLICATION,
+      source: HWPX.slice(HWPX.indexOf("source")),
+      section: SECTION,
+      stats,
+      warnings,
+      topics,
+    },
     null,
     2,
   ),
