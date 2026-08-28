@@ -607,6 +607,23 @@ export async function getCasePlacementMaps(
 
   // 과목 case 들의 set + article_case_links 를 case 별로 grouping (과목 한정).
   const caseIdsInSubject = new Set(caseRows.map((c) => c.case_id));
+
+  // feat-3-214 — 판례 다중 배치 링크. 있으면 이게 체계도 배치의 권위다.
+  const cslRows = await fetchAllIn<{ case_id: string; node_id: string }>(
+    [...caseIdsInSubject],
+    (slice) =>
+      client
+        .from("case_systematic_links")
+        .select("case_id, node_id")
+        .in("case_id", slice)
+        .order("case_id"),
+  );
+  const nodesByCase = new Map<string, Set<string>>();
+  for (const r of cslRows) {
+    const s = nodesByCase.get(r.case_id) ?? new Set<string>();
+    s.add(r.node_id);
+    nodesByCase.set(r.case_id, s);
+  }
   const aclByCase = new Map<string, Set<string>>();
   for (const r of aclRows) {
     if (!caseIdsInSubject.has(r.case_id)) continue;
@@ -634,8 +651,15 @@ export async function getCasePlacementMaps(
     s.add(caseId);
   }
 
-  // 1) 체계도 axis — 단일 placement.
+  // 1) 체계도 axis — feat-3-214 다중 배치.
+  //    ★교재가 같은 판결을 두 주제에서 다른 각도로 다루면 양쪽에 센다(그 주제에서 읽을
+  //      내용이 실제로 따로 있다). 과목 총계는 상위에서 distinct 로 집계하므로 부풀지 않는다.
   for (const c of caseRows) {
+    const linked = nodesByCase.get(c.case_id);
+    if (linked && linked.size > 0) {
+      for (const n of linked) addNode(n, c.case_id);
+      continue;
+    }
     if (c.primary_node_id) {
       addNode(c.primary_node_id, c.case_id);
       continue;
@@ -835,9 +859,38 @@ export async function getCaseIdsByPlacement(
   const out = new Set<string>();
   const CHUNK = 200;
   const PAGE = 1000;
+  // ★id 를 통째로 .in() 에 넣으면 URL 이 길어져 PostgREST 가 400 을 던진다.
+  const chunked = (arr: readonly string[], size: number): string[][] => {
+    const res: string[][] = [];
+    for (let i = 0; i < arr.length; i += size) res.push(arr.slice(i, i + size));
+    return res;
+  };
 
-  // step 1) primary_node_id 직접 매핑
+  // step 1) 체계도 배치 — feat-3-214 다중 배치 링크 union.
+  //   ★링크가 권위다. 링크 없는 판례(적재 전·타 과목)만 primary_node_id 로 폴백.
   if (nodeIds.length > 0) {
+    const linkedCaseIds = new Set<string>();
+    for (let i = 0; i < nodeIds.length; i += CHUNK) {
+      const slice = nodeIds.slice(i, i + CHUNK);
+      const { data, error } = await client
+        .from("case_systematic_links")
+        .select("case_id")
+        .in("node_id", slice);
+      if (error) throw error;
+      for (const r of data ?? []) linkedCaseIds.add(r.case_id);
+    }
+    // 링크가 가리키는 판례 중 살아 있고 목록 노출인 것만.
+    for (const chunk of chunked([...linkedCaseIds], CHUNK)) {
+      const { data, error } = await client
+        .from("cases")
+        .select("case_id")
+        .in("case_id", chunk)
+        .is("deleted_at", null)
+        .eq("list_visible", true);
+      if (error) throw error;
+      for (const r of data ?? []) out.add(r.case_id);
+    }
+    // 폴백 — 링크가 아직 없는 판례.
     for (let i = 0; i < nodeIds.length; i += CHUNK) {
       const slice = nodeIds.slice(i, i + CHUNK);
       const { data, error } = await client
