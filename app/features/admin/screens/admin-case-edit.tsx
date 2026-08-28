@@ -57,6 +57,7 @@ import {
 } from "~/features/cases/labels";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { BookSectionsEditor } from "~/features/admin/components/book-sections-editor";
+import { CasePlacementsCard } from "~/features/admin/components/case-placements-card";
 import { CaseCitationsCard } from "~/features/admin/components/case-citations-card";
 import { AdminSelect, Field } from "~/features/admin/components/admin-ui";
 import {
@@ -163,10 +164,22 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   )
     ? (firstSubjectRaw as LawSubjectSlug)
     : ("patent" as LawSubjectSlug);
-  const [systematicNodes, citations] = await Promise.all([
+  const [systematicNodes, citations, placementRows] = await Promise.all([
     getSystematicSkeleton(client, firstSubject),
     getCaseCitationsInProblems(client, row.case_id, row.case_number),
+    // feat-3-214 — 이 판례가 교재에서 다뤄지는 자리들 + 자리별 본문.
+    client
+      .from("case_systematic_links")
+      .select("node_id, is_primary, seq, book_sections")
+      .eq("case_id", row.case_id)
+      .order("seq"),
   ]);
+  const placements = (placementRows.data ?? []).map((l) => ({
+    nodeId: l.node_id,
+    isPrimary: l.is_primary,
+    seq: l.seq,
+    sections: parseBookSections(l.book_sections),
+  }));
   return {
     kase: row,
     // 폴백 기본값도 해당 판례의 과목 목록으로 — patent 고정 탈피.
@@ -176,6 +189,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     systematicNodes,
     siblings,
     citations,
+    placements,
   };
 }
 
@@ -197,6 +211,7 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
     systematicNodes,
     siblings,
     citations,
+    placements,
   } = loaderData;
   // 최초 진입 시의 복귀 경로 고정 — 이후 revalidate 는 referer 가 편집 화면 자신이라
   // returnTo 가 기본값으로 강등될 수 있어 첫 값을 유지한다.
@@ -736,6 +751,17 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
             setPublishRevisionIds(null);
             navigate(returnTo);
           }}
+        />
+      ) : null}
+
+      {/* feat-3-214 — 교재 수록 자리. ★메인 폼 **밖**에 둔다: BookSectionsEditor 가
+          hidden name="bookSections" 를 렌더하므로 폼 안에 있으면 본 저장이 엉뚱한
+          본문으로 덮인다. */}
+      {!isNew && structureMode === "book" ? (
+        <CasePlacementsCard
+          caseId={kase.case_id}
+          placements={placements}
+          systematicNodes={systematicNodes}
         />
       ) : null}
 

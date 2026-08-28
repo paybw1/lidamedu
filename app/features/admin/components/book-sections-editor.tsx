@@ -50,15 +50,27 @@ const emptyCell = (): BookSectionCell => ({ text: "", images: [] });
 
 export function BookSectionsEditor({
   defaultSections,
+  onChange,
 }: {
   defaultSections: BookSection[];
+  /**
+   * feat-3-214 — 배치별 본문 편집처럼 **폼 밖**에서 쓸 때. hidden input 은 폼 안에서만
+   * 제출되므로, 값이 필요하면 이걸로 받아 fetcher 로 보낸다.
+   */
+  onChange?: (sections: BookSection[]) => void;
 }) {
   const [sections, setSections] = useState<BookSection[]>(defaultSections);
   const [presetValue, setPresetValue] = useState(
     `${SECTION_CHOICES[0].key}|${SECTION_CHOICES[0].labels[0]}`,
   );
   const set = (updater: (prev: BookSection[]) => BookSection[]) =>
-    flushSync(() => setSections(updater));
+    flushSync(() =>
+      setSections((prev) => {
+        const next = updater(prev);
+        onChange?.(next);
+        return next;
+      }),
+    );
   const patchSection = (si: number, p: Partial<BookSection>) =>
     set((prev) => prev.map((s, i) => (i === si ? { ...s, ...p } : s)));
   const patchBlock = (si: number, bi: number, block: BookSectionBlock) =>

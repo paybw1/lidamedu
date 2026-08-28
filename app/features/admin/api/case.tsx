@@ -439,6 +439,120 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ ok: true, pending: pendingMode });
   }
 
+  // ── feat-3-214 판례 다중 배치 ─────────────────────────────────────────
+  // 교재가 같은 판결을 두 주제에서 다른 각도로 다루는 경우. 대표 배치는
+  // cases.primary_node_id 와 트리거로 맞물려 있어 여기서 직접 건드리지 않는다.
+  if (
+    intent === "add_case_placement" ||
+    intent === "remove_case_placement" ||
+    intent === "set_case_placement_primary" ||
+    intent === "save_case_placement_body"
+  ) {
+    const caseId = String(fd.get("caseId") ?? "");
+    const nodeId = String(fd.get("nodeId") ?? "");
+    if (
+      !z.string().uuid().safeParse(caseId).success ||
+      !z.string().uuid().safeParse(nodeId).success
+    ) {
+      return data({ error: "Invalid caseId/nodeId" }, { status: 400 });
+    }
+
+    if (intent === "add_case_placement") {
+      const { data: sib } = await client
+        .from("case_systematic_links")
+        .select("seq")
+        .eq("case_id", caseId)
+        .order("seq", { ascending: false })
+        .limit(1);
+      const { error } = await client.from("case_systematic_links").insert({
+        case_id: caseId,
+        node_id: nodeId,
+        seq: (sib?.[0]?.seq ?? 0) + 1,
+        is_primary: false,
+        created_by: user.id,
+      });
+      if (error) return data({ error: error.message }, { status: 400 });
+    }
+
+    if (intent === "remove_case_placement") {
+      const { data: link } = await client
+        .from("case_systematic_links")
+        .select("is_primary")
+        .eq("case_id", caseId)
+        .eq("node_id", nodeId)
+        .maybeSingle();
+      if (!link) return data({ error: "배치를 찾을 수 없음" }, { status: 404 });
+      // ★대표 배치는 지우지 않는다 — cases.primary_node_id 가 가리키는 자리다.
+      //   옮기려면 다른 배치를 대표로 지정한 뒤 지운다.
+      if (link.is_primary) {
+        return data(
+          { error: "대표 배치는 삭제할 수 없습니다. 다른 배치를 대표로 지정한 뒤 삭제하세요." },
+          { status: 400 },
+        );
+      }
+      const { error } = await client
+        .from("case_systematic_links")
+        .delete()
+        .eq("case_id", caseId)
+        .eq("node_id", nodeId);
+      if (error) return data({ error: error.message }, { status: 400 });
+    }
+
+    if (intent === "set_case_placement_primary") {
+      // 트리거(sync_link_to_case_primary)가 cases.primary_node_id 를 따라오게 한다.
+      const { error: offErr } = await client
+        .from("case_systematic_links")
+        .update({ is_primary: false })
+        .eq("case_id", caseId)
+        .eq("is_primary", true);
+      if (offErr) return data({ error: offErr.message }, { status: 400 });
+      const { error } = await client
+        .from("case_systematic_links")
+        .update({ is_primary: true })
+        .eq("case_id", caseId)
+        .eq("node_id", nodeId);
+      if (error) return data({ error: error.message }, { status: 400 });
+    }
+
+    if (intent === "save_case_placement_body") {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(String(fd.get("bookSections") ?? "[]"));
+      } catch {
+        return data({ error: "교재 구조 본문 형식이 올바르지 않습니다." }, { status: 400 });
+      }
+      const secParsed = bookSectionsSchema.safeParse(parsed);
+      if (!secParsed.success) {
+        return data(
+          { error: `교재 구조 본문: ${secParsed.error.issues[0]?.message ?? "Invalid"}` },
+          { status: 400 },
+        );
+      }
+      const cleaned = secParsed.data.filter((s2) => s2.blocks.length > 0);
+      const { error } = await client
+        .from("case_systematic_links")
+        .update({
+          book_sections:
+            cleaned.length > 0
+              ? (JSON.parse(JSON.stringify({ kind: "tm-book", sections: cleaned })) as Json)
+              : null,
+        })
+        .eq("case_id", caseId)
+        .eq("node_id", nodeId);
+      if (error) return data({ error: error.message }, { status: 400 });
+    }
+
+    void logAuditEvent({
+      actorId: user.id,
+      actorRole: role,
+      action: `case.${intent}`,
+      entityType: "case",
+      entityId: caseId,
+      metadata: { nodeId },
+    });
+    return data({ ok: true });
+  }
+
   // ── 최신판례 승인 — 예약(pending) 노드 또는 메인 조문 위치로 실제 이동 ──
   if (intent === "approve_latest_case") {
     const caseId = String(fd.get("caseId") ?? "");
@@ -1051,6 +1165,17 @@ export async function action({ request }: Route.ActionArgs) {
     .update(payload)
     .eq("case_id", caseId);
   if (error) return data({ error: error.message }, { status: 400 });
+  // feat-3-214 — 대표 배치의 본문은 cases.book_sections 와 같은 것이다.
+  //   뷰어가 링크 본문을 우선하므로, 여기서 맞춰 두지 않으면 대표 자리에서만
+  //   옛 본문이 보인다(다른 배치들 본문은 각자 편집한다).
+  if ("book_sections" in bookSectionsPatch) {
+    const { error: linkErr } = await client
+      .from("case_systematic_links")
+      .update({ book_sections: bookSectionsPatch.book_sections })
+      .eq("case_id", caseId)
+      .eq("is_primary", true);
+    if (linkErr) return data({ error: linkErr.message }, { status: 400 });
+  }
   void logAuditEvent({
     actorId: user.id,
     actorRole: role,
