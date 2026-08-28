@@ -10,6 +10,30 @@ export function stripSystematicNumber(label: string): string {
   return label.replace(/^(?:\[\d+\]|\d+)\s+/, "").trim();
 }
 
+// 판례집 주제 노드 — display_label 이 "주제3 서비스에 대한 상표의 사용" 꼴이다.
+// 체계도 번호(ord)와는 다른 축(교재 목차 순번)이라 배지도 따로 쓴다.
+// "주제3 …" → { topicNo: 3, title: "서비스에 대한 상표의 사용" }, 아니면 topicNo=null.
+export function splitTopicLabel(label: string): {
+  topicNo: number | null;
+  title: string;
+} {
+  const m = /^주제\s*(\d+)\s*(.*)$/.exec(label.trim());
+  if (!m) return { topicNo: null, title: label };
+  return { topicNo: Number(m[1]), title: m[2].trim() || label };
+}
+
+// 주제 배지 — 체계도 번호 배지(숫자만)와 헷갈리지 않게 "주제"를 달아 둔다.
+// 교재 순번이라는 다른 축임을 한눈에 알리는 게 목적이라 글자를 살린다.
+export function TopicBadge({ no }: { no: number }) {
+  return (
+    // min-w — 한 자리(주제 1)와 두 자리(주제 47)가 섞여도 제목 시작선이 맞게.
+    <span className="border-primary/25 bg-primary/5 text-link inline-flex h-[18px] min-w-[44px] flex-none items-center justify-center gap-0.5 rounded-full border px-1.5 text-[10px] leading-none font-bold">
+      <span className="font-medium opacity-70">주제</span>
+      <span className="tabular-nums">{no}</span>
+    </span>
+  );
+}
+
 // 깊이별 번호 배지 — depth 0 대분류(솔리드) · depth 1 중분류(옅음) · depth ≥ 2 소분류(점).
 export function SystematicNumberBadge({
   depth,

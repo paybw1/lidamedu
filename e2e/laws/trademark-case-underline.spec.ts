@@ -116,4 +116,28 @@ test.describe.serial("상표 판례 뷰어 — 교재 밑줄", () => {
     const w = await img.evaluate((el) => (el as HTMLImageElement).naturalWidth);
     expect(w).toBeGreaterThan(0);
   });
+
+  // 교재 표가 화면 밖으로 나가지 않는지 — 신고 사례(2010후3080 평석 표)를 회귀로 고정.
+  // ★첫 열을 "라벨"로 보고 nowrap 을 걸면 첫 칸이 문장인 표가 통째로 넘친다(실측 374px).
+  const CASES = [
+    "cfcdd087-901e-4de5-bd58-c4e8c11baa95", // 2010후3080 평석 표(첫 칸 73자)
+    "b317f55d-ab2b-4f58-b95a-5a38173d1c75", // 2006후4086 쟁점상표 표
+  ];
+  test("표가 담을 칸을 넘지 않는다", async ({ page }) => {
+    await loginUser(page, TEST_EMAIL, TEST_PASSWORD);
+    for (const id of CASES) {
+      await page.goto(`/subjects/trademark/cases/${id}`);
+      await dismissPopupNotice(page);
+      await expect(page.locator(".case-prose").first()).toBeVisible({ timeout: 45000 });
+      const over = await page.evaluate(() => {
+        const out: number[] = [];
+        document.querySelectorAll<HTMLElement>(".overflow-x-auto").forEach((el) => {
+          if (el.scrollWidth > el.clientWidth + 1) out.push(el.scrollWidth - el.clientWidth);
+        });
+        return out;
+      });
+      expect(over, `${id} 표 넘침(px)`).toEqual([]);
+    }
+  });
+
 });

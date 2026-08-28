@@ -727,10 +727,22 @@ function BookTable({ rows }: { rows: BookSectionCell[][] }) {
   // 아니므로 열 폭을 자연 배분 — 좁힌 첫 칸 탓에 두 칸 간격이 어긋나는 문제 방지.
   const hasCellImg = (c: BookSectionCell) =>
     c.images.length > 0 || splitCellImages(c.text).imgs.length > 0;
+  // ★첫 열이 **짧을 때만** 라벨로 본다. 라벨 열에는 nowrap 이 걸리는데, 첫 칸이 문장이면
+  //   그 문장이 한 줄로 펴지면서 표가 화면 밖으로 나간다(2010후3080 평석 표: 첫 칸 73자
+  //   → 852px, 담을 칸은 478px. 실측 2026-08-28). 실측상 진짜 라벨은 10자 안쪽이고,
+  //   15자 넘는 첫 칸은 전부 값·본문이었다.
+  const LABEL_MAX_CHARS = 12;
+  const labelTextLen = (c: BookSectionCell) =>
+    splitCellImages(c.text).textOnly.replace(/<\/?u>/g, "").trim().length;
   const hasLabelCol =
     !isGubun &&
     body.length > 0 &&
-    body.every((r) => r[0] !== undefined && !hasCellImg(r[0]));
+    body.every(
+      (r) =>
+        r[0] !== undefined &&
+        !hasCellImg(r[0]) &&
+        (r.length === 1 || labelTextLen(r[0]) <= LABEL_MAX_CHARS),
+    );
   return (
     <div className="overflow-x-auto">
       <table
@@ -761,7 +773,9 @@ function BookTable({ rows }: { rows: BookSectionCell[][] }) {
                   i === 0 && hasLabelCol && "w-px",
                 )}
               >
-                <BookCell cell={c} nowrap />
+                {/* 헤더도 짧을 때만 한 줄 고정 — 긴 열 이름("저작권과의 관계 정리 TABLE")을
+                    펴면 표가 담을 칸을 넘는다. */}
+                <BookCell cell={c} nowrap={labelTextLen(c) <= LABEL_MAX_CHARS} />
               </th>
             ))}
           </tr>

@@ -28,8 +28,10 @@ import type {
 import type { CaseTreeFilter } from "../lib/loader.server";
 import type { SortAxis } from "./sort-axis";
 import {
+  splitTopicLabel,
   stripSystematicNumber,
   SystematicNumberBadge,
+  TopicBadge,
 } from "./systematic-node-label";
 
 interface ArticleTreeNode extends ArticleNode {
@@ -589,6 +591,7 @@ export function CaseTopicList({
     <ul className="space-y-0.5 px-1 text-sm">
       {topicNodes.map((n) => {
         const isActive = activeNodeId === n.nodeId;
+        const { topicNo, title } = splitTopicLabel(n.displayLabel);
         const href = buildTreeHref(linkBase, searchParams, {
           kind: "node",
           nodeId: n.nodeId,
@@ -606,7 +609,8 @@ export function CaseTopicList({
                   : "text-foreground/80 hover:bg-accent",
               )}
             >
-              <span className="flex-1 truncate">{n.displayLabel}</span>
+              {topicNo != null ? <TopicBadge no={topicNo} /> : null}
+              <span className="flex-1 truncate">{title}</span>
               <CountChip value={byNodeId[n.nodeId] ?? 0} isActive={isActive} />
             </Link>
           </li>
@@ -817,6 +821,8 @@ function SystematicItem({
     kind: "node",
     nodeId: node.nodeId,
   });
+  const { topicNo, title: topicTitle } = splitTopicLabel(node.displayLabel);
+  const title = topicNo != null ? topicTitle : stripSystematicNumber(node.displayLabel);
 
   return (
     <li data-cases-tree-active={isActive ? "true" : undefined}>
@@ -828,10 +834,14 @@ function SystematicItem({
         aria-current={isActive ? "page" : undefined}
       >
         {expandToggle}
-        <SystematicNumberBadge depth={depth} ord={node.ord} />
-        <span className="flex-1 truncate">
-          {stripSystematicNumber(node.displayLabel)}
-        </span>
+        {/* 주제 노드(교재 목차)면 주제 배지로, 아니면 체계도 깊이 배지로.
+            둘을 같이 달면 점 + 알약이 겹쳐 줄이 시끄러워진다. */}
+        {topicNo != null ? (
+          <TopicBadge no={topicNo} />
+        ) : (
+          <SystematicNumberBadge depth={depth} ord={node.ord} />
+        )}
+        <span className="flex-1 truncate">{title}</span>
         <CountChip value={count} isActive={isActive} />
       </Link>
       {hasChildren && open ? (
