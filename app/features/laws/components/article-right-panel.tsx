@@ -11,7 +11,7 @@ import {
   StarIcon,
   StickyNoteIcon,
 } from "lucide-react";
-import { type ComponentType, useEffect, useState } from "react";
+import { type ComponentType, useEffect, useRef, useState } from "react";
 
 import {
   Tabs,
@@ -46,6 +46,10 @@ import {
   OPEN_PANEL_TAB_EVENT,
   type OpenPanelTabEventDetail,
 } from "~/features/laws/lib/panel-tab-event";
+import {
+  type PanelTabKey,
+  pickInitialPanelTab,
+} from "~/features/laws/lib/panel-tab-order";
 import type { RevisionHistoryEntry } from "~/features/laws/queries.server";
 import { LectureResourcesPanel } from "~/features/lectures/components/lecture-resources-panel";
 import type {
@@ -64,17 +68,8 @@ import type { QnaTargetType, QnaThreadSummary } from "~/features/qna/labels";
 import type { RelatedCase } from "~/features/relations/labels";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
-type TabKey =
-  | "bookmark"
-  | "memo"
-  | "highlight"
-  | "cases"
-  | "related-problems"
-  | "qna"
-  | "revisions"
-  | "ox"
-  | "comment"
-  | "materials";
+// 탭 키·순서는 lib 한 곳에서만 정한다(레일 버튼 순서와 처음 열리는 탭이 같아야 하므로).
+type TabKey = PanelTabKey;
 
 interface PanelTabMeta {
   label: string;
@@ -256,7 +251,30 @@ export function ArticleRightPanel({
     ? (importance ?? 0) > 0
     : bookmark != null;
 
-  const [activeTab, setActiveTab] = useState<TabKey>("bookmark");
+  // 탭별 보유 건수 — undefined 는 그 탭이 아예 없는 경우(대상 종류에 따라 다름).
+  const tabCounts: Partial<Record<TabKey, number>> = {
+    memo: memos.length,
+    comment: showCommentLive ? (comments?.length ?? 0) : undefined,
+    ox: showOxLive ? (oxQuestions?.length ?? 0) : undefined,
+    "related-problems": showRelatedProblems ? relatedProblems.length : undefined,
+    cases: showCases ? relatedCases.length : undefined,
+    qna: qnaTargetType ? qnaThreads.length : undefined,
+    materials: showMaterials ? (lectureResources?.length ?? 0) : undefined,
+    revisions: showRevisions ? revisions.length : undefined,
+    highlight: highlights.length,
+    bookmark: bookmarkHasContent ? 1 : 0,
+  };
+  const initialTab: TabKey = pickInitialPanelTab(tabCounts);
+
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
+  // 다른 조문·판례로 넘어가면 그 대상 기준으로 다시 고른다(=그 화면의 "처음").
+  // 같은 대상 안에서는 사용자가 고른 탭을 유지한다.
+  const lastTargetId = useRef(target.id);
+  useEffect(() => {
+    if (lastTargetId.current === target.id) return;
+    lastTargetId.current = target.id;
+    setActiveTab(initialTab);
+  }, [target.id, initialTab]);
   // 본문 selection → "메모" 버튼 클릭 시 자동으로 memo 탭 활성화.
   useEffect(() => {
     const handler = (e: Event) => {
@@ -360,31 +378,14 @@ export function ArticleRightPanel({
             "bg-muted/40 border-r",
           )}
         >
-          <RailButton
-            value="bookmark"
-            count={bookmarkHasContent ? 1 : 0}
-            meta={bookmarkMeta}
-          />
+          {/* ★버튼 순서 = PANEL_TAB_ORDER. 보이는 순서와 열리는 순서가 같아야 한다. */}
           <RailButton value="memo" count={memos.length} />
-          <RailButton value="highlight" count={highlights.length} />
-          {showCases ? (
-            <RailButton value="cases" count={relatedCases.length} />
-          ) : null}
-          {showRelatedProblems ? (
+          {showCommentLive ? (
             <RailButton
-              value="related-problems"
-              count={relatedProblems.length}
+              value="comment"
+              count={comments?.length ?? 0}
+              dim={(comments?.length ?? 0) === 0}
             />
-          ) : null}
-          {qnaTargetType ? (
-            <RailButton
-              value="qna"
-              count={qnaThreads.length}
-              dim={qnaThreads.length === 0}
-            />
-          ) : null}
-          {showRevisions ? (
-            <RailButton value="revisions" count={revisions.length} />
           ) : null}
           {showOxLive ? (
             <RailButton
@@ -393,11 +394,20 @@ export function ArticleRightPanel({
               dim={oxQuestions.length === 0}
             />
           ) : null}
-          {showCommentLive ? (
+          {showRelatedProblems ? (
             <RailButton
-              value="comment"
-              count={comments?.length ?? 0}
-              dim={(comments?.length ?? 0) === 0}
+              value="related-problems"
+              count={relatedProblems.length}
+            />
+          ) : null}
+          {showCases ? (
+            <RailButton value="cases" count={relatedCases.length} />
+          ) : null}
+          {qnaTargetType ? (
+            <RailButton
+              value="qna"
+              count={qnaThreads.length}
+              dim={qnaThreads.length === 0}
             />
           ) : null}
           {showMaterials ? (
@@ -407,6 +417,15 @@ export function ArticleRightPanel({
               dim={(lectureResources?.length ?? 0) === 0 && !viewerIsStaff}
             />
           ) : null}
+          {showRevisions ? (
+            <RailButton value="revisions" count={revisions.length} />
+          ) : null}
+          <RailButton value="highlight" count={highlights.length} />
+          <RailButton
+            value="bookmark"
+            count={bookmarkHasContent ? 1 : 0}
+            meta={bookmarkMeta}
+          />
           {placeholderTabs.map((t) => (
             <RailButton key={t.value} value={t.value} dim />
           ))}
