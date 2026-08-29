@@ -868,6 +868,11 @@ export default [
         "/admin/cases/orphan-highlights",
         "features/admin/screens/admin-orphan-highlights.tsx",
       ),
+      // feat-7-049 — 본문 찾아 고치기(여러 콘텐츠에 흩어진 오기 일괄 정정).
+      route(
+        "/admin/tools/find-replace",
+        "features/admin/screens/admin-find-replace.tsx",
+      ),
       route("/admin/users", "features/admin/screens/admin-users.tsx"),
       // feat-11-002 — 강의 영상 LMS (시리즈·에디션·회차·영상·수강권 + 재생 판정).
       route("/admin/lms/courses", "features/lms/screens/admin-lms-courses.tsx"),

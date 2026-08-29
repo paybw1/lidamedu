@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -4100,6 +4100,86 @@ export type Database = {
           {
             foreignKeyName: "content_comments_author_id_fkey"
             columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      content_edit_logs: {
+        Row: {
+          after_value: Json
+          batch_id: string
+          before_value: Json
+          created_at: string
+          created_by: string | null
+          entity_id: string
+          entity_type: string
+          field: string
+          log_id: string
+          occurrences: number
+          replace_term: string
+          reverted_at: string | null
+          reverted_by: string | null
+          search_term: string
+        }
+        Insert: {
+          after_value: Json
+          batch_id: string
+          before_value: Json
+          created_at?: string
+          created_by?: string | null
+          entity_id: string
+          entity_type: string
+          field: string
+          log_id?: string
+          occurrences?: number
+          replace_term: string
+          reverted_at?: string | null
+          reverted_by?: string | null
+          search_term: string
+        }
+        Update: {
+          after_value?: Json
+          batch_id?: string
+          before_value?: Json
+          created_at?: string
+          created_by?: string | null
+          entity_id?: string
+          entity_type?: string
+          field?: string
+          log_id?: string
+          occurrences?: number
+          replace_term?: string
+          reverted_at?: string | null
+          reverted_by?: string | null
+          search_term?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_edit_logs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "content_edit_logs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "content_edit_logs_reverted_by_fkey"
+            columns: ["reverted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "content_edit_logs_reverted_by_fkey"
+            columns: ["reverted_by"]
             isOneToOne: false
             referencedRelation: "public_profiles"
             referencedColumns: ["profile_id"]
@@ -15471,6 +15551,14 @@ export type Database = {
       }
       delete_test_user: { Args: { p_email: string }; Returns: boolean }
       email_already_registered: { Args: { p_email: string }; Returns: boolean }
+      find_content_matches: {
+        Args: { p_limit?: number; p_term: string }
+        Returns: {
+          entity_id: string
+          entity_type: string
+          field: string
+        }[]
+      }
       fn_close_suppress_window: {
         Args: { p_window_id: string }
         Returns: undefined

@@ -203,6 +203,7 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "체계도 배치 점검", to: "/admin/cases/violations" },
       { label: "고아 하이라이트 점검", to: "/admin/cases/orphan-highlights" },
       { label: "연결 누락 점검", to: "/admin/relations/gaps" },
+      { label: "본문 찾아 고치기", to: "/admin/tools/find-replace" },
     ],
   },
   {

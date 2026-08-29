@@ -610,6 +610,39 @@ create unique index csl_one_primary on case_systematic_links (case_id) where is_
 **★읽기 경로는 아직 primary_node_id 를 본다**(feat-3-214 B단계에서 전환). 지금은 데이터만
 들어가 있고 화면 동작은 그대로다.
 
+**★대표 배치의 `book_sections` 는 두 가지다** — `cases.book_sections` 의 사본(206건)과
+그 자리 고유 본문(153건). 한쪽만 보고 일괄 수정하면 안 된다. 사본이면 `cases` 를 고칠 때
+같이 갱신하고, 고유 본문이면 따로 다뤄야 한다(feat-7-049 가 이 규칙을 따른다).
+
+---
+
+### 7.6 content_edit_logs (본문 일괄 정정 기록, 2026-08-29 · feat-7-049)
+
+```sql
+create table public.content_edit_logs (
+  log_id        uuid primary key default gen_random_uuid(),
+  batch_id      uuid not null,          -- 한 번의 "바꾸기" 실행
+  entity_type   text not null,          -- case | case_placement | case_reference | problem
+  entity_id     uuid not null,
+  field         text not null,
+  before_value  jsonb not null,         -- ★jsonb. book_sections·summary_items 가 jsonb 라
+  after_value   jsonb not null,         --   text 로 눌러 담으면 되돌릴 때 깨진다
+  search_term   text not null,
+  replace_term  text not null,
+  occurrences   integer not null default 1,
+  created_by    uuid references profiles(profile_id),
+  created_at    timestamptz not null default now(),
+  reverted_at   timestamptz,
+  reverted_by   uuid references profiles(profile_id)
+);
+-- RLS: staff(instructor·admin) 만 select/insert/update
+```
+
+같이 만든 RPC `find_content_matches(p_term, p_limit)` — 대상 테이블을 DB 안에서 훑어
+(종류·id·필드)만 돌려준다. jsonb 본문을 앱으로 끌어오면 fetch 가 끊기기 때문.
+마이그레이션 `scripts/sql/20260829_content_edit_logs.sql` ·
+`20260829_find_content_matches_v2.sql`.
+
 ---
 
 ## 8. user_problem_attempts (객관식 시도)

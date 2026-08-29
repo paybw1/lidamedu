@@ -19,6 +19,15 @@ const LINKS = process.argv.includes("--links");
 // --compare : DB 의 현재 book_sections 와 교재에서 새로 만든 것을 글자로 대조만 한다.
 //   개정판 반영 전에 "지금 DB 가 교재 파싱본에서 얼마나 벗어나 있나"(수기 보정분)를 재는 용도.
 const COMPARE = process.argv.includes("--compare");
+// --only 2004도4420[,...] : 그 사건번호만. 한 링크만 되살릴 때 쓴다(전체 재생성은
+//   수기 보정분을 덮으므로 금지). --links 예행이면 DB 와 글자 대조 결과를 찍는다.
+const ONLY = (process.argv.includes("--only")
+  ? process.argv[process.argv.indexOf("--only") + 1]
+  : ""
+)
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
 const argOf = (name, dflt) => {
   const i = process.argv.indexOf(name);
   return i >= 0 ? process.argv[i + 1] : dflt;
@@ -334,7 +343,24 @@ if (LINKS) {
   const byNumber = new Map(rows.map((r) => [r.case_number, r]));
   let made = 0, skipped = 0, noNode = 0;
   const multi = [];
+  // 예행일 때 DB 의 현재 링크 본문과 글자 대조 — 생성기가 DB 를 그대로 재현하는지 본다.
+  const { data: existing } = await sb
+    .from("case_systematic_links")
+    .select("case_id, node_id, book_sections");
+  // ★jsonb 는 키 순서를 제 맘대로 돌려준다 — 키를 정렬해 비교해야 "전부 다름"이 안 뜬다.
+  const canon = (v) =>
+    JSON.stringify(v, (_k, val) =>
+      val && typeof val === "object" && !Array.isArray(val)
+        ? Object.fromEntries(Object.entries(val).sort(([a], [b]) => a.localeCompare(b)))
+        : val,
+    );
+  const existingBody = new Map(
+    (existing ?? []).map((l) => [`${l.case_id}@${l.node_id}`, canon(l.book_sections)]),
+  );
+  let same = 0, diff = 0;
+
   for (const [caseNumber, occs] of bookOccurrences) {
+    if (ONLY.length > 0 && !ONLY.includes(caseNumber)) continue;
     const row = byNumber.get(caseNumber);
     if (!row) continue;
     if (occs.length > 1) multi.push(`${caseNumber}(${occs.map((o) => `주제${o.topic.no}`).join("+")})`);
@@ -365,6 +391,13 @@ if (LINKS) {
       };
       if (!APPLY) {
         skipped++;
+        const now = existingBody.get(`${row.case_id}@${node.node_id}`);
+        if (now === undefined) console.log(`  + 새 링크 ${caseNumber} 주제${topic.no}`);
+        else if (now === canon(payload.book_sections)) same++;
+        else {
+          diff++;
+          console.log(`  ≠ ${caseNumber} 주제${topic.no} — DB 와 다름 (DB ${now?.length ?? 0}자 / 생성 ${canon(payload.book_sections).length}자)`);
+        }
         continue;
       }
       const { error: uErr } = await sb
@@ -378,6 +411,7 @@ if (LINKS) {
   console.log(
     `${APPLY ? "적용" : "dry-run"}: 판례 ${rows.length} / 링크 기록 ${APPLY ? made : skipped} / 주제노드 미매칭 ${noNode}`,
   );
+  if (!APPLY) console.log(`  DB 와 동일 ${same} · 다름 ${diff}`);
   console.log(`다중 배치 판례 ${multi.length}건: ${multi.join(", ")}`);
   process.exit(0);
 }
