@@ -15857,6 +15857,13 @@ export type Database = {
           score: number
         }[]
       }
+      search_dohae_units: {
+        Args: { lim?: number; q: string; search_scope?: string }
+        Returns: {
+          score: number
+          unit_id: string
+        }[]
+      }
       search_problems_ranked: {
         Args: { lim?: number; q: string; search_scope?: string }
         Returns: {

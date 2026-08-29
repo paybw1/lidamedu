@@ -71,7 +71,7 @@ import {
 } from "~/features/problems/labels";
 import { redactSubjectiveAnswer } from "~/features/problems/lib/answer-visibility";
 import {
-  deriveBoxItemOxTruth,
+  deriveDisplayBoxItemOx,
   deriveDisplayChoiceOx,
   stripLeadingOxMark,
 } from "~/features/problems/lib/auto-ox";
@@ -1785,17 +1785,21 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                                 const correctChoiceBody =
                                   problem.choices.find((c) => c.isCorrect)
                                     ?.bodyMd ?? null;
+                                const allMarkers = problem.boxItems.map(
+                                  (b) => b.marker,
+                                );
                                 return problem.boxItems.map((bi) => {
                                   // oxIneligible(조문 OX드릴 부적합 표시)는 MCQ 해설 O/X 표시엔
                                   // 무시 — 풀이 학습에 도움. (OX 드릴 쿼리는 계속 oxIneligible 존중)
                                   const truth: "O" | "X" | null =
-                                    bi.oxTruth ??
-                                    deriveBoxItemOxTruth({
+                                    deriveDisplayBoxItemOx({
+                                      oxTruth: bi.oxTruth,
+                                      explanationMd: bi.explanationMd,
                                       polarity: problem.polarity,
                                       format: problem.format,
                                       marker: bi.marker,
                                       correctChoiceBody,
-                                      oxIneligible: false,
+                                      allMarkers,
                                     });
                                   return (
                                     <div

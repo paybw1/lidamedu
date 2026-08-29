@@ -29,7 +29,7 @@ import {
   type ProblemDetail,
 } from "~/features/problems/labels";
 import {
-  deriveBoxItemOxTruth,
+  deriveDisplayBoxItemOx,
   deriveDisplayChoiceOx,
   stripLeadingOxMark,
 } from "~/features/problems/lib/auto-ox";
@@ -715,15 +715,15 @@ function ExplanationBlock({ problem }: { problem: ProblemDetail }) {
       {problem.boxItems.length > 0
         ? problem.boxItems.map((bi) => {
             // oxIneligible(정오문제 부적격)은 풀이 O/X 표시와 별개 개념 → 무시.
-            const truth: "O" | "X" | null =
-              bi.oxTruth ??
-              deriveBoxItemOxTruth({
-                polarity: problem.polarity,
-                format: problem.format,
-                marker: bi.marker,
-                correctChoiceBody,
-                oxIneligible: false,
-              });
+            const truth: "O" | "X" | null = deriveDisplayBoxItemOx({
+              oxTruth: bi.oxTruth,
+              explanationMd: bi.explanationMd,
+              polarity: problem.polarity,
+              format: problem.format,
+              marker: bi.marker,
+              correctChoiceBody,
+              allMarkers: problem.boxItems.map((b) => b.marker),
+            });
             return (
               <div
                 key={bi.boxItemId}

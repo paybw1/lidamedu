@@ -1,14 +1,21 @@
-// 전역 검색 (⌘K Command Palette) — 조문/판례/문제/메모/즐겨찾기 통합.
+// 전역 검색 (⌘K Command Palette) — 조문/판례/문제/질의응답/도해특허법/메모/즐겨찾기 통합.
 // 각 도메인별 ILIKE 다중 컬럼 + 그룹별 최대 6건. 너무 짧은 query 는 빈 결과.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
+import {
+  DOHAE_LAW_CODE,
+  type DohaeBlock,
+  dohaeBlocksText,
+  dohaeUnitHref,
+} from "~/features/dohae/labels";
+import { getDohaeUnitRefs } from "~/features/dohae/queries.server";
 import { articleDisplayPrefix, articleSlug } from "~/features/laws/lib/identifier";
 import { getStaffRole } from "~/features/laws/queries.server";
 
 export interface SearchHit {
-  group: "article" | "case" | "problem" | "qna" | "memo" | "bookmark";
+  group: "article" | "case" | "problem" | "qna" | "dohae" | "memo" | "bookmark";
   id: string;
   primaryLabel: string;
   secondaryLabel: string | null;
@@ -23,6 +30,8 @@ export interface SearchResults {
   cases: SearchHit[];
   problems: SearchHit[];
   qna: SearchHit[];
+  /** 도해특허법 유닛 — 로그인 사용자만 보인다(dohae_units RLS). */
+  dohae: SearchHit[];
   memos: SearchHit[];
   bookmarks: SearchHit[];
 }
@@ -146,6 +155,7 @@ export async function runGlobalSearch(
     cases: [],
     problems: [],
     qna: [],
+    dohae: [],
     memos: [],
     bookmarks: [],
   };
@@ -424,15 +434,55 @@ export async function runGlobalSearch(
     );
   }
 
-  const [articles, cases, problems, qna, memos, bookmarks] = await Promise.all([
+  // dohae — 도해특허법 유닛(제목·장 제목 + full 이면 blocks 본문).
+  // ★RPC 는 SECURITY INVOKER — dohae_units RLS(로그인 사용자만)가 그대로 걸린다.
+  //   비로그인 방문자에게는 0건. 유출방지 대상 콘텐츠라 검색에서도 새지 않아야 한다.
+  async function fetchDohae(): Promise<SearchHit[]> {
+    const { data: ranked } = await client.rpc("search_dohae_units", {
+      q,
+      lim: GROUP_LIMIT,
+      search_scope: scope,
+    });
+    const ids = (ranked ?? []).map((r) => r.unit_id);
+    if (ids.length === 0) return [];
+    const [refs, { data: rows }] = await Promise.all([
+      getDohaeUnitRefs(client, ids),
+      client.from("dohae_units").select("unit_id, blocks").in("unit_id", ids),
+    ]);
+    const blocksById = new Map(
+      (rows ?? []).map((r) => [r.unit_id, (r.blocks ?? []) as unknown as DohaeBlock[]] as const),
+    );
+    // RPC ranking 순서 보존.
+    return ids.flatMap((id): SearchHit[] => {
+      const ref = refs.get(id);
+      if (!ref) return [];
+      return [
+        {
+          group: "dohae",
+          id,
+          primaryLabel: ref.primaryLabel,
+          secondaryLabel: ref.secondaryLabel,
+          bodySnippet:
+            scope === "full"
+              ? matchSnippet(q, dohaeBlocksText(blocksById.get(id) ?? []))
+              : null,
+          href: dohaeUnitHref(ref.nodeId, id),
+          lawCode: DOHAE_LAW_CODE,
+        },
+      ];
+    });
+  }
+
+  const [articles, cases, problems, qna, dohae, memos, bookmarks] = await Promise.all([
     fetchArticles(),
     fetchCases(),
     fetchProblems(),
     fetchQna(),
+    fetchDohae(),
     fetchMemos(),
     fetchBookmarks(),
   ]);
-  return { query: q, articles, cases, problems, qna, memos, bookmarks };
+  return { query: q, articles, cases, problems, qna, dohae, memos, bookmarks };
 }
 
 // 메모/즐겨찾기 의 target → 부모 entity 의 viewer href 매핑.

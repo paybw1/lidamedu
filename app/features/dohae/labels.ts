@@ -76,3 +76,37 @@ export interface DohaeUnitSummary {
 export function dohaeUnitLabel(u: Pick<DohaeUnitSummary, "kind" | "unitNo" | "refNo">): string {
   return u.kind === "topic" ? String(u.unitNo ?? "") : `참고 ${u.refNo ?? ""}`;
 }
+
+/** 도해특허법 = 특허법 단행본. 다른 과목 도해가 생기면 유닛의 book_code 로 갈라야 한다. */
+export const DOHAE_LAW_CODE = "patent";
+
+/**
+ * 도해 항목 진입 — 체계도 노드 뷰어에서 그 유닛 팝업을 연다.
+ * ★노드 연결이 없는 유닛(94 중 1)은 과목 허브로. 링크를 빼면 개수 배지와 어긋난다.
+ */
+export function dohaeUnitHref(nodeId: string | null, unitId: string): string {
+  return nodeId
+    ? `/subjects/${DOHAE_LAW_CODE}/systematic/${nodeId}?dohae=${unitId}`
+    : `/subjects/${DOHAE_LAW_CODE}`;
+}
+
+/**
+ * 유닛 본문(blocks)에서 글자만 뽑는다 — 검색 결과 스니펫용.
+ * 표 칸·속표까지 훑되 구조 키(type·numeral 등)는 건드리지 않는다.
+ */
+export function dohaeBlocksText(blocks: DohaeBlock[]): string[] {
+  const out: string[] = [];
+  const pushCells = (cells: DohaeCell[][]) => {
+    for (const row of cells) {
+      for (const cell of row) {
+        if (cell.text) out.push(cell.text);
+        for (const nested of cell.tables ?? []) pushCells(nested);
+      }
+    }
+  };
+  for (const b of blocks) {
+    if (b.type === "h" || b.type === "p") out.push(b.text);
+    else if (b.type === "table") pushCells(b.cells);
+  }
+  return out;
+}

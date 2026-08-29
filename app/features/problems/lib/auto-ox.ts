@@ -74,6 +74,52 @@ export function stripLeadingOxMark(text: string): string {
   return text.replace(LEADING_OX_MARK_RE, "");
 }
 
+/**
+ * 해설 앞머리의 진위 표기(`○, …` / `×. …`)를 읽는다.
+ * 저자가 직접 적은 값이라 유도보다 믿을 만하다 — 실제로 유도와 어긋난 8건은 모두
+ * 유도 쪽이 틀렸다(개수형 문제). 저장값(ox_truth)과 어긋난 사례는 0건.
+ */
+export function oxMarkFromExplanation(
+  text: string | null | undefined,
+): OxTruth | null {
+  const m = /^\s*([○◯〇×✕])/.exec(text ?? "");
+  if (!m) return null;
+  return m[1] === "×" || m[1] === "✕" ? "X" : "O";
+}
+
+/**
+ * 풀이 화면 박스 보기의 O/X 표시 — 저장값 → 해설 앞머리 표기 → 정답 선지에서 유도.
+ *
+ * ★해설 표기를 유도보다 앞에 둔다. 배지 바로 옆에 그 글자가 그대로 보이므로,
+ *   둘이 어긋나면 학생 눈에 "— 다음에 ×" 처럼 모순으로 읽힌다(실제 신고 사례).
+ * ★유도는 정답 선지가 **보기 기호 조합**일 때만 한다. 개수형("5개")은 어떤 기호도
+ *   담고 있지 않아 전 보기가 "정답 그룹 아님"으로 읽혀 O/X 가 통째로 뒤집힌다.
+ * ★format 은 mc_box 뿐 아니라 mc_case 도 받는다 — 사례 지문에 보기 박스를 단 문제가
+ *   mc_case 로 등록돼 있고(209항목), 표시 목적으로는 같은 규칙이 맞다.
+ *   (정오문제 적격성 ox_ineligible 은 별개 개념이라 여기서 보지 않는다.)
+ */
+export function deriveDisplayBoxItemOx(args: {
+  oxTruth: OxTruth | null;
+  explanationMd: string | null;
+  polarity: ProblemPolarity | null;
+  format: ProblemFormat;
+  marker: string;
+  correctChoiceBody: string | null;
+  /** 그 문제의 보기 기호 전체 — 정답 선지가 조합형인지 가리는 데 쓴다. */
+  allMarkers: readonly string[];
+}): OxTruth | null {
+  if (args.oxTruth) return args.oxTruth;
+  const marked = oxMarkFromExplanation(args.explanationMd);
+  if (marked) return marked;
+  if (!args.polarity || !args.marker) return null;
+  if (args.format !== "mc_box" && args.format !== "mc_case") return null;
+  const body = args.correctChoiceBody;
+  if (!body) return null;
+  const isCombination = args.allMarkers.some((m) => m && body.includes(m));
+  if (!isCombination) return null;
+  return applyPolarity(args.polarity, body.includes(args.marker));
+}
+
 export function deriveBoxItemOxTruth(args: {
   polarity: ProblemPolarity | null;
   format: ProblemFormat;

@@ -7,6 +7,7 @@ import {
   ClockIcon,
   FileTextIcon,
   GavelIcon,
+  LayoutGridIcon,
   ListChecksIcon,
   MessageCircleQuestionIcon,
   SearchIcon,
@@ -28,7 +29,7 @@ import {
 } from "~/core/components/ui/command";
 
 interface SearchHit {
-  group: "article" | "case" | "problem" | "qna" | "memo" | "bookmark";
+  group: "article" | "case" | "problem" | "qna" | "dohae" | "memo" | "bookmark";
   id: string;
   primaryLabel: string;
   secondaryLabel: string | null;
@@ -49,6 +50,8 @@ interface SearchResults {
   cases: SearchHit[];
   problems: SearchHit[];
   qna: SearchHit[];
+  /** 도해특허법 유닛 — 로그인 사용자만 결과가 온다(dohae_units RLS). */
+  dohae: SearchHit[];
   memos: SearchHit[];
   bookmarks: SearchHit[];
   recentSearches: RecentSearch[];
@@ -64,6 +67,7 @@ const GROUP_META: Record<
   case: { label: "판례", icon: GavelIcon },
   problem: { label: "객관식 문제", icon: ListChecksIcon },
   qna: { label: "질의응답", icon: MessageCircleQuestionIcon },
+  dohae: { label: "도해특허법", icon: LayoutGridIcon },
   memo: { label: "메모", icon: StickyNoteIcon },
   bookmark: { label: "즐겨찾기", icon: BookmarkIcon },
 };
@@ -160,6 +164,7 @@ export function CommandPalette() {
         results.cases.length +
         results.problems.length +
         results.qna.length +
+        results.dohae.length +
         results.memos.length +
         results.bookmarks.length >
       0
@@ -171,7 +176,7 @@ export function CommandPalette() {
       open={open}
       onOpenChange={setOpen}
       title="전역 검색"
-      description="조문 · 판례 · 객관식 · 메모 · 즐겨찾기 통합 검색"
+      description="조문 · 판례 · 객관식 · 도해특허법 · 메모 · 즐겨찾기 통합 검색"
       shouldFilter={false}
     >
       <CommandInput
@@ -281,6 +286,7 @@ function Groups({
     { key: "case", items: results.cases },
     { key: "problem", items: results.problems },
     { key: "qna", items: results.qna },
+    { key: "dohae", items: results.dohae },
     { key: "memo", items: results.memos },
     { key: "bookmark", items: results.bookmarks },
   ];

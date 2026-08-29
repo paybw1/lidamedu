@@ -35,6 +35,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       results.cases.length +
       results.problems.length +
       results.qna.length +
+      results.dohae.length +
       results.memos.length +
       results.bookmarks.length;
     if (total === 0) {
