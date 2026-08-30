@@ -1211,12 +1211,14 @@ export function BlankFillViewV2({
     slots.forEach((slot) => {
       const idx = Number(slot.dataset.blankIdx);
       const answer = slot.dataset.answer ?? "";
+      // ★슬롯 텍스트는 항상 `ZWSP + 실텍스트` — 다른 모든 쓰기 경로(rebuildSlot·carryRescue 등)가
+      //   이 형태를 전제로 캐럿 위치를 계산한다. 정답 보기/숨기기만 ZWSP 를 빠뜨리면 그 뒤
+      //   편집에서 캐럿·삭제 계산이 한 칸씩 어긋난다.
       if (reveal) {
-        slot.textContent = answer.length > 0 ? answer : ZWSP;
+        slot.textContent = ZWSP + answer;
         setSlotColor(slot, "correct");
       } else {
-        const v = valuesRef.current.get(idx) ?? "";
-        slot.textContent = v.length > 0 ? v : ZWSP;
+        slot.textContent = ZWSP + (valuesRef.current.get(idx) ?? "");
         judgeSlot(slot, false);
       }
     });
@@ -1269,6 +1271,18 @@ export function BlankFillViewV2({
         return;
       }
       const range = sel.getRangeAt(0);
+      const it = (e.inputType || "").toLowerCase();
+      // ★★줄바꿈은 이 에디터 어디에서도 유효하지 않다 — 막지 않으면 브라우저가 줄 <div> 를
+      //   쪼개면서 빈칸 <span> 을 class·data-blank-idx·data-answer 까지 통째로 복제한다
+      //   (=같은 칸이 두 개로 보이고, 정답 보기가 양쪽을 다 채운다. 2026-08-30 신고 09a8ae2f).
+      //   keydown 의 Enter 방어는 `e.key === "Enter"` 이름 비교라 IME 조합 중("Process")·
+      //   소프트 키보드("Unidentified"/keyCode 229)에서 새므로, 실제 편집 직전인 여기서
+      //   inputType 으로 한 번 더 막는다(sink·슬롯 밖 포함 전 구간). keydown 에서 이미 막힌
+      //   Enter 는 beforeinput 자체가 발생하지 않아 이중 처리 위험 없음.
+      if (it === "insertparagraph" || it === "insertlinebreak") {
+        e.preventDefault();
+        return;
+      }
       // ★sink(이월 흘려버리기 자리) 안 편집은 허용 — 이월 조합이 sink 에서 확정돼야 다음 칸이
       //   깨끗해진다. sink 는 슬롯이 아니라 아래 슬롯 가드에 걸리므로 먼저 통과시킨다.
       const sink = sinkRef.current;
@@ -1286,7 +1300,6 @@ export function BlankFillViewV2({
         e.preventDefault();
         return;
       }
-      const it = (e.inputType || "").toLowerCase();
       // ★★iPad 이월 근본 차단 — "조합 중(isComposing) + 실제 내용이 빈 슬롯에서 삭제".
       //   iOS 는 직전 칸 조합을 버퍼에 물고 있다가, 다음(빈) 칸에서 backspace 를 누르는 순간
       //   그 버퍼를 이 칸에 재구현(직전 답이 튀어나옴)한다. 빈 슬롯 삭제는 원래 no-op 이므로,
