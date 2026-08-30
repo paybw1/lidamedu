@@ -1264,6 +1264,38 @@ export function BlankFillViewV2({
       sel.removeAllRanges();
       sel.addRange(r);
     };
+    // 슬롯 안 현재 선택 구간을 주어진 텍스트로 치환(슬롯 밖으로 절대 못 나감).
+    const replaceSelectionInSlot = (
+      slot: HTMLElement,
+      range: Range,
+      text: string,
+    ) => {
+      const realText = readSlot(slot);
+      const rs = realPosOf(slot, range.startContainer, range.startOffset);
+      const re = realPosOf(slot, range.endContainer, range.endOffset);
+      const a = Math.min(rs, re);
+      const b = Math.max(rs, re);
+      rebuildSlot(slot, realText.slice(0, a) + text + realText.slice(b), a + text.length);
+      judgeSlot(slot, false);
+    };
+    // ★붙여넣기는 전부 우리가 처리한다 — 브라우저에 맡기면 줄바꿈 섞인 텍스트가 Enter 와
+    //   같은 경로로 줄 <div> 를 쪼개면서 빈칸 span 을 복제한다(신고 09a8ae2f 와 동일 기전).
+    //   내용은 버리지 않고 줄바꿈·연속 공백만 한 칸으로 접어 넣는다. beforeinput 의
+    //   insertFromPaste 차단은 clipboardData 를 못 읽는 브라우저용 폴백.
+    const onPaste = (e: ClipboardEvent) => {
+      e.preventDefault();
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return;
+      const range = sel.getRangeAt(0);
+      const slot = isInSlot(range.startContainer, root);
+      if (!slot || slot !== isInSlot(range.endContainer, root)) return;
+      const flat = (e.clipboardData?.getData("text/plain") ?? "")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (!flat) return;
+      replaceSelectionInSlot(slot, range, flat);
+      maybeCompleteTier();
+    };
     const handler = (e: InputEvent) => {
       const sel = window.getSelection();
       if (!sel || sel.rangeCount === 0) {
@@ -1279,7 +1311,14 @@ export function BlankFillViewV2({
       //   소프트 키보드("Unidentified"/keyCode 229)에서 새므로, 실제 편집 직전인 여기서
       //   inputType 으로 한 번 더 막는다(sink·슬롯 밖 포함 전 구간). keydown 에서 이미 막힌
       //   Enter 는 beforeinput 자체가 발생하지 않아 이중 처리 위험 없음.
-      if (it === "insertparagraph" || it === "insertlinebreak") {
+      //   붙여넣기·드롭도 같은 기전이라 함께 막는다 — 붙여넣기는 위 onPaste 가 줄바꿈을 접어
+      //   대신 넣어 주므로 내용이 사라지지 않고, 드롭은 빈칸 입력 수단이 아니라 그냥 차단.
+      if (
+        it === "insertparagraph" ||
+        it === "insertlinebreak" ||
+        it === "insertfrompaste" ||
+        it === "insertfromdrop"
+      ) {
         e.preventDefault();
         return;
       }
@@ -1354,7 +1393,11 @@ export function BlankFillViewV2({
       }
     };
     root.addEventListener("beforeinput", handler);
-    return () => root.removeEventListener("beforeinput", handler);
+    root.addEventListener("paste", onPaste);
+    return () => {
+      root.removeEventListener("beforeinput", handler);
+      root.removeEventListener("paste", onPaste);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
