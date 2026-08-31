@@ -9,6 +9,7 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import { runAfterResponse } from "~/core/lib/wait-until.server";
 import { reindexCases } from "~/features/ai-qna/lib/source-chunker.server";
 import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
+import { extractOfficialTextFromPdf } from "~/features/cases/lib/official-text-from-pdf.server";
 import { getUnpublishedRevisions } from "~/features/errata/queries.server";
 import {
   CASE_IMAGE_POSITIONS,
@@ -305,7 +306,7 @@ export async function action({ request }: Route.ActionArgs) {
     // 기존 PDF 가 storage 에 있으면 우선 제거 (교체/제거 공통). 외부 URL 은 best-effort skip.
     const { data: existing } = await client
       .from("cases")
-      .select("full_text_pdf, case_number")
+      .select("full_text_pdf, case_number, official_text_md")
       .eq("case_id", caseId)
       .maybeSingle();
     const existingUrl = existing?.full_text_pdf ?? null;
@@ -371,6 +372,24 @@ export async function action({ request }: Route.ActionArgs) {
       .eq("case_id", caseId);
     if (updErr) return data({ error: updErr.message }, { status: 400 });
 
+    // ★PDF 만 두면 원문이 없는 것과 같다 — 도식 생성·RAG·검색은 전부 official_text_md 를
+    //   읽는다. 예전엔 여기서 URL 만 저장해 두고 /admin/cases/pdf-missing 경로만 텍스트를
+    //   뽑아, 이 화면으로 올린 판례는 전문이 화면에 열리는데도 "원문 없음" 으로 남았다
+    //   (특허 9건, 2026-08-31 백필). 같은 추출기·같은 판정기로 여기서도 채운다.
+    //   기존 원문은 절대 덮지 않는다(비어 있을 때만).
+    const extracted = (existing?.official_text_md ?? "").trim()
+      ? null
+      : await extractOfficialTextFromPdf(file);
+    if (extracted?.text) {
+      await client
+        .from("cases")
+        .update({ official_text_md: extracted.text })
+        .eq("case_id", caseId);
+      // 응답 후에도 끝나야 하는 작업 — 서버리스에서 잘리지 않게 감싼다.
+      //   실패해도 다음 embed cron 이 dirty 로 재처리한다(best-effort).
+      runAfterResponse(reindexCases([caseId]));
+    }
+
     void logAuditEvent({
       actorId: user.id,
       actorRole: role,
@@ -380,9 +399,15 @@ export async function action({ request }: Route.ActionArgs) {
       metadata: {
         caseNumber: existing?.case_number ?? null,
         bytes: file.size,
+        officialTextChars: extracted?.text.length ?? 0,
       },
     });
-    return data({ ok: true, url: publicUrl });
+    return data({
+      ok: true,
+      url: publicUrl,
+      officialTextChars: extracted?.text.length ?? null,
+      warning: extracted?.warning ?? null,
+    });
   }
 
   // ── 메인 조문 + 발명 sub-node placement 단일 결정 (feat-7-005 후속) ─

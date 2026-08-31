@@ -2529,6 +2529,10 @@ function FullTextPdfCard({
     ok?: boolean;
     url?: string;
     error?: string;
+    /** PDF 에서 뽑아 원문(official_text_md)에 채운 글자 수. 이미 원문이 있으면 null. */
+    officialTextChars?: number | null;
+    /** 추출이 게이트에 걸린 이유(스캔본·조각남 등). PDF 자체는 저장됨. */
+    warning?: string | null;
   }>();
   const removeFetcher = useFetcher<{ ok?: boolean; error?: string }>();
   const revalidator = useRevalidator();
@@ -2546,7 +2550,14 @@ function FullTextPdfCard({
     if (!r || r === handledUploadRef.current) return;
     handledUploadRef.current = r;
     if (r.ok) {
-      toast.success("판결전문 PDF 업로드 완료");
+      // 원문 텍스트까지 채웠는지 알려 준다 — PDF 만 올라가면 도식 생성·검색·Q&A 는
+      // 여전히 "원문 없음" 으로 본다(2026-08-31 백필 계기).
+      toast.success(
+        r.officialTextChars
+          ? `판결전문 PDF 업로드 완료 · 원문 텍스트 ${r.officialTextChars.toLocaleString()}자 적재`
+          : "판결전문 PDF 업로드 완료",
+      );
+      if (r.warning) toast.warning(r.warning, { duration: 10000 });
       if (fileInputRef.current) fileInputRef.current.value = "";
       revalidator.revalidate();
     } else if (r.error) {
