@@ -75,9 +75,20 @@ async function main(): Promise<void> {
   if (error) throw error;
   const rows = (data ?? []) as Row[];
 
+  // 재추출 대상 = 조각남 **또는 토막남**.
+  // ★"토막남" — 조각 비율은 멀쩡한데 본문이 몇백 자뿐인 적재분. 업로드 당시 첫 쪽만
+  //   읽혔거나 안내문만 잡힌 경우다. 조각 판정만으로는 안 걸리는데(짧은 글은 비율이 낮다)
+  //   사실관계 소스로는 쓸모가 없어 도식의 사실관계 칸이 빈 채로 남는다
+  //   (2019다222782 = 원심 2018나1220 이 421자로 적재돼 승인본인데 사실관계가 비어 있었다).
+  //   원본이 보관돼 있으면 다시 읽어 본다 — 아래 게이트(조각·껍데기·길이비)는 그대로 통과해야 한다.
+  const STUB_MAX_CHARS = 1500;
   const scrambled = rows
     .map((r) => ({ r, ratio: scrambleRatio(r.body_text ?? "") }))
-    .filter((x) => x.ratio > SCRAMBLE_MAX);
+    .filter(
+      (x) =>
+        x.ratio > SCRAMBLE_MAX ||
+        (x.r.body_text ?? "").trim().length < STUB_MAX_CHARS,
+    );
 
   const noOriginal = scrambled.filter(
     (x) => !parseLowerCourtFiles(x.r.files).some((f) => f.kind === "original"),
@@ -87,7 +98,7 @@ async function main(): Promise<void> {
   );
 
   console.log(
-    `적재분 ${rows.length}건 · 조각남 ${scrambled.length}건 · 원본 있어 재추출 가능 ${fixable.length}건`,
+    `적재분 ${rows.length}건 · 재추출 후보(조각·토막) ${scrambled.length}건 · 원본 있어 재추출 가능 ${fixable.length}건`,
   );
   if (noOriginal.length) {
     console.log(`\n[원본 없어 손 못 댐 ${noOriginal.length}]`);
@@ -178,7 +189,13 @@ async function main(): Promise<void> {
   }
 
   mkdirSync(BACKUP_DIR, { recursive: true });
-  const backup = path.join(BACKUP_DIR, `lower-body-backup-${plan.length}.json`);
+  // ★파일명에 건수만 쓰면 --case 로 한 건씩 돌릴 때마다 같은 이름이 되어 직전 백업을
+  //   덮어쓴다(2026-08-31 실제로 한 번 덮였다). 시각을 붙여 고유하게 남긴다.
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const backup = path.join(
+    BACKUP_DIR,
+    `lower-body-backup-${plan.length}-${stamp}.json`,
+  );
   writeFileSync(
     backup,
     JSON.stringify(
