@@ -181,6 +181,7 @@ export const OUTCOME_RESULTS = [
   "기각",
   "각하",
   "취소", // 심결취소 — 청구인 승. 주문 표기가 "…심결을 취소한다"
+  "일부취소", // 심결 일부 취소(청구 일부 인용)
   "파기환송",
   "파기자판",
   "상고기각",
@@ -205,6 +206,7 @@ export const OUTCOME_TONE: Record<OutcomeResult, OutcomeTone> = {
   파기환송: "challenge",
   파기자판: "challenge",
   일부인용: "mixed",
+  일부취소: "mixed",
   기각: "keep",
   각하: "keep",
   상고기각: "keep",
