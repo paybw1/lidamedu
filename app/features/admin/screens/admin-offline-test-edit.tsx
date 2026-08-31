@@ -976,7 +976,24 @@ function CandidatePanel({
         )}
       </div>
       <div className="flex items-center justify-between border-t px-4 py-2.5">
-        <p className="text-muted-foreground text-[11px] tabular-nums">
+        <p className="text-muted-foreground flex items-center gap-2 text-[11px] tabular-nums">
+          {/* 후보 전량 보기(?count=all)로 수백 개를 띄워 놓고 하나씩 누르게 두면
+              "개수 제한"과 같은 일이 된다 — 화면에 있는 후보를 한 번에 담는다. */}
+          {items.length > 0 ? (
+            <button
+              type="button"
+              onClick={() =>
+                setChecked((prev) =>
+                  prev.size === items.length
+                    ? new Set()
+                    : new Set(items.map((it) => it.key)),
+                )
+              }
+              className="text-link font-semibold"
+            >
+              {checked.size === items.length ? "전체 해제" : "전체 선택"}
+            </button>
+          ) : null}
           {checked.size}개 선택 · 후보 {items.length}
         </p>
         <Button

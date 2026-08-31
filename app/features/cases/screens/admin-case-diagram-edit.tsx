@@ -43,6 +43,7 @@ import {
   FACTS_SOURCE_LABEL,
   type FactsSourceKind,
   caseDiagramBlocksSchema,
+  caseOutcomesSchema,
   diagramApprovable,
   doctrineParts,
   emptyBlock,
@@ -58,6 +59,7 @@ import {
   softDeleteCaseDiagram,
   updateCaseDiagramBlocksByStaff,
   updateCaseDiagramFactsByStaff,
+  updateCaseDiagramOutcomesByStaff,
   upsertCaseDiagram,
 } from "~/features/cases/queries-case-diagram.server";
 import { Chip } from "~/features/community/components/community-ui";
@@ -469,6 +471,30 @@ export async function action({ request, params }: Route.ActionArgs) {
     const backRaw = new URL(request.url).searchParams.get("back") ?? "";
     const back = backRaw.startsWith("?") ? backRaw : "";
     return redirect(`/admin/case-diagrams${back}`);
+  }
+
+  // 심급별 결과(경과 배지) 저장 — 도식 패널 인라인. 목록 전체를 JSON 으로 받는다.
+  //   ★행 하나씩이 아니라 통째로 받는 이유: 심급은 3~4개뿐이고 순서가 의미를 가져
+  //     부분 갱신은 오히려 어긋난 상태를 만들기 쉽다.
+  if (intent === "set_outcomes") {
+    let raw: unknown;
+    try {
+      raw = JSON.parse(String(fd.get("outcomes") ?? "[]"));
+    } catch {
+      return data({ error: "결과 형식이 올바르지 않습니다." });
+    }
+    const parsed = caseOutcomesSchema.safeParse(raw);
+    if (!parsed.success) return data({ error: "결과 형식이 올바르지 않습니다." });
+    if (parsed.data.length > 6) {
+      return data({ error: "심급은 6개까지만 넣을 수 있습니다." });
+    }
+    const ctx = await getCaseDiagramEditContext(client, caseId);
+    if (!ctx?.diagram) return data({ error: "도식이 없습니다." });
+    await updateCaseDiagramOutcomesByStaff(client, {
+      diagramId: ctx.diagram.diagramId,
+      outcomes: parsed.data,
+    });
+    return data({ ok: "심급별 결과를 저장했습니다." });
   }
 
   return data({ error: "알 수 없는 요청입니다." }, { status: 400 });

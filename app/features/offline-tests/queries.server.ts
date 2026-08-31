@@ -427,10 +427,15 @@ export async function addTestQuestions(
     });
   }
   if (inserts.length === 0) return 0;
-  const { error: insErr } = await client
-    .from("offline_test_questions")
-    .insert(inserts);
-  if (insErr) throw insErr;
+  // ★나눠 넣는다 — 단원 하나의 OX 를 통째로 담으면 수백~수천 행이 된다. 한 번에 보내면
+  //   요청 본문이 커져 실패하고, 그 실패는 "일부만 들어간" 상태로 보이지 않아 더 나쁘다.
+  const CHUNK = 500;
+  for (let i = 0; i < inserts.length; i += CHUNK) {
+    const { error: insErr } = await client
+      .from("offline_test_questions")
+      .insert(inserts.slice(i, i + CHUNK));
+    if (insErr) throw insErr;
+  }
   return inserts.length;
 }
 

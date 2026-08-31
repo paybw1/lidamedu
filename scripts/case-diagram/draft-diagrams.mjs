@@ -32,6 +32,8 @@ import {
   scrambleRatio,
   substantiveLength,
 } from "../../app/features/cases/lib/lower-court-text.ts";
+// ★심급별 결과(경과 배지)는 백필 스크립트와 **같은 모듈**을 쓴다 — 사본을 두면 한쪽만 고쳐진다.
+import { draftOutcomes } from "./lib-outcomes.mjs";
 
 const argv = process.argv.slice(2);
 const argOf = (n) => {
@@ -583,6 +585,18 @@ async function main() {
             }
           : {},
         blocks,
+        // 심급별 결과 — 주문이 있는 자리(원문·하급심 양끝)만 다시 읽어 뽑는다.
+        //   실패해도 도식 자체는 살린다(배지는 부가정보, 패널에서 손으로 채울 수 있다).
+        outcomes: await draftOutcomes({
+          callModel,
+          caseNumber: t.kase.case_number,
+          court: t.kase.court,
+          decidedAt: t.kase.decided_at,
+          officialText: t.kase.official_text_md ?? "",
+          lowerText: t.cache?.text ?? null,
+          factsMd,
+          timeline: facts.timeline,
+        }).catch(() => []),
         generated_by: "ai",
         review_status: "draft",
         approved_at: null,

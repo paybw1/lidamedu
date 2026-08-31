@@ -148,6 +148,103 @@ export function parseTimeline(value: unknown): TimelineEvent[] {
   return out;
 }
 
+// ── 심급별 결과(경과 배지) ───────────────────────────────────────────────
+// ★심급을 3칸 고정(심판원/특허법원/대법원)으로 두지 않는다 — 심결취소계열과 민사계열
+//   (지방법원 → 항소심 → 대법원)이 섞여 있어 고정 칸은 민사 사건에 안 맞는다.
+//   대신 level 로 순서를 주고 court 는 판결문에 적힌 법원명을 그대로 쓴다.
+export const OUTCOME_LEVELS = [
+  "trial_board", // 특허심판원(심결·결정)
+  "first", // 1심
+  "appeal", // 항소심 — 심결취소소송의 특허법원도 여기
+  "supreme", // 대법원
+] as const;
+
+export type OutcomeLevel = (typeof OUTCOME_LEVELS)[number];
+
+export const OUTCOME_LEVEL_LABEL: Record<OutcomeLevel, string> = {
+  trial_board: "심판원",
+  first: "1심",
+  appeal: "항소심",
+  supreme: "대법원",
+};
+
+const OUTCOME_LEVEL_ORDER: Record<OutcomeLevel, number> = {
+  trial_board: 0,
+  first: 1,
+  appeal: 2,
+  supreme: 3,
+};
+
+export const OUTCOME_RESULTS = [
+  "인용",
+  "일부인용",
+  "기각",
+  "각하",
+  "취소", // 심결취소 — 청구인 승. 주문 표기가 "…심결을 취소한다"
+  "파기환송",
+  "파기자판",
+  "상고기각",
+  "심리불속행",
+  "기타",
+] as const;
+
+export type OutcomeResult = (typeof OUTCOME_RESULTS)[number];
+
+/**
+ * 배지 색 — 결과의 **방향**만 구분한다(누가 이겼나).
+ * 학생이 배지를 훑을 때 알아야 하는 건 심급마다 결론이 뒤집혔는지이지,
+ * 주문 문구의 종류가 아니다.
+ *  challenge = 다투는 쪽이 이긴 것(인용·취소·파기)
+ *  keep      = 기존 상태가 유지된 것(기각·각하·상고기각·심리불속행)
+ */
+export type OutcomeTone = "challenge" | "keep" | "mixed" | "neutral";
+
+export const OUTCOME_TONE: Record<OutcomeResult, OutcomeTone> = {
+  인용: "challenge",
+  취소: "challenge",
+  파기환송: "challenge",
+  파기자판: "challenge",
+  일부인용: "mixed",
+  기각: "keep",
+  각하: "keep",
+  상고기각: "keep",
+  심리불속행: "keep",
+  기타: "neutral",
+};
+
+export const caseOutcomeSchema = z.object({
+  level: z.enum(OUTCOME_LEVELS),
+  /** 판결문에 적힌 법원명 그대로 — "특허심판원", "특허법원", "서울고등법원", "대법원". */
+  court: trimmed.min(1),
+  result: z.enum(OUTCOME_RESULTS),
+  /** 그 심급의 사건번호(있을 때만). */
+  caseNo: trimmed.optional(),
+  /** 심결·선고일. 타임라인과 같은 이유로 문자열(불완전 날짜 허용). */
+  when: trimmed.optional(),
+  /** 배지에 안 들어가는 한 줄 보충(마우스오버). */
+  note: trimmed.optional(),
+});
+
+export const caseOutcomesSchema = z.array(caseOutcomeSchema);
+
+export type CaseOutcome = z.infer<typeof caseOutcomeSchema>;
+
+/**
+ * DB jsonb → 심급별 결과. 깨진 항목은 버리고, 심급 순서로 정렬한다.
+ * (생성·백필이 순서를 지켜 넣지만 손으로 고칠 수 있으므로 읽는 쪽에서 한 번 더 맞춘다.)
+ */
+export function parseOutcomes(value: unknown): CaseOutcome[] {
+  if (!Array.isArray(value)) return [];
+  const out: CaseOutcome[] = [];
+  for (const raw of value) {
+    const parsed = caseOutcomeSchema.safeParse(raw);
+    if (parsed.success) out.push(parsed.data);
+  }
+  return out.sort(
+    (a, b) => OUTCOME_LEVEL_ORDER[a.level] - OUTCOME_LEVEL_ORDER[b.level],
+  );
+}
+
 export type CaseDiagramBlock = z.infer<typeof caseDiagramBlockSchema>;
 
 /**

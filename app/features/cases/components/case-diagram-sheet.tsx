@@ -25,6 +25,7 @@ import { Link, useFetcher, useLocation } from "react-router";
 
 import { ViewerWatermark, copyGuardProps } from "~/core/components/leak-guard";
 import { Badge } from "~/core/components/ui/badge";
+import { Button } from "~/core/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -50,9 +51,14 @@ import { RefPreviewBadge } from "~/features/subjects/components/ref-preview-badg
 
 import {
   type CaseDiagramBlock,
+  type CaseOutcome,
   DOCTRINE_AXES,
   type DoctrineAxisKey,
   type FactsSourceKind,
+  OUTCOME_LEVELS,
+  OUTCOME_LEVEL_LABEL,
+  OUTCOME_RESULTS,
+  OUTCOME_TONE,
   TIMELINE_KIND_LABEL,
   type TimelineEvent,
   doctrineParts,
@@ -66,6 +72,7 @@ export interface CaseDiagramView {
   factsSourceRef: string | null;
   blocks: CaseDiagramBlock[];
   timeline: TimelineEvent[];
+  outcomes: CaseOutcome[];
   reviewStatus: "draft" | "approved" | "rejected";
 }
 
@@ -832,13 +839,19 @@ function DiagramBody({
 
       {/* 경과 타임라인 — 같은 사실을 시간축으로. 2차는 출원·공지·심판의 선후가
           결론을 가르는 문항이 많아 산문만으로는 흐름이 안 잡힌다. */}
-      {diagram.timeline.length > 0 ? (
+      {diagram.timeline.length > 0 || diagram.outcomes.length > 0 ? (
         <section>
-          <h3 className="mb-1.5 text-xs font-bold">
+          <h3 className="mb-1.5 flex flex-wrap items-center gap-1.5 text-xs font-bold">
             <Badge variant="secondary" className="rounded-sm px-1.5 py-0">
               경과
             </Badge>
+            <OutcomeBadges outcomes={diagram.outcomes} />
+            <OutcomeEditor
+              caseId={reclassifyCaseId}
+              outcomes={diagram.outcomes}
+            />
           </h3>
+          {diagram.timeline.length === 0 ? null : (
           <ol className="border-border relative ml-2 space-y-2.5 border-l pl-4">
             {diagram.timeline.map((ev, i) => (
               <li key={i} className="relative">
@@ -857,6 +870,7 @@ function DiagramBody({
               </li>
             ))}
           </ol>
+          )}
         </section>
       ) : null}
 
@@ -1142,6 +1156,181 @@ function DiagramBody({
 }
 
 /** 답안 작성 순서 단계 — 원문자는 순서가 곧 의미라 고정 인덱스로 매긴다(빈 단계도 번호 유지). */
+/**
+ * 심급별 결과 배지 — 「경과」 라벨 옆에 심판원 → 법원 → 대법원 순으로 늘어놓는다.
+ *
+ * ★색은 결과의 **방향**만 구분한다(다투는 쪽이 이겼나 / 기존 상태가 유지됐나).
+ *   학생이 배지를 훑을 때 필요한 정보는 심급마다 결론이 뒤집혔는지이지 주문 문구의
+ *   종류가 아니다. 주문 표기 자체는 글자로 그대로 보여 준다.
+ * ★색만으로 뜻을 전달하지 않는다 — 결과 글자가 항상 함께 있고, 법원명은 title 로도 읽힌다.
+ */
+function OutcomeBadges({ outcomes }: { outcomes: CaseOutcome[] }) {
+  if (outcomes.length === 0) return null;
+  return (
+    <>
+      {outcomes.map((o, i) => (
+        <span
+          key={`${o.level}-${i}`}
+          title={[o.court, o.caseNo, o.when, o.note].filter(Boolean).join(" · ")}
+          className={cn(
+            "inline-flex items-center gap-1 rounded-sm border px-1.5 py-0 text-[11px] leading-[1.6] font-medium",
+            OUTCOME_TONE[o.result] === "challenge" &&
+              "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+            OUTCOME_TONE[o.result] === "keep" &&
+              "border-slate-400/40 bg-slate-400/10 text-slate-700 dark:text-slate-300",
+            OUTCOME_TONE[o.result] === "mixed" &&
+              "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+            OUTCOME_TONE[o.result] === "neutral" &&
+              "border-border text-muted-foreground",
+          )}
+        >
+          <span className="font-normal opacity-80">{o.court}</span>
+          {o.result}
+        </span>
+      ))}
+    </>
+  );
+}
+
+/**
+ * 심급별 결과 편집(staff) — 배지 옆 연필.
+ * ★caseId 가 없으면 렌더 자체가 없다(= staff 아님). 권한은 서버 action 이 다시 본다.
+ * ★행 단위가 아니라 목록 전체를 JSON 으로 보낸다 — 심급은 서너 개뿐이고 순서가 뜻을
+ *   가지므로 부분 갱신이 오히려 어긋난 상태를 만든다.
+ */
+function OutcomeEditor({
+  caseId,
+  outcomes,
+}: {
+  caseId?: string;
+  outcomes: CaseOutcome[];
+}) {
+  const fetcher = useFetcher<{ ok?: string; error?: string }>();
+  const [editing, setEditing] = useState(false);
+  const [rows, setRows] = useState<CaseOutcome[]>(outcomes);
+  useEffect(() => {
+    if (!editing) setRows(outcomes);
+  }, [outcomes, editing]);
+  if (!caseId) return null;
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        onClick={() => setEditing(true)}
+        className="text-muted-foreground hover:text-link inline-flex items-center gap-1 text-[11px] font-semibold"
+      >
+        <PencilLineIcon className="size-3" />
+        {outcomes.length === 0 ? "심급 결과 넣기" : "결과 수정"}
+      </button>
+    );
+  }
+
+  const patch = (i: number, next: Partial<CaseOutcome>) =>
+    setRows((prev) => prev.map((r, j) => (j === i ? { ...r, ...next } : r)));
+
+  return (
+    <fetcher.Form
+      method="post"
+      action={`/admin/case-diagrams/${caseId}`}
+      onSubmit={() => setEditing(false)}
+      className="w-full space-y-1.5 font-normal"
+    >
+      <input type="hidden" name="intent" value="set_outcomes" />
+      <input type="hidden" name="outcomes" value={JSON.stringify(rows)} />
+      {rows.map((r, i) => (
+        <div key={i} className="flex flex-wrap items-center gap-1">
+          <select
+            value={r.level}
+            onChange={(e) =>
+              patch(i, { level: e.target.value as CaseOutcome["level"] })
+            }
+            className="border-input bg-background h-7 rounded-md border px-1 text-[11px]"
+            aria-label="심급"
+          >
+            {OUTCOME_LEVELS.map((lv) => (
+              <option key={lv} value={lv}>
+                {OUTCOME_LEVEL_LABEL[lv]}
+              </option>
+            ))}
+          </select>
+          <input
+            value={r.court}
+            onChange={(e) => patch(i, { court: e.target.value })}
+            placeholder="법원명"
+            aria-label="법원명"
+            className="border-input bg-background h-7 w-28 rounded-md border px-1.5 text-[11px]"
+          />
+          <select
+            value={r.result}
+            onChange={(e) =>
+              patch(i, { result: e.target.value as CaseOutcome["result"] })
+            }
+            className="border-input bg-background h-7 rounded-md border px-1 text-[11px]"
+            aria-label="결과"
+          >
+            {OUTCOME_RESULTS.map((rs) => (
+              <option key={rs} value={rs}>
+                {rs}
+              </option>
+            ))}
+          </select>
+          <input
+            value={r.caseNo ?? ""}
+            onChange={(e) => patch(i, { caseNo: e.target.value })}
+            placeholder="사건번호"
+            aria-label="사건번호"
+            className="border-input bg-background h-7 w-28 rounded-md border px-1.5 text-[11px]"
+          />
+          <input
+            value={r.when ?? ""}
+            onChange={(e) => patch(i, { when: e.target.value })}
+            placeholder="선고일"
+            aria-label="선고일"
+            className="border-input bg-background h-7 w-24 rounded-md border px-1.5 text-[11px]"
+          />
+          <button
+            type="button"
+            onClick={() => setRows((prev) => prev.filter((_, j) => j !== i))}
+            className="text-muted-foreground hover:text-rose-600 px-1 text-[11px]"
+          >
+            삭제
+          </button>
+        </div>
+      ))}
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() =>
+            setRows((prev) => [
+              ...prev,
+              { level: "trial_board", court: "특허심판원", result: "기각" },
+            ])
+          }
+          className="text-link text-[11px] font-semibold"
+        >
+          + 심급 추가
+        </button>
+        <Button type="submit" size="sm" className="h-7 text-[11px]">
+          저장
+        </Button>
+        <button
+          type="button"
+          onClick={() => setEditing(false)}
+          className="text-muted-foreground text-[11px]"
+        >
+          취소
+        </button>
+        {fetcher.data?.error ? (
+          <span className="text-[11px] text-rose-600 dark:text-rose-400">
+            {fetcher.data.error}
+          </span>
+        ) : null}
+      </div>
+    </fetcher.Form>
+  );
+}
+
 function Step({
   no,
   label,

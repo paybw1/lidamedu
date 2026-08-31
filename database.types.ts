@@ -2415,6 +2415,7 @@ export type Database = {
           facts_source_meta: Json
           facts_source_ref: string | null
           generated_by: string
+          outcomes: Json
           rejected_reason: string | null
           review_status: Database["public"]["Enums"]["problem_review_status"]
           timeline: Json
@@ -2434,6 +2435,7 @@ export type Database = {
           facts_source_meta?: Json
           facts_source_ref?: string | null
           generated_by?: string
+          outcomes?: Json
           rejected_reason?: string | null
           review_status?: Database["public"]["Enums"]["problem_review_status"]
           timeline?: Json
@@ -2453,6 +2455,7 @@ export type Database = {
           facts_source_meta?: Json
           facts_source_ref?: string | null
           generated_by?: string
+          outcomes?: Json
           rejected_reason?: string | null
           review_status?: Database["public"]["Enums"]["problem_review_status"]
           timeline?: Json

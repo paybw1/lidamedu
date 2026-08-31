@@ -11,9 +11,11 @@ import {
 
 import {
   type CaseDiagramBlock,
+  type CaseOutcome,
   type FactsSourceKind,
   type TimelineEvent,
   parseBlocks,
+  parseOutcomes,
   parseTimeline,
 } from "./lib/case-diagram";
 import {
@@ -44,6 +46,8 @@ export interface CaseDiagram {
   factsSourceRef: string | null;
   blocks: CaseDiagramBlock[];
   timeline: TimelineEvent[];
+  /** 심급별 결과 배지 — 경과 위에 붙는다. */
+  outcomes: CaseOutcome[];
   reviewStatus: DiagramReviewStatus;
   generatedBy: "ai" | "staff";
   approvedAt: string | null;
@@ -69,7 +73,7 @@ export interface CaseDiagramListRow {
 }
 
 const COLUMNS =
-  "diagram_id, case_id, facts_md, facts_source_kind, facts_source_ref, blocks, timeline, review_status, generated_by, approved_at, rejected_reason, updated_at";
+  "diagram_id, case_id, facts_md, facts_source_kind, facts_source_ref, blocks, timeline, outcomes, review_status, generated_by, approved_at, rejected_reason, updated_at";
 
 function mapDiagram(row: {
   diagram_id: string;
@@ -79,6 +83,7 @@ function mapDiagram(row: {
   facts_source_ref: string | null;
   blocks: unknown;
   timeline: unknown;
+  outcomes: unknown;
   review_status: string;
   generated_by: string;
   approved_at: string | null;
@@ -93,6 +98,7 @@ function mapDiagram(row: {
     factsSourceRef: row.facts_source_ref,
     blocks: parseBlocks(row.blocks),
     timeline: parseTimeline(row.timeline),
+    outcomes: parseOutcomes(row.outcomes),
     reviewStatus: row.review_status as DiagramReviewStatus,
     generatedBy: row.generated_by as "ai" | "staff",
     approvedAt: row.approved_at,
@@ -636,6 +642,18 @@ export async function updateCaseDiagramFactsByStaff(
   const { error } = await client
     .from("case_diagrams")
     .update({ facts_md: args.factsMd })
+    .eq("diagram_id", args.diagramId);
+  if (error) throw error;
+}
+
+/** 심급별 결과(경과 배지) 저장 — 도식 패널 인라인. 목록을 통째로 갈아끼운다. */
+export async function updateCaseDiagramOutcomesByStaff(
+  client: Client,
+  args: { diagramId: string; outcomes: CaseOutcome[] },
+): Promise<void> {
+  const { error } = await client
+    .from("case_diagrams")
+    .update({ outcomes: args.outcomes })
     .eq("diagram_id", args.diagramId);
   if (error) throw error;
 }

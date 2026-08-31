@@ -39,6 +39,14 @@ import {
 
 import type { Route } from "./+types/offline-test";
 
+/**
+ * 「선택 추가」 한 번에 담을 수 있는 문항 수.
+ * ★예전 100 은 후보 전량 보기(?count=all)가 생기기 전의 값이라, 단원 하나의 OX 를
+ *   통째로 담으려는 운영자를 막고 있었다(신고 b996af5e). 여기서 막을 이유가 없어
+ *   실질적 상한만 남긴다 — insert 는 addTestQuestions 가 나눠서 넣는다.
+ */
+const MAX_ADD_QUESTIONS = 2000;
+
 const refSchema = z.object({
   questionType: z.enum(["mcq", "ox", "blank"]),
   problemId: z.string().uuid().optional(),
@@ -213,10 +221,24 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   if (intent === "add_questions") {
-    const parsed = z
-      .array(refSchema)
-      .max(100)
-      .safeParse(JSON.parse(String(fd.get("refs") ?? "[]")));
+    let raw: unknown;
+    try {
+      raw = JSON.parse(String(fd.get("refs") ?? "[]"));
+    } catch {
+      return data({ error: "문항 참조 형식 오류" }, { status: 400 });
+    }
+    // ★건수 초과와 형식 오류를 갈라 말한다 — 예전엔 둘 다 "형식 오류" 로 나가서,
+    //   후보를 전량(count=all) 띄워 놓고 100개 넘게 고른 운영자는 왜 안 되는지 알 수 없었다
+    //   (신고 b996af5e). 상한은 한 번에 담는 양의 안전장치일 뿐 실수 방지용은 아니다.
+    if (Array.isArray(raw) && raw.length > MAX_ADD_QUESTIONS) {
+      return data(
+        {
+          error: `한 번에 ${MAX_ADD_QUESTIONS}개까지 담을 수 있습니다 (${raw.length}개 선택). 나눠서 담아 주세요.`,
+        },
+        { status: 400 },
+      );
+    }
+    const parsed = z.array(refSchema).max(MAX_ADD_QUESTIONS).safeParse(raw);
     if (!parsed.success) {
       return data({ error: "문항 참조 형식 오류" }, { status: 400 });
     }
