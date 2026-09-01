@@ -287,13 +287,62 @@ export function PlanPolicyFields({
         </div>
       </div>
 
-      {/* 연장 */}
+      {/* 연장 — feat-11-010. 빈 값 = 운영 기본값(운영관리 › 수강연장 기본값)을 따른다. */}
       <div>
-        <Check
-          name="policy_extensionAllowed"
-          label="수강 연장 허용"
-          defaultChecked={policy?.extensionAllowed ?? false}
-        />
+        <Field label="유료 수강기간 연장">
+          <select
+            name="policy_extensionAllowed"
+            defaultValue={
+              policy?.extensionAllowed === true
+                ? "1"
+                : policy?.extensionAllowed === false
+                  ? "0"
+                  : ""
+            }
+            className="border-input bg-background h-8 rounded-md border px-2 text-xs"
+          >
+            <option value="">기본값 따름</option>
+            <option value="1">허용</option>
+            <option value="0">불허</option>
+          </select>
+        </Field>
+        <div className="mt-1.5 grid grid-cols-3 gap-2">
+          <Field label="연장비용(원)">
+            <Input
+              name="policy_extensionPriceKrw"
+              type="number"
+              min={0}
+              placeholder="기본값"
+              defaultValue={policy?.extensionPriceKrw ?? ""}
+              className={numInput}
+            />
+          </Field>
+          <Field label="최대횟수(0=무제한)">
+            <Input
+              name="policy_extensionMaxCount"
+              type="number"
+              min={0}
+              max={100}
+              placeholder="기본값"
+              defaultValue={policy?.extensionMaxCount ?? ""}
+              className={numInput}
+            />
+          </Field>
+          <Field label="연장일수(0=학습일수)">
+            <Input
+              name="policy_extensionDays"
+              type="number"
+              min={0}
+              max={3650}
+              placeholder="기본값"
+              defaultValue={policy?.extensionDays ?? ""}
+              className={numInput}
+            />
+          </Field>
+        </div>
+        <p className="text-muted-foreground mt-1 text-[11px]">
+          비워 두면 운영 기본값을 따릅니다. 온라인 단과강의에만 적용됩니다.
+        </p>
         {extCandidates.length > 0 ? (
           <div className="mt-1.5">
             <p className="text-muted-foreground mb-1 text-[11px] font-semibold">

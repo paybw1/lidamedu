@@ -6013,6 +6013,117 @@ export type Database = {
           },
         ]
       }
+      enrollment_extensions: {
+        Row: {
+          amount_krw: number
+          created_at: string
+          days_added: number
+          enrollment_id: string
+          extension_id: string
+          granted_by: string | null
+          next_expires_at: string
+          note: string | null
+          order_item_id: string | null
+          plan_id: string | null
+          prev_expires_at: string
+          revert_reason: string | null
+          reverted_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          amount_krw?: number
+          created_at?: string
+          days_added: number
+          enrollment_id: string
+          extension_id?: string
+          granted_by?: string | null
+          next_expires_at: string
+          note?: string | null
+          order_item_id?: string | null
+          plan_id?: string | null
+          prev_expires_at: string
+          revert_reason?: string | null
+          reverted_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          amount_krw?: number
+          created_at?: string
+          days_added?: number
+          enrollment_id?: string
+          extension_id?: string
+          granted_by?: string | null
+          next_expires_at?: string
+          note?: string | null
+          order_item_id?: string | null
+          plan_id?: string | null
+          prev_expires_at?: string
+          revert_reason?: string | null
+          reverted_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrollment_extensions_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["enrollment_id"]
+          },
+          {
+            foreignKeyName: "enrollment_extensions_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "v_enrollment_watch_balance"
+            referencedColumns: ["enrollment_id"]
+          },
+          {
+            foreignKeyName: "enrollment_extensions_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "enrollment_extensions_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "enrollment_extensions_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: true
+            referencedRelation: "order_items"
+            referencedColumns: ["order_item_id"]
+          },
+          {
+            foreignKeyName: "enrollment_extensions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["plan_id"]
+          },
+          {
+            foreignKeyName: "enrollment_extensions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "enrollment_extensions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       enrollment_pauses: {
         Row: {
           created_at: string
@@ -9213,6 +9324,7 @@ export type Database = {
         Row: {
           book_id: string | null
           created_at: string
+          enrollment_id: string | null
           item_type: string
           order_id: string
           order_item_id: string
@@ -9227,6 +9339,7 @@ export type Database = {
         Insert: {
           book_id?: string | null
           created_at?: string
+          enrollment_id?: string | null
           item_type: string
           order_id: string
           order_item_id?: string
@@ -9241,6 +9354,7 @@ export type Database = {
         Update: {
           book_id?: string | null
           created_at?: string
+          enrollment_id?: string | null
           item_type?: string
           order_id?: string
           order_item_id?: string
@@ -9273,6 +9387,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_sales_books"
             referencedColumns: ["book_id"]
+          },
+          {
+            foreignKeyName: "order_items_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["enrollment_id"]
+          },
+          {
+            foreignKeyName: "order_items_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "v_enrollment_watch_balance"
+            referencedColumns: ["enrollment_id"]
           },
           {
             foreignKeyName: "order_items_order_id_fkey"
@@ -9940,8 +10068,11 @@ export type Database = {
           allow_pc: boolean
           created_at: string
           duration_days: number | null
-          extension_allowed: boolean
+          extension_allowed: boolean | null
+          extension_days: number | null
+          extension_max_count: number | null
           extension_plan_ids: string[]
+          extension_price_krw: number | null
           fixed_end_date: string | null
           max_devices_mobile: number
           max_devices_pc: number
@@ -9960,8 +10091,11 @@ export type Database = {
           allow_pc?: boolean
           created_at?: string
           duration_days?: number | null
-          extension_allowed?: boolean
+          extension_allowed?: boolean | null
+          extension_days?: number | null
+          extension_max_count?: number | null
           extension_plan_ids?: string[]
+          extension_price_krw?: number | null
           fixed_end_date?: string | null
           max_devices_mobile?: number
           max_devices_pc?: number
@@ -9980,8 +10114,11 @@ export type Database = {
           allow_pc?: boolean
           created_at?: string
           duration_days?: number | null
-          extension_allowed?: boolean
+          extension_allowed?: boolean | null
+          extension_days?: number | null
+          extension_max_count?: number | null
           extension_plan_ids?: string[]
+          extension_price_krw?: number | null
           fixed_end_date?: string | null
           max_devices_mobile?: number
           max_devices_pc?: number

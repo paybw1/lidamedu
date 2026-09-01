@@ -50,8 +50,15 @@ const policySchema = z.object({
   pauseMinDays: z.coerce.number().int().min(0).max(365),
   pauseMaxDays: z.coerce.number().int().min(0).max(3650),
   pauseTotalDays: z.coerce.number().int().min(0).max(3650),
-  extensionAllowed: z.boolean(),
+  // feat-11-010 — "" = 기본값(app_settings)을 따른다. 값이 있으면 이 강의만의 설정.
+  //   ★boolean 이 아니라 3-상태다: "" (기본값) / "1" (허용) / "0" (불허).
+  extensionAllowed: z
+    .enum(["", "1", "0"])
+    .transform((v) => (v === "" ? null : v === "1")),
   extensionPlanIds: z.array(z.string()),
+  extensionPriceKrw: z.union([z.literal(""), z.coerce.number().int().min(0).max(100_000_000)]).transform((v) => (v === "" ? null : v)),
+  extensionMaxCount: z.union([z.literal(""), z.coerce.number().int().min(0).max(100)]).transform((v) => (v === "" ? null : v)),
+  extensionDays: z.union([z.literal(""), z.coerce.number().int().min(0).max(3650)]).transform((v) => (v === "" ? null : v)),
 });
 
 const schema = z.object({
@@ -245,8 +252,11 @@ export async function action({ request }: Route.ActionArgs) {
       pauseMinDays: fd.get("policy_pauseMinDays"),
       pauseMaxDays: fd.get("policy_pauseMaxDays"),
       pauseTotalDays: fd.get("policy_pauseTotalDays"),
-      extensionAllowed: fd.get("policy_extensionAllowed") === "1",
+      extensionAllowed: String(fd.get("policy_extensionAllowed") ?? ""),
       extensionPlanIds: fd.getAll("policy_extensionPlanIds").map(String),
+      extensionPriceKrw: String(fd.get("policy_extensionPriceKrw") ?? ""),
+      extensionMaxCount: String(fd.get("policy_extensionMaxCount") ?? ""),
+      extensionDays: String(fd.get("policy_extensionDays") ?? ""),
     });
     if (!policyParsed.success) {
       return data(
@@ -288,6 +298,9 @@ export async function action({ request }: Route.ActionArgs) {
       pauseTotalDays: p.pauseTotalDays,
       extensionAllowed: p.extensionAllowed,
       extensionPlanIds: p.extensionPlanIds,
+      extensionPriceKrw: p.extensionPriceKrw,
+      extensionMaxCount: p.extensionMaxCount,
+      extensionDays: p.extensionDays,
     });
     if (!polRes.ok) return data({ error: polRes.error }, { status: 400 });
 

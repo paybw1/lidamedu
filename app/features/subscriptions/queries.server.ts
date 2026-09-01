@@ -219,12 +219,19 @@ export interface PlanPolicy {
   pauseMinDays: number;
   pauseMaxDays: number;
   pauseTotalDays: number;
-  extensionAllowed: boolean;
+  /** feat-11-010 — NULL = 운영 기본값(app_settings)을 따른다. */
+  extensionAllowed: boolean | null;
   extensionPlanIds: string[];
+  /** NULL = 기본값. feat-11-010 유료 연장 설정. */
+  extensionPriceKrw: number | null;
+  /** NULL = 기본값. 0 = 무제한. */
+  extensionMaxCount: number | null;
+  /** NULL = 기본값. 0 = 강의 기본 학습일수. */
+  extensionDays: number | null;
 }
 
 const POLICY_COLUMNS =
-  "plan_id, multiplier, duration_days, fixed_end_date, allow_download, allow_pc, allow_mobile, max_devices_pc, max_devices_mobile, pause_allowed, pause_max_count, pause_min_days, pause_max_days, pause_total_days, extension_allowed, extension_plan_ids";
+  "plan_id, multiplier, duration_days, fixed_end_date, allow_download, allow_pc, allow_mobile, max_devices_pc, max_devices_mobile, pause_allowed, pause_max_count, pause_min_days, pause_max_days, pause_total_days, extension_allowed, extension_plan_ids, extension_price_krw, extension_max_count, extension_days";
 
 function rowToPolicy(r: {
   plan_id: string;
@@ -241,8 +248,11 @@ function rowToPolicy(r: {
   pause_min_days: number;
   pause_max_days: number;
   pause_total_days: number;
-  extension_allowed: boolean;
+  extension_allowed: boolean | null;
   extension_plan_ids: unknown;
+  extension_price_krw: number | null;
+  extension_max_count: number | null;
+  extension_days: number | null;
 }): PlanPolicy {
   return {
     planId: r.plan_id,
@@ -263,6 +273,9 @@ function rowToPolicy(r: {
     extensionPlanIds: Array.isArray(r.extension_plan_ids)
       ? (r.extension_plan_ids as string[])
       : [],
+    extensionPriceKrw: r.extension_price_krw,
+    extensionMaxCount: r.extension_max_count,
+    extensionDays: r.extension_days,
   };
 }
 
@@ -423,6 +436,9 @@ export async function upsertPlanPolicy(
       pause_total_days: input.pauseTotalDays,
       extension_allowed: input.extensionAllowed,
       extension_plan_ids: input.extensionPlanIds as never,
+      extension_price_krw: input.extensionPriceKrw,
+      extension_max_count: input.extensionMaxCount,
+      extension_days: input.extensionDays,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "plan_id" },

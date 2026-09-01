@@ -8,6 +8,15 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 import { Button } from "~/core/components/ui/button";
+import { Input } from "~/core/components/ui/input";
+import {
+  COURSE_EXT_DAYS_KEY,
+  COURSE_EXT_ENABLED_KEY,
+  COURSE_EXT_MAX_COUNT_KEY,
+  COURSE_EXT_PRICE_KEY,
+  getCourseExtensionDefaults,
+  setAppSetting,
+} from "~/core/lib/app-settings.server";
 import { roleAtLeast } from "~/core/lib/roles";
 import makeServerClient from "~/core/lib/supa-client.server";
 import adminClient from "~/core/lib/supa-admin-client.server";
@@ -23,6 +32,7 @@ import {
   type EnrollmentRow,
   type WatchBalance,
 } from "~/features/lms/queries.server";
+import { EXTENSION_DEFAULTS_FALLBACK } from "~/features/lms/lib/extension-policy";
 import { insertLedgerAdjustment, resetWatchUsage } from "~/features/lms/watch.server";
 import { getPlanPolicies } from "~/features/subscriptions/queries.server";
 
@@ -89,14 +99,21 @@ export async function loader({ request }: Route.LoaderArgs) {
     arr.push({ lessonId: l.lesson_id, lessonNo: l.lesson_no, title: l.title });
     lessonsByCourse.set(l.course_id, arr);
   }
+  const extensionDefaultsForRows = await getCourseExtensionDefaults(
+    adminClient,
+  ).catch(() => EXTENSION_DEFAULTS_FALLBACK);
   const rows = rowsRaw.map((r) => ({
     ...r,
     balance: balances.get(r.enrollmentId) ?? null,
-    extensionAllowed: r.planId ? (policies[r.planId]?.extensionAllowed ?? false) : false,
+    // ★기본값 해석까지 거쳐야 실제 동작과 같은 값이 나온다(강의별 값이 NULL 이면 기본값).
+    extensionAllowed: r.planId
+      ? (policies[r.planId]?.extensionAllowed ?? extensionDefaultsForRows.enabled)
+      : extensionDefaultsForRows.enabled,
     lessons: lessonsByCourse.get(r.courseId) ?? [],
   }));
   return {
     rows,
+    extensionDefaults: extensionDefaultsForRows,
     query,
     role,
     courses: (coursesRes.data ?? []).map((c) => ({
@@ -138,6 +155,25 @@ export async function action({ request }: Route.ActionArgs) {
   const { user } = await requireManager(request);
   const fd = await request.formData();
   const intent = fd.get("intent");
+
+  // feat-11-010 — 유료 연장 기본값 저장(운영 전역). 강의별 값이 비어 있을 때 적용된다.
+  if (intent === "ext_defaults") {
+    const num = (k: string, max: number): number => {
+      const n = Number(String(fd.get(k) ?? ""));
+      return Number.isFinite(n) && n >= 0 && n <= max ? Math.round(n) : 0;
+    };
+    const pairs: Array<[string, string | number | boolean]> = [
+      [COURSE_EXT_ENABLED_KEY, fd.get("extEnabled") === "1"],
+      [COURSE_EXT_PRICE_KEY, num("extPrice", 100_000_000)],
+      [COURSE_EXT_MAX_COUNT_KEY, num("extMaxCount", 100)],
+      [COURSE_EXT_DAYS_KEY, num("extDays", 3650)],
+    ];
+    for (const [key, value] of pairs) {
+      const res = await setAppSetting(adminClient, key, value, user.id);
+      if (!res.ok) return data({ error: res.error }, { status: 400 });
+    }
+    return { ok: true, message: "연장 기본값을 저장했습니다." };
+  }
 
   if (intent === "grant") {
     const parsed = grantSchema.safeParse({
@@ -462,8 +498,96 @@ const SOURCE_LABEL: Record<string, string> = {
   event: "이벤트",
 };
 
+/**
+ * feat-11-010 — 유료 수강기간 연장 **기본값**.
+ * 강의별 값(상품 › 수강 정책)이 비어 있으면 이 값이 적용된다.
+ */
+function ExtensionDefaultsForm({
+  defaults,
+}: {
+  defaults: {
+    enabled: boolean;
+    priceKrw: number;
+    maxCount: number;
+    days: number;
+  };
+}) {
+  const fetcher = useFetcher<{ ok?: boolean; message?: string; error?: string }>();
+  useEffect(() => {
+    if (fetcher.data?.error) toast.error(fetcher.data.error);
+    else if (fetcher.data?.message) toast.success(fetcher.data.message);
+  }, [fetcher.data]);
+  const num = "border-input bg-background h-8 w-28 rounded-md border px-2 text-xs";
+  return (
+    <fetcher.Form
+      method="post"
+      className="border-input mb-4 flex flex-wrap items-end gap-3 rounded-lg border p-3"
+    >
+      <input type="hidden" name="intent" value="ext_defaults" />
+      <div className="mr-2">
+        <p className="text-sm font-bold">수강연장 기본값</p>
+        <p className="text-muted-foreground text-[11px]">
+          온라인 단과강의 공통. 강의별로 다르게 하려면 상품의 수강 정책에서 개별
+          설정합니다.
+        </p>
+      </div>
+      <label className="flex items-center gap-1.5 text-xs font-semibold">
+        <input
+          type="checkbox"
+          name="extEnabled"
+          value="1"
+          defaultChecked={defaults.enabled}
+          className="size-3.5"
+        />
+        기간연장 허용
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="text-muted-foreground text-[10px] font-semibold uppercase">
+          연장비용(원)
+        </span>
+        <Input
+          name="extPrice"
+          type="number"
+          min={0}
+          defaultValue={defaults.priceKrw}
+          className={num}
+        />
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="text-muted-foreground text-[10px] font-semibold uppercase">
+          최대횟수(0=무제한)
+        </span>
+        <Input
+          name="extMaxCount"
+          type="number"
+          min={0}
+          max={100}
+          defaultValue={defaults.maxCount}
+          className={num}
+        />
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="text-muted-foreground text-[10px] font-semibold uppercase">
+          연장일수(0=학습일수)
+        </span>
+        <Input
+          name="extDays"
+          type="number"
+          min={0}
+          max={3650}
+          defaultValue={defaults.days}
+          className={num}
+        />
+      </label>
+      <Button type="submit" size="sm" disabled={fetcher.state !== "idle"}>
+        기본값 저장
+      </Button>
+    </fetcher.Form>
+  );
+}
+
 export default function AdminLmsEnrollments({ loaderData }: Route.ComponentProps) {
-  const { rows, query, role, courses, plans } = loaderData;
+  const { rows, query, role, courses, plans, extensionDefaults } = loaderData;
   return (
     <AdminShell
       cluster="lms"
@@ -476,6 +600,8 @@ export default function AdminLmsEnrollments({ loaderData }: Route.ComponentProps
         </Chip>
       }
     >
+      <ExtensionDefaultsForm defaults={extensionDefaults} />
+
       <GrantForm courses={courses} plans={plans} />
 
       <Form method="get" className="mt-4 mb-2 flex items-center gap-2">

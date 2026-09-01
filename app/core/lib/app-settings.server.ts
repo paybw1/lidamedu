@@ -4,6 +4,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "database.types";
 
+import {
+  EXTENSION_DEFAULTS_FALLBACK,
+  type ExtensionDefaults,
+} from "~/features/lms/lib/extension-policy";
+
 // 최근 판례(/latest/cases) 노출 기간 — 롤링 개월 수. 0 = 기간 제한 없음.
 export const LATEST_CASES_RECENCY_MONTHS_KEY = "latest_cases_recency_months";
 
@@ -129,5 +134,37 @@ export async function getLandingTierGap(
     gapTop: { px: normPx(pxTop), color: normColor(colorTop) },
     gap12: { px: normPx(px1), color: normColor(color1) },
     gap23: { px: normPx(px2), color: normColor(color2) },
+  };
+}
+
+// ── 수강기간 연장 기본값 (feat-11-010, 요청서_0901 §3) ──────────────────────
+// 강의별 값(plan_policies.extension_*)이 NULL 이면 이 기본값을 쓴다.
+export const COURSE_EXT_ENABLED_KEY = "course_ext_enabled_default";
+export const COURSE_EXT_PRICE_KEY = "course_ext_price_krw_default";
+export const COURSE_EXT_MAX_COUNT_KEY = "course_ext_max_count_default";
+export const COURSE_EXT_DAYS_KEY = "course_ext_days_default";
+
+/**
+ * 연장 기본값. 미설정이면 **꺼진 상태**로 떨어진다 —
+ * 설정이 비었을 때 결제 버튼이 켜져 있는 쪽이 훨씬 위험하다.
+ */
+export async function getCourseExtensionDefaults(
+  client: SupabaseClient<Database>,
+): Promise<ExtensionDefaults> {
+  const [enabled, price, maxCount, days] = await Promise.all([
+    getAppSetting(client, COURSE_EXT_ENABLED_KEY),
+    getAppSetting(client, COURSE_EXT_PRICE_KEY),
+    getAppSetting(client, COURSE_EXT_MAX_COUNT_KEY),
+    getAppSetting(client, COURSE_EXT_DAYS_KEY),
+  ]);
+  const num = (v: Json | null, fallback: number): number => {
+    const n = typeof v === "number" ? v : Number(v);
+    return Number.isFinite(n) && n >= 0 ? n : fallback;
+  };
+  return {
+    enabled: enabled === true || enabled === "1" || enabled === 1,
+    priceKrw: num(price, EXTENSION_DEFAULTS_FALLBACK.priceKrw),
+    maxCount: num(maxCount, EXTENSION_DEFAULTS_FALLBACK.maxCount),
+    days: num(days, EXTENSION_DEFAULTS_FALLBACK.days),
   };
 }

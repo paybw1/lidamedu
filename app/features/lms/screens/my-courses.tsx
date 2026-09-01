@@ -111,7 +111,9 @@ export async function loader({ request }: Route.LoaderArgs) {
         maxCount: p.pause_max_count,
         minDays: p.pause_min_days,
         maxDays: p.pause_max_days,
-        extensionAllowed: p.extension_allowed,
+        // feat-11-010 로 NULL 허용이 됐다 — 기존 "연장 상품" 게이트는 명시 true 일 때만.
+        //   기본값 해석이 필요한 새 유료 연장은 별도 경로가 담당한다.
+        extensionAllowed: p.extension_allowed === true,
         extensionPlanIds: Array.isArray(p.extension_plan_ids)
           ? (p.extension_plan_ids as string[])
           : [],
