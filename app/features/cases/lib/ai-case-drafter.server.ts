@@ -12,6 +12,13 @@ import {
   type UsageMeta,
 } from "~/features/gs/lib/usage-tracker.server";
 
+// ★★생성 단계 차단(CLAUDE.md #12) — 소스에 적히지 않은 사건번호는 못 쓰게 한다.
+import {
+  CITATION_PROMPT_RULE,
+  EMPTY_ALLOWED,
+  scrubCitations,
+} from "./citation-guard";
+
 const MODEL = "claude-opus-4-7";
 
 export interface DraftedIssue {
@@ -160,7 +167,8 @@ const ISSUES_SYSTEM_PROMPT = `당신은 대한민국 변리사 시험 판례 분
   - "side" — 보조·부수 쟁점.
 - ref_hint 는 판례가 인용한 조문/판례 식별자만 (예: "특허법 제29조 제1항", "대판 2020다1234").
   명시 없으면 비워두세요(추측 금지).
-- 추출 개수: 3~8개. 너무 잘게 쪼개지 마세요.`;
+- 추출 개수: 3~8개. 너무 잘게 쪼개지 마세요.
+${CITATION_PROMPT_RULE}`;
 
 // feat-2-028 — 2차 기출 문항 소스: 발문(+해설/채점평)에서 답안 필수 쟁점 추출.
 const PROBLEM_ISSUES_SYSTEM_PROMPT = `당신은 대한민국 변리사 2차(주관식) 시험 출제 분석가입니다. \
@@ -174,7 +182,8 @@ const PROBLEM_ISSUES_SYSTEM_PROMPT = `당신은 대한민국 변리사 2차(주�
   - "core" — 빠뜨리면 합격선 미달이 되는 결정적 쟁점 (보통 2~5개).
   - "side" — 보조·부수 쟁점.
 - ref_hint 는 발문·해설에 명시된 조문/판례 식별자만 (예: "특허법 제29조 제1항"). 명시 없으면 비워두세요(추측 금지).
-- 추출 개수: 3~8개. 너무 잘게 쪼개지 마세요.`;
+- 추출 개수: 3~8개. 너무 잘게 쪼개지 마세요.
+${CITATION_PROMPT_RULE}`;
 
 export interface ProblemSourceArgs {
   subjectLabel: string;
@@ -204,6 +213,7 @@ export async function draftIssuesFromProblem(
     system: PROBLEM_ISSUES_SYSTEM_PROMPT,
     prompt,
     meta: args.usage?.meta,
+    sourceText: `${args.bodyMd}\n${args.explanationMd ?? ""}`,
   });
 }
 
@@ -225,6 +235,7 @@ export async function draftCaseIssuesFromCase(
     system: ISSUES_SYSTEM_PROMPT,
     prompt,
     meta: args.usage?.meta,
+    sourceText: args.officialTextMd,
   });
 }
 
@@ -232,10 +243,13 @@ async function requestDraftedIssues({
   system,
   prompt,
   meta,
+  sourceText,
 }: {
   system: string;
   prompt: string;
   meta?: UsageMeta;
+  /** 이 초안이 딛고 선 원문 — 여기 적힌 사건번호만 인용을 허용한다. */
+  sourceText: string;
 }): Promise<DraftedIssue[] | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -365,20 +379,29 @@ async function requestDraftedIssues({
     return null;
   }
   const result: DraftedIssue[] = [];
+  // ★인용 스크럽 — 원문에 적히지 않은 사건번호는 걷어낸다. 지우면 문장이 깨지는 것만 남겨 알린다.
+  const leftover = new Set<string>();
+  const scrub = (v: string): string => {
+    const res = scrubCitations(v, EMPTY_ALLOWED, sourceText);
+    for (const n of res.leftover) leftover.add(n);
+    return res.text;
+  };
   for (const it of rawIssues) {
     if (!it || typeof it !== "object") continue;
     const r = it as Record<string, unknown>;
-    const label = typeof r.label === "string" ? r.label.trim() : "";
+    const label =
+      typeof r.label === "string" ? scrub(r.label).trim() : "";
     const descriptionMd =
-      typeof r.description_md === "string" ? r.description_md.trim() : "";
+      typeof r.description_md === "string"
+        ? scrub(r.description_md).trim()
+        : "";
     const importance =
       r.importance === "core" || r.importance === "side"
         ? r.importance
         : "core";
-    const refHint =
-      typeof r.ref_hint === "string" && r.ref_hint.trim().length > 0
-        ? r.ref_hint.trim()
-        : undefined;
+    const scrubbedHint =
+      typeof r.ref_hint === "string" ? scrub(r.ref_hint).trim() : "";
+    const refHint = scrubbedHint.length > 0 ? scrubbedHint : undefined;
     if (label.length < 2) continue;
     result.push({ label, descriptionMd, importance, refHint });
   }
@@ -401,6 +424,10 @@ async function requestDraftedIssues({
     outputTokens,
     outcome: "success",
     meta,
+    // 자동으로 못 지운 근거 없는 인용 — 사람이 봐야 한다.
+    ...(leftover.size > 0
+      ? { reason: `근거 없는 인용 잔여: ${[...leftover].join(", ")}` }
+      : {}),
   });
   return result;
 }

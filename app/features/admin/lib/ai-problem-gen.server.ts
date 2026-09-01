@@ -30,6 +30,11 @@ import {
   checkGlobalCap,
   recordUsage,
 } from "~/features/ai-qna/lib/usage-tracker.server";
+import {
+  CITATION_PROMPT_RULE,
+  scrubCitations,
+} from "~/features/cases/lib/citation-guard";
+import { loadKnownCaseNumbers } from "~/features/cases/lib/known-case-numbers.server";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
 /**
@@ -66,6 +71,8 @@ export interface GenerateReport {
   totalSkippedNoCases: number;
   totalStructureWarnings: number;
   totalDuplicateSuspected: number;
+  /** 근거 없는 사건번호가 섞여 손댄 문항 수(CLAUDE.md #12). */
+  totalCitationWarnings: number;
   /** 지식 유형별 실제 생성 수. */
   byKnowledge: { precedent: number; statute_theory: number };
   generatedProblemIds: string[];
@@ -118,6 +125,7 @@ const SYSTEM_PROMPT = [
   "5. **본문 톤** — 변리사 시험 톤, 법령 용어 정확, 간결.",
   "6. **출제 유형** — 사용자 프롬프트의 [출제 유형](판례 / 조문·이론)에 맞춰 출제하세요. 판례는 판시사항·결론·법리를, 조문·이론은 요건·효과·해석을 검증합니다.",
   "7. **응답 형식** — 아래 JSON 스키마 그대로. 추가 설명 없이 JSON 만:",
+  CITATION_PROMPT_RULE,
   "",
   '{ "problem": {',
   '  "format": "mc_short" | "mc_box",',
@@ -220,6 +228,34 @@ export function validateProblemStructure(p: GeneratedProblem): string | null {
     }
   }
   return null;
+}
+
+/**
+ * 생성 문항 전체(본문·해설·선지·보기)의 인용 사건번호를 스크럽한다 — 제자리 수정.
+ * 괄호 인용은 지우고, 문장에 박혀 지우면 문장이 깨지는 것은 남겨 반환한다(사람이 고침).
+ */
+function scrubProblemCitations(
+  p: GeneratedProblem,
+  allowed: ReadonlySet<string>,
+  sourceText: string,
+): string[] {
+  const leftover = new Set<string>();
+  const fix = (v: string): string => {
+    const res = scrubCitations(v, allowed, sourceText);
+    for (const n of res.leftover) leftover.add(n);
+    return res.text;
+  };
+  p.body_md = fix(p.body_md);
+  p.explanation_md = fix(p.explanation_md);
+  for (const c of p.choices) {
+    c.body_md = fix(c.body_md);
+    c.explanation_md = fix(c.explanation_md);
+  }
+  for (const b of p.box_items) {
+    b.body_md = fix(b.body_md);
+    b.explanation_md = fix(b.explanation_md);
+  }
+  return [...leftover];
 }
 
 // 중복 의심 — 기존 풀에서 body_md substring 매칭 + same lawCode 우선.
@@ -422,6 +458,7 @@ export async function generateAiDraftProblems(
     totalSkippedNoCases: 0,
     totalStructureWarnings: 0,
     totalDuplicateSuspected: 0,
+    totalCitationWarnings: 0,
     byKnowledge: { precedent: 0, statute_theory: 0 },
     generatedProblemIds: [],
     perTargetErrors: [],
@@ -439,6 +476,11 @@ export async function generateAiDraftProblems(
 
   const lawId = await resolveLawId(client, opts.lawCode);
   if (!lawId) return report;
+
+  // ★★생성 단계 차단(CLAUDE.md #12) — 근거 없는 사건번호를 못 쓰게 한다.
+  //   허용 = 우리 DB 에 있는 번호 + 이 문항이 딛고 선 RAG 근거 청크에 적힌 번호.
+  //   수천 행이라 루프 밖에서 한 번만 읽는다.
+  const knownCaseNumbers = await loadKnownCaseNumbers(client);
 
   // 슬롯 계획(형식 × 지식유형) + 유형별 대상 풀.
   const slots = planSlots(opts.formatMix, precedentCount);
@@ -594,6 +636,19 @@ export async function generateAiDraftProblems(
     report.costUsd += estimateCost(model, inputTokens, outputTokens);
     await recordUsage(adminClient, model, inputTokens, outputTokens);
 
+    // ★인용 스크럽 — 근거 청크에 없는 사건번호는 걷어낸다. 법리가 맞아도 번호가 틀리면
+    //   잘못된 정보이고, 사후 감사로는 "실재하지 않음" 을 확정할 수 없다.
+    const citationSource = [
+      primaryLabel ?? "",
+      ...hits.map((h) => h.bodyText),
+    ].join("\n");
+    const citationLeftover = scrubProblemCitations(
+      parsedItem,
+      knownCaseNumbers,
+      citationSource,
+    );
+    if (citationLeftover.length > 0) report.totalCitationWarnings += 1;
+
     // §4 1차 정답 구조 검증 — 실패도 저장 (강사 판단).
     const structureWarning = validateProblemStructure(parsedItem);
     if (structureWarning) report.totalStructureWarnings += 1;
@@ -613,6 +668,8 @@ export async function generateAiDraftProblems(
       requestedFormat: slot.format,
       knowledgeType: slot.knowledge,
       structureWarning: structureWarning ?? null,
+      // 자동으로 못 지운 근거 없는 인용 — 강사가 손봐야 한다.
+      citationWarning: citationLeftover.length > 0 ? citationLeftover : null,
       duplicateSuspectedOf: duplicates,
       modelUsed: model,
     };

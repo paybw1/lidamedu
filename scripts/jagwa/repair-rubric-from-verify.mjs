@@ -3,13 +3,18 @@
 // 인용 조문 현행 전문을 근거로 교정본을 재생성해 {law}-{year}.json 을 제자리 갱신.
 // 수리 후 재검증: node scripts/jagwa/verify-rubric-vs-book.mjs --law X --ids <problem_id,..>
 //
-//   node scripts/jagwa/repair-rubric-from-verify.mjs --law trademark
+//   node --import tsx scripts/jagwa/repair-rubric-from-verify.mjs --law trademark
+// ★--import tsx 필수 — 인용 가드(citation-guard.ts)를 import 한다.
 
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import "dotenv/config";
+
+// ★★생성 단계 차단(CLAUDE.md #12).
+import { CITATION_PROMPT_RULE, checkCitations } from "../../app/features/cases/lib/citation-guard.ts";
+import { loadKnownCaseNumbers } from "../../app/features/cases/lib/known-case-numbers.server.ts";
 
 const MODEL = "claude-opus-4-7";
 const GEN_DIR = "tmp/rubric-gen";
@@ -85,6 +90,8 @@ function extractArticleCites(text) {
   return [...out];
 }
 
+const knownCaseNumbers = await loadKnownCaseNumbers(supa);
+
 const verify = JSON.parse(
   readFileSync(join(GEN_DIR, `verify-${law}${srcSuffix}.json`), "utf8"),
 );
@@ -105,7 +112,8 @@ const SYSTEM = `당신은 대한민국 변리사 2차 시험 수험 콘텐츠의
 - 지적되지 않은 부분은 원본의 구조·서술을 최대한 유지하세요(불필요한 재작성 금지).
 - 검증 불가(info)로만 분류된 판례 인용은 유지하되, 지적에서 오인용이 확인된 판례는 정정하세요.
 - 형식은 원본과 동일: 채점기준(핵심 쟁점과 배점 표 + 축별 채점 기준 + 감점 주의),
-  모범답안(목차 체계·조문→판례→포섭→소결), rubric_items(문항 배점 합계 유지).`;
+  모범답안(목차 체계·조문→판례→포섭→소결), rubric_items(문항 배점 합계 유지).
+${CITATION_PROMPT_RULE}`;
 
 let repaired = 0;
 for (const v of verify) {
@@ -182,9 +190,27 @@ for (const v of verify) {
   });
   const textBlock = res.content.find((b) => b.type === "text");
   const parsed = JSON.parse(textBlock.text);
+  // ★인용 검사 — 근거는 [현행 조문 전문]·[감수 지적사항]과 DB 수록 사건번호뿐이다.
+  //   **원본 텍스트를 근거로 삼지 않는다** — 원본에 섞인 잘못된 번호가 그대로 통과해 버린다.
+  const citationSource = `${artBlocks.join("\n")}\n${issuesMd}`;
+  const citationWarnings = [
+    ...new Set(
+      [
+        parsed.grading_rubric_md,
+        parsed.model_answer_md,
+        ...parsed.rubric_items.map((it) => it.label),
+      ].flatMap(
+        (t) => checkCitations(t ?? "", knownCaseNumbers, citationSource).unknown,
+      ),
+    ),
+  ];
+  if (citationWarnings.length)
+    console.warn(`  ⚠ 근거 없는 사건번호 인용: ${citationWarnings.join(", ")}`);
+
   Object.assign(item, parsed, {
     repaired_at: new Date().toISOString(),
     repair_issue_count: issues.length,
+    citation_warnings: citationWarnings,
   });
   writeFileSync(join(GEN_DIR, file), JSON.stringify(items, null, 2), "utf8");
   repaired++;

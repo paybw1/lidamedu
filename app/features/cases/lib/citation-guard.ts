@@ -119,3 +119,43 @@ export const CITATION_PROMPT_RULE = `
 - 근거가 되는 사건번호를 확인할 수 없으면 **번호를 쓰지 말고 법리만** 서술하세요
   ("판례는 ~라고 본다" 로 충분합니다).
 - 특허심판원 심판번호(2019당3367 등)는 판결문에 적힌 그대로만 옮깁니다.`;
+
+export interface ScrubResult {
+  /** 걷어낸 뒤의 본문. */
+  text: string;
+  /** 괄호구째 지워 낸 근거 없는 번호. */
+  removed: string[];
+  /** 지우면 문장이 깨져 **사람이 고쳐야 하는** 번호. */
+  leftover: string[];
+}
+
+/**
+ * 검사 + 제거를 한 번에 — DB 로 바로 들어가는 생성물용.
+ *
+ * 근거가 확인되지 않은 번호 중 괄호 인용만 지우고, 문장에 박힌 것은 남겨 알린다.
+ * ★검수 단계가 따로 있는 오프라인 산출물(jagwa 채점기준·모범답안)에는 쓰지 않는다 —
+ *   거기서는 지우지 않고 경고만 남긴다. 실재하지만 우리 DB 에 없는 번호가 335종 있어
+ *   자동 삭제하면 맞는 인용까지 지워지고, 그쪽은 사람이 반드시 한 번 읽는 경로다.
+ */
+export function scrubCitations(
+  text: string,
+  allowed: ReadonlySet<string>,
+  sourceText?: string | null,
+): ScrubResult {
+  const { unknown } = checkCitations(text, allowed, sourceText);
+  if (unknown.length === 0) return { text, removed: [], leftover: [] };
+  const res = stripUnknownCitations(text, unknown);
+  const leftover = new Set(res.leftover);
+  return {
+    text: res.text,
+    removed: unknown.filter((n) => !leftover.has(n)),
+    leftover: res.leftover,
+  };
+}
+
+/**
+ * 허용 집합이 "그 초안이 딛고 선 원문뿐" 일 때 쓰는 빈 집합.
+ * 판례 1건·문항 1건에서 뽑는 초안은 DB 전체를 허용할 이유가 없다 —
+ * 그 원문에 적힌 번호만 옮겨 적으면 된다(가장 엄격하고, 가장 안전하다).
+ */
+export const EMPTY_ALLOWED: ReadonlySet<string> = new Set<string>();

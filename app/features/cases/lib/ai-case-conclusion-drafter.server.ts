@@ -9,6 +9,13 @@ import {
   type UsageMeta,
 } from "~/features/gs/lib/usage-tracker.server";
 
+// ★★생성 단계 차단(CLAUDE.md #12) — 소스에 적히지 않은 사건번호는 못 쓰게 한다.
+import {
+  CITATION_PROMPT_RULE,
+  EMPTY_ALLOWED,
+  scrubCitations,
+} from "./citation-guard";
+
 const MODEL = "claude-opus-4-7";
 
 export interface DraftedConclusion {
@@ -43,7 +50,8 @@ const SYSTEM_PROMPT = `당신은 대한민국 변리사 시험 판례 학습 코
 - rationale_md: 1~2문장. 왜 그 결론인지 핵심 근거.
 - weight: 답안에서 권장 비중(0~100). NULL 도 가능(importance 만으로 판정).
   - 권장: core 는 60~80, side 는 10~30 정도. 합산 100 강제 아님.
-- 추가 발명 금지. 판례 전문에 등장한 판단/결론만.`;
+- 추가 발명 금지. 판례 전문에 등장한 판단/결론만.
+${CITATION_PROMPT_RULE}`;
 
 // feat-2-028 — 기출 발문+해설/채점평 기반 변형.
 const SYSTEM_PROMPT_PROBLEM = `당신은 대한민국 변리사 2차(주관식) 시험 학습 코치입니다. 주어진 기출 \
@@ -54,7 +62,8 @@ const SYSTEM_PROMPT_PROBLEM = `당신은 대한민국 변리사 2차(주관식) 
 - rationale_md: 1~2문장. 왜 그 결론인지 핵심 근거(조문·판례 법리).
 - weight: 답안에서 권장 비중(0~100). NULL 도 가능(importance 만으로 판정).
   - 권장: core 는 60~80, side 는 10~30 정도. 합산 100 강제 아님.
-- 추가 발명 금지. 해설/채점평이 있으면 그 판단을 따르고, 없으면 통설·판례 법리에 따른 표준 결론만.`;
+- 추가 발명 금지. 해설/채점평이 있으면 그 판단을 따르고, 없으면 통설·판례 법리에 따른 표준 결론만.
+${CITATION_PROMPT_RULE}`;
 
 export async function draftCaseConclusionsFromIssues(
   args: DraftArgs,
@@ -198,6 +207,14 @@ export async function draftCaseConclusionsFromIssues(
   const raw = Array.isArray(obj.conclusions) ? obj.conclusions : [];
   const idSet = new Set(args.issues.map((i) => i.issueId));
   const result: DraftedConclusion[] = [];
+  // ★인용 스크럽 — 근거는 판례 전문·사실관계뿐이다. 여기 없는 사건번호는 걷어낸다.
+  const citationSource = `${args.officialTextMd}\n${args.factsSummaryMd}`;
+  const leftover = new Set<string>();
+  const scrub = (v: string): string => {
+    const res = scrubCitations(v, EMPTY_ALLOWED, citationSource);
+    for (const n of res.leftover) leftover.add(n);
+    return res.text;
+  };
   for (const r of raw) {
     if (!r || typeof r !== "object") continue;
     const o = r as Record<string, unknown>;
@@ -207,7 +224,7 @@ export async function draftCaseConclusionsFromIssues(
       typeof o.direction === "string" ? o.direction.trim() : "";
     if (!direction) continue;
     const rationaleMd =
-      typeof o.rationale_md === "string" ? o.rationale_md.trim() : "";
+      typeof o.rationale_md === "string" ? scrub(o.rationale_md).trim() : "";
     const weight =
       typeof o.weight === "number" && o.weight >= 0 && o.weight <= 100
         ? Math.round(o.weight)
@@ -238,6 +255,10 @@ export async function draftCaseConclusionsFromIssues(
     outputTokens,
     outcome: "success",
     meta,
+    // 자동으로 못 지운 근거 없는 인용 — 사람이 봐야 한다.
+    ...(leftover.size > 0
+      ? { reason: `근거 없는 인용 잔여: ${[...leftover].join(", ")}` }
+      : {}),
   });
   return result;
 }

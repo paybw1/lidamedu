@@ -6,14 +6,19 @@
 //         디자인 제15판·심사기준, build-book-corpus 산출)
 // 출력 = tmp/rubric-gen/{law}-{year}.json + 검수용 {law}-{year}-review.md — DB 반영 없음(별도 승인 단계).
 //
-//   node scripts/jagwa/gen-rubric-model-answers.mjs --law patent --year 2025
+//   node --import tsx scripts/jagwa/gen-rubric-model-answers.mjs --law patent --year 2025
 //   옵션: --problems 1,2  (기본 전체 4문)
+// ★--import tsx 필수 — 인용 가드(citation-guard.ts)를 import 한다. 빼면 즉시 죽는다.
 
 import { mkdirSync, readFileSync, readdirSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import "dotenv/config";
+
+// ★★생성 단계 차단(CLAUDE.md #12) — 근거 없는 사건번호 인용 검출.
+import { CITATION_PROMPT_RULE, checkCitations } from "../../app/features/cases/lib/citation-guard.ts";
+import { loadKnownCaseNumbers } from "../../app/features/cases/lib/known-case-numbers.server.ts";
 
 const MODEL = "claude-opus-4-7";
 const EXPL_DIR = "tmp/instructor-explanations";
@@ -58,6 +63,9 @@ const targets = (problems ?? []).filter(
   (p) => !onlyProblems || onlyProblems.includes(p.problem_number),
 );
 if (!targets.length) throw new Error("대상 문제 0건");
+
+// 인용 허용 사건번호 = 우리 DB 수록분. 여기에 없고 근거 자료에도 없는 번호는 지어낸 것이다.
+const knownCaseNumbers = await loadKnownCaseNumbers(supa);
 
 // ② 강사 해설 번들 (해당 회차·과목 전 파일)
 const manifest = JSON.parse(readFileSync(join(EXPL_DIR, "manifest.json"), "utf8"));
@@ -167,6 +175,7 @@ const SYSTEM = `당신은 대한민국 변리사 2차 시험(주관식·논술) 
   중심으로 종합하되, 임의로 해설에 없는 쟁점을 창작하지 마세요.
 - '실제 채점위원 채점평'이 제공되면 그 지적사항(득점·감점 포인트)을 채점기준에 최우선 반영하세요.
 - 조문·판례 인용은 해설 자료에 나온 것만 사용하세요.
+${CITATION_PROMPT_RULE}
 
 [현행법(개정법) 기준 원칙 — 매우 중요]
 - 채점기준·모범답안은 반드시 **현행 시행 법령(2026년 기준)** 의 조문 체계·법리로 작성하세요. 강사 해설이
@@ -341,6 +350,24 @@ for (const p of targets) {
   totalOut += res.usage?.output_tokens ?? 0;
   const textBlock = res.content.find((b) => b.type === "text");
   const parsed = JSON.parse(textBlock.text);
+  // ★인용 검사 — 근거 자료(강사 해설·채점평·조문·교재)에 없고 DB 에도 없는 사건번호.
+  //   여기서는 **지우지 않고 경고만** 남긴다. 실재하지만 우리 DB 에 없는 번호가 있고,
+  //   반영 전에 사람이 review.md 를 반드시 읽는 경로이기 때문이다.
+  const citationSource = `${explBundle}\n${perProblem}`;
+  const citationWarnings = [
+    ...new Set(
+      [
+        parsed.grading_rubric_md,
+        parsed.model_answer_md,
+        ...parsed.rubric_items.map((it) => it.label),
+      ].flatMap(
+        (t) => checkCitations(t ?? "", knownCaseNumbers, citationSource).unknown,
+      ),
+    ),
+  ];
+  if (citationWarnings.length)
+    console.warn(`  ⚠ 근거 없는 사건번호 인용: ${citationWarnings.join(", ")}`);
+
   const itemSum = parsed.rubric_items.reduce((s, it) => s + it.points, 0);
   if (p.total_points != null && itemSum !== p.total_points)
     console.warn(`  ⚠ rubric_items 배점 합 ${itemSum} ≠ 문제 배점 ${p.total_points}`);
@@ -353,6 +380,7 @@ for (const p of targets) {
     display_no: p.display_no,
     total_points: p.total_points,
     has_examiner_note: Boolean(note),
+    citation_warnings: citationWarnings,
     source_files: explFiles.map((m) => m.file),
     ...parsed,
     generated_at: new Date().toISOString(),
@@ -369,6 +397,9 @@ const review = results
   .map(
     (r) =>
       `# ${LAW_LABEL[law]} 제${r.round}회(${r.year}) 문제 ${r.problem_number} (${r.total_points ?? "?"}점${r.has_examiner_note ? " · 채점위원 채점평 반영" : ""})\n\n` +
+      (r.citation_warnings?.length
+        ? `> ★근거 없는 사건번호 인용 ${r.citation_warnings.length}건 — **반영 전 확인 필수**: ${r.citation_warnings.join(", ")}\n> 네 곳(cases DB·case_lower_courts·교재·법령정보센터) 어디에도 없으면 번호를 빼고 법리만 남기세요.\n\n`
+        : "") +
       `## 자기점검 체크리스트\n${r.rubric_items.map((it) => `- [ ] ${it.label} (${it.points}점)`).join("\n")}\n\n` +
       `${r.grading_rubric_md}\n\n---\n\n# 모범답안\n\n${r.model_answer_md}`,
   )

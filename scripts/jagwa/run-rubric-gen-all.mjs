@@ -26,9 +26,18 @@ let idx = 0;
 function runOne(key) {
   const [law, year] = key.split("|");
   return new Promise((resolveP) => {
+    // ★--import tsx — 자식이 인용 가드(.ts)를 import 한다. 빼면 전 조합이 즉시 FAIL.
     const child = spawn(
-      "node",
-      ["scripts/jagwa/gen-rubric-model-answers.mjs", "--law", law, "--year", year],
+      process.execPath,
+      [
+        "--import",
+        "tsx",
+        "scripts/jagwa/gen-rubric-model-answers.mjs",
+        "--law",
+        law,
+        "--year",
+        year,
+      ],
       { stdio: ["ignore", "pipe", "pipe"] },
     );
     let out = "";

@@ -1,14 +1,22 @@
 // feat-2-028 Stage 3 — 특허 2차 기출(해설/채점평 보유분) 훈련 항목 + AI 초안 일괄 생성.
 // 산출은 전부 draft(승인 큐) — 학생 비노출. 원장 검수·승인 후 공개.
 //
-//   node scripts/training/draft-second-round-items.mjs            # dry-run(대상 나열)
-//   node scripts/training/draft-second-round-items.mjs --apply    # 생성 실행
-//   node scripts/training/draft-second-round-items.mjs --apply --limit 5
+//   node --import tsx scripts/training/draft-second-round-items.mjs            # dry-run
+//   node --import tsx scripts/training/draft-second-round-items.mjs --apply    # 생성 실행
+//   node --import tsx scripts/training/draft-second-round-items.mjs --apply --limit 5
+// ★--import tsx 필수 — 인용 가드(citation-guard.ts)를 import 한다.
+//
+// ★★2026-09-01: 이 생성기가 만든 논점에서 실재하지 않는 사건번호 3건이 발견됐다
+//   (2005후3352·2009후3919·2015다257538 — 법리는 맞고 번호만 틀려 읽어서는 안 잡혔다).
+//   그래서 발문·해설에 적히지도 않고 DB 에도 없는 번호는 생성 즉시 걷어낸다.
 //
 // 프롬프트·모델·비용 산정은 앱(ai-case-drafter/conclusion-drafter/pricing)과 동일 유지.
 import "dotenv/config";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
+
+import { CITATION_PROMPT_RULE, scrubCitations } from "../../app/features/cases/lib/citation-guard.ts";
+import { loadKnownCaseNumbers } from "../../app/features/cases/lib/known-case-numbers.server.ts";
 
 const APPLY = process.argv.includes("--apply");
 const LIMIT_IDX = process.argv.indexOf("--limit");
@@ -33,7 +41,8 @@ const ISSUES_SYSTEM = `당신은 대한민국 변리사 2차(주관식) 시험 �
   - "core" — 빠뜨리면 합격선 미달이 되는 결정적 쟁점 (보통 2~5개).
   - "side" — 보조·부수 쟁점.
 - ref_hint 는 발문·해설에 명시된 조문/판례 식별자만 (예: "특허법 제29조 제1항"). 명시 없으면 비워두세요(추측 금지).
-- 추출 개수: 3~8개. 너무 잘게 쪼개지 마세요.`;
+- 추출 개수: 3~8개. 너무 잘게 쪼개지 마세요.
+${CITATION_PROMPT_RULE}`;
 
 const CONCLUSIONS_SYSTEM = `당신은 대한민국 변리사 2차(주관식) 시험 학습 코치입니다. 주어진 기출 \
 발문·쟁점들에 대해 각 쟁점의 (a) 모범 결론 방향 (b) 짧은 결론 근거 (c) 권장 비중(weight 0~100, 선택) 을 작성합니다.
@@ -43,7 +52,8 @@ const CONCLUSIONS_SYSTEM = `당신은 대한민국 변리사 2차(주관식) 시
 - rationale_md: 1~2문장. 왜 그 결론인지 핵심 근거(조문·판례 법리).
 - weight: 답안에서 권장 비중(0~100). NULL 도 가능(importance 만으로 판정).
   - 권장: core 는 60~80, side 는 10~30 정도. 합산 100 강제 아님.
-- 추가 발명 금지. 해설/채점평이 있으면 그 판단을 따르고, 없으면 통설·판례 법리에 따른 표준 결론만.`;
+- 추가 발명 금지. 해설/채점평이 있으면 그 판단을 따르고, 없으면 통설·판례 법리에 따른 표준 결론만.
+${CITATION_PROMPT_RULE}`;
 
 async function recordUsage(kind, inputTokens, outputTokens, outcome, meta, reason) {
   const cost =
@@ -144,6 +154,9 @@ const { data: adminProfile } = await sb
   .limit(1)
   .single();
 
+// 인용 허용 사건번호 = 우리 DB 수록분(+ 문항별 발문·해설).
+const knownCaseNumbers = await loadKnownCaseNumbers(sb);
+
 const targets = (probs ?? [])
   .filter(
     (p) =>
@@ -195,12 +208,21 @@ if (!APPLY) {
       const issues = (issuesRes.parsed?.issues ?? []).filter((i) => (i.label ?? "").trim().length >= 2);
       if (issues.length === 0) throw new Error("쟁점 0건");
 
+      // ★인용 스크럽 — 이 문항의 발문·해설에 적히지 않고 DB 에도 없는 사건번호는 걷어낸다.
+      const citationSource = `${p.body_md ?? ""}\n${p.explanation_md ?? ""}`;
+      const leftover = new Set();
+      const scrub = (v) => {
+        const res = scrubCitations(v ?? "", knownCaseNumbers, citationSource);
+        for (const n of res.leftover) leftover.add(n);
+        return res.text;
+      };
+
       const rows = issues.map((d, i) => ({
         item_id: item.item_id,
-        label: d.label.trim(),
-        description_md: (d.description_md ?? "").trim() || null,
+        label: scrub(d.label).trim(),
+        description_md: scrub(d.description_md ?? "").trim() || null,
         importance: d.importance === "side" ? "side" : "core",
-        ref_hint: (d.ref_hint ?? "").trim() || null,
+        ref_hint: scrub(d.ref_hint ?? "").trim() || null,
         order_index: i,
         generated_by: "ai",
         created_by: adminProfile?.profile_id ?? null,
@@ -243,14 +265,17 @@ if (!APPLY) {
           .update({
             weight: w,
             model_conclusion_direction: (c.direction ?? "").trim() || null,
-            model_conclusion_md: (c.rationale_md ?? "").trim() || null,
+            model_conclusion_md: scrub(c.rationale_md ?? "").trim() || null,
           })
           .eq("issue_id", c.issue_id);
         if (!error) applied++;
       }
 
       ok++;
-      console.log(`OK ${label} — 쟁점 ${inserted.length} · 결론 ${applied}`);
+      const warn = leftover.size
+        ? ` · ⚠근거 없는 인용 잔여 ${[...leftover].join(",")}`
+        : "";
+      console.log(`OK ${label} — 쟁점 ${inserted.length} · 결론 ${applied}${warn}`);
     } catch (e) {
       fail++;
       console.log(`FAIL ${label}: ${e.message}`);

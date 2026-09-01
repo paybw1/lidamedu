@@ -20,6 +20,9 @@ for (const f of readdirSync(GEN_DIR)) {
     .map(
       (r) =>
         `# ${LAW_LABEL[r.law]} 제${r.round}회(${r.year}) 문제 ${r.problem_number} (${r.total_points ?? "?"}점${r.has_examiner_note ? " · 채점위원 채점평 반영" : ""}${r.repaired_at ? " · 감수 수리본" : ""})\n\n` +
+        (r.citation_warnings?.length
+          ? `> ★근거 없는 사건번호 인용 ${r.citation_warnings.length}건 — **반영 전 확인 필수**: ${r.citation_warnings.join(", ")}\n> 네 곳(cases DB·case_lower_courts·교재·법령정보센터) 어디에도 없으면 번호를 빼고 법리만 남기세요.\n\n`
+          : "") +
         `## 자기점검 체크리스트\n${r.rubric_items.map((it) => `- [ ] ${it.label} (${it.points}점)`).join("\n")}\n\n` +
         `${r.grading_rubric_md}\n\n---\n\n# 모범답안\n\n${r.model_answer_md}`,
     )

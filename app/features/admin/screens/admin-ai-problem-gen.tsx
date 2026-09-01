@@ -43,6 +43,7 @@ interface GenReport {
   totalSkippedNoCases: number;
   totalStructureWarnings: number;
   totalDuplicateSuspected: number;
+  totalCitationWarnings: number;
   byKnowledge: { precedent: number; statute_theory: number };
   generatedProblemIds: string[];
   perTargetErrors: Array<{
@@ -269,6 +270,12 @@ function ReportPanel({ report }: { report: GenReport }) {
           <Stat
             label="중복 의심"
             value={report.totalDuplicateSuspected}
+            amber
+          />
+          {/* 근거 없는 사건번호 — 괄호 인용은 자동 제거하고, 문장에 박힌 것만 여기 남는다. */}
+          <Stat
+            label="인용 경고"
+            value={report.totalCitationWarnings}
             amber
           />
           <Stat
