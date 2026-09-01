@@ -132,7 +132,8 @@ export async function resolveExtensionForEnrollment(input: {
     .from("enrollments")
     .select("enrollment_id, user_id, plan_id, status, expires_at")
     .eq("enrollment_id", input.enrollmentId)
-    .is("deleted_at", null)
+    // ★enrollments 에는 deleted_at 이 없다 — 걸면 PostgREST 오류로 조용히 null 이 된다.
+    //   해지 여부는 status='revoked' 가 나타내고, 그 판정은 정책 해석이 맡는다.
     .maybeSingle();
   // ★본인 수강권인지 확인 — enrollmentId 만 갈아 끼우는 접근을 여기서 막는다.
   if (!e || e.user_id !== input.userId) return null;

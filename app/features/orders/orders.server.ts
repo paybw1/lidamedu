@@ -278,7 +278,9 @@ async function fulfillCourseEnrollments(input: {
       .select("enrollment_id, expires_at")
       .eq("user_id", input.userId)
       .eq("course_id", link.course_id)
-      .is("deleted_at", null)
+      // ★★enrollments 에는 deleted_at 이 없다. 이 필터가 PostgREST 오류를 내서
+      //   existing 이 늘 null 이었고, 재구매 때 만료일 연장 대신 **수강권이 하나 더**
+      //   생겼다(2026-09-02 발견 — 아직 중복 사례는 없어 데이터 정정은 불필요).
       .order("expires_at", { ascending: false })
       .limit(1)
       .maybeSingle();
