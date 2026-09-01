@@ -50,6 +50,12 @@ const schema = z.discriminatedUnion("intent", [
     issueId: z.string().uuid(),
     reason: z.string().trim().min(1).max(2000),
   }),
+  // 일괄 승인 — 검수 큐에서 화면에 뜬 논점을 한 번에(185건을 한 줄씩 누르는 건 비현실적).
+  //   ★건당 요청이면 185회 왕복이라 실패 지점이 흩어진다. 한 번에 받아 서버에서 돈다.
+  z.object({
+    intent: z.literal("bulk_approve"),
+    issueIds: z.string().min(1),
+  }),
   z.object({
     intent: z.literal("delete"),
     issueId: z.string().uuid(),
@@ -118,6 +124,22 @@ export async function action({ request }: Route.ActionArgs) {
     case "approve": {
       await approveCaseTrainingIssue(client, input.issueId, user.id);
       return data({ ok: true as const });
+    }
+    case "bulk_approve": {
+      let ids: unknown;
+      try {
+        ids = JSON.parse(input.issueIds);
+      } catch {
+        return data({ error: "형식 오류" }, { status: 400 });
+      }
+      const parsed = z.array(z.string().uuid()).max(500).safeParse(ids);
+      if (!parsed.success) {
+        return data({ error: "한 번에 500건까지 승인할 수 있습니다." }, { status: 400 });
+      }
+      for (const id of parsed.data) {
+        await approveCaseTrainingIssue(client, id, user.id);
+      }
+      return data({ ok: true as const, approved: parsed.data.length });
     }
     case "reject": {
       await rejectCaseTrainingIssue(client, input.issueId, input.reason);

@@ -52,6 +52,33 @@ export interface ReviewQueue {
   rows: ReviewRow[];
 }
 
+/**
+ * 일괄 승인이 가능한 종류 — 기존 API 에 일괄 인텐트가 있는 것만.
+ * ★도식·훈련 항목은 **일부러 뺐다.** 한 건씩 봐야 하는 콘텐츠이고, 수도 적다.
+ *   일괄 승인은 "이미 통째로 검토를 마친 묶음"을 넣는 도구이지 검수를 건너뛰는 버튼이 아니다.
+ */
+export const BULK_APPROVE: Partial<
+  Record<
+    ReviewKind,
+    { path: string; intent: string; field: string; format: "csv" | "json" }
+  >
+> = {
+  // ★형식이 다르다 — 문제는 예전부터 쉼표 목록, 논점은 JSON 배열.
+  //   기존 엔드포인트에 맞추는 쪽이 맞다(엔드포인트를 큐 사정으로 바꾸지 않는다).
+  case_training_issue: {
+    path: "/api/case-training/issue",
+    intent: "bulk_approve",
+    field: "issueIds",
+    format: "json",
+  },
+  problem: {
+    path: "/api/admin/problem-review",
+    intent: "bulk-approve",
+    field: "problemIds",
+    format: "csv",
+  },
+};
+
 export function parseReviewKind(raw: string | null): ReviewKind {
   return (REVIEW_KINDS as readonly string[]).includes(raw ?? "")
     ? (raw as ReviewKind)

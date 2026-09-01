@@ -26,6 +26,12 @@ export interface CaseTrainingItem {
   factsSummaryMd: string;
   factsGeneratedBy: "ai" | "staff";
   reviewStatus: "draft" | "approved" | "rejected";
+  /**
+   * 검수 요청 시각. null = **작업 중**(검수 큐·워크큐에서 제외).
+   * ★draft 하나로는 '만들다 만 것'과 '봐 주세요'가 구분되지 않아, 미완성 항목이
+   *   계기판에 할 일로 잡혔다(2026-09-01). feat-14-N1.
+   */
+  reviewRequestedAt: string | null;
   approvedAt: string | null;
   rejectedReason: string | null;
   createdBy: string | null;
@@ -117,7 +123,7 @@ export async function listApprovedCaseTrainingItems(
   const { data, error } = await client
     .from("case_training_items")
     .select(
-      `item_id, case_id, problem_id, facts_summary_md, facts_generated_by, review_status,
+      `item_id, case_id, problem_id, facts_summary_md, facts_generated_by, review_status, review_requested_at,
        approved_at, rejected_reason, created_by, created_at, linked_gs_round_id,
        cases:case_id ( case_id, case_title, case_number, court, decided_at, official_text_md, official_text_pdf_path ),
        ${PROBLEM_JOIN},
@@ -155,6 +161,7 @@ export async function listApprovedCaseTrainingItems(
       factsSummaryMd: r.facts_summary_md,
       factsGeneratedBy: r.facts_generated_by as "ai" | "staff",
       reviewStatus: r.review_status as "draft" | "approved" | "rejected",
+      reviewRequestedAt: r.review_requested_at ?? null,
       approvedAt: r.approved_at,
       rejectedReason: r.rejected_reason,
       createdBy: r.created_by,
@@ -188,7 +195,7 @@ export async function getApprovedCaseTrainingItem(
   const { data: itemRow, error: itemErr } = await client
     .from("case_training_items")
     .select(
-      `item_id, case_id, problem_id, facts_summary_md, facts_generated_by, review_status,
+      `item_id, case_id, problem_id, facts_summary_md, facts_generated_by, review_status, review_requested_at,
        approved_at, rejected_reason, created_by, created_at, linked_gs_round_id,
        cases:case_id ( case_id, case_title, case_number, court, decided_at, official_text_md, official_text_pdf_path ),
        ${PROBLEM_JOIN}`,
@@ -244,6 +251,7 @@ export async function getApprovedCaseTrainingItem(
       factsSummaryMd: itemRow.facts_summary_md,
       factsGeneratedBy: itemRow.facts_generated_by as "ai" | "staff",
       reviewStatus: itemRow.review_status as "draft" | "approved" | "rejected",
+      reviewRequestedAt: itemRow.review_requested_at,
       approvedAt: itemRow.approved_at,
       rejectedReason: itemRow.rejected_reason,
       createdBy: itemRow.created_by,
@@ -274,7 +282,7 @@ export async function listCaseTrainingItemsForStaff(
   const { data, error } = await client
     .from("case_training_items")
     .select(
-      `item_id, case_id, problem_id, facts_summary_md, facts_generated_by, review_status,
+      `item_id, case_id, problem_id, facts_summary_md, facts_generated_by, review_status, review_requested_at,
        approved_at, rejected_reason, created_by, created_at, linked_gs_round_id,
        cases:case_id ( case_id, case_title, case_number, court, decided_at, official_text_md, official_text_pdf_path ),
        ${PROBLEM_JOIN},
@@ -306,6 +314,7 @@ export async function listCaseTrainingItemsForStaff(
       factsSummaryMd: r.facts_summary_md,
       factsGeneratedBy: r.facts_generated_by as "ai" | "staff",
       reviewStatus: r.review_status as "draft" | "approved" | "rejected",
+      reviewRequestedAt: r.review_requested_at ?? null,
       approvedAt: r.approved_at,
       rejectedReason: r.rejected_reason,
       createdBy: r.created_by,
@@ -342,7 +351,7 @@ export async function getCaseTrainingItemForStaff(
   const { data: itemRow, error: itemErr } = await client
     .from("case_training_items")
     .select(
-      `item_id, case_id, problem_id, facts_summary_md, facts_generated_by, review_status,
+      `item_id, case_id, problem_id, facts_summary_md, facts_generated_by, review_status, review_requested_at,
        approved_at, rejected_reason, created_by, created_at, linked_gs_round_id,
        cases:case_id ( case_id, case_title, case_number, court, decided_at, official_text_md, official_text_pdf_path ),
        problems:problem_id ( problem_id, year, problem_number, body_md, explanation_md, laws ( law_code ) )`,
@@ -380,6 +389,7 @@ export async function getCaseTrainingItemForStaff(
       factsSummaryMd: itemRow.facts_summary_md,
       factsGeneratedBy: itemRow.facts_generated_by as "ai" | "staff",
       reviewStatus: itemRow.review_status as "draft" | "approved" | "rejected",
+      reviewRequestedAt: itemRow.review_requested_at,
       approvedAt: itemRow.approved_at,
       rejectedReason: itemRow.rejected_reason,
       createdBy: itemRow.created_by,
@@ -477,6 +487,22 @@ export async function approveCaseTrainingItem(
       approved_by: approvedBy,
       rejected_reason: null,
     })
+    .eq("item_id", itemId);
+  if (error) throw error;
+}
+
+/**
+ * 검수 요청 토글 — draft 안에서 '작업 중'(null)과 '봐 주세요'(시각)를 가른다.
+ * ★검수 큐·워크큐는 요청된 것만 센다. 상태를 늘리지 않고 시각으로 두어 언제 요청했는지가 남는다.
+ */
+export async function setCaseTrainingItemReviewRequest(
+  client: Client,
+  itemId: string,
+  requested: boolean,
+): Promise<void> {
+  const { error } = await client
+    .from("case_training_items")
+    .update({ review_requested_at: requested ? new Date().toISOString() : null })
     .eq("item_id", itemId);
   if (error) throw error;
 }

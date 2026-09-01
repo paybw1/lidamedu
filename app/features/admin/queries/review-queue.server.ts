@@ -158,6 +158,8 @@ async function loadTrainingItems(): Promise<ReviewRow[]> {
       "item_id, facts_summary_md, created_at, cases:case_id ( case_number, case_title )",
     )
     .eq("review_status", "draft")
+    // ★검수 요청된 것만 — null 은 아직 만드는 중이다(위 워크큐와 같은 규칙).
+    .not("review_requested_at", "is", null)
     .is("deleted_at", null)
     .order("created_at", { ascending: true })
     .limit(LIMIT);
@@ -239,6 +241,7 @@ export async function getReviewQueue(kind: ReviewKind): Promise<ReviewQueue> {
       .from("case_training_items")
       .select("item_id", { count: "exact", head: true })
       .eq("review_status", "draft")
+      .not("review_requested_at", "is", null)
       .is("deleted_at", null),
     adminClient
       .from("case_training_issues")

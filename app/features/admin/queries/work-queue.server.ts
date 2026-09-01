@@ -63,10 +63,13 @@ export async function getAdminWorkQueue(
       .select("diagram_id", { count: "exact", head: true })
       .eq("review_status", "draft")
       .is("deleted_at", null),
+    // ★항목은 **검수 요청된 것만** 센다 — draft 에는 '만들다 만 것'이 섞여 있어
+    //   그대로 세면 계기판이 안 해도 되는 일을 할 일로 보여 준다(2026-09-01).
     adminClient
       .from("case_training_items")
       .select("item_id", { count: "exact", head: true })
       .eq("review_status", "draft")
+      .not("review_requested_at", "is", null)
       .is("deleted_at", null),
     adminClient
       .from("case_training_issues")

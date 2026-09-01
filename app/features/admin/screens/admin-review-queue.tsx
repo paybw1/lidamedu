@@ -24,8 +24,10 @@ import { cn } from "~/core/lib/utils";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Chip } from "~/features/community/components/community-ui";
 import {
+  BULK_APPROVE,
   REVIEW_KINDS,
   REVIEW_KIND_LABEL,
+  type ReviewKind,
   type ReviewRow,
   parseReviewKind,
 } from "~/features/admin/lib/review-queue";
@@ -87,7 +89,7 @@ export default function AdminReviewQueue({ loaderData }: Route.ComponentProps) {
           검수 대기가 없습니다.
         </p>
       ) : (
-        <ReviewList rows={rows} />
+        <ReviewList rows={rows} kind={kind} />
       )}
     </AdminShell>
   );
@@ -97,15 +99,43 @@ export default function AdminReviewQueue({ loaderData }: Route.ComponentProps) {
  * ★판정한 행은 목록에서 즉시 걷는다(낙관적) — 서버 재조회를 기다리면 방금 승인한 행이
  *   남아 있어 두 번 누르게 된다. 실패하면 되돌리고 사유를 보여 준다.
  */
-function ReviewList({ rows }: { rows: ReviewRow[] }) {
+function ReviewList({ rows, kind }: { rows: ReviewRow[]; kind: ReviewKind }) {
   const [done, setDone] = useState<ReadonlySet<string>>(new Set());
+  const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
   const visible = rows.filter((r) => !done.has(r.id));
+  const bulk = BULK_APPROVE[kind];
   return (
     <div className="divide-border divide-y rounded-lg border">
+      {bulk ? (
+        <BulkBar
+          rows={visible}
+          picked={picked}
+          setPicked={setPicked}
+          cfg={bulk}
+          onDone={(ids) =>
+            setDone((prev) => {
+              const next = new Set(prev);
+              for (const id of ids) next.add(id);
+              return next;
+            })
+          }
+        />
+      ) : null}
       {visible.map((r) => (
         <ReviewItem
           key={r.id}
           row={r}
+          picked={bulk ? picked.has(r.id) : null}
+          onPick={
+            bulk
+              ? () =>
+                  setPicked((prev) => {
+                    const next = new Set(prev);
+                    if (!next.delete(r.id)) next.add(r.id);
+                    return next;
+                  })
+              : undefined
+          }
           onSettled={(ok) =>
             setDone((prev) => {
               if (!ok) return prev;
@@ -125,12 +155,93 @@ function ReviewList({ rows }: { rows: ReviewRow[] }) {
   );
 }
 
+/**
+ * 일괄 승인 바 — 화면에 뜬 것만 대상. "이미 통째로 검토를 마친 묶음"을 넣는 도구다.
+ * ★건당 요청을 보내면 수백 회 왕복이라 실패 지점이 흩어진다 — 기존 API 의 일괄
+ *   인텐트로 한 번에 보낸다(도식·훈련 항목은 일괄을 안 붙였다 — 한 건씩 봐야 한다).
+ */
+function BulkBar({
+  rows,
+  picked,
+  setPicked,
+  cfg,
+  onDone,
+}: {
+  rows: ReviewRow[];
+  picked: ReadonlySet<string>;
+  setPicked: (fn: (prev: ReadonlySet<string>) => ReadonlySet<string>) => void;
+  cfg: { path: string; intent: string; field: string; format: "csv" | "json" };
+  onDone: (ids: string[]) => void;
+}) {
+  const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  const handled = useRef<unknown>(null);
+  const ids = rows.filter((r) => picked.has(r.id)).map((r) => r.id);
+  const allPicked = rows.length > 0 && ids.length === rows.length;
+
+  useEffect(() => {
+    const d = fetcher.data;
+    if (!d || d === handled.current) return;
+    handled.current = d;
+    if (!d.error) {
+      onDone(ids);
+      setPicked(() => new Set());
+    }
+    // ids 는 제출 시점 값 — 응답 처리에만 쓴다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetcher.data]);
+
+  const run = () => {
+    if (ids.length === 0) return;
+    if (!window.confirm(`선택한 ${ids.length}건을 승인합니다. 계속할까요?`)) return;
+    const fd = new FormData();
+    fd.set("intent", cfg.intent);
+    fd.set(cfg.field, cfg.format === "json" ? JSON.stringify(ids) : ids.join(","));
+    fetcher.submit(fd, { method: "post", action: cfg.path });
+  };
+
+  return (
+    <div className="bg-muted/40 flex flex-wrap items-center gap-2 px-3 py-2 text-xs">
+      <button
+        type="button"
+        className="text-link font-semibold"
+        onClick={() =>
+          setPicked(() =>
+            allPicked ? new Set() : new Set(rows.map((r) => r.id)),
+          )
+        }
+      >
+        {allPicked ? "전체 해제" : "전체 선택"}
+      </button>
+      <span className="text-muted-foreground tabular-nums">
+        {ids.length}건 선택 · 화면 {rows.length}건
+      </span>
+      <Button
+        size="sm"
+        className="ml-auto h-7 text-[11px]"
+        disabled={ids.length === 0 || fetcher.state !== "idle"}
+        onClick={run}
+      >
+        <CheckIcon className="size-3" /> 선택 승인
+      </Button>
+      {fetcher.data?.error ? (
+        <span className="text-rose-600 dark:text-rose-400">
+          {fetcher.data.error}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 function ReviewItem({
   row,
   onSettled,
+  picked,
+  onPick,
 }: {
   row: ReviewRow;
   onSettled: (ok: boolean) => void;
+  picked: boolean | null;
+  onPick?: () => void;
 }) {
   const fetcher = useFetcher<{ ok?: boolean | string; error?: string }>();
   const handled = useRef<unknown>(null);
@@ -162,6 +273,15 @@ function ReviewItem({
   return (
     <div className={cn("p-3", busy && "opacity-50")}>
       <div className="flex items-start gap-3">
+        {picked !== null ? (
+          <input
+            type="checkbox"
+            checked={picked}
+            onChange={onPick}
+            aria-label="일괄 승인 선택"
+            className="accent-primary mt-1 size-3.5 shrink-0"
+          />
+        ) : null}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-sm font-semibold">{row.title}</span>

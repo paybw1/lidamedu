@@ -2872,6 +2872,7 @@ export type Database = {
           linked_gs_round_id: string | null
           problem_id: string | null
           rejected_reason: string | null
+          review_requested_at: string | null
           review_status: Database["public"]["Enums"]["problem_review_status"]
           updated_at: string
         }
@@ -2888,6 +2889,7 @@ export type Database = {
           linked_gs_round_id?: string | null
           problem_id?: string | null
           rejected_reason?: string | null
+          review_requested_at?: string | null
           review_status?: Database["public"]["Enums"]["problem_review_status"]
           updated_at?: string
         }
@@ -2904,6 +2906,7 @@ export type Database = {
           linked_gs_round_id?: string | null
           problem_id?: string | null
           rejected_reason?: string | null
+          review_requested_at?: string | null
           review_status?: Database["public"]["Enums"]["problem_review_status"]
           updated_at?: string
         }

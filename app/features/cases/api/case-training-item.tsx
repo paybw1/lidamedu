@@ -8,6 +8,7 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import {
   approveCaseTrainingItem,
   rejectCaseTrainingItem,
+  setCaseTrainingItemReviewRequest,
   createCaseTrainingItem,
   createProblemTrainingItem,
   softDeleteCaseTrainingItem,
@@ -47,6 +48,12 @@ const schema = z.discriminatedUnion("intent", [
     intent: z.literal("reject"),
     itemId: z.string().uuid(),
     reason: z.string().trim().min(1).max(2000),
+  }),
+  // 검수 요청 토글 — draft 안의 '작업 중'(null) / '봐 주세요'(시각) 구분.
+  z.object({
+    intent: z.literal("set_review_request"),
+    itemId: z.string().uuid(),
+    requested: z.enum(["1", "0"]),
   }),
   z.object({
     intent: z.literal("delete"),
@@ -102,6 +109,14 @@ export async function action({ request }: Route.ActionArgs) {
     }
     case "approve": {
       await approveCaseTrainingItem(client, input.itemId, user.id);
+      return data({ ok: true as const });
+    }
+    case "set_review_request": {
+      await setCaseTrainingItemReviewRequest(
+        client,
+        input.itemId,
+        input.requested === "1",
+      );
       return data({ ok: true as const });
     }
     case "reject": {

@@ -189,6 +189,55 @@ export default function AdminCaseTrainingEdit({
   );
 }
 
+/**
+ * 검수 요청 토글 — draft 안에서 '작업 중'과 '봐 주세요'를 가른다.
+ * ★검수 큐·워크큐는 요청된 것만 센다. 이 버튼이 없으면 만들다 만 항목이 계기판에
+ *   할 일로 잡혀, 안 해도 되는 일이 밀린 것처럼 보인다(2026-09-01 실제 사례).
+ */
+function ReviewRequestToggle({
+  itemId,
+  requested,
+  status,
+}: {
+  itemId: string;
+  requested: boolean;
+  status: "draft" | "approved" | "rejected";
+}) {
+  const fetcher = useFetcher();
+  const revalidator = useRevalidator();
+  const busy = fetcher.state !== "idle";
+  // 승인된 항목은 이미 큐 밖이다 — 토글을 보일 이유가 없다.
+  if (status === "approved") return null;
+  const submit = () => {
+    const fd = new FormData();
+    fd.set("intent", "set_review_request");
+    fd.set("itemId", itemId);
+    fd.set("requested", requested ? "0" : "1");
+    fetcher.submit(fd, { method: "post", action: "/api/case-training/item" });
+  };
+  useEffect(() => {
+    if (fetcher.state === "idle" && fetcher.data) revalidator.revalidate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetcher.state, fetcher.data]);
+  return (
+    <Button
+      type="button"
+      size="sm"
+      variant={requested ? "default" : "outline"}
+      className="rounded-full"
+      disabled={busy}
+      onClick={submit}
+      title={
+        requested
+          ? "검수 큐에 올라가 있습니다. 누르면 다시 '작업 중'으로 내립니다."
+          : "다 만들었으면 눌러 검수 큐에 올립니다."
+      }
+    >
+      {requested ? "검수 요청됨" : "검수 요청"}
+    </Button>
+  );
+}
+
 function StatusChip({ status }: { status: "draft" | "approved" | "rejected" }) {
   if (status === "approved") return <Chip tone="emerald">승인됨</Chip>;
   if (status === "rejected") return <Chip tone="coral">반려</Chip>;
