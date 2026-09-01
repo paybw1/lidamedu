@@ -1,9 +1,17 @@
 // feat-11-006 Phase 3 — 소스 우선 하이브리드 HTML 에디터.
+//   ★★2026-09-01 요청서 ① 재요청 반영 2가지
+//   (1) script·style 이 들어 있는 문서는 **소스 모드로 열고 비주얼 편집을 잠근다**.
+//       contentEditable 은 편집·정규화 과정에서 구조를 건드릴 수 있고, 무엇보다 저장된
+//       <style> 이 관리자 화면 전체에 그대로 적용돼 편집 화면이 망가진다.
+//       ("수정 화면 재진입 시 기존 구조 그대로 유지" 요구와 직결)
+//   (2) 미리보기는 **iframe 안에서** 렌더한다. 같은 문서에 렌더하면 이벤트 페이지의 CSS 가
+//       관리자 화면으로 새어 나가 "미리보기 = 실제" 가 성립하지 않는다. iframe 은 문서가
+//       분리돼 스크립트도 자기 문서에서 정상 실행된다.
 //   ★설계: 저장값은 항상 원본 HTML 문자열(단일 소스). 비주얼(contentEditable)과 소스(textarea)는
 //   같은 문자열을 편집하는 두 창일 뿐이라, 디자이너가 붙여넣은 임의 HTML/CSS 가 정규화로 유실되지
 //   않는다(tiptap 류 스키마 에디터와의 결정적 차이 — 모바일 CSS·커스텀 레이아웃 보존).
 //   폼에는 hidden input(name)으로 HTML 을 실어 기존 액션 경로를 그대로 사용한다.
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import {
   BoldIcon,
@@ -17,9 +25,10 @@ import {
   YoutubeIcon,
 } from "lucide-react";
 
-import { RichHtml } from "./rich-html";
-
 type Mode = "visual" | "source" | "preview";
+
+/** 비주얼(contentEditable) 편집을 잠글 조건 — 소스 구조를 지켜야 하는 문서. */
+const NEEDS_SOURCE_MODE = /<(script|style)\b/i;
 
 export interface HtmlEditorProps {
   /** 폼 필드명 — 이 이름의 hidden input 으로 HTML 이 제출된다. */
@@ -51,8 +60,33 @@ export function HtmlEditor({
   minHeight = 320,
   onChange,
 }: HtmlEditorProps) {
-  const [mode, setMode] = useState<Mode>("visual");
+  // script·style 이 든 문서는 소스 모드로 연다(비주얼 편집이 구조를 건드리지 않게).
+  const [mode, setMode] = useState<Mode>(() =>
+    NEEDS_SOURCE_MODE.test(defaultValue) ? "source" : "visual",
+  );
   const [html, setHtml] = useState(defaultValue);
+  // ★현재 값 기준으로 판정한다 — 비주얼 편집 중에 디자이너 HTML 을 붙여 넣는 경우가 실제로 있고,
+  //   그대로 두면 그 <style> 이 관리자 화면 전체에 적용돼 편집 화면이 망가진다.
+  const sourceOnly = NEEDS_SOURCE_MODE.test(html);
+  useEffect(() => {
+    if (sourceOnly && mode === "visual") setMode("source");
+  }, [sourceOnly, mode]);
+  // 미리보기 iframe 에 실어 줄 문서 스타일 — 실제 페이지와 같은 CSS 로 보여 준다.
+  const [pageCss, setPageCss] = useState<{ links: string[]; inline: string }>({
+    links: [],
+    inline: "",
+  });
+  useEffect(() => {
+    setPageCss({
+      links: Array.from(
+        document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'),
+      ).map((l) => l.href),
+      // 개발 서버는 CSS 를 <style> 로 주입한다 — 그쪽도 같이 옮겨야 미리보기가 맨몸이 아니다.
+      inline: Array.from(document.querySelectorAll("style"))
+        .map((s) => s.textContent ?? "")
+        .join("\n"),
+    });
+  }, []);
   // 값 변경 통지(수동 FormData 폼용). hidden input 은 그대로 유지(네이티브 폼 호환).
   useEffect(() => {
     onChange?.(html);
@@ -136,6 +170,22 @@ export function HtmlEditor({
     insertHtml(embed);
   };
 
+  // iframe srcdoc — 실제 페이지와 같은 스타일 + 같은 래퍼 클래스로 감싼다.
+  const previewDoc = useMemo(() => {
+    const links = pageCss.links
+      .map((href) => `<link rel="stylesheet" href="${href}">`)
+      .join("");
+    const body = html || "<p style='color:#999'>미리볼 내용이 없습니다.</p>";
+    return [
+      "<!doctype html><html lang=\"ko\"><head><meta charset=\"utf-8\">",
+      '<meta name="viewport" content="width=device-width,initial-scale=1">',
+      links,
+      pageCss.inline ? `<style>${pageCss.inline}</style>` : "",
+      "<style>html,body{margin:0;padding:0}</style>",
+      `</head><body><div class="lecture-detail-html">${body}</div></body></html>`,
+    ].join("");
+  }, [html, pageCss]);
+
   const visualEnabled = mode === "visual";
   const btn =
     "border-input hover:bg-muted inline-flex h-8 items-center gap-1 rounded-md border px-2 text-[12px] disabled:opacity-40";
@@ -159,24 +209,33 @@ export function HtmlEditor({
             ["source", "소스"],
             ["preview", "미리보기"],
           ] as const
-        ).map(([k, label]) => (
-          <button
-            key={k}
-            type="button"
-            onClick={() => {
-              if (mode === "visual") syncFromVisual();
-              setMode(k);
-            }}
-            className={
-              "rounded px-2.5 py-1 text-[12px] font-semibold " +
-              (mode === k
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground")
-            }
-          >
-            {label}
-          </button>
-        ))}
+        ).map(([k, label]) => {
+          const locked = k === "visual" && sourceOnly;
+          return (
+            <button
+              key={k}
+              type="button"
+              disabled={locked}
+              title={
+                locked
+                  ? "script·style 이 포함된 문서입니다 — 구조 보존을 위해 소스 모드로만 편집합니다."
+                  : undefined
+              }
+              onClick={() => {
+                if (mode === "visual") syncFromVisual();
+                setMode(k);
+              }}
+              className={
+                "rounded px-2.5 py-1 text-[12px] font-semibold disabled:opacity-40 " +
+                (mode === k
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground")
+              }
+            >
+              {label}
+            </button>
+          );
+        })}
         {mode === "preview" ? (
           <button
             type="button"
@@ -278,19 +337,21 @@ export function HtmlEditor({
           />
         ) : (
           <div className="bg-muted/30 flex justify-center overflow-auto p-4" style={{ minHeight }}>
-            {/* 미리보기도 RichHtml — 스크립트가 실제 페이지에서만 돌면
-                "미리보기와 실제가 같다"는 요청서 ⑦ 조건이 깨진다. */}
-            <div
-              style={{ width: mobilePreview ? 390 : "100%", maxWidth: "100%", padding: 16 }}
+            {/* ★iframe — 문서를 분리해야 이벤트 페이지 CSS 가 관리자 화면으로 새지 않고,
+                스크립트도 실제 페이지와 같은 조건(자기 문서 파싱)에서 실행된다.
+                sandbox 는 allow-scripts 만 — 미리보기가 세션·쿠키에 손대지 못하게 한다. */}
+            <iframe
+              title="미리보기"
+              srcDoc={previewDoc}
+              sandbox="allow-scripts"
               className="bg-background rounded shadow-sm"
-            >
-              <RichHtml
-                className="lecture-detail-html"
-                html={
-                  html || "<p style='color:#999'>미리볼 내용이 없습니다.</p>"
-                }
-              />
-            </div>
+              style={{
+                width: mobilePreview ? 390 : "100%",
+                maxWidth: "100%",
+                height: fullscreen ? "100%" : minHeight,
+                border: 0,
+              }}
+            />
           </div>
         )}
       </div>

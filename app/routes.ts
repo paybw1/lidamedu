@@ -14,6 +14,12 @@ export default [
     "/lecture/certificates/:enrollmentId/print",
     "features/lms/screens/lecture-certificate-print.tsx",
   ),
+  // feat-11-008 P2 — 페이지관리 공개 풀페이지(/page/:code).
+  // ★2026-09-01 요청서 ① — private.layout 안에 있어 **비로그인 접근이 /login 으로 튕겼다**.
+  //   이벤트·T-PASS 페이지는 링크를 받은 사람이 로그인 없이 열어 보는 것이 존재 이유다.
+  //   또 "풀페이지" 이므로 상단바·본문 폭 제한 없이 최상위(레이아웃 없음)에 둔다.
+  //   접근통제는 그대로 RLS — 비 staff 에게는 status='use' 만 보인다(fail-closed).
+  route("/page/:code", "features/pages/screens/page-view.tsx"),
 
   ...prefix("/debug", [
     route("/sentry", "debug/sentry.tsx"),
@@ -995,7 +1001,6 @@ export default [
         "features/pages/screens/admin-page-edit.tsx",
         { id: "admin-page-edit" },
       ),
-      route("/page/:code", "features/pages/screens/page-view.tsx"),
       route(
         "/admin/membership-test",
         "features/admin/screens/admin-membership-test.tsx",
