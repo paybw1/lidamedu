@@ -4,7 +4,8 @@
 // 규칙으로 걸러 **경고 있는 것만 위로 올리고** 나머지는 빠르게 승인할 수 있게 한다.
 //
 // 검사 항목(감사 규칙은 scripts/lib/content-rules.mjs SSOT):
-//   ① DB 미수록 사건번호 인용    → WARN  (사람이 법령정보센터로 확인)
+//   ① 실재하지 않는 사건번호      → FAIL  (DB·법령정보센터 둘 다 없음 = 지어낸 것)
+//   ①' DB 미수록·외부 실재        → WARN  (인용은 맞지만 우리 DB 에 없어 링크 불가)
 //   ② 근거 없는 단정형 서술      → FAIL
 //   ③ 강학상 분류용어            → WARN
 //   ④ 모범 결론 누락·과단문      → WARN
@@ -24,6 +25,7 @@ import "dotenv/config";
 import { createClient } from "@supabase/supabase-js";
 
 import { publishAuditFindings } from "../lib/audit-findings.mjs";
+import { existsAtLawGoKr } from "../lib/law-precedent-lookup.mjs";
 import {
   ACADEMIC_TERMS,
   ASSERTIONS,
@@ -124,11 +126,17 @@ async function main() {
       if (no === own) continue;
       const flat = flatten(no);
       if (known.has(flat) || source.includes(flat)) continue;
-      // ★WARN 이지 FAIL 이 아니다 — 우리 DB 에 없다고 존재하지 않는 판례는 아니다.
-      //   CLAUDE.md 는 **네 곳(cases·하급심·교재·법령정보센터) 모두에서** 확인 안 될 때만
-      //   금지한다. 이 감사는 앞의 둘만 볼 수 있으므로 "사람이 확인" 신호로 남긴다.
-      //   (인용 판례가 DB 에 없으면 학생 화면에서 링크도 안 되니 어차피 봐야 한다.)
-      msgs.push(["WARN", `DB 미수록 사건번호 인용 — 법령정보센터 확인 필요: ${no}`]);
+      // ★DB 에 없으면 **법령정보센터까지 조회**해 갈라 본다(2026-09-01 원장 지적).
+      //   실제로 6건 중 3건이 어디에도 없는 **지어낸 사건번호**였다
+      //   (2005후3352 · 2009후3919 · 2015다257538). 사람이 매번 찾게 두면 놓친다.
+      const live = await existsAtLawGoKr(no);
+      msgs.push(
+        live === false
+          ? ["FAIL", `실재하지 않는 사건번호 — 지어낸 것으로 의심: ${no}`]
+          : live === true
+            ? ["WARN", `DB 미수록(법령정보센터에는 있음) — 적재 검토: ${no}`]
+            : ["WARN", `사건번호 확인 실패(조회 오류) — 사람이 확인: ${no}`],
+      );
     }
     // ② 단정형
     for (const re of ASSERTIONS) {
