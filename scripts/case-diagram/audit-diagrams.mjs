@@ -11,11 +11,18 @@
 //   ⑤ 구조 결손 — 쟁점/결론 공란, 법리 축 0개
 import "dotenv/config";
 import { createClient } from "@supabase/supabase-js";
+
+// ★감사 결과를 검수 큐로 보낸다(feat-14-N1-c) — 터미널에만 남기면 사람이 볼 것을
+//   사람이 못 본다. --publish 를 붙였을 때만 적재한다(부분 실행이 전체를 지우지 않게).
+import { publishAuditFindings } from "../lib/audit-findings.mjs";
 import fs from "node:fs";
 import path from "node:path";
 
 const argv = process.argv.slice(2);
 const YEAR = argv.includes("--year") ? argv[argv.indexOf("--year") + 1] : null;
+const ONE_CASE = argv.includes("--case") ? argv[argv.indexOf("--case") + 1] : null;
+// ★결과를 검수 큐(content_audit_findings)에 적재한다. 기본은 터미널 출력만.
+const PUBLISH = argv.includes("--publish");
 const CACHE_DIR = path.resolve(process.cwd(), "source", "하급심 판결문", ".cache");
 
 const sb = createClient(
@@ -112,6 +119,7 @@ async function main() {
 
   let fail = 0;
   let warn = 0;
+  const findings = [];
   for (const r of rows) {
     const cn = r.cases?.case_number ?? "?";
     const source = [
@@ -182,6 +190,21 @@ async function main() {
     const w = msgs.filter((m) => m[0] === "WARN").length;
     fail += f;
     warn += w;
+    for (const [lv, m] of msgs) {
+      findings.push({
+        entityType: "case_diagram",
+        entityId: r.diagram_id,
+        // 규칙 키 = 메시지에서 가변부(쟁점 번호·인용 문구)를 걷어낸 형태.
+        //   같은 도식에 같은 규칙이 여러 번 걸려도 한 줄로 모인다.
+        ruleKey: String(m)
+          .replace(/쟁점 d+ /, "")
+          .replace(/: .*$/, "")
+          .trim()
+          .slice(0, 60),
+        severity: lv === "FAIL" ? "fail" : "warn",
+        message: String(m),
+      });
+    }
     const badge = f ? "FAIL" : w ? "WARN" : " OK ";
     console.log(
       `[${badge}] ${cn.padEnd(13)} ${r.cases?.decided_at}  쟁점 ${blocks.length} · 사실관계 ${(r.facts_md ?? "").length}자 · ${r.review_status}`,
@@ -190,6 +213,21 @@ async function main() {
   }
 
   console.log(`\n대상 ${rows.length}건 · FAIL ${fail} · WARN ${warn}`);
+  // ★전수 실행일 때만 적재한다 — 부분 실행(--year/--case) 결과로 전체를 갈아치우면
+  //   범위 밖 도식의 경고가 통째로 사라진다.
+  if (PUBLISH) {
+    if (YEAR || ONE_CASE) {
+      console.log(
+        "[적재 생략] --publish 는 전수 실행에서만 씁니다 — 범위 밖 결과가 지워집니다.",
+      );
+    } else {
+      const res = await publishAuditFindings(sb, {
+        source: "audit-diagrams",
+        findings,
+      });
+      console.log(`검수 큐에 적재: ${res.inserted}건`);
+    }
+  }
   if (fail) process.exitCode = 1;
 }
 

@@ -481,6 +481,24 @@ export async function approveCaseTrainingItem(
   if (error) throw error;
 }
 
+/** 반려 — 검수 큐(feat-14-N1-b)에서 쓴다. 사유를 남겨 무엇을 고쳐야 하는지 알린다. */
+export async function rejectCaseTrainingItem(
+  client: Client,
+  itemId: string,
+  reason: string,
+): Promise<void> {
+  const { error } = await client
+    .from("case_training_items")
+    .update({
+      review_status: "rejected",
+      approved_at: null,
+      approved_by: null,
+      rejected_reason: reason,
+    })
+    .eq("item_id", itemId);
+  if (error) throw error;
+}
+
 export async function unapproveCaseTrainingItem(
   client: Client,
   itemId: string,
@@ -578,6 +596,24 @@ export async function approveCaseTrainingIssue(
       approved_at: new Date().toISOString(),
       approved_by: approvedBy,
       rejected_reason: null,
+    })
+    .eq("issue_id", issueId);
+  if (error) throw error;
+}
+
+/** 반려 — 검수 큐(feat-14-N1-b)에서 쓴다. */
+export async function rejectCaseTrainingIssue(
+  client: Client,
+  issueId: string,
+  reason: string,
+): Promise<void> {
+  const { error } = await client
+    .from("case_training_issues")
+    .update({
+      review_status: "rejected",
+      approved_at: null,
+      approved_by: null,
+      rejected_reason: reason,
     })
     .eq("issue_id", issueId);
   if (error) throw error;

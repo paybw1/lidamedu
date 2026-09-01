@@ -4007,6 +4007,42 @@ export type Database = {
           },
         ]
       }
+      content_audit_findings: {
+        Row: {
+          created_at: string
+          detected_at: string
+          entity_id: string
+          entity_type: string
+          finding_id: string
+          message: string
+          rule_key: string
+          severity: string
+          source: string
+        }
+        Insert: {
+          created_at?: string
+          detected_at?: string
+          entity_id: string
+          entity_type: string
+          finding_id?: string
+          message: string
+          rule_key: string
+          severity: string
+          source: string
+        }
+        Update: {
+          created_at?: string
+          detected_at?: string
+          entity_id?: string
+          entity_type?: string
+          finding_id?: string
+          message?: string
+          rule_key?: string
+          severity?: string
+          source?: string
+        }
+        Relationships: []
+      }
       content_chunks: {
         Row: {
           authority_tier: number

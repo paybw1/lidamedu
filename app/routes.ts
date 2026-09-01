@@ -873,6 +873,8 @@ export default [
         "/admin/tools/find-replace",
         "features/admin/screens/admin-find-replace.tsx",
       ),
+      // feat-14-N1-b — 통합 검수 큐(문제·도식·2차 훈련을 한 화면에서 판정).
+      route("/admin/review", "features/admin/screens/admin-review-queue.tsx"),
       route("/admin/users", "features/admin/screens/admin-users.tsx"),
       // feat-11-002 — 강의 영상 LMS (시리즈·에디션·회차·영상·수강권 + 재생 판정).
       route("/admin/lms/courses", "features/lms/screens/admin-lms-courses.tsx"),

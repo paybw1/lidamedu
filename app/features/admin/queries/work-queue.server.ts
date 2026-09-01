@@ -21,12 +21,28 @@ export interface AdminWorkQueueCounts {
   csInquiriesPending: number;
   cohortUpgradePending: number;
   communityReportsPending: number;
+  // ★콘텐츠 검수 큐(feat-14-N1-a). 예전엔 problemsReviewPending(문제)만 세어,
+  //   판례 도식·2차 훈련 검수 대기가 **어느 계기판에도 안 잡혔다**. 2026-09-01 실측에서
+  //   문제 12건만 보이고 도식 40 · 훈련 항목 34 · 훈련 논점 185 는 안 보이는 상태였다
+  //   (훈련은 승인분이 3건뿐이라 학생에게 사실상 통째로 비노출이었다).
+  caseDiagramsReviewPending: number;
+  caseTrainingItemsPending: number;
+  caseTrainingIssuesPending: number;
 }
+
 
 export async function getAdminWorkQueue(
   client: SupabaseClient<Database>,
 ): Promise<AdminWorkQueueCounts> {
-  const [rpcRes, csOpen, upgradePending, reportsPending] = await Promise.all([
+  const [
+    rpcRes,
+    csOpen,
+    upgradePending,
+    reportsPending,
+    diagramsDraft,
+    trainingItemsDraft,
+    trainingIssuesDraft,
+  ] = await Promise.all([
     client.rpc("admin_work_queue_counts"),
     adminClient
       .from("cs_inquiries")
@@ -41,6 +57,22 @@ export async function getAdminWorkQueue(
       .from("community_reports")
       .select("report_id", { count: "exact", head: true })
       .eq("status", "pending"),
+    // 콘텐츠 검수 대기 — 학생에게 안 보이는(=draft) 상태로 쌓인 것들.
+    adminClient
+      .from("case_diagrams")
+      .select("diagram_id", { count: "exact", head: true })
+      .eq("review_status", "draft")
+      .is("deleted_at", null),
+    adminClient
+      .from("case_training_items")
+      .select("item_id", { count: "exact", head: true })
+      .eq("review_status", "draft")
+      .is("deleted_at", null),
+    adminClient
+      .from("case_training_issues")
+      .select("issue_id", { count: "exact", head: true })
+      .eq("review_status", "draft")
+      .is("deleted_at", null),
   ]);
   if (rpcRes.error) throw rpcRes.error;
   const row = (rpcRes.data ?? [])[0];
@@ -54,6 +86,9 @@ export async function getAdminWorkQueue(
     csInquiriesPending: csOpen.count ?? 0,
     cohortUpgradePending: upgradePending.count ?? 0,
     communityReportsPending: reportsPending.count ?? 0,
+    caseDiagramsReviewPending: diagramsDraft.count ?? 0,
+    caseTrainingItemsPending: trainingItemsDraft.count ?? 0,
+    caseTrainingIssuesPending: trainingIssuesDraft.count ?? 0,
   };
 }
 

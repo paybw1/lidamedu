@@ -229,12 +229,20 @@ function WorkQueueRow({
 }) {
   const tiles: WorkQueueTile[] = [
     {
-      // 1차 객관식 §1-§5 — review_status='draft' 검토 대기.
-      // 최우선(좌측 첫 타일) — 신규 출제 흐름의 게이트.
-      label: "검토 대기 문제",
-      value: counts.problemsReviewPending,
-      to: "/admin/problems/review",
-      hint: "AI 초안·신규 출제 중 강사 승인 대기",
+      // ★콘텐츠 검수 통합(feat-14-N1-a) — 예전엔 '검토 대기 문제'(문제만) 하나였고
+      //   판례 도식·2차 훈련은 어느 계기판에도 안 잡혀 draft 로 쌓였다(2026-09-01 실측:
+      //   문제 12만 보이고 도식 40 · 훈련 항목 34 · 훈련 논점 185 는 안 보임).
+      //   최우선(좌측 첫 타일) — 학생에게 안 보이는 콘텐츠의 총량이다.
+      label: "콘텐츠 검수 대기",
+      // ★합계는 여기서 더한다 — .server 모듈에서 **값**을 import 하면 typecheck 는
+      //   통과해도 빌드가 깨진다(클라 번들에 서버 모듈이 딸려온다).
+      value:
+        counts.problemsReviewPending +
+        counts.caseDiagramsReviewPending +
+        counts.caseTrainingItemsPending +
+        counts.caseTrainingIssuesPending,
+      to: "/admin/review",
+      hint: `문제 ${counts.problemsReviewPending} · 도식 ${counts.caseDiagramsReviewPending} · 2차 훈련 ${counts.caseTrainingItemsPending + counts.caseTrainingIssuesPending}`,
     },
     {
       label: "오늘 신규 가입",

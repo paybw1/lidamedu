@@ -197,6 +197,8 @@ export const ADMIN_NAV: NavCluster[] = [
     label: "데이터 점검",
     Icon: ClipboardCheckIcon,
     screens: [
+      // feat-14-N1-b — 검수 대기를 한 화면에서(문제·도식·2차 훈련).
+      { label: "콘텐츠 검수", to: "/admin/review" },
       { label: "콘텐츠 완성도", to: "/admin/laws/health" },
       { label: "데이터 가져오기 점검", to: "/admin/seeds/preview" },
       { label: "전문 PDF 미적재", to: "/admin/cases/pdf-missing" },

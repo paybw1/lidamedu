@@ -7,6 +7,7 @@ import { z } from "zod";
 import makeServerClient from "~/core/lib/supa-client.server";
 import {
   approveCaseTrainingIssue,
+  rejectCaseTrainingIssue,
   bulkInsertCaseTrainingIssues,
   softDeleteCaseTrainingIssue,
   unapproveCaseTrainingIssue,
@@ -42,6 +43,12 @@ const schema = z.discriminatedUnion("intent", [
   z.object({
     intent: z.literal("unapprove"),
     issueId: z.string().uuid(),
+  }),
+  // feat-14-N1-b 검수 큐 — 반려는 검수의 절반인데 인텐트가 없어 큐에서 못 눌렀다.
+  z.object({
+    intent: z.literal("reject"),
+    issueId: z.string().uuid(),
+    reason: z.string().trim().min(1).max(2000),
   }),
   z.object({
     intent: z.literal("delete"),
@@ -110,6 +117,10 @@ export async function action({ request }: Route.ActionArgs) {
     }
     case "approve": {
       await approveCaseTrainingIssue(client, input.issueId, user.id);
+      return data({ ok: true as const });
+    }
+    case "reject": {
+      await rejectCaseTrainingIssue(client, input.issueId, input.reason);
       return data({ ok: true as const });
     }
     case "unapprove": {
