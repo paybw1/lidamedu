@@ -391,6 +391,8 @@ export const ADMIN_NAV: NavCluster[] = [
     label: "강의 플랫폼 콘텐츠",
     Icon: MegaphoneIcon,
     screens: [
+      // feat-11-009 — 메인화면 자체를 블록으로 조립. 배너·소식 등은 아래 각 화면이 소유.
+      { label: "메인화면 관리", to: "/admin/main-page" },
       { label: "히어로 배너", to: "/admin/landing-banners" },
       { label: "공부방법·맛보기 영상", to: "/admin/lecture-videos" },
       { label: "현장강의 일정", to: "/admin/lecture-schedules" },

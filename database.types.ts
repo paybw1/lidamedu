@@ -8505,6 +8505,51 @@ export type Database = {
           },
         ]
       }
+      main_page_modules: {
+        Row: {
+          config: Json
+          created_at: string
+          deleted_at: string | null
+          device: string
+          ends_at: string | null
+          is_visible: boolean
+          kind: string
+          label: string | null
+          module_id: string
+          sort_order: number
+          starts_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          deleted_at?: string | null
+          device?: string
+          ends_at?: string | null
+          is_visible?: boolean
+          kind: string
+          label?: string | null
+          module_id?: string
+          sort_order?: number
+          starts_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          deleted_at?: string | null
+          device?: string
+          ends_at?: string | null
+          is_visible?: boolean
+          kind?: string
+          label?: string | null
+          module_id?: string
+          sort_order?: number
+          starts_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       mcq_exam_attempts: {
         Row: {
           attempt_id: string

@@ -97,11 +97,26 @@ app/features/landing/
 - 데이터 조회는 **모듈별 지연 조회를 하지 않는다**. 지금처럼 loader 에서 한 번에
   모아 오고 모듈은 그 중 필요한 것만 골라 쓴다(요청 수·워터폴 방지).
 
-## 5. 단계
+## 5. 단계 — 전부 완료 (2026-09-01)
 
-- **A** 설계 문서 + DDL(운영 SQL 경로) + `db:typegen` + SSOT/쿼리
-- **B** landing.tsx 섹션 분리 + 모듈 렌더러 + 시드(화면 동일 확인)
-- **C** `/admin/main-page` 관리 화면(순서·복사·기간·기기·미리보기)
+- **A** ✅ DDL 적용(운영) + `db:typegen` + `lib/main-modules.ts` + 쿼리 6종
+- **B** ✅ `components/builtin-sections.tsx`(기존 섹션 10종 이전, 내용 동일)
+      + `components/custom-modules.tsx`(신규 7종) + landing.tsx 조립 렌더
+      + 시드(현행 순서 13블록) — 시드 전에도 폴백 순서로 같은 화면이 나온다
+- **C** ✅ `/admin/main-page` (Drag&Drop + ↑/↓ · 노출 · 기간(KST) · 기기 · 복사 · 삭제
+      · PC/모바일 미리보기) + `/admin/main-page/:moduleId` (kind 별 설정 폼)
+      + 운영관리 좌측 "강의 플랫폼 콘텐츠 › 메인화면 관리"
+
+### 구현하며 정한 것
+
+- **게시판 모듈의 소스는 리담소식(lecture_news)** 이고 `source` 는 그 안의 분류다
+  (전체/공지/이벤트/합격속보). 사내 공지(`announcements`)는 수신자별 개인 인박스라
+  공개 메인화면에 걸 수 없다.
+- **미리보기는 `/lecture/home` 자체를 iframe 으로 띄운다.** 따로 그리면 "미리보기와
+  실제가 다르다"는 문제가 반드시 생긴다.
+- **기기 제한이 없는 블록은 래퍼 div 를 두지 않는다**(Fragment). 예전과 DOM 구조가
+  같아야 섹션 간 여백·랜딩 CSS 가 그대로 먹는다.
+- 노출기간 입력은 `datetime-local`(타임존 없음)이라 **KST 로 못박아** ISO 로 바꾼다.
 
 ## 6. 하지 않는 것
 

@@ -992,6 +992,12 @@ export default [
         "/admin/lecture-categories",
         "features/lms/screens/admin-lecture-categories.tsx",
       ),
+      // feat-11-009 — 메인화면 모듈형 CMS(요청서_0901 §2).
+      route("/admin/main-page", "features/landing/screens/admin-main-page.tsx"),
+      route(
+        "/admin/main-page/:moduleId",
+        "features/landing/screens/admin-main-page-edit.tsx",
+      ),
       route("/admin/pages", "features/pages/screens/admin-pages.tsx"),
       route("/admin/pages/new", "features/pages/screens/admin-page-edit.tsx", {
         id: "admin-page-new",

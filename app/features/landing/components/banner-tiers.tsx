@@ -57,7 +57,8 @@ function Block({ b }: { b: BannerRow }) {
 }
 
 // gapClass = 경계별 간격/색 CSS 변수 적용(btier-gap-12: 1↔2단, btier-gap-23: 2↔3단).
-function Tier({ banners, gapClass }: { banners: BannerRow[]; gapClass: string }) {
+// feat-11-009 — 모듈형 메인화면은 단을 하나씩 배치하므로 export 한다(기존 BannerTiers 는 유지).
+export function BannerTier({ banners, gapClass }: { banners: BannerRow[]; gapClass: string }) {
   if (banners.length === 0) return null;
   return (
     <section className={`btier ${gapClass}`}>
@@ -76,8 +77,8 @@ export function BannerTiers({ tier2, tier3 }: { tier2: BannerRow[]; tier3: Banne
   if (tier2.length === 0 && tier3.length === 0) return null;
   return (
     <>
-      <Tier banners={tier2} gapClass="btier-gap-12" />
-      <Tier banners={tier3} gapClass="btier-gap-23" />
+      <BannerTier banners={tier2} gapClass="btier-gap-12" />
+      <BannerTier banners={tier3} gapClass="btier-gap-23" />
     </>
   );
 }
