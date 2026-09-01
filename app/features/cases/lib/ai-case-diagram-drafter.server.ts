@@ -19,6 +19,12 @@ import {
   caseDiagramBlocksSchema,
   type CaseDiagramBlock,
 } from "./case-diagram";
+// ★★생성 단계 차단 — 판결문에 없는 사건번호를 못 쓰게 한다(CLAUDE.md #12).
+import {
+  CITATION_PROMPT_RULE,
+  checkCitations,
+  stripUnknownCitations,
+} from "./citation-guard";
 
 const MODEL = "claude-opus-4-7";
 const USAGE_KIND = "ai_case_diagram_draft" as const;
@@ -52,6 +58,7 @@ const SYSTEM_PROMPT = `당신은 대한민국 변리사 2차(주관식) 시험 �
 - 강학상 분류용어(주합발명·조합발명 등 법령·판례가 쓰지 않는 학설상 명칭) 금지 —
   그 분류가 뜻하는 바를 요건·효과로 풀어 쓰세요.
 - **사실관계는 만들지 마세요.** 별도 절차로 채웁니다.
+${CITATION_PROMPT_RULE}
 
 # 각 항목 작성 요령
 - issue: 한 줄 쟁점(20~40자). 예 "공지예외 주장을 하지 않은 나머지 공개행위에도 효과가 미치는지".
@@ -247,6 +254,32 @@ export async function draftCaseDiagramBlocks(
     };
   });
 
+  const droppedCitations: string[] = [];
+  // ★★생성 단계 차단(CLAUDE.md #12) — 판결문 원문에 없는 사건번호는 걷어낸다.
+  //   법리가 맞아도 번호가 틀리면 잘못된 정보이고, 사후 감사로는 "없음"을 확정할 수 없다.
+  //   괄호 인용은 자동 제거하고, 문장 구조에 박힌 것은 남겨 사람이 고치게 한다.
+  const allowed = new Set<string>();
+  for (const b of candidates) {
+    for (const key of ["issue", "application", "conclusion"] as const) {
+      const { unknown } = checkCitations(b[key], allowed, args.officialTextMd);
+      if (unknown.length === 0) continue;
+      const res = stripUnknownCitations(b[key], unknown);
+      b[key] = res.text;
+      if (res.leftover.length > 0) {
+        droppedCitations.push(...res.leftover);
+      }
+    }
+    for (const axis of Object.keys(b.doctrine) as Array<keyof typeof b.doctrine>) {
+      const v = b.doctrine[axis];
+      if (!v) continue;
+      const { unknown } = checkCitations(v, allowed, args.officialTextMd);
+      if (unknown.length === 0) continue;
+      const res = stripUnknownCitations(v, unknown);
+      b.doctrine[axis] = res.text;
+      if (res.leftover.length > 0) droppedCitations.push(...res.leftover);
+    }
+  }
+
   const validated = caseDiagramBlocksSchema.safeParse(candidates);
   const blocks = validated.success
     ? validated.data
@@ -271,6 +304,14 @@ export async function draftCaseDiagramBlocks(
     outputTokens,
     outcome: "success",
     meta,
+    // 자동 제거하지 못하고 남은 근거 없는 인용 — 사람이 봐야 한다(사용 기록의 사유 칸).
+    ...(droppedCitations.length > 0
+      ? {
+          reason:
+            "근거 없는 인용 잔여: " +
+            [...new Set(droppedCitations)].join(", "),
+        }
+      : {}),
   });
   return blocks;
 }

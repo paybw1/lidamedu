@@ -34,6 +34,12 @@ import {
 } from "../../app/features/cases/lib/lower-court-text.ts";
 // ★심급별 결과(경과 배지)는 백필 스크립트와 **같은 모듈**을 쓴다 — 사본을 두면 한쪽만 고쳐진다.
 import { draftOutcomes } from "./lib-outcomes.mjs";
+// ★★생성 단계 차단 — 판결문에 없는 사건번호를 못 쓰게 한다(CLAUDE.md #12).
+import {
+  CITATION_PROMPT_RULE,
+  checkCitations,
+  stripUnknownCitations,
+} from "../../app/features/cases/lib/citation-guard.ts";
 
 const argv = process.argv.slice(2);
 const argOf = (n) => {
@@ -81,7 +87,16 @@ function loadBlocksSystemPrompt() {
   if (!prompt.includes("법리 4축") || !prompt.includes("비워 두세요")) {
     throw new Error("SYSTEM_PROMPT 형태가 바뀐 듯 — 추출 결과를 확인하세요.");
   }
-  return prompt;
+  // ★소스에서 **문자열로** 뜯어오므로 템플릿 자리표시자가 그대로 남는다 — 치환해야 한다.
+  //   안 하면 모델에게 "${CITATION_PROMPT_RULE}" 라는 글자가 그대로 간다.
+  const filled = prompt.replace("${CITATION_PROMPT_RULE}", CITATION_PROMPT_RULE);
+  if (filled.includes("${")) {
+    throw new Error(
+      "SYSTEM_PROMPT 에 치환 못 한 자리표시자가 남아 있습니다: " +
+        filled.match(/\${[^}]*}/)?.[0],
+    );
+  }
+  return filled;
 }
 const BLOCKS_SYSTEM = loadBlocksSystemPrompt();
 
@@ -295,6 +310,32 @@ async function draftBlocks(kase) {
       conclusion: clamp(b?.conclusion),
     };
   });
+  // ★★생성 단계 차단 — 판결문 원문에 없는 사건번호는 걷어낸다.
+  //   법리가 맞아도 번호가 틀리면 잘못된 정보다(2026-09-01 실제 사고).
+  const allowed = new Set();
+  const source = kase.official_text_md ?? "";
+  const leftovers = [];
+  for (const b of blocks) {
+    for (const key of ["issue", "application", "conclusion"]) {
+      const { unknown } = checkCitations(b[key], allowed, source);
+      if (unknown.length === 0) continue;
+      const res = stripUnknownCitations(b[key], unknown);
+      b[key] = res.text;
+      leftovers.push(...res.leftover);
+    }
+    for (const k of Object.keys(b.doctrine)) {
+      const { unknown } = checkCitations(b.doctrine[k], allowed, source);
+      if (unknown.length === 0) continue;
+      const res = stripUnknownCitations(b.doctrine[k], unknown);
+      b.doctrine[k] = res.text;
+      leftovers.push(...res.leftover);
+    }
+  }
+  if (leftovers.length > 0) {
+    console.log(
+      `      ★근거 없는 인용 잔여(사람 확인 필요): ${[...new Set(leftovers)].join(", ")}`,
+    );
+  }
   return blocks.filter((b) => b.issue.length >= 2);
 }
 
