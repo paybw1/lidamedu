@@ -19,6 +19,8 @@ import { Link, useSearchParams } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { cn } from "~/core/lib/utils";
+
+import { TreeBranch } from "./tree-branch";
 import { compareArticlesNatural } from "~/features/laws/lib/article-sort";
 import type {
   ArticleNode,
@@ -737,7 +739,7 @@ function ArticleItem({
         <CountChip value={count} isActive={isActive} />
       </Link>
       {hasChildren && open ? (
-        <ul className="space-y-0.5">
+        <TreeBranch depth={depth}>
           {node.children.map((c) => (
             <ArticleItem
               key={c.articleId}
@@ -752,7 +754,7 @@ function ArticleItem({
               linkBase={linkBase}
             />
           ))}
-        </ul>
+        </TreeBranch>
       ) : null}
     </li>
   );
@@ -845,7 +847,7 @@ function SystematicItem({
         <CountChip value={count} isActive={isActive} />
       </Link>
       {hasChildren && open ? (
-        <ul className="space-y-0.5">
+        <TreeBranch depth={depth}>
           {node.children.map((c) => (
             <SystematicItem
               key={c.nodeId}
@@ -858,7 +860,7 @@ function SystematicItem({
               linkBase={linkBase}
             />
           ))}
-        </ul>
+        </TreeBranch>
       ) : null}
     </li>
   );

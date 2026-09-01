@@ -20,6 +20,7 @@ import {
   SystematicNumberBadge,
   stripSystematicNumber,
 } from "./systematic-node-label";
+import { TreeBranch } from "./tree-branch";
 
 interface TreeNode extends SystematicNode {
   children: TreeNode[];
@@ -294,7 +295,7 @@ function NodeItem({
         ) : null}
       </Link>
       {hasChildren && open ? (
-        <ul className="space-y-0.5">
+        <TreeBranch depth={depth}>
           {node.children.map((c) => (
             <NodeItem
               key={c.nodeId}
@@ -323,7 +324,7 @@ function NodeItem({
               </Link>
             </li>
           ))}
-        </ul>
+        </TreeBranch>
       ) : null}
     </li>
   );
