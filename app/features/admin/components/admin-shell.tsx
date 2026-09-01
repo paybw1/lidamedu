@@ -229,6 +229,8 @@ export const ADMIN_NAV: NavCluster[] = [
         ? [{ label: "수강평·교재평", to: "/admin/lms/reviews" }]
         : []),
       { label: "영상 수강권", to: "/admin/lms/enrollments" },
+      // feat-11-010 — 유료 수강기간 연장 결제·원복 이력.
+      { label: "수강기간 연장 이력", to: "/admin/lms/extensions" },
       { label: "기기 관리", to: "/admin/lms/devices" },
       // feat-11-004 4c — 도서몰.
       { label: "도서 관리", to: "/admin/books" },

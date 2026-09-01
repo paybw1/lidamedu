@@ -135,7 +135,9 @@ export async function markOrderPaidAndFulfill(orderId: string): Promise<void> {
   }
   const { data: items } = await adminClient
     .from("order_items")
-    .select("order_item_id, item_type, plan_id, book_id, quantity")
+    .select(
+      "order_item_id, item_type, plan_id, book_id, quantity, enrollment_id, unit_price_krw",
+    )
     .eq("order_id", orderId)
     .is("refunded_at", null);
   for (const item of items ?? []) {
@@ -144,6 +146,23 @@ export async function markOrderPaidAndFulfill(orderId: string): Promise<void> {
         orderItemId: item.order_item_id,
         userId: order.user_id,
         planId: item.plan_id,
+      });
+    }
+    // feat-11-010 수강기간 연장 — 만료일 변경은 extension.server 한 곳이 담당한다.
+    //   멱등은 enrollment_extensions.order_item_id UNIQUE 가 보장한다.
+    if (item.item_type === "course_extension" && item.enrollment_id) {
+      const [{ applyEnrollmentExtension }, { getCourseExtensionDefaults }] =
+        await Promise.all([
+          import("~/features/lms/extension.server"),
+          import("~/core/lib/app-settings.server"),
+        ]);
+      await applyEnrollmentExtension({
+        orderItemId: item.order_item_id,
+        userId: order.user_id,
+        enrollmentId: item.enrollment_id,
+        planId: item.plan_id,
+        amountKrw: item.unit_price_krw,
+        defaults: await getCourseExtensionDefaults(adminClient),
       });
     }
     if (item.item_type === "book" && item.book_id) {
@@ -329,6 +348,21 @@ export async function markOrderRefundedAndRevoke(
 }
 
 async function revokeItemFulfillment(orderItemId: string, reason: string): Promise<void> {
+  // feat-11-010 — 연장 결제 환불은 **수강권 회수가 아니라 일수 원복**이다.
+  //   여기서 먼저 처리하고 아래 revoke 로 내려가지 않게 막는다(연장 항목엔 지급된 수강권이 없다).
+  const { data: extItem } = await adminClient
+    .from("order_items")
+    .select("item_type")
+    .eq("order_item_id", orderItemId)
+    .maybeSingle();
+  if (extItem?.item_type === "course_extension") {
+    const { revertEnrollmentExtension } = await import(
+      "~/features/lms/extension.server"
+    );
+    await revertEnrollmentExtension(orderItemId, reason);
+    return;
+  }
+
   const { error } = await adminClient
     .from("enrollments")
     .update({

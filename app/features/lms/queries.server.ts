@@ -780,7 +780,8 @@ const CS_KIND_BY_ACTION: Record<string, string> = {
 
 export async function logEnrollmentAdminAction(input: {
   enrollmentId: string;
-  actorId: string;
+  /** 시스템이 일으킨 변경(환불 원복 등)은 null — 컬럼도 nullable 이다. */
+  actorId: string | null;
   action: string;
   before?: Record<string, unknown> | null;
   after?: Record<string, unknown> | null;

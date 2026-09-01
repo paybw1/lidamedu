@@ -23,7 +23,12 @@ import adminClient from "~/core/lib/supa-admin-client.server";
 import { resetDevice } from "~/features/lms/devices.server";
 import { useCart } from "~/features/lms/lib/cart";
 import { getWatchBalances } from "~/features/lms/queries.server";
-import { getReviewRewardPoints } from "~/core/lib/app-settings.server";
+import {
+  getCourseExtensionDefaults,
+  getReviewRewardPoints,
+} from "~/core/lib/app-settings.server";
+import { resolveExtensionContexts } from "~/features/lms/extension.server";
+import { EXTENSION_DEFAULTS_FALLBACK } from "~/features/lms/lib/extension-policy";
 import { getMyPlanReviews } from "~/features/lms/reviews.server";
 import {
   REVIEWS_ENABLED,
@@ -144,6 +149,22 @@ export async function loader({ request }: Route.LoaderArgs) {
       });
     }
   }
+  // feat-11-010 — 유료 수강기간 연장 제안(요청서_0901 §3).
+  //   ★버튼 노출과 서버 재검증이 같은 함수를 쓴다(resolveExtensionContexts).
+  const extensionDefaults = await getCourseExtensionDefaults(client).catch(
+    () => EXTENSION_DEFAULTS_FALLBACK,
+  );
+  const extensionCtx = await resolveExtensionContexts({
+    enrollments: list.map((e) => ({
+      enrollmentId: e.enrollment_id,
+      userId: user.id,
+      planId: e.plan_id ?? null,
+      status: e.status,
+      expiresAt: e.expires_at,
+    })),
+    defaults: extensionDefaults,
+  }).catch(() => new Map());
+
   // 수강 후기 CTA 상태 — 강의(plan)별 내 리뷰(있으면 수정, 없으면 작성 유도).
   const myReviews = await getMyPlanReviews(client, user.id, planIds);
   // 후기 보상 포인트(운영관리 설정값) — 작성 안내 문구용.
@@ -211,6 +232,19 @@ export async function loader({ request }: Route.LoaderArgs) {
               maxDays: policy.maxDays,
             }
           : null,
+        // feat-11-010 — 유료 연장(정책 기반). 가능할 때만 버튼을 준다.
+        paidExtension: (() => {
+          const ctx = extensionCtx.get(e.enrollment_id);
+          if (!ctx?.offer.ok) return null;
+          return {
+            priceKrw: ctx.offer.policy.priceKrw,
+            days: ctx.offer.policy.days,
+            remainingCount: ctx.offer.remainingCount,
+            expired: ctx.offer.expired,
+            graceUntil: ctx.offer.graceUntil,
+            nextExpiresAt: ctx.offer.nextExpiresAt,
+          };
+        })(),
         // ① 연장 상품 진입점 — 정책 허용 + 판매중 연장 상품이 있을 때만.
         extensionProducts:
           policy?.extensionAllowed && e.status !== "revoked"
@@ -228,6 +262,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       lastSeenAt: d.last_seen_at,
     })),
     reviewRewardPoints,
+    tossClientKey: process.env.TOSS_CLIENT_KEY ?? null,
   };
 }
 
@@ -317,7 +352,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function MyCourses({ loaderData }: Route.ComponentProps) {
-  const { courses, devices, reviewRewardPoints } = loaderData;
+  const { courses, devices, reviewRewardPoints, tossClientKey } = loaderData;
   return (
     <div className="mx-auto w-full max-w-3xl space-y-5 px-4 py-8 md:px-6 md:py-10">
       <h1 className="flex items-center gap-2 text-xl font-extrabold tracking-tight">
@@ -336,6 +371,7 @@ export default function MyCourses({ loaderData }: Route.ComponentProps) {
             key={c.enrollmentId}
             course={c}
             rewardPoints={reviewRewardPoints}
+            tossClientKey={tossClientKey}
           />
         ))
       )}
@@ -370,6 +406,7 @@ export default function MyCourses({ loaderData }: Route.ComponentProps) {
 function CourseCard({
   course,
   rewardPoints,
+  tossClientKey,
 }: {
   rewardPoints: number;
   course: {
@@ -399,7 +436,16 @@ function CourseCard({
       maxDays: number;
     } | null;
     extensionProducts: Array<{ code: string; name: string; priceKrw: number }>;
+    paidExtension: {
+      priceKrw: number;
+      days: number;
+      remainingCount: number | null;
+      expired: boolean;
+      graceUntil: string;
+      nextExpiresAt: string;
+    } | null;
   };
+  tossClientKey: string | null;
 }) {
   const navigate = useNavigate();
   const { addPlan } = useCart();
@@ -412,6 +458,56 @@ function CourseCard({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetcher.state, fetcher.data]);
+  // feat-11-010 — [수강연장] → 서버가 정책 재검증 후 주문 생성 → 토스 결제창.
+  //   ★금액·가능 여부는 서버가 정한다. 여기서 계산하지 않는다.
+  const [extPending, setExtPending] = useState(false);
+  const startPaidExtension = async () => {
+    if (!course.paidExtension || extPending) return;
+    if (!tossClientKey) {
+      toast.error("결제 설정이 준비되지 않았습니다. 잠시 후 다시 시도해 주세요.");
+      return;
+    }
+    setExtPending(true);
+    try {
+      const fd = new FormData();
+      fd.set("enrollmentId", course.enrollmentId);
+      const res = await fetch("/api/lms/extension-order", {
+        method: "POST",
+        body: fd,
+      });
+      const json = (await res.json()) as {
+        ok?: boolean;
+        orderId?: string;
+        amount?: number;
+        orderName?: string;
+        error?: string;
+      };
+      if (!json.ok || !json.orderId) {
+        toast.error(json.error ?? "연장 결제를 시작하지 못했습니다.");
+        return;
+      }
+      const { loadTossPayments } = await import(
+        "@tosspayments/tosspayments-sdk"
+      );
+      const tossPayments = await loadTossPayments(tossClientKey);
+      const payment = tossPayments.payment({ customerKey: course.enrollmentId });
+      await payment.requestPayment({
+        method: "CARD",
+        amount: { currency: "KRW", value: json.amount ?? 0 },
+        orderId: json.orderId,
+        orderName: json.orderName ?? "수강기간 연장",
+        successUrl: `${window.location.origin}/api/payments/toss/confirm`,
+        failUrl: `${window.location.origin}/lecture?extFailed=1`,
+      });
+    } catch (e) {
+      // 결제창 취소는 조용히 — 사용자가 직접 닫은 것이다.
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!/취소|cancel/i.test(msg)) toast.error(`결제 오류: ${msg}`);
+    } finally {
+      setExtPending(false);
+    }
+  };
+
   const requestPause = () => {
     if (!course.pause) return;
     const days = Math.trunc(
@@ -484,6 +580,33 @@ function CourseCard({
             </button>
           ) : null}
         </div>
+        {course.paidExtension ? (
+          <div className="border-border/60 flex flex-wrap items-center gap-2 border-t pt-2.5">
+            <span className="text-muted-foreground inline-flex items-center gap-1 text-[12px]">
+              <CalendarPlusIcon className="size-3.5" /> 수강기간 연장
+            </span>
+            <button
+              type="button"
+              disabled={extPending}
+              onClick={startPaidExtension}
+              className="border-border hover:bg-muted/50 inline-flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[12px] font-medium disabled:opacity-40"
+            >
+              {extPending ? "결제 준비 중…" : "수강연장"}
+              <span className="tabular-nums">
+                {course.paidExtension.days}일 · ₩
+                {course.paidExtension.priceKrw.toLocaleString("ko-KR")}
+              </span>
+            </button>
+            <span className="text-muted-foreground text-[11px]">
+              {course.paidExtension.expired
+                ? `종료 후 연장 — 결제 즉시 열리고 내일부터 ${course.paidExtension.days}일`
+                : `연장 후 종료일 ${course.paidExtension.nextExpiresAt.slice(0, 10)}`}
+              {course.paidExtension.remainingCount !== null
+                ? ` · 남은 횟수 ${course.paidExtension.remainingCount}회`
+                : ""}
+            </span>
+          </div>
+        ) : null}
         {course.extensionProducts.length > 0 ? (
           <div className="border-border/60 flex flex-wrap items-center gap-2 border-t pt-2.5">
             <span className="text-muted-foreground inline-flex items-center gap-1 text-[12px]">

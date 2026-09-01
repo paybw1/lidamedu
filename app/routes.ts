@@ -898,6 +898,11 @@ export default [
         "/admin/lms/enrollments",
         "features/lms/screens/admin-lms-enrollments.tsx",
       ),
+      // feat-11-010 — 수강기간 연장 이력(결제·환불·수동 처리 대기).
+      route(
+        "/admin/lms/extensions",
+        "features/lms/screens/admin-lms-extensions.tsx",
+      ),
       route("/admin/lms/devices", "features/lms/screens/admin-lms-devices.tsx"),
       // feat-11-004 4a — 주문 관리(항목 부분 환불) + 4b 무통장.
       route("/admin/orders", "features/orders/screens/admin-orders.tsx"),
@@ -941,6 +946,11 @@ export default [
       ),
       // feat-11-006 Phase 3 — HTML 에디터 이미지 업로드(staff 전용).
       route("/api/lms/editor-image", "features/lms/api/editor-image.tsx"),
+      // feat-11-010 — [수강연장] → 연장 주문 + pending 결제(서버에서 정책 재검증).
+      route(
+        "/api/lms/extension-order",
+        "features/lms/api/extension-order.tsx",
+      ),
       // feat-11-006 Phase 4 — 수강평/교재평 학생 뮤테이션.
       route("/api/lms/review", "features/lms/api/review.tsx"),
       // 관리자 관리 — 운영 업무별 알림 담당자 지정 (admin 전용).
