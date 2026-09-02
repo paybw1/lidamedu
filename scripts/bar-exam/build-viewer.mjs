@@ -6,14 +6,12 @@
 //   node scripts/bar-exam/build-viewer.mjs
 import fs from "node:fs";
 import path from "node:path";
-import { marked } from "marked";
+import { toHtml } from "./md.mjs";
 
 const ROOT = process.cwd();
 const COLLECTION = path.join(ROOT, "docs/bar-exam/변호사시험-지적재산권법-기출자료집.json");
 const HAESEOL_DIR = path.join(ROOT, "docs/bar-exam/해설");
 const OUT = path.join(ROOT, "docs/bar-exam/뷰어-문제와해설.html");
-
-marked.setOptions({ gfm: true, breaks: false, mangle: false, headerIds: false });
 
 const esc = (s) =>
   String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -79,7 +77,7 @@ const panels = rounds
     const P = renderQuestionGroup(patent);
     const C = renderQuestionGroup(copyright);
     const answer = md
-      ? `<div class="md">${marked.parse(md)}</div>`
+      ? `<div class="md">${toHtml(md)}</div>`
       : `<div class="empty"><h3>해설 미작성</h3><p>제${r.round}회 특허법 해설은 아직 작성되지 않았습니다.</p></div>`;
     return `<div class="round" data-round="${r.round}">
   <section class="pane pane-q" aria-label="문제 원문">
