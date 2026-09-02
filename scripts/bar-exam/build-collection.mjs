@@ -75,7 +75,9 @@ function totalPoints(lines) {
 /** 지문(사실관계)과 설문(번호 붙은 물음)을 가른다 — 같은 내용을 두 번 싣지 않기 위해. */
 function splitFacts(text) {
   const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
-  const at = lines.findIndex((l) => /^\d+\s*\./.test(l));
+  // ★설문 번호 표기가 회차마다 다르다 — "1." 뿐 아니라 "1-1."(12회) 도 설문이다.
+  //   하이픈 형식을 놓치면 설문이 사실관계 쪽으로 넘어가 버린다.
+  const at = lines.findIndex((l) => /^\d+(-\d+)?\s*\./.test(l));
   return at < 0
     ? { facts: lines, asked: [] }
     : { facts: lines.slice(0, at), asked: lines.slice(at) };
