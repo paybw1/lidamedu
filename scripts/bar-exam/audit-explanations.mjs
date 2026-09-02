@@ -116,7 +116,9 @@ for (const f of files) {
 
   // ② 특허법 조문 번호 실재 확인 (法 NNN / 제NNN조 두 표기)
   const arts = new Set();
-  for (const m of text.matchAll(/法\s*(\d+)(?:의(\d+))?/g)) arts.add(m[2] ? `${m[1]}의${m[2]}` : m[1]);
+  // ★앞에 한자가 붙으면 다른 법률(民訴法·民法·發振法·刑訴法 등)이므로 특허법 조문으로 세지 않는다.
+  for (const m of text.matchAll(/(?<![一-鿿])法\s*(\d+)(?:의(\d+))?/g))
+    arts.add(m[2] ? `${m[1]}의${m[2]}` : m[1]);
   for (const m of text.matchAll(/특허법[^.\n]{0,20}?제\s*(\d+)조(?:의(\d+))?/g))
     arts.add(m[2] ? `${m[1]}의${m[2]}` : m[1]);
   for (const a of arts) {
