@@ -24,6 +24,13 @@ const inputSchema = z.object({
 });
 
 // 판례 → 그 판례를 다룬 문제 ids. problem_case_links 직접 매핑 + case-cited problems.
+//
+// ★가시성 필터는 학습과목 문제탭(loader.server.ts listProblemsBySubject)과 같은 기준이다 —
+//   exam_round='first'(1차 객관식) · review_status='approved' · soft delete 제외 ·
+//   미공개 mock 제외. 이걸 빼면 학생이 닿을 수 없는 문제가 큐에 섞인다. 특히
+//   2차 주관식(exam_round='second')은 problem-viewer 가 학생을 과목 홈으로 돌려보내므로,
+//   흐름이 그 단계에서 끊긴 것처럼 보였다(신고 b0c74de6).
+// ★정렬을 주지 않으면 같은 조문에서도 요청마다 다른 큐가 만들어져 재현이 안 된다.
 async function getProblemsForCase(
   client: ReturnType<typeof makeServerClient>[0],
   caseId: string,
@@ -31,11 +38,20 @@ async function getProblemsForCase(
 ): Promise<string[]> {
   const { data: rows, error } = await client
     .from("problem_case_links")
-    .select("problem_id")
+    .select("problem_id, problems!inner(display_no, exam_round, review_status)")
     .eq("case_id", caseId)
-    .limit(limit);
+    .eq("problems.exam_round", "first")
+    .eq("problems.review_status", "approved")
+    .is("problems.deleted_at", null)
+    .or("origin.neq.mock,released_at.not.is.null", {
+      referencedTable: "problems",
+    });
   if (error) throw error;
-  return (rows ?? []).map((r) => r.problem_id).filter((x): x is string => !!x);
+  return (rows ?? [])
+    .filter((r) => !!r.problem_id && !!r.problems)
+    .sort((a, b) => (a.problems!.display_no ?? 0) - (b.problems!.display_no ?? 0))
+    .slice(0, limit)
+    .map((r) => r.problem_id!);
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -68,9 +84,16 @@ export async function action({ request }: Route.ActionArgs) {
     parsed.data;
 
   // 1. article 시작점 + 관련 판례 (중요도 desc).
+  // ★한 판례가 여러 주제로 배치되면 article_case_links 에 행이 둘 이상 생긴다
+  //   (case-multi-placement). 그대로 두면 같은 판례가 큐에 두 번 들어가 단계만
+  //   잡아먹으므로 caseId 로 중복을 걷어낸 뒤 자른다.
   const cases = await getRelatedCasesByArticle(client, articleId);
-  cases.sort((a, b) => (b.importance ?? 0) - (a.importance ?? 0));
-  const selected = cases.slice(0, maxCases);
+  const seen = new Set<string>();
+  const unique = cases.filter((c) =>
+    seen.has(c.caseId) ? false : (seen.add(c.caseId), true),
+  );
+  unique.sort((a, b) => (b.importance ?? 0) - (a.importance ?? 0));
+  const selected = unique.slice(0, maxCases);
 
   // 2. 각 판례별 관련 문제.
   const steps: FlowStep[] = [{ type: "article", id: articleNumber }];
