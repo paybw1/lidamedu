@@ -325,5 +325,35 @@ L.push("");
 
 fs.mkdirSync(path.dirname(outFile), { recursive: true });
 fs.writeFileSync(outFile, L.join("\n"), "utf8");
+
+// 같은 데이터를 JSON 으로도 남긴다 — 웹 자료집(build-html.mjs)이 이걸 읽는다.
+// 두 산출물이 서로 다른 파싱을 하면 언젠가 어긋난다.
+const dataFile = outFile.replace(/\.md$/, ".json");
+fs.writeFileSync(
+  dataFile,
+  JSON.stringify(
+    {
+      rounds: rounds.map((r) => ({
+        round: r.round,
+        year: r.year,
+        cites: r.cites,
+        qs: r.qs.map((q) => ({
+          label: q.label,
+          main: q.main,
+          area: q.area,
+          points: q.points,
+          ...splitFacts(q.text),
+          cites: r.cites.filter((c) => q.text.includes(artLabel(c.article))),
+        })),
+      })),
+      topics: topicRows,
+      laws: cited.laws,
+    },
+    null,
+    2,
+  ),
+  "utf8",
+);
+console.log(`데이터:   ${dataFile}`);
 const chars = L.join("\n").length;
 console.log(`\n자료집: ${outFile} (${chars.toLocaleString()}자)`);
