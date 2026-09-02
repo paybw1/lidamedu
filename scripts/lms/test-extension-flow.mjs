@@ -17,6 +17,7 @@ import {
   resolveExtensionForEnrollment,
   revertEnrollmentExtension,
 } from "~/features/lms/extension.server";
+import { EXTENSION_BLOCK_MESSAGE } from "~/features/lms/lib/extension-policy";
 
 const KEEP = process.argv.includes("--keep");
 const DAY = 86_400_000;
@@ -172,6 +173,29 @@ const r2 = await runOnce(
   expect2,
 );
 
+// ── 거절 사유 — 실제 행으로 한 번 (나머지 사유는 단위 테스트가 덮는다) ──
+console.log("\n■ 종료 후 30일 초과 — 연장 거절");
+const tooOld = await makeEnrollment(new Date(now.getTime() - 40 * DAY));
+const oldCtx = await resolveExtensionForEnrollment({
+  enrollmentId: tooOld,
+  userId: admin.profile_id,
+  defaults,
+});
+check(
+  "유예기간 지나면 거절",
+  oldCtx?.offer.ok === false && oldCtx.offer.reason === "grace_expired",
+  `ok=${oldCtx?.offer.ok} reason=${oldCtx?.offer.reason}`,
+);
+// ★차단은 **API 라우트**가 한다 — /api/lms/extension-order 가 offer.ok 를 다시 보고
+//   400 을 돌려준다. createExtensionOrder 는 그 뒤에 불리는 내부 헬퍼라 ctx 를 믿는다.
+//   그래서 여기서는 헬퍼를 직접 부르지 않는다(불필요한 주문이 실제로 생긴다).
+//   라우트가 거절할 문구가 준비돼 있는지까지 확인한다.
+check(
+  "거절 사유에 안내 문구가 있다",
+  Boolean(EXTENSION_BLOCK_MESSAGE[oldCtx?.offer.reason ?? "disabled"]),
+  EXTENSION_BLOCK_MESSAGE[oldCtx?.offer.reason ?? "disabled"],
+);
+
 // ── 환불 원복 ───────────────────────────────────────────────────────────
 if (r1) {
   console.log("\n■ 환불 원복 (아직 쓰지 않은 연장)");
@@ -204,30 +228,57 @@ for (const h of mine) {
 // ── 정리 ────────────────────────────────────────────────────────────────
 if (!KEEP) {
   console.log("\n■ 정리");
-  const { data: exts } = await adminClient
-    .from("enrollment_extensions")
-    .select("extension_id, order_item_id")
+  // ★주문은 enrollment_extensions 가 아니라 **order_items.enrollment_id 로** 찾는다.
+  //   결제까지 안 간 주문(연장 이력이 없는 주문)은 extensions 에 안 잡혀 남는다.
+  // ★삭제 오류를 반드시 확인한다 — .in() 삭제는 한 행이라도 FK 에 걸리면 통째로
+  //   실패하는데, 오류를 안 보면 "정리 완료" 를 찍고 운영 DB 에 찌꺼기를 남긴다.
+  const must = async (label, q) => {
+    const { error } = await q;
+    if (error) console.log(`  ★${label} 실패: ${error.message}`);
+    return !error;
+  };
+  const { data: items } = await adminClient
+    .from("order_items")
+    .select("order_item_id, order_id")
     .in("enrollment_id", created);
-  const orderItemIds = (exts ?? []).map((e) => e.order_item_id).filter(Boolean);
-  await adminClient
-    .from("enrollment_extensions")
-    .delete()
-    .in("enrollment_id", created);
-  if (orderItemIds.length) {
-    const { data: its } = await adminClient
-      .from("order_items")
-      .select("order_id")
-      .in("order_item_id", orderItemIds);
-    await adminClient.from("order_items").delete().in("order_item_id", orderItemIds);
-    const orderIds = [...new Set((its ?? []).map((i) => i.order_id))];
-    if (orderIds.length) {
-      await adminClient.from("payments").delete().in("order_id", orderIds);
-      await adminClient.from("orders").delete().in("order_id", orderIds);
-    }
+  const orderIds = [...new Set((items ?? []).map((i) => i.order_id))];
+
+  await must(
+    "연장 이력 삭제",
+    adminClient.from("enrollment_extensions").delete().in("enrollment_id", created),
+  );
+  if (items?.length) {
+    await must(
+      "주문 항목 삭제",
+      adminClient
+        .from("order_items")
+        .delete()
+        .in("order_item_id", items.map((i) => i.order_item_id)),
+    );
   }
-  await adminClient.from("enrollment_admin_logs").delete().in("enrollment_id", created);
-  await adminClient.from("enrollments").delete().in("enrollment_id", created);
-  console.log(`  테스트 수강권 ${created.length}건 · 주문·이력 정리 완료`);
+  if (orderIds.length) {
+    await must("결제 삭제", adminClient.from("payments").delete().in("order_id", orderIds));
+    await must("주문 삭제", adminClient.from("orders").delete().in("order_id", orderIds));
+  }
+  await must(
+    "관리 로그 삭제",
+    adminClient.from("enrollment_admin_logs").delete().in("enrollment_id", created),
+  );
+  await must(
+    "수강권 삭제",
+    adminClient.from("enrollments").delete().in("enrollment_id", created),
+  );
+
+  // 정말 지워졌는지 확인한다(보고만 믿지 않는다).
+  const { count: leftover } = await adminClient
+    .from("enrollments")
+    .select("enrollment_id", { count: "exact", head: true })
+    .in("enrollment_id", created);
+  console.log(
+    leftover
+      ? `  ★수강권 ${leftover}건 남음 — 손으로 지우세요: ${created.join(", ")}`
+      : `  테스트 수강권 ${created.length}건 · 주문 ${orderIds.length}건 정리 완료`,
+  );
 } else {
   console.log(`\n[--keep] 테스트 수강권 남김: ${created.join(", ")}`);
 }
