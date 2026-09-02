@@ -97,7 +97,15 @@ function htmlToText(html) {
   )
     .replace(/\r/g, "")
     .split("\n")
-    .map((l) => l.replace(/[ \t ]+/g, " ").trim())
+    .map((l) =>
+      l
+        .replace(/[ \t ]+/g, " ")
+        // ★태그를 공백으로 바꾸며 생긴 자국을 되돌린다. 원문을 고치는 게 아니라
+        //   <span> 조각마다 끼어든 공백을 걷어내는 것이다.
+        .replace(/\s+([.,;:)\]」』】”’%])/g, "$1")
+        .replace(/([(\[「『【“‘])\s+/g, "$1")
+        .trim(),
+    )
     .filter(Boolean)
     .join("\n");
 }
@@ -111,7 +119,10 @@ function extractBody(html, kind) {
   // 메가로이어스 — 본문은 div.boxRead2 안에 있다(테이블이 아니다).
   const i = html.search(/class="boxRead2/i);
   if (i < 0) return null;
-  const rest = html.slice(i);
+  // ★여는 태그의 '>' 다음부터 잘라야 한다 — 속성 위치부터 자르면 본문 첫 줄에
+  //   'class="boxRead2 ..." >' 가 그대로 남는다.
+  const gt = html.indexOf(">", i);
+  const rest = html.slice(gt > 0 ? gt + 1 : i);
   const end = rest.search(/<!--\s*\/\/\s*MAIN|id="footer|class="btnArea/i);
   return end > 0 ? rest.slice(0, end) : rest;
 }
