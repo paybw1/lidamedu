@@ -134,10 +134,17 @@ for (const f of files) {
   // ④ 근거 없는 단정형 서술 (문단 단위)
   for (const para of text.split(/\n\s*\n/)) {
     if (!ASSERTION_RE.test(para)) continue;
-    if (CASE_RE.test(para)) continue;
+    // ★g 플래그 정규식의 test() 는 lastIndex 를 남긴다. 초기화를 continue 뒤에 두면
+    //   그 줄을 건너뛰어 다음 문단을 엉뚱한 위치부터 검사한다 — 실제로 87후111 을
+    //   인용한 문단이 «근거 없음» 으로 잡혔다. 검사 직전에 매번 초기화한다.
     CASE_RE.lastIndex = 0;
-    // 학설 소개("~설이 있으나 다수설은 …")는 교재 서술을 옮긴 것이므로 사건번호가 없어도 된다.
-    if (/설\)?(이|은|을|과|와|,)/.test(para)) continue;
+    if (CASE_RE.test(para)) continue;
+    // 학설을 «소개»하는 문단(“ⅰ) …설, ⅱ) …설이 있으나 다수설은 …”)은 교재 서술을 옮긴
+    // 것이므로 사건번호가 없어도 된다.
+    // ★다만 «설» 이 들어갔다고 무조건 빼면 안 된다. 그러면 CLAUDE.md 가 금지하는
+    //   "통설은 ~이다" 라는 근거 없는 단정까지 통과한다(실측으로 확인). 학설을 열거·대립
+    //   시키는 표지가 있을 때만 예외로 둔다.
+    if (/설이 있|견해가 있|라는 설|학설/.test(para)) continue;
     issues.push(["WARN", `단정형 서술에 근거 사건번호 없음 — "${para.replace(/\s+/g, " ").slice(0, 60)}…"`]);
   }
 
