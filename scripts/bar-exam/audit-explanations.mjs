@@ -3,7 +3,8 @@
 // jagwa/audit-essay-answers.mjs 와 같은 취지지만 대상이 다르다. 저쪽은 DB(problems)의
 // 2차 모범답안을, 이쪽은 파일로 쓰는 변호사시험 해설을 본다.
 //
-//   [FAIL] 사건번호가 cases / case_lower_courts 어디에도 없음 → 인용 금지
+//   [FAIL] 사건번호가 **네 곳** 어디에도 없음 → 인용 금지
+//          ① cases ② case_lower_courts ③ 리담 교재 ④ 국가법령정보센터(정확일치)
 //   [FAIL] 특허법 조문 번호가 현행법에 없음                    → 구법 번호·오기 의심
 //   [FAIL] 폐기 조어 · 강학상 분류용어 사용
 //   [WARN] 근거 없는 단정형 서술 — "판례는/통설은" 이 있는 문단에 사건번호가 없음
@@ -19,6 +20,7 @@ import { createClient } from "@supabase/supabase-js";
 
 const supa = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
+const BOOK_SRC = "f84eebc7-773a-467c-9e37-7579d485ce8e"; // 리담특허법 제25판
 const CASE_RE = /\b(\d{2,4}(?:후|다|허|마|카|누|두|므|재|그|나|하|가합|가단)\d{1,6})\b/g;
 const DROPPED_TERMS = ["논점의 정리", "소설문", "대판", "치환가능성", "치환용이성", "치환자명성"];
 const DROPPED_PATTERNS = [[/(?<![가-힣])소결(론)?(?![가-힣])/, "소결"]];
@@ -64,26 +66,52 @@ for (const f of files) {
   const text = fs.readFileSync(f, "utf8");
   const name = f.split(/[\\/]/).pop();
   const issues = [];
+  const cited = [];
 
-  // ① 사건번호 실재 확인
+  // ① 사건번호 실재 확인 — ★CLAUDE.md 가 정한 **네 곳 전부**를 본다.
+  //   ① cases  ② case_lower_courts  ③ 리담 교재(content_chunks)  ④ 국가법령정보센터.
+  //   교재에서 읽은 판례가 cases 에 없는 경우가 흔하다(13회 인용 8건 중 5건이 그랬다).
+  //   DB 두 곳만 보면 교재 근거가 확실한 인용까지 FAIL 로 잡혀 도구를 못 믿게 된다.
   const nums = [...new Set([...text.matchAll(CASE_RE)].map((m) => m[1]))];
-  if (nums.length) {
-    const { data: inCases } = await supa
+  for (const n of nums) {
+    const where = [];
+    const { count: c1 } = await supa
       .from("cases")
-      .select("case_number")
+      .select("case_id", { count: "exact", head: true })
       .is("deleted_at", null)
-      .in("case_number", nums);
-    const { data: inLower } = await supa
-      .from("case_lower_courts")
-      .select("lower_case_number")
-      .in("lower_case_number", nums);
-    const known = new Set([
-      ...(inCases ?? []).map((r) => r.case_number),
-      ...(inLower ?? []).map((r) => r.lower_case_number),
-    ]);
-    for (const n of nums) {
-      if (!known.has(n)) issues.push(["FAIL", `사건번호 ${n} — cases·하급심 어디에도 없음`]);
+      .eq("case_number", n);
+    if (c1) where.push("cases");
+    if (!where.length) {
+      const { count: c2 } = await supa
+        .from("case_lower_courts")
+        .select("lower_case_id", { count: "exact", head: true })
+        .eq("lower_case_number", n);
+      if (c2) where.push("하급심");
     }
+    if (!where.length) {
+      const { count: c3 } = await supa
+        .from("content_chunks")
+        .select("chunk_index", { count: "exact", head: true })
+        .eq("source_id", BOOK_SRC)
+        .ilike("body_text", `%${n}%`);
+      if (c3) where.push("교재");
+    }
+    if (!where.length) {
+      // 법령정보센터 — ★사건번호 정확일치만 실재로 인정한다(search=1 필수).
+      try {
+        const r = await fetch(
+          `https://www.law.go.kr/DRF/lawSearch.do?OC=test&target=prec&type=JSON&search=1&query=${encodeURIComponent(n)}`,
+        );
+        const j = await r.json();
+        const list = A(j?.PrecSearch?.prec);
+        if (list.some((p) => String(p.사건번호).trim() === n)) where.push("법령정보센터");
+      } catch {
+        issues.push(["WARN", `사건번호 ${n} — 법령정보센터 조회 실패(네트워크). 없음으로 단정하지 않음`]);
+        continue;
+      }
+    }
+    if (!where.length) issues.push(["FAIL", `사건번호 ${n} — 네 곳 어디에도 없음`]);
+    else cited.push(`${n}(${where[0]})`);
   }
 
   // ② 특허법 조문 번호 실재 확인 (法 NNN / 제NNN조 두 표기)
@@ -122,6 +150,7 @@ for (const f of files) {
       `사건번호 ${nums.length}건 · 조문 ${arts.size}개`,
   );
   for (const [lv, msg] of issues) console.log(`       [${lv}] ${msg}`);
+  if (cited.length) console.log(`       근거: ${cited.join(" · ")}`);
 }
 
 console.log(`\n결과: FAIL ${fail} · WARN ${warn}`);
