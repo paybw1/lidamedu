@@ -418,12 +418,21 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
               />
             </Field>
 
-            <Field label="사건유형" htmlFor="caseType">
+            {/* ★사건유형은 판결문의 사건명 표기를 그대로 옮긴다 — 띄어쓰기를 임의로
+                손보지 않는다(원장 결정 2026-09-02, 신고 c332f47a). 원문이
+                「실용신안권침해금지등」처럼 붙어 있으면 붙은 채로, 「특허권침해금지 및
+                손해배상청구의 소」처럼 떨어져 있으면 떨어진 채로 둔다. 보기 좋게
+                통일하면 판결문으로 원문을 대조할 때 검색이 어긋난다. */}
+            <Field
+              label="사건유형"
+              htmlFor="caseType"
+              hint="판결문의 사건명 표기 그대로 — 띄어쓰기를 임의로 고치지 않습니다."
+            >
               <Input
                 id="caseType"
                 name="caseType"
                 defaultValue={kase?.case_type ?? ""}
-                placeholder="예: 거절결정 (특)"
+                placeholder="예: 등록무효(특)"
                 maxLength={100}
               />
             </Field>
