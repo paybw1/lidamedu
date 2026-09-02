@@ -1,0 +1,138 @@
+[
+  {
+    "round": 14,
+    "year": 2025,
+    "site": "법률저널",
+    "author": "홍기석",
+    "date": "2025-01-20",
+    "title": "2025년 제14회 변호사시험 지적재산권법 전문가 해설",
+    "url": "https://www.lec.co.kr/news/articleView.html?idxno=749242",
+    "kind": "lec",
+    "file": "14회-법률저널-홍기석.md",
+    "chars": 7202,
+    "covers": {
+      "q1": true,
+      "q2": false
+    },
+    "fetchedAt": "2026-09-02"
+  },
+  {
+    "round": 13,
+    "year": 2024,
+    "site": "법률저널",
+    "author": "홍기석",
+    "date": "2024-01-16",
+    "title": "2024년 제13회 변호사시험 지적재산권법 전문가 해설",
+    "url": "https://www.lec.co.kr/news/articleView.html?idxno=745464",
+    "kind": "lec",
+    "file": "13회-법률저널-홍기석.md",
+    "chars": 7124,
+    "covers": {
+      "q1": true,
+      "q2": false
+    },
+    "fetchedAt": "2026-09-02"
+  },
+  {
+    "round": 12,
+    "year": 2023,
+    "site": "법률저널",
+    "author": "홍기석",
+    "date": "2023-01-18",
+    "title": "2023년 제12회 변호사시험 지적재산권법 전문가 해설",
+    "url": "https://www.lec.co.kr/news/articleView.html?idxno=741759",
+    "kind": "lec",
+    "file": "12회-법률저널-홍기석.md",
+    "chars": 7172,
+    "covers": {
+      "q1": true,
+      "q2": false
+    },
+    "fetchedAt": "2026-09-02"
+  },
+  {
+    "round": 11,
+    "year": 2022,
+    "site": "법률저널",
+    "author": "홍기석",
+    "date": "2022-01-19",
+    "title": "2022년 제11회 변호사시험 지적재산권법 전문가 해설",
+    "url": "https://www.lec.co.kr/news/articleView.html?idxno=733662",
+    "kind": "lec",
+    "file": "11회-법률저널-홍기석.md",
+    "chars": 7709,
+    "covers": {
+      "q1": true,
+      "q2": false
+    },
+    "fetchedAt": "2026-09-02"
+  },
+  {
+    "round": 10,
+    "year": 2021,
+    "site": "법률저널",
+    "author": "이성진 기자",
+    "date": "2021-01-19",
+    "title": "2021년 제10회 변호사시험 지적재산권법 전문가 해설",
+    "url": "https://www.lec.co.kr/news/articleView.html?idxno=724865",
+    "kind": "lec",
+    "file": "10회-법률저널-이성진기자.md",
+    "chars": 7155,
+    "covers": {
+      "q1": true,
+      "q2": false
+    },
+    "fetchedAt": "2026-09-02"
+  },
+  {
+    "round": 5,
+    "year": 2016,
+    "site": "법률저널",
+    "author": "정현석",
+    "date": "2016-01-15",
+    "title": "제5회 변호사시험 전문가 총평 및 해설-지적재산권법",
+    "url": "https://www.lec.co.kr/news/articleView.html?idxno=39323",
+    "kind": "lec",
+    "file": "05회-법률저널-정현석.md",
+    "chars": 5509,
+    "covers": {
+      "q1": true,
+      "q2": true
+    },
+    "fetchedAt": "2026-09-02"
+  },
+  {
+    "round": 6,
+    "year": 2017,
+    "site": "메가로이어스",
+    "author": "정현석 변호사",
+    "date": "2017-01-18",
+    "title": "[지적재산권법] 제6회 변호사시험 출제경향 분석 및 총평",
+    "url": "https://www.megalawyers.co.kr/prof/prof_notice_view.asp?idx=374&bCode=iplaw&sub_cd=23",
+    "kind": "mega",
+    "file": "06회-메가로이어스-정현석변호사.md",
+    "chars": 1917,
+    "covers": {
+      "q1": true,
+      "q2": true
+    },
+    "fetchedAt": "2026-09-02"
+  },
+  {
+    "round": 6,
+    "year": 2017,
+    "site": "메가로이어스(고시위크 전재)",
+    "author": "고시위크",
+    "date": "2017-01",
+    "title": "[고시위크]2017년 제6회 변호사시험 지적재산권법 총평",
+    "url": "https://www.megalawyers.co.kr/board/exam_news_view.asp?idx=4234",
+    "kind": "mega",
+    "file": "06회-메가로이어스고시위크전재-고시위크.md",
+    "chars": 1820,
+    "covers": {
+      "q1": true,
+      "q2": true
+    },
+    "fetchedAt": "2026-09-02"
+  }
+]
