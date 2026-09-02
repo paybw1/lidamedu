@@ -11,18 +11,10 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { citationsOf } from "./citations.mjs";
+
 const OC = "test";
 const asArray = (v) => (v == null ? [] : Array.isArray(v) ? v : [v]);
-
-/** 문제 지문이 쓰는 법령 표기 → 정식 법령명. */
-const LAW_ALIASES = [
-  ["부정경쟁방지 및 영업비밀보호에 관한 법률", ["부정경쟁방지 및 영업비밀보호에 관한 법률", "부정경쟁방지법"]],
-  ["디자인보호법", ["디자인보호법"]],
-  ["실용신안법", ["실용신안법"]],
-  ["저작권법", ["저작권법"]],
-  ["상표법", ["상표법"]],
-  ["특허법", ["특허법"]],
-];
 
 async function findLaw(name) {
   const url =
@@ -69,30 +61,6 @@ async function loadLaw(name) {
   for (const u of units) map[articleKey(u)] = flattenArticle(u);
   console.log(`  ✓ ${name.padEnd(34)} 조문 ${String(units.length).padStart(4)}개 · 시행 ${hit.시행일자}`);
   return { enforcedAt: String(hit.시행일자), articles: map };
-}
-
-/**
- * 회차 본문에서 (법령, 조문번호) 쌍을 뽑는다.
- * ★조문번호만으로는 어느 법인지 알 수 없다 — 직전에 나온 법령명에 귀속시킨다.
- *   ("｢저작권법｣ 제28조와 제35조의5를 중심으로" → 둘 다 저작권법)
- */
-export function citationsOf(text) {
-  const lawRe = new RegExp(LAW_ALIASES.flatMap(([, al]) => al).join("|"), "g");
-  const marks = [...text.matchAll(lawRe)].map((m) => {
-    const canon = LAW_ALIASES.find(([, al]) => al.includes(m[0]))[0];
-    return { at: m.index, law: canon };
-  });
-  const out = new Map();
-  // ★가지번호(의N)는 **붙여 쓴 것만** 인정한다. "제5조의 2차적 저작물" 처럼 뒤 낱말이
-  //   숫자로 시작하면 "제5조의2" 로 잘못 읽는다(10회 실제 오탐).
-  for (const m of text.matchAll(/제\s*(\d+)\s*조(?:의(\d+))?/g)) {
-    const prior = marks.filter((x) => x.at < m.index).pop();
-    if (!prior) continue; // 법령명이 앞에 없으면 어느 법인지 단정하지 않는다
-    const num = m[2] ? `${m[1]}의${m[2]}` : m[1];
-    const key = `${prior.law}|${num}`;
-    if (!out.has(key)) out.set(key, { law: prior.law, article: num });
-  }
-  return [...out.values()];
 }
 
 const [, , inDir, outFile] = process.argv;

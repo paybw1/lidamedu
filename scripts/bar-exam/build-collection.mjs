@@ -14,6 +14,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { artLabel, citationsOf } from "./citations.mjs";
+
 /** 영역 판정 신호 — 조문 인용이 없는 회차(초기)도 갈라야 한다. */
 const AREA_SIGNALS = [
   ["특허법", ["특허", "발명", "진보성", "신규성", "청구항", "청구범위", "명세서", "출원", "균등"]],
@@ -70,15 +72,6 @@ function totalPoints(lines) {
   return total;
 }
 
-/**
- * 조문 표기 — 가지번호는 "제35조의3" 이지 "제35의3조" 가 아니다.
- * ★API 의 조문키는 "35의3" 형태라 그대로 `제${n}조` 에 끼우면 틀린 표기가 나온다.
- */
-const artLabel = (num) => {
-  const m = String(num).match(/^(\d+)의(\d+)$/);
-  return m ? `제${m[1]}조의${m[2]}` : `제${num}조`;
-};
-
 /** 지문(사실관계)과 설문(번호 붙은 물음)을 가른다 — 같은 내용을 두 번 싣지 않기 위해. */
 function splitFacts(text) {
   const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
@@ -126,13 +119,30 @@ for (const f of fs.readdirSync(inDir).filter((f) => /^\d+\.txt$/.test(f)).sort()
   const body = fs.readFileSync(path.join(inDir, f), "utf8");
   const round = Number(f.replace(".txt", ""));
   const year = Number(body.match(/(\d{4})년도/)?.[1] ?? 0);
-  const qs = splitQuestions(body).map((q) => ({
-    ...q,
-    area: classify(q.text),
-    subs: subQuestions(q.text),
-    points: totalPoints(q.text.split("\n").map((l) => l.trim())),
-  }));
-  rounds.push({ round, year, qs, cites: cited.byRound[round] ?? [] });
+  // ★인용은 **문 단위로 다시 판정**한다. 회차 본문 전체에서 뽑아 놓고 "이 문의 글자에
+  //   '제101조'가 들어 있나" 로 나누면, 같은 회차에 특허법 제101조와 저작권법 제101조가
+  //   함께 나올 때 서로의 조문을 바꿔 붙인다(13회·10회 실제 오류).
+  const fetched = new Set((cited.byRound[round] ?? []).map((c) => `${c.law}|${c.article}`));
+  const qs = splitQuestions(body).map((q) => {
+    const cites = citationsOf(q.text).filter((c) => {
+      const ok = fetched.has(`${c.law}|${c.article}`);
+      if (!ok) console.log(`  · 제${round}회 ${c.law} ${artLabel(c.article)} — 조문 원문 없음(표시 생략)`);
+      return ok;
+    });
+    return {
+      ...q,
+      area: classify(q.text),
+      subs: subQuestions(q.text),
+      points: totalPoints(q.text.split("\n").map((l) => l.trim())),
+      cites,
+    };
+  });
+  // 회차 표에 쓰는 목록도 문 단위 판정의 합집합으로 맞춘다 — 두 표가 어긋나지 않게.
+  const seen = new Set();
+  const cites = qs
+    .flatMap((q) => q.cites)
+    .filter((c) => !seen.has(`${c.law}|${c.article}`) && seen.add(`${c.law}|${c.article}`));
+  rounds.push({ round, year, qs, cites });
 }
 
 // ── 검토용 표 ───────────────────────────────────────────────────────────
@@ -167,6 +177,23 @@ for (const r of rounds) {
   }
 }
 console.log(pointFail ? `\n배점 검산 실패 ${pointFail}건` : "\n배점 검산: 전 회차 제1문 80 · 제2문 80 · 합계 160 ✓");
+
+// ── 인용 정합 검사 — 문의 출제영역과 인용 법령이 어긋나는지 ────────────
+// ★조문번호는 법이 다르면 겹친다(특허법 제101조 / 저작권법 제101조). 귀속이 틀리면
+//   특허법 문에 저작권법 조문이 붙는데, 눈으로는 잘 안 보인다. 그래서 기계로 센다.
+//   어긋나는 게 늘 오류인 것은 아니다(한 문이 두 법을 함께 묻는 해도 있을 수 있다) —
+//   그때는 사람이 보라고 목록으로 남긴다.
+const mism = [];
+for (const r of rounds) {
+  for (const q of r.qs) {
+    for (const c of q.cites) if (c.law !== q.area) mism.push(`제${r.round}회 ${q.label}(${q.area}) ← ${c.law} ${artLabel(c.article)}`);
+  }
+}
+console.log(
+  mism.length
+    ? `\n인용 정합: 영역과 다른 법 인용 ${mism.length}건 — 사람이 확인\n  ` + mism.join("\n  ")
+    : "\n인용 정합: 모든 문의 인용 조문이 그 문의 출제영역과 일치 ✓",
+);
 
 // ── 마크다운 ────────────────────────────────────────────────────────────
 const L = [];
@@ -285,7 +312,7 @@ for (const r of [...rounds].reverse()) {
       for (const line of asked) L.push(`> ${line}`);
       L.push("");
     }
-    const qCites = r.cites.filter((c) => q.text.includes(artLabel(c.article)));
+    const qCites = q.cites;
     if (qCites.length) {
       L.push(
         "**설문이 지목한 조문** — " +
@@ -343,7 +370,7 @@ fs.writeFileSync(
           area: q.area,
           points: q.points,
           ...splitFacts(q.text),
-          cites: r.cites.filter((c) => q.text.includes(artLabel(c.article))),
+          cites: q.cites,
         })),
       })),
       topics: topicRows,
