@@ -23,7 +23,7 @@ import {
   confirmBankTransfer,
   expireOverdueBankTransfers,
 } from "~/features/orders/bank-transfer.server";
-import { refundOrderItem } from "~/features/orders/orders.server";
+import { expireStaleCheckoutOrders, refundOrderItem } from "~/features/orders/orders.server";
 import {
   listPendingRefundRequests,
   resolveRefundRequest,
@@ -37,6 +37,7 @@ export const meta: Route.MetaFunction = () => [
 
 const ORDER_STATUS_LABEL: Record<string, string> = {
   draft: "장바구니",
+  attempted: "결제시도",
   pending_payment: "결제 대기",
   pending_deposit: "입금 대기",
   paid: "결제 완료",
@@ -44,7 +45,13 @@ const ORDER_STATUS_LABEL: Record<string, string> = {
   refunded: "환불",
   cancelled: "취소",
   failed: "실패",
+  expired: "만료",
 };
+
+// feat-11-011 P1 — 결제창을 열기만 하고 끝내지 않은 건. 기본 목록에서 빼고
+// 별도 탭으로 본다(요청서 §3.2 "일반 주문·매출 집계와 분리").
+// ★상태 필터로 직접 고르면 그때는 보여 준다 — 감추는 게 아니라 섞지 않는 것이다.
+const CHECKOUT_ATTEMPT_STATUSES = ["draft", "attempted", "pending_payment", "expired"];
 const ORDER_STATUS_TONE: Record<string, "emerald" | "amber" | "coral" | "neutral" | "violet"> = {
   paid: "emerald",
   pending_payment: "amber",
@@ -54,6 +61,8 @@ const ORDER_STATUS_TONE: Record<string, "emerald" | "amber" | "coral" | "neutral
   cancelled: "neutral",
   failed: "neutral",
   draft: "neutral",
+  attempted: "neutral",
+  expired: "neutral",
 };
 
 async function requireManager(request: Request) {
@@ -79,6 +88,8 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   // 4b — 기한 초과 무통장 lazy 만료(cron 이중 안전망).
   await expireOverdueBankTransfers();
+  // feat-11-011 P1 — 끝내지 않은 결제시도 만료. 목록을 열 때마다 정리된다.
+  await expireStaleCheckoutOrders();
 
   // 4d — 매출 요약(파생 뷰 v_sales_daily, 저장 아님). KST 오늘·이번 달.
   const todayKst = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
@@ -132,9 +143,20 @@ export async function loader({ request }: Route.LoaderArgs) {
     )
     .order("created_at", { ascending: false })
     .limit(200);
-  if (status && status in ORDER_STATUS_LABEL) oq = oq.eq("status", status);
+  if (status && status in ORDER_STATUS_LABEL) {
+    oq = oq.eq("status", status);
+  } else {
+    // 기본 목록 = 실제 주문만. 결제시도·만료·장바구니는 섞지 않는다.
+    oq = oq.not("status", "in", `(${CHECKOUT_ATTEMPT_STATUSES.join(",")})`);
+  }
   const { data: orders, error } = await oq;
   if (error) throw error;
+
+  // 결제시도 현황 — 목록에서 뺀 대신 건수는 보여 준다(있는 줄도 모르면 안 된다).
+  const { count: attemptCount } = await adminClient
+    .from("orders")
+    .select("order_id", { count: "exact", head: true })
+    .in("status", ["attempted", "pending_payment"]);
 
   const orderIds = (orders ?? []).map((o) => o.order_id);
   const itemsByOrder = new Map<string, Array<{
@@ -206,6 +228,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     status,
     itemType,
     role,
+    attemptCount: attemptCount ?? 0,
     sales: { todayGross, monthGross, monthRefund },
   };
 }
@@ -252,7 +275,8 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function AdminOrders({ loaderData }: Route.ComponentProps) {
-  const { rows, transfers, refundRequests, q, status, itemType, role, sales } = loaderData;
+  const { rows, transfers, refundRequests, q, status, itemType, role, sales, attemptCount } =
+    loaderData;
   return (
     <AdminShell
       cluster="sales"
@@ -309,6 +333,15 @@ export default function AdminOrders({ loaderData }: Route.ComponentProps) {
         </section>
       ) : null}
 
+      {attemptCount > 0 && !status ? (
+        <p className="border-border bg-muted/40 text-muted-foreground mb-3 rounded-lg border px-3 py-2 text-xs">
+          결제창만 열고 끝내지 않은 <strong className="text-foreground">결제시도 {attemptCount}건</strong>은
+          목록에서 빼 두었습니다. 30분이 지나면 자동으로 만료 처리됩니다.{" "}
+          <a href="?status=attempted" className="text-link underline">
+            결제시도만 보기
+          </a>
+        </p>
+      ) : null}
       <Form method="get" className="mb-3 flex flex-wrap items-center gap-2">
         <input
           type="search"

@@ -166,7 +166,7 @@ export async function createExtensionOrder(input: {
     .from("orders")
     .insert({
       user_id: input.userId,
-      status: "pending_payment",
+      status: "attempted", // ★PG 호출 전 — 결제시도. 결제 성공 시에만 paid 로 간다.
       total_krw: amountKrw,
       payment_method: "toss",
     })

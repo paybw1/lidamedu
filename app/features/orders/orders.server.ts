@@ -8,6 +8,51 @@ import {
   logEnrollmentAdminAction,
 } from "~/features/lms/queries.server";
 
+// ── 결제시도 만료 ───────────────────────────────────────────────────────────
+
+/** 결제시도가 만료로 넘어가는 시간(분). 토스 결제창 세션보다 넉넉하게 잡는다. */
+export const CHECKOUT_TTL_MINUTES = 30;
+
+/**
+ * 결제창을 열고 끝내지 않은 주문을 만료 처리한다.
+ *
+ * 결제창을 닫을 때 `cancelPendingCheckout` 이 취소로 바꾸지만 그건 브라우저가 살아
+ * 있을 때뿐이라(탭을 죽이거나 전원이 꺼지면 신호가 안 온다) 정리되지 않은 주문이
+ * 남는다. 이 스윕이 마지막 그물이다 — 무통장 만료(expireOverdueBankTransfers)와
+ * 같은 짜임이고, 화면 로더에서 게으르게 + 크론에서 주기적으로 함께 부른다.
+ *
+ * ★결제 레코드가 하나라도 성공(completed)인 주문은 건드리지 않는다. 승인 응답이
+ *   늦게 도착하는 사이에 만료시키면 돈은 받고 주문은 만료인 상태가 된다.
+ */
+export async function expireStaleCheckoutOrders(): Promise<number> {
+  const cutoff = new Date(Date.now() - CHECKOUT_TTL_MINUTES * 60_000).toISOString();
+  const { data: stale } = await adminClient
+    .from("orders")
+    .select("order_id")
+    .in("status", ["attempted", "pending_payment"])
+    .lt("created_at", cutoff)
+    .limit(500);
+  if (!stale?.length) return 0;
+
+  const ids = stale.map((o) => o.order_id);
+  const { data: paidRows } = await adminClient
+    .from("payments")
+    .select("order_id")
+    .in("order_id", ids)
+    .eq("status", "completed");
+  const paidOrderIds = new Set((paidRows ?? []).map((p) => p.order_id));
+  const expirable = ids.filter((id) => !paidOrderIds.has(id));
+  if (!expirable.length) return 0;
+
+  const { data: updated } = await adminClient
+    .from("orders")
+    .update({ status: "expired" })
+    .in("order_id", expirable)
+    .in("status", ["attempted", "pending_payment"])
+    .select("order_id");
+  return (updated ?? []).length;
+}
+
 // ── 생성 ────────────────────────────────────────────────────────────────────
 
 /** 기존 플랜 단건 체크아웃용 1-item 주문 — create-order.tsx 가 결제 시작 시 호출. */
@@ -23,7 +68,9 @@ export async function createSinglePlanOrder(input: {
     .from("orders")
     .insert({
       user_id: input.userId,
-      status: "pending_payment",
+      // ★PG 를 부르기 전이다 — 결제 대기가 아니라 "결제시도". 목록·매출·소유
+      //   판정에서 빠지고, 30분 지나면 expireStaleCheckoutOrders 가 만료시킨다.
+      status: "attempted",
       total_krw: input.amountKrw,
       discount_id: input.discountId ?? null,
       payment_method: input.paymentMethod ?? "toss",
@@ -75,7 +122,7 @@ export async function createCartOrder(input: {
     .from("orders")
     .insert({
       user_id: input.userId,
-      status: "pending_payment",
+      status: "attempted", // ★PG 호출 전 — createSinglePlanOrder 주석 참조.
       total_krw: totalKrw,
       shipping_fee_krw: shipping,
       coupon_id: input.couponId ?? null,
@@ -127,7 +174,7 @@ export async function markOrderPaidAndFulfill(orderId: string): Promise<void> {
       .from("orders")
       .update({ status: "paid" })
       .eq("order_id", orderId)
-      .in("status", ["pending_payment", "pending_deposit"]);
+      .in("status", ["attempted", "pending_payment", "pending_deposit"]);
     if (error) {
       console.error("[orders] paid transition failed:", error.message);
       return;

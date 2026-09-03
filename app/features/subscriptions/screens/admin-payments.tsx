@@ -454,7 +454,10 @@ export default function AdminPayments({ loaderData }: Route.ComponentProps) {
                   ) : null}
                 </TD>
                 <TD align="center">
-                  {p.status === "completed" ? (
+                  {/* ★refundedAt 은 status 와 별개다 — 항목별 부분환불(/admin/orders)은
+                      payments.refunded_at 만 남기고 status 는 completed 로 둔다.
+                      status 만 보면 이미 환불된 결제에 환불 버튼이 남는다. */}
+                  {p.status === "completed" && !p.refundedAt ? (
                     <RefundDialog
                       paymentId={p.paymentId}
                       userName={p.userName ?? p.userId.slice(0, 8)}
@@ -462,6 +465,10 @@ export default function AdminPayments({ loaderData }: Route.ComponentProps) {
                       amountKrw={p.amountKrw}
                       hasPaymentKey={Boolean(p.paymentKey)}
                     />
+                  ) : p.refundedAt ? (
+                    <span className="text-muted-foreground text-xs" title="이미 환불 처리된 결제입니다">
+                      환불됨
+                    </span>
                   ) : (
                     <span className="text-muted-foreground text-xs">—</span>
                   )}

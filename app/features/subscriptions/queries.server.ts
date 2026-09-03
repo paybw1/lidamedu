@@ -658,7 +658,7 @@ export async function cancelPendingCheckout(input: {
       .from("orders")
       .update({ status: "cancelled" })
       .in("order_id", orderIds)
-      .in("status", ["draft", "pending_payment"]);
+      .in("status", ["draft", "attempted", "pending_payment"]);
   }
   return { cancelled: pend.length };
 }
@@ -886,7 +886,7 @@ export async function confirmPayment(
         .from("orders")
         .update({ status: "pending_deposit" })
         .eq("order_id", payRow.order_id)
-        .eq("status", "pending_payment");
+        .in("status", ["attempted", "pending_payment"]);
     }
     return { ok: true, pendingDeposit: true };
   }
