@@ -60,7 +60,20 @@ export type AdminClusterId =
   | "comms"
   | "ai-qna"
   | "landing"
-  | "ops";
+  | "ops"
+  // feat-11-011 P3 — 강의·판매 관리 모드의 업무군(요청서 §1.2 열 개). 학습 관리 모드의
+  // 클러스터와 섞이지 않도록 접두어를 둔다.
+  | "c-dashboard"
+  | "c-catalog"
+  | "c-media"
+  | "c-enroll"
+  | "c-members"
+  | "c-orders"
+  | "c-books"
+  | "c-promo"
+  | "c-stats"
+  | "c-site"
+  | "c-system";
 
 // 상위 섹션 — 클러스터를 5개 도메인으로 묶어 사이드바·허브에서 그룹 표시.
 // (커머스를 별도 축으로 분리 — 상품·매출·정산·도서몰이 '수강생 운영/콘텐츠'에 섞이던 문제 해소.)
@@ -460,16 +473,219 @@ function readAdminNavOpen(): Record<string, boolean> {
 export function visibleAdminNav(
   role: UserRole | null | undefined,
   duties?: ReadonlySet<StaffDuty> | null,
+  mode: AdminModeId = "study",
 ): NavCluster[] {
   const allowed = (s: NavScreen) => {
     if (s.minRole && !roleAtLeast(role, s.minRole)) return false;
     if (!s.duty) return true;
     return role === "admin" || Boolean(duties?.has(s.duty));
   };
-  return ADMIN_NAV.map((c) => ({
-    ...c,
-    screens: c.screens.filter(allowed),
-  })).filter((c) => !c.section || c.screens.length > 0);
+  const source =
+    mode === "commerce"
+      ? COMMERCE_NAV
+      : // 학습 관리 모드에서는 커머스가 가져간 클러스터를 뺀다(양쪽에 다 보이면 어디가
+        // 정본인지 알 수 없다). 공용 클러스터는 양쪽에 남는다.
+        ADMIN_NAV.filter((c) => !COMMERCE_ONLY_CLUSTERS.has(c.id));
+  return source
+    .map((c) => ({ ...c, screens: c.screens.filter(allowed) }))
+    .filter((c) => !c.section || c.screens.length > 0);
+}
+
+/* ── 관리자 모드 (feat-11-011 P3) ──────────────────────────────────────────
+   /admin 은 학습 플랫폼(법령·판례·문제·2차·종합반)과 강의·판매를 한 사이드바에 담고
+   있었다. 0903 요청서의 열 개 업무군은 **동영상 서비스 기준**이라 그대로 덮으면 학습
+   플랫폼 화면 서른 개가 갈 곳을 잃는다. 그래서 모드를 나눈다.
+
+   ★URL 은 하나도 바뀌지 않는다 — 배치와 이름만 옮긴다. 기존 북마크가 그대로 산다.
+   ★공용 화면(회원·CRM·공지·시스템)은 **한 벌만 두고 양쪽에서 같은 URL 로** 들어간다
+     (요청서 §1.4 "동일 기능의 대표 URL 은 하나"). */
+
+export type AdminModeId = "study" | "commerce";
+
+export const ADMIN_MODES: { id: AdminModeId; label: string; home: string }[] = [
+  { id: "study", label: "학습 관리", home: "/admin" },
+  { id: "commerce", label: "강의·판매 관리", home: "/admin/lectures" },
+];
+
+/** 화면 메타(라벨·minRole·duty)의 단일 출처 = ADMIN_NAV. 커머스 모드는 경로만 나열한다. */
+const SCREEN_BY_PATH = new Map<string, NavScreen>();
+for (const c of ADMIN_NAV) for (const s of c.screens) SCREEN_BY_PATH.set(s.to, s);
+
+/** 경로 → 화면. 못 찾으면 경로를 그대로 보여 준다(조용히 사라지는 것보다 낫다). */
+function screenAt(to: string): NavScreen {
+  return SCREEN_BY_PATH.get(to) ?? { label: to, to };
+}
+
+const COMMERCE_GROUP_DEFS: {
+  id: AdminClusterId;
+  label: string;
+  Icon: LucideIcon;
+  paths: string[];
+}[] = [
+  { id: "c-dashboard", label: "대시보드", Icon: LayoutDashboardIcon, paths: ["/admin"] },
+  {
+    id: "c-catalog",
+    label: "강의·상품관리",
+    Icon: GraduationCapIcon,
+    paths: [
+      "/admin/lectures",
+      "/admin/lms/courses",
+      "/admin/lecture-categories",
+      "/admin/instructor-profiles",
+      "/admin/pricing",
+      "/admin/discounts",
+    ],
+  },
+  {
+    id: "c-media",
+    label: "영상자료관리",
+    Icon: ClapperboardIcon,
+    paths: ["/admin/lms/contents", "/admin/lms/groups"],
+  },
+  {
+    id: "c-enroll",
+    label: "수강운영관리",
+    Icon: ClipboardCheckIcon,
+    paths: [
+      "/admin/lms/enrollments",
+      "/admin/lms/extensions",
+      "/admin/lms/devices",
+      "/admin/subscriptions",
+    ],
+  },
+  {
+    id: "c-members",
+    label: "회원·CRM",
+    Icon: UsersIcon,
+    paths: [
+      "/admin/users",
+      "/admin/trial-conversion",
+      "/admin/access-logs",
+      "/admin/withdrawals",
+      "/admin/broadcasts",
+    ],
+  },
+  {
+    id: "c-orders",
+    label: "주문·결제관리",
+    Icon: BanknoteIcon,
+    paths: ["/admin/orders", "/admin/payments"],
+  },
+  {
+    id: "c-books",
+    label: "교재·배송관리",
+    Icon: PackageIcon,
+    paths: ["/admin/books", "/admin/book-bundles", "/admin/shipments"],
+  },
+  {
+    id: "c-promo",
+    label: "쿠폰·포인트관리",
+    Icon: AwardIcon,
+    paths: ["/admin/coupons", "/admin/points"],
+  },
+  {
+    id: "c-stats",
+    label: "정산·통계",
+    Icon: TrendingUpIcon,
+    paths: [
+      "/admin/sales/stats",
+      "/admin/subscriptions/stats",
+      "/admin/settlements",
+      "/admin/settlements/rules",
+      "/admin/settlements/book-runs",
+      "/admin/settlements/books",
+      "/admin/settlements/qna-rewards",
+    ],
+  },
+  {
+    id: "c-site",
+    label: "사이트관리",
+    Icon: MegaphoneIcon,
+    paths: [
+      "/admin/main-page",
+      "/admin/landing-banners",
+      "/admin/lecture-videos",
+      "/admin/lecture-schedules",
+      "/admin/lecture-news",
+      "/admin/exam-info",
+      "/admin/exam-notices",
+      "/admin/pages",
+      "/admin/announcements",
+      "/admin/popup-notices",
+      "/admin/support-faqs",
+    ],
+  },
+  {
+    id: "c-system",
+    label: "시스템·보안",
+    Icon: SettingsIcon,
+    paths: [
+      "/admin/staff-duties",
+      "/admin/auth",
+      "/admin/audit-logs",
+      "/admin/bug-reports",
+      "/admin/guides",
+      "/admin/inbox",
+    ],
+  },
+];
+
+export const COMMERCE_NAV: NavCluster[] = COMMERCE_GROUP_DEFS.map((g) => ({
+  id: g.id,
+  section: "commerce",
+  label: g.label,
+  Icon: g.Icon,
+  screens: g.paths.map(screenAt),
+}));
+
+/** 학습 관리 모드에서만 보이는 클러스터 = 커머스 모드가 가져간 것 외 전부. */
+const COMMERCE_ONLY_CLUSTERS = new Set<AdminClusterId>(["lms", "products", "sales"]);
+
+/** 현재 화면이 어느 모드에 속하는가. 판단이 안 서면 저장된 모드를 따른다. */
+export function resolveAdminMode(
+  cluster: AdminClusterId,
+  stored: AdminModeId | null,
+): AdminModeId {
+  if (COMMERCE_ONLY_CLUSTERS.has(cluster)) return "commerce";
+  if (cluster.startsWith("c-")) return "commerce";
+  // 공용 클러스터(회원·공지·시스템·강사·사이트)는 마지막으로 고른 모드를 유지한다.
+  // ★커머스 모드가 참조하는 화면이 속한 클러스터는 전부 여기 있어야 한다. 빠지면
+  //   그 화면에 들어갔을 때 사이드바가 학습 관리로 튄다.
+  const shared: AdminClusterId[] = [
+    "students",
+    "comms",
+    "ops",
+    "landing",
+    "instructors",
+    "hub",
+  ];
+  if (shared.includes(cluster)) return stored ?? "study";
+  return "study";
+}
+
+/** 커머스 모드에서 현재 경로가 속한 업무군. 강조 표시용. */
+function activeCommerceGroup(pathname: string): AdminClusterId | null {
+  let best: { id: AdminClusterId; len: number } | null = null;
+  for (const g of COMMERCE_NAV) {
+    for (const s of g.screens) {
+      const base = s.to.split("?")[0];
+      if ((pathname === base || pathname.startsWith(base + "/")) && (!best || base.length > best.len)) {
+        best = { id: g.id, len: base.length };
+      }
+    }
+  }
+  return best?.id ?? null;
+}
+
+const ADMIN_MODE_KEY = "adminMode";
+
+function readAdminMode(): AdminModeId | null {
+  try {
+    const v = window.localStorage.getItem(ADMIN_MODE_KEY);
+    return v === "study" || v === "commerce" ? v : null;
+  } catch {
+    return null;
+  }
 }
 
 /* ── Sidebar ──────────────────────────────────────────────────────────── */
@@ -609,7 +825,21 @@ function AdminSidebar({
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const duties = useMyDuties(role);
-  const nav = visibleAdminNav(role, duties);
+  // SSR 결정성 — 초기 모드는 화면이 속한 모드로 정하고, 저장된 선택은 mount 뒤 적용한다.
+  const [storedMode, setStoredMode] = useState<AdminModeId | null>(null);
+  useEffect(() => setStoredMode(readAdminMode()), []);
+  const mode = resolveAdminMode(activeCluster, storedMode);
+  const nav = visibleAdminNav(role, duties, mode);
+  const activeId =
+    mode === "commerce" ? (activeCommerceGroup(pathname) ?? activeCluster) : activeCluster;
+
+  const pickMode = (m: AdminModeId) => {
+    try {
+      window.localStorage.setItem(ADMIN_MODE_KEY, m);
+    } catch {
+      // localStorage 불가 환경 — 이동만 한다.
+    }
+  };
   return (
     <aside
       className={cn(
@@ -647,6 +877,27 @@ function AdminSidebar({
         )}
       </div>
 
+      {/* feat-11-011 P3 — 학습 관리 ↔ 강의·판매 관리. 학생 화면의 플랫폼 스위처와 같은 어법. */}
+      {!collapsed ? (
+        <div className="bg-sidebar-accent/40 mb-2 flex gap-0.5 rounded-lg p-0.5">
+          {ADMIN_MODES.map((m) => (
+            <Link
+              key={m.id}
+              to={m.home}
+              onClick={() => pickMode(m.id)}
+              className={cn(
+                "flex-1 rounded-md px-2 py-1.5 text-center text-[11.5px] font-bold transition-colors",
+                mode === m.id
+                  ? "bg-sidebar text-sidebar-primary shadow-sm"
+                  : "text-sidebar-foreground/60 hover:text-sidebar-foreground",
+              )}
+            >
+              {m.label}
+            </Link>
+          ))}
+        </div>
+      ) : null}
+
       {/* 운영자 화면 검색(⌘K) 진입 — 91개 화면을 이름으로 점프. */}
       <button
         type="button"
@@ -672,18 +923,32 @@ function AdminSidebar({
       </button>
 
       <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto">
+        {/* 강의·판매 관리 — 요청서 §1.2 열 개 업무군을 번호 순서 그대로. 섹션 머리글 없음. */}
+        {mode === "commerce"
+          ? nav.map((c) => (
+              <ClusterGroup
+                key={c.id}
+                cluster={c}
+                activeCluster={activeId}
+                pathname={pathname}
+                collapsed={collapsed}
+              />
+            ))
+          : null}
         {/* hub — 섹션에 속하지 않는 단독 진입점 */}
-        {nav.filter((c) => !c.section).map((c) => (
-          <ClusterGroup
-            key={c.id}
-            cluster={c}
-            activeCluster={activeCluster}
-            pathname={pathname}
-            collapsed={collapsed}
-          />
-        ))}
-        {/* 4개 상위 섹션 — 헤더 + 소속 클러스터 */}
-        {ADMIN_SECTIONS.map((section) => {
+        {mode === "study"
+          ? nav.filter((c) => !c.section).map((c) => (
+              <ClusterGroup
+                key={c.id}
+                cluster={c}
+                activeCluster={activeId}
+                pathname={pathname}
+                collapsed={collapsed}
+              />
+            ))
+          : null}
+        {/* 4개 상위 섹션 — 헤더 + 소속 클러스터 (학습 관리 모드) */}
+        {(mode === "study" ? ADMIN_SECTIONS : []).map((section) => {
           const clusters = nav.filter((c) => c.section === section.id);
           if (clusters.length === 0) return null;
           return (
@@ -699,7 +964,7 @@ function AdminSidebar({
                 <ClusterGroup
                   key={c.id}
                   cluster={c}
-                  activeCluster={activeCluster}
+                  activeCluster={activeId}
                   pathname={pathname}
                   collapsed={collapsed}
                 />

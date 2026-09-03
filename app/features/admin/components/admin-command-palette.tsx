@@ -41,8 +41,13 @@ export function AdminCommandPalette({ role }: { role: UserRole | null }) {
 
   // hub 제외, 역할·담당별로 보이는 화면만 — 열 수 없는 화면이 검색에 잡히면
   // 사이드바에서 숨긴 의미가 없다.
+  // ★검색은 **두 모드를 모두** 훑는다. 지금 보고 있는 모드에 없다고 못 찾으면
+  //   "화면 찾기"가 아니다(요청서 §1.4 — 기능명으로 바로 찾을 수 있어야 한다).
   const duties = useMyDuties(role);
-  const groups = visibleAdminNav(role, duties).filter((c) => c.section);
+  const groups = [
+    ...visibleAdminNav(role, duties, "study"),
+    ...visibleAdminNav(role, duties, "commerce"),
+  ].filter((c) => c.section);
 
   return (
     <CommandDialog

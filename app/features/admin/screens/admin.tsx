@@ -493,9 +493,14 @@ function SeedTable({
 /* ── 클러스터 바로가기 (4개 섹션 그룹) ──────────────────────────────── */
 
 // 허브 IA = 4개 상위 섹션 × 소속 클러스터. hub 자기 자신은 제외.
+// ★허브는 두 모드에 다 걸치는 화면이라 **양쪽을 모두** 보여 준다. 한쪽만 보여 주면
+//   반대편 화면이 허브에서 사라진다(feat-11-011 P3).
 function ClusterGrid({ role }: { role: UserRole | null }) {
   const duties = useMyDuties(role);
-  const nav = visibleAdminNav(role, duties);
+  const study = visibleAdminNav(role, duties, "study");
+  const commerce = visibleAdminNav(role, duties, "commerce");
+  const seen = new Set(study.map((c) => c.id));
+  const nav = [...study, ...commerce.filter((c) => !seen.has(c.id))];
   return (
     <div className="space-y-7" data-testid="admin-hub-clusters">
       {ADMIN_SECTIONS.map((section) => {
