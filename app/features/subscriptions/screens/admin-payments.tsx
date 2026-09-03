@@ -1,15 +1,33 @@
 // feat-8-029 Stage 1 — 운영자 주문결제 관리 (manager+).
 // 기간·상품 필터 + 일/주/월 집계 + 결제내역 / 환불내역 탭.
 
+import { useEffect, useState } from "react";
 import {
   BanknoteIcon,
   DownloadIcon,
   ReceiptTextIcon,
   RotateCcwIcon,
 } from "lucide-react";
-import { Form, Link, redirect, useSearchParams } from "react-router";
+import {
+  Form,
+  Link,
+  data,
+  redirect,
+  useFetcher,
+  useSearchParams,
+} from "react-router";
+import { toast } from "sonner";
+import { z } from "zod";
 
 import { Button } from "~/core/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "~/core/components/ui/dialog";
+import { Textarea } from "~/core/components/ui/textarea";
 import { csvResponse } from "~/core/lib/csv.server";
 import { roleAtLeast } from "~/core/lib/roles";
 import makeServerClient from "~/core/lib/supa-client.server";
@@ -29,6 +47,7 @@ import {
 } from "~/features/subscriptions/payments-admin.server";
 import { PAYMENT_STATUS_LABEL, type PaymentStatus } from "~/features/subscriptions/labels";
 import { listSubscriptionPlans } from "~/features/subscriptions/queries.server";
+import { refundPaymentAdmin } from "~/features/subscriptions/refund-admin.server";
 
 import type { Route } from "./+types/admin-payments";
 
@@ -154,6 +173,50 @@ export async function loader({ request }: Route.LoaderArgs) {
     plans,
     filter: { preset, granularity, planId, status, tab },
   };
+}
+
+// feat-11-011 — 운영자 환불(취소). 사유 필수, 서버에서 권한 재검증.
+// ★화면 게이트가 아니라 이 action 이 유일한 방어선이다.
+const refundSchema = z.object({
+  paymentId: z.string().uuid(),
+  reason: z.string().trim().min(2, "환불 사유를 입력해 주세요").max(500),
+});
+
+export async function action({ request }: Route.ActionArgs) {
+  const [client] = makeServerClient(request);
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  if (!user) return data({ error: "로그인이 필요합니다" }, { status: 401 });
+  const { data: prof } = await client
+    .from("profiles")
+    .select("role")
+    .eq("profile_id", user.id)
+    .maybeSingle();
+  if (!roleAtLeast(prof?.role, "manager"))
+    return data({ error: "권한이 없습니다" }, { status: 403 });
+
+  const fd = await request.formData();
+  const parsed = refundSchema.safeParse({
+    paymentId: fd.get("paymentId"),
+    reason: fd.get("reason"),
+  });
+  if (!parsed.success)
+    return data({ error: parsed.error.issues[0]?.message ?? "입력이 올바르지 않습니다" }, { status: 400 });
+
+  const result = await refundPaymentAdmin({
+    paymentId: parsed.data.paymentId,
+    reason: parsed.data.reason,
+    actorId: user.id,
+  });
+  if (!result.ok) return data({ error: result.error }, { status: 400 });
+
+  const parts = [`${result.refundedKrw.toLocaleString("ko-KR")}원 환불`];
+  if (result.manual)
+    parts.push("PG 결제건이 아니라 기록만 남았습니다 — 실제 송금은 직접 처리하세요");
+  if (result.revokedSubscriptions > 0) parts.push(`수강권 ${result.revokedSubscriptions}건 회수`);
+  if (result.revokedOrder) parts.push("연결 주문 회수");
+  return data({ ok: true as const, message: parts.join(" · ") });
 }
 
 function fmtKrw(n: number): string {
@@ -345,6 +408,7 @@ export default function AdminPayments({ loaderData }: Route.ComponentProps) {
               { label: "상태", align: "center", width: "6rem" },
               { label: "결제수단", align: "center", width: "5.5rem" },
               { label: "승인번호(주문번호)", width: "14rem" },
+              { label: "처리", align: "center", width: "5.5rem" },
             ]}
             footer={
               <div className="border-border/60 text-muted-foreground border-t px-3 py-2 text-[11px] font-medium tabular-nums">
@@ -388,6 +452,19 @@ export default function AdminPayments({ loaderData }: Route.ComponentProps) {
                       {p.tossOrderId}
                     </span>
                   ) : null}
+                </TD>
+                <TD align="center">
+                  {p.status === "completed" ? (
+                    <RefundDialog
+                      paymentId={p.paymentId}
+                      userName={p.userName ?? p.userId.slice(0, 8)}
+                      planName={p.planName || p.planCode}
+                      amountKrw={p.amountKrw}
+                      hasPaymentKey={Boolean(p.paymentKey)}
+                    />
+                  ) : (
+                    <span className="text-muted-foreground text-xs">—</span>
+                  )}
                 </TD>
               </TR>
             ))}
@@ -439,6 +516,94 @@ export default function AdminPayments({ loaderData }: Route.ComponentProps) {
         </IndexTable>
       )}
     </AdminShell>
+  );
+}
+
+// feat-11-011 — 결제 1건 환불(취소). 되돌릴 수 없으므로 금액·대상을 다시 보여 주고
+// 사유를 받는다. 사유는 감사 기록에 남는다.
+function RefundDialog({
+  paymentId,
+  userName,
+  planName,
+  amountKrw,
+  hasPaymentKey,
+}: {
+  paymentId: string;
+  userName: string;
+  planName: string;
+  amountKrw: number;
+  hasPaymentKey: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const fetcher = useFetcher<{ error?: string; message?: string }>();
+  const busy = fetcher.state !== "idle";
+
+  useEffect(() => {
+    if (fetcher.state !== "idle" || !fetcher.data) return;
+    if (fetcher.data.error) {
+      toast.error(fetcher.data.error);
+      return;
+    }
+    toast.success(fetcher.data.message ?? "환불했습니다.");
+    setOpen(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetcher.state, fetcher.data]);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 rounded-full px-3 text-xs text-rose-600 dark:text-rose-400"
+        >
+          환불
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>결제 환불 — {fmtKrw(amountKrw)}</DialogTitle>
+        </DialogHeader>
+        <fetcher.Form method="post" className="space-y-3 text-sm">
+          <input type="hidden" name="paymentId" value={paymentId} />
+          <dl className="border-border bg-muted/40 space-y-1 rounded-lg border p-3 text-xs">
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted-foreground">학생</dt>
+              <dd className="truncate font-medium">{userName}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted-foreground">상품</dt>
+              <dd className="truncate font-medium">{planName}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted-foreground">환불액</dt>
+              <dd className="font-medium tabular-nums">{fmtKrw(amountKrw)}</dd>
+            </div>
+          </dl>
+          <p className="text-muted-foreground text-xs leading-relaxed">
+            {hasPaymentKey
+              ? "전액이 결제수단으로 취소되고, 이 결제로 지급된 수강권·주문이 함께 회수됩니다. 되돌릴 수 없습니다."
+              : "PG 결제건이 아니어서 자동 취소가 되지 않습니다. 환불 기록만 남고 수강권·주문은 회수되니, 실제 송금은 직접 처리하세요."}
+          </p>
+          <label className="block space-y-1">
+            <span className="text-muted-foreground text-xs font-semibold">
+              사유 (필수 — 이력에 기록)
+            </span>
+            <Textarea
+              name="reason"
+              required
+              minLength={2}
+              maxLength={500}
+              rows={2}
+              className="text-xs"
+            />
+          </label>
+          <Button type="submit" size="sm" variant="destructive" disabled={busy} className="w-full">
+            {busy ? "처리 중…" : "환불 확정"}
+          </Button>
+        </fetcher.Form>
+      </DialogContent>
+    </Dialog>
   );
 }
 

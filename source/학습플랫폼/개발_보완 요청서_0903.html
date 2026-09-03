@@ -1,0 +1,328 @@
+<div style="max-width: 1180px; margin: 0 auto; padding: 36px 16px 72px; font-family: Pretendard,'Noto Sans KR',Arial,sans-serif; color: #172033; line-height: 1.72; word-break: keep-all; background: #f5f7fb;">
+<div style="padding: 46px 38px; border-radius: 28px; background: linear-gradient(135deg,#17233f 0%,#284dcc 58%,#6d8cff 100%); color: #fff; margin-bottom: 24px;"><br />
+<div style="font-size: 18px; font-weight: 800; margin-top: 16px; opacity: .90;">리담 동영상서비스</div>
+<div style="font-size: 40px; font-weight: 900; line-height: 1.18; letter-spacing: -1.6px; margin: 16px 0 8px;">&nbsp;개발&middot;보완 요청서</div>
+</div>
+<div style="font-size: 27px; font-weight: 900; letter-spacing: -1px; margin: 46px 0 16px; color: #172033;">1. 관리자 메뉴 전면 재편 요청</div>
+<div style="font-size: 20px; font-weight: 800; letter-spacing: -.4px; margin: 28px 0 10px; color: #23304a;">1.1 현재 문제</div>
+<ul style="margin: 8px 0 20px; padding-left: 22px;">
+<li style="margin: 7px 0; color: #3f4b61;">같은 업무에 속하는 강의, 가격정책, 영상자료, 수강권, 연장 기능이 서로 멀리 분산돼 있습니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">주문&middot;결제&middot;배송&middot;정산 메뉴가 나뉘어 있어 한 주문을 처리하기 위해 여러 메뉴를 오가야 합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">강의개설 화면과 영상자료 분류단위, 판매정책 화면의 연결 위치와 명칭이 일관되지 않습니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">&ldquo;series&middot;edition&rdquo;, &ldquo;강의&rdquo;, &ldquo;상품&rdquo;, &ldquo;plan&rdquo; 용어가 혼재해 관리자가 같은 대상을 다른 기능으로 오해할 수 있습니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">오류가 발생하는 메뉴도 사이드바에 그대로 노출되어 실제 운영 중 업무 중단을 유발합니다.</li>
+</ul>
+<div style="font-size: 20px; font-weight: 800; letter-spacing: -.4px; margin: 28px 0 10px; color: #23304a;">1.2 재편 방향</div>
+<p style="margin: 0 0 12px; color: #3f4b61;">타사의 LMS사이트 구성을 참고하되, 리담의 온라인 강의&middot;Kollus DRM&middot;교재 판매&middot;강사 정산 업무에 맞춰 아래 구조로 재편합니다.</p>
+<div style="overflow-x: auto; margin: 0 0 6px;">
+<table style="width: 100%; border-collapse: collapse; background: #fff; margin: 12px 0 22px;">
+<tbody>
+<tr>
+<th style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #f7f9fc; color: #445067; font-weight: 800; text-align: left; vertical-align: top;">상위 메뉴</th>
+<th style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #f7f9fc; color: #445067; font-weight: 800; text-align: left; vertical-align: top;">하위 메뉴</th>
+<th style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #f7f9fc; color: #445067; font-weight: 800; text-align: left; vertical-align: top;">관리 목적</th>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">0. 대시보드</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">오늘의 결제&middot;신규수강&middot;연장&middot;환불요청&middot;재생오류&middot;배송대기&middot;미처리상담</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">로그인 직후 운영현황과 긴급업무 확인</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">1. 강의&middot;상품관리</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">강의개설 / 강의목록 / 강의카테고리 / 강사관리 / 판매가격&middot;수강정책 / 패키지&middot;T-PASS</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">판매할 교육상품 생성과 기본정책 관리</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">2. 영상자료관리</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">Kollus 영상자료 영상보관소 / 영상자료 분류단위 / 회차&middot;목차관리 / 자료관리 / 동기화&middot;인코딩 오류</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">영상 원본부터 강의 회차 연결까지 관리</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">3. 수강운영관리</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">영상 수강권 / 과정별 수강생 / 기간연장 / 일시정지&middot;회수 / 진도&middot;학습기록 / 배수예외 / Kollus 기기지원 / 재생오류</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">결제 후 실제 학습권한과 학습문제 처리</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">4. 회원&middot;CRM</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">회원목록 / 회원분류단위&middot;등급 / 회원상세 통합CRM / 상담이력 / 메일&middot;SMS&middot;알림 / 회원 접속이력</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">회원 조회부터 상담&middot;안내까지 한 화면에서 처리</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">5. 주문&middot;결제관리</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">전체주문 / 결제내역 / 결제대기&middot;실패 / 취소&middot;환불 / 수강연장 주문 / 무통장입금&nbsp;</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">강의&middot;교재&middot;연장 결제의 전체 생명주기 관리</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">6. 교재&middot;배송관리</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">교재&middot;도서 / 재고 / 도서주문 / 배송관리 / 송장 일괄등록 / 반품&middot;교환</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">교재 상품과 물류 업무 통합</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">7. 쿠폰&middot;포인트관리</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">쿠폰관리 / 자동쿠폰관리 / 포인트정책설정 / 포인트이용내역 / 포인트쿠폰관리</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">쿠폰&middot;포인트 정책 관리</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">8. 정산&middot;통계</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">매출통계 / 상품별 매출 / 강사별 매출&middot;정산 / 정산기준 / 환불통계 / 학습통계 / CSV</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">정산 자료 조회와 내보내기</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">9. 사이트관리</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">메인화면 구성단위 / 일반화면 / 배너&middot;대화창 / 공지&middot;FAQ / 강사소개 / 메뉴&middot;하단영역 / 노출일정</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">수강생에게 보이는 사이트 영상자료 관리</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">10. 시스템&middot;보안</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">관리자계정 / 역할&middot;권한 / 감사로그 / 관리자 접속로그 / 오류로그 / 외부연동&middot;PG&middot;Kollus / 공통설정</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">권한&middot;보안&middot;연동&middot;장애 추적</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div style="font-size: 20px; font-weight: 800; letter-spacing: -.4px; margin: 28px 0 10px; color: #23304a;">1.3 기존 메뉴 이동 기준</div>
+<div style="overflow-x: auto; margin: 0 0 6px;">
+<table style="width: 100%; border-collapse: collapse; background: #fff; margin: 12px 0 22px;">
+<tbody>
+<tr>
+<th style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #f7f9fc; color: #445067; font-weight: 800; text-align: left; vertical-align: top;">현재 기능군</th>
+<th style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #f7f9fc; color: #445067; font-weight: 800; text-align: left; vertical-align: top;">이동 위치</th>
+<th style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #f7f9fc; color: #445067; font-weight: 800; text-align: left; vertical-align: top;">정리 원칙</th>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">강의개설&middot;강의카테고리&middot;판매정책&middot;강사</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">강의&middot;상품관리</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">&ldquo;series&middot;edition&middot;plan&rdquo; 표현 제거</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">강의 영상자료&middot;영상보관소&middot;분류단위&middot;목차</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">영상자료관리</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">강의 선택 후 연결 영상자료로 바로 이동</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">영상 수강권&middot;연장&middot;기기&middot;진도&middot;재생오류</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">수강운영관리</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">수강생 상세에서도 동일 기능으로 교차연결</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">회원&middot;상담&middot;발송&middot;접속이력</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">회원&middot;CRM</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">회원상세 한 화면에 수강&middot;주문&middot;상담 구분화면 통합</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">주문&middot;결제&middot;환불&middot;무통장</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">주문&middot;결제관리</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">상품종류 필터로 강의/교재/연장 구분</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">도서&middot;재고&middot;배송</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">교재&middot;배송관리</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">주문번호를 중심으로 배송업무 연결</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">할인권&middot;할인&middot;구독&middot;체험</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">쿠폰&middot;포인트관리</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">발급/사용/회수 이력을 동일 구조로 관리</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">매출&middot;정산&middot;통계</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">정산&middot;통계</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">같은 기간필터와 CSV 형식 사용</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">메인&middot;화면&middot;공지&middot;FAQ</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">사이트관리</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">공개/중지/예약상태를 공통 배지로 표시</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">감사&middot;접근&middot;오류&middot;관리자권한</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">시스템&middot;보안</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">권한 없는 관리자는 메뉴 자체를 비표시</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div style="font-size: 20px; font-weight: 800; letter-spacing: -.4px; margin: 28px 0 10px; color: #23304a;">1.4 메뉴 사용성 필수조건</div>
+<ol style="margin: 8px 0 20px; padding-left: 24px;">
+<li style="margin: 7px 0; color: #3f4b61;">좌측 메뉴는 상위 업무군별 아코디언 구조로 만들고, 관리자가 연 메뉴와 마지막 방문 위치를 유지합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">상단에 전체 메뉴 검색을 제공하며 &ldquo;수강권&rdquo;, &ldquo;환불&rdquo;, &ldquo;할인권&rdquo;처럼 기능명으로 바로 찾을 수 있어야 합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">자주 쓰는 메뉴 메뉴와 최근 사용 메뉴를 제공해 반복 업무 접근 단계를 줄입니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">권한이 없는 메뉴는 비활성 선택단추으로 남기지 말고 숨기며, 직접 URL 접근도 서버에서 차단합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">모든 화면에 &ldquo;상위 업무군 &gt; 목록 &gt; 상세&rdquo; 형태의 경로표시와 목록 돌아가기 선택단추을 통일합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">동일 기능의 대표 URL은 하나만 사용합니다. 예: 판매정책 연결이 /admin/plans와 /admin/pricing으로 갈라지지 않도록 통일합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">목록 필터&middot;정렬&middot;화면크기&middot;검색어는 상세 화면을 보고 돌아와도 유지합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">대시보드 경고카드에서 결제대기 장기건, 환불요청, 재생오류, 배송대기, 수강권 만료예정으로 바로 이동합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">오류가 발생한 메뉴는 정상화 전 배포하지 않으며, 장애 시 빈 화면 대신 추적번호와 안내를 표시합니다.</li>
+</ol>
+<div style="font-size: 27px; font-weight: 900; letter-spacing: -1px; margin: 46px 0 16px; color: #172033;">2. 접근이 안되는 페이지</div>
+<div style="overflow-x: auto; margin: 0 0 6px;">
+<table style="width: 100%; border-collapse: collapse; background: #fff; margin: 12px 0 22px;">
+<tbody>
+<tr>
+<th style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #f7f9fc; color: #445067; font-weight: 800; text-align: left; vertical-align: top;">번호</th>
+<th style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #f7f9fc; color: #445067; font-weight: 800; text-align: left; vertical-align: top;">위치</th>
+<th style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #f7f9fc; color: #445067; font-weight: 800; text-align: left; vertical-align: top;">현재 문제</th>
+<th style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #f7f9fc; color: #445067; font-weight: 800; text-align: left; vertical-align: top;">완료 기준</th>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">P0-01</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">/admin/lms/enrollments</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">수강권 관리 화면이 일반 오류로 종료됨</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">조회&middot;부여&middot;기간변경&middot;정지&middot;회수&middot;배수초기화 전체 정상화</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">P0-02</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">/admin/orders</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">주문관리 화면이 일반 오류로 종료됨</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">주문상세&middot;상태&middot;취소&middot;환불&middot;복구 정상화</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">P0-03</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">/admin/lms/devices</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">기기관리 화면이 일반 오류로 종료됨</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">자체 제한 수치 제거 후 Kollus 조회&middot;초기화 지원 화면으로 정리</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">P0-04</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">/admin/access-logs</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">접근기록 화면이 일반 오류로 종료됨</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">로그인 성공&middot;실패&middot;차단&middot;관리자 조회이력 검색 가능</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">P0-05</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">/admin/instructors</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">강사관리 화면이 일반 오류로 종료됨</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">강사 등록&middot;강의연결&middot;정산연결 정상화</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">P0-06</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">/admin/shipments</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">배송관리 화면이 일반 오류로 종료됨</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">주문&middot;배송상태&middot;송장&middot;반품 흐름 정상화</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div style="padding: 16px 18px; border-left: 4px solid #315efb; background: #eef3ff; border-radius: 10px; margin: 14px 0 22px; color: #263653;">공통 완료 기준 각 오류는 단순히 화면가 열리는 것으로 완료 처리하지 않습니다. 검색&middot;목록&middot;상세&middot;저장&middot;취소&middot;권한차단&middot;변경이력까지 테스트하고, 기존 운영데이터에 대한 DB 자료전환 및 원복계획을 제출합니다.</div>
+<div style="font-size: 27px; font-weight: 900; letter-spacing: -1px; margin: 46px 0 16px; color: #172033;">3. 결제&middot;수강연장 안정화</div>
+<div style="font-size: 20px; font-weight: 800; letter-spacing: -.4px; margin: 28px 0 10px; color: #23304a;">3.1 현재 확인된 문제</div>
+<ul style="margin: 8px 0 20px; padding-left: 22px;">
+<li style="margin: 7px 0; color: #3f4b61;">결제창을 열고 결제하지 않아도 내주문 배송에 주문이 결제대기 상태로 계속 쌓입니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">수개월 전 일반 강의 결제 시도도 결제대기 상태로 남아 자동 만료되지 않습니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">관리자 결제내역에서는 연장 대상 상품명이 공란이며 수강권&middot;연장 회차를 식별하기 어렵습니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">수강생 결제내역에는 &ldquo;course_extension&rdquo;이라는 내부 코드가 그대로 표시되어 있습니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">도서는 도서명이 나오지 않으며, 2개 주문하면 도서*2로 표시 됩니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">사용자가 결제창을 닫은 시도와 실제 결제대기 주문이 같은 목록에 섞여 있습니다.</li>
+</ul>
+<div style="font-size: 20px; font-weight: 800; letter-spacing: -.4px; margin: 28px 0 10px; color: #23304a;">3.2 최종 수정요청</div>
+<ol style="margin: 8px 0 20px; padding-left: 24px;">
+<li style="margin: 7px 0; color: #3f4b61;">PG 호출 전 생성한 건은 &ldquo;결제시도&rdquo;로 저장하고 일반 주문&middot;매출 집계와 분리합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">결제창 종료 또는 제한시간 경과 시 &ldquo;사용자취소/만료&rdquo;로 자동 전환합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">연장 주문에 주문유형, 상품명, 수강권 ID, 기존 종료일, 연장일수, 연장 회차, 금액을 저장합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">수강생과 관리자 화면에는 &ldquo;수강기간 연장&rdquo;이라는 한글 명칭을 표시합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">결제 승인 승인 응답과 PG 알림요청이 중복 수신돼도 한 번만 연장되도록 중복방지키를 적용합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">현재 수강 중이면 기존 종료일 뒤에 연장하고, 만료 후 연장이면 결제승인 즉시 수강 가능하게 하되 다음 날부터 연장일수를 계산합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">최초 수강 종료 후 30일 이내, 허용 횟수, 허용 상품종류를 서버에서 재검증합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">결제 성공 전에 수강기간을 변경하지 않습니다. 결제 실패&middot;취소 시 권한 변경도 없어야 합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">환불 성공 시 자동으로 연장분을 되돌리며, 이미 기간을 사용해 자동회수가 곤란하면 관리자 수동처리와 사유기록을 제공합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">연장 주문의 생성&middot;결제&middot;권한변경&middot;환불&middot;복구 전 과정을 감사로그에 연결합니다.</li>
+</ol>
+<div style="overflow-x: auto; margin: 0 0 6px;">&nbsp;</div>
+<div style="font-size: 27px; font-weight: 900; letter-spacing: -1px; margin: 46px 0 16px; color: #172033;">4. 분야별 최종 기능요구</div>
+<div style="font-size: 20px; font-weight: 800; letter-spacing: -.4px; margin: 28px 0 10px; color: #23304a;">4.1 강의&middot;상품관리</div>
+<ul style="margin: 8px 0 20px; padding-left: 22px;">
+<li style="margin: 7px 0; color: #3f4b61;">강의목록 검색조건: 카테고리, 온라인/현장/패키지/T-PASS, 신청기간, 신청상태, 판매상태, 진행상태, 공개상태, 종료상태, 강의명, 강사명, 강의 UID.</li>
+<li style="margin: 7px 0; color: #3f4b61;">목록 열: 선택, UID, 대표이미지, 강의명, 카테고리, 강사, 유형, 신청기간, 정상가&middot;할인가, 판매&middot;진행&middot;공개&middot;종료상태, 정렬순서, 등록&middot;수정일.</li>
+<li style="margin: 7px 0; color: #3f4b61;">행동: 상세, 수정, 복사, 목차, 수강생, 판매정책. 연결 데이터가 있는 경우 삭제 대신 비활성화합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">강의등록 선택단추은 별도 강의등록 화면으로 연결하고, 가격관리 화면으로 우회시키지 않습니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">관리자 화면의 &ldquo;series&middot;edition&middot;plan&rdquo; 용어를 제거하고 &ldquo;강의개설&middot;강의&middot;판매정책&rdquo;으로 통일합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">수강기간과 수강배수는 별도 정책으로 유지하고, 저장 제약조건 오류를 재검증합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">PC&middot;모바일 최대기기수 입력란은 삭제합니다. 기기 허용은 Kollus 정책에서만 관리합니다.</li>
+</ul>
+<div style="font-size: 20px; font-weight: 800; letter-spacing: -.4px; margin: 28px 0 10px; color: #23304a;">4.2 영상자료 영상보관소&middot;분류단위&middot;회차</div>
+<ul style="margin: 8px 0 20px; padding-left: 22px;">
+<li style="margin: 7px 0; color: #3f4b61;">영상자료 영상보관소에는 영상자료 UID, Kollus 키&middot;카테고리, 동기화상태, 인코딩상태, 연결분류단위&middot;강의 수, 등록&middot;수정일을 표시합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">영상명&middot;키&middot;카테고리&middot;분류단위&middot;상태&middot;기간으로 검색하며 Kollus 동기화 오류를 별도 목록에서 재처리할 수 있게 합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">&ldquo;동기화&middot;등록 재배선은 후속 단계&rdquo;와 같은 개발중 안내문을 제거합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">영상자료 분류단위에는 UID, 분류단위명, 설명, 강사, 카테고리, 사용상태, 연결강의, 영상자료수, 총시간을 관리합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">회차 연결은 전체 영상 select 반복방식이 아니라 검색형 영상보관소 대화창과 다중선택&middot;일괄추가를 제공합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">회차번호&middot;제목&middot;공개&middot;미리보기&middot;자료&middot;정렬순서를 일괄 편집하고 드래그 및 수치순서 입력을 모두 지원합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">연결된 판매상품&middot;수강생이 있는 회차 삭제 시 영향대상을 표시하고 비활성 또는 대체영상 연결을 우선합니다.</li>
+</ul>
+<div style="font-size: 20px; font-weight: 800; letter-spacing: -.4px; margin: 28px 0 10px; color: #23304a;">4.3 수강권&middot;학습운영</div>
+<ul style="margin: 8px 0 20px; padding-left: 22px;">
+<li style="margin: 7px 0; color: #3f4b61;">회원명&middot;회원번호&middot;강의명&middot;수강권 ID&middot;상태&middot;기간&middot;결제주문번호로 검색합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">수강권 부여, 시작일&middot;종료일 수정, 연장, 일시정지, 재개, 회수, 차단, 수강배수 초기화와 사유를 기록합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">회원상세 CRM에서 수강권&middot;진도&middot;주문&middot;상담&middot;기기지원&middot;변경이력을 구분화면으로 확인합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">학생 강의실에는 강의시간&middot;학습시간&middot;진도율만 표시하고 재생횟수와 내부 제한 수치은 노출하지 않습니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">상품 수강배수와 회차별 최대재생 정책이 동시에 설정돼 이중차감되지 않도록 단일 판정엔진과 우선순위를 명시합니다. 두 제한을 동시에 사용할 때는 관리자에게 예상 동작을 표시합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">관리자 검수 재생은 수강권&middot;진도&middot;배수&middot;재생횟수에 반영하지 않습니다.</li>
+</ul>
+<div style="font-size: 20px; font-weight: 800; letter-spacing: -.4px; margin: 28px 0 10px; color: #23304a;">4.4 Kollus DRM&middot;재생보안</div>
+<ul style="margin: 8px 0 20px; padding-left: 22px;">
+<li style="margin: 7px 0; color: #3f4b61;">재생 전 로그인, 수강권, 기간, 강의&middot;회차 공개상태, 배수, 동시로그인, Kollus 기기정책을 서버에서 검사합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">Kollus 재생토큰은 단기 만료시간, 회원&middot;수강권&middot;영상자료 결합, 재사용 방지, 서버서명을 적용합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">재생URL&middot;영상자료키가 화면소스와 로그에 불필요하게 노출되지 않도록 하고 워터마크&middot;DRM 정책을 확인합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">재생 시작&middot;중단&middot;완료&middot;오류&middot;차단사유를 기록하되 개인정보와 토큰은 로그에서 가림처리합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">Chrome&middot;Edge&middot;Safari, Windows&middot;macOS&middot;Android&middot;iOS 실제기기에서 재생기 설치&middot;재생&middot;이어보기&middot;다음회차를 검수합니다.</li>
+</ul>
+<div style="font-size: 20px; font-weight: 800; letter-spacing: -.4px; margin: 28px 0 10px; color: #23304a;">4.5 쿠폰&middot;포인트관리</div>
+<ul style="margin: 8px 0 20px; padding-left: 22px;">
+<li><strong>쿠폰관리:</strong>&nbsp;쿠폰 등록&middot;수정&middot;삭제, 사용기간, 할인금액 또는 할인율, 최소주문금액, 적용상품, 발급수량 및 사용상태를 관리합니다.</li>
+<li><strong>자동쿠폰관리:</strong>&nbsp;회원가입, 특정 상품 구매, 이벤트 등 설정한 조건에 따라 쿠폰이 자동 발급되도록 하고 발급조건&middot;유효기간&middot;중복발급 여부를 관리합니다.</li>
+<li><strong>포인트정책설정:</strong>&nbsp;회원가입&middot;구매 등에 따른 적립조건, 적립률 또는 적립금액, 사용 가능 최소 포인트, 최대 사용한도, 유효기간 및 소멸정책을 설정합니다.</li>
+<li><strong>포인트이용내역:</strong>&nbsp;회원별 적립&middot;사용&middot;취소&middot;회수&middot;소멸 내역을 조회하고 주문번호, 처리일시, 처리관리자, 사유 및 잔여 포인트를 확인합니다.</li>
+<li><strong>포인트쿠폰관리:</strong>&nbsp;포인트 지급용 쿠폰의 등록&middot;발급&middot;사용&middot;회수 내역을 관리하고 회원별 지급 결과와 사용 여부를 확인합니다.</li>
+<li>쿠폰과 포인트의 생성&middot;발급&middot;적립&middot;사용&middot;취소&middot;회수&middot;소멸 이력은 관리자 감사로그에 기록합니다.</li>
+<li>쿠폰 할인금액과 포인트 사용금액은 결제 단계에서 서버가 다시 검증하여 중복사용&middot;초과사용 또는 비정상 금액 적용을 방지합니다.</li>
+</ul>
+<p>&nbsp;</p>
+<div style="font-size: 27px; font-weight: 900; letter-spacing: -1px; margin: 46px 0 16px; color: #172033;">5. 관리자&middot;수강생 사용성</div>
+<div style="overflow-x: auto; margin: 0 0 6px;">
+<table style="width: 100%; border-collapse: collapse; background: #fff; margin: 12px 0 22px;">
+<tbody>
+<tr>
+<th style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #f7f9fc; color: #445067; font-weight: 800; text-align: left; vertical-align: top;">사용자</th>
+<th style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #f7f9fc; color: #445067; font-weight: 800; text-align: left; vertical-align: top;">개선 항목</th>
+<th style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #f7f9fc; color: #445067; font-weight: 800; text-align: left; vertical-align: top;">완료 효과</th>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">관리자</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">목록 복귀 시 검색&middot;필터&middot;화면 유지</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">매번 같은 조건을 다시 입력하지 않음</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">관리자</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">강의 상세의 기본정보&middot;목차&middot;수강생&middot;판매정책&middot;교재&middot;이력을 구분화면으로 통합</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">관련 메뉴를 찾아다니는 이동 감소</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">관리자</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">회원상세 CRM에 주문&middot;수강&middot;상담&middot;할인권&middot;기기지원 통합</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">고객 문의를 한 화면에서 처리</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">관리자</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">빈 목록에도 검색&middot;수동등록&middot;오류내역&middot;도움말 제공</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">기능 사용법과 다음 행동을 알 수 있음</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">수강생</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">결제대기&middot;실패&middot;취소&middot;완료 상태를 쉬운 한글로 표시</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">내부코드 노출 금지</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">수강생</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">수강연장 전 금액&middot;일수&middot;새 종료일&middot;남은 횟수 표시</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">결제 결과를 예측 가능</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">수강생</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">강의실 회차 제목&middot;진도&middot;이어보기&middot;오류문의 제공</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; text-align: left; vertical-align: top; color: #3f4b61;">테스트 데이터와 기술용어 제거</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div style="margin-top: 42px; padding-top: 22px; padding-right: 22px; padding-bottom: 22px; border-radius: 18px; background: #17233f; color: #dce4ff; text-align: center; font-size: 14px;">&nbsp;</div>
+</div>
