@@ -420,7 +420,9 @@ export function parseDiagramListFilters(
   const yearRaw = params.get("year");
   const statusRaw = params.get("status");
   return {
-    year: yearRaw && /^d{4}$/.test(yearRaw) ? Number(yearRaw) : null,
+    // ★역슬래시가 빠져 있어 리터럴 "dddd" 만 통과했다 — 연도 필터가 조용히 무시되고
+    //   늘 전체 목록이 나왔다(신고 52b84f30 의 startTime 과 같은 오타 계열).
+    year: yearRaw && /^\d{4}$/.test(yearRaw) ? Number(yearRaw) : null,
     status:
       statusRaw === "draft" ||
       statusRaw === "approved" ||
