@@ -120,7 +120,11 @@ export const ADMIN_NAV: NavCluster[] = [
     id: "hub",
     label: "운영관리 허브",
     Icon: LayoutDashboardIcon,
-    screens: [{ label: "허브", to: "/admin" }],
+    screens: [
+      { label: "허브", to: "/admin" },
+      // feat-11-011 P5 — 강의·판매 운영 현황(오늘의 결제·환불요청·배송대기·만료예정).
+      { label: "운영 대시보드", to: "/admin/dashboard", minRole: "manager" },
+    ],
   },
   {
     id: "laws",
@@ -522,7 +526,7 @@ const COMMERCE_GROUP_DEFS: {
   Icon: LucideIcon;
   paths: string[];
 }[] = [
-  { id: "c-dashboard", label: "대시보드", Icon: LayoutDashboardIcon, paths: ["/admin"] },
+  { id: "c-dashboard", label: "대시보드", Icon: LayoutDashboardIcon, paths: ["/admin/dashboard", "/admin"] },
   {
     id: "c-catalog",
     label: "강의·상품관리",

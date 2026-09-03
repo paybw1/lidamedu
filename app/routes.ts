@@ -827,6 +827,8 @@ export default [
       route("/admin/coupons", "features/coupons/screens/admin-coupons.tsx"),
       // feat-11-011 — 포인트 정책·쿠폰 전환·이용내역.
       route("/admin/points", "features/points/screens/admin-points.tsx"),
+      // feat-11-011 P5 — 강의·판매 운영 대시보드(요청서 §1.2 "0. 대시보드").
+      route("/admin/dashboard", "features/admin/screens/admin-ops-dashboard.tsx"),
       route(
         "/admin/coupons/new",
         "features/coupons/screens/admin-coupon-edit.tsx",

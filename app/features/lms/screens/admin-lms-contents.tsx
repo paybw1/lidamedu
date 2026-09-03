@@ -1,6 +1,6 @@
 // feat-11-006 Phase 1 S3 — 콜러스 콘텐츠 라이브러리 관리. staff 전용(lms_video_admin).
 //   콘텐츠 목록·검색·상태필터 / 강의그룹 CRUD·그룹지정 / 영상확인(수강권·배수 차감 없이).
-//   콘텐츠 키=학생 비노출 → staff RLS. 동기화 job(S2)·등록 재배선(S4)은 후속.
+//   콘텐츠 키=학생 비노출 → staff RLS. 동기화·등록 재배선 완료(feat-11-006 P1 S2·S4).
 import { useEffect, useState } from "react";
 
 import {
@@ -354,7 +354,7 @@ export default function AdminLmsContents({ loaderData }: Route.ComponentProps) {
       cluster="lms"
       role={role}
       title="콘텐츠 라이브러리"
-      desc="콜러스 영상을 강의그룹으로 분류하고 회차에 연결합니다. 동기화·등록 재배선은 후속 단계."
+      desc="콜러스 영상을 강의그룹으로 분류하고 회차에 연결합니다."
       headerRight={
         <div className="flex items-center gap-2">
           <syncFetcher.Form method="post">

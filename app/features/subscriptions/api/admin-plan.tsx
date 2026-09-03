@@ -43,8 +43,10 @@ const policySchema = z.object({
   allowDownload: z.boolean(),
   allowPc: z.boolean(),
   allowMobile: z.boolean(),
-  maxDevicesPc: z.coerce.number().int().min(0).max(20),
-  maxDevicesMobile: z.coerce.number().int().min(0).max(20),
+  // feat-11-011 P7 — 기기 수 입력란은 폼에서 뺐다(요청서 §4.1 — 기기 허용은 콜러스 정책 단독).
+  //   ★nullish 로 두지 않으면 폼이 보내지 않는 값을 0 으로 코어스해 저장된 정책을 덮는다.
+  maxDevicesPc: z.coerce.number().int().min(0).max(20).nullish(),
+  maxDevicesMobile: z.coerce.number().int().min(0).max(20).nullish(),
   pauseAllowed: z.boolean(),
   pauseMaxCount: z.coerce.number().int().min(0).max(50),
   pauseMinDays: z.coerce.number().int().min(0).max(365),
@@ -245,8 +247,8 @@ export async function action({ request }: Route.ActionArgs) {
       allowDownload: fd.get("policy_allowDownload") === "1",
       allowPc: fd.get("policy_allowPc") === "1",
       allowMobile: fd.get("policy_allowMobile") === "1",
-      maxDevicesPc: fd.get("policy_maxDevicesPc"),
-      maxDevicesMobile: fd.get("policy_maxDevicesMobile"),
+      maxDevicesPc: fd.get("policy_maxDevicesPc") ?? undefined,
+      maxDevicesMobile: fd.get("policy_maxDevicesMobile") ?? undefined,
       pauseAllowed: fd.get("policy_pauseAllowed") === "1",
       pauseMaxCount: fd.get("policy_pauseMaxCount"),
       pauseMinDays: fd.get("policy_pauseMinDays"),
@@ -282,6 +284,14 @@ export async function action({ request }: Route.ActionArgs) {
         { status: 400 },
       );
     }
+    // ★upsert 는 안 보낸 칸을 기본값으로 되돌린다. 폼에서 뺀 기기 수는 **저장된 값을
+    //   그대로 다시 넣어** 보존한다(요청서 §4.1 — 화면에서만 없앤다, 값은 건드리지 않는다).
+    const { data: keptPolicy } = await adminClient
+      .from("plan_policies")
+      .select("max_devices_pc, max_devices_mobile")
+      .eq("plan_id", res.planId)
+      .maybeSingle();
+
     const polRes = await upsertPlanPolicy(res.planId, {
       multiplier: p.multiplier,
       durationDays: p.durationDays,
@@ -289,8 +299,8 @@ export async function action({ request }: Route.ActionArgs) {
       allowDownload: p.allowDownload,
       allowPc: p.allowPc,
       allowMobile: p.allowMobile,
-      maxDevicesPc: p.maxDevicesPc,
-      maxDevicesMobile: p.maxDevicesMobile,
+      maxDevicesPc: p.maxDevicesPc ?? keptPolicy?.max_devices_pc ?? 1,
+      maxDevicesMobile: p.maxDevicesMobile ?? keptPolicy?.max_devices_mobile ?? 1,
       pauseAllowed: p.pauseAllowed,
       pauseMaxCount: p.pauseMaxCount,
       pauseMinDays: p.pauseMinDays,

@@ -575,6 +575,30 @@ export async function action({ request, params }: Route.ActionArgs) {
     // ★회차 삭제(soft) — 연결 영상·기록 보존(deleted_at). 목록에서만 제외.
     const lessonId = String(fd.get("lessonId") ?? "");
     if (!lessonId) return data({ error: "잘못된 요청" }, { status: 400 });
+
+    // feat-11-011 P7 — 요청서 §4.2: 연결된 수강생이 있으면 **영향 대상을 먼저 보여 준다.**
+    // 이미 본 사람이 있는 회차를 아무 말 없이 지우면 그 사람의 목록에서 갑자기 사라진다.
+    if (fd.get("confirmed") !== "1") {
+      const [{ count: watchers }, { count: enrolled }] = await Promise.all([
+        adminClient
+          .from("playback_grants")
+          .select("grant_id", { count: "exact", head: true })
+          .eq("lesson_id", lessonId),
+        adminClient
+          .from("enrollments")
+          .select("enrollment_id", { count: "exact", head: true })
+          .eq("course_id", courseId)
+          .eq("status", "active"),
+      ]);
+      if ((watchers ?? 0) > 0 || (enrolled ?? 0) > 0) {
+        return data({
+          needsConfirm: true as const,
+          watchers: watchers ?? 0,
+          enrolled: enrolled ?? 0,
+        });
+      }
+    }
+
     const { error } = await client
       .from("course_lessons")
       .update({ deleted_at: new Date().toISOString() })
@@ -1462,12 +1486,23 @@ function LessonCard({
     diffSeconds?: number;
     affectedCount?: number;
     adjusted?: number;
+    // P7 — 회차 삭제 전 영향 대상 확인.
+    needsConfirm?: boolean;
+    watchers?: number;
+    enrolled?: number;
   }>();
   const [adjustProposal, setAdjustProposal] = useState<{
     diffSeconds: number;
     affectedCount: number;
   } | null>(null);
   const [editing, setEditing] = useState(false);
+  const submitDeleteLesson = (confirmed: boolean) => {
+    const fd = new FormData();
+    fd.set("intent", "delete_lesson");
+    fd.set("lessonId", lesson.lessonId);
+    if (confirmed) fd.set("confirmed", "1");
+    fetcher.submit(fd, { method: "post" });
+  };
   const deleteLesson = () => {
     if (
       !window.confirm(
@@ -1475,15 +1510,24 @@ function LessonCard({
       )
     )
       return;
-    const fd = new FormData();
-    fd.set("intent", "delete_lesson");
-    fd.set("lessonId", lesson.lessonId);
-    fetcher.submit(fd, { method: "post" });
+    // 영향 대상이 있으면 서버가 먼저 알려 준다(P7). 없으면 그대로 삭제된다.
+    submitDeleteLesson(false);
   };
   useEffect(() => {
     if (fetcher.state !== "idle" || !fetcher.data) return;
     if (fetcher.data.error) toast.error(fetcher.data.error);
-    else if (typeof fetcher.data.adjusted === "number") {
+    else if (fetcher.data.needsConfirm) {
+      // P7 — 영향 대상을 숫자로 보여 주고 한 번 더 묻는다. 비활성·대체영상이 먼저다.
+      const w = fetcher.data.watchers ?? 0;
+      const e = fetcher.data.enrolled ?? 0;
+      const ok = window.confirm(
+        `이 회차에는 영향을 받는 대상이 있습니다.\n\n` +
+          `· 수강 중인 수강생 ${e}명\n· 이 회차 재생 기록 ${w}건\n\n` +
+          `삭제하면 수강생 목록에서 이 회차가 사라집니다.\n` +
+          `공개를 끄거나 영상을 교체하는 방법을 먼저 검토하세요.\n\n그래도 삭제할까요?`,
+      );
+      if (ok) submitDeleteLesson(true);
+    } else if (typeof fetcher.data.adjusted === "number") {
       toast.success(`수강권 ${fetcher.data.adjusted}건의 배수 모수를 조정했습니다.`);
       setAdjustProposal(null);
     } else if (fetcher.data.durationChanged) {

@@ -195,22 +195,14 @@ export function PlanPolicyFields({
 
       {/* 기기 · 다운로드 */}
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+        {/* ★기기 수 입력란은 두지 않는다(요청서 §4.1) — 기기 허용은 콜러스 정책이
+            단독으로 정한다. 두 곳에서 정하면 어느 쪽이 막았는지 알 수 없다. */}
         <div className="space-y-1.5">
           <Check
             name="policy_allowPc"
             label="PC 수강 허용"
             defaultChecked={policy?.allowPc ?? true}
           />
-          <Field label="PC 최대 기기 수">
-            <Input
-              name="policy_maxDevicesPc"
-              type="number"
-              min={0}
-              max={20}
-              defaultValue={policy?.maxDevicesPc ?? 1}
-              className={numInput}
-            />
-          </Field>
         </div>
         <div className="space-y-1.5">
           <Check
@@ -218,16 +210,6 @@ export function PlanPolicyFields({
             label="모바일 수강 허용"
             defaultChecked={policy?.allowMobile ?? true}
           />
-          <Field label="모바일 최대 기기 수">
-            <Input
-              name="policy_maxDevicesMobile"
-              type="number"
-              min={0}
-              max={20}
-              defaultValue={policy?.maxDevicesMobile ?? 1}
-              className={numInput}
-            />
-          </Field>
         </div>
       </div>
       <Check
