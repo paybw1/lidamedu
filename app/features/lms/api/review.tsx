@@ -3,16 +3,15 @@
 import { data } from "react-router";
 import { z } from "zod";
 
-import { getReviewRewardPoints } from "~/core/lib/app-settings.server";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
-import { adjustMemberPoints } from "~/features/admin/queries/member-crm.server";
 import {
   isPlanCourseCompleted,
   isPurchaser,
   type ReviewTargetType,
 } from "~/features/lms/reviews.server";
 import { REVIEW_REWARD_MIN_CHARS } from "~/features/lms/reviews-config";
+import { awardPoints } from "~/features/points/points.server";
 
 import type { Route } from "./+types/review";
 
@@ -102,37 +101,27 @@ export async function action({ request }: Route.ActionArgs) {
     // 보상 — 강의(plan) 후기만 대상. 일정 분량 이상 본문 + 이 대상에 미지급이면 적립(대상당 1회).
     //   ★교재(book) 후기는 보상 제외(원장 결정 2026-07-26).
     //   ★멱등: 소프트삭제 포함 전체 조회로 이미 지급된 대상은 재지급 안 함(삭제→재작성 어뷰즈 차단).
-    //   ★point_transactions insert 는 staff RLS 전용 → adminClient(adjustMemberPoints) 경유.
+    //   ★적립 자체는 awardPoints 안에서 adminClient 로 한다(point_transactions insert 는 staff RLS 전용).
+    // feat-11-011 — 지급액·사용여부는 포인트 정책(point_policies)이 정한다.
+    //   수강후기(plan) → course_review · 도서후기(book) → book_review.
+    //   ★기존의 app_settings(review_reward_points) 단일 값 경로를 대체한다. 값이 두 곳에
+    //     있으면 운영자가 화면에서 고친 값이 안 먹는다.
+    //   ★멱등은 두 겹 — 대상당 1회(point_transactions UNIQUE)와 후기별 지급 표시.
     let awardedPoints = 0;
-    if (
-      p.targetType === "plan" &&
-      p.body.trim().length >= REVIEW_REWARD_MIN_CHARS
-    ) {
-      const { data: prior } = await adminClient
-        .from("course_reviews")
-        .select("review_id")
-        .eq("author_id", user.id)
-        .eq("target_type", p.targetType)
-        .eq("target_id", p.targetId)
-        .not("points_awarded_at", "is", null)
-        .limit(1);
-      if (!prior || prior.length === 0) {
-        // 지급 포인트 = 운영관리 설정값(app_settings, 미설정 시 기본 2000).
-        const rewardPoints = await getReviewRewardPoints(client);
-        if (rewardPoints > 0) {
-          const res = await adjustMemberPoints({
-            userId: user.id,
-            delta: rewardPoints,
-            reason: "수강 후기 작성 보상",
-          });
-          if (res.ok) {
-            await adminClient
-              .from("course_reviews")
-              .update({ points_awarded_at: new Date().toISOString() })
-              .eq("review_id", reviewId);
-            awardedPoints = rewardPoints;
-          }
-        }
+    if (p.body.trim().length >= REVIEW_REWARD_MIN_CHARS) {
+      const res = await awardPoints({
+        policyKey: p.targetType === "plan" ? "course_review" : "book_review",
+        userId: user.id,
+        refType: p.targetType === "plan" ? "plan" : "book",
+        refId: p.targetId,
+        reason: p.targetType === "plan" ? "수강 후기 작성 보상" : "도서 후기 작성 보상",
+      });
+      if (res.ok) {
+        await adminClient
+          .from("course_reviews")
+          .update({ points_awarded_at: new Date().toISOString() })
+          .eq("review_id", reviewId);
+        awardedPoints = res.awarded;
       }
     }
     return data({ ok: true as const, awardedPoints });

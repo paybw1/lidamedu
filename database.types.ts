@@ -10298,32 +10298,188 @@ export type Database = {
           },
         ]
       }
+      point_coupon_offers: {
+        Row: {
+          coupon_id: string
+          created_at: string
+          deleted_at: string | null
+          is_active: boolean
+          note: string | null
+          offer_id: string
+          point_cost: number
+          sort_order: number
+          stock: number | null
+          updated_at: string
+        }
+        Insert: {
+          coupon_id: string
+          created_at?: string
+          deleted_at?: string | null
+          is_active?: boolean
+          note?: string | null
+          offer_id?: string
+          point_cost: number
+          sort_order?: number
+          stock?: number | null
+          updated_at?: string
+        }
+        Update: {
+          coupon_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          is_active?: boolean
+          note?: string | null
+          offer_id?: string
+          point_cost?: number
+          sort_order?: number
+          stock?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "point_coupon_offers_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: true
+            referencedRelation: "coupons"
+            referencedColumns: ["coupon_id"]
+          },
+        ]
+      }
+      point_policies: {
+        Row: {
+          award_type: string
+          award_value: number
+          criteria: string
+          daily_cap: number | null
+          hook_ready: boolean
+          is_active: boolean
+          label: string
+          limit_kind: string
+          policy_key: string
+          sort_order: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          award_type: string
+          award_value: number
+          criteria: string
+          daily_cap?: number | null
+          hook_ready?: boolean
+          is_active?: boolean
+          label: string
+          limit_kind: string
+          policy_key: string
+          sort_order: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          award_type?: string
+          award_value?: number
+          criteria?: string
+          daily_cap?: number | null
+          hook_ready?: boolean
+          is_active?: boolean
+          label?: string
+          limit_kind?: string
+          policy_key?: string
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "point_policies_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "point_policies_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       point_transactions: {
         Row: {
+          actor_id: string | null
           balance_after: number | null
           created_at: string
           delta: number
+          kind: string
+          note: string | null
+          order_id: string | null
+          policy_key: string | null
           reason: string | null
+          ref_id: string | null
+          ref_type: string | null
           txn_id: string
           user_id: string
         }
         Insert: {
+          actor_id?: string | null
           balance_after?: number | null
           created_at?: string
           delta: number
+          kind?: string
+          note?: string | null
+          order_id?: string | null
+          policy_key?: string | null
           reason?: string | null
+          ref_id?: string | null
+          ref_type?: string | null
           txn_id?: string
           user_id: string
         }
         Update: {
+          actor_id?: string | null
           balance_after?: number | null
           created_at?: string
           delta?: number
+          kind?: string
+          note?: string | null
+          order_id?: string | null
+          policy_key?: string | null
           reason?: string | null
+          ref_id?: string | null
+          ref_type?: string | null
           txn_id?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "point_transactions_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "point_transactions_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "point_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "point_transactions_policy_key_fkey"
+            columns: ["policy_key"]
+            isOneToOne: false
+            referencedRelation: "point_policies"
+            referencedColumns: ["policy_key"]
+          },
           {
             foreignKeyName: "point_transactions_user_id_fkey"
             columns: ["user_id"]
@@ -15775,6 +15931,10 @@ export type Database = {
       }
       delete_test_user: { Args: { p_email: string }; Returns: boolean }
       email_already_registered: { Args: { p_email: string }; Returns: boolean }
+      exchange_points_for_coupon: {
+        Args: { p_offer_id: string }
+        Returns: Json
+      }
       find_content_matches: {
         Args: { p_limit?: number; p_term: string }
         Returns: {
@@ -16378,12 +16538,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -16407,11 +16567,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -16432,11 +16592,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -16457,11 +16617,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -16474,11 +16634,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

@@ -7,6 +7,7 @@ import {
   getCourseTotalDuration,
   logEnrollmentAdminAction,
 } from "~/features/lms/queries.server";
+import { awardPoints } from "~/features/points/points.server";
 
 // ── 결제시도 만료 ───────────────────────────────────────────────────────────
 
@@ -180,6 +181,24 @@ export async function markOrderPaidAndFulfill(orderId: string): Promise<void> {
       return;
     }
   }
+  // feat-11-011 — '결제완료' 포인트(결제액 비율). 정책이 꺼져 있으면 no-op.
+  // ★첫 전이일 때만 시도한다. 주문당 1회는 UNIQUE 인덱스가 다시 보증한다.
+  if (firstTransition) {
+    const { data: paidOrder } = await adminClient
+      .from("orders")
+      .select("total_krw")
+      .eq("order_id", orderId)
+      .maybeSingle();
+    await awardPoints({
+      policyKey: "payment_complete",
+      userId: order.user_id,
+      refType: "order",
+      refId: orderId,
+      baseAmountKrw: paidOrder?.total_krw ?? 0,
+      orderId,
+    }).catch(() => undefined);
+  }
+
   const { data: items } = await adminClient
     .from("order_items")
     .select(

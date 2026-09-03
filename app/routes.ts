@@ -825,6 +825,8 @@ export default [
       route("/api/admin/landing", "features/landing/api/admin-landing.tsx"),
       // feat-13 쿠폰 관리(매출·정산).
       route("/admin/coupons", "features/coupons/screens/admin-coupons.tsx"),
+      // feat-11-011 — 포인트 정책·쿠폰 전환·이용내역.
+      route("/admin/points", "features/points/screens/admin-points.tsx"),
       route(
         "/admin/coupons/new",
         "features/coupons/screens/admin-coupon-edit.tsx",

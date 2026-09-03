@@ -19,6 +19,7 @@ import { z } from "zod";
 import { claimSession } from "~/core/lib/single-session.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { recordLoginAccess } from "~/features/auth/lib/access-log.server";
+import { awardSignupPointsIfNew } from "~/features/points/points.server";
 import { syncKakaoProfileFromToken } from "~/features/auth/lib/kakao-profile.server";
 
 /**
@@ -124,6 +125,11 @@ export async function loader({ request }: Route.LoaderArgs) {
     await syncKakaoProfileFromToken(user.id, providerToken);
     // 접속 이력 기록 (/admin/access-logs) — 실패해도 로그인 진행.
     await recordLoginAccess(user.id, request);
+    // feat-11-011 — '회원가입' 포인트. 정책이 꺼져 있으면 no-op.
+    // ★가입 직후 로그인에서만 준다. 로그인마다 부르되 UNIQUE 인덱스로 1인 1회지만,
+    //   그 조건만 두면 **기존 회원 전원이 다음 로그인에 5,000P를 받는다.**
+    //   가입일 기준 창을 둬서 소급 지급을 막는다.
+    await awardSignupPointsIfNew(user.id).catch(() => undefined);
     // feat-000-016 2단계 — 이전 기기 세션(refresh 토큰) 폐기(심층 방어). scope:"others"는
     // 방금 만든 현재 세션은 유지한다. 실패해도 로그인은 진행(보조 수단이라 방어적 처리).
     try {

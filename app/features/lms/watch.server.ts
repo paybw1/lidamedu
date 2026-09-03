@@ -3,6 +3,7 @@
 // ★append-only 규약: watch_events/watch_ledger 에 UPDATE/DELETE 경로를 만들지 않는다.
 
 import adminClient from "~/core/lib/supa-admin-client.server";
+import { awardPoints } from "~/features/points/points.server";
 
 // 하트비트 주기 15~30초 × 배속 상한 2배 + 여유 — 1회 보고 길이 상한(§4.3).
 const MAX_REPORT_SECONDS = 120;
@@ -116,6 +117,25 @@ export async function reportWatchInterval(input: {
       },
       { onConflict: "user_id,lesson_id" },
     );
+  }
+
+  // feat-11-011 — '강의학습완료' 포인트(차시당 최초 1회). 정책이 꺼져 있으면 no-op.
+  // ★맛보기·스태프 재생(enrollment_id 없음)은 제외한다 — 원장에도 안 남는 재생이다.
+  // ★실패해도 시청 보고는 성공으로 돌려준다. 적립이 안 됐다고 재생이 끊기면 안 된다.
+  if (grant.enrollment_id && grant.lesson_id && grant.user_id) {
+    try {
+      const progress = await getLessonProgressForUser(grant.user_id, [grant.lesson_id]);
+      if (progress.get(grant.lesson_id)?.completed) {
+        await awardPoints({
+          policyKey: "lesson_complete",
+          userId: grant.user_id,
+          refType: "lesson",
+          refId: grant.lesson_id,
+        });
+      }
+    } catch {
+      // 무시 — 포인트는 부수적이다.
+    }
   }
 
   return {

@@ -334,6 +334,8 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "Q&A 답변 적립", to: "/admin/settlements/qna-rewards", minRole: "manager" },
       // feat-13 할인 쿠폰.
       { label: "쿠폰 관리", to: "/admin/coupons" },
+      // feat-11-011 — 적립 정책 · 쿠폰 전환 · 이용내역.
+      { label: "포인트 관리", to: "/admin/points", minRole: "manager" },
     ],
   },
   {
