@@ -1211,6 +1211,8 @@ export default [
         "features/admin/api/lesson-completion.tsx",
       ),
       route("/api/admin/member-points", "features/admin/api/member-points.tsx"),
+      // feat-11-011 P0 — 사이드바가 접근 못 하는 메뉴를 숨기기 위한 내 담당 조회.
+      route("/api/admin/my-duties", "features/admin/api/my-duties.tsx"),
       route(
         "/api/admin/problem-review",
         "features/admin/api/problem-review.tsx",

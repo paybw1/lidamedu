@@ -342,11 +342,50 @@ function NotFoundWithReloadGuard() {
  *
  * @param error - The error that was caught by React Router
  */
+// feat-11-011 P0 — 권한 부족 전용 화면. 무엇이 막았는지·무엇을 하면 되는지를 말한다.
+// throw data("…", { status: 403 }) 의 본문이 문자열이면 그대로 안내로 쓴다.
+function AccessDeniedScreen({
+  status,
+  detail,
+}: {
+  status: number;
+  detail: unknown;
+}) {
+  const hint = typeof detail === "string" && detail.trim() ? detail.trim() : null;
+  const signIn = status === 401;
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center gap-3 px-6 text-center">
+      <h1 className="text-2xl font-bold">
+        {signIn ? "로그인이 필요합니다" : "접근 권한이 없습니다"}
+      </h1>
+      <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
+        {signIn
+          ? "이 화면은 로그인 후에 이용할 수 있습니다."
+          : "계정에 이 화면을 열 권한이 없습니다. 오류가 아니라 권한 설정 때문입니다."}
+      </p>
+      {!signIn ? (
+        <p className="text-muted-foreground max-w-md text-xs leading-relaxed">
+          {hint && !/^forbidden$/i.test(hint)
+            ? hint
+            : "원장에게 「관리자 관리」 화면에서 담당 업무를 배정해 달라고 요청하세요."}
+        </p>
+      ) : null}
+      <a
+        href={signIn ? "/login" : "/"}
+        className="bg-primary text-primary-foreground mt-2 flex h-10 items-center rounded-lg px-5 text-sm font-bold"
+      >
+        {signIn ? "로그인" : "홈으로"}
+      </a>
+    </main>
+  );
+}
+
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   let message = "문제가 발생했습니다";
   let details =
     "일시적인 오류일 수 있습니다. 잠시 후 새로고침하거나 다시 시도해 주세요.";
   let stack: string | undefined;
+  let traceId: string | undefined;
 
   // DEV: 진단 가능하게 message + stack 명시적으로 분리해 출력.
   if (import.meta.env.DEV) {
@@ -391,6 +430,11 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
         </main>
       );
     }
+    // feat-11-011 P0 — 권한 차단(401·403)은 장애가 아니다. 같은 "문제가 발생했습니다"
+    // 화면으로 보내면 운영자가 오류로 신고하게 된다(접근불가 6화면 신고의 실제 원인).
+    if (error.status === 401 || error.status === 403) {
+      return <AccessDeniedScreen status={error.status} detail={error.data} />;
+    }
     message = "오류가 발생했습니다";
     details = error.statusText || details;
     if (import.meta.env.DEV) {
@@ -411,7 +455,9 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
       import.meta.env.MODE === "production"
     ) {
       // Report error to Sentry in production
-      Sentry.captureException(error);
+      // feat-11-011 P0 — 요청서 §1.4: 빈 화면 대신 추적번호를 보여 준다.
+      // 이 번호로 Sentry 에서 같은 사건을 바로 찾는다("그때 그 오류" 대조가 끝난다).
+      traceId = Sentry.captureException(error);
     }
     if (import.meta.env.DEV) {
       // Show detailed error information in development
@@ -425,6 +471,12 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
     <main className="flex min-h-screen flex-col items-center justify-center gap-3 px-6 text-center">
       <h1 className="text-2xl font-bold">{message}</h1>
       <p className="text-muted-foreground text-sm leading-relaxed">{details}</p>
+      {traceId ? (
+        <p className="text-muted-foreground text-xs leading-relaxed">
+          문의하실 때 이 번호를 알려 주세요 —{" "}
+          <code className="bg-muted rounded px-1.5 py-0.5 font-mono">{traceId}</code>
+        </p>
+      ) : null}
       <button
         type="button"
         onClick={() => window.location.reload()}

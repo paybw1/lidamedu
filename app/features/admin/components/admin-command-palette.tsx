@@ -14,6 +14,7 @@ import {
 } from "~/core/components/ui/command";
 import type { UserRole } from "~/core/lib/roles";
 import { visibleAdminNav } from "~/features/admin/components/admin-shell";
+import { useMyDuties } from "~/features/admin/hooks/use-my-duties";
 import { ADMIN_PALETTE_OPEN_EVENT } from "~/features/admin/components/admin-palette-event";
 
 export function AdminCommandPalette({ role }: { role: UserRole | null }) {
@@ -38,8 +39,10 @@ export function AdminCommandPalette({ role }: { role: UserRole | null }) {
     };
   }, []);
 
-  // hub 제외, 역할별로 보이는 화면만.
-  const groups = visibleAdminNav(role).filter((c) => c.section);
+  // hub 제외, 역할·담당별로 보이는 화면만 — 열 수 없는 화면이 검색에 잡히면
+  // 사이드바에서 숨긴 의미가 없다.
+  const duties = useMyDuties(role);
+  const groups = visibleAdminNav(role, duties).filter((c) => c.section);
 
   return (
     <CommandDialog

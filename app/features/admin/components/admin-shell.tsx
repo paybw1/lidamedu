@@ -35,6 +35,8 @@ import { ROLE_LABEL, roleAtLeast, type UserRole } from "~/core/lib/roles";
 import { cn } from "~/core/lib/utils";
 import { AdminCommandPalette } from "~/features/admin/components/admin-command-palette";
 import { openAdminCommandPalette } from "~/features/admin/components/admin-palette-event";
+import { useMyDuties } from "~/features/admin/hooks/use-my-duties";
+import type { StaffDuty } from "~/features/admin/lib/duties";
 import { REVIEWS_ENABLED } from "~/features/lms/reviews-config";
 
 export type AdminClusterId =
@@ -81,8 +83,12 @@ interface NavScreen {
   label: string;
   to: string;
   // 이 역할 이상만 사이드바·허브에 노출. loader 가드는 별개 유지(이중 방어).
-  // ★duty 로 접근하거나 가드가 불확실한 화면엔 지정하지 않는다(오hide 방지).
+  // ★duty 로 접근하는 화면은 minRole 대신 duty 를 지정한다.
   minRole?: UserRole;
+  // feat-11-011 P0 — 이 duty 를 배정받은 스태프(+원장)에게만 노출.
+  // ★loader 의 hasDutyAccess 와 **같은 값**을 적어야 한다. 어긋나면 열리지 않는
+  //   메뉴가 다시 보이게 되고, 그게 "접근 안 되는 페이지" 신고의 원인이었다.
+  duty?: StaffDuty;
 }
 
 interface NavCluster {
@@ -218,24 +224,28 @@ export const ADMIN_NAV: NavCluster[] = [
       // feat-11-008 P4 — 강의개설(판매 상품 통합 목록: 검색·수정·목차·수강생 진입점).
       { label: "강의개설", to: "/admin/lectures" },
       // 강의 콘텐츠(회차·영상 심화) — 내부 구조는 시리즈/연도판 유지, 용어만 운영 용어.
-      { label: "강의 콘텐츠", to: "/admin/lms/courses" },
+      { label: "강의 콘텐츠", to: "/admin/lms/courses", duty: "lms_video_admin" },
       // feat-11-008 P3 — 강의·상품 공용 분류 관리(카탈로그 탭 SSOT).
       { label: "강의 카테고리", to: "/admin/lecture-categories" },
       // feat-11-008 P5 — 콘텐츠관리 분리: 라이브러리(원본 동기화·검색) / 강의그룹(회차 구성).
-      { label: "콘텐츠 라이브러리", to: "/admin/lms/contents" },
+      { label: "콘텐츠 라이브러리", to: "/admin/lms/contents", duty: "lms_video_admin" },
       { label: "강의그룹", to: "/admin/lms/groups" },
       // 수강 후기 일단 숨김(REVIEWS_ENABLED) — 재오픈 시 자동 복원.
+      // ★조건부 spread 는 문맥 타입을 못 받아 duty 가 string 으로 넓어진다 —
+      //   같은 배열의 다른 항목까지 함께 넓어지므로 명시 타입을 붙인다.
       ...(REVIEWS_ENABLED
-        ? [{ label: "수강평·교재평", to: "/admin/lms/reviews" }]
+        ? ([
+            { label: "수강평·교재평", to: "/admin/lms/reviews", duty: "lms_video_admin" },
+          ] as NavScreen[])
         : []),
-      { label: "영상 수강권", to: "/admin/lms/enrollments" },
+      { label: "영상 수강권", to: "/admin/lms/enrollments", duty: "lms_cs" },
       // feat-11-010 — 유료 수강기간 연장 결제·원복 이력.
       { label: "수강기간 연장 이력", to: "/admin/lms/extensions" },
-      { label: "기기 관리", to: "/admin/lms/devices" },
+      { label: "기기 관리", to: "/admin/lms/devices", duty: "lms_cs" },
       // feat-11-004 4c — 도서몰.
-      { label: "도서 관리", to: "/admin/books" },
-      { label: "세트·번들", to: "/admin/book-bundles" },
-      { label: "배송 관리", to: "/admin/shipments" },
+      { label: "도서 관리", to: "/admin/books", duty: "lms_video_admin" },
+      { label: "세트·번들", to: "/admin/book-bundles", duty: "lms_video_admin" },
+      { label: "배송 관리", to: "/admin/shipments", duty: "lms_orders_admin" },
     ],
   },
   {
@@ -253,7 +263,7 @@ export const ADMIN_NAV: NavCluster[] = [
     label: "회원 관리",
     Icon: UsersIcon,
     screens: [
-      { label: "수강생 관리", to: "/admin/users" },
+      { label: "수강생 관리", to: "/admin/users", duty: "student_admin_access" },
       // P1 — 체험→유료 전환 추적(만료 임박 워크리스트·전환율).
       { label: "체험 전환", to: "/admin/trial-conversion" },
       { label: "접속이력 관리", to: "/admin/access-logs" },
@@ -315,7 +325,7 @@ export const ADMIN_NAV: NavCluster[] = [
       // feat-8-029 P5 — 정기구독 통계.
       { label: "구독 통계", to: "/admin/subscriptions/stats", minRole: "manager" },
       // feat-11-004 4a — 항목 단위 주문·부분 환불.
-      { label: "주문 관리 (항목·환불)", to: "/admin/orders" },
+      { label: "주문 관리 (항목·환불)", to: "/admin/orders", duty: "lms_orders_admin" },
       { label: "강사 배분 기준", to: "/admin/settlements/rules", minRole: "manager" },
       { label: "강사 정산", to: "/admin/settlements", minRole: "manager" },
       // feat-8-029 P6 — 도서 배분 기준 + 도서 정산(계산·지급).
@@ -440,12 +450,23 @@ function readAdminNavOpen(): Record<string, boolean> {
   }
 }
 
-// 역할 맞춤 내비 — 각 클러스터의 화면을 minRole 로 필터하고, 남은 화면이 없는
-// 클러스터는 제거. hub(섹션 없음)는 항상 유지. 사이드바·허브 그리드 공용.
-export function visibleAdminNav(role: UserRole | null | undefined): NavCluster[] {
+// 역할·담당 맞춤 내비 — 화면을 minRole 과 duty 로 필터하고, 남은 화면이 없는
+// 클러스터는 제거. hub(섹션 없음)는 항상 유지. 사이드바·팔레트·허브 공용.
+//
+// ★duties 를 안 넘기면 duty 화면은 원장에게만 보인다. 관리자에게 "열리지 않는 메뉴"를
+//   보여 주는 것보다 잠시 안 보이는 편이 낫다 — 눌러서 오류를 만나는 게 최악이다.
+export function visibleAdminNav(
+  role: UserRole | null | undefined,
+  duties?: ReadonlySet<StaffDuty> | null,
+): NavCluster[] {
+  const allowed = (s: NavScreen) => {
+    if (s.minRole && !roleAtLeast(role, s.minRole)) return false;
+    if (!s.duty) return true;
+    return role === "admin" || Boolean(duties?.has(s.duty));
+  };
   return ADMIN_NAV.map((c) => ({
     ...c,
-    screens: c.screens.filter((s) => !s.minRole || roleAtLeast(role, s.minRole)),
+    screens: c.screens.filter(allowed),
   })).filter((c) => !c.section || c.screens.length > 0);
 }
 
@@ -585,7 +606,8 @@ function AdminSidebar({
   role?: UserRole | null;
 }) {
   const [collapsed, setCollapsed] = useState(false);
-  const nav = visibleAdminNav(role);
+  const duties = useMyDuties(role);
+  const nav = visibleAdminNav(role, duties);
   return (
     <aside
       className={cn(

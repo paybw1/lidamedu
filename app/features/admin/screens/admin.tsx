@@ -18,6 +18,7 @@ import {
   AdminShell,
   visibleAdminNav,
 } from "~/features/admin/components/admin-shell";
+import { useMyDuties } from "~/features/admin/hooks/use-my-duties";
 import {
   Chip,
   IndexTable,
@@ -493,7 +494,8 @@ function SeedTable({
 
 // 허브 IA = 4개 상위 섹션 × 소속 클러스터. hub 자기 자신은 제외.
 function ClusterGrid({ role }: { role: UserRole | null }) {
-  const nav = visibleAdminNav(role);
+  const duties = useMyDuties(role);
+  const nav = visibleAdminNav(role, duties);
   return (
     <div className="space-y-7" data-testid="admin-hub-clusters">
       {ADMIN_SECTIONS.map((section) => {
