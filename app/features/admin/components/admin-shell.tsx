@@ -35,6 +35,10 @@ import { ROLE_LABEL, roleAtLeast, type UserRole } from "~/core/lib/roles";
 import { cn } from "~/core/lib/utils";
 import { AdminCommandPalette } from "~/features/admin/components/admin-command-palette";
 import { openAdminCommandPalette } from "~/features/admin/components/admin-palette-event";
+import {
+  useRememberCurrentQuery,
+  useRememberedQueries,
+} from "~/features/admin/hooks/use-list-return";
 import { useMyDuties } from "~/features/admin/hooks/use-my-duties";
 import type { StaffDuty } from "~/features/admin/lib/duties";
 import { REVIEWS_ENABLED } from "~/features/lms/reviews-config";
@@ -699,12 +703,16 @@ function ClusterGroup({
   activeCluster,
   pathname,
   collapsed,
+  remembered,
 }: {
   cluster: NavCluster;
   activeCluster: AdminClusterId;
   pathname: string;
   collapsed: boolean;
+  /** feat-11-011 P4 — 경로 → 마지막 쿼리스트링. 목록으로 돌아갈 때 필터를 되살린다. */
+  remembered?: Record<string, string>;
 }) {
+  const hrefOf = (to: string) => (remembered?.[to] ? to + remembered[to] : to);
   const isActiveCluster = cluster.id === activeCluster;
   // 펼침 상태 — 기본 전체 펼침 유지(요청서: 하위 메뉴 이동 시 다른 메뉴가 사라지지 않아야 함).
   // 라우트 이동마다 AdminShell 이 재마운트되므로 사용자가 접은 클러스터만 localStorage 로 기억.
@@ -733,7 +741,7 @@ function ClusterGroup({
   if (collapsed) {
     return (
       <Link
-        to={cluster.screens[0].to}
+        to={hrefOf(cluster.screens[0].to)}
         title={cluster.label}
         className={cn(
           "mx-auto flex size-10 items-center justify-center rounded-lg transition-colors",
@@ -751,7 +759,7 @@ function ClusterGroup({
     <div>
       {onlyOne ? (
         <Link
-          to={cluster.screens[0].to}
+          to={hrefOf(cluster.screens[0].to)}
           className={cn(
             "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-colors",
             isActiveCluster
@@ -792,7 +800,7 @@ function ClusterGroup({
             return (
               <li key={s.to}>
                 <Link
-                  to={s.to}
+                  to={hrefOf(s.to)}
                   aria-current={isActive ? "page" : undefined}
                   className={cn(
                     "relative block rounded-md px-2.5 py-1.5 text-xs transition-colors",
@@ -836,6 +844,8 @@ function AdminSidebar({
   const nav = visibleAdminNav(role, duties, mode);
   const activeId =
     mode === "commerce" ? (activeCommerceGroup(pathname) ?? activeCluster) : activeCluster;
+  // feat-11-011 P4 — 메뉴로 목록에 돌아갈 때 마지막 필터·검색어를 되살린다.
+  const remembered = useRememberedQueries(nav.flatMap((c) => c.screens.map((x) => x.to)));
 
   const pickMode = (m: AdminModeId) => {
     try {
@@ -936,6 +946,7 @@ function AdminSidebar({
                 activeCluster={activeId}
                 pathname={pathname}
                 collapsed={collapsed}
+                remembered={remembered}
               />
             ))
           : null}
@@ -948,6 +959,7 @@ function AdminSidebar({
                 activeCluster={activeId}
                 pathname={pathname}
                 collapsed={collapsed}
+                remembered={remembered}
               />
             ))
           : null}
@@ -971,6 +983,7 @@ function AdminSidebar({
                   activeCluster={activeId}
                   pathname={pathname}
                   collapsed={collapsed}
+                  remembered={remembered}
                 />
               ))}
             </div>
@@ -1091,6 +1104,8 @@ export function AdminShell({
   children: ReactNode;
 }) {
   const { pathname } = useLocation();
+  // feat-11-011 P4 — 모든 운영자 화면의 마지막 쿼리를 기억한다(목록 60여 개를 안 고쳐도 된다).
+  useRememberCurrentQuery();
   const navCluster = clusterById(cluster);
   return (
     <div className="bg-background flex min-h-[calc(100vh-3.5rem)]">
