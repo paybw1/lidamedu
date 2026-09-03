@@ -11,6 +11,7 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import { getMyRefundRequestMap } from "~/features/orders/refund-requests.server";
 
 import type { Route } from "./+types/my-orders";
+import { orderItemLabel } from "~/features/orders/lib/order-item-label";
 
 export const meta: Route.MetaFunction = () => [
   { title: "내 주문·배송 | 리담변리사학원" },
@@ -61,7 +62,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     const { data: items } = await client
       .from("order_items")
       .select(
-        "order_item_id, order_id, item_type, quantity, unit_price_krw, refunded_at, plan:subscription_plans!order_items_plan_id_fkey(name), book:books!order_items_book_fk(title), shipment:shipments!shipments_order_item_id_fkey(status, courier, tracking_no)",
+        "order_item_id, order_id, item_type, title_snapshot, quantity, unit_price_krw, refunded_at, plan:subscription_plans!order_items_plan_id_fkey(name), book:books!order_items_book_fk(title), shipment:shipments!shipments_order_item_id_fkey(status, courier, tracking_no)",
       )
       .in("order_id", orderIds);
     for (const it of items ?? []) {
@@ -75,7 +76,12 @@ export async function loader({ request }: Route.LoaderArgs) {
       const arr = itemsByOrder.get(it.order_id) ?? [];
       arr.push({
         orderItemId: it.order_item_id,
-        label: plan?.name ?? book?.title ?? "(항목)",
+        label: orderItemLabel({
+          itemType: it.item_type,
+          titleSnapshot: it.title_snapshot,
+          planName: plan?.name,
+          bookTitle: book?.title,
+        }),
         itemType: it.item_type,
         quantity: it.quantity,
         unitPriceKrw: it.unit_price_krw,

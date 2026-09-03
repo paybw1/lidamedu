@@ -6,6 +6,7 @@
 //   그 외 plan(subject·bundle·membership) → 정기구독. (recurring 구독 결제는 payments 경로가
 //   별도이나, 주문 경유 구독분은 여기 '구독'으로 합류. 강의/도서 스트림은 주문 기반으로 정확.)
 import adminClient from "~/core/lib/supa-admin-client.server";
+import { orderItemTypeLabel } from "~/features/orders/lib/order-item-label";
 
 import { kstBucketKey, type StatsGranularity } from "./payments-admin.server";
 import {
@@ -160,8 +161,8 @@ export async function getSalesStats(
           id: groupId,
           name:
             category === "book"
-              ? (r.book?.title ?? "(도서)")
-              : (r.plan?.name ?? "(상품)"),
+              ? (r.book?.title ?? orderItemTypeLabel("book"))
+              : (r.plan?.name ?? orderItemTypeLabel("plan")),
           category,
           qty: 0,
           grossKrw: 0,

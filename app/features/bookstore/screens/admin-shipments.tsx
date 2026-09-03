@@ -20,6 +20,8 @@ import { Chip, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
 import { hasDutyAccess } from "~/features/admin/lib/duties.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 
+import { orderItemLabel } from "~/features/orders/lib/order-item-label";
+
 import type { Route } from "./+types/admin-shipments";
 
 export const meta: Route.MetaFunction = () => [
@@ -61,7 +63,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   let q = adminClient
     .from("shipments")
     .select(
-      "shipment_id, order_item_id, status, courier, tracking_no, created_at, item:order_items!shipments_order_item_id_fkey(quantity, book:books!order_items_book_fk(title), order:orders!order_items_order_id_fkey(order_id, user:profiles!orders_user_id_fkey(name, member_no)))",
+      "shipment_id, order_item_id, status, courier, tracking_no, created_at, item:order_items!shipments_order_item_id_fkey(quantity, title_snapshot, book:books!order_items_book_fk(title), order:orders!order_items_order_id_fkey(order_id, user:profiles!orders_user_id_fkey(name, member_no)))",
     )
     .order("created_at", { ascending: false })
     .limit(200);
@@ -75,6 +77,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     rows: (rows ?? []).map((s) => {
       const item = s.item as {
         quantity: number;
+        title_snapshot: string | null;
         book: { title: string } | null;
         order: {
           order_id: string;
@@ -87,7 +90,11 @@ export async function loader({ request }: Route.LoaderArgs) {
         courier: s.courier,
         trackingNo: s.tracking_no,
         createdAt: s.created_at,
-        bookTitle: item?.book?.title ?? "(도서)",
+        bookTitle: orderItemLabel({
+          itemType: "book",
+          titleSnapshot: item?.title_snapshot,
+          bookTitle: item?.book?.title,
+        }),
         quantity: item?.quantity ?? 1,
         orderNo: item?.order?.order_id.slice(0, 8) ?? "",
         userName: item?.order?.user?.name ?? "(이름 없음)",

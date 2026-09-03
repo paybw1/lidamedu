@@ -9334,6 +9334,7 @@ export type Database = {
           refund_reason: string | null
           refunded_at: string | null
           subject_code: string | null
+          title_snapshot: string | null
           unit_price_krw: number
         }
         Insert: {
@@ -9349,6 +9350,7 @@ export type Database = {
           refund_reason?: string | null
           refunded_at?: string | null
           subject_code?: string | null
+          title_snapshot?: string | null
           unit_price_krw: number
         }
         Update: {
@@ -9364,6 +9366,7 @@ export type Database = {
           refund_reason?: string | null
           refunded_at?: string | null
           subject_code?: string | null
+          title_snapshot?: string | null
           unit_price_krw?: number
         }
         Relationships: [

@@ -8,6 +8,7 @@ import adminClient from "~/core/lib/supa-admin-client.server";
 import type { Database } from "database.types";
 
 import { refundOrderItem } from "./orders.server";
+import { orderItemLabel, orderItemTypeLabel } from "~/features/orders/lib/order-item-label";
 
 export type RefundRequestStatus = "pending" | "approved" | "rejected";
 
@@ -108,7 +109,7 @@ export async function listPendingRefundRequests(): Promise<AdminRefundRequestRow
       "refund_request_id, order_item_id, user_id, reason, created_at, " +
         "user:profiles!refund_requests_user_id_fkey(name, member_no), " +
         "item:order_items!refund_requests_order_item_id_fkey(" +
-        "order_id, item_type, quantity, unit_price_krw, refunded_at, " +
+        "order_id, item_type, title_snapshot, quantity, unit_price_krw, refunded_at, " +
         "plan:subscription_plans!order_items_plan_id_fkey(name), " +
         "book:books!order_items_book_fk(title), " +
         "order:orders!order_items_order_id_fkey(status))",
@@ -128,6 +129,7 @@ export async function listPendingRefundRequests(): Promise<AdminRefundRequestRow
     item: {
       order_id: string;
       item_type: string;
+      title_snapshot: string | null;
       quantity: number;
       unit_price_krw: number;
       refunded_at: string | null;
@@ -140,10 +142,12 @@ export async function listPendingRefundRequests(): Promise<AdminRefundRequestRow
   return rows.map((r) => {
     const user = r.user;
     const item = r.item;
-    const label =
-      item?.plan?.name ??
-      item?.book?.title ??
-      (item?.item_type === "book" ? "(도서)" : "(항목)");
+    const label = orderItemLabel({
+      itemType: item?.item_type,
+      titleSnapshot: item?.title_snapshot,
+      planName: item?.plan?.name,
+      bookTitle: item?.book?.title,
+    });
     return {
       refundRequestId: r.refund_request_id,
       orderItemId: r.order_item_id,

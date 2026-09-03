@@ -30,6 +30,7 @@ import {
 } from "~/features/orders/refund-requests.server";
 
 import type { Route } from "./+types/admin-orders";
+import { orderItemLabel } from "~/features/orders/lib/order-item-label";
 
 export const meta: Route.MetaFunction = () => [
   { title: "주문 관리 | 리담변리사학원" },
@@ -166,27 +167,81 @@ export async function loader({ request }: Route.LoaderArgs) {
     quantity: number;
     unitPriceKrw: number;
     refundedAt: string | null;
+    /** 연장 항목 한 줄 요약 — 기존 종료일 → 새 종료일 · N일 · N회차. */
+    extensionNote: string | null;
   }>>();
   for (let i = 0; i < orderIds.length; i += 100) {
     const { data: items } = await adminClient
       .from("order_items")
       .select(
-        "order_item_id, order_id, item_type, quantity, unit_price_krw, refunded_at, plan:subscription_plans!order_items_plan_id_fkey(name)",
+        "order_item_id, order_id, item_type, title_snapshot, quantity, unit_price_krw, refunded_at, plan:subscription_plans!order_items_plan_id_fkey(name), book:books!order_items_book_fk(title)",
       )
       .in("order_id", orderIds.slice(i, i + 100));
     for (const it of items ?? []) {
       const arr = itemsByOrder.get(it.order_id) ?? [];
       arr.push({
         orderItemId: it.order_item_id,
-        label:
-          (it.plan as { name: string } | null)?.name ??
-          (it.item_type === "book" ? "(도서)" : "(항목)"),
+        label: orderItemLabel({
+          itemType: it.item_type,
+          titleSnapshot: it.title_snapshot,
+          planName: (it.plan as { name: string } | null)?.name,
+          bookTitle: (it.book as { title: string } | null)?.title,
+        }),
         itemType: it.item_type,
         quantity: it.quantity,
         unitPriceKrw: it.unit_price_krw,
         refundedAt: it.refunded_at,
+        extensionNote: null,
       });
       itemsByOrder.set(it.order_id, arr);
+    }
+  }
+
+  // feat-11-011 P2 — 연장 주문의 기존 종료일·연장일수·회차·새 종료일.
+  // ★새 컬럼을 만들지 않는다. enrollment_extensions 에 이미 다 있고(feat-11-010),
+  //   두 곳에 저장하면 환불로 되돌릴 때 어긋난다. 여기서 조인해 보여 주기만 한다.
+  {
+    const extItemIds = [...itemsByOrder.values()]
+      .flat()
+      .filter((it) => it.itemType === "course_extension")
+      .map((it) => it.orderItemId);
+    if (extItemIds.length) {
+      const { data: exts } = await adminClient
+        .from("enrollment_extensions")
+        .select("order_item_id, enrollment_id, days_added, prev_expires_at, next_expires_at, status")
+        .in("order_item_id", extItemIds);
+      // 연장 회차 = 그 수강권에 적용된 건수(카운터를 따로 두지 않는다 — feat-11-010).
+      const enrollmentIds = [...new Set((exts ?? []).map((e) => e.enrollment_id))];
+      const countByEnrollment = new Map<string, number>();
+      if (enrollmentIds.length) {
+        const { data: applied } = await adminClient
+          .from("enrollment_extensions")
+          .select("enrollment_id")
+          .in("enrollment_id", enrollmentIds)
+          .eq("status", "applied");
+        for (const a of applied ?? []) {
+          countByEnrollment.set(a.enrollment_id, (countByEnrollment.get(a.enrollment_id) ?? 0) + 1);
+        }
+      }
+      const d = (iso: string | null) => (iso ? iso.slice(0, 10) : "—");
+      const noteBy = new Map<string, string>();
+      for (const e of exts ?? []) {
+        if (!e.order_item_id) continue;
+        const nth = countByEnrollment.get(e.enrollment_id) ?? 0;
+        noteBy.set(
+          e.order_item_id,
+          `${d(e.prev_expires_at)} → ${d(e.next_expires_at)} · ${e.days_added}일` +
+            (nth ? ` · 누적 ${nth}회` : "") +
+            (e.status === "reverted" ? " · 환불로 되돌림" : ""),
+        );
+      }
+      for (const arr of itemsByOrder.values()) {
+        for (const it of arr) {
+          if (it.itemType === "course_extension") {
+            it.extensionNote = noteBy.get(it.orderItemId) ?? "결제 전 — 아직 적용되지 않음";
+          }
+        }
+      }
     }
   }
 
@@ -582,6 +637,7 @@ function OrderRow({
       quantity: number;
       unitPriceKrw: number;
       refundedAt: string | null;
+      extensionNote: string | null;
     }>;
   };
 }) {
@@ -622,11 +678,16 @@ function OrderRow({
       <TD>
         <div className="flex flex-col gap-0.5">
           {row.items.map((it) => (
-            <div key={it.orderItemId} className="flex items-center gap-1.5 text-[12px]">
+            <div key={it.orderItemId} className="flex flex-wrap items-center gap-1.5 text-[12px]">
               <span className={it.refundedAt ? "text-muted-foreground line-through" : ""}>
                 {it.label}
                 {it.quantity > 1 ? ` ×${it.quantity}` : ""}
               </span>
+              {it.extensionNote ? (
+                <span className="text-muted-foreground basis-full text-[10.5px] tabular-nums">
+                  {it.extensionNote}
+                </span>
+              ) : null}
               {it.refundedAt ? (
                 <Chip tone="coral">환불됨</Chip>
               ) : refundable ? (

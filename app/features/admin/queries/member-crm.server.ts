@@ -6,6 +6,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
+import {
+  orderItemLabel,
+  orderItemTypeLabel,
+} from "~/features/orders/lib/order-item-label";
 import { getMyRefundRequestMap } from "~/features/orders/refund-requests.server";
 import { getLessonProgressForUser } from "~/features/lms/watch.server";
 
@@ -138,7 +142,7 @@ export async function listUserBookDownloads(
   return (data ?? []).map((r) => ({
     at: r.created_at,
     label:
-      (r.books as { title: string } | null)?.title ?? "(도서)",
+      (r.books as { title: string } | null)?.title ?? orderItemTypeLabel("book"),
   }));
 }
 
@@ -213,7 +217,7 @@ export async function listMemberOrders(
   const { data: items } = await adminClient
     .from("order_items")
     .select(
-      "order_item_id, order_id, item_type, quantity, unit_price_krw, refunded_at, plan:subscription_plans!order_items_plan_id_fkey(name), book:books!order_items_book_fk(title), shipment:shipments!shipments_order_item_id_fkey(status, courier, tracking_no)",
+      "order_item_id, order_id, item_type, title_snapshot, quantity, unit_price_krw, refunded_at, plan:subscription_plans!order_items_plan_id_fkey(name), book:books!order_items_book_fk(title), shipment:shipments!shipments_order_item_id_fkey(status, courier, tracking_no)",
     )
     .in("order_id", orderIds);
   for (const it of items ?? []) {
@@ -233,7 +237,12 @@ export async function listMemberOrders(
     const arr = itemsByOrder.get(it.order_id) ?? [];
     arr.push({
       orderItemId: it.order_item_id,
-      label: plan?.name ?? book?.title ?? "(항목)",
+      label: orderItemLabel({
+        itemType: it.item_type,
+        titleSnapshot: it.title_snapshot,
+        planName: plan?.name,
+        bookTitle: book?.title,
+      }),
       itemType: it.item_type,
       quantity: it.quantity,
       unitPriceKrw: it.unit_price_krw,

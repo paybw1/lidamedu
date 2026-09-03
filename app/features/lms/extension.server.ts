@@ -173,6 +173,25 @@ export async function createExtensionOrder(input: {
     .select("order_id")
     .single();
   if (error) throw error;
+  // ★표시명 스냅샷(P2) — 이게 없어서 학생 결제내역에 `course_extension` 이 그대로 찍혔다.
+  //   강의명을 붙여 "무엇을 연장했는지"까지 남긴다.
+  const { data: enr } = await adminClient
+    .from("enrollments")
+    .select(
+      "course:courses!enrollments_course_id_fkey(edition_label, series:course_series!courses_series_id_fkey(title))",
+    )
+    .eq("enrollment_id", input.ctx.enrollmentId)
+    .maybeSingle();
+  const course = enr?.course as {
+    edition_label: string;
+    series: { title: string } | null;
+  } | null;
+  const courseLabel = course
+    ? `${course.series?.title ?? ""} ${course.edition_label}`.trim()
+    : "";
+  const days = input.ctx.offer.policy.days;
+  const titleSnapshot = `수강기간 연장${courseLabel ? ` — ${courseLabel}` : ""}${days ? ` ${days}일` : ""}`;
+
   const { data: item, error: itemErr } = await adminClient
     .from("order_items")
     .insert({
@@ -182,6 +201,7 @@ export async function createExtensionOrder(input: {
       plan_id: input.ctx.planId,
       enrollment_id: input.ctx.enrollmentId,
       unit_price_krw: amountKrw,
+      title_snapshot: titleSnapshot,
     })
     .select("order_item_id")
     .single();

@@ -79,6 +79,12 @@ export async function createSinglePlanOrder(input: {
     .select("order_id")
     .single();
   if (error) throw error;
+  // ★이름은 주문 시점에 굳힌다 — 상품명이 바뀌어도 과거 영수증은 그때 산 이름이어야 한다.
+  const { data: plan } = await adminClient
+    .from("subscription_plans")
+    .select("name")
+    .eq("plan_id", input.planId)
+    .maybeSingle();
   const { data: item, error: itemErr } = await adminClient
     .from("order_items")
     .insert({
@@ -87,6 +93,7 @@ export async function createSinglePlanOrder(input: {
       plan_id: input.planId,
       subject_code: input.subjectCode ?? null,
       unit_price_krw: input.amountKrw,
+      title_snapshot: plan?.name ?? null,
     })
     .select("order_item_id")
     .single();
@@ -133,6 +140,22 @@ export async function createCartOrder(input: {
     .select("order_id")
     .single();
   if (error) throw error;
+  // ★표시명은 주문 시점에 굳힌다(P2). 이름 조회는 한 번에 모아서 한다.
+  const planIds = input.items.flatMap((it) => (it.itemType === "plan" ? [it.planId] : []));
+  const bookIds = input.items.flatMap((it) => (it.itemType === "book" ? [it.bookId] : []));
+  const nameOf = new Map<string, string>();
+  if (planIds.length) {
+    const { data } = await adminClient
+      .from("subscription_plans")
+      .select("plan_id, name")
+      .in("plan_id", planIds);
+    for (const p of data ?? []) nameOf.set(p.plan_id, p.name);
+  }
+  if (bookIds.length) {
+    const { data } = await adminClient.from("books").select("book_id, title").in("book_id", bookIds);
+    for (const b of data ?? []) nameOf.set(b.book_id, b.title);
+  }
+
   const rows = input.items.map((it) =>
     it.itemType === "plan"
       ? {
@@ -142,6 +165,7 @@ export async function createCartOrder(input: {
           subject_code: it.subjectCode ?? null,
           unit_price_krw: it.unitPriceKrw,
           quantity: 1,
+          title_snapshot: nameOf.get(it.planId) ?? null,
         }
       : {
           order_id: order.order_id,
@@ -149,6 +173,7 @@ export async function createCartOrder(input: {
           book_id: it.bookId,
           unit_price_krw: it.unitPriceKrw,
           quantity: it.quantity,
+          title_snapshot: nameOf.get(it.bookId) ?? null,
         },
   );
   const { error: itemErr } = await adminClient.from("order_items").insert(rows);
