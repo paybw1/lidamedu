@@ -15,13 +15,15 @@ const years = [...new Set(items.map((i) => i.year))].sort((a, b) => b - a); // �
 
 const KIND_LABEL = { case_based: "사례형", theory: "약술형" };
 
+const firstNoOfLatest = Math.min(...items.filter((i) => i.year === years[0]).map((i) => i.no));
 const panes = items
   .map((it) => {
     const issues = issuesFromRubric(it.rubric, 5);
     const chips = issues
       .map((s) => `<li>${esc(s)}</li>`)
       .join("");
-    return `<section class="item" data-year="${it.year}" data-no="${it.no}" hidden>
+    const first = it.year === years[0] && it.no === firstNoOfLatest;
+    return `<section class="item" data-year="${it.year}" data-no="${it.no}"${first ? "" : " hidden"}>
   <div class="cols">
     <article class="pane q">
       <div class="pane-head"><h2>문제</h2><span class="pts">${it.points}점</span></div>
@@ -92,6 +94,10 @@ const html = `<title>특허법 2차 기출 주관식 — 문제·모범답안·�
   }
 
   *{box-sizing:border-box}
+  /* ★hidden 속성은 브라우저 기본 스타일(display:none)로 동작한다. 작성자 규칙에
+     display 를 주면 그쪽이 이겨서 숨김이 풀린다 — .nos 가 display:flex 라 연도 줄이
+     17개 전부 펼쳐졌고, 그 아래로 본문이 화면 밖으로 밀려났다. */
+  [hidden]{display:none !important}
   body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
        font-size:15px;line-height:1.7;-webkit-font-smoothing:antialiased}
 
@@ -116,10 +122,10 @@ const html = `<title>특허법 2차 기출 주관식 — 문제·모범답안·�
 
   main{padding:18px 20px 64px}
   .cols{display:grid;gap:16px;grid-template-columns:1fr;align-items:start}
-  @media (min-width:1000px){ .cols{grid-template-columns:41fr 59fr} }
+  @media (min-width:860px){ .cols{grid-template-columns:41fr 59fr} }
   .pane{background:var(--card);border:1px solid var(--line);border-radius:14px;
         padding:20px 22px;min-width:0}
-  @media (min-width:1000px){ .pane{position:sticky;top:118px;max-height:calc(100vh - 140px);overflow-y:auto} }
+  @media (min-width:860px){ .pane{position:sticky;top:118px;max-height:calc(100vh - 140px);overflow-y:auto} }
   .pane-head{display:flex;align-items:center;justify-content:space-between;gap:12px;
              margin:-4px 0 12px;padding-bottom:10px;border-bottom:1px solid var(--line-2)}
   .pane-head h2{margin:0;font-size:12px;font-weight:800;letter-spacing:.1em;color:var(--ink-3)}
