@@ -7,6 +7,7 @@ import type { Route } from "./+types/study-plan-log";
 
 import {
   CheckCircle2Icon,
+  ClockIcon,
   PlusIcon,
   Undo2Icon,
 } from "lucide-react";
@@ -607,6 +608,10 @@ function ExpectedItemCard({
   const reload = useReload();
   const [partial, setPartial] = useState(false);
   const [minutes, setMinutes] = useState(String(Math.max(5, Math.round(item.dailyMinutes / 2))));
+  // 시작 시각 — 비워 두면 '시각 미지정'. 시간표 그래프는 이 값이 있어야 칸이 채워진다.
+  // ★자동으로 채우지 않는다 — study_logs 는 append-only 라 틀리게 들어가면 고칠 수 없다.
+  const [startTime, setStartTime] = useState("");
+  const [showTime, setShowTime] = useState(false);
   useEffect(() => {
     if (fetcher.state === "idle" && fetcher.data && "ok" in fetcher.data && fetcher.data.ok) {
       setPartial(false);
@@ -623,6 +628,8 @@ function ExpectedItemCard({
     fd.set("activityType", item.activityType);
     fd.set("minutes", String(min));
     fd.set("completion", completion);
+    // 완료·부분 어느 쪽으로 기록하든 같은 값을 싣는다 — completion 의미는 건드리지 않는다.
+    if (startTime) fd.set("startTime", startTime);
     fetcher.submit(fd, { method: "post", action: API });
   };
 
@@ -669,6 +676,18 @@ function ExpectedItemCard({
             >
               부분
             </Button>
+            {/* 시작 시각은 선택 입력 — 1탭 완료를 막지 않도록 접어 둔다. */}
+            <Button
+              size="icon"
+              variant={startTime ? "default" : "outline"}
+              className="size-8"
+              title="시작 시각 (선택) — 적으면 시간표 그래프에 놓입니다"
+              aria-pressed={showTime}
+              disabled={disabled}
+              onClick={() => setShowTime((v) => !v)}
+            >
+              <ClockIcon className="size-3.5" />
+            </Button>
             {canStartTimer ? (
               <TimerStartButton
                 planItemId={item.itemId}
@@ -680,6 +699,20 @@ function ExpectedItemCard({
           </div>
         )}
       </div>
+      {showTime && !log ? (
+        <div className="mt-2 flex items-center gap-1.5">
+          <label className="text-muted-foreground text-[11px]">시작 시각</label>
+          <Input
+            type="time"
+            value={startTime}
+            onChange={(e) => setStartTime(e.target.value)}
+            className="h-7 w-28 text-xs tabular-nums"
+          />
+          <span className="text-muted-foreground text-[11px]">
+            비워도 됩니다 · 적으면 시간표에 놓입니다
+          </span>
+        </div>
+      ) : null}
       {partial && !log ? (
         <div className="mt-2 flex items-center gap-1.5">
           {[15, 30, 60, 90].map((m) => (

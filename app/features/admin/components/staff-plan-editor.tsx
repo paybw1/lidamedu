@@ -166,7 +166,16 @@ export function StaffPlanEditor({
               </li>
             ) : (
               <li key={it.itemId} className="flex items-center gap-2 px-2 py-1.5 text-[11px]">
-                <span className="min-w-0 flex-1 truncate">{it.title}</span>
+                {/* ★제목만 보여 주면 항목마다 「수정」을 열어 봐야 기간을 알 수 있다
+                    (신고 8b192567). 아래 검토 패널과 같은 형식으로 활동·요일범위·
+                    하루 분량·기간을 함께 적는다. */}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate">{it.title}</span>
+                  <span className="text-muted-foreground block truncate text-[10px] tabular-nums">
+                    {PLAN_ACTIVITY_LABEL[it.activityType]} · {DAY_SCOPE_LABEL[it.dayScope]} 하루{" "}
+                    {it.dailyMinutes}분 · {it.startDate.slice(5)}~{it.endDate.slice(5)}
+                  </span>
+                </span>
                 <Button
                   size="sm"
                   variant="ghost"

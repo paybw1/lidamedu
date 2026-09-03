@@ -165,7 +165,13 @@ export async function action({ request }: Route.ActionArgs) {
       lessonId: z.string().uuid().optional(),
       selfDifficulty: z.coerce.number().int().min(1).max(5).optional(),
       subject: z.string().max(60).optional(), // "kind:code" — 계획 외 학습에서만
-      startTime: z.string().regex(/^d{2}:d{2}$/).optional(), // 시각 미지정 허용
+      // ★역슬래시가 빠져 있어 리터럴 "dd:dd" 만 통과했다 — 시각을 적으면 검증에서
+      //   걸려 기록 저장 자체가 실패했다(신고 52b84f30). started_at 이 들어간 기록이
+      //   지금까지 0건인 이유.
+      startTime: z
+        .string()
+        .regex(/^\d{2}:\d{2}$/)
+        .optional(), // 시각 미지정 허용
     });
     const parsed = logSchema.safeParse({
       logDate: fd.get("logDate"),
