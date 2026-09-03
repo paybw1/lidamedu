@@ -201,6 +201,7 @@ eng.traineddata
 /source/*.hwpx
 /source/**/*.hwp
 /source/**/*.hwpx
+/source/**/*.extracted.json
 /source/민법/
 /source/민사소송법/
 /source/_converted/*.json

@@ -52,8 +52,13 @@ const norm = (s) =>
 // ★안쪽 공백까지 지운다. `신규성상실의 예외` 와 `신규성 상실의 예외` 는 같은 항목인데
 //   띄어쓰기만 다르다 — 이걸 놓쳐 실제로 중복 노드가 하나 생겼다(2026-09-03).
 const matchKey = (s) =>
-  s.replace(/\s*\(\s*法[^)]*\)\s*$/, "").replace(/\s+/g, "").trim();
+  s.replace(/\s*\(\s*法[^)]*\)?\s*$/, "").replace(/\s+/g, "").trim();
 const keyPath = (p) => p.split(" / ").map(matchKey).join(" / ");
+// ★원본의 `(法 101, 102, 103)` 은 제목의 일부가 아니라 **배치 지시**다 — 라벨에서 뗀다.
+//   그 번호들을 실제 조문 연결로 옮기는 일은 apply-article-refs.mjs 가 맡는다.
+//   (닫는 괄호가 빠진 원본이 실제로 있어 `\)?` 로 받는다)
+const stripRefs = (s) => s.replace(/\s*\(\s*法\s*[^)]*\)?\s*$/, "").trim();
+
 
 function levelOf(t) {
   if (/^\d{2}\s/.test(t)) return 1;
@@ -82,7 +87,7 @@ function parseTree(file) {
       path: chain.join(" / "),
       parentPath: chain.slice(0, -1).join(" / "),
       // 최상위는 원본의 `01 …` 번호를 라벨에 유지한다(DB 도 그렇게 저장돼 있다).
-      displayLabel: lv === 1 ? raw.trim() : label,
+      displayLabel: stripRefs(lv === 1 ? raw.trim() : label),
     });
   }
   return out;
