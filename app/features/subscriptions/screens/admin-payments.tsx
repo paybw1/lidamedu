@@ -165,12 +165,25 @@ export async function loader({ request }: Route.LoaderArgs) {
     );
   }
 
+  // ★키 값은 절대 클라이언트로 보내지 않는다 — 앞글자로 모드만 판정한다.
+  //   테스트 키로 결제하면 실제 돈이 오가지 않고 환불도 흉내만 난다. 그걸 모르고
+  //   "환불 됐다"고 판단하면 검증이 아니라 착각이 된다.
+  const tossKey = process.env.TOSS_SECRET_KEY ?? "";
+  const tossMode = !tossKey
+    ? "missing"
+    : tossKey.startsWith("live_")
+      ? "live"
+      : tossKey.startsWith("test_")
+        ? "test"
+        : "unknown";
+
   return {
     payments,
     refunds,
     buckets,
     summary,
     plans,
+    tossMode,
     filter: { preset, granularity, planId, status, tab },
   };
 }
@@ -242,7 +255,7 @@ const GRANULARITY_LABEL: Record<StatsGranularity, string> = {
 };
 
 export default function AdminPayments({ loaderData }: Route.ComponentProps) {
-  const { payments, refunds, buckets, summary, plans, filter } = loaderData;
+  const { payments, refunds, buckets, summary, plans, tossMode, filter } = loaderData;
   const [searchParams] = useSearchParams();
   const tabQs = (tab: "payments" | "refunds") => {
     const p = new URLSearchParams(searchParams);
@@ -269,6 +282,22 @@ export default function AdminPayments({ loaderData }: Route.ComponentProps) {
         </Button>
       }
     >
+      {tossMode !== "live" ? (
+        <p
+          className={
+            "mb-4 rounded-xl border px-3 py-2 text-sm " +
+            (tossMode === "missing"
+              ? "border-destructive/40 bg-destructive/10 text-destructive"
+              : "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400")
+          }
+        >
+          {tossMode === "missing"
+            ? "결제 연동 키가 설정돼 있지 않습니다 — 결제·환불이 동작하지 않습니다."
+            : tossMode === "test"
+              ? "토스 테스트 키로 동작 중입니다 — 실제 돈이 오가지 않고, 환불도 실제로 입금되지 않습니다."
+              : "토스 키 형식을 알 수 없습니다 — 실결제 여부를 확인해 주세요."}
+        </p>
+      ) : null}
       <Form
         method="get"
         className="border-border bg-card mb-4 flex flex-wrap items-end gap-2.5 rounded-xl border p-3 shadow-sm"
