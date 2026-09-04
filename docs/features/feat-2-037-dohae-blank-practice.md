@@ -278,7 +278,7 @@ SELECT 를 로그인 사용자 전원으로 넓힌다.
 |---|---|---|
 | **S1** ✅ | 순수 로직 `dohae-blanks.ts` + 단위 테스트 14건 | 어절 경계 매칭·긴 말 우선·겹침 금지·**말당 2회 상한**·자리 못 잡는 말의 상한 점유 방지가 테스트로 고정 |
 | **S2** ✅ | DDL(`dohae_blank_terms` + RLS **staff 전용** + 인덱스) → `db:typegen` | 운영 적용·타입 반영 완료 (`scripts/sql/20260904_dohae_blank_terms.sql`) |
-| **S3** | 추출 스크립트 `gen-blank-terms.ts` (dry-run → `--commit`) | 94유닛 적재, 유닛별 후보 수 §2 와 일치 |
+| **S3** ✅ | 추출 스크립트 `gen-blank-terms.ts` (dry-run → `--commit`) | 운영 적재 **1,810행 · 88유닛**(기출 1,331 · 정오 1,743 · 둘다 1,264). 빈칸을 만들 수 없는 유닛 6 = r8·t06·t31·t34·t75·t76 — §2 실측과 일치 |
 | **S4** | 팝업 빈칸 모드(읽기/빈칸 전환 · 유형 칩 · 채점 · 운영자 빼기) | staff 화면 동작 |
 | **S5** | 원장 검수 → 잡티 정리 → **학생 공개 판단**(승인 시 RLS SELECT 확대) | 원장 결정 |
 
@@ -306,4 +306,19 @@ SELECT 를 로그인 사용자 전원으로 넓힌다.
 # 뽑히는 말 확인(저장 없음)
 npx tsx scripts/dohae/probe-blank-terms.ts --top 15
 npx tsx scripts/dohae/probe-blank-terms.ts --unit t25 --top 30
+npx tsx scripts/dohae/probe-blank-terms.ts --place       # 실제로 몇 칸이 뚫리는지
+
+# 적재(멱등 — 다시 돌려도 뺀 말은 보존)
+npx tsx scripts/dohae/gen-blank-terms.ts                 # dry-run(기본)
+npx tsx scripts/dohae/gen-blank-terms.ts --commit
+npx tsx scripts/dohae/gen-blank-terms.ts --unit t25 --verbose
 ```
+
+**★규칙은 한 곳에만 있다** — `scripts/dohae/lib/blank-term-extract.ts`(말 고르기) ·
+`blank-term-corpus.ts`(원천 적재)를 probe 와 gen 이 **같이** 쓴다. 두 벌로 두면
+"재 본 것"과 "넣은 것"이 달라진다(체계도에서 파서를 두 벌 두었다가 겪은 일).
+
+**멱등 확인(2026-09-04 실행)** — 재실행 `신규 0 · 갱신 0 · 삭제 0 · 그대로 1810`.
+뺀 말 보존도 확인: 한 행에 `excluded_at` 을 켜고 `--headroom 2`(대부분이 후보에서 빠지는
+조건)로 돌렸더니 `삭제 25 · 그대로 2 · 뺀 말 보존 1` — 후보에서 빠져도 사람이 뺀 표시가
+있으면 남는다.
