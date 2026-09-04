@@ -116,6 +116,8 @@ export interface McqCandidate {
   problemNumber: number | null;
   importance: number;
   format: string;
+  /** 정렬용 — 문항의 대표 조문 번호. 없으면 조문 순서에서 뒤로 간다. */
+  articleNumber?: string | null;
 }
 
 export interface OxCandidate {
@@ -126,6 +128,8 @@ export interface OxCandidate {
   oxTruth: "O" | "X";
   year: number | null;
   importance: number;
+  /** 정렬용 — 선지가 가리키는 조문 번호(없으면 문항의 대표 조문). */
+  articleNumber?: string | null;
 }
 
 export interface BlankCandidate {
@@ -134,6 +138,10 @@ export interface BlankCandidate {
   displayName: string | null;
   blanksCount: number;
   articleImportance: number;
+  /** 정렬용 — 조문 번호. */
+  articleNumber?: string | null;
+  /** 정렬용 — 그 조문이 기출 선지에 마지막으로 나온 해. 빈칸 자체에는 연도가 없다. */
+  latestYear?: number | null;
 }
 
 export interface CohortOfflineTestStat extends OfflineTestSubject {

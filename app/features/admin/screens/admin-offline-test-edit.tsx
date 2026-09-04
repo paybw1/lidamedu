@@ -64,6 +64,11 @@ import {
   type LawSubjectSlug,
 } from "~/features/subjects/lib/subjects";
 import {
+  CANDIDATE_SORTS,
+  type CandidateSort,
+  parseCandidateSort,
+} from "~/features/offline-tests/lib/candidate-sort";
+import {
   SCIENCE_SUBJECTS,
   SCIENCE_SUBJECT_SLUGS,
   type ScienceSubjectSlug,
@@ -138,6 +143,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   // 후보 표시 수량 — ?count= (80/200/500/all). 기본 80. all=조건 전량(페이지네이션).
   const countParam = url.searchParams.get("count");
   const wantAll = countParam === "all";
+  // 후보 정렬 — ?sort= (importance/article/year). 오류신고(2026-09-04) 반영.
+  const sort = parseCandidateSort(url.searchParams.get("sort"));
   const candLimit = wantAll
     ? undefined
     : (CAND_COUNT_OPTIONS.find((n) => String(n) === countParam) ?? 80);
@@ -159,6 +166,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       minImportance,
       limit: candLimit,
       all: wantAll,
+      sort,
     };
     [mcqCands, oxCands, blankCands] = await Promise.all([
       type === "mcq" ? listMcqCandidates(client, filter) : Promise.resolve([]),
@@ -201,7 +209,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     test,
     role,
     isScience,
-    filter: { type, nodeId, minImportance },
+    filter: { type, nodeId, minImportance, sort },
     candCount: wantAll ? "all" : String(candLimit ?? 80),
     candCountOptions: CAND_COUNT_OPTIONS,
     candShownTotal:
@@ -749,7 +757,12 @@ function CandidateFilter({
   candCount,
   candCountOptions,
 }: {
-  filter: { type: OfflineQuestionType; nodeId: string | null; minImportance: number };
+  filter: {
+    type: OfflineQuestionType;
+    nodeId: string | null;
+    minImportance: number;
+    sort: CandidateSort;
+  };
   nodes: Array<{ nodeId: string; label: string; depth: number }>;
   isScience: boolean;
   /** 후보 탐색 과목 — 법률이면 LawSubjectSlug, 자연과학이면 ScienceSubjectSlug. */
@@ -766,7 +779,20 @@ function CandidateFilter({
     params.set("type", filter.type);
     if (filter.nodeId) params.set("node", filter.nodeId);
     if (filter.minImportance) params.set("imp", String(filter.minImportance));
+    // ★정렬을 빠뜨리면 수량만 바꿔도 목록이 기본 순서로 튄다.
+    params.set("sort", filter.sort);
     params.set("count", count);
+    navigate(`?${params.toString()}`, { preventScrollReset: true });
+  };
+  // 정렬 변경 — 조건(과목/유형/파트/중요도/수량)을 보존하며 sort 만 바꿔 이동.
+  const changeSort = (sort: string) => {
+    const params = new URLSearchParams();
+    if (candSubject) params.set(isScience ? "sci" : "subj", candSubject);
+    params.set("type", filter.type);
+    if (filter.nodeId) params.set("node", filter.nodeId);
+    if (filter.minImportance) params.set("imp", String(filter.minImportance));
+    params.set("count", candCount);
+    params.set("sort", sort);
     navigate(`?${params.toString()}`, { preventScrollReset: true });
   };
   return (
@@ -781,6 +807,7 @@ function CandidateFilter({
               const params = new URLSearchParams();
               params.set(isScience ? "sci" : "subj", e.target.value);
               params.set("type", filter.type);
+              params.set("sort", filter.sort);
               navigate(`?${params.toString()}`, { preventScrollReset: true });
             }}
             className="border-input bg-background h-8 rounded-md border px-2 text-xs"
@@ -793,6 +820,8 @@ function CandidateFilter({
           </select>
         </div>
       ) : null}
+      {/* ★'조회'(GET) 로 폼을 보낼 때 정렬이 빠지면 기본값으로 되돌아간다 — 함께 실어 보낸다. */}
+      <input type="hidden" name="sort" value={filter.sort} />
       {/* 과목 유지용 hidden — '조회'(유형·파트·중요도 GET) 시 선택 과목 보존. */}
       {candSubject ? (
         <input
@@ -850,6 +879,23 @@ function CandidateFilter({
           </select>
         </div>
       )}
+      {/* 정렬 — 오류신고(2026-09-04) "조문 순서 / 별 중요도 / 최근 기출 연도".
+          ★'조회' 버튼을 누르지 않아도 바로 반영되도록 GET 으로 즉시 이동한다
+          (수량 선택과 같은 방식) — 정렬은 조건이 아니라 보기 방식이다. */}
+      <div className="flex flex-col gap-1">
+        <Label className="text-[11px]">정렬</Label>
+        <select
+          value={filter.sort}
+          onChange={(e) => changeSort(e.target.value)}
+          className="border-input bg-background h-8 rounded-md border px-2 text-xs"
+        >
+          {CANDIDATE_SORTS.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
+            </option>
+          ))}
+        </select>
+      </div>
       <div className="flex flex-col gap-1">
         <Label className="text-[11px]">수량</Label>
         <select

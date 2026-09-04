@@ -4,6 +4,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
+import {
+  type CandidateSort,
+  DEFAULT_CANDIDATE_SORT,
+  sortCandidates,
+} from "~/features/offline-tests/lib/candidate-sort";
+
 import { fetchAllIn, fetchAllPages } from "~/core/lib/supa-batch.server";
 import { parseBlanks } from "~/features/blanks/queries.server";
 import {
@@ -849,6 +855,8 @@ export async function listMcqCandidates(
     limit?: number;
     /** true 면 limit 무시하고 조건 전량(페이지네이션). */
     all?: boolean;
+    /** 정렬 기준 — 오류신고(2026-09-04) 반영. 기본은 종전대로 중요도. */
+    sort?: CandidateSort;
   },
 ): Promise<McqCandidate[]> {
   const lawId = await lawIdByCode(client, filter.lawCode);
@@ -862,7 +870,9 @@ export async function listMcqCandidates(
   const makeQuery = (slice: string[] | null) => {
     let q = client
       .from("problems")
-      .select("problem_id, body_md, year, problem_number, importance, format")
+      .select(
+        "problem_id, body_md, year, problem_number, importance, format, primary_article_id",
+      )
       .eq("law_id", lawId)
       .eq("review_status", "approved")
       .is("deleted_at", null)
@@ -881,8 +891,20 @@ export async function listMcqCandidates(
       ? await fetchAllPages(() => makeQuery(null))
       : ((await makeQuery(null).limit(cap)).data ?? []);
 
-  return rows
-    .sort((a, b) => (b.importance ?? 0) - (a.importance ?? 0) || (b.year ?? 0) - (a.year ?? 0))
+  // 조문 순서로 정렬하려면 대표 조문의 번호가 필요하다 — 후보에 걸린 조문만 모아 한 번에 읽는다.
+  const artNo = await articleNumbersByIds(
+    client,
+    rows.map((r) => r.primary_article_id),
+  );
+  return sortCandidates(
+    rows.map((p) => ({
+      ...p,
+      importance: p.importance ?? 0,
+      latestYear: p.year,
+      articleNumber: artNo.get(p.primary_article_id ?? "") ?? null,
+    })),
+    filter.sort ?? DEFAULT_CANDIDATE_SORT,
+  )
     .slice(0, cap)
     .map((p) => ({
       problemId: p.problem_id,
@@ -891,7 +913,28 @@ export async function listMcqCandidates(
       problemNumber: p.problem_number,
       importance: p.importance ?? 0,
       format: p.format,
+      articleNumber: p.articleNumber,
     }));
+}
+
+/**
+ * 조문 id → 조문 번호. 정렬에만 쓴다.
+ * ★후보에 실제로 걸린 조문만 읽는다 — 과목 전체 조문을 훑으면 목록 한 번에 수천 행이다.
+ */
+async function articleNumbersByIds(
+  client: SupabaseClient<Database>,
+  ids: Array<string | null | undefined>,
+): Promise<Map<string, string>> {
+  const uniq = [...new Set(ids.filter((v): v is string => Boolean(v)))];
+  const out = new Map<string, string>();
+  for (let i = 0; i < uniq.length; i += 150) {
+    const { data } = await client
+      .from("articles")
+      .select("article_id, article_number")
+      .in("article_id", uniq.slice(i, i + 150));
+    for (const a of data ?? []) out.set(a.article_id, String(a.article_number));
+  }
+  return out;
 }
 
 // 자연과학 객관식 후보 — 과목(물/화/생/지) + 단원(science_sections) 필터.
@@ -904,6 +947,8 @@ export async function listScienceMcqCandidates(
     limit?: number;
     /** true 면 limit 무시하고 조건 전량(페이지네이션). */
     all?: boolean;
+    /** 정렬 기준 — 오류신고(2026-09-04) 반영. 기본은 종전대로 중요도. */
+    sort?: CandidateSort;
   },
 ): Promise<McqCandidate[]> {
   const makeQuery = () => {
@@ -942,6 +987,8 @@ export async function listOxCandidates(
     limit?: number;
     /** true 면 limit 무시하고 조건 전량(페이지네이션). */
     all?: boolean;
+    /** 정렬 기준 — 오류신고(2026-09-04) 반영. 기본은 종전대로 중요도. */
+    sort?: CandidateSort;
   },
 ): Promise<OxCandidate[]> {
   const lawId = await lawIdByCode(client, filter.lawCode);
@@ -956,7 +1003,7 @@ export async function listOxCandidates(
     let q = client
       .from("problem_choices")
       .select(
-        "choice_id, problem_id, body_md, ox_truth, problems!inner(year, importance, law_id, review_status, deleted_at)",
+        "choice_id, problem_id, body_md, ox_truth, related_article_number, problems!inner(year, importance, law_id, review_status, deleted_at)",
       )
       .eq("problems.law_id", lawId)
       .eq("problems.review_status", "approved")
@@ -971,7 +1018,7 @@ export async function listOxCandidates(
     let q = client
       .from("problem_box_items")
       .select(
-        "box_item_id, problem_id, body_md, ox_truth, problems!inner(year, importance, law_id, review_status, deleted_at)",
+        "box_item_id, problem_id, body_md, ox_truth, related_article_number, problems!inner(year, importance, law_id, review_status, deleted_at)",
       )
       .eq("problems.law_id", lawId)
       .eq("problems.review_status", "approved")
@@ -1009,6 +1056,8 @@ export async function listOxCandidates(
       oxTruth: r.ox_truth as "O" | "X",
       year: r.problems.year,
       importance: r.problems.importance ?? 0,
+      articleNumber: r.related_article_number,
+      latestYear: r.problems.year,
     })),
     ...boxRows.map((r) => ({
       refType: "box" as const,
@@ -1018,10 +1067,11 @@ export async function listOxCandidates(
       oxTruth: r.ox_truth as "O" | "X",
       year: r.problems.year,
       importance: r.problems.importance ?? 0,
+      articleNumber: r.related_article_number,
+      latestYear: r.problems.year,
     })),
   ];
-  out.sort((a, b) => b.importance - a.importance || (b.year ?? 0) - (a.year ?? 0));
-  return out.slice(0, limit);
+  return sortCandidates(out, filter.sort ?? DEFAULT_CANDIDATE_SORT).slice(0, limit);
 }
 
 export async function listBlankCandidates(
@@ -1033,6 +1083,8 @@ export async function listBlankCandidates(
     limit?: number;
     /** true 면 limit 무시하고 조건 전량(페이지네이션). */
     all?: boolean;
+    /** 정렬 기준 — 오류신고(2026-09-04) 반영. 기본은 종전대로 중요도. */
+    sort?: CandidateSort;
   },
 ): Promise<BlankCandidate[]> {
   const lawId = await lawIdByCode(client, filter.lawCode);
@@ -1047,7 +1099,7 @@ export async function listBlankCandidates(
     let q = client
       .from("article_blank_sets")
       .select(
-        "set_id, display_name, blanks, article_id, articles!inner(display_label, importance, law_id)",
+        "set_id, display_name, blanks, article_id, articles!inner(display_label, article_number, importance, law_id)",
       )
       .eq("articles.law_id", lawId);
     if (filter.minImportance) {
@@ -1062,16 +1114,65 @@ export async function listBlankCandidates(
       ? await fetchAllPages(() => makeQuery(null))
       : ((await makeQuery(null).limit(cap)).data ?? []);
 
-  return rows
+  const usable = rows
     .map((r) => ({
       setId: r.set_id,
+      articleId: r.article_id,
       articleLabel: r.articles.display_label,
+      articleNumber: String(r.articles.article_number),
       displayName: r.display_name,
       blanksCount: Array.isArray(r.blanks) ? r.blanks.length : 0,
       articleImportance: r.articles.importance ?? 0,
     }))
     // 빈칸이 하나도 없는 세트(blanks: [])는 시험 문항이 될 수 없으므로 후보에서 제외.
-    .filter((c) => c.blanksCount > 0)
-    .sort((a, b) => b.articleImportance - a.articleImportance)
-    .slice(0, cap);
+    .filter((c) => c.blanksCount > 0);
+
+  // ★빈칸 세트 자체에는 기출 연도가 없다. "최근 기출" 은 **그 조문이 기출 선지에
+  //   마지막으로 나온 해**로 본다. 필요할 때만(정렬 기준이 연도일 때만) 읽는다 —
+  //   전 과목 선지를 훑으면 목록 한 번에 만 행이 넘는다.
+  const sort = filter.sort ?? DEFAULT_CANDIDATE_SORT;
+  const yearByArticle =
+    sort === "year"
+      ? await latestExamYearByArticle(client, usable.map((c) => c.articleId))
+      : new Map<string, number>();
+
+  return sortCandidates(
+    usable.map((c) => ({
+      ...c,
+      importance: c.articleImportance,
+      latestYear: yearByArticle.get(c.articleId) ?? null,
+    })),
+    sort,
+  )
+    .slice(0, cap)
+    .map(({ articleId: _articleId, importance: _importance, ...c }) => c);
+}
+
+/**
+ * 조문 id → 그 조문이 기출 선지에 마지막으로 나온 해.
+ * ★조문에 딸린 선지만 읽는다(`related_article_id in …`). 전량을 훑으면 특허만 1만 행이다.
+ */
+async function latestExamYearByArticle(
+  client: SupabaseClient<Database>,
+  articleIds: string[],
+): Promise<Map<string, number>> {
+  const uniq = [...new Set(articleIds.filter(Boolean))];
+  const out = new Map<string, number>();
+  for (let i = 0; i < uniq.length; i += 100) {
+    const rows = await fetchAllPages(() =>
+      client
+        .from("problem_choices")
+        .select("related_article_id, problems!inner(year, deleted_at)")
+        .in("related_article_id", uniq.slice(i, i + 100))
+        .is("problems.deleted_at", null)
+        .order("choice_id"),
+    );
+    for (const r of rows) {
+      const id = r.related_article_id;
+      const y = r.problems?.year;
+      if (!id || !y) continue;
+      if ((out.get(id) ?? 0) < y) out.set(id, y);
+    }
+  }
+  return out;
 }
