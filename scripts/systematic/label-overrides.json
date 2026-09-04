@@ -14,25 +14,131 @@
     "  `진행 > 진행` 처럼 같은 이름이 겹쳐 어느 쪽인지 알 수 없게 된다."
   ],
   "renames": [
-    { "law": "trademark", "parent": "심사", "from": "심사의 주체", "to": "주체" },
-    { "law": "trademark", "parent": "심사", "from": "심사의 순위", "to": "순위" },
-    { "law": "trademark", "parent": "심사", "from": "심사의 진행", "to": "진행" },
-    { "law": "trademark", "parent": "심사", "from": "심사의 종료", "to": "종료" },
-    { "law": "trademark", "parent": "상표권", "from": "관련제도", "to": "관련" },
-    { "law": "trademark", "parent": "심판", "from": "심판의 주체", "to": "주체" },
-    { "law": "trademark", "parent": "심판", "from": "심판의 청구", "to": "청구" },
-    { "law": "trademark", "parent": "심판", "from": "심판의 진행", "to": "진행" },
-    { "law": "trademark", "parent": "심판", "from": "심판의 종료", "to": "종료" },
-
-    { "law": "design", "parent": "심사", "from": "심사의 주체", "to": "주체" },
-    { "law": "design", "parent": "심사", "from": "심사의 순위", "to": "순위" },
-    { "law": "design", "parent": "심사", "from": "심사의 진행", "to": "진행" },
-    { "law": "design", "parent": "심사", "from": "심사의 종료", "to": "종료" },
-    { "law": "design", "parent": "심사", "from": "심사의 관련제도", "to": "관련" },
-    { "law": "design", "parent": "심판", "from": "심판의 주체", "to": "주체" },
-    { "law": "design", "parent": "심판", "from": "심판의 청구", "to": "청구" },
-    { "law": "design", "parent": "심판", "from": "심판의 진행", "to": "진행" },
-    { "law": "design", "parent": "심판", "from": "심판의 종료", "to": "종료" },
-    { "law": "design", "parent": "심판", "from": "심판 각론", "to": "각론" }
+    {
+      "law": "trademark",
+      "parent": "심사",
+      "from": "심사의 주체",
+      "to": "주체"
+    },
+    {
+      "law": "trademark",
+      "parent": "심사",
+      "from": "심사의 순위",
+      "to": "순위"
+    },
+    {
+      "law": "trademark",
+      "parent": "심사",
+      "from": "심사의 진행",
+      "to": "진행"
+    },
+    {
+      "law": "trademark",
+      "parent": "심사",
+      "from": "심사의 종료",
+      "to": "종료"
+    },
+    {
+      "law": "trademark",
+      "parent": "상표권",
+      "from": "관련제도",
+      "to": "관련"
+    },
+    {
+      "law": "trademark",
+      "parent": "심판",
+      "from": "심판의 주체",
+      "to": "주체"
+    },
+    {
+      "law": "trademark",
+      "parent": "심판",
+      "from": "심판의 청구",
+      "to": "청구"
+    },
+    {
+      "law": "trademark",
+      "parent": "심판",
+      "from": "심판의 진행",
+      "to": "진행"
+    },
+    {
+      "law": "trademark",
+      "parent": "심판",
+      "from": "심판의 종료",
+      "to": "종료"
+    },
+    {
+      "law": "design",
+      "parent": "심사",
+      "from": "심사의 주체",
+      "to": "주체"
+    },
+    {
+      "law": "design",
+      "parent": "심사",
+      "from": "심사의 순위",
+      "to": "순위"
+    },
+    {
+      "law": "design",
+      "parent": "심사",
+      "from": "심사의 진행",
+      "to": "진행"
+    },
+    {
+      "law": "design",
+      "parent": "심사",
+      "from": "심사의 종료",
+      "to": "종료"
+    },
+    {
+      "law": "design",
+      "parent": "심사",
+      "from": "심사의 관련제도",
+      "to": "관련"
+    },
+    {
+      "law": "design",
+      "parent": "심판",
+      "from": "심판의 주체",
+      "to": "주체"
+    },
+    {
+      "law": "design",
+      "parent": "심판",
+      "from": "심판의 청구",
+      "to": "청구"
+    },
+    {
+      "law": "design",
+      "parent": "심판",
+      "from": "심판의 진행",
+      "to": "진행"
+    },
+    {
+      "law": "design",
+      "parent": "심판",
+      "from": "심판의 종료",
+      "to": "종료"
+    },
+    {
+      "law": "design",
+      "parent": "심판",
+      "from": "심판 각론",
+      "to": "각론"
+    },
+    {
+      "law": "trademark",
+      "parent": "심사",
+      "from": "심사 관련제도",
+      "to": "관련"
+    },
+    {
+      "law": "design",
+      "parent": "심판",
+      "from": "심판 관련제도",
+      "to": "관련"
+    }
   ]
 }
