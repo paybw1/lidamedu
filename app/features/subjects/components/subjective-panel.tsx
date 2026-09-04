@@ -20,9 +20,10 @@ import {
   isPracticable,
   parseEssayOutline,
 } from "~/features/subjects/lib/essay-outline";
+import type { PracticeMode } from "~/features/subjects/lib/essay-practice-score";
 
 import { CaseBadgeRow } from "./answer-case-badges";
-import { OutlinePractice } from "./essay-practice-outline";
+import { EssayPractice } from "./essay-practice";
 
 // 채점기준·모범답안·해설 마크다운 — 공용 렌더러의 머리글(16/14/12px)이 본문(14px)보다
 // 작아 목차 번호(1. 2. 3.)가 묻힘 → 본문보다 큰 계층으로 스코프 오버라이드.
@@ -173,8 +174,9 @@ export function SubjectivePanel({
   );
   const [revealedModel, setRevealedModel] = useState(false);
   const [revealedRubric, setRevealedRubric] = useState(false);
-  // feat-2-036 — 목차 연습. 모범답안을 가리고 목차를 세워 본다.
-  const [outlinePractice, setOutlinePractice] = useState(false);
+  // feat-2-036 — 모범답안 카드 안의 모드. 읽기 / 목차 연습(본문 보고 제목 채우기) /
+  // 내용 연습(목차 보고 본문 채우기).
+  const [practiceMode, setPracticeMode] = useState<"read" | PracticeMode>("read");
   const [lastSaved, setLastSaved] = useState<SubjectiveAttempt | null>(
     initialAttempt,
   );
@@ -575,33 +577,7 @@ export function SubjectivePanel({
           {revealedRubric ? "채점기준 숨기기" : "채점기준 보기"}
           {!hasRubric ? " (미등록)" : ""}
         </Button>
-        {/* feat-2-036 — 목차 연습. ★켜면 모범답안을 닫는다. 옆에 답이 펼쳐진 채로
-            목차를 세우는 것은 연습이 아니다. */}
-        <Button
-          variant={outlinePractice ? "outline" : "secondary"}
-          size="sm"
-          onClick={() =>
-            setOutlinePractice((v) => {
-              if (!v) setRevealedModel(false);
-              return !v;
-            })
-          }
-          disabled={outlineBlocks.length === 0 || timedActive}
-          title={timedActive ? "시험 모드 중에는 연습 잠금" : undefined}
-          className="rounded-full"
-          data-testid="subjective-outline-practice"
-        >
-          {outlinePractice ? "목차 연습 끝내기" : "목차 연습"}
-        </Button>
       </div>
-
-      {outlinePractice ? (
-        <div className="space-y-3">
-          {outlineBlocks.map((b) => (
-            <OutlinePractice key={b.index} problemId={problemId} block={b} />
-          ))}
-        </div>
-      ) : null}
       {aiError ? <p className="text-destructive text-xs">{aiError}</p> : null}
       <AiGradeResult
         result={
@@ -647,6 +623,33 @@ export function SubjectivePanel({
               모범답안
             </p>
             {rubricAiGenerated ? <AiGeneratedBadge /> : null}
+            {/* feat-2-036 — 읽기 / 목차 연습 / 내용 연습. 도식 패널의 「읽기·연습」과 같은 자리. */}
+            {outlineBlocks.length ? (
+              <div className="border-border ml-1 flex overflow-hidden rounded-full border">
+                {(
+                  [
+                    ["read", "읽기"],
+                    ["outline", "목차 연습"],
+                    ["content", "내용 연습"],
+                  ] as const
+                ).map(([m, lbl]) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setPracticeMode(m)}
+                    className={cn(
+                      "px-2.5 py-0.5 text-[11px] font-semibold transition-colors",
+                      practiceMode === m
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-muted",
+                    )}
+                    data-testid={`subjective-practice-${m}`}
+                  >
+                    {lbl}
+                  </button>
+                ))}
+              </div>
+            ) : null}
             {viewerIsStaff ? (
               <button
                 type="button"
@@ -670,8 +673,20 @@ export function SubjectivePanel({
             ) : null}
           </div>
           <div className="px-5 py-4">
-            {/* 설문 섹션별 렌더 — 각 설문 답이 끝난 지점에 관련 판례 인라인 배지. */}
-            {answerSections.length ? (
+            {/* 연습 중에는 모범답안 본문을 렌더하지 않는다 — 옆에 답이 펼쳐져 있으면
+                연습이 아니다. 가려진 쪽은 「맞춰보기」에서 칸마다 열린다. */}
+            {practiceMode !== "read" ? (
+              <div className="space-y-3">
+                {outlineBlocks.map((b) => (
+                  <EssayPractice
+                    key={b.index}
+                    problemId={problemId}
+                    block={b}
+                    mode={practiceMode}
+                  />
+                ))}
+              </div>
+            ) : answerSections.length ? (
               answerSections.map((sec, i) => (
                 <Fragment key={i}>
                   <MarkdownView
