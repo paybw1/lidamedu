@@ -22,6 +22,9 @@ import {
 } from "~/features/subjects/lib/essay-outline";
 import type { PracticeMode } from "~/features/subjects/lib/essay-practice-score";
 
+import { outlineItems } from "~/features/subjects/lib/essay-stage-link";
+
+import { AnalysisByOutline } from "./essay-analysis-by-outline";
 import { CaseBadgeRow } from "./answer-case-badges";
 import { EssayPractice } from "./essay-practice";
 
@@ -360,6 +363,8 @@ export function SubjectivePanel({
     });
   };
 
+  // ② 에서 세운 목차 — ③ 의 칸 구성이 여기서 나온다.
+  const myOutline = useMemo(() => outlineItems(stages.outline), [stages.outline]);
   const hasModel = (modelAnswerMd ?? "").trim().length > 0;
   // feat-2-036 — 목차 연습에 내줄 설문 묶음. 칸이 없는 묶음은 연습이 성립하지 않는다.
   const outlineBlocks = useMemo(
@@ -532,6 +537,7 @@ export function SubjectivePanel({
                 setOpenStages((prev) => ({ ...prev, [s.key]: !prev[s.key] }))
               }
               onChange={(v) => setStages((prev) => ({ ...prev, [s.key]: v }))}
+              outline={myOutline}
             />
           ))}
         </div>
@@ -741,12 +747,15 @@ function StageEditor({
   open,
   onToggle,
   onChange,
+  outline,
 }: {
   stage: (typeof STAGES)[number];
   value: string;
   open: boolean;
   onToggle: () => void;
   onChange: (v: string) => void;
+  /** ② 에서 세운 목차 항목 — ③ 은 이 목차를 따라 쓴다(feat-2-032, 2026-09-04). */
+  outline: string[];
 }) {
   const done = value.trim().length > 0;
   const panelId = `subjective-stage-panel-${stage.key}`;
@@ -802,14 +811,20 @@ function StageEditor({
           <p className="text-muted-foreground mb-2 text-[11px] leading-relaxed">
             {stage.hint}
           </p>
-          <textarea
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            rows={stage.rows}
-            placeholder={stage.placeholder}
-            className="border-input bg-background focus:ring-primary/30 w-full rounded-lg border px-4 py-3 text-sm leading-[1.8] tracking-[-0.005em] focus:ring-2 focus:outline-none"
-            data-testid={`subjective-stage-${stage.key}`}
-          />
+          {/* ★③ 은 ② 의 목차를 따라 항목별로 쓴다. 목차가 비어 있으면 종전대로 한 칸 —
+              ② 를 안 쓴 학생에게 빈 목록만 보여 주면 ③ 을 아예 못 쓴다. */}
+          {stage.key === "analysis" && outline.length ? (
+            <AnalysisByOutline items={outline} value={value} onChange={onChange} />
+          ) : (
+            <textarea
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              rows={stage.rows}
+              placeholder={stage.placeholder}
+              className="border-input bg-background focus:ring-primary/30 w-full rounded-lg border px-4 py-3 text-sm leading-[1.8] tracking-[-0.005em] focus:ring-2 focus:outline-none"
+              data-testid={`subjective-stage-${stage.key}`}
+            />
+          )}
         </div>
       ) : null}
     </div>
