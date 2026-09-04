@@ -18,7 +18,7 @@ import {
   PencilLineIcon,
   SquareIcon,
 } from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useFetcher, useFetchers } from "react-router";
 
 import {
@@ -492,6 +492,21 @@ function DohaeBlocks({
   // 한 유닛이 길어 처음에는 전부 접어 둔다(원장 지시 2026-08-22).
   // ★조건부 렌더가 아니라 <details> 로 감춘다 — 접힌 내용도 DOM 에 남아야 하이라이트·
   //   포스트잇의 글자 오프셋이 어긋나지 않는다(컨테이너 전체 글을 기준으로 잡기 때문).
+  // ★빈칸 모드로 들어오면 접힌 절을 모두 펴 준다. 안 그러면 화면에 머리 띠만 보이고
+  //   입력 칸은 하나도 없는데 「맞춰보기」는 "0/0 정답 (안 쓴 칸 19)" 를 내놓는다.
+  //   여는 것은 **모드가 바뀔 때 한 번** — open 속성으로 고정하면 사용자가 닫은 절이
+  //   다시 그릴 때마다 열려 버린다.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const blankMode = useDohaeBlanks() !== null;
+  useEffect(() => {
+    if (!blankMode) return;
+    rootRef.current
+      ?.querySelectorAll("details")
+      .forEach((d) => {
+        d.open = true;
+      });
+  }, [blankMode, blocks]);
+
   const lead: ReactNode[] = [];
   const sections: Array<{ numeral: string; title: string; body: ReactNode[] }> =
     [];
@@ -505,7 +520,7 @@ function DohaeBlocks({
     else sections[sections.length - 1].body.push(node);
   });
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" ref={rootRef}>
       {lead}
       {sections.map((s, si) => (
         <details

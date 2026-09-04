@@ -47,6 +47,8 @@ interface BlankCtxValue {
   status: Record<number, DohaeBlankStatus>;
   register: (idx: number, el: HTMLInputElement | null) => void;
   onBlur: () => void;
+  /** Enter 로 다음 칸. */
+  focusNext: (idx: number) => void;
 }
 
 const BlankCtx = createContext<BlankCtxValue | null>(null);
@@ -139,9 +141,14 @@ export function useDohaeBlankPractice(
     }
   }, [key, plan]);
 
+  // ★지금 배치에 있는 칸만 읽는다. 유형을 바꾸면 빈칸 번호의 뜻이 달라지므로, ref 맵에
+  //   남아 있는 앞 배치의 번호를 그대로 읽으면 엉뚱한 값이 초안·채점에 섞인다.
   const collect = (): Record<number, string> => {
     const out: Record<number, string> = {};
-    for (const [k, el] of Object.entries(refs.current)) if (el) out[Number(k)] = el.value;
+    for (const h of plan.hits) {
+      const el = refs.current[h.idx];
+      if (el) out[h.idx] = el.value;
+    }
     return out;
   };
 
@@ -161,6 +168,17 @@ export function useDohaeBlankPractice(
       refs.current[idx] = el;
     },
     onBlur: saveDraft,
+    // ★blur 를 먼저 하고 다음 프레임에 focus — 한글 IME 는 확정한 마지막 음절을 조합
+    //   버퍼에 잠시 남겼다가 프로그램 포커스 이동 때 새 칸으로 흘린다. 이전 칸에서
+    //   확정·소진시킨 뒤 옮긴다(조문·판례 빈칸이 같은 순서를 쓴다).
+    focusNext: (idx) => {
+      const order = plan.hits.map((h) => h.idx);
+      const next = order[order.indexOf(idx) + 1];
+      const el = next === undefined ? null : refs.current[next];
+      if (!el) return;
+      (document.activeElement as HTMLElement | null)?.blur?.();
+      requestAnimationFrame(() => el.focus());
+    },
     usedTermIds: new Set(plan.terms.map((t) => t.termId)),
     blankCount: plan.hits.length,
     score,
@@ -223,7 +241,12 @@ export function DohaeText({
           ranges={shiftRanges(boldRanges, at, s)}
         />,
       );
-    out.push(<DohaeBlankInput key={`b${h.idx}`} hit={h} ctx={ctx} />);
+    {
+      // ★키는 번호가 아니라 **무엇이 어디에** 있는지로 준다. 번호로 주면 유형을 바꿔
+      //   말이 달라져도 React 가 같은 자리의 입력 칸을 재사용해, 앞 유형에서 친 답이
+      //   다른 말의 칸에 남는다(비제어라 DOM 값이 그대로 산다).
+      out.push(<DohaeBlankInput key={`${h.termId}:${h.start}`} hit={h} ctx={ctx} />);
+    }
     at = e;
   }
   if (at < text.length)
@@ -244,14 +267,37 @@ const TONE: Record<DohaeBlankStatus, string> = {
   wrong: "border-rose-500 bg-rose-50 text-rose-800 dark:bg-rose-950/30 dark:text-rose-300",
 };
 
+const BLANK_ATTR = "lidamBlank";
+
 function DohaeBlankInput({ hit, ctx }: { hit: DohaeBlankHit; ctx: BlankCtxValue }) {
   const status = ctx.status[hit.idx] ?? "empty";
+  const composing = useRef(false);
   return (
     <span className="inline-flex items-baseline gap-1">
       <input
         ref={(el) => ctx.register(hit.idx, el)}
         type="text"
+        data-lidam-blank="1"
         onBlur={ctx.onBlur}
+        // ★터치로 다른 칸을 바로 찍으면 iOS 가 조합 중인 글자를 그 칸으로 옮긴다.
+        //   먼저 이전 칸을 blur 해 조합을 거기서 끝낸다(조문·판례 빈칸과 같은 방어).
+        //   터치는 mousedown 합성이 늦거나 생략될 수 있어 pointerdown 에서 한다.
+        onPointerDown={(e) => {
+          const active = document.activeElement as HTMLElement | null;
+          if (active && active !== e.currentTarget && active.dataset?.[BLANK_ATTR] === "1")
+            active.blur();
+        }}
+        onCompositionStart={() => {
+          composing.current = true;
+        }}
+        onCompositionEnd={() => {
+          composing.current = false;
+        }}
+        onKeyDown={(e) => {
+          if (e.key !== "Enter") return;
+          e.preventDefault(); // 팝업 안이라 기본 동작(폼 제출·닫힘)을 막는다.
+          if (!composing.current) ctx.focusNext(hit.idx);
+        }}
         // 글자 수만큼 폭 — 조문·판례 빈칸과 같은 규칙(몇 글자인지는 단서로 준다).
         style={{ width: `${Math.max(hit.answer.length, 2) + 1}ch` }}
         className={cn(
