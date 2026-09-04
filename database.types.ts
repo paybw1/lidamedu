@@ -1425,6 +1425,122 @@ export type Database = {
         }
         Relationships: []
       }
+      book_diff_candidates: {
+        Row: {
+          after_text: string
+          before_text: string
+          bucket: string
+          candidate_id: string
+          change_type: string
+          confidence: string
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision: string
+          decision_note: string | null
+          edition_id: string
+          fingerprint: string
+          page_no: number | null
+          published_revision_id: string | null
+          run_id: string
+          similarity: number | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          after_text?: string
+          before_text?: string
+          bucket: string
+          candidate_id?: string
+          change_type: string
+          confidence: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision?: string
+          decision_note?: string | null
+          edition_id: string
+          fingerprint: string
+          page_no?: number | null
+          published_revision_id?: string | null
+          run_id: string
+          similarity?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          after_text?: string
+          before_text?: string
+          bucket?: string
+          candidate_id?: string
+          change_type?: string
+          confidence?: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision?: string
+          decision_note?: string | null
+          edition_id?: string
+          fingerprint?: string
+          page_no?: number | null
+          published_revision_id?: string | null
+          run_id?: string
+          similarity?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_diff_candidates_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "book_diff_candidates_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "book_diff_candidates_edition_id_fkey"
+            columns: ["edition_id"]
+            isOneToOne: false
+            referencedRelation: "publication_editions"
+            referencedColumns: ["edition_id"]
+          },
+          {
+            foreignKeyName: "book_diff_candidates_edition_id_fkey"
+            columns: ["edition_id"]
+            isOneToOne: false
+            referencedRelation: "v_current_editions"
+            referencedColumns: ["edition_id"]
+          },
+          {
+            foreignKeyName: "book_diff_candidates_published_revision_id_fkey"
+            columns: ["published_revision_id"]
+            isOneToOne: false
+            referencedRelation: "content_revisions"
+            referencedColumns: ["revision_id"]
+          },
+          {
+            foreignKeyName: "book_diff_candidates_published_revision_id_fkey"
+            columns: ["published_revision_id"]
+            isOneToOne: false
+            referencedRelation: "v_errata_sheet"
+            referencedColumns: ["revision_id"]
+          },
+          {
+            foreignKeyName: "book_diff_candidates_published_revision_id_fkey"
+            columns: ["published_revision_id"]
+            isOneToOne: false
+            referencedRelation: "v_revision_recent"
+            referencedColumns: ["revision_id"]
+          },
+        ]
+      }
       book_downloads: {
         Row: {
           book_id: string
@@ -16022,6 +16138,15 @@ export type Database = {
         Returns: string
       }
       fn_problem_content_type: { Args: { p_format: string }; Returns: string }
+      fn_publish_book_errata: {
+        Args: {
+          p_candidate_ids: string[]
+          p_errata_kind?: string
+          p_errata_reason?: string
+          p_errata_severity?: string
+        }
+        Returns: string[]
+      }
       fn_publish_errata: {
         Args: {
           p_errata_kind: string

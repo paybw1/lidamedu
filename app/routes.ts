@@ -530,6 +530,8 @@ export default [
         "/admin/errata-items",
         "features/errata/screens/admin-errata-items.tsx",
       ),
+      // feat-3-604 — 판 대조(인쇄본 ↔ 개정중 원고) 후보 검수·발행.
+      route("/admin/book-diff", "features/errata/screens/admin-book-diff.tsx"),
 
       // 주관식 강의자료 인쇄본 (staff 전용) — 과목 게이트 밖, loader 에서 staff 검사.
       route(

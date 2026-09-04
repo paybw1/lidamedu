@@ -10,6 +10,19 @@ export const ERRATA_KINDS = [
 ] as const;
 export type ErrataKind = (typeof ERRATA_KINDS)[number]["value"];
 
+// feat-3-604 — 판 대조 후보 판정. DB CHECK(book_diff_candidates.decision)와 같은 값이어야 한다.
+export const BOOK_DIFF_DECISIONS = [
+  { value: "pending", label: "안 봄" },
+  { value: "errata", label: "정오표" },
+  { value: "addendum", label: "추록" },
+  { value: "next_edition", label: "다음 판만" },
+  { value: "not_a_change", label: "대조 오탐" },
+] as const;
+export type BookDiffDecision = (typeof BOOK_DIFF_DECISIONS)[number]["value"];
+export const BOOK_DIFF_DECISION_LABEL: Record<BookDiffDecision, string> = Object.fromEntries(
+  BOOK_DIFF_DECISIONS.map((d) => [d.value, d.label]),
+) as Record<BookDiffDecision, string>;
+
 export const ERRATA_SEVERITIES = [
   { value: "critical", label: "긴급" },
   { value: "normal", label: "보통" },

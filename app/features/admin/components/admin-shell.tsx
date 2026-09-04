@@ -157,7 +157,9 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "판례 도식", to: "/admin/case-diagrams" },
       { label: "하급심 판결문", to: "/admin/cases/lower-court" },
       { label: "강의노트 사례연구 검토", to: "/admin/case-study-review" },
-      // errata — 두 화면 모두 cluster="cases" 로 렌더된다(교재 추록·정오표).
+      // errata — 세 화면 모두 cluster="cases" 로 렌더된다(교재 추록·정오표).
+      // 판정은 staff 가 하고 발행만 원장·관리자다(화면 안에서 갈린다) — minRole 을 걸지 않는다.
+      { label: "판 대조 검수", to: "/admin/book-diff" },
       { label: "추록·정오표 시트", to: "/admin/errata-sheets" },
       { label: "추록 발행분 수정", to: "/admin/errata-items", minRole: "manager" },
     ],
