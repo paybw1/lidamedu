@@ -16,22 +16,21 @@ import fs from "node:fs";
 import path from "node:path";
 import { createClient } from "@supabase/supabase-js";
 
+// ★파서는 apply-article-refs 와 **같은 모듈**을 쓴다. 두 벌로 두면 트리와 조문 배치가
+//   서로 다른 원본 해석 위에 놓인다.
+import {
+  SOURCES,
+  dbPathOf as dbPathOfNode,
+  keyPath,
+  matchKey,
+  norm,
+  parseTree,
+} from "./lib/source-tree.mjs";
+
 const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
 });
 
-const SOURCES = {
-  trademark: {
-    label: "상표법",
-    article: "source/상표법/체계도/체계도(상표법) - 조문용.extracted.json",
-    caseView: "source/상표법/체계도/체계도(상표법) - 판례, 객관식용.extracted.json",
-  },
-  design: {
-    label: "디자인보호법",
-    article: "source/디자인보호법학습/체계도/체계도(디보법) - 조문용.extracted.json",
-    caseView: "source/디자인보호법학습/체계도/체계도(디보법) - 판례, 객관식용.extracted.json",
-  },
-};
 
 const lawCode = process.argv[2];
 const APPLY = process.argv.includes("--apply");
@@ -41,57 +40,6 @@ if (!src) {
   process.exit(1);
 }
 
-const norm = (s) =>
-  s
-    .replace(/^\s*[•·]\s*/, "")
-    .replace(/^\s*-\s*/, "")
-    .replace(/^\s*\[\d{2}\]\s*/, "")
-    .replace(/^\s*\d{2}\s+/, "")
-    .replace(/\s+/g, " ")
-    .trim();
-// ★안쪽 공백까지 지운다. `신규성상실의 예외` 와 `신규성 상실의 예외` 는 같은 항목인데
-//   띄어쓰기만 다르다 — 이걸 놓쳐 실제로 중복 노드가 하나 생겼다(2026-09-03).
-const matchKey = (s) =>
-  s.replace(/\s*\(\s*法[^)]*\)?\s*$/, "").replace(/\s+/g, "").trim();
-const keyPath = (p) => p.split(" / ").map(matchKey).join(" / ");
-// ★원본의 `(法 101, 102, 103)` 은 제목의 일부가 아니라 **배치 지시**다 — 라벨에서 뗀다.
-//   그 번호들을 실제 조문 연결로 옮기는 일은 apply-article-refs.mjs 가 맡는다.
-//   (닫는 괄호가 빠진 원본이 실제로 있어 `\)?` 로 받는다)
-const stripRefs = (s) => s.replace(/\s*\(\s*法\s*[^)]*\)?\s*$/, "").trim();
-
-
-function levelOf(t) {
-  if (/^\d{2}\s/.test(t)) return 1;
-  if (/^\s*\[\d{2}\]/.test(t)) return 2;
-  if (/^\s*[•·]/.test(t)) return 3;
-  if (/^\s*-\s/.test(t)) return 4;
-  return 0;
-}
-
-/** 원본 → 순서를 보존한 노드 목록(부모 경로 포함). */
-function parseTree(file) {
-  const paras = JSON.parse(fs.readFileSync(file, "utf8")).paragraphs;
-  const stack = [];
-  const out = [];
-  for (const p of paras) {
-    const raw = p.text;
-    if (!raw || !raw.trim()) continue;
-    const lv = levelOf(raw);
-    if (lv === 0) throw new Error(`형식을 못 읽은 줄: ${JSON.stringify(raw)}`);
-    const label = norm(raw);
-    stack.length = lv - 1;
-    stack[lv - 1] = label;
-    const chain = stack.slice(0, lv).filter(Boolean);
-    out.push({
-      label,
-      path: chain.join(" / "),
-      parentPath: chain.slice(0, -1).join(" / "),
-      // 최상위는 원본의 `01 …` 번호를 라벨에 유지한다(DB 도 그렇게 저장돼 있다).
-      displayLabel: stripRefs(lv === 1 ? raw.trim() : label),
-    });
-  }
-  return out;
-}
 
 const articleNodes = parseTree(src.article);
 const caseNodes = parseTree(src.caseView);
@@ -158,15 +106,7 @@ for (const n of nodes) {
   arr.push(n);
   childrenOf.set(n.parent_id, arr);
 }
-function dbPathOf(n) {
-  const parts = [];
-  let cur = n;
-  while (cur) {
-    parts.unshift(norm(cur.display_label));
-    cur = cur.parent_id ? byId.get(cur.parent_id) : null;
-  }
-  return parts.join(" / ");
-}
+const dbPathOf = (n) => dbPathOfNode(n, byId);
 
 // ── 매칭: 경로 우선, 없으면 잎 라벨(이동) ──────────────────────────────────
 const usedNode = new Set();
