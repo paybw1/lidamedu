@@ -47,9 +47,21 @@ export const keyPath = (p) => p.split(" / ").map(matchKey).join(" / ");
 //   바꾸면 (a) apply-tree 재실행 때 되돌아가고 (b) 원본↔DB 대조가 이름으로 이뤄지므로
 //   짝을 못 찾아 같은 자리에 새 노드가 하나 더 생긴다. 그래서 **파싱 단계에서** 바꿔
 //   원본 트리 자체를 화면 이름으로 만든다 — 경로 키도 자동으로 맞는다.
-const RENAMES = JSON.parse(
+const OVERRIDE_DOC = JSON.parse(
   fs.readFileSync("scripts/systematic/label-overrides.json", "utf8"),
-).renames;
+);
+const RENAMES = OVERRIDE_DOC.renames;
+// ★묶음 층을 아예 만들지 않고 자식을 위로 올린다(특허법 체계도와 같은 모양).
+//   DB 에서 부모를 바꾸고 노드를 지우는 대신 **원본 해석을 바꾼다** — 그래야
+//   apply-tree 가 스스로 자식을 옮기고 빈 묶음을 지운다(노드 id 보존).
+const FLATTEN = OVERRIDE_DOC.flatten ?? [];
+
+/** 이 묶음은 만들지 않는가? */
+export function isFlattened(lawCode, parentLabel, label) {
+  return FLATTEN.some(
+    (f) => f.law === lawCode && f.label === label && f.parent === (parentLabel ?? null),
+  );
+}
 
 /** 원본 이름 → 화면 이름. 같은 이름이 여러 층에 있어 부모까지 본다. */
 export function renameLabel(lawCode, parentLabel, label) {
@@ -87,7 +99,11 @@ export function parseTree(file, lawCode = null) {
       ? renameLabel(lawCode, stack[lv - 2] ?? null, norm(raw))
       : norm(raw);
     stack.length = lv - 1;
-    stack[lv - 1] = label;
+    // ★걷어낼 묶음은 stack 에 null 로 둔다. chain 이 falsy 를 걸러 내므로 자식의
+    //   경로에서 이 층이 자연스럽게 빠지고, 노드 자체도 만들지 않는다.
+    const flat = lawCode ? isFlattened(lawCode, stack[lv - 2] ?? null, label) : false;
+    stack[lv - 1] = flat ? null : label;
+    if (flat) continue;
     const chain = stack.slice(0, lv).filter(Boolean);
     out.push({
       label,

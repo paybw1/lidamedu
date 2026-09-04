@@ -79,9 +79,11 @@ for (const file of [src.article, src.caseView]) {
 }
 
 // ── 예외 목록 ──────────────────────────────────────────────────────────────
-const OVERRIDES = new Map(); // `${path}|${조번호}` → 옮길 path(없으면 null)
+// ★키는 node_id 다. path 로 잡으면 묶음 하나만 걷어내도 아래 경로가 전부 바뀌어
+//   예외가 조용히 무력화된다(2026-09-04 실제 사고).
+const OVERRIDES = new Map(); // `${node_id}|${조번호}` → 옮길 node_id(없으면 null)
 for (const o of JSON.parse(fs.readFileSync(OVERRIDES_FILE, "utf8")).overrides) {
-  for (const num of o.articles) OVERRIDES.set(`${o.path}|${num}`, o.moveTo ?? null);
+  for (const num of o.articles) OVERRIDES.set(`${o.nodeId}|${num}`, o.moveToNodeId ?? null);
 }
 
 // ── DB ─────────────────────────────────────────────────────────────────────
@@ -105,7 +107,7 @@ for (const n of nodes) {
   const k = keyPath(dbPathOf(n, byId));
   if (!nodeByKey.has(k)) nodeByKey.set(k, n);
 }
-const nodeByPath = new Map(nodes.map((n) => [String(n.path), n]));
+const nodeById = new Map(nodes.map((n) => [n.node_id, n]));
 
 const { data: articles, error: artErr } = await sb
   .from("articles")
@@ -166,14 +168,14 @@ for (const [k, want] of wantByKey) {
       missingArticle.push(`${want.label}: 제${num}조`);
       continue;
     }
-    const ovKey = `${node.path}|${num}`;
+    const ovKey = `${node.node_id}|${num}`;
     if (OVERRIDES.has(ovKey)) {
       const moveTo = OVERRIDES.get(ovKey);
       if (!moveTo) {
         overridden.push(`${want.label}: 제${num}조 — 배치 안 함`);
         continue;
       }
-      const dest = nodeByPath.get(moveTo);
+      const dest = nodeById.get(moveTo);
       if (!dest) {
         overridden.push(`★${want.label}: 제${num}조 — 옮길 노드 없음(${moveTo})`);
         continue;

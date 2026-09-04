@@ -176,17 +176,22 @@ for (const a of arts) {
 }
 
 // ★예외 목록에 남긴다. 이게 없으면 apply-article-refs 재실행 때 되살아난다.
+// ★키는 node_id — path 는 트리가 바뀌면 같이 바뀌어 예외가 무력화된다.
 const doc = JSON.parse(fs.readFileSync(OVERRIDES_FILE, "utf8"));
-const same = doc.overrides.find((o) => o.path === String(from.path));
+const same = doc.overrides.find((o) => o.nodeId === from.node_id);
 const entry = same ?? {
-  path: String(from.path),
+  nodeId: from.node_id,
+  law: lawCode,
   label: chainOf(from).join(" / "),
   articles: [],
-  moveTo: to ? String(to.path) : null,
+  moveToNodeId: to ? to.node_id : null,
+  moveToLabel: to ? chainOf(to).join(" / ") : null,
   reason: reason ?? "운영자 지시로 조정",
 };
 for (const a of arts) if (!entry.articles.includes(a.num)) entry.articles.push(a.num);
-entry.moveTo = to ? String(to.path) : (entry.moveTo ?? null);
+entry.label = chainOf(from).join(" / ");
+entry.moveToNodeId = to ? to.node_id : (entry.moveToNodeId ?? null);
+entry.moveToLabel = to ? chainOf(to).join(" / ") : (entry.moveToLabel ?? null);
 if (reason) entry.reason = reason;
 if (!same) doc.overrides.push(entry);
 fs.writeFileSync(OVERRIDES_FILE, JSON.stringify(doc, null, 2) + "\n");

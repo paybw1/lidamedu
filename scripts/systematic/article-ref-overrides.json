@@ -1,109 +1,102 @@
 {
   "_설명": [
     "원본 체계도의 (法 …) 표기를 그대로 배치하면 안 되는 예외.",
-    "★여기 적어 두지 않으면 apply-article-refs.mjs 를 다시 돌릴 때 되살아난다.",
-    "  운영자가 화면에서 옮기거나 지운 배치는 반드시 여기에 남길 것.",
-    "path     = 원본 표기가 붙어 있는 노드(systematic_nodes.path)",
-    "articles = 그 노드에 배치하지 않을 조 번호",
-    "moveTo   = 대신 배치할 노드 path. 없으면 배치하지 않고 끝낸다.",
+    "★여기 적어 두지 않으면 apply-article-refs 를 다시 돌릴 때 되살아난다.",
     "",
-    "왜 생기나: 원본은 부모 항목에 (法 N) 을 적지만, 실제로는 그 아래 세부 항목",
-    "가운데 하나가 그 조문의 자리인 경우가 있다."
+    "★키는 node_id 다(path 아님). path 는 트리 위치에서 파생돼, 묶음 하나를 걷어내면",
+    "  아래가 전부 바뀐다 — 실제로 그 때문에 예외 3건이 조용히 무력화됐다(2026-09-04).",
+    "  label 은 사람이 읽기 위한 것이고 판정에 쓰이지 않는다.",
+    "",
+    "articles      = 그 노드에 배치하지 않을 조 번호",
+    "moveToNodeId  = 대신 배치할 노드. 없으면 배치하지 않고 끝낸다."
   ],
   "overrides": [
     {
-      "path": "trademark.b1.b1.b2",
-      "label": "01 총칙/보칙 / 총칙 규정 / 정의",
+      "nodeId": "9d6b724c-9000-4232-890f-a02ce3a87279",
+      "law": "trademark",
+      "label": "01 총칙/보칙 / 정의",
       "articles": [
         "2"
       ],
-      "moveTo": null,
+      "moveToNodeId": null,
+      "moveToLabel": null,
       "reason": "제2조는 하위 8개 항목(상표의 개념·상품·식별력…)에 이미 배치돼 있어 부모에 또 붙이면 중복. 2026-09-04 원장 지시."
     },
     {
-      "path": "trademark.b1.b1.b1",
-      "label": "01 총칙/보칙 / 총칙 규정 / 목적",
+      "nodeId": "39c1f420-13cc-4000-9d12-5ddb78394b34",
+      "law": "trademark",
+      "label": "01 총칙/보칙 / 목적",
       "articles": [
         "1"
       ],
-      "moveTo": "trademark.b1.b1.b1.b1",
+      "moveToNodeId": "fc5636ff-f293-453f-820a-368d01dbfccd",
+      "moveToLabel": "01 총칙/보칙 / 목적 / 상표법의 목적",
       "reason": "제1조의 자리는 하위 '상표법의 목적'. 2026-09-04 원장 지시."
     },
     {
-      "path": "trademark.b2.b1.b1",
-      "label": "등록요건 / 상표등록을 받을 수 있는 상표 / 상표등록의 요건",
+      "nodeId": "1a5c1326-eb8d-450f-82b4-a008bc19d2ee",
+      "law": "trademark",
+      "label": "02 등록요건 / 상표등록을 받을 수 있는 상표 / 상표등록의 요건",
       "articles": [
         "33"
       ],
-      "moveTo": null,
+      "moveToNodeId": null,
+      "moveToLabel": null,
       "reason": "제33조는 하위 '본질적 식별력이 없는 상표(法 33①)'·'사용에 의한 식별력을 취득한 상표(法 33②)'에 배치. 2026-09-04 원장 지시."
     },
     {
-      "path": "trademark.b2.b2.b1",
-      "label": "등록요건 / 상표등록을 받을 수 없는 상표 / 상표등록을 받을 수 없는 상표",
+      "nodeId": "1cb0d0e3-f8c7-4c5f-a9ca-6a9b263de719",
+      "law": "trademark",
+      "label": "02 등록요건 / 상표등록을 받을 수 없는 상표 / 상표등록을 받을 수 없는 상표",
       "articles": [
         "34"
       ],
-      "moveTo": null,
+      "moveToNodeId": null,
+      "moveToLabel": null,
       "reason": "제34조는 하위 호별 항목(제1항 제1호 내지 제6호 등)에 배치돼 있어 부모 중복. 2026-09-04 원장 지시."
     },
     {
-      "path": "trademark.b1.b2",
-      "label": "총칙/보칙 / 보칙 규정",
-      "articles": [
-        "215",
-        "216",
-        "217",
-        "218",
-        "219",
-        "220",
-        "221",
-        "222",
-        "223",
-        "224",
-        "225",
-        "226",
-        "227",
-        "228",
-        "229"
-      ],
-      "moveTo": null,
-      "reason": "제215~229조는 하위 '보칙'에 배치돼 있어 부모 중복. 2026-09-04 배치 모양 점검."
-    },
-    {
-      "path": "trademark.b7.b6.b5",
-      "label": "심판 / 각론 / 상표등록의 취소심판",
+      "nodeId": "28dbc2a9-6d1d-48d2-992b-3afbc4bb5578",
+      "law": "trademark",
+      "label": "07 심판 / 각론 / 상표등록의 취소심판",
       "articles": [
         "119"
       ],
-      "moveTo": null,
+      "moveToNodeId": null,
+      "moveToLabel": null,
       "reason": "제119조는 하위 호별 항목(제1항 제1호~제6호)에 배치돼 있어 부모 중복. 2026-09-04 배치 모양 점검."
     },
     {
-      "path": "design.b1.b1.b2",
-      "label": "총칙/보칙 / 총칙 규정 / 정의",
+      "nodeId": "d857abe1-018e-4df8-9907-eff8d611d299",
+      "law": "design",
+      "label": "01 총칙/보칙 / 정의",
       "articles": [
         "2"
       ],
-      "moveTo": null,
+      "moveToNodeId": null,
+      "moveToLabel": null,
       "reason": "제2조는 하위 12개 항목(물품성·형태성·시각성·심미성 등)에 배치. 상표법 정의와 같은 기준. 2026-09-04."
     },
     {
-      "path": "design.b2.b1.b1",
-      "label": "등록요건 / 디자인등록을 받을 수 있는 디자인 / 디자인등록의 요건",
+      "nodeId": "9384b2a0-a74f-4c5c-b17b-55ee0db7dbcf",
+      "law": "design",
+      "label": "02 등록요건 / 디자인등록을 받을 수 있는 디자인 / 디자인등록의 요건",
       "articles": [
         "33"
       ],
-      "moveTo": null,
+      "moveToNodeId": null,
+      "moveToLabel": null,
       "reason": "제33조는 하위 요건 항목(공업상 이용가능성·신규성·창작비용이성·확대된 선출원)에 배치. 상표법 상표등록의 요건과 같은 기준. '디자인의 동일·유사'는 여러 조문에 걸친 판단기준이라 제외. 2026-09-04."
     },
     {
-      "path": "design.b7.b3",
-      "label": "심판 / 심판의 진행",
+      "nodeId": "e98edb5b-50e8-4121-8b63-be4db357ab5c",
+      "law": "design",
+      "label": "07 심판 / 진행",
       "articles": [
         "146"
       ],
-      "moveTo": null,
+      "moveToNodeId": null,
+      "moveToLabel": null,
       "reason": "제146조는 하위 '심판의 진행' 항목에 배치돼 있어 부모(묶음) 중복. 2026-09-04."
     }
   ]
