@@ -15,7 +15,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 import "dotenv/config";
 
-import { MAX_TERMS_PER_TYPE, blankableNodes } from "~/features/dohae/lib/dohae-blanks";
+import { blankableNodes } from "~/features/dohae/lib/dohae-blanks";
 
 import { loadCorpus, unitSourcesOf } from "./lib/blank-term-corpus";
 import { extractTerms, pickForStorage } from "./lib/blank-term-extract";
@@ -29,10 +29,16 @@ const args = process.argv.slice(2);
 const commit = args.includes("--commit");
 const verbose = args.includes("--verbose");
 const only = args.includes("--unit") ? args[args.indexOf("--unit") + 1] : null;
-/** 화면 상한(유형당 12)의 두 배 — 운영자가 잡티를 빼면 다음 말이 올라올 여유. */
+/**
+ * 유닛당 저장할 말의 수.
+ * ★2026-09-05 부터 **자르지 않는다.** 화면이 말 수에 상한을 두지 않고 밀도를 「한 줄에 하나」로
+ *   잡으므로(원장 결정), 저장에서 자르면 그게 곧 빈칸 수의 상한이 된다. 예전엔 24개로 잘라
+ *   유닛당 19.2개만 들어갔고 그 탓에 빈칸이 18칸에서 멈췄다(후보는 유닛당 30.1개다).
+ *   실험용으로만 `--headroom N`.
+ */
 const HEADROOM = args.includes("--headroom")
   ? Number(args[args.indexOf("--headroom") + 1])
-  : MAX_TERMS_PER_TYPE * 2;
+  : Number.POSITIVE_INFINITY;
 
 type Row = Database["public"]["Tables"]["dohae_blank_terms"]["Row"];
 type Insert = Database["public"]["Tables"]["dohae_blank_terms"]["Insert"];

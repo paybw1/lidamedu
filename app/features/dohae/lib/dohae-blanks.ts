@@ -23,16 +23,25 @@ export const DOHAE_BLANK_TYPE_LABEL: Record<DohaeBlankType, string> = {
   3: "통합",
 };
 
-/** 한 유형에서 뚫는 **말**의 수 상한. 유형 3 은 1·2 의 합집합이라 따로 두지 않는다. */
-export const MAX_TERMS_PER_TYPE = 12;
+/**
+ * 한 줄로 칠 글자 수. **빈칸 밀도의 기준은 「한 줄에 하나」다**(원장 결정 2026-09-05).
+ *
+ * ★글조각(표 칸·문단) 단위로 하나만 두면 긴 문단이 한 칸만 받아 유닛당 19.4칸에 그친다.
+ *   줄 단위로 잡아야 64.5칸이 된다(전 유닛 실측). 도해 팝업 폭에서 대략 40자가 한 줄이다.
+ */
+export const LINE_CHARS = 40;
 
 /**
  * 같은 말을 유닛에서 몇 번까지 뚫는가.
- * ★상한 12 는 *말* 의 수이지 *칸* 의 수가 아니다 — t25 「보정」에서 「거절이유통지」는
- *   23칸, 「최후거절이유」는 20칸에 나온다. 출현마다 뚫으면 한 유닛에 입력 칸이 100개를
- *   넘고 같은 답을 스무 번 치는 연습이 된다.
+ * ★상한을 아주 풀면 t20 에서 「종업원」을 **67번** 치게 된다(실측). 연습이 아니라 노동이다.
+ *   5회면 유닛당 64.5칸이 나오면서 같은 답 반복은 5회에 묶인다.
  */
-export const MAX_HITS_PER_TERM = 2;
+export const MAX_HITS_PER_TERM = 5;
+
+/** 이 글조각이 받을 수 있는 빈칸 수 = 줄 수. 아무리 짧아도 한 칸은 준다. */
+function quotaOf(node: DohaeTextNode): number {
+  return Math.max(1, Math.ceil(node.text.length / LINE_CHARS));
+}
 
 // ── ① 빈칸을 놓을 수 있는 글 ───────────────────────────────────────────────
 
@@ -154,14 +163,21 @@ interface RawHit {
   answer: string;
 }
 
-/** 주어진 말들만으로 자리를 잡는다 — 겹침 금지, 말당 `MAX_HITS_PER_TERM` 회까지. */
+/**
+ * 주어진 말들만으로 자리를 잡는다 — 글조각마다 **줄 수만큼**, 말당 `MAX_HITS_PER_TERM` 회까지.
+ *
+ * ★상한에 걸린 말은 **건너뛰고 그 자리를 다음 말에게 넘긴다**(멈추지 않는다). 멈추면 흔한
+ *   말이 앞에서 몫을 다 쓴 글조각이 통째로 빈칸 없이 지나간다.
+ */
 function place(nodes: DohaeTextNode[], terms: DohaeTerm[]): RawHit[] {
   const ordered = [...terms].sort(byPlacementPriority);
-  const raw: RawHit[] = [];
+  const out: RawHit[] = [];
+  const used = new Map<string, number>();
 
   nodes.forEach((node, nodeIndex) => {
-    const taken: Array<[number, number]> = [];
-    const overlaps = (s: number, e: number) => taken.some(([ts, te]) => s < te && ts < e);
+    // ① 이 글조각에서 겹치지 않게 놓을 수 있는 자리를 모두 찾는다(긴 말이 먼저 잡는다).
+    const spots: RawHit[] = [];
+    const overlaps = (s: number, e: number) => spots.some((x) => s < x.end && x.start < e);
     const straddles = (s: number, e: number) =>
       (node.breaks ?? []).some((b) => s < b && b < e);
     for (const t of ordered) {
@@ -172,29 +188,32 @@ function place(nodes: DohaeTextNode[], terms: DohaeTerm[]): RawHit[] {
         if (at < 0) break;
         const end = at + t.term.length;
         if (startsAtBoundary(node.text, at) && !overlaps(at, end) && !straddles(at, end)) {
-          taken.push([at, end]);
-          raw.push({ nodeIndex, path: node.path, start: at, end, termId: t.termId, answer: t.term });
+          spots.push({ nodeIndex, path: node.path, start: at, end, termId: t.termId, answer: t.term });
         }
         from = at + 1;
       }
     }
+
+    // ② 읽기 순으로 줄 수만큼만 가져간다.
+    //    ★한 글조각에 같은 답은 한 번만 — 같은 칸에서 같은 답을 두 번 치는 것은 연습이 아니다
+    //      (유닛 상한만 두었을 때 실측 256건이 한 칸에 몰려 있었다).
+    spots.sort((a, b) => a.start - b.start);
+    const quota = quotaOf(node);
+    const seenHere = new Set<string>();
+    let taken = 0;
+    for (const spot of spots) {
+      if (taken >= quota) break;
+      if (seenHere.has(spot.termId)) continue;
+      const n = (used.get(spot.termId) ?? 0) + 1;
+      if (n > MAX_HITS_PER_TERM) continue;
+      used.set(spot.termId, n);
+      seenHere.add(spot.termId);
+      out.push(spot);
+      taken++;
+    }
   });
 
-  // 읽기 순으로 세운 뒤 말마다 앞에서 MAX_HITS_PER_TERM 개만 남긴다.
-  // ★한 칸에는 한 번만 — 같은 문장 안에서 같은 답을 두 번 치는 것은 연습이 아니다.
-  //   (유닛 상한 2 만 두었을 때 실측 256건이 한 칸에 몰려 있었다.)
-  raw.sort((a, b) => a.nodeIndex - b.nodeIndex || a.start - b.start);
-  const used = new Map<string, number>();
-  const inCell = new Set<string>();
-  return raw.filter((h) => {
-    const cell = `${h.termId}|${h.path}`;
-    if (inCell.has(cell)) return false;
-    const n = (used.get(h.termId) ?? 0) + 1;
-    if (n > MAX_HITS_PER_TERM) return false;
-    used.set(h.termId, n);
-    inCell.add(cell);
-    return true;
-  });
+  return out;
 }
 
 /** 그 유형에서 쓰는 말들을 순위대로 — 유형 1 은 기출 등장 수, 유형 2 는 OX 등장 수. */
@@ -216,19 +235,21 @@ export interface DohaeBlankPlan {
 /**
  * 한 유닛·한 유형의 빈칸 배치.
  *
- * ★자리를 못 잡는 말이 있다(본문에 있긴 하나 어절 중간이거나 더 긴 말에 먹혔다).
- *   그런 말이 상한 12 를 차지하면 빈칸이 조용히 줄어든다 — 그래서 **한 번 놓아 보고
- *   자리를 잡은 말만 세어** 12 를 채운다. 조문 빈칸에서 미렌더 빈칸이 모수에 남아
- *   난이도가 영영 안 열리던 것과 같은 함정이다(feat-2-030 `filterPlaceableBlanks`).
+ * ★**말의 수에는 상한을 두지 않는다**(2026-09-05). 예전에는 유형당 12개만 썼는데, 글조각이
+ *   유닛당 55개인데 말 12개로 채우니 18칸에서 멈췄다. 밀도는 이제 「한 줄에 하나」가 정한다.
+ * ★`limit` 을 주면 **자리를 잡은 말만 세어** 채운다 — 자리를 못 잡는 말(어절 중간이거나 더
+ *   긴 말에 먹힌 말)이 상한을 차지하면 빈칸이 조용히 줄어든다. 조문 빈칸에서 미렌더 빈칸이
+ *   모수에 남아 난이도가 영영 안 열리던 것과 같은 함정이다(feat-2-030 `filterPlaceableBlanks`).
  */
 export function buildBlanks(
   nodes: DohaeTextNode[],
   terms: DohaeTerm[],
   type: DohaeBlankType,
-  limit = MAX_TERMS_PER_TYPE,
+  limit?: number,
 ): DohaeBlankPlan {
   const pick = (t: 1 | 2): DohaeTerm[] => {
     const ranked = rankTerms(terms, t);
+    if (limit == null) return ranked;
     const placed = new Set(place(nodes, ranked).map((h) => h.termId));
     return ranked.filter((x) => placed.has(x.termId)).slice(0, limit);
   };

@@ -139,7 +139,8 @@ export function extractTerms(
  * 저장할 말을 추린다 — **두 유형 순위 각각의 앞쪽**만.
  * ★점수 하나로 자르면 안 된다. 유형1 은 기출 등장 수로, 유형2 는 OX 등장 수로 순위를
  *   매기므로 점수 상위에 없어도 어느 한 유형에서는 앞자리인 말이 있다.
- * 상한은 화면 상한(12)의 두 배 — 운영자가 잡티를 빼면 다음 말이 올라올 여유를 둔다.
+ * ★기본은 자르지 않는다(`headroom = Infinity`). 화면이 말 수에 상한을 두지 않으므로
+ *   여기서 자르면 그게 곧 빈칸 수의 상한이 된다. 자를 때만 두 순위의 앞쪽을 각각 남긴다.
  */
 export function pickForStorage(terms: ExtractedTerm[], headroom: number): ExtractedTerm[] {
   const top = (

@@ -6,6 +6,7 @@ import type { DohaeBlock } from "../labels";
 import {
   type DohaeTerm,
   type DohaeTextNode,
+  LINE_CHARS,
   MAX_HITS_PER_TERM,
   blankableNodes,
   buildBlanks,
@@ -108,14 +109,45 @@ describe("말이 놓일 자리", () => {
     expect(p.hits).toHaveLength(1);
   });
 
-  it(`★같은 말은 ${MAX_HITS_PER_TERM}회까지만 — 같은 답을 스무 번 치는 연습이 된다`, () => {
+  it(`★같은 말은 ${MAX_HITS_PER_TERM}회까지만 — 다 풀면 「종업원」을 67번 치는 유닛이 있다`, () => {
     const p = buildBlanks(
-      nodes("거절이유통지 하나", "거절이유통지 둘", "거절이유통지 셋"),
+      nodes(...Array.from({ length: 8 }, (_, i) => `거절이유통지 ${i}`)),
       [term("거절이유통지")],
       3,
     );
     expect(p.hits).toHaveLength(MAX_HITS_PER_TERM);
-    expect(p.hits.map((h) => h.path)).toEqual(["b0", "b1"]); // 읽기 순 앞에서부터
+    // 읽기 순 앞에서부터 — 뒤쪽 글조각은 몫을 못 받는다.
+    expect(p.hits.map((h) => h.path)).toEqual(["b0", "b1", "b2", "b3", "b4"]);
+  });
+
+  it("★한 줄에 하나 — 짧은 칸에 쟁점이 여럿 있어도 한 칸만 뚫는다", () => {
+    // 20자 = 한 줄. 말이 셋 다 있어도 앞의 하나만 자리를 받는다.
+    const p = buildBlanks(nodes("신규성 과 진보성 과 선행기술"), [
+      term("신규성"),
+      term("진보성"),
+      term("선행기술"),
+    ], 3);
+    expect(p.hits.map((h) => h.answer)).toEqual(["신규성"]);
+  });
+
+  it(`★긴 글은 줄 수(${LINE_CHARS}자)만큼 받는다 — 문단마다 하나면 유닛당 19칸에서 멈춘다`, () => {
+    const long = `${"가".repeat(38)} 신규성 ${"나".repeat(38)} 진보성 ${"다".repeat(38)} 선행기술`;
+    const p = buildBlanks([{ path: "b0", text: long }], [
+      term("신규성"),
+      term("진보성"),
+      term("선행기술"),
+    ], 3);
+    expect(Math.ceil(long.length / LINE_CHARS)).toBeGreaterThanOrEqual(3);
+    expect(p.hits.map((h) => h.answer)).toEqual(["신규성", "진보성", "선행기술"]);
+  });
+
+  it("★상한에 걸린 말은 자리를 다음 말에게 넘긴다 — 멈추면 그 줄이 통째로 빈칸 없이 지나간다", () => {
+    const spent = Array.from({ length: MAX_HITS_PER_TERM }, (_, i) => `흔한말 ${i}`);
+    const p = buildBlanks(nodes(...spent, "흔한말 과 드문말"), [term("흔한말"), term("드문말")], 3);
+    // 마지막 글조각에서 「흔한말」은 상한을 다 썼으므로 「드문말」이 그 몫을 받는다.
+    expect(p.hits.filter((h) => h.path === `b${spent.length}`).map((h) => h.answer)).toEqual([
+      "드문말",
+    ]);
   });
 
   it("★속표가 끼어드는 자리를 가로지르는 말은 뚫지 않는다 — 놓을 데가 없다", () => {
@@ -144,7 +176,9 @@ describe("유형", () => {
     term("정오것", { fromExam: false, examCount: 0, oxCount: 9, score: 80 }),
     term("둘다", { examCount: 5, oxCount: 5, score: 70 }),
   ];
-  const text = nodes("기출것 과 정오것 과 둘다 가 있다.");
+  // ★말마다 제 글조각을 준다 — 한 칸에 몰아 두면 「한 줄에 하나」라 하나만 뚫려
+  //   무엇이 뽑혔는지를 잴 수 없다.
+  const text = nodes("기출것 이 있다.", "정오것 이 있다.", "둘다 가 있다.");
 
   it("유형 1 은 기출 유래만, 유형 2 는 정오 유래만", () => {
     expect(buildBlanks(text, pool, 1).terms.map((t) => t.term)).toEqual(["기출것", "둘다"]);
@@ -166,7 +200,7 @@ describe("유형", () => {
     // 「출원」은 어절 중간에만 있어 자리를 못 잡는다. 상한 2 를 그것이 차지하면
     // 빈칸이 1개로 줄어든다 — 다음 순위인 「진보성」이 대신 들어와야 한다.
     const p = buildBlanks(
-      nodes("특허출원 신규성 진보성"),
+      nodes("특허출원 이 있다.", "신규성 이 있다.", "진보성 이 있다."),
       [
         term("출원", { examCount: 9, score: 90 }),
         term("신규성", { examCount: 8, score: 80 }),
@@ -188,7 +222,8 @@ describe("채점", () => {
   });
 
   it("★비워 둔 칸은 채점에서 뺀다 — 한 칸만 연습해도 손해가 없다", () => {
-    const p = buildBlanks(nodes("신규성 과 진보성 과 선행기술"), [
+    // ★말마다 제 글조각을 준다 — 한 칸에 몰면 「한 줄에 하나」라 한 칸만 뚫려 모수가 1이 된다.
+    const p = buildBlanks(nodes("신규성 이 있다.", "진보성 이 있다.", "선행기술 이 있다."), [
       term("신규성"),
       term("진보성"),
       term("선행기술"),
