@@ -143,3 +143,18 @@ describe("내용 연습 — 본문 한 칸 채점", () => {
     expect(s.totalCount).toBe(block.leaves.length);
   });
 });
+
+describe("빈칸이 되는 칸", () => {
+  it("★두 연습 모두 본문이 있는 칸만 묻는다", () => {
+    const o = scorePractice(block, "outline", {});
+    const c = scorePractice(block, "content", {});
+    expect(o.totalCount).toBe(block.leaves.length);
+    expect(c.totalCount).toBe(block.leaves.length);
+  });
+
+  it("★본문 없이 하위를 묶기만 하는 자리는 묻지 않는다 — 단서가 없다", () => {
+    // 「2. 甲의 주장」은 제목만 있고 본문이 없다(아래 (1)·(2)를 묶는 자리).
+    const o = scorePractice(block, "outline", {});
+    expect(o.blanks.some((b) => b.model.includes("甲의 주장"))).toBe(false);
+  });
+});

@@ -18,7 +18,7 @@ import {
   verdictOf,
 } from "~/features/cases/lib/answer-match";
 
-import { type OutlineBlock, type OutlineNode, walk } from "./essay-outline";
+import { type OutlineBlock, type OutlineNode } from "./essay-outline";
 
 const CJK = { keepCjk: true } as const;
 
@@ -49,15 +49,16 @@ export interface PracticeScore {
 }
 
 /**
- * 이 연습에서 빈칸이 되는 칸들.
- *   목차 연습 — 제목이 있는 칸 전부(중간 목차 포함). 본문이 단서가 된다.
- *   내용 연습 — 본문이 있는 칸만. 제목만 있는 중간 목차는 쓸 것이 없다.
+ * 이 연습에서 빈칸이 되는 칸들 — **두 연습 모두 본문이 있는 칸만**이다.
+ *   목차 연습 — 그 본문을 보여 주고 제목을 묻는다.
+ *   내용 연습 — 그 제목을 보여 주고 본문을 묻는다.
+ *
+ * ★본문 없이 하위를 묶기만 하는 자리(「2. 甲의 주장」)는 목차 연습에서도 묻지 않는다
+ *   (원장 2026-09-04). 단서가 될 본문이 없어 학생이 맞힐 근거가 없고, 그냥 비워 두게
+ *   되어 채점에서도 빠진다 — 물어도 아무 의미가 없는 칸이었다.
  */
-export function blanksOf(block: OutlineBlock, mode: PracticeMode): OutlineNode[] {
-  if (mode === "content") return block.leaves;
-  const out: OutlineNode[] = [];
-  walk(block.nodes, (n) => out.push(n));
-  return out;
+export function blanksOf(block: OutlineBlock, _mode: PracticeMode): OutlineNode[] {
+  return block.leaves;
 }
 
 /** 그 칸의 모범답안. */

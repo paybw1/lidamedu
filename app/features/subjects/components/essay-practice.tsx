@@ -137,11 +137,21 @@ export function EssayPractice({
         ) : null}
       </header>
 
-      <p className="text-muted-foreground mb-3 text-xs">
-        {mode === "outline"
-          ? "본문을 읽고 그 글에 붙일 소제목을 써 보세요. 비워 둔 칸은 채점에서 뺍니다."
-          : "목차를 보고 그 자리에 들어갈 내용을 써 보세요. 비워 둔 칸은 채점에서 뺍니다."}
-      </p>
+      <div className="mb-3 space-y-1">
+        <p className="text-muted-foreground text-xs">
+          {mode === "outline"
+            ? "본문을 읽고 그 글에 붙일 소제목을 써 보세요. 비워 둔 칸은 채점에서 뺍니다."
+            : "목차를 보고 그 자리에 들어갈 내용을 써 보세요. 비워 둔 칸은 채점에서 뺍니다."}
+        </p>
+        {/* ★채점은 모범답안의 낱말이 답에 담겼는지를 센다. 뜻이 맞아도 법률용어를 피해
+            풀어 쓰면 낮게 나온다(실측 0.33) — 그걸 모르면 왜 미흡인지 알 수 없다.
+            임계값을 낮추는 대신 성질을 알려 주기로 했다(원장 2026-09-04). */}
+        <p className="text-muted-foreground text-xs">
+          채점은 <strong className="font-semibold">법령·판례가 쓰는 말</strong>이 답에
+          담겼는지로 봅니다. 뜻이 맞아도 그 말을 피해 풀어 쓰면 낮게 나옵니다 — 2차 답안에서
+          용어를 그대로 쓰는 것이 곧 점수입니다.
+        </p>
+      </div>
 
       <ol className="space-y-3">
         {rows.map((n) => (
@@ -187,21 +197,22 @@ function PracticeRow({
   onBlur: () => void;
   bind: (el: HTMLTextAreaElement | HTMLInputElement | null) => void;
 }) {
-  const shown = mode === "outline" ? node.bodyMd : node.title;
-
   return (
     <div className="space-y-1.5">
-      {/* 보여 주는 쪽 — 목차 연습은 본문, 내용 연습은 제목. */}
-      {mode === "content" ? (
+      {/* 보여 주는 쪽 — 목차 연습은 본문, 내용 연습은 제목.
+          ★본문 없이 하위를 묶기만 하는 자리는 목차 연습에서도 **제목을 그냥 보여 준다**
+          (원장 2026-09-04). 단서가 없어 물어도 맞힐 근거가 없고, 트리 모양을 보여 주는
+          역할은 그대로 해야 한다. */}
+      {mode === "content" || !isBlank ? (
         <p className="text-sm font-semibold">{node.title}</p>
-      ) : shown.trim() ? (
-        <div className="border-border/70 bg-muted/40 rounded-lg border px-3 py-2">
-          <MarkdownView text={shown} breaks className="prose-sm max-w-none text-sm" />
-        </div>
       ) : (
-        <p className="text-muted-foreground text-xs">
-          (본문 없이 아래 항목을 묶는 자리입니다)
-        </p>
+        <div className="border-border/70 bg-muted/40 rounded-lg border px-3 py-2">
+          <MarkdownView
+            text={node.bodyMd}
+            breaks
+            className="prose-sm max-w-none text-sm"
+          />
+        </div>
       )}
 
       {isBlank ? (
