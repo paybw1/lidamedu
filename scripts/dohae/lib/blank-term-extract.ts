@@ -17,6 +17,14 @@ export const TOO_COMMON_SHORT = 0.02;
 const MIN_LEN = 2;
 const MAX_LEN = 12;
 
+/**
+ * 조사를 벗기다 남은 **문법 토막**. 코퍼스 어딘가에 홀로 쓰인 적이 있어(「하여」·「본다」)
+ * 그 검사를 통과해 버린다 — 낱말이 아니므로 여기서 이름으로 막는다.
+ * ★일반명사(의미·문제·형식…)는 여기 넣지 않는다. 그건 뺄지 말지가 사람 판단이라
+ *   `dohae_blank_terms.excluded_at` 으로 다룬다(추출을 다시 돌려도 보존된다).
+ */
+const FRAGMENTS = new Set(["아니", "하지", "하여", "본다", "있기", "한다", "된다", "그중"]);
+
 const coreOf = (tok: string) =>
   tok.replace(/^[^가-힣]+/, "").replace(/[^가-힣]+$/, "");
 
@@ -77,7 +85,7 @@ const idf = (v: Vocabulary, t: string) => Math.log(v.docs / (1 + (v.df.get(t) ??
  *   같은 규칙이 「적용받」·「소급되」·「보정하」 같은 용언 토막도 함께 걸러낸다.
  */
 export function usable(v: Vocabulary, t: string): boolean {
-  if (t.length < MIN_LEN || !v.bareCores.has(t)) return false;
+  if (t.length < MIN_LEN || FRAGMENTS.has(t) || !v.bareCores.has(t)) return false;
   return dfRatio(v, t) <= (t.length === MIN_LEN ? TOO_COMMON_SHORT : TOO_COMMON);
 }
 

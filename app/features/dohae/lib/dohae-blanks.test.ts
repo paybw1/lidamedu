@@ -103,6 +103,11 @@ describe("말이 놓일 자리", () => {
     expect(p.hits.map((h) => h.answer)).toEqual(["정정심판", "정정"]);
   });
 
+  it("★한 칸에는 한 번만 — 같은 문장에 같은 답을 두 번 치는 것은 연습이 아니다", () => {
+    const p = buildBlanks(nodes("신규성 판단과 신규성 상실"), [term("신규성")], 3);
+    expect(p.hits).toHaveLength(1);
+  });
+
   it(`★같은 말은 ${MAX_HITS_PER_TERM}회까지만 — 같은 답을 스무 번 치는 연습이 된다`, () => {
     const p = buildBlanks(
       nodes("거절이유통지 하나", "거절이유통지 둘", "거절이유통지 셋"),

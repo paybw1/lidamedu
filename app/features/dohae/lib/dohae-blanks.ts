@@ -181,12 +181,19 @@ function place(nodes: DohaeTextNode[], terms: DohaeTerm[]): RawHit[] {
   });
 
   // 읽기 순으로 세운 뒤 말마다 앞에서 MAX_HITS_PER_TERM 개만 남긴다.
+  // ★한 칸에는 한 번만 — 같은 문장 안에서 같은 답을 두 번 치는 것은 연습이 아니다.
+  //   (유닛 상한 2 만 두었을 때 실측 256건이 한 칸에 몰려 있었다.)
   raw.sort((a, b) => a.nodeIndex - b.nodeIndex || a.start - b.start);
   const used = new Map<string, number>();
+  const inCell = new Set<string>();
   return raw.filter((h) => {
+    const cell = `${h.termId}|${h.path}`;
+    if (inCell.has(cell)) return false;
     const n = (used.get(h.termId) ?? 0) + 1;
+    if (n > MAX_HITS_PER_TERM) return false;
     used.set(h.termId, n);
-    return n <= MAX_HITS_PER_TERM;
+    inCell.add(cell);
+    return true;
   });
 }
 
