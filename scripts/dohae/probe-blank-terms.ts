@@ -15,6 +15,12 @@ import "dotenv/config";
 
 import { nounStem } from "~/features/blanks/lib/noun-blanks";
 import type { DohaeBlock, DohaeCell } from "~/features/dohae/labels";
+import {
+  type DohaeTerm,
+  blankableNodes as libBlankableNodes,
+  buildBlanks,
+  isArticleBox,
+} from "~/features/dohae/lib/dohae-blanks";
 
 const url = process.env.SUPABASE_URL!;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -315,6 +321,41 @@ function analyze(u: (typeof units)[number]) {
   }
   hits.sort((a, b) => b.score - a.score);
   return { hits, exam: exam.length, ox: ox.length, cells: textNodes.length, chars: unitText.length };
+}
+
+// ── 실제 배치까지 재 본다(--place) ─────────────────────────────────────────
+// ★말이 좋아도 배치가 몇 칸 안 나오면 연습이 안 된다. 화면을 짓기 전에 칸 수를 본다.
+if (args.includes("--place")) {
+  const tally = { t1: 0, t2: 0, t3: 0, zero: 0, boxes: 0, worst: [] as string[] };
+  for (const u of units) {
+    const nodes = libBlankableNodes(u.blocks);
+    tally.boxes += u.blocks.filter(isArticleBox).length;
+    const terms: DohaeTerm[] = analyze(u).hits.map((h, i) => ({
+      termId: `${u.unit_key}-${i}`,
+      term: h.term,
+      fromExam: h.examN > 0,
+      fromOx: h.oxN > 0,
+      examCount: h.examN,
+      oxCount: h.oxN,
+      score: h.score,
+    }));
+    const n1 = buildBlanks(nodes, terms, 1).hits.length;
+    const n2 = buildBlanks(nodes, terms, 2).hits.length;
+    const n3 = buildBlanks(nodes, terms, 3).hits.length;
+    tally.t1 += n1;
+    tally.t2 += n2;
+    tally.t3 += n3;
+    if (n3 === 0) tally.zero++;
+    else if (n3 < 5) tally.worst.push(`${u.unit_key}(${n3})`);
+  }
+  const avg = (n: number) => (n / units.length).toFixed(1);
+  console.log(
+    `\n배치 — 유형1 평균 ${avg(tally.t1)}칸 · 유형2 ${avg(tally.t2)}칸 · 유형3 ${avg(tally.t3)}칸` +
+      ` · 빈칸 0인 유닛 ${tally.zero} · 5칸 미만 ${tally.worst.length}`,
+  );
+  console.log(`   조문 원문 박스 ${tally.boxes}개 — 전부 빈칸 대상에서 제외됨`);
+  if (tally.worst.length) console.log(`   적은 유닛: ${tally.worst.join(" ")}`);
+  process.exit(0);
 }
 
 const targets = only ? units.filter((u) => u.unit_key === only) : units;
