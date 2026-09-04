@@ -12,6 +12,11 @@
 //   node scripts/systematic/edit-article-placement.mjs trademark \
 //     move "총칙 > 목적" 1 "총칙 > 목적 > 상표법의 목적"
 //
+//   node scripts/systematic/edit-article-placement.mjs trademark \
+//     add "총칙 > 정의 > 상표 외의 권리" 2
+//
+// 조번호는 쉼표로 여러 개 지정할 수 있다: `215,216,217`
+//
 // 기본은 dry-run. 적용하려면 --apply.
 import "dotenv/config";
 import fs from "node:fs";
@@ -39,11 +44,12 @@ const [lawCode, mode, fromChain, articleNum, toChain] = args;
 if (!lawCode || !mode || !fromChain || !articleNum || (mode === "move" && !toChain)) {
   console.error(`사용:
   node scripts/systematic/edit-article-placement.mjs <law> remove "가 > 나 > 다" <조번호> [--apply]
-  node scripts/systematic/edit-article-placement.mjs <law> move "가 > 나" <조번호> "가 > 나 > 다" [--apply]`);
+  node scripts/systematic/edit-article-placement.mjs <law> move "가 > 나" <조번호> "가 > 나 > 다" [--apply]
+  node scripts/systematic/edit-article-placement.mjs <law> add    "가 > 나 > 다" <조번호,조번호…> [--apply]`);
   process.exit(1);
 }
-if (!["remove", "move"].includes(mode)) {
-  console.error(`mode 는 remove | move`);
+if (!["remove", "move", "add"].includes(mode)) {
+  console.error(`mode 는 remove | move | add`);
   process.exit(1);
 }
 
@@ -69,6 +75,13 @@ const key = (s) => s.replace(/\s+/g, "").trim();
 
 /** "가 > 나 > 다" → 노드. 마지막 이름이 같고 앞 이름들이 조상에 순서대로 들어 있으면 일치. */
 function resolve(chainText) {
+  // ★이름이 겹치는 층(부모와 자식이 같은 이름)은 사슬로 못 좁힌다 — 그때는 path 를
+  //   그대로 넘긴다. 실제로 부모 대신 자식을 지운 사고가 있었다(2026-09-04 제146조).
+  if (/^[a-z_]+.[a-z0-9.]+$/i.test(chainText.trim())) {
+    const hit = nodes.find((n) => String(n.path) === chainText.trim());
+    if (!hit) throw new Error(`path 로 노드를 못 찾음: ${chainText}`);
+    return hit;
+  }
   const want = chainText.split(">").map((s) => key(s));
   const last = want[want.length - 1];
   const cands = nodes.filter((n) => key(n.display_label.replace(/^\s*\d{2}\s+/, "")) === last);
@@ -97,45 +110,70 @@ const to = mode === "move" ? resolve(toChain) : null;
 
 const lawId = LAW_UUID[lawCode];
 if (!lawId) throw new Error(`law uuid 미등록: ${lawCode}`);
-const { data: art, error: artErr } = await sb
-  .from("articles")
-  .select("article_id, display_label")
-  .eq("law_id", lawId)
-  .eq("level", "article")
-  .eq("article_number", String(articleNum))
-  .is("deleted_at", null)
-  .maybeSingle();
-if (artErr) throw new Error(artErr.message);
-if (!art) throw new Error(`조문 없음: ${lawCode} 제${articleNum}조`);
+const numbers = String(articleNum)
+  .split(",")
+  .map((x) => x.trim())
+  .filter(Boolean);
+const arts = [];
+for (const num of numbers) {
+  const { data: art, error: artErr } = await sb
+    .from("articles")
+    .select("article_id, display_label")
+    .eq("law_id", lawId)
+    .eq("level", "article")
+    .eq("article_number", num)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (artErr) throw new Error(artErr.message);
+  if (!art) throw new Error(`조문 없음: ${lawCode} 제${num}조`);
+  arts.push({ num, ...art });
+}
 
-const { data: existing } = await sb
-  .from("article_systematic_links")
-  .select("node_id")
-  .eq("node_id", from.node_id)
-  .eq("article_id", art.article_id);
-
-console.log(`\n${art.display_label}`);
-console.log(`  대상 노드: ${chainOf(from).join(" / ")}  (${from.path})`);
-console.log(`  현재 배치: ${existing?.length ? "있음" : "★없음 — 이미 지워졌거나 원래 없었다"}`);
+const target = from;
+console.log(`\n${mode === "add" ? "배치 추가" : mode === "move" ? "배치 이동" : "배치 삭제"}`);
+console.log(`  노드     : ${chainOf(target).join(" / ")}  (${target.path})`);
 if (to) console.log(`  옮길 곳  : ${chainOf(to).join(" / ")}  (${to.path})`);
+for (const a of arts) {
+  const { data: cur } = await sb
+    .from("article_systematic_links")
+    .select("node_id")
+    .eq("node_id", target.node_id)
+    .eq("article_id", a.article_id);
+  console.log(`  ${a.display_label} — 현재 ${cur?.length ? "배치됨" : "없음"}`);
+}
 
 if (!APPLY) {
   console.log(`\ndry-run — 적용하려면 --apply`);
   process.exit(0);
 }
 
-if (to) {
-  const { error: e } = await sb
-    .from("article_systematic_links")
-    .upsert({ node_id: to.node_id, article_id: art.article_id }, { ignoreDuplicates: true });
-  if (e) throw new Error(`옮길 곳 배치 실패: ${e.message}`);
+if (mode === "add") {
+  for (const a of arts) {
+    const { error: e } = await sb
+      .from("article_systematic_links")
+      .upsert({ node_id: from.node_id, article_id: a.article_id }, { ignoreDuplicates: true });
+    if (e) throw new Error(`배치 추가 실패 제${a.num}조: ${e.message}`);
+  }
+  // ★추가는 예외 목록에 적지 않는다 — apply-article-refs 는 원본 밖 배치를 지우지
+  //   않으므로(초과로 세기만 한다) 재실행해도 살아남는다.
+  console.log(`\n적용 완료 — 배치 추가 ${arts.length}건`);
+  process.exit(0);
 }
-const { error: delErr } = await sb
-  .from("article_systematic_links")
-  .delete()
-  .eq("node_id", from.node_id)
-  .eq("article_id", art.article_id);
-if (delErr) throw new Error(`기존 배치 삭제 실패: ${delErr.message}`);
+
+for (const a of arts) {
+  if (to) {
+    const { error: e } = await sb
+      .from("article_systematic_links")
+      .upsert({ node_id: to.node_id, article_id: a.article_id }, { ignoreDuplicates: true });
+    if (e) throw new Error(`옮길 곳 배치 실패: ${e.message}`);
+  }
+  const { error: delErr } = await sb
+    .from("article_systematic_links")
+    .delete()
+    .eq("node_id", from.node_id)
+    .eq("article_id", a.article_id);
+  if (delErr) throw new Error(`기존 배치 삭제 실패: ${delErr.message}`);
+}
 
 // ★예외 목록에 남긴다. 이게 없으면 apply-article-refs 재실행 때 되살아난다.
 const doc = JSON.parse(fs.readFileSync(OVERRIDES_FILE, "utf8"));
@@ -147,10 +185,10 @@ const entry = same ?? {
   moveTo: to ? String(to.path) : null,
   reason: reason ?? "운영자 지시로 조정",
 };
-if (!entry.articles.includes(String(articleNum))) entry.articles.push(String(articleNum));
-entry.moveTo = to ? String(to.path) : entry.moveTo ?? null;
+for (const a of arts) if (!entry.articles.includes(a.num)) entry.articles.push(a.num);
+entry.moveTo = to ? String(to.path) : (entry.moveTo ?? null);
 if (reason) entry.reason = reason;
 if (!same) doc.overrides.push(entry);
 fs.writeFileSync(OVERRIDES_FILE, JSON.stringify(doc, null, 2) + "\n");
 
-console.log(`\n적용 완료 — DB 반영 + ${OVERRIDES_FILE} 기록`);
+console.log(`\n적용 완료 — ${arts.length}건 · DB 반영 + ${OVERRIDES_FILE} 기록`);
