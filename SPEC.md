@@ -273,6 +273,7 @@
 | feat-3-601 | 도서 추록/정오표 데이터 모델 — `book_updates` (book_title/publisher/edition/kind:supplement\|errata\|other/title/description/publishedAt/url/pdfUrl/subject_laws[]/importance/tags). RLS: public read, staff write. trgm + subject_laws GIN 인덱스. Soft delete. | P1 | ✅ |
 | feat-3-602 | 도서 자료 등록/수정 — `/api/admin/book-update` (create/update/delete, Zod 검증) + staff inline 폼 on /latest/book-updates. | P1 | ✅ |
 | feat-3-603 | 도서 추록/정오표 피드 — `/latest/book-updates` 검색·과목·유형·중요 필터 + 페이지네이션. 카드: 자료 제목·책 제목·판/쇄·출판사·내용·subject 배지·외부 링크/PDF 버튼. 네비게이션 메뉴 6번째 항목. | P1 | ✅ |
+| feat-3-604 | **판 대조 도구** — 인쇄된 책(PDF) ↔ 개정중 원고(HWPX)를 글자 단위로 맞춰 추록·정오표 후보를 뽑는다. `scripts/errata/compare-book-editions.mjs` + 규칙 모듈 `lib/book-diff.mjs`. 본문/각주/표 칸/도형을 갈라 대조(본문 99.8%·각주 98.9%·표 97.9% 자동 정합), 쪽수는 PDF 러닝헤더에서 취함. 산출 changes.csv/html/json. **S1 완료** — 남음: S2 표·도해 잡음 정리 + 그림 변경 나란히 보기, S3 원장 검수 화면 → book_updates 발행 연결. | P2 | 🟡 |
 
 상세 스펙: `docs/spec-detail-5-3-latest.md` (작성 예정).
 
