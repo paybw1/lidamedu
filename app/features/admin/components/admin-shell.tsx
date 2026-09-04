@@ -159,7 +159,7 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "강의노트 사례연구 검토", to: "/admin/case-study-review" },
       // errata — 두 화면 모두 cluster="cases" 로 렌더된다(교재 추록·정오표).
       { label: "추록·정오표 시트", to: "/admin/errata-sheets" },
-      { label: "추록 발행분 수정", to: "/admin/errata-items" },
+      { label: "추록 발행분 수정", to: "/admin/errata-items", minRole: "manager" },
     ],
   },
   {
@@ -243,14 +243,14 @@ export const ADMIN_NAV: NavCluster[] = [
     Icon: ClapperboardIcon,
     screens: [
       // feat-11-008 P4 — 강의개설(판매 상품 통합 목록: 검색·수정·목차·수강생 진입점).
-      { label: "강의개설", to: "/admin/lectures" },
+      { label: "강의개설", to: "/admin/lectures", minRole: "admin" },
       // 강의 콘텐츠(회차·영상 심화) — 내부 구조는 시리즈/연도판 유지, 용어만 운영 용어.
       { label: "강의 콘텐츠", to: "/admin/lms/courses", duty: "lms_video_admin" },
       // feat-11-008 P3 — 강의·상품 공용 분류 관리(카탈로그 탭 SSOT).
       { label: "강의 카테고리", to: "/admin/lecture-categories" },
       // feat-11-008 P5 — 콘텐츠관리 분리: 라이브러리(원본 동기화·검색) / 강의그룹(회차 구성).
       { label: "콘텐츠 라이브러리", to: "/admin/lms/contents", duty: "lms_video_admin" },
-      { label: "강의그룹", to: "/admin/lms/groups" },
+      { label: "강의그룹", to: "/admin/lms/groups", minRole: "admin" },
       // 수강 후기 일단 숨김(REVIEWS_ENABLED) — 재오픈 시 자동 복원.
       // ★조건부 spread 는 문맥 타입을 못 받아 duty 가 string 으로 넓어진다 —
       //   같은 배열의 다른 항목까지 함께 넓어지므로 명시 타입을 붙인다.
@@ -287,8 +287,8 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "수강생 관리", to: "/admin/users", duty: "student_admin_access" },
       // P1 — 체험→유료 전환 추적(만료 임박 워크리스트·전환율).
       { label: "체험 전환", to: "/admin/trial-conversion" },
-      { label: "접속이력 관리", to: "/admin/access-logs" },
-      { label: "탈퇴 관리", to: "/admin/withdrawals" },
+      { label: "접속이력 관리", to: "/admin/access-logs", minRole: "admin" },
+      { label: "탈퇴 관리", to: "/admin/withdrawals", minRole: "admin" },
       { label: "위험 수강생 (7일 무접속)", to: "/admin/cohorts/at-risk" },
       { label: "등급 체험 테스트", to: "/admin/membership-test", minRole: "admin" },
     ],
@@ -302,7 +302,7 @@ export const ADMIN_NAV: NavCluster[] = [
     screens: [
       { label: "반 관리", to: "/admin/cohorts" },
       // pricing "종합반 등업 신청" 접수 → 승인(반 배정=등업)/반려.
-      { label: "등업 신청", to: "/admin/cohort-requests" },
+      { label: "등업 신청", to: "/admin/cohort-requests", minRole: "manager" },
       { label: "반별 게시판 관리", to: "/admin/cohort-boards" },
       { label: "커리큘럼 관리", to: "/admin/curricula" },
     ],
@@ -315,7 +315,7 @@ export const ADMIN_NAV: NavCluster[] = [
     Icon: UserCogIcon,
     screens: [
       // feat-7-041 — 강사 담당 과목(콘텐츠 쓰기 권한) + 배분 규칙 연결.
-      { label: "강사 담당·권한", to: "/admin/instructors" },
+      { label: "강사 담당·권한", to: "/admin/instructors", minRole: "admin" },
       { label: "강사소개 관리", to: "/admin/instructor-profiles" },
     ],
   },
@@ -330,7 +330,7 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "상품·요금 관리", to: "/admin/pricing", minRole: "manager" },
       { label: "할인 관리", to: "/admin/discounts", minRole: "manager" },
       // feat-7-014 — 수강권 = 상품의 학생별 인스턴스(재량 부여·연장·취소).
-      { label: "수강권 관리", to: "/admin/subscriptions" },
+      { label: "수강권 관리", to: "/admin/subscriptions", minRole: "manager" },
     ],
   },
   {
@@ -382,9 +382,9 @@ export const ADMIN_NAV: NavCluster[] = [
       // 전체 학습현황(학원 전체 집계) — feat-7-041, manager+ 게이트.
       { label: "전체 학습현황", to: "/admin/analytics/students", minRole: "manager" },
       { label: "시험일 관리", to: "/admin/exam-schedules", minRole: "manager" },
-      { label: "합격 결과", to: "/admin/exam-results" },
-      { label: "합격자 사례", to: "/admin/analytics/passers" },
-      { label: "합격 vs 불합격 패턴", to: "/admin/analytics/failure-patterns" },
+      { label: "합격 결과", to: "/admin/exam-results", minRole: "manager" },
+      { label: "합격자 사례", to: "/admin/analytics/passers", minRole: "manager" },
+      { label: "합격 vs 불합격 패턴", to: "/admin/analytics/failure-patterns", minRole: "manager" },
     ],
   },
   {
@@ -396,10 +396,10 @@ export const ADMIN_NAV: NavCluster[] = [
     screens: [
       { label: "공지 발송", to: "/admin/announcements" },
       { label: "대량 안내 발송", to: "/admin/broadcasts", minRole: "manager" },
-      { label: "팝업 공지", to: "/admin/popup-notices" },
+      { label: "팝업 공지", to: "/admin/popup-notices", minRole: "manager" },
       { label: "고객센터 문의", to: "/admin/cs-inquiries" },
       { label: "FAQ 관리", to: "/admin/support-faqs" },
-      { label: "커뮤니티 신고", to: "/admin/community/reports" },
+      { label: "커뮤니티 신고", to: "/admin/community/reports", minRole: "manager" },
     ],
   },
   {
@@ -410,7 +410,7 @@ export const ADMIN_NAV: NavCluster[] = [
     Icon: MessageCircleQuestionIcon,
     screens: [
       { label: "Q&A 답변 현황", to: "/admin/qna/sla", minRole: "manager" },
-      { label: "Q&A 답변자 지정", to: "/admin/qna/answerers" },
+      { label: "Q&A 답변자 지정", to: "/admin/qna/answerers", minRole: "manager" },
       { label: "AI 부정 피드백", to: "/admin/ai-qna/feedback" },
       { label: "AI 지표", to: "/admin/ai-qna/metrics" },
       { label: "AI 평가 세트", to: "/admin/ai-qna/eval" },
@@ -447,11 +447,11 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "관리자 관리", to: "/admin/staff-duties", minRole: "admin" },
       // feat-000-017 — id/pw 로그인 노출 토글.
       { label: "로그인 방식", to: "/admin/auth", minRole: "admin" },
-      { label: "감사 기록", to: "/admin/audit-logs" },
+      { label: "감사 기록", to: "/admin/audit-logs", minRole: "manager" },
       { label: "받은 알림함", to: "/admin/inbox" },
-      { label: "이용 가이드 관리", to: "/admin/guides" },
+      { label: "이용 가이드 관리", to: "/admin/guides", minRole: "manager" },
       // feat-11-008 P2 — 이벤트·소개용 풀페이지 제작(/page/:code).
-      { label: "페이지관리", to: "/admin/pages" },
+      { label: "페이지관리", to: "/admin/pages", minRole: "admin" },
       { label: "버그 리포트", to: "/admin/bug-reports" },
     ],
   },

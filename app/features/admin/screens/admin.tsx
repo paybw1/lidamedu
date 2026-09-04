@@ -5,7 +5,7 @@
 import type { Route } from "./+types/admin";
 
 import { ArrowRightIcon, ChevronRightIcon, LockIcon } from "lucide-react";
-import { Link, redirect } from "react-router";
+import { Link, data, redirect } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
@@ -60,6 +60,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   } = await client.auth.getUser();
   if (!user) throw redirect("/login?next=/admin");
   const role = await getStaffRole(client, user.id);
+  // ★스태프가 아니면 허브 자체를 열지 않는다. 예전엔 role 이 null 이어도 화면이 떠서
+  //   수험생에게 운영 메뉴 이름이 그대로 보였다(집계만 비어 있었을 뿐).
+  if (!role) throw data("Forbidden", { status: 403 });
   const isManager = roleAtLeast(role, "manager");
   const [
     contentStats,

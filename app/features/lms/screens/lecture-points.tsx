@@ -49,12 +49,18 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (couponIds.length) {
     const { data: grants } = await adminClient
       .from("coupon_grants")
-      .select("coupon_id, user_id")
+      .select("coupon_id, user_id, expires_at")
       .in("coupon_id", couponIds)
       .is("revoked_at", null);
+    const now = Date.now();
     for (const g of grants ?? []) {
+      // 재고는 발급된 전량을 센다 — 만료됐어도 한 장 나간 것은 나간 것이다.
       grantedCount.set(g.coupon_id, (grantedCount.get(g.coupon_id) ?? 0) + 1);
-      if (g.user_id === user.id) mine.add(g.coupon_id);
+      // ★보유 판정에서는 만료분을 뺀다. 안 그러면 만료된 쿠폰 한 장이 재교환을
+      //   영영 막는다(2026-09-04 신고: 잔액 10만P 인데 버튼이 죽어 있었다).
+      //   RPC exchange_points_for_coupon 의 중복 검사와 **같은 기준**이어야 한다.
+      const live = !g.expires_at || new Date(g.expires_at).getTime() > now;
+      if (g.user_id === user.id && live) mine.add(g.coupon_id);
     }
   }
 
@@ -164,7 +170,7 @@ function CouponExchange({
                 <input type="hidden" name="offerId" value={o.offerId} />
                 <Button type="submit" size="sm" disabled={disabled}>
                   {o.owned
-                    ? "교환함"
+                    ? "보유 중"
                     : o.soldOut
                       ? "소진"
                       : short
