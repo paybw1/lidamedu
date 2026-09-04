@@ -42,6 +42,23 @@ export const stripRefs = (s) => s.replace(REF_SUFFIX, "").trim();
 export const matchKey = (s) => stripRefs(s).replace(/\s+/g, "").trim();
 export const keyPath = (p) => p.split(" / ").map(matchKey).join(" / ");
 
+// ── 묶음 이름 줄여쓰기 ────────────────────────────────────────────────────
+// ★원본은 `심판의 진행`, 화면은 `진행` 처럼 줄여 쓰는 묶음이 있다. 이걸 DB 에서만
+//   바꾸면 (a) apply-tree 재실행 때 되돌아가고 (b) 원본↔DB 대조가 이름으로 이뤄지므로
+//   짝을 못 찾아 같은 자리에 새 노드가 하나 더 생긴다. 그래서 **파싱 단계에서** 바꿔
+//   원본 트리 자체를 화면 이름으로 만든다 — 경로 키도 자동으로 맞는다.
+const RENAMES = JSON.parse(
+  fs.readFileSync("scripts/systematic/label-overrides.json", "utf8"),
+).renames;
+
+/** 원본 이름 → 화면 이름. 같은 이름이 여러 층에 있어 부모까지 본다. */
+export function renameLabel(lawCode, parentLabel, label) {
+  const hit = RENAMES.find(
+    (r) => r.law === lawCode && r.from === label && r.parent === (parentLabel ?? null),
+  );
+  return hit ? hit.to : label;
+}
+
 /** 글머리 모양으로 계층을 읽는다. `01 …` / `[01] …` / `• …` / ` - …` */
 export function levelOf(t) {
   if (/^\d{2}\s/.test(t)) return 1;
@@ -55,7 +72,7 @@ export function levelOf(t) {
  * 원본 → 순서를 보존한 노드 목록.
  * refs 는 `(法 …)` 안의 원문(없으면 null) — 조문 배치는 이 값을 쓴다.
  */
-export function parseTree(file) {
+export function parseTree(file, lawCode = null) {
   const paras = JSON.parse(fs.readFileSync(file, "utf8")).paragraphs;
   const stack = [];
   const out = [];
@@ -64,7 +81,11 @@ export function parseTree(file) {
     if (!raw || !raw.trim()) continue;
     const lv = levelOf(raw);
     if (lv === 0) throw new Error(`형식을 못 읽은 줄: ${JSON.stringify(raw)}`);
-    const label = norm(raw);
+    // ★이름 바꾸기는 **stack 에 넣기 전**에 한다. 그래야 자식의 부모 경로에도
+    //   바뀐 이름이 들어가 원본 경로와 DB 경로가 같아진다.
+    const label = lawCode
+      ? renameLabel(lawCode, stack[lv - 2] ?? null, norm(raw))
+      : norm(raw);
     stack.length = lv - 1;
     stack[lv - 1] = label;
     const chain = stack.slice(0, lv).filter(Boolean);
@@ -74,6 +95,7 @@ export function parseTree(file) {
       parentPath: chain.slice(0, -1).join(" / "),
       // 최상위는 원본의 `01 …` 번호를 라벨에 유지한다(DB 도 그렇게 저장돼 있다).
       displayLabel: stripRefs(lv === 1 ? raw.trim() : label),
+      sourceLabel: norm(raw),
       refs: label.match(REF_SUFFIX)?.[1]?.trim() ?? null,
     });
   }

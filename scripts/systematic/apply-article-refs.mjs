@@ -71,7 +71,7 @@ function parseRefs(raw) {
 // 조문용이 기준. 판례/객관식용에만 있는 표기는 보태 준다.
 const wantByKey = new Map(); // keyPath → { refs, label }
 for (const file of [src.article, src.caseView]) {
-  for (const n of parseTree(file)) {
+  for (const n of parseTree(file, lawCode)) {
     if (!n.refs) continue;
     const k = keyPath(n.path);
     if (!wantByKey.has(k)) wantByKey.set(k, { refs: n.refs, label: stripRefs(n.label) });

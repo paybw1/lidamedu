@@ -41,8 +41,8 @@ if (!src) {
 }
 
 
-const articleNodes = parseTree(src.article);
-const caseNodes = parseTree(src.caseView);
+const articleNodes = parseTree(src.article, lawCode);
+const caseNodes = parseTree(src.caseView, lawCode);
 
 // ── 목표 트리 ──────────────────────────────────────────────────────────────
 // 조문용이 뼈대. 판례용에만 있으면 case_only, 같은 자리인데 이름이 다르면 case_display_label.
