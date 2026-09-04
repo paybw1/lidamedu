@@ -406,6 +406,55 @@ export function trimCommon(before, after) {
   };
 }
 
+// ─────────────────────────── 정렬과 무관한 재확인 ───────────────────────────
+//
+// 짝짓기까지 끝난 **남은** 후보만 여기 태운다. 순서를 전혀 안 보고 "반대편 판 어딘가에
+// 있기는 한가" 만 묻는다 — 정렬이 어긋나서 생긴 후보를 걷어내는 마지막 그물이다.
+//
+// ★짝짓기보다 **먼저** 돌리면 안 된다. 각주에 있던 서술을 본문으로 올린 곳(p.92)은 신판
+//   어딘가에 그대로 있으므로 "이동" 으로 깎여 나가고, 짝을 만나 보지도 못한다.
+
+/** 반대편에 있는지 볼 때 쓰는 토막 길이. */
+export const VERIFY_PIECE = 20;
+/** 이만큼 있으면 자리만 옮긴 것으로 본다. */
+export const VERIFY_PRESENT = 0.8;
+/** 이만큼도 없으면 정말 사라진(또는 새로 쓴) 글이다. */
+export const VERIFY_PARTIAL = 0.3;
+
+/**
+ * 한 판의 글을 통째로 이은 덩이.
+ *
+ * ★칸막이(U+0001)를 **어디에 넣느냐가 결과를 가른다.**
+ *   - 원고(HWPX) 조각 사이 → 넣는다. 서로 다른 문단이라 그냥 이으면 앞 조각 끝과 뒤 조각
+ *     머리가 붙어 있지도 않은 토막이 생기고, 그게 우연히 맞아 "있음" 으로 새어 나간다.
+ *   - 인쇄본(PDF) 줄 사이 → **넣지 않는다.** 줄바꿈은 문장 경계가 아니라 판면 사정일 뿐이라,
+ *     끊으면 20자 토막이 줄을 넘지 못해 멀쩡히 남아 있는 글을 "없다" 고 한다
+ *     (자리만 옮긴 것 64건이 46건으로 줄면서 오탐이 도로 늘었다).
+ */
+export function buildBlob(texts, separator = "") {
+  return texts.map((t) => normalize(t)).join(separator);
+}
+
+/** 글을 토막 내어 반대편 덩이에 몇 몫이 있는지(0~1). */
+export function presenceIn(text, blob) {
+  const n = normalize(text);
+  let hit = 0;
+  let total = 0;
+  for (let i = 0; i + VERIFY_PIECE <= n.length; i += VERIFY_PIECE) {
+    total++;
+    if (blob.includes(n.slice(i, i + VERIFY_PIECE))) hit++;
+  }
+  if (total) return hit / total;
+  return n.length >= 4 && blob.includes(n) ? 1 : 0;
+}
+
+/** 확실 = 반대편에 없다 / 일부 = 반쯤 남았다 / 이동 = 그대로 있다(자리만 바뀜). */
+export function confidenceOf(ratio) {
+  if (ratio >= VERIFY_PRESENT) return "이동";
+  if (ratio >= VERIFY_PARTIAL) return "일부";
+  return "확실";
+}
+
 /** 색인·참고문헌부터는 본문이 아니다 — 쪽 번호가 구판 기준이라 통째로 차이가 된다. */
 export function findBackMatter(pages, items) {
   const flat = (pg) => pg.lines.map((l) => l.text).join("").replace(/\s+/g, "");

@@ -24,15 +24,20 @@ import {
   BODY_MIN_HEIGHT,
   MIN_GAP_LEN,
   alignBucket,
+  buildBlob,
   buildStream,
+  confidenceOf,
   extractHwpx,
   extractPdf,
   findBackMatter,
   gapsOf,
+  isRunningHeader,
   normalize,
+  presenceIn,
   similarity,
   trimCommon,
 } from "./lib/book-diff.mjs";
+import { diffCaptions, newCaptions, oldCaptions, renderPages } from "./lib/book-figures.mjs";
 
 const ROOT = process.cwd();
 const DEFAULT_DIR = "source/특허법/리담특허법";
@@ -57,6 +62,7 @@ const bookName = basename(pdfPath).replace(/\.pdf$/i, "");
 const outDir = resolve(ROOT, opt("out", `tmp/book-diff/${bookName}`));
 const minGap = Number(opt("min-gap", MIN_GAP_LEN));
 const minSim = Number(opt("sim", PAIR_SIMILARITY));
+const renderCap = Number(opt("render-cap", 100));
 
 for (const [label, p] of [["PDF", pdfPath], ["HWPX", hwpxPath]]) {
   if (!existsSync(p)) {
@@ -171,19 +177,78 @@ const changes = pairUp(
   [...bodyRes.added, ...noteRes.added, ...tableRes.added],
 ).sort((a, b) => a.page - b.page || a.bucket.localeCompare(b.bucket) || a.type.localeCompare(b.type));
 
+// ── 4. 정렬과 무관한 재확인 ───────────────────────────────────────────
+// ★반드시 **짝짓기 뒤에** 한다. 먼저 하면 각주→본문으로 옮긴 서술(p.92)이 "이동" 으로 깎여
+//   짝을 만나 보지도 못한다.
+// 원고는 문단마다 끊고(서로 다른 글), 인쇄본은 줄을 이어 붙인다(줄바꿈은 판면 사정일 뿐).
+const newBlob = buildBlob(contentItems.map((i) => i.text), "");
+const oldBlob = buildBlob(
+  contentPages.flatMap((p) => p.lines.filter((l) => !isRunningHeader(l.text)).map((l) => l.text)),
+);
+for (const c of changes) {
+  if (c.type === "삭제") c.confidence = confidenceOf(presenceIn(c.before, newBlob));
+  else if (c.type === "추가") c.confidence = confidenceOf(presenceIn(c.after, oldBlob));
+  else if (presenceIn(c.before, newBlob) >= 0.8 && presenceIn(c.after, oldBlob) >= 0.8) c.confidence = "이동";
+  else c.confidence = "확실";
+}
+
+// ── 5. 표·그림(도해) 목록 대조 ────────────────────────────────────────
+const oldCaps = oldCaptions(pages, back.pdfPage);
+const newCaps = newCaptions(items, back.hwpxSeq);
+const caps = diffCaptions(oldCaps, newCaps);
+console.log(
+  `\n도해 — 구판 ${oldCaps.length}개 · 신판 ${newCaps.length}개 → 없어짐 ${caps.removed.length} · 새로 생김 ${caps.added.length} · 번호 밀림 ${caps.renumbered.length}`,
+);
+for (const r of caps.removed)
+  changes.push({
+    page: r.page,
+    bucket: "도해",
+    type: "삭제",
+    similarity: 0,
+    confidence: "확실",
+    before: `【${r.kind} ${r.num}】 ${r.title}`,
+    after: "",
+  });
+for (const a of caps.added)
+  changes.push({
+    page: 0,
+    bucket: "도해",
+    type: "추가",
+    similarity: 0,
+    confidence: "확실",
+    before: "",
+    after: `【${a.kind} ${a.num}】 ${a.title}`,
+  });
+changes.sort((a, b) => a.page - b.page || a.bucket.localeCompare(b.bucket) || a.type.localeCompare(b.type));
+
+// ── 6. 구판 쪽 그림 ───────────────────────────────────────────────────
+// 표·도해가 걸린 후보는 글자만으로 판정이 안 된다 — 그 쪽을 그림으로 떠서 원고와 눈으로 대게 한다.
+const needsEye = changes.filter(
+  (c) => c.confidence !== "이동" && c.page > 0 && (c.bucket.includes("표") || c.bucket === "도해"),
+);
+const { rendered, dropped } = await renderPages(pdfPath, needsEye.map((c) => c.page), `${outDir}/pages`, {
+  root: ROOT,
+  cap: renderCap,
+});
+console.log(
+  `구판 쪽 그림 ${rendered.size}장${dropped ? ` (상한을 넘어 ${dropped}쪽은 뜨지 않았다 — --render-cap 으로 늘릴 것)` : ""}`,
+);
+for (const c of changes) c.image = rendered.get(c.page) ?? null;
+
 const count = (t) => changes.filter((c) => c.type === t).length;
-const touchedPages = new Set(changes.map((c) => c.page));
+const sure = changes.filter((c) => c.confidence !== "이동");
+const touchedPages = new Set(sure.map((c) => c.page).filter(Boolean));
 console.log(
   `\n변경 후보 ${changes.length}건 — 수정 ${count("수정")} · 추가 ${count("추가")} · 삭제 ${count("삭제")}` +
-    ` / 손댄 쪽 ${touchedPages.size}쪽`,
+    `\n  그중 볼 것 ${sure.length}건 (손댄 쪽 ${touchedPages.size}쪽) · 자리만 옮긴 것 ${changes.length - sure.length}건`,
 );
 
-// ── 4. 내보내기 ───────────────────────────────────────────────────────
+// ── 7. 내보내기 ───────────────────────────────────────────────────────
 const csvCell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
 const csv = [
-  ["쪽(구판)", "구분", "분류", "닮은정도", "구판 원문", "신판 원문"].map(csvCell).join(","),
+  ["쪽(구판)", "구분", "분류", "확신", "닮은정도", "구판 원문", "신판 원문"].map(csvCell).join(","),
   ...changes.map((c) =>
-    [c.page || "", c.bucket, c.type, c.similarity || "", c.before, c.after].map(csvCell).join(","),
+    [c.page || "", c.bucket, c.type, c.confidence, c.similarity || "", c.before, c.after].map(csvCell).join(","),
   ),
 ].join("\r\n");
 writeFileSync(`${outDir}/changes.csv`, `﻿${csv}`, "utf8");
@@ -201,6 +266,27 @@ function diffCells(row) {
 }
 
 const TYPE_CLASS = { 추가: "add", 삭제: "del", 수정: "mod" };
+
+/** 표 한 벌. 그림이 뜬 쪽은 구판 칸에 같이 건다(파일이 옆에 있어야 보인다 — data URI 를 쓰면 HTML 이 수십 MB 가 된다). */
+function table(rows) {
+  if (!rows.length) return "<p class=\"meta\">해당 없음</p>";
+  return `<div class="wrap"><table>
+<tr><th>쪽</th><th>구분</th><th>분류</th><th>확신</th><th>구판(인쇄본)</th><th>신판(개정중)</th></tr>
+${rows
+  .map((c) => {
+    const [before, after] = diffCells(c);
+    const shot = c.image
+      ? `<br><img class="page" loading="lazy" src="pages/${c.image}" alt="구판 ${c.page}쪽">`
+      : "";
+    return (
+      `<tr class="${TYPE_CLASS[c.type]}"><td class="page">${c.page || "-"}</td><td>${esc(c.bucket)}</td>` +
+      `<td class="type">${c.type}</td><td>${esc(c.confidence)}</td>` +
+      `<td class="text">${before}${shot}</td><td class="text">${after}</td></tr>`
+    );
+  })
+  .join("\n")}
+</table></div>`;
+}
 // ★charset 을 빼면 브라우저가 로컬 파일을 UTF-8 로 안 읽어 한글이 깨진다.
 const html = `<meta charset="utf-8">
 <title>${esc(bookName)} — 판 대조</title>
@@ -222,21 +308,28 @@ const html = `<meta charset="utf-8">
   tr.add td.type { background: var(--add); }
   tr.del td.type { background: var(--del); }
   tr.mod td.type { background: var(--mod); }
+  img.page { width: 260px; border: 1px solid var(--line); }
+  details { margin-top: 28px; }
+  summary { cursor: pointer; font-weight: 600; margin-bottom: 8px; }
+  ul.caps { columns: 2; font-size: 13px; }
 </style>
 <h1>${esc(bookName)} ↔ 개정중 원고</h1>
-<p class="meta">변경 후보 ${changes.length}건 (수정 ${count("수정")} · 추가 ${count("추가")} · 삭제 ${count("삭제")})
- · 손댄 쪽 ${touchedPages.size}쪽 · 쪽 번호는 <b>인쇄된 ${esc(bookName)} 기준</b><br>
- 그림·도해 교체와 서식(밑줄·굵게) 변경은 이 대조로 잡히지 않는다. 표·도해 쪽은 눈으로 확인할 것.</p>
-<div class="wrap"><table>
-<tr><th>쪽</th><th>구분</th><th>분류</th><th>구판(인쇄본)</th><th>신판(개정중)</th></tr>
-${changes
-  .map((c) => {
-    const [before, after] = diffCells(c);
-    return `<tr class="${TYPE_CLASS[c.type]}"><td class="page">${c.page || "-"}</td><td>${esc(c.bucket)}</td>` +
-      `<td class="type">${c.type}</td><td class="text">${before}</td><td class="text">${after}</td></tr>`;
-  })
-  .join("\n")}
-</table></div>`;
+<p class="meta">볼 것 <b>${sure.length}건</b> (수정 ${count("수정")} · 추가 ${count("추가")} · 삭제 ${count("삭제")} 중
+ 자리만 옮긴 ${changes.length - sure.length}건은 아래로 접어 뒀다) · 손댄 쪽 ${touchedPages.size}쪽
+ · 쪽 번호는 <b>인쇄된 ${esc(bookName)} 기준</b><br>
+ 「구판」 칸은 <b>줄 단위</b>라 실제로 바뀐 데보다 앞뒤가 넓게 보인다. 노란 강조는 앞뒤 공통부분이
+ 충분할 때만 붙는다.<br>
+ 「구판 쪽」 그림은 표·도해 후보에만 붙는다 — <b>원고(HWPX)는 한글 없이 렌더할 수 없어</b>
+ 신판 쪽은 글자만 보여 준다. 서식(밑줄·굵게) 변경은 잡히지 않는다.</p>
+${table(sure)}
+<details><summary>자리만 옮긴 것 ${changes.length - sure.length}건 — 반대편 판에 그대로 있다(정오표 감이 아닐 가능성이 높다)</summary>
+${table(changes.filter((c) => c.confidence === "이동"))}
+</details>
+<details><summary>번호가 밀린 도해 ${caps.renumbered.length}개 — 도해가 끼거나 빠져서 생긴 결과다</summary>
+<ul class="caps">${caps.renumbered
+  .map((p) => `<li>【${esc(p.old.kind)} ${esc(p.old.num)}】 → 【${esc(p.next.kind)} ${esc(p.next.num)}】 ${esc(p.old.title)} <span class="meta">(구판 p.${p.old.page})</span></li>`)
+  .join("")}</ul>
+</details>`;
 writeFileSync(`${outDir}/changes.html`, html, "utf8");
 
 writeFileSync(
@@ -251,6 +344,20 @@ writeFileSync(
         body: rate(bodyRes),
         note: rate(noteRes),
         table: rate(tableRes),
+      },
+      figures: {
+        old: oldCaps.length,
+        next: newCaps.length,
+        removed: caps.removed,
+        added: caps.added,
+        renumbered: caps.renumbered.map((p) => ({
+          title: p.old.title,
+          from: `${p.old.kind} ${p.old.num}`,
+          to: `${p.next.kind} ${p.next.num}`,
+          page: p.old.page,
+        })),
+        // 제목이 딱 안 맞아 접두·일련번호로 맞춘 것 — 대개 인쇄 부산물이지만 진짜 제목 변경이 섞일 수 있다
+        retitled: caps.retitled.map((p) => ({ page: p.old.page, old: p.old.title, next: p.next.title })),
       },
       changes,
     },
