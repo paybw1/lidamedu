@@ -197,3 +197,14 @@ export function outlineText(block: OutlineBlock): string {
 export function isPracticable(block: OutlineBlock): boolean {
   return block.headingLines.length >= 2 || block.leaves.length >= 1;
 }
+
+/** 블록 머리에 붙일 이름과 배점 — 제목 전체를 보여 주면 목차 첫 줄을 알려 주는 셈이다. */
+export function blockLabel(block: OutlineBlock): { label: string; points: number | null } {
+  const t = block.title;
+  const sul = t.match(/설문\s*\(?\s*([0-9０-９]+)\s*\)?/);
+  const pt = t.match(/\(\s*([0-9]+)\s*점\s*\)/);
+  return {
+    label: sul ? `설문 (${sul[1]})` : `${block.index + 1}번째 묶음`,
+    points: pt ? Number(pt[1]) : null,
+  };
+}

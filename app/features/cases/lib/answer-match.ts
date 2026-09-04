@@ -17,9 +17,20 @@ import {
   filledAxes,
 } from "./case-diagram";
 
-/** 비교용 정규화 — 공백·문장부호를 지우고 소문자로. 조사 차이는 stem 이 따로 흡수한다. */
-function normalize(s: string): string {
-  return s.replace(/[^가-힣a-zA-Z0-9]/g, "").toLowerCase();
+/**
+ * 비교용 정규화 — 공백·문장부호를 지우고 소문자로. 조사 차이는 stem 이 따로 흡수한다.
+ * ★내보내는 이유: 맞은 핵심어가 학생 글 **어디에서** 잡혔는지 세려면(목차 연습의 순서
+ *   신호, feat-2-036) 여기와 **같은 좌표계**에서 찾아야 한다. 원문에 대고 indexOf 하면
+ *   stem 으로 잘린 토큰이 안 잡혀 전부 "순서 어긋남"이 된다.
+ *
+ * ★`keepCjk` — 한자를 남긴다. 기본은 **끄기**다(도식 채점 임계값이 한자를 지운 상태로
+ *   실측된 값이라 기본을 바꾸면 그 기준이 흔들린다). 목차 연습만 켠다:
+ *   `2. 甲의 주장` 과 `3. 乙의 주장` 이 둘 다 `주장` 하나로 줄어 같은 항목이 되기
+ *   때문이다 — 당사자 표시가 항목을 가르는 자리에서는 지우면 안 된다.
+ */
+export function normalize(s: string, opts: { keepCjk?: boolean } = {}): string {
+  const re = opts.keepCjk ? /[^가-힣a-zA-Z0-9\u3400-\u4dbf\u4e00-\u9fff]/g : /[^가-힣a-zA-Z0-9]/g;
+  return s.replace(re, "").toLowerCase();
 }
 
 /**
@@ -143,13 +154,18 @@ function isFigure(t: string): boolean {
 export interface KeyTermOptions {
   /** true 면 숫자가 든 토큰을 핵심어에서 뺀다(포섭용). */
   dropFigures?: boolean;
+  /** true 면 한자를 핵심어에 남긴다(목차 연습 — 甲/乙 이 항목을 가른다). 기본 끄기. */
+  keepCjk?: boolean;
 }
 
 /** 모범답안에서 뽑은 핵심어 — 중복 없이, 나온 순서대로. */
 export function keyTerms(model: string, opts: KeyTermOptions = {}): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
-  for (const raw of model.split(/[^가-힣a-zA-Z0-9]+/)) {
+  const splitter = opts.keepCjk
+    ? /[^가-힣a-zA-Z0-9\u3400-\u4dbf\u4e00-\u9fff]+/
+    : /[^가-힣a-zA-Z0-9]+/;
+  for (const raw of model.split(splitter)) {
     if (!raw) continue;
     const t = stemToken(raw);
     if (t.length < 2 || STOP.has(t) || seen.has(t)) continue;
@@ -244,11 +260,11 @@ export function matchAnswer(
   if (terms.length === 0) {
     return { ratio: 1, matched: [], missed: [], missedCount: 0 };
   }
-  const hay = normalize(student);
+  const hay = normalize(student, opts);
   const matched: string[] = [];
   const missed: string[] = [];
   for (const t of terms) {
-    if (hay.includes(normalize(t))) matched.push(t);
+    if (hay.includes(normalize(t, opts))) matched.push(t);
     else missed.push(t);
   }
   return {

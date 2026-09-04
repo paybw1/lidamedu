@@ -4,6 +4,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  blockLabel,
   isPracticable,
   outlineText,
   parseEssayOutline,
@@ -141,5 +142,16 @@ describe("parseEssayOutline", () => {
   it("본문 줄바꿈을 보존한다 — 문단이 뭉개지면 내용 연습이 못 읽힌다", () => {
     const p = parseEssayOutline(`## Ⅰ. 가\n\n첫 문단.\n\n둘째 문단.\n`);
     expect(p.blocks[0].nodes[0].bodyMd).toBe("첫 문단.\n\n둘째 문단.");
+  });
+});
+
+describe("blockLabel", () => {
+  it("설문 번호와 배점을 제목에서 읽는다", () => {
+    const b = parseEssayOutline("## Ⅰ. 설문 (2) — 손해배상 (20점)\n\n### 1. 요건\n\n요건.\n").blocks[0];
+    expect(blockLabel(b)).toEqual({ label: "설문 (2)", points: 20 });
+  });
+  it("설문 표기가 없으면 순번으로 부른다", () => {
+    const b = parseEssayOutline("## Ⅰ. 서 설\n\n### 1. 의의\n\n뜻.\n").blocks[0];
+    expect(blockLabel(b)).toEqual({ label: "1번째 묶음", points: null });
   });
 });

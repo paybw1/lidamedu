@@ -16,8 +16,13 @@ import { cn } from "~/core/lib/utils";
 import { MarkdownView } from "~/features/problems/components/markdown-view";
 import type { AnswerCaseGroup } from "~/features/problems/labels";
 import type { SubjectiveAttempt } from "~/features/study/queries.server";
+import {
+  isPracticable,
+  parseEssayOutline,
+} from "~/features/subjects/lib/essay-outline";
 
 import { CaseBadgeRow } from "./answer-case-badges";
+import { OutlinePractice } from "./essay-practice-outline";
 
 // 채점기준·모범답안·해설 마크다운 — 공용 렌더러의 머리글(16/14/12px)이 본문(14px)보다
 // 작아 목차 번호(1. 2. 3.)가 묻힘 → 본문보다 큰 계층으로 스코프 오버라이드.
@@ -168,6 +173,8 @@ export function SubjectivePanel({
   );
   const [revealedModel, setRevealedModel] = useState(false);
   const [revealedRubric, setRevealedRubric] = useState(false);
+  // feat-2-036 — 목차 연습. 모범답안을 가리고 목차를 세워 본다.
+  const [outlinePractice, setOutlinePractice] = useState(false);
   const [lastSaved, setLastSaved] = useState<SubjectiveAttempt | null>(
     initialAttempt,
   );
@@ -352,6 +359,11 @@ export function SubjectivePanel({
   };
 
   const hasModel = (modelAnswerMd ?? "").trim().length > 0;
+  // feat-2-036 — 목차 연습에 내줄 설문 묶음. 칸이 없는 묶음은 연습이 성립하지 않는다.
+  const outlineBlocks = useMemo(
+    () => parseEssayOutline(modelAnswerMd).blocks.filter(isPracticable),
+    [modelAnswerMd],
+  );
   const hasRubric =
     (gradingRubricMd ?? "").trim().length > 0 ||
     (rubricItems?.length ?? 0) > 0;
@@ -563,7 +575,33 @@ export function SubjectivePanel({
           {revealedRubric ? "채점기준 숨기기" : "채점기준 보기"}
           {!hasRubric ? " (미등록)" : ""}
         </Button>
+        {/* feat-2-036 — 목차 연습. ★켜면 모범답안을 닫는다. 옆에 답이 펼쳐진 채로
+            목차를 세우는 것은 연습이 아니다. */}
+        <Button
+          variant={outlinePractice ? "outline" : "secondary"}
+          size="sm"
+          onClick={() =>
+            setOutlinePractice((v) => {
+              if (!v) setRevealedModel(false);
+              return !v;
+            })
+          }
+          disabled={outlineBlocks.length === 0 || timedActive}
+          title={timedActive ? "시험 모드 중에는 연습 잠금" : undefined}
+          className="rounded-full"
+          data-testid="subjective-outline-practice"
+        >
+          {outlinePractice ? "목차 연습 끝내기" : "목차 연습"}
+        </Button>
       </div>
+
+      {outlinePractice ? (
+        <div className="space-y-3">
+          {outlineBlocks.map((b) => (
+            <OutlinePractice key={b.index} problemId={problemId} block={b} />
+          ))}
+        </div>
+      ) : null}
       {aiError ? <p className="text-destructive text-xs">{aiError}</p> : null}
       <AiGradeResult
         result={
