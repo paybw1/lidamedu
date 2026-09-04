@@ -183,7 +183,13 @@ OX 지문이 기출 문제의 선지에서도 나오기 때문이다. 그래서 
 RLS — **처음에는 읽기까지 staff 전용**으로 연다. 화면만 staff 로 막고 테이블을 전원에게
 열면 검수 전 낱말이 PostgREST 로 그대로 나간다(★`problems` 가 RLS 로 draft 를 안 가려
 같은 일을 겪었다 — `ox-panel-rls-and-fixes`). 학생 공개(§8 S5)와 **같은 단계에서**
-SELECT 를 로그인 사용자 전원으로 넓힌다. 쓰기는 계속 staff.
+SELECT 를 로그인 사용자 전원으로 넓힌다.
+
+쓰기는 **UPDATE 만** staff 에게 연다 — 말을 만드는 것은 추출 스크립트(service_role)의 몫이고,
+운영자가 화면에서 하는 일은 `excluded_at` 을 켜고 끄는 것뿐이다. INSERT/DELETE 정책은 없다.
+
+★재생성 시 **`excluded_at` 은 보존해야 한다.** 나머지 컬럼은 스크립트 산출물이라 지웠다
+다시 넣어도 되지만, 뺀 말은 사람의 판단이라 지우면 운영자가 같은 잡티를 또 빼야 한다.
 
 **푸는 기록은 v1 에서 DB 에 넣지 않는다.** localStorage 초안만 둔다.
 `user_blank_srs` 는 `article_blank_sets.set_id` 에 매인 구조라 그대로 못 쓰고,
@@ -271,7 +277,7 @@ SELECT 를 로그인 사용자 전원으로 넓힌다. 쓰기는 계속 staff.
 | | 내용 | 끝났다고 보는 기준 |
 |---|---|---|
 | **S1** ✅ | 순수 로직 `dohae-blanks.ts` + 단위 테스트 14건 | 어절 경계 매칭·긴 말 우선·겹침 금지·**말당 2회 상한**·자리 못 잡는 말의 상한 점유 방지가 테스트로 고정 |
-| **S2** | DDL(`dohae_blank_terms` + RLS **staff 전용** + 인덱스) → `db:typegen` | 운영 적용, 타입 반영 |
+| **S2** ✅ | DDL(`dohae_blank_terms` + RLS **staff 전용** + 인덱스) → `db:typegen` | 운영 적용·타입 반영 완료 (`scripts/sql/20260904_dohae_blank_terms.sql`) |
 | **S3** | 추출 스크립트 `gen-blank-terms.ts` (dry-run → `--commit`) | 94유닛 적재, 유닛별 후보 수 §2 와 일치 |
 | **S4** | 팝업 빈칸 모드(읽기/빈칸 전환 · 유형 칩 · 채점 · 운영자 빼기) | staff 화면 동작 |
 | **S5** | 원장 검수 → 잡티 정리 → **학생 공개 판단**(승인 시 RLS SELECT 확대) | 원장 결정 |

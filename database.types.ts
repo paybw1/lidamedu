@@ -5797,6 +5797,73 @@ export type Database = {
         }
         Relationships: []
       }
+      dohae_blank_terms: {
+        Row: {
+          created_at: string
+          exam_count: number
+          excluded_at: string | null
+          excluded_by: string | null
+          from_exam: boolean
+          from_ox: boolean
+          ox_count: number
+          score: number
+          term: string
+          term_id: string
+          unit_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          exam_count?: number
+          excluded_at?: string | null
+          excluded_by?: string | null
+          from_exam?: boolean
+          from_ox?: boolean
+          ox_count?: number
+          score?: number
+          term: string
+          term_id?: string
+          unit_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          exam_count?: number
+          excluded_at?: string | null
+          excluded_by?: string | null
+          from_exam?: boolean
+          from_ox?: boolean
+          ox_count?: number
+          score?: number
+          term?: string
+          term_id?: string
+          unit_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dohae_blank_terms_excluded_by_fkey"
+            columns: ["excluded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "dohae_blank_terms_excluded_by_fkey"
+            columns: ["excluded_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "dohae_blank_terms_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "dohae_units"
+            referencedColumns: ["unit_id"]
+          },
+        ]
+      }
       dohae_unit_articles: {
         Row: {
           article_id: string

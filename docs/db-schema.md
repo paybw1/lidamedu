@@ -1474,6 +1474,41 @@ alter type staff_notification_kind add value 'dohae_abuse';
 - 유출방지 화면단은 `app/features/dohae/components/dohae-guard.tsx` — 워터마크·복사차단·
   인쇄차단·저작권 고지. ★**선택(selection)은 막지 않는다** — 막으면 하이라이트를 못 긋는다.
 
+## 도해 빈칸 낱말 (dohae_blank_terms)  ✅ 적용됨 (2026-09-04, feat-2-037)
+
+```sql
+create table public.dohae_blank_terms (
+  term_id     uuid primary key default gen_random_uuid(),
+  unit_id     uuid not null references dohae_units(unit_id) on delete cascade,
+  term        text not null,
+  from_exam   boolean not null default false,   -- 유형 1(기출 유래)
+  from_ox     boolean not null default false,   -- 유형 2(정오 유래) · 유형 3 = 둘의 합집합
+  exam_count  integer not null default 0,       -- 근거 건수 = 유형별 순위의 기준
+  ox_count    integer not null default 0,
+  score       numeric not null default 0,
+  excluded_at timestamptz,                      -- 운영자가 뺀 말(지우지 않는다)
+  excluded_by uuid references profiles(profile_id),
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now(),
+  unique (unit_id, term),
+  check (from_exam or from_ox),
+  check (char_length(term) between 2 and 12)
+);
+create index dohae_blank_terms_unit_idx on dohae_blank_terms (unit_id) where excluded_at is null;
+-- SELECT·UPDATE 모두 private.is_staff(auth.uid()). INSERT/DELETE 정책 없음.
+```
+
+- **★좌표를 저장하지 않는다.** 어느 블록 몇 번째 글자인지는 렌더 때 본문에서 다시 찾는다
+  (`app/features/dohae/lib/dohae-blanks.ts`). 도해 본문은 운영자 편집으로도 재파싱으로도
+  바뀌므로, 좌표를 들고 있으면 조문 빈칸이 겪은 좌표 유실(재직렬화 한 번에 96세트)이 그대로
+  재현된다. 못 찾는 말은 조용히 빠질 뿐 다른 칸을 망가뜨리지 않는다.
+- **읽기까지 staff 전용인 이유**: 화면만 staff 로 막고 테이블을 전원에게 열면 검수 전 낱말이
+  PostgREST 로 나간다. 학생 공개를 결정할 때 SELECT 정책을 넓힌다(feat-2-037 S5).
+- **INSERT/DELETE 정책을 안 연 이유**: 말을 만드는 것은 추출 스크립트(service_role)의 몫이고,
+  운영자가 화면에서 하는 일은 `excluded_at` 을 켜고 끄는 UPDATE 뿐이다.
+- 행은 사람이 쓴 것이 아니라 스크립트 산출물이라 유닛 재시드로 cascade 삭제돼도 되만들 수
+  있다. **단 `excluded_at` 은 사람의 판단이므로 재생성 시 보존해야 한다.**
+
 ## 판례 도식 staff 전용 전환  ✅ 적용됨 (2026-08-23)
 
 ```sql
