@@ -23,7 +23,11 @@ import {
 
 import { logDohaeUnitView, STUDENT_WARN_UNITS, STUDENT_WARN_WINDOW_MIN, countRecentUniqueUnits } from "../abuse.server";
 import type { DohaeBlock, DohaeCell } from "../labels";
-import { getArticleTitleMap, listDohaeUnitArticles } from "../queries.server";
+import {
+  getArticleTitleMap,
+  listDohaeBlankTerms,
+  listDohaeUnitArticles,
+} from "../queries.server";
 
 // 도해특허법 = 특허법 단행본. 다른 과목 도해가 생기면 book_code 로 갈라야 한다.
 const DOHAE_LAW_CODE = "patent";
@@ -106,7 +110,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     );
   }
 
-  const [memos, highlights, articleMemos, articleHighlights, titleMap] =
+  const [memos, highlights, articleMemos, articleHighlights, titleMap, blankTerms] =
     await Promise.all([
       listMemos(client, user.id, "dohae_unit", row.unit_id),
       listHighlights(client, user.id, "dohae_unit", row.unit_id),
@@ -117,11 +121,14 @@ export async function loader({ request }: Route.LoaderArgs) {
       articleIds.length > 0
         ? getArticleTitleMap(client, DOHAE_LAW_CODE)
         : Promise.resolve({}),
+      // feat-2-037 — 빈칸 낱말. RLS 가 staff 전용이라 학생은 빈 목록을 받는다.
+      listDohaeBlankTerms(client, row.unit_id),
     ]);
 
   return {
     watermark,
     abnormal,
+    blankTerms,
     articles,
     articleMemos,
     articleHighlights,

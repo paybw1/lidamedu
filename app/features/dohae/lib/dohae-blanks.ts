@@ -40,6 +40,13 @@ export interface DohaeTextNode {
   /** `dohae-edit.ts` 와 **같은 경로 규칙** — "b3" · "b5.r0.c1" · "b5.r0.c1.t0.r1.c0" */
   path: string;
   text: string;
+  /**
+   * 글이 끊기는 자리 — 칸 안 그림·속표가 글자 오프셋 사이에 끼어든다.
+   * ★이 자리를 가로지르는 말은 빈칸으로 두지 않는다. 화면이 글을 그 자리에서 쪼개
+   *   그리므로 입력 칸을 놓을 데가 없고, 놓아 봐야 "안 쓴 칸"으로만 남는다
+   *   (조문 빈칸에서 미렌더 빈칸이 모수에 남던 것과 같은 함정).
+   */
+  breaks?: number[];
 }
 
 /**
@@ -56,12 +63,22 @@ export function isArticleBox(block: DohaeBlock): boolean {
   return /^제\d+조/.test(block.cells[0][0].text);
 }
 
+/**
+ * 속표가 끼어드는 글자 오프셋 — 화면이 글을 여기서 쪼갠다(`CellContent` 와 같은 규칙).
+ * 칸 그림은 여기 없다 — 그림이 든 칸은 아래에서 통째로 건너뛴다.
+ */
+function cellBreaks(cell: DohaeCell): number[] {
+  const at = (cell.tables ?? []).map((_, i) => cell.tablesAt?.[i] ?? cell.text.length);
+  return [...new Set(at.filter((n) => n > 0 && n < cell.text.length))].sort((a, b) => a - b);
+}
+
 function collectCells(cells: DohaeCell[][], prefix: string, out: DohaeTextNode[]): void {
   cells.forEach((row, r) =>
     row.forEach((cell, c) => {
       const path = `${prefix}.r${r}.c${c}`;
       // 도해가 그려진 칸은 이미지라 글자가 없다.
-      if (!cell.diagram && cell.text.trim()) out.push({ path, text: cell.text });
+      if (!cell.diagram && cell.text.trim())
+        out.push({ path, text: cell.text, breaks: cellBreaks(cell) });
       (cell.tables ?? []).forEach((t, ti) => collectCells(t, `${path}.t${ti}`, out));
     }),
   );
@@ -145,6 +162,8 @@ function place(nodes: DohaeTextNode[], terms: DohaeTerm[]): RawHit[] {
   nodes.forEach((node, nodeIndex) => {
     const taken: Array<[number, number]> = [];
     const overlaps = (s: number, e: number) => taken.some(([ts, te]) => s < te && ts < e);
+    const straddles = (s: number, e: number) =>
+      (node.breaks ?? []).some((b) => s < b && b < e);
     for (const t of ordered) {
       if (t.term.length < 2) continue;
       let from = 0;
@@ -152,7 +171,7 @@ function place(nodes: DohaeTextNode[], terms: DohaeTerm[]): RawHit[] {
         const at = node.text.indexOf(t.term, from);
         if (at < 0) break;
         const end = at + t.term.length;
-        if (startsAtBoundary(node.text, at) && !overlaps(at, end)) {
+        if (startsAtBoundary(node.text, at) && !overlaps(at, end) && !straddles(at, end)) {
           taken.push([at, end]);
           raw.push({ nodeIndex, path: node.path, start: at, end, termId: t.termId, answer: t.term });
         }

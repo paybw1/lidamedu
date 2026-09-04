@@ -297,6 +297,45 @@ export async function getArticleTitleMap(
   return out;
 }
 
+/**
+ * feat-2-037 — 이 유닛의 빈칸 낱말.
+ * ★RLS 가 staff 전용이라 학생 요청은 **0행**으로 돌아온다(권한 오류가 아니라 빈 목록).
+ *   화면은 그걸 그대로 "빈칸 모드 없음"으로 읽으면 된다 — 별도 역할 분기가 필요 없다.
+ * 뺀 말(`excludedAt`)도 함께 돌려준다 — 운영자가 되돌릴 수 있어야 한다.
+ */
+export async function listDohaeBlankTerms(
+  client: SupabaseClient<Database>,
+  unitId: string,
+): Promise<DohaeBlankTermRow[]> {
+  const { data, error } = await client
+    .from("dohae_blank_terms")
+    .select("term_id, term, from_exam, from_ox, exam_count, ox_count, score, excluded_at")
+    .eq("unit_id", unitId)
+    .order("score", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    termId: r.term_id,
+    term: r.term,
+    fromExam: r.from_exam,
+    fromOx: r.from_ox,
+    examCount: r.exam_count,
+    oxCount: r.ox_count,
+    score: Number(r.score),
+    excludedAt: r.excluded_at,
+  }));
+}
+
+export interface DohaeBlankTermRow {
+  termId: string;
+  term: string;
+  fromExam: boolean;
+  fromOx: boolean;
+  examCount: number;
+  oxCount: number;
+  score: number;
+  excludedAt: string | null;
+}
+
 export async function listDohaeUnitsForArticle(
   client: SupabaseClient<Database>,
   articleId: string,

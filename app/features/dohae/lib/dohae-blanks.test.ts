@@ -66,9 +66,10 @@ describe("빈칸을 놓을 수 있는 글", () => {
       },
     ];
     expect(blankableNodes(blocks)).toEqual([
-      { path: "b2.r0.c0", text: "구분" },
-      { path: "b2.r0.c3", text: "내용" },
-      { path: "b2.r0.c3.t0.r0.c0", text: "속표 칸" },
+      { path: "b2.r0.c0", text: "구분", breaks: [] },
+      // 속표가 글 끝(오프셋 = 길이)에 붙으면 글을 가르지 않는다 → 끊는 자리 없음.
+      { path: "b2.r0.c3", text: "내용", breaks: [] },
+      { path: "b2.r0.c3.t0.r0.c0", text: "속표 칸", breaks: [] },
     ]);
   });
 });
@@ -110,6 +111,17 @@ describe("말이 놓일 자리", () => {
     );
     expect(p.hits).toHaveLength(MAX_HITS_PER_TERM);
     expect(p.hits.map((h) => h.path)).toEqual(["b0", "b1"]); // 읽기 순 앞에서부터
+  });
+
+  it("★속표가 끼어드는 자리를 가로지르는 말은 뚫지 않는다 — 놓을 데가 없다", () => {
+    // 「신규성」이 4~7자에 있고 속표가 6자에 끼어든다 → 화면이 그 자리에서 글을 쪼갠다.
+    const withBreak: DohaeTextNode[] = [
+      { path: "b0.r0.c0", text: "가나다 신규성 라마", breaks: [6] },
+    ];
+    expect(buildBlanks(withBreak, [term("신규성")], 3).hits).toHaveLength(0);
+    // 같은 글이라도 끊기지 않으면 뚫린다.
+    const noBreak: DohaeTextNode[] = [{ path: "b0.r0.c0", text: "가나다 신규성 라마" }];
+    expect(buildBlanks(noBreak, [term("신규성")], 3).hits).toHaveLength(1);
   });
 
   it("빈칸 번호는 읽기 순으로 매겨진다", () => {

@@ -1255,8 +1255,10 @@ export default [
           ),
         ],
       ),
-      // 도해특허법 팝업 콘텐츠 — ★staff 전용(RLS + loader 게이트).
+      // 도해특허법 팝업 콘텐츠 — 본문은 학생 공개(2026-08-23), 편집·빈칸 낱말은 RLS 로 staff.
       route("/api/dohae/unit", "features/dohae/api/unit.tsx"),
+      // feat-2-037 — 빈칸 낱말 빼기/되돌리기(staff). 지우지 않고 excluded_at 만 켠다.
+      route("/api/dohae/blank-term", "features/dohae/api/blank-term.tsx"),
       // Phase 3 — 계획 학생 액션 + 노드 선택기 데이터.
       route("/api/study-plan", "features/study-plans/api/study-plan.tsx"),
       route("/api/study-plan/nodes", "features/study-plans/api/plan-nodes.tsx"),

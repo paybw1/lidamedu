@@ -14,6 +14,7 @@ import {
   Loader2Icon,
   NotebookPenIcon,
   PanelRightIcon,
+  PenLineIcon,
   PencilLineIcon,
   SquareIcon,
 } from "lucide-react";
@@ -21,11 +22,20 @@ import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useFetcher, useFetchers } from "react-router";
 
 import {
+  DohaeBlankBar,
+  DohaeBlankEmpty,
+  DohaeBlankProvider,
+  DohaeText,
+  useDohaeBlankPractice,
+  useDohaeBlanks,
+} from "./dohae-blank-ui";
+import {
   copyGuardProps,
   DohaeAbnormalNotice,
   DohaeCopyrightGate,
   DohaeWatermark,
 } from "./dohae-guard";
+import { shiftRanges } from "./dohae-text";
 
 import { KoreanLabel } from "~/core/components/korean-label";
 import {
@@ -53,6 +63,10 @@ import {
   type DohaeUnitSummary,
   dohaeUnitLabel,
 } from "../labels";
+import type { DohaeBlankType } from "../lib/dohae-blanks";
+
+/** 유닛이 아직 안 왔을 때 넘기는 빈 블록 — 매 렌더 새 배열을 만들면 연습 상태가 초기화된다. */
+const EMPTY_BLOCKS: DohaeBlock[] = [];
 
 type UnitPayload = Awaited<ReturnType<typeof unitLoader>>;
 
@@ -153,47 +167,22 @@ function columnPercents(
  * ★텍스트 노드를 쪼개도 컨테이너의 textContent 는 그대로라 하이라이트 오프셋은 보존된다
  *   (공백을 새로 넣지 않는 것이 조건).
  */
-function BoldSpans({
-  text,
-  ranges,
-}: {
-  text: string;
-  ranges?: [number, number][];
-}) {
-  if (!ranges?.length) return <>{text}</>;
-  const out: ReactNode[] = [];
-  let at = 0;
-  ranges
-    .slice()
-    .sort((a, b) => a[0] - b[0])
-    .forEach(([s, e], i) => {
-      const from = Math.max(at, s);
-      const to = Math.min(text.length, e);
-      if (to <= from) return;
-      if (from > at) out.push(text.slice(at, from));
-      out.push(
-        <strong key={i} className="font-semibold">
-          {text.slice(from, to)}
-        </strong>,
-      );
-      at = to;
-    });
-  if (at < text.length) out.push(text.slice(at));
-  return <>{out}</>;
-}
-
 /**
  * 칸 내용을 **원본 순서대로** — 글 / 칸 그림 / 속표를 글자 오프셋에 맞춰 끼워 넣는다.
  * (t22 「다항제 기재방법…」은 【예】 상자가 【해설】 위, t79 「국내단계에서의 보정」은
  *  글 → 도해 → 글 순서다. 뒤에 몰아 그리면 책과 순서가 달라진다.)
  */
-function CellContent({ cell }: { cell: DohaeCell }) {
+function CellContent({ cell, path }: { cell: DohaeCell; path: string }) {
+  const blanks = useDohaeBlanks();
+  const hasBlanks = (blanks?.hitsByPath.get(path)?.length ?? 0) > 0;
   // 라벨 칸(음영)은 단어 단위로 접으므로, 낱말 안에서 끊을 자리를 알려 준다.
+  // ★빈칸이 걸린 칸은 예외 — KoreanLabel 은 글자를 통째로 다시 조립해 입력 칸을 삼킨다.
   if (
     cell.shade &&
     !cell.diagram &&
     !cell.tables?.length &&
-    !cell.boldRanges?.length
+    !cell.boldRanges?.length &&
+    !hasBlanks
   )
     return <KoreanLabel text={cell.text} perChar />;
   const nested = cell.tables ?? [];
@@ -217,30 +206,25 @@ function CellContent({ cell }: { cell: DohaeCell }) {
   nested.forEach((t, i) => {
     marks.push({
       at: cell.tablesAt?.[i] ?? cell.text.length,
-      node: <DohaeTable cells={t} />,
+      node: <DohaeTable cells={t} path={`${path}.t${i}`} />,
     });
   });
   if (marks.length === 0)
-    return <BoldSpans text={cell.text} ranges={cell.boldRanges} />;
+    return <DohaeText path={path} text={cell.text} boldRanges={cell.boldRanges} />;
 
   marks.sort((a, b) => a.at - b.at);
-  const shift = (lo: number, hi: number) =>
-    (cell.boldRanges ?? [])
-      .map(
-        ([s, e]) =>
-          [Math.max(s, lo) - lo, Math.min(e, hi) - lo] as [number, number],
-      )
-      .filter(([s, e]) => e > s);
   const out: ReactNode[] = [];
   let at = 0;
   marks.forEach((m, i) => {
     const to = Math.min(Math.max(m.at, at), cell.text.length);
     if (to > at)
       out.push(
-        <BoldSpans
+        <DohaeText
           key={`t${i}`}
+          path={path}
           text={cell.text.slice(at, to)}
-          ranges={shift(at, to)}
+          offset={at}
+          boldRanges={shiftRanges(cell.boldRanges, at, to)}
         />,
       );
     out.push(<span key={`m${i}`}>{m.node}</span>);
@@ -248,16 +232,18 @@ function CellContent({ cell }: { cell: DohaeCell }) {
   });
   if (at < cell.text.length)
     out.push(
-      <BoldSpans
+      <DohaeText
         key="tail"
+        path={path}
         text={cell.text.slice(at)}
-        ranges={shift(at, cell.text.length)}
+        offset={at}
+        boldRanges={shiftRanges(cell.boldRanges, at, cell.text.length)}
       />,
     );
   return <>{out}</>;
 }
 
-function DohaeTable({ cells }: { cells: DohaeCell[][] }) {
+function DohaeTable({ cells, path }: { cells: DohaeCell[][]; path: string }) {
   if (cells.length === 0) return null;
   const startCols = gridStartCols(cells);
   // 열 비율 — 원본 그대로. ★table-layout:fixed 를 함께 걸어야 비율이 선다
@@ -329,7 +315,7 @@ function DohaeTable({ cells }: { cells: DohaeCell[][] }) {
                       c.bold && "font-semibold",
                     )}
                   >
-                    <CellContent cell={c} />
+                    <CellContent cell={c} path={`${path}.r${ri}.c${ci}`} />
                   </Tag>
                 );
               })}
@@ -444,13 +430,15 @@ function DohaeBlocks({
   // 그 자리에서만 플랫폼 조문으로 갈아끼운다.
   let articleBoxUsed = false;
   const renderBlock = (b: DohaeBlock, i: number): ReactNode => {
+    // 빈칸 경로 규칙은 `dohae-edit.ts`·`dohae-blanks.ts` 와 같다 — "b3" · "b5.r0.c1".
+    const prefix = `b${i}`;
     if (b.type === "p")
       return (
         <p
           key={i}
           className="text-[length:calc(14px*var(--study-fs,1))] leading-[1.75] whitespace-pre-wrap"
         >
-          {b.text}
+          <DohaeText path={prefix} text={b.text} />
         </p>
       );
     if (b.type === "table") {
@@ -481,7 +469,7 @@ function DohaeBlocks({
           </div>
         );
       }
-      return <DohaeTable key={i} cells={b.cells} />;
+      return <DohaeTable key={i} cells={b.cells} path={prefix} />;
     }
     if (b.type === "diagram")
       return b.signedUrl ? (
@@ -599,7 +587,11 @@ export function DohaePopup({
   // null = 아직 손대지 않음 → 표시 방식의 기본값을 따른다.
   const [toolsOpenRaw, setToolsOpen] = useState<boolean | null>(null);
   const toolsOpen = toolsOpenRaw ?? view === "dialog";
+  // feat-2-037 — 빈칸 학습 모드. 유닛을 옮겨도 모드는 유지한다(연습을 이어서 한다).
+  const [blankMode, setBlankMode] = useState(false);
+  const [blankType, setBlankType] = useState<DohaeBlankType>(3);
   const fetcher = useFetcher<UnitPayload>();
+  const termFetcher = useFetcher<{ ok: boolean }>();
   const fetchers = useFetchers();
 
   // 열릴 때 — 지정된 유닛이 있으면 그것으로(학습노트 진입), 없고 유닛이 1개면 자동 선택.
@@ -657,6 +649,28 @@ export function DohaePopup({
       (a, v) => a + v.length,
       0,
     );
+  // 빈칸 낱말 — RLS 가 staff 전용이라 학생 응답은 빈 목록이다.
+  const blankTerms = useMemo(() => payload?.blankTerms ?? [], [payload?.blankTerms]);
+  const practice = useDohaeBlankPractice(
+    unit?.unitId ?? null,
+    unit?.blocks ?? EMPTY_BLOCKS,
+    blankTerms,
+    blankType,
+  );
+  // 말을 빼거나 되돌리면 낱말 목록을 다시 읽는다.
+  useEffect(() => {
+    if (termFetcher.state === "idle" && termFetcher.data?.ok && activeUnitId) {
+      fetcher.load(`/api/dohae/unit?unitId=${activeUnitId}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [termFetcher.state, termFetcher.data]);
+  const toggleTerm = (termId: string, excluded: boolean) => {
+    termFetcher.submit(
+      { termId, excluded: excluded ? "1" : "0" },
+      { method: "post", action: "/api/dohae/blank-term" },
+    );
+  };
+
   const activeIndex = units.findIndex((u) => u.unitId === activeUnitId);
   const activeSummary = activeIndex >= 0 ? units[activeIndex] : null;
   const prevUnit = activeIndex > 0 ? units[activeIndex - 1] : null;
@@ -719,6 +733,29 @@ export function DohaePopup({
             </>
           ) : null}
           <div className="ml-auto flex items-center gap-1.5">
+            {/* feat-2-037 — 읽기 / 빈칸. 지금은 staff 전용(뽑힌 말을 검수한 뒤 학생 공개). */}
+            {activeSummary && viewerIsStaff ? (
+              <button
+                type="button"
+                onClick={() => setBlankMode(!blankMode)}
+                aria-pressed={blankMode}
+                disabled={!unit || blankTerms.length === 0}
+                title={
+                  unit && blankTerms.length === 0
+                    ? "연결된 기출·정오문제가 없어 빈칸을 만들 수 없습니다"
+                    : "기출·정오문제에서 논의된 말을 빈칸으로"
+                }
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] disabled:opacity-40",
+                  blankMode
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border text-muted-foreground hover:bg-muted",
+                )}
+              >
+                <PenLineIcon className="size-3" />
+                {blankMode ? "읽기로" : "빈칸"}
+              </button>
+            ) : null}
             {activeSummary && viewerIsStaff ? (
               // 지금 보고 있는 유닛의 편집 화면으로. ★새 탭 — 팝업을 닫지 않아야
               // 원문과 나란히 놓고 고칠 수 있다.
@@ -821,24 +858,58 @@ export function DohaePopup({
               // 유출방지 ④ — 첫 열람 1회 저작권 고지. 확인 전에는 본문을 그리지 않는다.
               <DohaeCopyrightGate>
                 <DohaeAbnormalNotice abnormal={payload?.abnormal ?? false} />
-                <MemoMarksOverlay memos={payload?.memos ?? []}>
-                  <HighlightOverlay
-                    fieldPath={`dohae.${unit.unitKey}`}
-                    targetType="dohae_unit"
-                    targetId={unit.unitId}
-                    highlights={payload?.highlights ?? []}
-                    viewerIsStaff={viewerIsStaff}
-                  >
-                    <DohaeBlocks
-                      blocks={unit.blocks}
-                      articles={payload?.articles ?? []}
-                      articleHighlights={payload?.articleHighlights ?? {}}
-                      articleMemos={payload?.articleMemos ?? {}}
-                      titleMap={titleMap}
+                {blankMode ? (
+                  // ★빈칸 모드에서는 하이라이트·포스트잇 오버레이를 그리지 않는다.
+                  //   저장된 오프셋은 컨테이너 전체 글자 기준이라, 입력 칸이 글 흐름에
+                  //   들어가면 어긋난 자리에 그어진다. 저장값은 그대로 두므로 읽기로
+                  //   돌아가면 원래대로다.
+                  <>
+                    {practice.blankCount === 0 ? (
+                      <DohaeBlankEmpty />
+                    ) : (
+                      <DohaeBlankBar
+                        type={blankType}
+                        onType={setBlankType}
+                        score={practice.score}
+                        onCheck={practice.check}
+                        onReset={practice.reset}
+                        terms={blankTerms}
+                        usedTermIds={practice.usedTermIds}
+                        viewerIsStaff={viewerIsStaff}
+                        onToggleTerm={toggleTerm}
+                      />
+                    )}
+                    <DohaeBlankProvider value={practice}>
+                      <DohaeBlocks
+                        blocks={unit.blocks}
+                        articles={payload?.articles ?? []}
+                        articleHighlights={payload?.articleHighlights ?? {}}
+                        articleMemos={payload?.articleMemos ?? {}}
+                        titleMap={titleMap}
+                        viewerIsStaff={viewerIsStaff}
+                      />
+                    </DohaeBlankProvider>
+                  </>
+                ) : (
+                  <MemoMarksOverlay memos={payload?.memos ?? []}>
+                    <HighlightOverlay
+                      fieldPath={`dohae.${unit.unitKey}`}
+                      targetType="dohae_unit"
+                      targetId={unit.unitId}
+                      highlights={payload?.highlights ?? []}
                       viewerIsStaff={viewerIsStaff}
-                    />
-                  </HighlightOverlay>
-                </MemoMarksOverlay>
+                    >
+                      <DohaeBlocks
+                        blocks={unit.blocks}
+                        articles={payload?.articles ?? []}
+                        articleHighlights={payload?.articleHighlights ?? {}}
+                        articleMemos={payload?.articleMemos ?? {}}
+                        titleMap={titleMap}
+                        viewerIsStaff={viewerIsStaff}
+                      />
+                    </HighlightOverlay>
+                  </MemoMarksOverlay>
+                )}
               </DohaeCopyrightGate>
             )}
           </div>
