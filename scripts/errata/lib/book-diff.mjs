@@ -216,7 +216,11 @@ export function buildStream(pages, pick) {
   return { text, pageAt, lines };
 }
 
-/** 구간에 걸친 원문 줄들 — 정규화된 흐름은 공백이 없어 사람이 못 읽는다. */
+/**
+ * 구간에 걸친 원문 줄들 — 정규화된 흐름은 공백이 없어 사람이 못 읽는다.
+ * ★**줄 단위**로 돌려주므로 실제로 바뀐 범위보다 앞뒤가 넓게 보인다(같은 줄에 붙은 멀쩡한 글이 딸려온다).
+ *   검토 화면에서 "구판 칸이 바뀐 데보다 넓다" 는 것은 잘못이 아니라 이 성질이다.
+ */
 export function rawOfRange(stream, from, to) {
   return stream.lines
     .filter((l) => l.to > from && l.from < to)

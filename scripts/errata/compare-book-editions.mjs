@@ -67,7 +67,9 @@ for (const [label, p] of [["PDF", pdfPath], ["HWPX", hwpxPath]]) {
 mkdirSync(`${outDir}/.cache`, { recursive: true });
 
 // ── 1. 두 판 읽기 ──────────────────────────────────────────────────────
-// PDF 추출은 1,200쪽에 1분 넘게 걸린다 — 파일이 그대로면 캐시를 쓴다(원고만 바뀌는 게 보통).
+// PDF 추출은 1,200쪽을 매번 다시 읽는다 — 보통은 원고만 바뀌므로 캐시를 둔다.
+// ★캐시는 **있는지만** 본다. PDF 를 같은 이름으로 갈아끼웠으면(재쇄 교체) `--fresh` 를 줘야 한다.
+//   안 그러면 쪽 번호가 옛 인쇄본에서 나와 발행한 정오표가 조용히 틀어진다.
 const cachePath = `${outDir}/.cache/${bookName}.pages.json`;
 let pages;
 if (!flag("fresh") && existsSync(cachePath)) {
