@@ -1,6 +1,12 @@
 // 도해특허법 시드 — dohae_units + dohae_unit_articles + Storage 크롭 업로드.
 // 멱등: 같은 book_code 를 전량 삭제 후 재삽입(편집 UI 없음 — 정정=재시드 정책).
 //
+// ★★재시드 전에 **조문 링크를 원본에 먼저 합쳐라.** 링크는 `unit.articleIds` 에서만 나오는데,
+//   운영에서 사람이 손으로 이어 둔 링크는 원본에 없다 — 그대로 돌리면 조용히 사라진다.
+//   2026-09-05 실사례: 원본 292 vs 운영 311(t03·t12·t20·t34·t41·t55·t64 의 19건이 운영에만
+//   있었다). 순서: `resolve-articles.mjs` 로 lawRefs 를 편 뒤, 운영 DB 링크를 원본에 합치고,
+//   `원본 = 운영` 을 확인한 다음 시드한다.
+//
 //   node scripts/dohae/seed-dohae.mjs [--dry]
 
 import { readFileSync } from "node:fs";

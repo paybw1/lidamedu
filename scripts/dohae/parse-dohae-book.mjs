@@ -1145,7 +1145,10 @@ function parseLawRefs(title) {
       const tok = tok0.replace(/[①-⑳㉑-㉟㊱-㊿]/g, "");
       // 범위는 전개하지 않고 원형 보존("20~24"·"215~224의5") — 해소 단계(resolve-articles)가
       // DB 조문 목록 기반으로 전개한다(범위 안 "103의2" 같은 곁가지 조문 포함 목적).
-      const range = /^(\d+(?:의\d+)?)\s*~\s*(\d+(?:의\d+)?)/.exec(tok);
+      // ★범위 기호는 물결표만이 아니다 — 교재는 붙임표도 쓴다("法 16, 28-28의5").
+      //   물결표만 받으면 "28-28의5" 가 "28" 하나로 잘려 제28조의2~5 가 통째로 빠진다
+      //   (t08 특허에 관한 절차 일반. 원장 신고 2026-09-05 — 2026-08-17 의 "5②~10" 과 같은 계열).
+      const range = /^(\d+(?:의\d+)?)\s*[~\-–—∼]\s*(\d+(?:의\d+)?)/.exec(tok);
       if (range) { articles.push(`${range[1]}~${range[2]}`); continue; }
       const single = /^(\d+(?:의\d+)?)/.exec(tok);
       if (single) articles.push(single[1]);
