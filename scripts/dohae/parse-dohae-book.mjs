@@ -785,7 +785,11 @@ for (let i = 0; i < paras.length; i++) {
 
   const badge = p.shapeTexts.find((t) => ROMAN.test(t));
   const nonBadgeShapes = p.shapeTexts.filter((t) => !ROMAN.test(t) && !/묶음 개체/.test(t));
-  if (p.plain && badge && p.tables.length === 0) {
+  // ★배지(로마숫자 도형)가 있으면 표가 같은 문단에 딸려 있어도 소제목이다. 종전엔 표가
+  //   붙으면 소제목이 문단으로 내려앉아 **번호를 잃었다** — t21 특허출원의 「Ⅳ 명세서의
+  //   기재방법(法 42)」이 Ⅲ 과 Ⅴ 사이에서 번호 없는 문단으로 나왔다(원장 신고 2026-09-06).
+  //   표는 어차피 아래에서 따로 내보내므로 소제목으로 올려도 내용이 겹치지 않는다.
+  if (p.plain && badge) {
     pushBlock({ type: "h", numeral: badge, text: p.plain });
   } else if (p.plain && !/^\d{2}$/.test(p.plain)) {
     pushBlock({ type: "p", text: p.plain });
