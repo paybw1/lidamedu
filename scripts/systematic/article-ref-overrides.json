@@ -376,6 +376,61 @@
       "moveToNodeId": "bea0432b-cb75-48bd-99ec-ce34ac06e763",
       "moveToLabel": "총칙/보칙 / 디자인에 관한 절차 일반",
       "reason": "이익제도 '절차의 보정' 항목 삭제 — 제47조는 총칙/보칙 > 디자인에 관한 절차 일반. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "4cd3274e-8d94-4f59-a340-fdc28bc7cb31",
+      "law": "design",
+      "label": "심사 / 진행 / 거절이유의 통지",
+      "articles": [
+        "63"
+      ],
+      "moveToNodeId": "824bbe06-1fdb-43a6-ab2a-9a664a041d76",
+      "moveToLabel": "심사 / 진행",
+      "reason": "심사 > 진행 하위 항목 삭제 — 제63조는 '진행' 에 직접. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "574de262-5dc6-4f07-b36b-5266075a0c47",
+      "law": "design",
+      "label": "심사 / 진행 / 직권보정",
+      "articles": [
+        "66"
+      ],
+      "moveToNodeId": "8fff3077-cb63-4715-b3a9-eaf0785bd199",
+      "moveToLabel": "심사 / 종료 / 디자인등록여부 결정에 의한 종료",
+      "reason": "심사 > 진행 하위 항목 삭제 — 제66조는 종료 > 디자인등록여부 결정에 의한 종료. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "ae3fe0ad-a696-4373-a877-45ddd415e707",
+      "law": "design",
+      "label": "심사 / 진행 / 직권 재심사",
+      "articles": [
+        "66의2"
+      ],
+      "moveToNodeId": "8fff3077-cb63-4715-b3a9-eaf0785bd199",
+      "moveToLabel": "심사 / 종료 / 디자인등록여부 결정에 의한 종료",
+      "reason": "심사 > 진행 하위 항목 삭제 — 제66조의2 는 종료 > 디자인등록여부 결정에 의한 종료. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "9df5aeff-71cc-4245-a4e8-2fd894bde385",
+      "law": "design",
+      "label": "심사 / 진행 / 심판규정의 준용",
+      "articles": [
+        "76"
+      ],
+      "moveToNodeId": "feff576b-cc4e-492c-a4ba-ae014343f1da",
+      "moveToLabel": "심사 / 주체 / 심사관",
+      "reason": "심사 > 진행 하위 항목 삭제 — 제76조는 주체 > 심사관. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "24f449e1-b887-4599-893a-ca0c4ecbd50c",
+      "law": "design",
+      "label": "심사 / 진행 / 심사의 중지",
+      "articles": [
+        "77"
+      ],
+      "moveToNodeId": "209cefe5-9754-4ab5-9ac8-7a54b247f887",
+      "moveToLabel": "총칙/보칙 / 절차의 정지",
+      "reason": "심사 > 진행 하위 항목 삭제 — 제77조는 총칙/보칙 > 절차의 정지. 2026-09-07 원장 지시."
     }
   ]
 }
