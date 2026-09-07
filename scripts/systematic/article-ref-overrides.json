@@ -321,6 +321,17 @@
       "moveToNodeId": "ea68bba6-166b-4cc8-a961-784c45b68bd3",
       "moveToLabel": "심판 / 각론 / 거절결정에 대한 심판",
       "reason": "'심사 또는 이의신청 절차의 효력' 항목 삭제 — 제155조는 각론 > 거절결정에 대한 심판. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "f4e3ba07-2898-4f72-a7f3-3967eec4a7d1",
+      "law": "trademark",
+      "label": "심판 / 진행 / 중복심판",
+      "articles": [
+        "141"
+      ],
+      "moveToNodeId": "dcb5572c-ddfb-4c99-a222-d14d1ca1e48c",
+      "moveToLabel": "심판 / 진행 / 본안심리",
+      "reason": "'중복심판' 항목 삭제 — 제141조는 이미 본안심리에 있다. 2026-09-07 원장 지시."
     }
   ]
 }
