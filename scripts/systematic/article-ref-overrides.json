@@ -477,6 +477,52 @@
       "moveToNodeId": null,
       "moveToLabel": null,
       "reason": "'디자인권의 등록의 효력' 항목 삭제 — 제98조는 체계도에 배치하지 않는다. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "049a29f5-c45b-4bbd-8c5f-7e17ba8eff4c",
+      "law": "design",
+      "label": "디자인권 / 소멸 / 포기",
+      "articles": [
+        "105",
+        "106",
+        "107"
+      ],
+      "moveToNodeId": "bf4b0eb8-ca09-4e84-939b-210685210d09",
+      "moveToLabel": "디자인권 / 소멸",
+      "reason": "'포기' 항목 삭제 — 제105~107조는 '소멸' 에 직접. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "57c15177-a8e7-49fa-bd50-16f0996ce40e",
+      "law": "design",
+      "label": "디자인권 / 소멸 / 디자인권의 소멸",
+      "articles": [
+        "111"
+      ],
+      "moveToNodeId": "bf4b0eb8-ca09-4e84-939b-210685210d09",
+      "moveToLabel": "디자인권 / 소멸",
+      "reason": "'디자인권의 소멸' 항목 삭제 — 제111조는 '소멸' 에 직접. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "2fdcabc0-3ca7-4c39-a34f-2e9c192c97d8",
+      "law": "design",
+      "label": "디자인권 / 관련 / 대가 및 보상금액에 대한 집행권원",
+      "articles": [
+        "112"
+      ],
+      "moveToNodeId": "bf4b0eb8-ca09-4e84-939b-210685210d09",
+      "moveToLabel": "디자인권 / 소멸",
+      "reason": "'관련' 묶음 삭제 — 제112조는 '소멸' 로. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "7e17631f-ab04-41be-bb95-090cb3e72bdc",
+      "law": "design",
+      "label": "심판 / 청구 / 공동심판의 청구 등",
+      "articles": [
+        "125"
+      ],
+      "moveToNodeId": "195762f2-95dc-4589-bf15-9a5676c0cb06",
+      "moveToLabel": "심판 / 주체 / 심판의 당사자",
+      "reason": "'공동심판의 청구 등' 항목 삭제 — 제125조는 주체 > 심판의 당사자. 2026-09-07 원장 지시."
     }
   ]
 }
