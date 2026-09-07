@@ -29,8 +29,10 @@ interface TreeNode extends SystematicNode {
   badgeNo: number;
 }
 
-function buildTree(nodes: SystematicNode[]): TreeNode[] {
-  const badgeNo = systematicNumbers(nodes);
+function buildTree(
+  nodes: SystematicNode[],
+  badgeNo: Record<string, number>,
+): TreeNode[] {
   const map = new Map<string, TreeNode>();
   for (const n of nodes)
     map.set(n.nodeId, {
@@ -126,7 +128,16 @@ export function ProblemSystematicTree({
     }
     return visibleNodes.filter((n) => keep.has(n.nodeId));
   }, [visibleNodes, query]);
-  const tree = useMemo(() => buildTree(searchedNodes), [searchedNodes]);
+  // ★번호는 검색 **전의** 목록으로 매긴다 — 걸러낸 목록으로 매기면 검색할 때마다
+  //   번호가 바뀐다(번호 없는 층의 형제 순서 채번이 그렇다).
+  const badgeNo = useMemo(
+    () => systematicNumbers(visibleNodes),
+    [visibleNodes],
+  );
+  const tree = useMemo(
+    () => buildTree(searchedNodes, badgeNo),
+    [searchedNodes, badgeNo],
+  );
   // 활성 노드 + 그 조상은 펼친 상태로 시작. 검색 중엔 결과 트리 전체 펼침.
   const forceOpen = useMemo(() => {
     if (query) return new Set(searchedNodes.map((n) => n.nodeId));
