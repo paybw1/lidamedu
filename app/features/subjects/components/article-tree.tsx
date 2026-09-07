@@ -15,6 +15,8 @@ import { compareArticlesNatural } from "~/features/laws/lib/article-sort";
 import type { ArticleNode } from "~/features/laws/queries.server";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
+import { ArticleOutlineLabel } from "./article-outline-label";
+
 interface TreeNode extends ArticleNode {
   children: TreeNode[];
 }
@@ -246,7 +248,10 @@ export function ArticleTree({
   const showBookmarkFilter = bookmarkLevels !== undefined;
   // 필터 변경 통지 — 부모(허브)가 가운데 영역을 필터 정독으로 전환할 수 있게.
   useEffect(() => {
-    onFilterChange?.({ importance: importanceFilter, bookmark: bookmarkFilter });
+    onFilterChange?.({
+      importance: importanceFilter,
+      bookmark: bookmarkFilter,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [importanceFilter, bookmarkFilter]);
   // 검색창을 닫으면 잔여 필터가 보이지 않게 남는 것 방지 — 질의도 함께 비운다.
@@ -527,7 +532,8 @@ function TreeItem({
   const memos = annotation?.memos ?? 0;
   const highlights = annotation?.highlights ?? 0;
 
-  const labelEl = <span className="flex-1 truncate">{node.displayLabel}</span>;
+  // 편·장·절·관은 배지로(조문은 번호가 이름의 일부라 그대로).
+  const labelEl = <ArticleOutlineLabel label={node.displayLabel} />;
   const importance = Math.max(0, Math.min(3, node.importance));
   const starEl =
     isArticle && importance > 0 ? (

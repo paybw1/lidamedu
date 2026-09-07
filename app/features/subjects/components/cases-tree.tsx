@@ -28,6 +28,7 @@ import type {
 } from "~/features/laws/queries.server";
 
 import { nodesForView } from "../lib/systematic-view";
+import { ArticleOutlineLabel } from "./article-outline-label";
 import {
   SystematicNumberBadge,
   TopicBadge,
@@ -744,7 +745,7 @@ function ArticleItem({
         aria-current={isActive ? "page" : undefined}
       >
         {expandToggle}
-        <span className="flex-1 truncate">{node.displayLabel}</span>
+        <ArticleOutlineLabel label={node.displayLabel} />
         <CountChip value={count} isActive={isActive} />
       </Link>
       {hasChildren && open ? (
