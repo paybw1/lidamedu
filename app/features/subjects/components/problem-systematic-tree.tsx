@@ -19,16 +19,25 @@ import type { SystematicNodeProblemStat } from "~/features/problems/queries.serv
 import {
   SystematicNumberBadge,
   stripSystematicNumber,
+  systematicNumbers,
 } from "./systematic-node-label";
 import { TreeBranch } from "./tree-branch";
 
 interface TreeNode extends SystematicNode {
   children: TreeNode[];
+  // 배지에 찍을 번호 — ord 가 아니다(systematic-node-label 주석 참조).
+  badgeNo: number;
 }
 
 function buildTree(nodes: SystematicNode[]): TreeNode[] {
+  const badgeNo = systematicNumbers(nodes);
   const map = new Map<string, TreeNode>();
-  for (const n of nodes) map.set(n.nodeId, { ...n, children: [] });
+  for (const n of nodes)
+    map.set(n.nodeId, {
+      ...n,
+      children: [],
+      badgeNo: badgeNo[n.nodeId] ?? n.ord,
+    });
   const roots: TreeNode[] = [];
   for (const n of map.values()) {
     if (n.parentId && map.has(n.parentId)) {
@@ -262,7 +271,7 @@ function NodeItem({
         aria-current={isActive ? "page" : undefined}
       >
         {expandToggle}
-        <SystematicNumberBadge depth={depth} ord={node.ord} />
+        <SystematicNumberBadge depth={depth} no={node.badgeNo} />
         <span className="flex-1 truncate">
           {stripSystematicNumber(node.displayLabel)}
         </span>

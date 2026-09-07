@@ -126,6 +126,7 @@ import { SubjectivePanel } from "~/features/subjects/components/subjective-panel
 import {
   SystematicNumberBadge,
   stripSystematicNumber,
+  systematicNumbers,
 } from "~/features/subjects/components/systematic-node-label";
 import { ViewerBackButton } from "~/features/subjects/components/viewer-back-button";
 import {
@@ -762,6 +763,10 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
     }
     return chain;
   }, [placementNodeId, systematicNodes]);
+  const badgeNo = useMemo(
+    () => systematicNumbers(systematicNodes),
+    [systematicNodes],
+  );
   // 주관식 문제면 레일 활성 축·"목록으로" 복귀 탭을 주관식으로.
   const isSubjectiveProblem = problem.format === "subjective";
   const [selected, setSelected] = useState<number | null>(null);
@@ -1217,7 +1222,10 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                           className="border-border/60 bg-muted/40 text-foreground/80 hover:bg-muted inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium"
                           title={`체계도 — ${n.displayLabel}`}
                         >
-                          <SystematicNumberBadge depth={i} ord={n.ord} />
+                          <SystematicNumberBadge
+                            depth={i}
+                            no={badgeNo[n.nodeId] ?? n.ord}
+                          />
                           {stripSystematicNumber(n.displayLabel)}
                         </Link>
                       </Fragment>

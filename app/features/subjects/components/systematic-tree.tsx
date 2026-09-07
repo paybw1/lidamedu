@@ -21,8 +21,9 @@ import {
   sumNodeProgress,
 } from "~/features/subjects/components/node-progress-gauge";
 import {
-  stripSystematicNumber,
   SystematicNumberBadge,
+  stripSystematicNumber,
+  systematicNumbers,
 } from "~/features/subjects/components/systematic-node-label";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
@@ -49,13 +50,23 @@ interface TreeNode extends SystematicNode {
   children: TreeNode[];
   // 부분트리 article 수 (자기 articles + 모든 후손 articles, 중복 제거)
   subtreeArticleCount: number;
+  // 배지에 찍을 번호 — ord 가 아니다(systematic-node-label 주석 참조).
+  badgeNo: number;
 }
 
-function buildTree(nodes: SystematicNode[]): TreeNode[] {
+function buildTree(
+  nodes: SystematicNode[],
+  badgeNo: Record<string, number>,
+): TreeNode[] {
   const map = new Map<string, TreeNode>();
   const roots: TreeNode[] = [];
   for (const n of nodes) {
-    map.set(n.nodeId, { ...n, children: [], subtreeArticleCount: 0 });
+    map.set(n.nodeId, {
+      ...n,
+      children: [],
+      subtreeArticleCount: 0,
+      badgeNo: badgeNo[n.nodeId] ?? n.ord,
+    });
   }
   for (const n of map.values()) {
     if (n.parentId && map.has(n.parentId)) {
@@ -153,10 +164,7 @@ export function SystematicTree({
 }) {
   // 조문 트리는 판례 전용 노드(caseOnly)를 제외 — 판례 체계도에만 존재하는
   // 세부 분기(예: 신규성일반/동일성)는 조문 화면에 등장하지 않는다.
-  const visibleNodes = useMemo(
-    () => nodes.filter((n) => !n.caseOnly),
-    [nodes],
-  );
+  const visibleNodes = useMemo(() => nodes.filter((n) => !n.caseOnly), [nodes]);
   // 검색 — 노드 라벨 또는 조문 라벨 substring 매칭. 매칭 노드/조문 + 조상 라인 유지.
   const [searchQuery, setSearchQuery] = useState("");
   useEffect(() => {
@@ -192,7 +200,16 @@ export function SystematicTree({
         };
       });
   }, [visibleNodes, query]);
-  const tree = useMemo(() => buildTree(searchedNodes), [searchedNodes]);
+  // ★번호는 검색·필터 **전의** 목록으로 매긴다 — 걸러낸 목록으로 매기면 필터를
+  //   켤 때마다 번호가 바뀐다.
+  const badgeNo = useMemo(
+    () => systematicNumbers(visibleNodes),
+    [visibleNodes],
+  );
+  const tree = useMemo(
+    () => buildTree(searchedNodes, badgeNo),
+    [searchedNodes, badgeNo],
+  );
   const expandedIds = useMemo(() => {
     // 검색 중엔 결과 트리 전체 펼침 — 매칭 위치가 접혀 있으면 검색 의미가 없다.
     if (query) return new Set(searchedNodes.map((n) => n.nodeId));
@@ -313,8 +330,8 @@ export function SystematicTree({
           {query
             ? `"${searchQuery.trim()}" 와 일치하는 항목이 없습니다.`
             : bookmarkFilter !== 0
-            ? `즐겨찾기 ${BOOKMARK_LABELS[bookmarkFilter]} 조문이 없습니다.`
-            : `중요도 ${IMPORTANCE_LABELS[importanceFilter]} 조문이 없습니다.`}
+              ? `즐겨찾기 ${BOOKMARK_LABELS[bookmarkFilter]} 조문이 없습니다.`
+              : `중요도 ${IMPORTANCE_LABELS[importanceFilter]} 조문이 없습니다.`}
         </p>
       ) : (
         <ul className="space-y-0.5 text-sm">
@@ -389,7 +406,7 @@ function SystematicItem({
 
   const labelEl = (
     <>
-      <SystematicNumberBadge depth={depth} ord={node.ord} />
+      <SystematicNumberBadge depth={depth} no={node.badgeNo} />
       <span className="flex-1 truncate">
         {stripSystematicNumber(node.displayLabel)}
       </span>
@@ -400,7 +417,7 @@ function SystematicItem({
   // (active 는 leaf article 단위). cases-tree CountChip 과 같은 hover 톤.
   const countEl =
     node.subtreeArticleCount > 0 ? (
-      <span className="text-muted-foreground group-hover:text-current group-hover:font-semibold inline-flex shrink-0 items-center gap-0.5 text-[10px] tabular-nums transition-colors">
+      <span className="text-muted-foreground inline-flex shrink-0 items-center gap-0.5 text-[10px] tabular-nums transition-colors group-hover:font-semibold group-hover:text-current">
         <NetworkIcon className="size-3" />
         {node.subtreeArticleCount}
       </span>

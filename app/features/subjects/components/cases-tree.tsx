@@ -4,6 +4,8 @@
 // 조문 트리는 판례 0건 노드를 trim한다. 체계도(systematic)는 데이터 유무와
 // 무관하게 조문·판례·문제 탭이 같은 목차를 보여야 하므로 trim하지 않는다.
 // 노드 클릭 → 현재 URL search 에 case_article / case_chapter / case_node 셋업 → 셔플.
+import type { CaseTreeFilter } from "../lib/loader.server";
+import type { SortAxis } from "./sort-axis";
 
 import {
   ChevronRightIcon,
@@ -19,22 +21,20 @@ import { Link, useSearchParams } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { cn } from "~/core/lib/utils";
-
-import { TreeBranch } from "./tree-branch";
 import { compareArticlesNatural } from "~/features/laws/lib/article-sort";
 import type {
   ArticleNode,
   SystematicNode,
 } from "~/features/laws/queries.server";
 
-import type { CaseTreeFilter } from "../lib/loader.server";
-import type { SortAxis } from "./sort-axis";
 import {
-  splitTopicLabel,
-  stripSystematicNumber,
   SystematicNumberBadge,
   TopicBadge,
+  splitTopicLabel,
+  stripSystematicNumber,
+  systematicNumbers,
 } from "./systematic-node-label";
+import { TreeBranch } from "./tree-branch";
 
 interface ArticleTreeNode extends ArticleNode {
   children: ArticleTreeNode[];
@@ -90,11 +90,19 @@ function pruneArticleTree(
 
 interface SystematicTreeNode extends SystematicNode {
   children: SystematicTreeNode[];
+  // 배지에 찍을 번호 — ord 가 아니다(systematic-node-label 주석 참조).
+  badgeNo: number;
 }
 
 function buildSystematicTree(nodes: SystematicNode[]): SystematicTreeNode[] {
+  const badgeNo = systematicNumbers(nodes);
   const map = new Map<string, SystematicTreeNode>();
-  for (const n of nodes) map.set(n.nodeId, { ...n, children: [] });
+  for (const n of nodes)
+    map.set(n.nodeId, {
+      ...n,
+      children: [],
+      badgeNo: badgeNo[n.nodeId] ?? n.ord,
+    });
   const roots: SystematicTreeNode[] = [];
   for (const n of map.values()) {
     if (n.parentId && map.has(n.parentId)) {
@@ -318,9 +326,7 @@ export function CasesTree({
   const caseViewNodes = useMemo(
     () =>
       systematicNodes.map((n) =>
-        n.caseDisplayLabel
-          ? { ...n, displayLabel: n.caseDisplayLabel }
-          : n,
+        n.caseDisplayLabel ? { ...n, displayLabel: n.caseDisplayLabel } : n,
       ),
     [systematicNodes],
   );
@@ -351,8 +357,9 @@ export function CasesTree({
   const articleForceOpen = useMemo(() => {
     // 검색 중에는 결과 트리의 모든 조상을 자동 펼침 (매칭 노드까지 한 번에 보이도록).
     if (trimmedQuery !== "") {
-      return collectAllAncestorIds(articleTree, (n) =>
-        (n as ArticleTreeNode).articleId,
+      return collectAllAncestorIds(
+        articleTree,
+        (n) => (n as ArticleTreeNode).articleId,
       );
     }
     const set = activeArticleAncestors(articles, activeArticleId);
@@ -366,8 +373,9 @@ export function CasesTree({
 
   const systematicForceOpen = useMemo(() => {
     if (trimmedQuery !== "") {
-      return collectAllAncestorIds(systematicTree, (n) =>
-        (n as SystematicTreeNode).nodeId,
+      return collectAllAncestorIds(
+        systematicTree,
+        (n) => (n as SystematicTreeNode).nodeId,
       );
     }
     const set = activeSystematicAncestors(caseViewNodes, activeNodeId);
@@ -394,14 +402,14 @@ export function CasesTree({
                   : "조문 검색 — 예: 신규성, 제29조"
               }
               aria-label="판례 트리 내 검색"
-              className="border-input bg-background h-7 w-full rounded-md border pl-7 pr-7 text-[11px]"
+              className="border-input bg-background h-7 w-full rounded-md border pr-7 pl-7 text-[11px]"
             />
             {searchQuery ? (
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
                 aria-label="검색 지우기"
-                className="text-muted-foreground hover:text-foreground absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px]"
+                className="text-muted-foreground hover:text-foreground absolute top-1/2 right-1.5 -translate-y-1/2 text-[10px]"
               >
                 ✕
               </button>
@@ -431,10 +439,10 @@ export function CasesTree({
         <p className="text-muted-foreground px-2 py-4 text-xs">
           {trimmedQuery !== ""
             ? `"${trimmedQuery}" 와 일치하는 항목이 없습니다.`
-            : emptyHint ??
+            : (emptyHint ??
               (renderSystematic
                 ? "체계도 단원에 연결된 판례가 없습니다."
-                : "조문에 연결된 판례가 없습니다.")}
+                : "조문에 연결된 판례가 없습니다."))}
         </p>
       ) : renderSystematic ? (
         <ul className="space-y-0.5 text-sm">
@@ -558,7 +566,7 @@ export function CaseTreeViewToggle({
               ? "bg-background text-link shadow-sm"
               : "hover:text-foreground",
             disabled
-              ? "cursor-not-allowed opacity-50 hover:text-muted-foreground"
+              ? "hover:text-muted-foreground cursor-not-allowed opacity-50"
               : "",
           )}
         >
@@ -599,7 +607,10 @@ export function CaseTopicList({
           nodeId: n.nodeId,
         });
         return (
-          <li key={n.nodeId} data-cases-tree-active={isActive ? "true" : undefined}>
+          <li
+            key={n.nodeId}
+            data-cases-tree-active={isActive ? "true" : undefined}
+          >
             <Link
               to={href}
               preventScrollReset
@@ -634,7 +645,7 @@ function CountChip({ value, isActive }: { value: number; isActive?: boolean }) {
         "inline-flex shrink-0 items-center gap-0.5 text-[10px] tabular-nums transition-colors",
         isActive
           ? "bg-primary text-primary-foreground rounded-full px-1.5 py-0.5 font-bold"
-          : "text-muted-foreground group-hover:text-current group-hover:font-semibold",
+          : "text-muted-foreground group-hover:font-semibold group-hover:text-current",
       )}
     >
       <GavelIcon className="size-3" />
@@ -675,8 +686,8 @@ function ArticleItem({
   const isActive =
     activeArticleId === node.articleId || activeChapterId === node.articleId;
   const count = isArticle
-    ? byArticleId[node.articleId] ?? 0
-    : byChapterId[node.articleId] ?? 0;
+    ? (byArticleId[node.articleId] ?? 0)
+    : (byChapterId[node.articleId] ?? 0);
 
   const levelClass = (() => {
     switch (node.level) {
@@ -824,7 +835,8 @@ function SystematicItem({
     nodeId: node.nodeId,
   });
   const { topicNo, title: topicTitle } = splitTopicLabel(node.displayLabel);
-  const title = topicNo != null ? topicTitle : stripSystematicNumber(node.displayLabel);
+  const title =
+    topicNo != null ? topicTitle : stripSystematicNumber(node.displayLabel);
 
   return (
     <li data-cases-tree-active={isActive ? "true" : undefined}>
@@ -841,7 +853,7 @@ function SystematicItem({
         {topicNo != null ? (
           <TopicBadge no={topicNo} />
         ) : (
-          <SystematicNumberBadge depth={depth} ord={node.ord} />
+          <SystematicNumberBadge depth={depth} no={node.badgeNo} />
         )}
         <span className="flex-1 truncate">{title}</span>
         <CountChip value={count} isActive={isActive} />
