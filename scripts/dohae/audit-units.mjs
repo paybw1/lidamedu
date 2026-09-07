@@ -204,7 +204,10 @@ const isHeader = (text) => {
   const n = normalize(text);
   if (headerTexts.has(n)) return true;
   // 목차·간지에 남은 "01 목적(法 1)2" 같은 꼬리 쪽수까지 붙은 형태.
-  return [...headerTexts].some((h) => h.length >= 6 && n.replace(/\d+$/, "") === h);
+  if ([...headerTexts].some((h) => h.length >= 6 && n.replace(/\d+$/, "") === h)) return true;
+  // ★제목이 두 도형으로 나뉜 것 — 제목줄과 조문줄이 따로 온다
+  //   ("국선대리인, 전문심리위원 및 참고인" + "(法 139의2, 154의2, 154의3)").
+  return n.length >= 6 && [...headerTexts].some((h) => h.includes(n));
 };
 
 const candidates = body.filter(
@@ -212,10 +215,16 @@ const candidates = body.filter(
 );
 
 // 이 조각이 어느 유닛 자리인가 — 원본 흐름에서 바로 앞의 주제 제목 도형.
+// ★참고자료 헤더는 도형이 아니라 본문 글로 온다("2.2 분할출원") — 제목만 맞추면 그 구간이
+//   앞 주제(t15)로 잘못 귀속돼, 참고자료의 도표가 엉뚱한 유닛의 유실로 보고된다.
 const headerAt = [];
 for (const [i, it] of body.entries()) {
   const n = normalize(it.text);
-  const u = json.units.find((x) => normalize(x.title) === n);
+  const u = json.units.find(
+    (x) =>
+      normalize(x.title) === n ||
+      (x.kind === "reference" && n === normalize(`${x.refNo}${x.title}`)),
+  );
   if (u) headerAt.push({ i, key: keyOfJson(u) });
 }
 const unitOf = (idx) => {
@@ -238,25 +247,52 @@ const hasDiagram = new Map(
   ]),
 );
 
+// ★토막(20자)은 **양쪽의 조각 경계가 같을 때만** 맞는다. 원본에서 한 칸에 뭉쳐 있던 도형
+//   글이 파싱 쪽에서 여러 조각으로 나뉘면(도해 시간축 도표가 그렇다) 토막이 경계를 넘지
+//   못해 멀쩡히 들어간 글도 "없음" 으로 나온다(r2-2 실사례 8건 전량 오탐).
+//   그래서 유실 후보는 **낱말 단위로 한 번 더** 확인한다.
+// ★낱말은 **한글이 든 것만** 센다. 도표는 칸이 「A」「B」처럼 한 글자라, 원본에서 칸이
+//   붙으면 「A, B A」 → 「BA」 같은 허깨비 낱말이 생겨 멀쩡한 도표가 유실로 찍힌다.
+// ★낱말은 **원문(공백 있는 글)** 에서 뽑는다. 정규화한 글은 공백이 없어 조각 하나가
+//   통짜 낱말 하나가 되고, 그러면 일치율이 늘 0 에 가깝다.
+// ★한글이 든 낱말만 센다 — 도표 칸은 「A」「B」처럼 한 글자라, 원본에서 칸이 붙으면
+//   「A, B A」 → 「BA」 같은 허깨비 낱말이 생겨 멀쩡한 도표가 유실로 찍힌다.
+const WORD = /[가-힣][가-힣A-Za-z0-9]*/g;
+const parsedWords = new Set(
+  json.units.flatMap((u) => [...blockTexts(u.blocks)]).flatMap((t) => String(t).match(WORD) ?? []),
+);
+const wordCoverage = (text) => {
+  const ws = String(text).match(WORD) ?? [];
+  if (ws.length < 3) return 0; // 한글 낱말이 거의 없으면 이 검사로는 판단하지 않는다
+  return ws.filter((w) => parsedWords.has(w)).length / ws.length;
+};
+
 const lost = [];
+const rechunked = [];
 const partial = [];
 for (const [idx, it] of body.entries()) {
   if (!candidates.includes(it)) continue;
   const ratio = presenceIn(it.text, parsedBlob);
   if (ratio >= 0.8) continue;
   const key = unitOf(idx);
-  (ratio < 0.3 ? lost : partial).push({ ...it, ratio, key, viaImage: hasDiagram.get(key) ?? false });
+  const row = { ...it, ratio, key, viaImage: hasDiagram.get(key) ?? false };
+  if (ratio >= 0.3) partial.push(row);
+  else {
+    row.words = wordCoverage(it.text);
+    (row.words >= 0.9 ? rechunked : lost).push(row);
+  }
 }
 const chars = (arr) => arr.reduce((n, x) => n + normalize(x.text).length, 0);
 console.log("\n━━ B. 원본 대조 — 교재 HWPX 글이 유닛에 들어갔나");
 console.log(`   검사한 조각 ${candidates.length} (12자 이상 본문)`);
 console.log(`   ${lost.length === 0 ? "✔" : "✗"} 유닛 어디에도 없다        ${lost.length}건 ${chars(lost).toLocaleString()}자`);
 console.log(`   ${partial.length === 0 ? "✔" : "△"} 일부만 들어갔다          ${partial.length}건 ${chars(partial).toLocaleString()}자`);
+console.log(`   ✔ 조각 경계만 다르다(내용은 있다) ${rechunked.length}건 — 낱말은 다 들어가 있다`);
 // 표 안에 그림이 있으면 파서가 표째 PDF 크롭으로 내보낸다 — 글자는 이미지 안에만 남는다.
 const viaImage = lost.filter((x) => x.viaImage).length;
 console.log(`      그중 그림이 있는 유닛 ${viaImage}건 — 표째 그림으로 나갔을 가능성(글자는 이미지 안)`);
 for (const x of SHOW_ALL ? lost : lost.slice(0, 15))
-  console.log(`      ${x.key.padEnd(6)} ${x.viaImage ? "그림有" : "     "} [${x.kind}] ${cut(x.text, 66)}`);
+  console.log(`      ${x.key.padEnd(6)} ${x.viaImage ? "그림有" : "     "} 낱말${Math.round((x.words ?? 0) * 100)}% [${x.kind}] ${cut(x.text, 56)}`);
 if (!SHOW_ALL && lost.length > 12) console.log(`      … 외 ${lost.length - 12}건 (--all)`);
 
 // ── C. 표류 ───────────────────────────────────────────────────────────
