@@ -222,6 +222,105 @@
       "moveToNodeId": "b92585f7-49ce-42fc-9752-6d90d9d7b3ce",
       "moveToLabel": "상표권 / 소멸",
       "reason": "소멸 아래 항목 삭제 — 제106조를 '소멸' 에 직접 배치. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "7f0f3895-b021-478c-a337-634be08639f5",
+      "law": "trademark",
+      "label": "심판 / 청구 / 공동심판의 청구 등",
+      "articles": [
+        "124"
+      ],
+      "moveToNodeId": "0d44ecdf-b13c-4f1e-91be-72aa503dae43",
+      "moveToLabel": "심판 / 주체 / 심판의 당사자",
+      "reason": "'공동심판의 청구 등' 항목 삭제 — 제124조는 주체 > 심판의 당사자. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "7aaaa80e-ad4c-4cfc-801d-56fa357bdec9",
+      "law": "trademark",
+      "label": "심판 / 진행 / 증거조사 및 증거보전",
+      "articles": [
+        "144"
+      ],
+      "moveToNodeId": "dcb5572c-ddfb-4c99-a222-d14d1ca1e48c",
+      "moveToLabel": "심판 / 진행 / 본안심리",
+      "reason": "심판 > 진행 하위 정리 — 제144조는 본안심리. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "87bdc64b-9e8f-4ca1-9a9b-907267b0ec9b",
+      "law": "trademark",
+      "label": "심판 / 진행 / 심판의 진행",
+      "articles": [
+        "145"
+      ],
+      "moveToNodeId": "dcb5572c-ddfb-4c99-a222-d14d1ca1e48c",
+      "moveToLabel": "심판 / 진행 / 본안심리",
+      "reason": "심판 > 진행 하위 정리 — 제145조는 본안심리. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "da63c186-33c5-49a5-89eb-0e6fea15ce8b",
+      "law": "trademark",
+      "label": "심판 / 진행 / 적시제출주의",
+      "articles": [
+        "145의2"
+      ],
+      "moveToNodeId": "dcb5572c-ddfb-4c99-a222-d14d1ca1e48c",
+      "moveToLabel": "심판 / 진행 / 본안심리",
+      "reason": "심판 > 진행 하위 정리 — 제145조의2 는 본안심리. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "1fe25732-ff52-423e-9f86-37ada11413a6",
+      "law": "trademark",
+      "label": "심판 / 진행 / 직권심리",
+      "articles": [
+        "146"
+      ],
+      "moveToNodeId": "dcb5572c-ddfb-4c99-a222-d14d1ca1e48c",
+      "moveToLabel": "심판 / 진행 / 본안심리",
+      "reason": "심판 > 진행 하위 정리 — 제146조는 본안심리. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "2ab8ef4b-6a82-482f-87a4-66cca21996c4",
+      "law": "trademark",
+      "label": "심판 / 진행 / 심리·심결의 병합 또는 분리",
+      "articles": [
+        "147"
+      ],
+      "moveToNodeId": "dcb5572c-ddfb-4c99-a222-d14d1ca1e48c",
+      "moveToLabel": "심판 / 진행 / 본안심리",
+      "reason": "심판 > 진행 하위 정리 — 제147조는 본안심리. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "57337e81-0397-4e72-a6c1-76262c7cb40f",
+      "law": "trademark",
+      "label": "심판 / 진행 / 일사부재리",
+      "articles": [
+        "150"
+      ],
+      "moveToNodeId": "fbd4e193-d892-4548-87b1-9bb9e03e0e63",
+      "moveToLabel": "심판 / 종료 / 심결에 의한 종료",
+      "reason": "'일사부재리' 항목 삭제 — 제150조는 종료 > 심결에 의한 종료. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "370481c3-e885-4486-a719-6f147dacfb90",
+      "law": "trademark",
+      "label": "심판 / 진행 / 소송과의 관계",
+      "articles": [
+        "151"
+      ],
+      "moveToNodeId": "28ba7e1d-111c-4113-8b29-a6623930c2dc",
+      "moveToLabel": "총칙/보칙 / 절차의 정지",
+      "reason": "'소송과의 관계' 항목 삭제 — 제151조는 총칙/보칙 > 절차의 정지. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "9767243f-79c0-47b9-be1a-6b337aa7afed",
+      "law": "trademark",
+      "label": "심판 / 진행 / 심사 또는 이의신청 절차의 효력",
+      "articles": [
+        "155"
+      ],
+      "moveToNodeId": "ea68bba6-166b-4cc8-a961-784c45b68bd3",
+      "moveToLabel": "심판 / 각론 / 거절결정에 대한 심판",
+      "reason": "'심사 또는 이의신청 절차의 효력' 항목 삭제 — 제155조는 각론 > 거절결정에 대한 심판. 2026-09-07 원장 지시."
     }
   ]
 }
