@@ -71,6 +71,9 @@ export function renameLabel(lawCode, parentLabel, label) {
   return hit ? hit.to : label;
 }
 
+/** 최상위 줄의 `09 ` 같은 번호 접두. 없으면 빈 문자열. */
+const numberPrefixOf = (raw) => raw.trim().match(/^[0-9]{2}[ \t]+/)?.[0] ?? "";
+
 /** 글머리 모양으로 계층을 읽는다. `01 …` / `[01] …` / `• …` / ` - …` */
 export function levelOf(t) {
   if (/^\d{2}\s/.test(t)) return 1;
@@ -110,7 +113,10 @@ export function parseTree(file, lawCode = null) {
       path: chain.join(" / "),
       parentPath: chain.slice(0, -1).join(" / "),
       // 최상위는 원본의 `01 …` 번호를 라벨에 유지한다(DB 도 그렇게 저장돼 있다).
-      displayLabel: stripRefs(lv === 1 ? raw.trim() : label),
+      // ★번호만 원본에서 떼어 오고 제목은 renames 를 거친 것을 쓴다 — 예전엔 raw 를
+      //   그대로 써서 최상위 장(章) 이름은 renames 가 먹지 않았다(경로 키만 바뀌어
+      //   화면 이름과 어긋난다). 이름을 안 바꾼 장은 결과가 전과 같다.
+      displayLabel: stripRefs(lv === 1 ? numberPrefixOf(raw) + label : label),
       sourceLabel: norm(raw),
       refs: label.match(REF_SUFFIX)?.[1]?.trim() ?? null,
     });
