@@ -424,11 +424,13 @@ export interface SystematicArticleRef {
   importance: number;
 }
 
-// caseOnly / caseDisplayLabel — 판례 체계도 전용 노출·라벨 오버라이드.
-// 트리 빌더는 화면 컨텍스트(case vs article/problem)에 따라 두 필드를 다르게 처리:
-//   • 판례 트리 (cases-tree)            → caseOnly 포함, 라벨은 caseDisplayLabel ?? displayLabel
-//   • 조문/문제 트리 (systematic-tree,
-//     problem-systematic-tree)        → caseOnly 제외, 라벨은 항상 displayLabel
+// 화면별 노출·라벨 — 노드는 한 벌이고 화면마다 다르게 거른다.
+//   • 판례 트리 (cases-tree)          → articleOnly 제외, 라벨은 caseDisplayLabel ?? displayLabel
+//   • 조문·객관식 트리 (systematic-tree,
+//     problem-systematic-tree)       → caseOnly 제외, 라벨은 언제나 displayLabel
+//   • 주관식 트리                     → 판례와 같게(구조·라벨), 단 판례 배치 층(주제N)은 제외
+// ★숨긴 노드의 자식은 **바로 위 보이는 조상으로 끌어올린다**(hideNodes 참조). 최상위로
+//   튀어나가게 두면 한쪽 화면에서만 묶음 층 하나를 걷어내는 것이 불가능해진다.
 // loader 는 모든 노드를 한 번에 fetch 하고 각 트리 컴포넌트가 자기 규칙으로 거른다.
 export interface SystematicNode {
   nodeId: string;
@@ -437,6 +439,8 @@ export interface SystematicNode {
   displayLabel: string;
   caseDisplayLabel: string | null;
   caseOnly: boolean;
+  /** 조문·객관식에만 노출(판례 체계도에서 숨김). caseOnly 의 짝. */
+  articleOnly: boolean;
   ord: number;
   articles: SystematicArticleRef[];
 }
@@ -448,7 +452,7 @@ export async function getSystematicSkeleton(
   const { data: nodes, error: nodeErr } = await client
     .from("systematic_nodes")
     .select(
-      "node_id, parent_id, path, display_label, case_display_label, case_only, ord",
+      "node_id, parent_id, path, display_label, case_display_label, case_only, article_only, ord",
     )
     .eq("law_code", lawCode)
     .order("path");
@@ -486,20 +490,21 @@ export async function getSystematicSkeleton(
   //   전체 순번(computeCaseOverallOrder) 랭킹이 이 배열 순서를 그대로 쓴다.
   return sortSystematicTreeOrder(
     nodes.map((n) => ({
-    nodeId: n.node_id,
-    parentId: n.parent_id,
-    path: typeof n.path === "string" ? n.path : String(n.path ?? ""),
-    displayLabel: n.display_label,
-    caseDisplayLabel: n.case_display_label ?? null,
-    caseOnly: n.case_only ?? false,
-    ord: n.ord,
-    // 노드 내 조문 자연 정렬 — 81 → 81의2 → 81의3 → 82 (링크 테이블에 ord 없음,
-    // 삽입 순서라 나중 추가된 가지조가 끝에 붙는 문제 교정). 노드 상세(getSystematicNodeWithArticles)와 동일 규칙.
-    articles: [...(articlesByNode.get(n.node_id) ?? [])].sort((x, y) => {
-      const xn = naturalKey(x.articleNumber);
-      const yn = naturalKey(y.articleNumber);
-      return xn[0] !== yn[0] ? xn[0] - yn[0] : xn[1] - yn[1];
-    }),
+      nodeId: n.node_id,
+      parentId: n.parent_id,
+      path: typeof n.path === "string" ? n.path : String(n.path ?? ""),
+      displayLabel: n.display_label,
+      caseDisplayLabel: n.case_display_label ?? null,
+      caseOnly: n.case_only ?? false,
+      articleOnly: n.article_only ?? false,
+      ord: n.ord,
+      // 노드 내 조문 자연 정렬 — 81 → 81의2 → 81의3 → 82 (링크 테이블에 ord 없음,
+      // 삽입 순서라 나중 추가된 가지조가 끝에 붙는 문제 교정). 노드 상세(getSystematicNodeWithArticles)와 동일 규칙.
+      articles: [...(articlesByNode.get(n.node_id) ?? [])].sort((x, y) => {
+        const xn = naturalKey(x.articleNumber);
+        const yn = naturalKey(y.articleNumber);
+        return xn[0] !== yn[0] ? xn[0] - yn[0] : xn[1] - yn[1];
+      }),
     })),
   );
 }
@@ -591,7 +596,9 @@ export async function getSystematicNodeWithArticles(
 
   const articles = linkedArticles
     .map((a) => {
-      const rev = a.current_revision_id ? revMap.get(a.current_revision_id) : null;
+      const rev = a.current_revision_id
+        ? revMap.get(a.current_revision_id)
+        : null;
       return {
         articleId: a.article_id,
         articleNumber: a.article_number,
@@ -737,7 +744,9 @@ export async function getChapterWithArticles(
     path: targetPath,
     totalArticles,
     articles: descendantArticles.map((a) => {
-      const rev = a.current_revision_id ? revMap.get(a.current_revision_id) : null;
+      const rev = a.current_revision_id
+        ? revMap.get(a.current_revision_id)
+        : null;
       return {
         articleId: a.article_id,
         articleNumber: a.article_number,

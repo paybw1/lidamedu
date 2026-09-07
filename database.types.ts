@@ -13921,6 +13921,7 @@ export type Database = {
       }
       systematic_nodes: {
         Row: {
+          article_only: boolean
           case_display_label: string | null
           case_only: boolean
           created_at: string
@@ -13933,6 +13934,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          article_only?: boolean
           case_display_label?: string | null
           case_only?: boolean
           created_at?: string
@@ -13945,6 +13947,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          article_only?: boolean
           case_display_label?: string | null
           case_only?: boolean
           created_at?: string

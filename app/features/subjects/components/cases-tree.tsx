@@ -27,6 +27,7 @@ import type {
   SystematicNode,
 } from "~/features/laws/queries.server";
 
+import { nodesForView } from "../lib/systematic-view";
 import {
   SystematicNumberBadge,
   TopicBadge,
@@ -320,14 +321,11 @@ export function CasesTree({
       ),
     [articles, caseTreeCounts.byArticleId, caseTreeCounts.byChapterId],
   );
-  // 판례 트리는 caseOnly 노드를 포함하고 caseDisplayLabel 이 있으면 그것을
-  // displayLabel 자리에 노출 (조문/문제 트리와 분리된 판례 전용 라벨 오버라이드).
-  // 한 번에 매핑해 두면 검색·렌더 모두 같은 라벨로 동작.
+  // 판례 트리는 조문 전용 노드(articleOnly)를 빼고, caseDisplayLabel 이 있으면 그것을
+  // displayLabel 자리에 노출한다. 한 번에 매핑해 두면 검색·렌더가 같은 라벨을 본다.
+  // ★숨긴 노드의 자식은 바로 위 보이는 조상으로 올라온다(systematic-view 참조).
   const caseViewNodes = useMemo(
-    () =>
-      systematicNodes.map((n) =>
-        n.caseDisplayLabel ? { ...n, displayLabel: n.caseDisplayLabel } : n,
-      ),
+    () => nodesForView(systematicNodes, "case"),
     [systematicNodes],
   );
   // 체계도는 trim 없이 전체 노드 표시 — 조문 탭 체계도와 목차 일치 (단, 판례 전용

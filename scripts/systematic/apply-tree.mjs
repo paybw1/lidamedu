@@ -56,6 +56,7 @@ for (const n of articleNodes) {
     displayLabel: n.displayLabel,
     caseDisplayLabel: null,
     caseOnly: false,
+    articleOnly: false,
     parentKey: n.parentPath ? keyPath(n.parentPath) : null,
     ord: ord++,
   });
@@ -72,6 +73,7 @@ for (const n of caseNodes) {
     displayLabel: n.displayLabel,
     caseDisplayLabel: null,
     caseOnly: true,
+    articleOnly: false,
     parentKey: n.parentPath ? keyPath(n.parentPath) : null,
     ord: ord++,
   });
@@ -86,6 +88,7 @@ for (const t of [...target.values()]) {
       displayLabel: seg[seg.length - 1],
       caseDisplayLabel: null,
       caseOnly: true,
+      articleOnly: false,
       parentKey: seg.slice(0, -1).join(" / ") || null,
       ord: ord++,
     });
@@ -93,10 +96,43 @@ for (const t of [...target.values()]) {
   }
 }
 
+// ── 운영자 지정 ────────────────────────────────────────────────────────────
+// ★원본(체계도 hwpx)에 없는 결정은 여기서 얹는다. DB 에서만 바꾸면 이 스크립트가
+//   다시 원본 값으로 되돌린다.
+//   visibility — 어느 화면에 보일지(caseOnly = 판례에만 / articleOnly = 조문·객관식에만)
+//   caseLabels — 판례 화면에서만 쓸 이름
+// 짝을 못 찾은 지정은 **소리 내어 알린다** — 트리를 손보면 경로가 바뀌어 조용히
+// 무력화되기 때문이다.
+const OVERRIDE_DOC = JSON.parse(
+  fs.readFileSync("scripts/systematic/label-overrides.json", "utf8"),
+);
+const orphanOverrides = [];
+for (const v of OVERRIDE_DOC.visibility ?? []) {
+  if (v.law !== lawCode) continue;
+  const t = target.get(keyPath(v.path));
+  if (!t) {
+    orphanOverrides.push(`visibility  ${v.path}`);
+    continue;
+  }
+  if (v.caseOnly !== undefined) t.caseOnly = v.caseOnly;
+  if (v.articleOnly !== undefined) t.articleOnly = v.articleOnly;
+}
+for (const c of OVERRIDE_DOC.caseLabels ?? []) {
+  if (c.law !== lawCode) continue;
+  const t = target.get(keyPath(c.path));
+  if (!t) {
+    orphanOverrides.push(`caseLabels  ${c.path}`);
+    continue;
+  }
+  t.caseDisplayLabel = c.label;
+}
+
 // ── 현재 DB ────────────────────────────────────────────────────────────────
 const { data: nodes, error } = await sb
   .from("systematic_nodes")
-  .select("node_id, parent_id, path, display_label, case_display_label, case_only, ord")
+  .select(
+    "node_id, parent_id, path, display_label, case_display_label, case_only, article_only, ord",
+  )
   .eq("law_code", lawCode);
 if (error) throw new Error(error.message);
 const byId = new Map(nodes.map((n) => [n.node_id, n]));
@@ -176,13 +212,23 @@ console.log(`\n═══ ${src.label} 체계도 반영 ${APPLY ? "(적용)" : "(
 console.log(`목표 ${target.size}노드 · 현재 ${nodes.length}노드`);
 const willRename = [...target.values()].filter((t) => {
   const n = nodeForKey.get(t.key);
-  return n && (n.display_label !== t.displayLabel || (n.case_display_label ?? null) !== t.caseDisplayLabel);
+  return (
+    n &&
+    (n.display_label !== t.displayLabel ||
+      (n.case_display_label ?? null) !== t.caseDisplayLabel ||
+      (n.article_only ?? false) !== t.articleOnly)
+  );
 }).length;
 const willInsert = [...target.values()].filter((t) => !nodeForKey.get(t.key)).length;
 console.log(`  이름·표기 갱신 ${willRename}`);
 console.log(`  신규 추가     ${willInsert}`);
 console.log(`  유지(주제 층) ${topicLeftovers.length}`);
 console.log(`  원본에 없는 일반 노드 ${plainLeftovers.length}`);
+if (orphanOverrides.length) {
+  console.log(`
+★짝을 못 찾은 운영자 지정 ${orphanOverrides.length}건 — 경로가 바뀌었는지 확인:`);
+  orphanOverrides.forEach((s) => console.log(`   ${s}`));
+}
 
 // ★"자식이 남는가"는 **이동한 뒤** 기준으로 봐야 한다. 목표 트리에 자리를 찾은 자식은
 //   다른 부모로 옮겨 가므로, 지금 붙어 있다고 세면 지울 수 있는 빈 묶음도 못 지운다.
@@ -236,9 +282,12 @@ for (const t of ordered) {
       display_label: t.displayLabel,
       case_display_label: t.caseDisplayLabel,
       case_only: t.caseOnly,
+      article_only: t.articleOnly,
       ord: t.ord,
     })
-    .select("node_id, parent_id, path, display_label, case_display_label, case_only, ord")
+    .select(
+      "node_id, parent_id, path, display_label, case_display_label, case_only, article_only, ord",
+    )
     .single();
   if (e) throw new Error(`insert 실패 ${t.key}: ${e.message}`);
   nodeForKey.set(t.key, row);
@@ -257,6 +306,7 @@ for (const t of ordered) {
   if ((n.case_display_label ?? null) !== t.caseDisplayLabel)
     patch.case_display_label = t.caseDisplayLabel;
   if (n.case_only !== t.caseOnly) patch.case_only = t.caseOnly;
+  if ((n.article_only ?? false) !== t.articleOnly) patch.article_only = t.articleOnly;
   if ((n.parent_id ?? null) !== (parent?.node_id ?? null)) patch.parent_id = parent?.node_id ?? null;
   if (n.ord !== t.ord) patch.ord = t.ord;
   if (!Object.keys(patch).length) continue;

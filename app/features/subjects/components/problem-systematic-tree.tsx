@@ -16,6 +16,7 @@ import { cn } from "~/core/lib/utils";
 import type { SystematicNode } from "~/features/laws/queries.server";
 import type { SystematicNodeProblemStat } from "~/features/problems/queries.server";
 
+import { nodesForView } from "../lib/systematic-view";
 import {
   SystematicNumberBadge,
   stripSystematicNumber,
@@ -104,9 +105,13 @@ export function ProblemSystematicTree({
   tab?: "problems" | "subjective";
 }) {
   const [searchParams] = useSearchParams();
-  // 문제 트리는 판례 전용 노드(caseOnly)를 제외 — 판례 체계도에만 존재하는
-  // 세부 분기(예: 신규성일반/동일성)는 문제 화면에 등장하지 않는다.
-  const visibleNodes = useMemo(() => nodes.filter((n) => !n.caseOnly), [nodes]);
+  // 객관식 트리는 조문 트리와 같은 목차(판례 전용 노드 제외).
+  // ★주관식 트리는 **판례 체계도와 같은 목차**를 쓴다(원장 지시 2026-09-07) —
+  //   단 판례 배치 층(주제N …)은 뺀다. 주관식 문항이 붙지 않는 층이라 목차만 길어진다.
+  const visibleNodes = useMemo(
+    () => nodesForView(nodes, tab === "subjective" ? "subjective" : "article"),
+    [nodes, tab],
+  );
   // 검색 — 노드 라벨 substring 매칭. 매칭 노드 + 조상 라인 유지, 결과는 전체 펼침.
   const [searchQuery, setSearchQuery] = useState("");
   useEffect(() => {

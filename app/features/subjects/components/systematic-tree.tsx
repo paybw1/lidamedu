@@ -26,6 +26,7 @@ import {
   systematicNumbers,
 } from "~/features/subjects/components/systematic-node-label";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
+import { nodesForView } from "~/features/subjects/lib/systematic-view";
 
 type ImportanceFilter = 0 | 1 | 2 | 3;
 type BookmarkFilter = 0 | 1 | 2 | 3 | 4 | 5;
@@ -164,7 +165,8 @@ export function SystematicTree({
 }) {
   // 조문 트리는 판례 전용 노드(caseOnly)를 제외 — 판례 체계도에만 존재하는
   // 세부 분기(예: 신규성일반/동일성)는 조문 화면에 등장하지 않는다.
-  const visibleNodes = useMemo(() => nodes.filter((n) => !n.caseOnly), [nodes]);
+  // ★숨긴 노드의 자식은 바로 위 보이는 조상으로 올라온다(systematic-view 참조).
+  const visibleNodes = useMemo(() => nodesForView(nodes, "article"), [nodes]);
   // 검색 — 노드 라벨 또는 조문 라벨 substring 매칭. 매칭 노드/조문 + 조상 라인 유지.
   const [searchQuery, setSearchQuery] = useState("");
   useEffect(() => {

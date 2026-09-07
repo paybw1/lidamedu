@@ -256,16 +256,37 @@ $$;
 
 ```sql
 create table public.systematic_nodes (
-  node_id         uuid primary key default gen_random_uuid(),
-  law_code        text not null,
-  parent_id       uuid references systematic_nodes(node_id),
-  path            ltree not null,
-  display_label   text not null,
-  ord             int not null default 0,
-  created_at      timestamptz not null default now()
+  node_id            uuid primary key default gen_random_uuid(),
+  law_code           text not null,
+  parent_id          uuid references systematic_nodes(node_id),
+  path               ltree not null,
+  display_label      text not null,
+  case_display_label text,                                -- 판례 화면에서만 쓸 이름
+  case_only          boolean not null default false,      -- 판례 화면에만 노출
+  article_only       boolean not null default false,      -- 조문·객관식에만 노출
+  ord                int not null default 0,
+  created_at         timestamptz not null default now(),
+  constraint systematic_nodes_visibility_ck check (not (case_only and article_only))
 );
 
 create index systematic_nodes_path_gist on systematic_nodes using gist (path);
+
+**화면별 노출 (2026-09-07)** — 노드는 한 벌이고 세 화면이 자기 규칙으로 거른다.
+같은 목차를 쓰되 한쪽에만 필요한 층을 두거나 뺄 수 있다.
+
+| 화면 | 숨기는 것 | 이름 |
+|------|-----------|------|
+| 조문·객관식 | `case_only` | `display_label` |
+| 판례 | `article_only` | `case_display_label ?? display_label` |
+| 주관식 | `article_only` + 판례 배치 층(`주제N …`) | 판례와 같음 |
+
+★숨긴 노드의 **자식은 바로 위 보이는 조상으로 올라온다**(`app/features/subjects/lib/systematic-view.ts`).
+최상위로 튀어나가게 두면 한쪽 화면에서만 묶음 층 하나를 걷어내는 것이 불가능하다 —
+상표 09 장이 그 사례(조문은 평평하게, 판례는 「마드리드의정서에 따른 국제출원」 묶음 유지).
+
+원본(체계도 hwpx)에 없는 결정은 `scripts/systematic/label-overrides.json` 에 적는다
+(`visibility` = 노출, `caseLabels` = 판례 전용 이름). DB 에서만 바꾸면 `apply-tree` 가
+되돌린다. 마이그레이션: `scripts/sql/20260907_systematic_article_only.sql`.
 
 create table public.article_systematic_links (
   article_id  uuid references articles(article_id) on delete cascade,
