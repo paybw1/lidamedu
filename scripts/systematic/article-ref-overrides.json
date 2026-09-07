@@ -198,6 +198,30 @@
       "moveToNodeId": "28ba7e1d-111c-4113-8b29-a6623930c2dc",
       "moveToLabel": "총칙/보칙 / 절차의 정지",
       "reason": "심사 > 진행 하위 항목 삭제 — 제70조는 총칙/보칙 > 절차의 정지. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "704918e4-3dda-41fe-a944-a09f8b5fb283",
+      "law": "trademark",
+      "label": "상표권 / 소멸 / 포기",
+      "articles": [
+        "101",
+        "102",
+        "103"
+      ],
+      "moveToNodeId": "b92585f7-49ce-42fc-9752-6d90d9d7b3ce",
+      "moveToLabel": "상표권 / 소멸",
+      "reason": "소멸 아래 항목 삭제 — 제101~103조를 '소멸' 에 직접 배치. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "5d0bb5b5-036e-45f2-ac39-01eba98b4c50",
+      "law": "trademark",
+      "label": "상표권 / 소멸 / 상표권의 소멸",
+      "articles": [
+        "106"
+      ],
+      "moveToNodeId": "b92585f7-49ce-42fc-9752-6d90d9d7b3ce",
+      "moveToLabel": "상표권 / 소멸",
+      "reason": "소멸 아래 항목 삭제 — 제106조를 '소멸' 에 직접 배치. 2026-09-07 원장 지시."
     }
   ]
 }
