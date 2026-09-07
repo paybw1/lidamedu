@@ -101,6 +101,8 @@ for (const t of [...target.values()]) {
 //   다시 원본 값으로 되돌린다.
 //   visibility — 어느 화면에 보일지(caseOnly = 판례에만 / articleOnly = 조문·객관식에만)
 //   caseLabels — 판례 화면에서만 쓸 이름
+//   order      — 형제 사이의 자리. 순서값(ord)은 원본을 훑는 차례대로 매겨져서, 판례
+//                원본에만 있는 항목은 언제나 조문 항목 뒤로 간다. 그걸 되돌릴 때 쓴다.
 // 짝을 못 찾은 지정은 **소리 내어 알린다** — 트리를 손보면 경로가 바뀌어 조용히
 // 무력화되기 때문이다.
 const OVERRIDE_DOC = JSON.parse(
@@ -125,6 +127,33 @@ for (const c of OVERRIDE_DOC.caseLabels ?? []) {
     continue;
   }
   t.caseDisplayLabel = c.label;
+}
+// ★자리를 바꿀 때 **그 무리가 이미 쓰던 순서값만 돌려 쓴다** — 새 값을 지어내면
+//   다른 무리와 뒤섞여 엉뚱한 곳의 차례가 바뀐다.
+for (const o of OVERRIDE_DOC.order ?? []) {
+  if (o.law !== lawCode) continue;
+  const t = target.get(keyPath(o.path));
+  if (!t) {
+    orphanOverrides.push(`order  ${o.path}`);
+    continue;
+  }
+  const group = [...target.values()]
+    .filter((x) => x.parentKey === t.parentKey)
+    .sort((a, b) => a.ord - b.ord);
+  const slots = group.map((x) => x.ord);
+  const rest = group.filter((x) => x !== t);
+  let at = 0; // before 가 없으면 맨 앞
+  if (o.before) {
+    at = rest.findIndex((x) => x.key === keyPath(o.before));
+    if (at < 0) {
+      orphanOverrides.push(`order.before  ${o.before}`);
+      continue;
+    }
+  }
+  rest.splice(at, 0, t);
+  rest.forEach((x, i) => {
+    x.ord = slots[i];
+  });
 }
 
 // ── 현재 DB ────────────────────────────────────────────────────────────────
