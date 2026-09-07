@@ -523,6 +523,127 @@
       "moveToNodeId": "195762f2-95dc-4589-bf15-9a5676c0cb06",
       "moveToLabel": "심판 / 주체 / 심판의 당사자",
       "reason": "'공동심판의 청구 등' 항목 삭제 — 제125조는 주체 > 심판의 당사자. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "1fd34bff-af52-4786-a49f-7af5218a91c1",
+      "law": "design",
+      "label": "심판 / 진행 / 답변서 제출 등",
+      "articles": [
+        "134"
+      ],
+      "moveToNodeId": "c227db54-7e32-4f6d-8840-d75ce487b729",
+      "moveToLabel": "심판 / 주체 / 특허심판원",
+      "reason": "'답변서 제출 등' 항목 삭제 — 제134조는 주체 > 특허심판원. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "39b2889e-5aa1-42ed-8018-fbbf2e01f351",
+      "law": "design",
+      "label": "심판 / 진행 / 중복심판",
+      "articles": [
+        "142"
+      ],
+      "moveToNodeId": "f67cf776-e80f-434b-9e79-4f27da1d8bed",
+      "moveToLabel": "심판 / 진행 / 본안심리",
+      "reason": "'중복심판' 항목 삭제 — 제142조는 이미 본안심리에 있다. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "a4cd96f6-57ae-4f3d-961d-c2e6045fdbb9",
+      "law": "design",
+      "label": "심판 / 진행 / 증거조사 및 증거보전",
+      "articles": [
+        "145"
+      ],
+      "moveToNodeId": "f67cf776-e80f-434b-9e79-4f27da1d8bed",
+      "moveToLabel": "심판 / 진행 / 본안심리",
+      "reason": "심판 > 진행 정리 — 제145조는 본안심리. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "d5edc195-a5a6-4a97-9770-14a65325832e",
+      "law": "design",
+      "label": "심판 / 진행 / 심판의 진행",
+      "articles": [
+        "146"
+      ],
+      "moveToNodeId": "f67cf776-e80f-434b-9e79-4f27da1d8bed",
+      "moveToLabel": "심판 / 진행 / 본안심리",
+      "reason": "심판 > 진행 정리 — 제146조는 본안심리. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "1737b5d1-e0d9-4b6b-a7d7-9f93a48e6d99",
+      "law": "design",
+      "label": "심판 / 진행 / 적시제출주의",
+      "articles": [
+        "146의2"
+      ],
+      "moveToNodeId": "f67cf776-e80f-434b-9e79-4f27da1d8bed",
+      "moveToLabel": "심판 / 진행 / 본안심리",
+      "reason": "심판 > 진행 정리 — 제146조의2 는 본안심리. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "8e5040d8-e069-4a33-9e30-7e2665a80833",
+      "law": "design",
+      "label": "심판 / 진행 / 직권심리",
+      "articles": [
+        "147"
+      ],
+      "moveToNodeId": "f67cf776-e80f-434b-9e79-4f27da1d8bed",
+      "moveToLabel": "심판 / 진행 / 본안심리",
+      "reason": "심판 > 진행 정리 — 제147조는 본안심리. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "2abc3d45-5d6f-4d4f-b91f-fe50ac7bae56",
+      "law": "design",
+      "label": "심판 / 진행 / 심리·심결의 병합 또는 분리",
+      "articles": [
+        "148"
+      ],
+      "moveToNodeId": "f67cf776-e80f-434b-9e79-4f27da1d8bed",
+      "moveToLabel": "심판 / 진행 / 본안심리",
+      "reason": "심판 > 진행 정리 — 제148조는 본안심리. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "b4bb1adc-705b-423c-8f28-832f3d82423c",
+      "law": "design",
+      "label": "심판 / 진행 / 일사부재리",
+      "articles": [
+        "151"
+      ],
+      "moveToNodeId": "2b279531-bafc-4e10-97da-555ec7459f50",
+      "moveToLabel": "심판 / 종료 / 심결에 의한 종료",
+      "reason": "'일사부재리' 항목 삭제 — 제151조는 종료 > 심결에 의한 종료. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "81ede800-5e1f-4aea-b9ff-3d033906905d",
+      "law": "design",
+      "label": "심판 / 진행 / 소송과의 관계",
+      "articles": [
+        "152"
+      ],
+      "moveToNodeId": "209cefe5-9754-4ab5-9ac8-7a54b247f887",
+      "moveToLabel": "총칙/보칙 / 절차의 정지",
+      "reason": "'소송과의 관계' 항목 삭제 — 제152조는 총칙/보칙 > 절차의 정지. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "bd3c6793-5985-4758-89b4-0390da9086e3",
+      "law": "design",
+      "label": "심판 / 진행 / 심사 또는 이의신청 절차의 효력",
+      "articles": [
+        "156"
+      ],
+      "moveToNodeId": "87983d85-dc83-4b1a-a141-ce9bb2c73881",
+      "moveToLabel": "심판 / 각론 / 거절결정에 대한 심판",
+      "reason": "'심사 또는 이의신청 절차의 효력' 항목 삭제 — 제156조는 각론 > 거절결정에 대한 심판. 2026-09-07 원장 지시."
+    },
+    {
+      "nodeId": "f67cf776-e80f-434b-9e79-4f27da1d8bed",
+      "law": "design",
+      "label": "심판 / 진행 / 본안심리",
+      "articles": [
+        "142의2"
+      ],
+      "moveToNodeId": "efeab266-0baa-42e1-843f-25c135a7560b",
+      "moveToLabel": "심판 / 주체 / 국선대리인",
+      "reason": "제142조의2(참고인의 의견서 제출)는 주체 > 국선대리인 및 참고인으로. 2026-09-07 원장 지시."
     }
   ]
 }
