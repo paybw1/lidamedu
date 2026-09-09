@@ -28,7 +28,7 @@ import type {
 } from "~/features/laws/queries.server";
 
 import { nodesForView } from "../lib/systematic-view";
-import { ArticleOutlineLabel } from "./article-outline-label";
+import { ArticleOutlineLabel, opensByDefault } from "./article-outline-label";
 import {
   SystematicTreeLabel,
   TopicBadge,
@@ -675,7 +675,9 @@ function ArticleItem({
   linkBase: string;
 }) {
   const isArticle = node.level === "article";
-  const initialOpen = forceOpen.has(node.articleId) || depth === 0;
+  const initialOpen =
+    forceOpen.has(node.articleId) ||
+    (depth === 0 && opensByDefault(node.displayLabel));
   const [open, setOpen] = useState(initialOpen);
   // forceOpen 이 검색 등으로 갱신되면 기존 마운트된 노드도 자동 펼침.
   useEffect(() => {

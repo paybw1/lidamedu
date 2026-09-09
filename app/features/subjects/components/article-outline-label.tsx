@@ -85,3 +85,18 @@ export function ArticleOutlineLabel({
     </>
   );
 }
+
+// ── 목차를 처음에 펼칠지 ─────────────────────────────────────────────────────
+// 편(編)은 기본으로 펼친다 — 민법처럼 편이 있는 법은 편만 다섯 줄 보이면 목차 구실을
+// 못 한다. 다만 아래 두 편은 접어 둔다: 변리사 시험 범위 밖이라 늘 펼쳐 두면
+// 목차만 길어진다(원장 지시 2026-09-09).
+// ★법을 가리지 않고 **편 이름**으로 판단한다 — 이 두 이름은 민법에만 있고,
+//   그래서 조문·객관식·주관식·판례 네 트리가 lawCode 를 몰라도 같은 결정을 한다.
+const COLLAPSED_PART_TITLES = new Set(["친족", "상속"]);
+
+/** 최상위 목차 줄을 처음부터 펼칠 것인가. */
+export function opensByDefault(label: string): boolean {
+  const parts = splitOutlineLabel(label);
+  if (!parts || parts.unit !== "편") return true;
+  return !COLLAPSED_PART_TITLES.has(parts.title);
+}

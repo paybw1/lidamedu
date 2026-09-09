@@ -15,6 +15,7 @@ import type {
   SystematicArticleRef,
   SystematicNode,
 } from "~/features/laws/queries.server";
+import { opensByDefault } from "~/features/subjects/components/article-outline-label";
 import {
   type NodeProgressByArticle,
   NodeProgressGauge,
@@ -374,7 +375,9 @@ function SystematicItem({
   annotationCounts?: Record<string, ArticleAnnotationCounts>;
   progressByArticle?: NodeProgressByArticle;
 }) {
-  const initialOpen = forceOpen.has(node.nodeId) || depth === 0;
+  const initialOpen =
+    forceOpen.has(node.nodeId) ||
+    (depth === 0 && opensByDefault(node.displayLabel));
   const [open, setOpen] = useState(initialOpen);
   const hasChildren = node.children.length > 0;
   const hasArticles = node.articles.length > 0;

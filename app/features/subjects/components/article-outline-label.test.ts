@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { splitOutlineLabel } from "./article-outline-label";
+import { opensByDefault, splitOutlineLabel } from "./article-outline-label";
 
 describe("splitOutlineLabel", () => {
   it("편·장·절·관을 배지 값과 제목으로 나눈다", () => {
@@ -48,5 +48,23 @@ describe("splitOutlineLabel", () => {
 
   it("제목이 없으면 나누지 않는다", () => {
     expect(splitOutlineLabel("제1편")).toBeNull();
+  });
+});
+
+describe("opensByDefault", () => {
+  it("편은 펼치되 친족·상속은 접는다", () => {
+    // 변리사 시험 범위 밖이라 늘 펼쳐 두면 목차만 길어진다(원장 지시 2026-09-09).
+    expect(opensByDefault("제1편 총칙")).toBe(true);
+    expect(opensByDefault("제2편 물권")).toBe(true);
+    expect(opensByDefault("제3편 채권")).toBe(true);
+    expect(opensByDefault("제4편 친족")).toBe(false);
+    expect(opensByDefault("제5편 상속")).toBe(false);
+  });
+
+  it("편이 아닌 줄은 이 규칙이 건드리지 않는다", () => {
+    expect(opensByDefault("제1장 통칙")).toBe(true);
+    expect(opensByDefault("01 총칙/보칙")).toBe(true);
+    // 상속은 편일 때만 접는다 — 같은 이름의 장이 있어도 영향 없음.
+    expect(opensByDefault("제5장 상속")).toBe(true);
   });
 });

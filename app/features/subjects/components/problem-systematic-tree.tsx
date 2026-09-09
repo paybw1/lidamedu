@@ -17,6 +17,7 @@ import type { SystematicNode } from "~/features/laws/queries.server";
 import type { SystematicNodeProblemStat } from "~/features/problems/queries.server";
 
 import { nodesForView } from "../lib/systematic-view";
+import { opensByDefault } from "./article-outline-label";
 import {
   SystematicTreeLabel,
   systematicNumbers,
@@ -221,7 +222,10 @@ function NodeItem({
   linkBase: string;
   tab: "problems" | "subjective";
 }) {
-  const [open, setOpen] = useState(forceOpen.has(node.nodeId) || depth === 0);
+  const [open, setOpen] = useState(
+    forceOpen.has(node.nodeId) ||
+      (depth === 0 && opensByDefault(node.displayLabel)),
+  );
   // forceOpen 이 (활성 노드 변경 등으로) 갱신되면 마운트된 노드도 펼침.
   useEffect(() => {
     if (forceOpen.has(node.nodeId)) setOpen(true);

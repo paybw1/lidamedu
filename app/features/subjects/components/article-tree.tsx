@@ -15,7 +15,7 @@ import { compareArticlesNatural } from "~/features/laws/lib/article-sort";
 import type { ArticleNode } from "~/features/laws/queries.server";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
-import { ArticleOutlineLabel } from "./article-outline-label";
+import { ArticleOutlineLabel, opensByDefault } from "./article-outline-label";
 
 interface TreeNode extends ArticleNode {
   children: TreeNode[];
@@ -497,7 +497,9 @@ function TreeItem({
   // 장(chapter) 은 기본적으로 접혀 있고 클릭해야 펼쳐짐 — 단, 활성 조문/chapter 의 조상 장은 자동 펼침.
   // ★편(part)은 처음부터 펼친다 — 민법처럼 편이 있는 법은 편만 다섯 줄 보이면 목차 구실을
   //   못 한다. 편이 없는 법(특허·상표·디자인)은 최상위가 장이라 그대로 접혀 있다.
-  const initialOpen = forceOpen.has(node.articleId) || node.level === "part";
+  const initialOpen =
+    forceOpen.has(node.articleId) ||
+    (node.level === "part" && opensByDefault(node.displayLabel));
   const [open, setOpen] = useState(initialOpen);
   // navigation 으로 forceOpen set 이 바뀌면 (다른 chapter/article 로 이동) 새 활성 노드의 조상을 자동 펼침.
   // 이미 펼쳐 둔 상태는 강제로 닫지 않는다 — 사용자가 수동으로 펼친 다른 가지는 유지.
