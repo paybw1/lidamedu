@@ -299,3 +299,6 @@ source/특허법/리담특허법 강의노트(제10판).pdf
 # 개인 문서 — 저장소에 올리지 않는다(2026-09-07 실수로 커밋되어 이력 재작성).
 /source/생기부와자소서/
 /_tmp-*.mjs
+
+# 정리비교표 팝업 실측 산출물(scripts/digest/probe-popup.mjs)
+scripts/digest/.probe-*
