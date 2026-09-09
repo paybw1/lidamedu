@@ -97,15 +97,19 @@ export function DigestOutline({
 function DigestSheet({ digest }: { digest: SystematicDigest }) {
   return (
     <section>
-      <style>{digest.css}</style>
+      {/* ★React 는 text child 를 이스케이프한다 — `.panel > h2`·content:"" 가 깨진다.
+          CSS 는 반드시 dangerouslySetInnerHTML 로 넣는다(SSR 에서 드러나는 함정). */}
+      <style dangerouslySetInnerHTML={{ __html: digest.css }} />
       <div className="mb-2 flex items-center gap-2">
         <h3 className="text-[13px] font-extrabold">{digest.title}</h3>
         <span className="text-muted-foreground text-[11px] font-semibold">
           교재 정리비교표 {digest.page}쪽
         </span>
       </div>
+      {/* ★한 단원에 두 쪽이 붙으면(01 총칙 = 2p+3p) 규칙이 섞인다 — 쪽 클래스로 가른다.
+          적재 때 CSS 도 `.digest-doc.dpN` 으로 좁혀 두었다(scripts/digest/convert.mjs). */}
       <div
-        className="digest-doc"
+        className={`digest-doc dp${digest.page}`}
         dangerouslySetInnerHTML={{ __html: digest.bodyHtml }}
       />
     </section>

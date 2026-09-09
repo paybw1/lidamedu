@@ -64,10 +64,10 @@ function tokenBlock(body, { aliases }) {
   return kept;
 }
 
-const prefix = (sel) =>
-  sel.split(",").map((s) => `.digest-doc ${s.trim()}`).join(",\n");
+const prefix = (sel, scope) =>
+  sel.split(",").map((s) => `${scope} ${s.trim()}`).join(",\n");
 
-function transform(rules) {
+function transform(rules, scope) {
   const out = [];
   for (const r of rules) {
     const sel = r.sel.replace(/\s+/g, " ").trim();
@@ -75,20 +75,20 @@ function transform(rules) {
     // 운영체제 다크 설정을 그대로 따르면 앱이 라이트인데 표만 검게 나온다 — 버린다.
     if (/^@media\s*\(prefers-color-scheme:\s*dark\)$/.test(sel)) continue;
     if (sel.startsWith("@")) {
-      const inner = transform(parseRules(r.body));
+      const inner = transform(parseRules(r.body), scope);
       if (inner.trim()) out.push(`${sel} {\n${inner}\n}`);
       continue;
     }
 
     if (sel === ":root") {
       const decls = tokenBlock(r.body, { aliases: true });
-      out.push(`.digest-doc {\n${joinDecls(decls)}\n}`);
+      out.push(`${scope} {\n${joinDecls(decls)}\n}`);
       continue;
     }
     if (sel === ':root[data-theme="dark"]') {
       const decls = tokenBlock(r.body, { aliases: false });
       // 앱은 `<html class="dark">` 로 다크를 켠다(app.css). data-theme 은 안 쓴다.
-      out.push(`.dark .digest-doc {\n${joinDecls(decls)}\n}`);
+      out.push(`.dark ${scope} {\n${joinDecls(decls)}\n}`);
       continue;
     }
     if (sel === ':root[data-theme="light"]') continue; // 기본 묶음과 같다
@@ -96,21 +96,27 @@ function transform(rules) {
 
     if (sel === "body") {
       const decls = declsOf(r.body).filter((d) => !BODY_DROP.has(d.prop));
-      out.push(`.digest-doc {\n${joinDecls(decls)}\n}`);
+      out.push(`${scope} {\n${joinDecls(decls)}\n}`);
       continue;
     }
-    out.push(`${prefix(sel)} {\n${r.body.trim()}\n}`);
+    out.push(`${prefix(sel, scope)} {\n${r.body.trim()}\n}`);
   }
   return out.join("\n");
 }
 
-export function convert(html) {
+/**
+ * @param html 한 장짜리 산출물
+ * @param page 교재 쪽번호. ★한 단원에 두 쪽이 붙으면(01 총칙 = 2p+3p) 같은
+ *   `.digest-doc` 아래에서 두 쪽의 규칙이 섞인다 — 쪽마다 `.dpN` 을 덧붙여 가른다.
+ */
+export function convert(html, page) {
+  const scope = page ? `.digest-doc.dp${page}` : ".digest-doc";
   const title = (html.match(/<title>([^<]*)<\/title>/)?.[1] ?? "")
     .split("—")[0]
     .trim();
 
   const styleRaw = html.match(/<style>([\s\S]*?)<\/style>/)?.[1] ?? "";
-  const css = transform(parseRules(styleRaw));
+  const css = transform(parseRules(styleRaw), scope);
 
   const open = html.indexOf('<div class="wrap">');
   if (open < 0) throw new Error("`.wrap` 을 찾지 못했습니다");
@@ -131,7 +137,7 @@ if (import.meta.url === `file:///${process.argv[1].replace(/\\/g, "/")}`) {
     console.log("사용: node scripts/digest/convert.mjs <파일.html>");
     process.exit(1);
   }
-  const r = convert(readFileSync(file, "utf8"));
+  const r = convert(readFileSync(file, "utf8"), Number(file.match(/digest-([0-9]+)p/)?.[1] ?? 0));
   console.log(`제목: ${r.title}`);
   console.log(`본문 ${r.bodyHtml.length}자 · CSS ${r.css.length}자`);
   // 선택자 줄만 본다 — `{` 로 끝나는 줄. 선언줄까지 세면 전부 샌 것처럼 보인다.

@@ -54,7 +54,7 @@ for (const p of PAGES) {
   const nodeId = byLabel.get(p.node);
   if (!nodeId) throw new Error(`체계도 대분류를 찾지 못했습니다: ${p.node}`);
   const html = readFileSync(`scripts/digest/pages/digest-${p.page}p.html`, "utf8");
-  const { title, bodyHtml, css } = convert(html);
+  const { title, bodyHtml, css } = convert(html, p.page);
   rows.push({
     law_code: LAW_CODE,
     node_id: nodeId,
