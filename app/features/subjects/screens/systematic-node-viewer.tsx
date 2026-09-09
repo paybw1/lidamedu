@@ -13,6 +13,7 @@ import {
   PanelRightIcon,
   PencilLineIcon,
   ScrollTextIcon,
+  TableIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, data, useSearchParams } from "react-router";
@@ -57,9 +58,11 @@ import { ArticleBodyView } from "~/features/laws/components/article-body";
 import { ArticleRightPanel } from "~/features/laws/components/article-right-panel";
 import { parseArticleBody } from "~/features/laws/lib/article-body";
 import {
+  type SystematicNode,
   getArticleSkeleton,
   getLawByCode,
   getStaffRole,
+  getSystematicDigests,
   getSystematicNodeWithArticles,
   getSystematicSkeleton,
 } from "~/features/laws/queries.server";
@@ -84,6 +87,7 @@ import {
 import { getCaseIdsByPlacement } from "~/features/cases/queries.server";
 import { getRelatedCasesByArticle } from "~/features/relations/queries.server";
 import { ArticleTree } from "~/features/subjects/components/article-tree";
+import { DigestPopup } from "~/features/subjects/components/digest-popup";
 import {
   LeftPanelResizer,
   PanelEdgeHandle,
@@ -360,8 +364,27 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   // 도해특허법 — 이 노드 서브트리에 배치된 유닛. ★staff 전용(RLS 로 학생은 항상 빈 배열).
   const dohaeUnits = await listDohaeUnitsForNodes(client, subtreeNodeIds);
 
+  // 정리비교표(교재 부록) — **이 노드가 속한 대분류**의 자료. 자료는 장(章) 단위라
+  // 어느 층에 있든 그 장의 정리표를 볼 수 있어야 한다(원장 지시 2026-09-09 — 도해
+  // 배지 옆). ★노출은 RLS 가 정한다(현재 staff 전용).
+  const rootNodeId = ((): string => {
+    let cur = systematicNodes.find((n) => n.nodeId === node.nodeId);
+    while (cur?.parentId) {
+      const parent: SystematicNode | undefined = systematicNodes.find(
+        (n) => n.nodeId === cur?.parentId,
+      );
+      if (!parent) break;
+      cur = parent;
+    }
+    return cur?.nodeId ?? node.nodeId;
+  })();
+  const nodeDigests = (await getSystematicDigests(client, lawCode)).filter(
+    (d) => d.nodeId === rootNodeId,
+  );
+
   return {
     dohaeUnits,
+    nodeDigests,
     subject: LAW_SUBJECTS[lawCode],
     axisCounts,
     nodeProblems: nodeProblemSeq?.problems ?? [],
@@ -419,6 +442,7 @@ function Inner({
     subject,
     blankV2,
     dohaeUnits,
+    nodeDigests,
     lawId,
     node,
     nodeQnaThreads,
@@ -462,6 +486,8 @@ function Inner({
   const [searchParams] = useSearchParams();
   const dohaeParam = searchParams.get("dohae");
   const [dohaeOpen, setDohaeOpen] = useState(false);
+  // 정리비교표 팝업 — 넓은 표라 화면 전체를 쓴다(원장 지시 2026-09-09).
+  const [digestOpen, setDigestOpen] = useState(false);
   useEffect(() => {
     if (dohaeParam) setDohaeOpen(true);
   }, [dohaeParam]);
@@ -536,6 +562,14 @@ function Inner({
           onOpenChange={setDohaeOpen}
           viewerIsStaff={loaderData.isStaff}
           initialUnitId={dohaeParam}
+        />
+      ) : null}
+      {nodeDigests.length > 0 ? (
+        <DigestPopup
+          label={stripSystematicNumber(node.displayLabel)}
+          digests={nodeDigests}
+          open={digestOpen}
+          onOpenChange={setDigestOpen}
         />
       ) : null}
 
@@ -753,6 +787,25 @@ function Inner({
                     <span className="ml-0.5 tabular-nums">
                       {dohaeUnits.length}
                     </span>
+                  </Button>
+                ) : null}
+                {nodeDigests.length > 0 ? (
+                  // 정리비교표 — 이 노드가 속한 **장(章)** 의 자료. 넓은 표라 화면
+                  // 전체를 쓰는 팝업으로 연다(원장 지시 2026-09-09).
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDigestOpen(true)}
+                    title="교재 부록 정리비교표"
+                    className="h-9 gap-1.5 rounded-full border-sky-300 bg-sky-50 text-xs text-sky-800 hover:bg-sky-100 sm:h-7 dark:border-sky-800 dark:bg-sky-950/30 dark:text-sky-300"
+                  >
+                    <TableIcon className="size-3.5" />
+                    정리
+                    {nodeDigests.length > 1 ? (
+                      <span className="ml-0.5 tabular-nums">
+                        {nodeDigests.length}
+                      </span>
+                    ) : null}
                   </Button>
                 ) : null}
                 {blankAvailableCount > 0 ? (

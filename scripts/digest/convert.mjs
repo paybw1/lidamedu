@@ -19,6 +19,8 @@ const ALIAS = {
 };
 /** 페이지 배경·바깥 여백은 패널이 갖는다. */
 const BODY_DROP = new Set(["margin", "background"]);
+/** 기준 폭 — 자료에 박힌 최소 폭이 이보다 넓으면 그쪽을 쓴다. 교재 한 쪽에 해당한다. */
+const DEFAULT_PAGE_W = 1180;
 
 /** `sel { ... }` 을 중괄호 짝을 세어 잘라 낸다. @media 는 안쪽을 다시 부른다. */
 function parseRules(css) {
@@ -135,21 +137,16 @@ export function convert(html, page) {
     .replace(/<ul class="(?:changes|diffs)">[\s\S]*?<\/ul>/g, "")
     .trim();
 
-  // ★표는 **화면 폭 안에 들어와야 한다**(원장 지적 2026-09-09). 한 장짜리 페이지는
-  //   넓게 펼칠 수 있어 최소 폭(min-width)을 박아 뒀지만, 앱 본문은 좌패널을 뺀 폭이라
-  //   그대로 두면 옆으로 밀어 봐야 한다. 최소 폭을 풀어 칸이 폭에 맞춰 나뉘게 하고,
-  //   열이 많은 쪽은 글자를 한 단계 줄여 한 줄에 들어가는 글자 수를 지킨다.
-  // ★`<col` 로만 세면 `<colgroup>` 까지 한 열로 센다 — 뒤 글자를 함께 본다.
-  const cols = (
-    bodyHtml.match(/<colgroup>[\s\S]*?<\/colgroup>/)?.[0].match(/<col[ />]/g) ?? []
-  ).length;
-  const fitted = bodyHtml.replace(/(<table[^>]*?) style="min-width:\d+px"/g, "$1");
-  const tighten =
-    cols >= 9
-      ? `\n${scope} table { font-size: 11px; }\n${scope} th, ${scope} td { padding: 5px 4px; }`
-      : "";
+  // ★자료는 **교재 한 쪽처럼 통째로** 화면에 들어와야 한다(원장 지적 2026-09-09).
+  //   글자만 줄여서는 안 된다 — 4p 는 11px 로도 세로 1,094px 이라 한 화면(≈760px)을
+  //   넘고, 5·6p 는 8px 로 줄여도 넘는다(`estimate-height.mjs`).
+  //   그래서 **기준 폭을 가진 한 장**으로 감싼다. 판짜기는 언제나 이 폭에서 계산되고,
+  //   화면에서는 그 장을 통째로 줄여 맞춘다(digest-panel 의 FitPage).
+  const widths = [...bodyHtml.matchAll(/min-width:(\d+)px/g)].map((m) => Number(m[1]));
+  const pageW = Math.max(DEFAULT_PAGE_W, ...widths);
+  const paged = `<div class="digest-page" style="width:${pageW}px">\n${bodyHtml}\n</div>`;
 
-  return { title, bodyHtml: fitted, css: css + tighten };
+  return { title, bodyHtml: paged, css };
 }
 
 // ★argv[1] 은 `node -e` 로 부를 때 없다 — 없으면 라이브러리로 쓰인 것이다.
