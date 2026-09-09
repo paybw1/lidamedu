@@ -28,7 +28,8 @@ export function DigestPopup({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[94vh] w-[98vw] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
+      {/* ★크기 규약은 도해 팝업(잘 도는 쪽)과 같게 — max-h + flex-col + 본문만 스크롤. */}
+      <DialogContent className="flex max-h-[94vh] w-[98vw] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
         <div className="border-border flex flex-none items-center gap-2 border-b px-4 py-2.5 pr-12">
           <DialogTitle className="text-sm font-bold">
             {label} 정리비교표
@@ -37,7 +38,8 @@ export function DigestPopup({
             교재 부록
           </span>
         </div>
-        <div className="min-h-0 flex-1 overflow-auto px-4 py-3">
+        {/* 넘치는 만큼은 여기서 스크롤한다. iPad 등 터치에서도 확실히 잡히도록 축을 명시. */}
+        <div className="min-h-0 flex-1 touch-pan-x touch-pan-y overflow-x-auto overflow-y-auto overscroll-contain px-4 py-3">
           <div className="space-y-6">
             {digests.map((d) => (
               <section key={d.digestId}>

@@ -59,15 +59,18 @@ for (const vp of [
 
     const tune = document.createElement("style");
     document.head.append(tune);
+    const body = document.getElementById("body");
     const availH =
-      window.innerHeight - box.getBoundingClientRect().top - 16;
+      body.clientHeight -
+      (box.getBoundingClientRect().top - body.getBoundingClientRect().top) -
+      16;
     const sel = ".digest-doc." + [...node.classList].find((c) => c.startsWith("dp"));
-    for (const fs of [12.5, 11.5, 10.5, 9.5, 8.5]) {
+    for (const fs of [12.5, 11.5, 10.5, 9.5]) {
       const pad = fs >= 11 ? "6px 7px" : fs >= 10 ? "5px 5px" : "4px 4px";
       tune.textContent = `${sel} table{font-size:${fs}px}${sel} th,${sel} td{padding:${pad}}`;
       if (node.scrollHeight <= availH) return { fs, h: node.scrollHeight, availH };
     }
-    return { fs: 8.5, h: node.scrollHeight, availH, 넘침: true };
+    return { fs: 9.5, h: node.scrollHeight, availH, 넘침: true };
   });
   await p.waitForTimeout(300);
 

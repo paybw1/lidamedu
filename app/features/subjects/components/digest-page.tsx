@@ -19,6 +19,17 @@ const FONT_STEPS = [12.5, 11.5, 10.5, 9.5];
 /** 자료 아래로 남겨 둘 여백. */
 const BOTTOM_GAP = 16;
 
+/** 위로 올라가며 실제로 스크롤하는 조상을 찾는다(팝업 본문). 없으면 null=창 기준. */
+function scrollParent(el: HTMLElement): HTMLElement | null {
+  let cur: HTMLElement | null = el.parentElement;
+  while (cur && cur !== document.body) {
+    const oy = getComputedStyle(cur).overflowY;
+    if (oy === "auto" || oy === "scroll") return cur;
+    cur = cur.parentElement;
+  }
+  return null;
+}
+
 export function FitPage({
   html,
   css,
@@ -51,9 +62,16 @@ export function FitPage({
     const table = node.querySelector("table");
     if (!table || !tune.current) return;
 
+    // ★가용 높이는 **실제로 스크롤하는 상자**(팝업 본문) 기준으로 잰다. 창 높이로 재면
+    //   팝업 바닥이 창 바닥보다 위에 있는 만큼(94vh 가운데 정렬이면 위아래 3vh씩)
+    //   더 크게 잡혀, 딱 그만큼이 화면 밖으로 밀려난다.
+    const scroller = scrollParent(el);
     const availH = Math.max(
       280,
-      window.innerHeight - el.getBoundingClientRect().top - BOTTOM_GAP,
+      (scroller
+        ? scroller.clientHeight -
+          (el.getBoundingClientRect().top - scroller.getBoundingClientRect().top)
+        : window.innerHeight - el.getBoundingClientRect().top) - BOTTOM_GAP,
     );
     const sel = `.digest-doc.dp${page}`;
     for (const fs of FONT_STEPS) {
