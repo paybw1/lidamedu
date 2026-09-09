@@ -117,6 +117,15 @@ export function subjectHasSystematicAxis(slug: string): boolean {
   return slug !== "civil";
 }
 
+/**
+ * 조문 탭 좌패널에 "정리" 칸을 두는 과목.
+ * 정리비교표(교재 뒤쪽 비교표)를 체계도 대분류별로 묶어 보여 주는 화면이다.
+ * ★자료가 있는 과목만 켠다 — 빈 칸을 띄워 두면 눌러 볼 때마다 헛걸음이 된다.
+ */
+export function subjectHasDigestAxis(slug: string): boolean {
+  return slug === "patent";
+}
+
 /** 2차(주관식) 법 과목 — 산업재산권법 3법 + 민사소송법. */
 export const SECOND_EXAM_LAW_SLUGS = [
   "patent",
