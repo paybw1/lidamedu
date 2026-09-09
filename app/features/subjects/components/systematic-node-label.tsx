@@ -135,7 +135,11 @@ export function SystematicTreeLabel({
   if (outline) {
     return (
       <>
-        <ArticleOutlineBadge no={outline.no} unit={outline.unit} />
+        <ArticleOutlineBadge
+          no={outline.no}
+          unit={outline.unit}
+          branch={outline.branch}
+        />
         <span className="flex-1 truncate">{outline.title}</span>
       </>
     );

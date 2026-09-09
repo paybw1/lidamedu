@@ -7,30 +7,36 @@ describe("splitOutlineLabel", () => {
     expect(splitOutlineLabel("제1편 총칙")).toEqual({
       no: "1",
       unit: "편",
+      branch: "",
       title: "총칙",
     });
     expect(splitOutlineLabel("제11장 법인")).toEqual({
       no: "11",
       unit: "장",
+      branch: "",
       title: "법인",
     });
     expect(splitOutlineLabel("제3절 부재와 실종")).toEqual({
       no: "3",
       unit: "절",
+      branch: "",
       title: "부재와 실종",
     });
     expect(splitOutlineLabel("제2관 유언의 방식")).toEqual({
       no: "2",
       unit: "관",
+      branch: "",
       title: "유언의 방식",
     });
   });
 
-  it("가지 장은 단위 글자 뒤의 의N 까지 번호로 본다", () => {
-    // ★이걸 빼면 번호가 "6" 으로 잘리고 "의2" 가 제목 앞에 남는다(특허법 제6장의2).
+  it("가지 표시는 단위 글자 뒤에 따로 담는다", () => {
+    // ★번호에 붙여 담으면 배지가 "제6의2장" 으로 찍힌다 — 실제 표기는 제6장의2 다
+    //   (특허법, 원장 지적 2026-09-09).
     expect(splitOutlineLabel("제6장의2 특허취소신청")).toEqual({
-      no: "6의2",
+      no: "6",
       unit: "장",
+      branch: "의2",
       title: "특허취소신청",
     });
   });

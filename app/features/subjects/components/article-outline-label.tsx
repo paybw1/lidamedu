@@ -16,19 +16,25 @@ const OUTLINE_RE = /^제\s*(\d+)\s*(편|장|절|관)(의\s*\d+)?\s+(.*)$/;
 export interface ArticleOutlineParts {
   no: string;
   unit: "편" | "장" | "절" | "관";
+  /** 가지 표시. `제6장의2` 의 "의2" — ★단위 글자 **뒤**에 온다. 없으면 빈 문자열. */
+  branch: string;
   title: string;
 }
 
-/** "제1편 총칙" → { no: "1", unit: "편", title: "총칙" }. 목차 표기가 아니면 null. */
+/**
+ * "제1편 총칙" → { no: "1", unit: "편", branch: "", title: "총칙" }.
+ * "제6장의2 특허취소신청" → { no: "6", unit: "장", branch: "의2", … }.
+ * 목차 표기가 아니면 null.
+ */
 export function splitOutlineLabel(label: string): ArticleOutlineParts | null {
   const m = OUTLINE_RE.exec(label.trim());
   if (!m) return null;
   const title = m[4].trim();
   if (!title) return null;
-  const branch = m[3] ? m[3].replace(/\s+/g, "") : "";
   return {
-    no: `${m[1]}${branch}`,
+    no: m[1],
     unit: m[2] as ArticleOutlineParts["unit"],
+    branch: m[3] ? m[3].replace(/\s+/g, "") : "",
     title,
   };
 }
@@ -44,9 +50,11 @@ const UNIT_CLASS: Record<ArticleOutlineParts["unit"], string> = {
 export function ArticleOutlineBadge({
   no,
   unit,
+  branch = "",
 }: {
   no: string;
   unit: ArticleOutlineParts["unit"];
+  branch?: string;
 }) {
   return (
     <span
@@ -57,9 +65,11 @@ export function ArticleOutlineBadge({
       )}
     >
       {/* 원문 표기 그대로 "제1편" — '제' 를 빼면 목차를 읽던 감각과 어긋난다(원장 지적). */}
+      {/* ★차례는 제 → 번호 → 단위 → 가지다. `제6장의2` 를 `제6의2장` 으로 쓰면 안 된다. */}
       <span className="font-medium opacity-70">제</span>
       <span className="tabular-nums">{no}</span>
       <span className="font-medium opacity-70">{unit}</span>
+      {branch ? <span className="tabular-nums">{branch}</span> : null}
     </span>
   );
 }
@@ -80,7 +90,11 @@ export function ArticleOutlineLabel({
     return <span className={cn("flex-1 truncate", className)}>{label}</span>;
   return (
     <>
-      <ArticleOutlineBadge no={parts.no} unit={parts.unit} />
+      <ArticleOutlineBadge
+        no={parts.no}
+        unit={parts.unit}
+        branch={parts.branch}
+      />
       <span className={cn("flex-1 truncate", className)}>{parts.title}</span>
     </>
   );
