@@ -30,7 +30,7 @@ import type {
 import { nodesForView } from "../lib/systematic-view";
 import { ArticleOutlineLabel } from "./article-outline-label";
 import {
-  SystematicNumberBadge,
+  SystematicTreeLabel,
   TopicBadge,
   splitTopicLabel,
   stripSystematicNumber,
@@ -850,11 +850,17 @@ function SystematicItem({
         {/* 주제 노드(교재 목차)면 주제 배지로, 아니면 체계도 깊이 배지로.
             둘을 같이 달면 점 + 알약이 겹쳐 줄이 시끄러워진다. */}
         {topicNo != null ? (
-          <TopicBadge no={topicNo} />
+          <>
+            <TopicBadge no={topicNo} />
+            <span className="flex-1 truncate">{title}</span>
+          </>
         ) : (
-          <SystematicNumberBadge depth={depth} no={node.badgeNo} />
+          <SystematicTreeLabel
+            depth={depth}
+            no={node.badgeNo}
+            label={node.displayLabel}
+          />
         )}
-        <span className="flex-1 truncate">{title}</span>
         <CountChip value={count} isActive={isActive} />
       </Link>
       {hasChildren && open ? (

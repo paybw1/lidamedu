@@ -18,8 +18,7 @@ import type { SystematicNodeProblemStat } from "~/features/problems/queries.serv
 
 import { nodesForView } from "../lib/systematic-view";
 import {
-  SystematicNumberBadge,
-  stripSystematicNumber,
+  SystematicTreeLabel,
   systematicNumbers,
 } from "./systematic-node-label";
 import { TreeBranch } from "./tree-branch";
@@ -287,10 +286,11 @@ function NodeItem({
         aria-current={isActive ? "page" : undefined}
       >
         {expandToggle}
-        <SystematicNumberBadge depth={depth} no={node.badgeNo} />
-        <span className="flex-1 truncate">
-          {stripSystematicNumber(node.displayLabel)}
-        </span>
+        <SystematicTreeLabel
+          depth={depth}
+          no={node.badgeNo}
+          label={node.displayLabel}
+        />
         {starredCount > 0 ? (
           <span
             className={cn(

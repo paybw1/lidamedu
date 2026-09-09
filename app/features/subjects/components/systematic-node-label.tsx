@@ -1,3 +1,8 @@
+import {
+  ArticleOutlineBadge,
+  splitOutlineLabel,
+} from "./article-outline-label";
+
 // 체계도 노드 라벨 — 번호 표기 A안.
 // systematic_nodes.display_label 에는 번호가 "02 특허요건" / "[01] 특허를 받을 수
 // 있는 발명" 처럼 박혀 있어 표기가 들쭉날쭉하다. 표시할 땐 접두사를 떼어 제목만
@@ -111,4 +116,34 @@ export function systematicNumbers(
     });
   }
   return out;
+}
+
+// ── 체계도 한 줄의 이름 ──────────────────────────────────────────────────────
+// ★민법 체계도는 조문 목차 그 자체다(`제1편 총칙` · `제1장 통칙`). 그래서 체계도 번호
+//   배지를 달면 조문 탭과 객관식 탭의 같은 목차가 서로 다르게 보인다(원장 지적
+//   2026-09-09). 목차 표기면 조문 트리와 **같은 배지**를 쓴다.
+export function SystematicTreeLabel({
+  depth,
+  no,
+  label,
+}: {
+  depth: number;
+  no: number;
+  label: string;
+}) {
+  const outline = splitOutlineLabel(label);
+  if (outline) {
+    return (
+      <>
+        <ArticleOutlineBadge no={outline.no} unit={outline.unit} />
+        <span className="flex-1 truncate">{outline.title}</span>
+      </>
+    );
+  }
+  return (
+    <>
+      <SystematicNumberBadge depth={depth} no={no} />
+      <span className="flex-1 truncate">{stripSystematicNumber(label)}</span>
+    </>
+  );
 }

@@ -52,12 +52,12 @@ export function ArticleOutlineBadge({
     <span
       className={cn(
         // min-w — 한 자리(제1편)와 두 자리(제11장)가 섞여도 제목 시작선이 맞게.
-        "inline-flex h-[18px] min-w-[30px] flex-none items-center justify-center gap-px rounded-md border px-1 text-[10px] leading-none font-bold",
+        "inline-flex h-[18px] min-w-[38px] flex-none items-center justify-center rounded-md border px-1 text-[10px] leading-none font-bold",
         UNIT_CLASS[unit],
       )}
-      // 배지가 "1편" 으로 보이므로 읽어 주는 값은 원래 표기로.
-      aria-label={`제${no}${unit}`}
     >
+      {/* 원문 표기 그대로 "제1편" — '제' 를 빼면 목차를 읽던 감각과 어긋난다(원장 지적). */}
+      <span className="font-medium opacity-70">제</span>
       <span className="tabular-nums">{no}</span>
       <span className="font-medium opacity-70">{unit}</span>
     </span>

@@ -21,8 +21,7 @@ import {
   sumNodeProgress,
 } from "~/features/subjects/components/node-progress-gauge";
 import {
-  SystematicNumberBadge,
-  stripSystematicNumber,
+  SystematicTreeLabel,
   systematicNumbers,
 } from "~/features/subjects/components/systematic-node-label";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
@@ -408,10 +407,11 @@ function SystematicItem({
 
   const labelEl = (
     <>
-      <SystematicNumberBadge depth={depth} no={node.badgeNo} />
-      <span className="flex-1 truncate">
-        {stripSystematicNumber(node.displayLabel)}
-      </span>
+      <SystematicTreeLabel
+        depth={depth}
+        no={node.badgeNo}
+        label={node.displayLabel}
+      />
     </>
   );
   // subtreeArticleCount chip — 기본은 muted, group-hover 시 text-current 로 대비 ↑.
