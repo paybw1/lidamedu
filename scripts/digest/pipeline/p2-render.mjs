@@ -94,8 +94,9 @@ const html = `<title>${TITLE} — 정리비교표 재작화</title>
   .lede b { color: var(--ink); }
 
   /* 갈래 8개를 흐르게 놓는다 — 특허권·심판이 길어 단 높이를 맞출 수 없다. */
-  .grid { columns: 3; column-gap: 16px; }
-  @media (max-width: 1080px) { .grid { columns: 2; } }
+  /* ★2단 — 3단은 갈래 한 장이 세로로 길어져 밑으로 한없이 내려간다(원장 지적).
+     좁은 화면(휴대전화)에서만 1단으로 떨어뜨린다. */
+  .grid { columns: 2; column-gap: 16px; }
   @media (max-width: 720px)  { .grid { columns: 1; } }
 
   .card {

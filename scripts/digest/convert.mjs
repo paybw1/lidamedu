@@ -123,15 +123,40 @@ export function convert(html, page) {
   const inner = html.slice(open + '<div class="wrap">'.length);
   const close = inner.lastIndexOf("</div>");
   // 머리글(제목·설명)은 패널이 이미 갖고 있다 — 두 번 나오지 않게 뺀다.
+  // ★꼬리의 「고친 곳」·「다른 곳」 기록도 뺀다 — 그건 **검토용 작업 기록**이지 자료가
+  //   아니다. 학습 화면에는 자료만 올라가야 한다(원장 지적 2026-09-09).
+  //   마지막 `</section>` 뒤를 통째로 자르면 안 된다 — 2p·10p 는 그 뒤에 감싸개를
+  //   닫는 `</div>` 가 있어 태그가 어긋난다. 꼬리 문단만 집어낸다.
   const bodyHtml = inner
     .slice(0, close)
     .replace(/<header>[\s\S]*?<\/header>/, "")
+    //   ★목록(`고친 곳`·`다른 곳`)은 문단 **밖 형제**로 붙어 있어 따로 집어야 한다.
+    .replace(/<p class="foot">[\s\S]*?<\/p>/g, "")
+    .replace(/<ul class="(?:changes|diffs)">[\s\S]*?<\/ul>/g, "")
     .trim();
 
-  return { title, bodyHtml, css };
+  // ★표는 **화면 폭 안에 들어와야 한다**(원장 지적 2026-09-09). 한 장짜리 페이지는
+  //   넓게 펼칠 수 있어 최소 폭(min-width)을 박아 뒀지만, 앱 본문은 좌패널을 뺀 폭이라
+  //   그대로 두면 옆으로 밀어 봐야 한다. 최소 폭을 풀어 칸이 폭에 맞춰 나뉘게 하고,
+  //   열이 많은 쪽은 글자를 한 단계 줄여 한 줄에 들어가는 글자 수를 지킨다.
+  // ★`<col` 로만 세면 `<colgroup>` 까지 한 열로 센다 — 뒤 글자를 함께 본다.
+  const cols = (
+    bodyHtml.match(/<colgroup>[\s\S]*?<\/colgroup>/)?.[0].match(/<col[ />]/g) ?? []
+  ).length;
+  const fitted = bodyHtml.replace(/(<table[^>]*?) style="min-width:\d+px"/g, "$1");
+  const tighten =
+    cols >= 9
+      ? `\n${scope} table { font-size: 11px; }\n${scope} th, ${scope} td { padding: 5px 4px; }`
+      : "";
+
+  return { title, bodyHtml: fitted, css: css + tighten };
 }
 
-if (import.meta.url === `file:///${process.argv[1].replace(/\\/g, "/")}`) {
+// ★argv[1] 은 `node -e` 로 부를 때 없다 — 없으면 라이브러리로 쓰인 것이다.
+if (
+  process.argv[1] &&
+  import.meta.url === `file:///${process.argv[1].replace(/\\/g, "/")}`
+) {
   const file = process.argv[2];
   if (!file) {
     console.log("사용: node scripts/digest/convert.mjs <파일.html>");

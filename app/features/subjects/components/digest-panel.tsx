@@ -122,19 +122,28 @@ export function DigestOutline({
   );
 }
 
-/** 한 장 — 교재 쪽 표시 + 재작화 본문. 본문의 카드(.panel)는 자료 쪽이 갖고 있다. */
-function DigestSheet({ digest }: { digest: SystematicDigest }) {
+/**
+ * 한 장 — 재작화 본문. 본문의 카드(.panel)는 자료 쪽이 갖고 있다.
+ *
+ * ★교재 쪽번호는 붙이지 않는다(원장 지적 2026-09-09) — 학습에 쓰이지 않는다.
+ * ★제목도 자료가 **둘 이상일 때만** 붙인다. 한 장뿐이면 패널 머리("특허요건 정리")와
+ *   같은 말이 두 줄 겹친다.
+ */
+function DigestSheet({
+  digest,
+  showTitle,
+}: {
+  digest: SystematicDigest;
+  showTitle: boolean;
+}) {
   return (
     <section>
       {/* ★React 는 text child 를 이스케이프한다 — `.panel > h2`·content:"" 가 깨진다.
           CSS 는 반드시 dangerouslySetInnerHTML 로 넣는다(SSR 에서 드러나는 함정). */}
       <style dangerouslySetInnerHTML={{ __html: digest.css }} />
-      <div className="mb-2 flex items-center gap-2">
-        <h3 className="text-[13px] font-extrabold">{digest.title}</h3>
-        <span className="text-muted-foreground text-[11px] font-semibold">
-          교재 정리비교표 {digest.page}쪽
-        </span>
-      </div>
+      {showTitle ? (
+        <h3 className="mb-2 text-[13px] font-extrabold">{digest.title}</h3>
+      ) : null}
       {/* ★한 단원에 두 쪽이 붙으면(01 총칙 = 2p+3p) 규칙이 섞인다 — 쪽 클래스로 가른다.
           적재 때 CSS 도 `.digest-doc.dpN` 으로 좁혀 두었다(scripts/digest/convert.mjs). */}
       <div
@@ -171,7 +180,11 @@ export function DigestContent({ item }: { item: DigestOutlineItem | null }) {
       ) : (
         <div className="space-y-6 px-4 py-4">
           {item.digests.map((d) => (
-            <DigestSheet key={d.digestId} digest={d} />
+            <DigestSheet
+              key={d.digestId}
+              digest={d}
+              showTitle={item.digests.length > 1}
+            />
           ))}
         </div>
       )}
