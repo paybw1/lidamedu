@@ -43,6 +43,14 @@ const SHAPE_TAGS = new Set([
   "hp:curve",
 ]);
 
+// ★좌표는 음수를 부호 없는 32비트로 적어 둔 자리가 있다. 그대로 읽으면 42억 같은
+//   값이 나와 쪽 전체가 찌그러진다(3p·11p·13p 가 그랬다). 2^31 을 넘으면 음수로 되돌린다.
+const num = (v) => {
+  const n = Number(v ?? 0);
+  if (!Number.isFinite(n)) return 0;
+  return n > 2147483647 ? n - 4294967296 : n;
+};
+
 // ★훑기는 전부 스택으로 한다 — 재귀로 하면 스택이 넘친다(section2 1.5MB).
 function textOf(node) {
   let out = "";
@@ -84,20 +92,20 @@ function shapeOf(tag, body) {
       for (const [k, v] of Object.entries(n)) {
         if (k === ":@") continue;
         if (k === "hp:pos") {
-          s.x = Number(at["@horzOffset"] ?? 0);
-          s.y = Number(at["@vertOffset"] ?? 0);
+          s.x = num(at["@horzOffset"]);
+          s.y = num(at["@vertOffset"]);
         } else if (k === "hp:sz") {
-          s.w = Number(at["@width"] ?? 0);
-          s.h = Number(at["@height"] ?? 0);
+          s.w = num(at["@width"]);
+          s.h = num(at["@height"]);
         } else if (k === "hp:offset") {
-          s.ox = Number(at["@x"] ?? 0);
-          s.oy = Number(at["@y"] ?? 0);
+          s.ox = num(at["@x"]);
+          s.oy = num(at["@y"]);
         } else if (k === "hp:orgSz") {
-          s.orgW = Number(at["@width"] ?? 0);
-          s.orgH = Number(at["@height"] ?? 0);
+          s.orgW = num(at["@width"]);
+          s.orgH = num(at["@height"]);
         } else if (k === "hp:curSz") {
-          s.curW = Number(at["@width"] ?? 0);
-          s.curH = Number(at["@height"] ?? 0);
+          s.curW = num(at["@width"]);
+          s.curH = num(at["@height"]);
         } else if (k === "hp:lineShape") {
           s.stroke = at["@color"];
           s.head = at["@headStyle"];
@@ -107,12 +115,20 @@ function shapeOf(tag, body) {
           s.fillAlpha = Number(at["@alpha"] ?? 0);
         } else if (k === "hp:drawText") {
           s.text = textOf(v);
+        } else if (SHAPE_TAGS.has(k) || k === "hp:container") {
+          // ★자식 도형 안으로 내려가지 않는다. 내려가면 자식의 hp:pos/hp:sz 가 이 도형의
+          //   값을 덮어써서 묶음 크기가 자식 크기가 되고, 좌표가 쪽 밖으로 튄다
+          //   (9p 가 x 438116 까지 나갔던 원인).
         } else if (Array.isArray(v)) {
           q.unshift(v);
         }
       }
     }
   }
+  // ★크기는 hp:sz(쪽 위 절대) → hp:curSz → hp:orgSz 순으로 본다. 묶음 안 도형은
+  //   curSz 가 0 이고 실제 크기가 orgSz 에만 있는 경우가 흔하다(10p·13p 가 그래서 비었다).
+  if (!s.w) s.w = s.curW || s.orgW || 0;
+  if (!s.h) s.h = s.curH || s.orgH || 0;
   return s;
 }
 
@@ -128,6 +144,9 @@ function flattenContainer(body) {
   const orgH = box.orgH || box.h || 1;
   const sx = (box.w || orgW) / orgW;
   const sy = (box.h || orgH) / orgH;
+  // 묶음이 쪽 위 자리를 hp:pos 로 갖지 않으면 offset 이 그 자리다.
+  const bx = box.x || box.ox || 0;
+  const by = box.y || box.oy || 0;
 
   const stack = [{ arr: body, i: 0 }];
   while (stack.length > 0) {
@@ -146,8 +165,8 @@ function flattenContainer(body) {
         for (const inner of flattenContainer(Array.isArray(v) ? v : [v])) {
           out.push({
             ...inner,
-            x: box.x + inner.x * sx,
-            y: box.y + inner.y * sy,
+            x: bx + inner.x * sx,
+            y: by + inner.y * sy,
             w: inner.w * sx,
             h: inner.h * sy,
           });
@@ -158,10 +177,10 @@ function flattenContainer(body) {
         const c = shapeOf(k, Array.isArray(v) ? v : [v]);
         out.push({
           ...c,
-          x: box.x + (c.ox ?? 0) * sx,
-          y: box.y + (c.oy ?? 0) * sy,
-          w: (c.curW ?? c.w ?? 0) * sx,
-          h: (c.curH ?? c.h ?? 0) * sy,
+          x: bx + (c.ox ?? 0) * sx,
+          y: by + (c.oy ?? 0) * sy,
+          w: c.w * sx,
+          h: c.h * sy,
         });
         continue;
       }
