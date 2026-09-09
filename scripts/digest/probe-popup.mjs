@@ -57,6 +57,8 @@ for (const vp of [
     const pageW = parseInt(paper.style.width, 10);
     paper.style.width = `${Math.max(pageW, box.clientWidth)}px`;
 
+    const table = node.querySelector("table");
+    const diagram = node.querySelector(".dg");
     const tune = document.createElement("style");
     document.head.append(tune);
     const body = document.getElementById("body");
@@ -64,13 +66,27 @@ for (const vp of [
       body.clientHeight -
       (box.getBoundingClientRect().top - body.getBoundingClientRect().top) -
       16;
+    if (diagram && !table) {
+      tune.textContent = `.digest-doc.${[...node.classList].find((c) => c.startsWith("dp"))} .dg{min-width:0 !important}`;
+      for (let i = 0; i < 3; i += 1) {
+        const natH = node.scrollHeight;
+        if (natH <= availH) break;
+        const baseW = paper.getBoundingClientRect().width;
+        const next = Math.max(560, Math.floor(baseW * (availH / natH)));
+        if (next >= baseW) break;
+        paper.style.width = `${next}px`;
+      }
+      return { 도형: true, h: node.scrollHeight, availH };
+    }
+    if (!table) return { 표없음: true, h: node.scrollHeight, availH };
     const sel = ".digest-doc." + [...node.classList].find((c) => c.startsWith("dp"));
-    for (const fs of [12.5, 11.5, 10.5, 9.5]) {
+    for (const fs of [12.5, 11.5, 10.5, 9.5, 9, 8.5, 8]) {
       const pad = fs >= 11 ? "6px 7px" : fs >= 10 ? "5px 5px" : "4px 4px";
-      tune.textContent = `${sel} table{font-size:${fs}px}${sel} th,${sel} td{padding:${pad}}`;
+      const lh = fs >= 10 ? 1.5 : 1.35;
+      tune.textContent = `${sel} table{font-size:${fs}px}${sel} th,${sel} td{padding:${pad};line-height:${lh}}`;
       if (node.scrollHeight <= availH) return { fs, h: node.scrollHeight, availH };
     }
-    return { fs: 9.5, h: node.scrollHeight, availH, 넘침: true };
+    return { fs: 8, h: node.scrollHeight, availH, 넘침: true };
   });
   await p.waitForTimeout(300);
 
@@ -104,6 +120,7 @@ for (const vp of [
     const rows = [...document.querySelectorAll("tbody tr")];
     const last = rows.at(-1);
     const body = document.getElementById("body");
+    if (!last) return { 표없음: true };
     const lr = last.getBoundingClientRect();
     const br = body.getBoundingClientRect();
     return {

@@ -43,10 +43,10 @@
   .lede b { color: var(--ink); }
 
   /* 갈래 8개를 흐르게 놓는다 — 특허권·심판이 길어 단 높이를 맞출 수 없다. */
-  /* ★2단 — 3단은 갈래 한 장이 세로로 길어져 밑으로 한없이 내려간다(원장 지적).
-     좁은 화면(휴대전화)에서만 1단으로 떨어뜨린다. */
-  .grid { columns: 2; column-gap: 16px; }
-  @media (max-width: 720px)  { .grid { columns: 1; } }
+  /* ★단 수를 못박지 않고 **한 단의 폭**을 정한다 — 자리가 넓으면 단이 늘어 세로가
+     짧아지고, 좁으면 단이 줄어든다. 못박으면 좁은 데서는 넘치고 넓은 데서는
+     한없이 아래로 내려간다(원장 지적: "밑으로 너무 길어"). 한 단 = 360px. */
+  .grid { columns: 360px; column-gap: 16px; }
 
   .card {
     break-inside: avoid; margin: 0 0 16px; background: var(--card);
