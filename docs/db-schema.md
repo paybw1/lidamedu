@@ -298,6 +298,37 @@ create index asl_article on article_systematic_links(article_id);
 create index asl_node on article_systematic_links(node_id);
 ```
 
+### 5-1. systematic_digests (정리비교표)
+
+교재 부록 정리비교표를 체계도 **대분류**에 붙인다. 조문 탭의 "정리" 화면이 읽는다.
+
+```sql
+create table public.systematic_digests (
+  digest_id  uuid primary key default gen_random_uuid(),
+  law_code   text not null,
+  node_id    uuid references systematic_nodes(node_id) on delete set null,
+  page       integer not null,                 -- 교재 정리비교표 쪽번호
+  title      text not null,
+  body_html  text not null,                    -- 재작화 본문(글자만 — 이미지 금지)
+  css        text not null default '',         -- `.digest-doc` 아래로 접어 둔 전용 CSS
+  ord        integer not null default 0,       -- 한 단원에 여러 쪽이면 쌓는 순서
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (law_code, page)
+);
+```
+
+★**이미지로 넣지 않는다** — 나중에 빈칸 학습을 걸어야 하므로 모든 칸이 선택 가능한
+글자여야 한다(원장 지시). 도형 쪽도 절대배치 div + SVG 선으로 그려 글자를 살렸다.
+
+★RLS = `systematic_digests_staff_all`(staff 만 읽고 쓴다). 학생에게는 0건이 내려가
+화면이 "아직 등록되지 않았습니다"를 유지한다 — **학생 공개는 read 정책 한 줄 추가**로 전환.
+
+파이프라인: `scripts/digest/pipeline/*`(교재 HWTX·강의노트 PPTX → 한 장짜리 HTML) →
+`scripts/digest/convert.mjs`(선택자를 `.digest-doc` 아래로 접고 색 토큰을 앱 것으로 교체) →
+`scripts/digest/import-digests.mjs`(쪽↔대분류 대응표, `--apply`). DDL:
+`scripts/sql/systematic-digests.sql`.
+
 `feat-4-A-004` 정렬축 토글에서 사용.
 
 ---

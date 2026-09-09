@@ -1,0 +1,195 @@
+<title>국제조약 — 정리비교표 재작화</title>
+
+<style>
+  :root {
+    --card:#fff; --ink:#2e2e2e; --primary:#2d5ba8; --primary-fg:#fff; --muted:#64748b;
+    --border:#e5e9ef; --link:#2d5ba8; --hair:rgba(46,46,46,.06); --page:#f6f7f9; --hot:#d92b2b;
+    --dgline:#8a8a8a; --anchor:#2f5597; --anchor-fg:#fff; --blue-bg:#dae3f3;
+    --blue-line:#8faadc; --gray-bg:#e7e6e6; --panel-line:#bfbfbf; --panel-ink:#943634;
+    --note-line:#b9b9b9; --note-mark:#5b6b8c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --card:#333; --ink:#e6e6e6; --primary:#3b6fc4; --primary-fg:#fff; --muted:#b5b5b5;
+      --border:rgba(255,255,255,.12); --link:#60a5fa; --hair:rgba(255,255,255,.07);
+      --page:#1e1e1e; --hot:#ef6b6b;
+      --dgline:rgba(255,255,255,.42); --anchor:#4a72b8; --anchor-fg:#fff;
+    --blue-bg:rgba(120,160,220,.24); --blue-line:rgba(143,170,220,.5);
+    --gray-bg:rgba(255,255,255,.1); --panel-line:rgba(255,255,255,.24); --panel-ink:#e0857f;
+    --note-line:rgba(255,255,255,.3); --note-mark:#8fa6cc;
+    }
+  }
+  :root[data-theme="dark"] {
+    --card:#333;--ink:#e6e6e6;--primary:#3b6fc4;--primary-fg:#fff;--muted:#b5b5b5;
+    --border:rgba(255,255,255,.12);--link:#60a5fa;--hair:rgba(255,255,255,.07);
+    --page:#1e1e1e;--hot:#ef6b6b;
+    --dgline:rgba(255,255,255,.42); --anchor:#4a72b8; --anchor-fg:#fff;
+    --blue-bg:rgba(120,160,220,.24); --blue-line:rgba(143,170,220,.5);
+    --gray-bg:rgba(255,255,255,.1); --panel-line:rgba(255,255,255,.24); --panel-ink:#e0857f;
+    --note-line:rgba(255,255,255,.3); --note-mark:#8fa6cc;
+  }
+  :root[data-theme="light"] {
+    --card:#fff;--ink:#2e2e2e;--primary:#2d5ba8;--primary-fg:#fff;--muted:#64748b;
+    --border:#e5e9ef;--link:#2d5ba8;--hair:rgba(46,46,46,.06);--page:#f6f7f9;--hot:#d92b2b;
+    --dgline:#8a8a8a; --anchor:#2f5597; --anchor-fg:#fff; --blue-bg:#dae3f3;
+    --blue-line:#8faadc; --gray-bg:#e7e6e6; --panel-line:#bfbfbf; --panel-ink:#943634;
+    --note-line:#b9b9b9; --note-mark:#5b6b8c;
+  }
+
+  body {
+    margin:0; background:var(--page); color:var(--ink); line-height:1.5;
+    font-family: system-ui, -apple-system, "Segoe UI", "Malgun Gothic",
+      "Apple SD Gothic Neo", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width:1240px; margin:0 auto; padding:32px 18px 64px; }
+
+  header { margin-bottom:22px; }
+  .eyebrow { margin:0 0 6px; font-size:11px; letter-spacing:.12em; font-weight:700; color:var(--muted); }
+  h1 { margin:0 0 8px; font-size:clamp(20px,3vw,27px); letter-spacing:-.02em; }
+  .lede { margin:0; color:var(--muted); font-size:14px; max-width:70ch; }
+  .lede b { color:var(--ink); }
+
+  .panel {
+    background:var(--card); border:1px solid var(--border); border-radius:14px;
+    overflow:hidden; margin-bottom:18px;
+  }
+  .panel > h2 {
+    margin:0; padding:10px 16px; border-bottom:1px solid var(--border);
+    font-size:12px; font-weight:700; letter-spacing:.04em; color:var(--muted);
+    display:flex; flex-wrap:wrap; gap:8px; align-items:baseline;
+  }
+  .panel > h2 .src { font-weight:600; letter-spacing:0; opacity:.8; }
+
+  .dgwrap { overflow-x:auto; padding:14px 16px 16px; }
+  .dg { position:relative; width:100%; container-type:inline-size; }
+  .dgsvg { position:absolute; inset:0; width:100%; height:100%; }
+  .ln { fill:none; stroke:var(--dgline); stroke-width:var(--sw); }
+  .ln.hot { stroke:var(--hot); }
+  .mg { fill:var(--dgline); }
+  .mh { fill:var(--hot); }
+
+  .bx {
+    position:absolute; display:flex; flex-direction:column; justify-content:center;
+    align-items:center; text-align:center; border:1px solid var(--dgline);
+    border-radius:2px; font-size:1cqw; line-height:1.3; font-weight:700;
+    letter-spacing:-.01em; padding:0 .3cqw; overflow:hidden;
+  }
+  .bx span { display:block; white-space:nowrap; }
+  .bx.anchor { background:var(--anchor); color:var(--anchor-fg); border-color:transparent; }
+  .bx.spine  { background:var(--blue-bg); color:var(--ink); border-color:var(--blue-line); }
+  .bx.leaf   { background:var(--gray-bg); color:var(--ink); }
+  /* 테두리 없는 이름표 — 묶음 이름처럼 상자가 필요 없는 글자. */
+  /* 선 위에 얹는 이름표 — 테두리는 없지만 바탕은 깔아 선을 가린다. */
+  .bx.label  { background:var(--card); border-color:transparent; color:var(--ink); }
+  /* 설명 상자 — 점선 테두리, 왼쪽 맞춤, 줄머리 네모. 원본 그대로다. */
+  .bx.note {
+    background:transparent; border-style:dashed; border-color:var(--note-line);
+    justify-content:flex-start; align-items:stretch; text-align:left;
+    /* 틀을 조금 줄였으니 글자도 살짝 줄여 넘치지 않게 한다. */
+    font-weight:600; font-size:.92cqw; line-height:1.45; padding:.25cqw .55cqw;
+  }
+  .bx.note span { position:relative; padding-left:1cqw; white-space:normal; }
+  .bx.note span.l:not(.num):not(.sub)::before {
+    content:""; position:absolute; left:.15cqw; top:.5em;
+    width:.32cqw; height:.32cqw; background:var(--note-mark);
+  }
+  /* 번호 줄·붙임표 줄은 그 자체가 구분자라 표시를 달지 않는다(원장 지시). */
+  .bx.note span.num { padding-left:.55cqw; }
+  .bx.note span.sub { padding-left:1.5cqw; }
+  /* 가름틀 — 제목이 왼쪽 위에 붙는다. 안쪽은 비워 두고 상자들이 그 위에 얹힌다.
+     ★글자 크기는 다른 상자와 같게 둔다(원장 지시 2026-09-09) — 갈래는 색과 자리가 말한다. */
+  .bx.panel {
+    justify-content:flex-start; align-items:flex-start; text-align:left;
+    background:transparent; border-color:var(--panel-line); color:var(--panel-ink);
+    padding:.7cqw .8cqw .5cqw;
+  }
+
+  .foot {
+    margin-top:8px; border-left:3px solid var(--primary); background:var(--card);
+    border-radius:0 10px 10px 0; padding:13px 16px; font-size:13px; color:var(--muted);
+  }
+  .foot b { color:var(--ink); }
+  .foot + .foot { margin-top:10px; }
+
+  ul.diffs { margin:10px 0 0; padding:0; list-style:none; display:flex; flex-direction:column; gap:8px; }
+  ul.diffs li {
+    display:grid; grid-template-columns:auto 1fr auto 1fr; gap:4px 8px; align-items:baseline;
+    font-size:12.5px; padding-bottom:8px; border-bottom:1px dashed var(--border);
+  }
+  ul.diffs li:last-child { border-bottom:0; padding-bottom:0; }
+  .side {
+    font-size:10px; font-weight:800; letter-spacing:.04em; color:var(--link);
+    background:var(--hair); border-radius:5px; padding:1px 5px; white-space:nowrap;
+  }
+  .v { color:var(--ink); }
+  .why { grid-column:1 / -1; color:var(--muted); font-size:12px; }
+  @media (max-width:640px) { ul.diffs li { grid-template-columns:auto 1fr; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">정리비교표 13p · 재작화</p>
+    <h1>국제조약</h1>
+    <p class="lede">
+      그림은 <b>강의노트 552p 「특허와 관련된 조약: 발명의 국제적 보호 vs 지배수단」</b> 에서 가져왔습니다. 정리비교표 13p 는 여기에
+      <b>WiPO 설립조약</b>과 <b>특별협정</b> 묶음을 더한 것이라, 그 둘을 넣어 그렸습니다.
+      상자는 이미지가 아니라 글자라 어느 낱말에든 빈칸을 걸 수 있습니다.
+    </p>
+  </header>
+
+  <section class="panel">
+    <h2>특허와 관련된 조약<span class="src">발명의 국제적 보호 vs 지배수단</span></h2>
+    <div class="dgwrap">
+      <div class="dg" style="aspect-ratio:8884464 / 7020441;min-width:980px">
+        
+        <svg class="dgsvg" viewBox="0 0 8884464 7020441" preserveAspectRatio="none" aria-hidden="true"
+             style="--sw:8077">
+          <defs>
+            <marker id="agt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5"
+                    orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="mg"/></marker>
+            <marker id="aht" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5"
+                    orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="mh"/></marker>
+          </defs>
+            
+            <path class="ln" d="M2604531 3758609 L2716104 3758609 L2716104 3758609 L2827677 3758609"/>
+            <path class="ln" d="M2604531 3758609 L2716104 3758609 L2716104 4235742 L2827677 4235742"/>
+            <path class="ln" d="M876339 1410343 L876339 3758609 L1027477 3758609"/>
+            <path class="ln" d="M876339 1410343 L876339 3020306 L1027477 3020306"/>
+            <path class="ln" d="M876339 1410343 L876339 2474490 L1027477 2474490"/>
+            <path class="ln" d="M876339 1410343 L876339 1904608 L1027477 1904608"/>
+            <path class="ln" d="M516299 1316614 L516299 4669030" marker-end="url(#agt)"/>
+        </svg>
+        <div class="bx note" style="left:17.158%;top:66.506%;width:79.428%;height:28.437%"><span class="l">파리조약의 문제점 해결</span><span class="l num">1. 지식재산권 침해의 직접적인 구제방법 ×(국제사법재판소가 있으나 강제관할권, 분쟁해결수단 없음) → 분쟁해결방안 마련</span><span class="l num">2. 다수결의 원칙에 의하여 선진국의 입장 관철의 어려움 → Consensus제 도입(합의가 있을 때까지 계속 - 약소국의 각개격파)</span><span class="l num">3. 신기술(반도체 배치설계, 컴퓨터 프로그램) 보호 미흡 → 보호대상에 포함시킴</span><span class="l num">4. 기타</span><span class="l sub">- 강제실시권 - 엄격하게 적용, 충분한 보상 신설, 개량특허침해의 특별규정 둠, 경쟁촉진규정 둠.</span><span class="l sub">- 특허권의 최소보호기간 신설</span><span class="l">기본원칙</span><span class="l num">1. 최소보호의 원칙(국제협정 플러스 방식) - 최저보호수준을 정해 개도국의 수준향상</span><span class="l num">2. 내국민대우의 원칙 - 자국민보다 불리한 대우 금지(파리조약보다 완화)</span><span class="l num">3. 최혜국대우의 원칙 - 조약을 체결한 나라 중 가장 유리한 취급</span><span class="l num">4. 권리소진의 원칙 - 진정상품병행수입의 경우 국가별로 이해관계를 달리하고 있어 명시적으로 규정을 두지 아니함.</span></div>
+        <div class="bx spine" style="left:3.380%;top:66.506%;width:12.968%;height:5.392%"><span class="l">WTO/TRIPs</span><span class="l">(1993)</span></div>
+        <div class="bx note" style="left:40.662%;top:57.822%;width:55.924%;height:4.552%"><span class="l">국내단계의 절차법 통일화 조약</span><span class="l">전문 27개의 조문이 채택 - 우리나라는 비준을 함, 단 아직 가입하지 아니함.</span></div>
+        <div class="bx spine" style="left:31.827%;top:57.822%;width:8.025%;height:5.024%"><span class="l">PLT</span><span class="l">(2000)</span></div>
+        <div class="bx spine" style="left:31.827%;top:50.842%;width:8.025%;height:5.392%"><span class="l">SPLT</span></div>
+        <div class="bx note" style="left:40.662%;top:50.842%;width:55.924%;height:4.739%"><span class="l">국내단계의 실체법 통일화 조약</span><span class="l">각국의 이해관계가 첨예하게 대립 - 논의중</span></div>
+        <div class="bx spine" style="left:11.565%;top:50.842%;width:17.751%;height:5.392%"><span class="l">PHT</span><span class="l">(1985)</span></div>
+        <div class="bx note" style="left:30.126%;top:40.326%;width:66.460%;height:8.886%"><span class="l">국제출원에 대한 방식요건의 통일화를 위한 조약</span><span class="l">국제출원단계에서 국제조사, 국제공개 &amp; 국제예비심사단계를 통일화함</span><span class="l">PCT의 어떠한 규정도 파리조약의 당사국 국민 또는 재내자의 파리조약상의 권리를 축소하지 아니함</span><span class="l">PLT와의 정합성을 위한 활발한 개혁논의 진행중</span></div>
+        <div class="bx spine" style="left:11.565%;top:40.326%;width:17.751%;height:5.392%"><span class="l">PCT</span><span class="l">(1978)</span></div>
+        <div class="bx note" style="left:30.126%;top:32.551%;width:66.460%;height:6.113%"><span class="l">미생물의 국제기탁기관의 승인에 관한 조약</span><span class="l">조약이 정한 국제기탁기관이 해당 회원국의 영토내에 있거나 없거나에 관계없이 1회에 기탁기관에의 기탁을 상호 승인하여야 함.</span></div>
+        <div class="bx spine" style="left:11.565%;top:32.551%;width:17.751%;height:5.392%"><span class="l">부다페스트 조약</span><span class="l">(1977)</span></div>
+        <div class="bx note" style="left:30.126%;top:24.434%;width:66.460%;height:6.476%"><span class="l">특허나 실용신안에 대하여 통일된 국제특허분류(IPC)라는 분류체계를 사용하여 산업재산권분야에서 국제적 협력 확인</span><span class="l">국제특허분류는 관리적 성격만을 가지며 회원국들은 분류를 주요 또는 보조 분류로 사용할 권한을 가짐.</span></div>
+        <div class="bx spine" style="left:11.565%;top:24.434%;width:17.751%;height:5.392%"><span class="l">스트라스부르그 협정</span><span class="l">(1971)</span></div>
+        <div class="bx note" style="left:17.158%;top:14.697%;width:79.428%;height:8.142%"><span class="l">산업재산권의 국제적 보호를 위한 조약</span><span class="l">특색 - 동맹조약(다자간 조약), 기본조약의 존속(동맹국이 개정조약을 비준하지 아니한 경우)</span><span class="l">적용범위 - 지역(동맹국보다 넓게 적용), 대상(저작권을 제외하고 광범위하게 인정), 시기(무제한 - 탈퇴가능)</span><span class="l">3대 원칙 - 내외국인 평등의 원칙, 조약우선권의 원칙, 특허독립의 원칙(속지주의)</span></div>
+        <div class="bx spine" style="left:3.380%;top:14.697%;width:12.968%;height:5.392%"><span class="l">파리조약</span><span class="l">(1883)</span></div>
+        <div class="bx spine" style="left:3.377%;top:4.273%;width:12.968%;height:5.340%"><span class="l">WiPO 설립조약</span></div>
+        <div class="bx note" style="left:17.168%;top:4.273%;width:79.455%;height:6.771%"><span class="l">지식재산권의 보호를 촉진하고 동맹국 간의 행정적 협조를 확보하기 위한 조약</span><span class="l">구성 - 일반총회, 체약국회의, 조정위원회, 국제사무국으로 구성됨</span><span class="l">직무 - 파리조약, PCT, 부다페스트조약, PLT 등 23가지 조약의 관장</span></div>
+        <div class="bx label" style="left:3.377%;top:32.407%;width:4.940%;height:5.340%"><span class="l">특별협정</span></div>
+      </div>
+    </div>
+  </section>
+
+  <p class="foot">
+    <b>연결선은 강의노트에서 가져왔습니다.</b> 파일에 선마다 붙은 상자의 id 와 면이 적혀
+    있어 추측이 필요 없습니다. 왼쪽의 굵은 화살표(파리조약 → WTO/TRIPs)는 어느 상자에도
+    붙어 있지 않은 선이라 저장된 좌표를 그대로 썼습니다.
+  </p>
+  <p class="foot">
+    <b>교재(정리비교표 13p)와 강의노트가 다른 곳</b> — 아래 다섯입니다.
+    <b>WiPO 설립조약과 특별협정의 자리는 제가 놓은 것</b>이니, 원본과 다르면 말씀해 주세요.
+  </p>
+  <ul class="diffs"><li><span class="side">강의노트</span><span class="v">파리조약(1883) · 스트라스부르그 협정(1971) … 처럼 연도가 붙어 있음</span><span class="side">정리비교표</span><span class="v">연도 없음</span><span class="why">강의노트대로 연도를 살렸습니다 — 빼는 게 나으면 말씀해 주세요</span></li><li><span class="side">강의노트</span><span class="v">없음</span><span class="side">정리비교표</span><span class="v">WiPO 설립조약 + 설명 3줄</span><span class="why">정리비교표에만 있습니다. 23가지 조약을 관장하는 상위 조약이라 파리조약 위에 놓았습니다</span></li><li><span class="side">강의노트</span><span class="v">없음</span><span class="side">정리비교표</span><span class="v">특별협정(묶음)</span><span class="why">정리비교표에만 있습니다. 스트라스부르그·부다페스트·PCT 를 묶는 자리에 놓았습니다</span></li><li><span class="side">강의노트</span><span class="v">권리소진의 원칙 - … 국가별로 이해관계를 달리하고 있어 명시적으로 규정을 두지 아니함</span><span class="side">정리비교표</span><span class="v">… 선진국에게 상대적으로 불리하여 명시적으로 규정을 두지 아니함</span><span class="why">이유 부분이 다릅니다 — 지금은 강의노트대로입니다</span></li><li><span class="side">강의노트</span><span class="v">Consensus제 도입(합의가 있을 때까지 계속 - 약소국의 각개격파)</span><span class="side">정리비교표</span><span class="v">Consensus제 도입(합의가 있을 때까지 계속 진행 - 약소국의 각개격파)</span><span class="why">‘계속’ / ‘계속 진행’</span></li></ul>
+</div>

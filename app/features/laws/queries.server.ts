@@ -1030,3 +1030,41 @@ export async function listArticleRevisionHistory(
     lawRevisionNumber: row.law_revisions?.revision_number ?? null,
   }));
 }
+
+/** 체계도 대분류에 붙는 정리비교표(교재 부록) 한 장. */
+export interface SystematicDigest {
+  digestId: string;
+  nodeId: string;
+  /** 교재 정리비교표 쪽번호 — 화면에 출처로 표시한다. */
+  page: number;
+  title: string;
+  bodyHtml: string;
+  /** `.digest-doc` 아래로 접어 둔 전용 CSS. 앱 전역으로 새지 않는다. */
+  css: string;
+}
+
+/**
+ * 정리비교표 조회. 노출은 RLS 가 정한다 — 현재는 staff 전용이라
+ * 학생 요청에는 빈 배열이 돌아오고 화면은 "아직 등록되지 않았습니다"를 유지한다.
+ */
+export async function getSystematicDigests(
+  client: SupabaseClient<Database>,
+  lawCode: LawSubjectSlug,
+): Promise<SystematicDigest[]> {
+  const { data, error } = await client
+    .from("systematic_digests")
+    .select("digest_id, node_id, page, title, body_html, css")
+    .eq("law_code", lawCode)
+    .order("ord");
+  if (error) throw error;
+  return (data ?? [])
+    .filter((d): d is typeof d & { node_id: string } => d.node_id !== null)
+    .map((d) => ({
+      digestId: d.digest_id,
+      nodeId: d.node_id,
+      page: d.page,
+      title: d.title,
+      bodyHtml: d.body_html,
+      css: d.css,
+    }));
+}

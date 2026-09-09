@@ -4,12 +4,19 @@
 // 조문 하나가 아니라 장(章) 단위로 묶여 있어, 그 아래 층까지 펼치면 목차가 자료보다
 // 잘게 쪼개진다(원장 지시 2026-09-09).
 //
-// ★자료는 아직 등록 전이다. 지금은 목차와 자리만 있고, 고른 항목을 이름으로 확인할 수
-//   있게 해 둔다 — 무엇이 비어 있는지 화면이 스스로 말하게 하는 편이 낫다.
+// ★자료는 교재 부록 정리비교표를 **글자 HTML** 로 재작화한 것이다(이미지 금지 —
+//   나중에 빈칸 학습을 걸어야 하므로 모든 칸이 선택 가능한 글자여야 한다).
+// ★쪽마다 전용 CSS 가 따라오는데, 적재 때 선택자를 전부 `.digest-doc` 아래로 접어 두었다
+//   (scripts/digest/convert.mjs). 그대로 넣어도 앱 전역 스타일로 새지 않는다.
+// ★노출은 RLS 가 정한다 — 현재 staff 전용이라 학생에게는 빈 배열이 내려오고 아래
+//   "아직 등록되지 않았습니다" 가 그대로 보인다.
 import { FileTextIcon } from "lucide-react";
 
 import { cn } from "~/core/lib/utils";
-import type { SystematicNode } from "~/features/laws/queries.server";
+import type {
+  SystematicDigest,
+  SystematicNode,
+} from "~/features/laws/queries.server";
 
 import {
   SystematicNumberBadge,
@@ -23,13 +30,24 @@ export function topLevelNodes(nodes: SystematicNode[]): SystematicNode[] {
     .sort((a, b) => a.ord - b.ord);
 }
 
+/** 대분류 → 그 단원에 붙은 정리비교표(적재 순서 유지). */
+export function digestsByNode(
+  digests: SystematicDigest[],
+): Record<string, SystematicDigest[]> {
+  const map: Record<string, SystematicDigest[]> = {};
+  for (const d of digests) (map[d.nodeId] ??= []).push(d);
+  return map;
+}
+
 export function DigestOutline({
   nodes,
+  digestCounts,
   activeNodeId,
   onSelect,
   emptyHint,
 }: {
   nodes: SystematicNode[];
+  digestCounts: Record<string, number>;
   activeNodeId: string | null;
   onSelect: (nodeId: string) => void;
   emptyHint: string;
@@ -43,6 +61,7 @@ export function DigestOutline({
     <ul className="space-y-0.5 text-sm">
       {nodes.map((n, i) => {
         const active = n.nodeId === activeNodeId;
+        const count = digestCounts[n.nodeId] ?? 0;
         return (
           <li key={n.nodeId}>
             <button
@@ -60,6 +79,12 @@ export function DigestOutline({
               <span className="flex-1 truncate">
                 {stripSystematicNumber(n.displayLabel)}
               </span>
+              {/* 자료가 없는 단원은 눌러 보기 전에 알 수 있어야 한다. */}
+              {count > 0 ? (
+                <span className="text-muted-foreground text-[11px] font-bold tabular-nums">
+                  {count}
+                </span>
+              ) : null}
             </button>
           </li>
         );
@@ -68,7 +93,32 @@ export function DigestOutline({
   );
 }
 
-export function DigestContent({ node }: { node: SystematicNode | null }) {
+/** 한 장 — 교재 쪽 표시 + 재작화 본문. 본문의 카드(.panel)는 자료 쪽이 갖고 있다. */
+function DigestSheet({ digest }: { digest: SystematicDigest }) {
+  return (
+    <section>
+      <style>{digest.css}</style>
+      <div className="mb-2 flex items-center gap-2">
+        <h3 className="text-[13px] font-extrabold">{digest.title}</h3>
+        <span className="text-muted-foreground text-[11px] font-semibold">
+          교재 정리비교표 {digest.page}쪽
+        </span>
+      </div>
+      <div
+        className="digest-doc"
+        dangerouslySetInnerHTML={{ __html: digest.bodyHtml }}
+      />
+    </section>
+  );
+}
+
+export function DigestContent({
+  node,
+  digests,
+}: {
+  node: SystematicNode | null;
+  digests: SystematicDigest[];
+}) {
   if (!node) {
     return (
       <div className="border-border bg-card text-muted-foreground rounded-xl border px-5 py-10 text-center text-sm">
@@ -84,14 +134,22 @@ export function DigestContent({ node }: { node: SystematicNode | null }) {
           {stripSystematicNumber(node.displayLabel)} 정리
         </h2>
       </div>
-      <div className="px-5 py-10 text-center">
-        <p className="text-foreground/80 text-sm font-medium">
-          이 단원의 정리비교표가 아직 등록되지 않았습니다.
-        </p>
-        <p className="text-muted-foreground mt-1.5 text-xs">
-          교재 뒤쪽 정리비교표를 단원별로 올리면 여기에 표시됩니다.
-        </p>
-      </div>
+      {digests.length === 0 ? (
+        <div className="px-5 py-10 text-center">
+          <p className="text-foreground/80 text-sm font-medium">
+            이 단원의 정리비교표가 아직 등록되지 않았습니다.
+          </p>
+          <p className="text-muted-foreground mt-1.5 text-xs">
+            교재 뒤쪽 정리비교표를 단원별로 올리면 여기에 표시됩니다.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-6 px-4 py-4">
+          {digests.map((d) => (
+            <DigestSheet key={d.digestId} digest={d} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

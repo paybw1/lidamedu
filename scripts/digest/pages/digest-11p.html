@@ -1,0 +1,230 @@
+<title>국제출원 — 정리비교표 재작화</title>
+
+<style>
+  :root {
+    --card:#fff; --ink:#2e2e2e; --primary:#2d5ba8; --primary-fg:#fff; --muted:#64748b;
+    --border:#e5e9ef; --link:#2d5ba8; --tint:rgba(45,91,168,.1);
+    --hair:rgba(46,46,46,.06); --rule:rgba(45,91,168,.22); --page:#f6f7f9;
+    --hot:#d92b2b;
+    --dgline:#8a8a8a; --amber:#ffc000; --amber-ink:#3a2c00; --peach:#f4b183;
+    --amber-bg:#fff2cc; --blue-bg:#dae3f3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --card:#333; --ink:#e6e6e6; --primary:#3b6fc4; --primary-fg:#fff; --muted:#b5b5b5;
+      --border:rgba(255,255,255,.12); --link:#60a5fa; --tint:rgba(59,111,196,.22);
+      --hair:rgba(255,255,255,.07); --rule:rgba(96,165,250,.3); --page:#1e1e1e;
+      --hot:#ef6b6b;
+      --dgline:rgba(255,255,255,.42); --amber:#d09b1c; --amber-ink:#1c1500; --peach:#c9855a;
+    --amber-bg:rgba(255,194,0,.18); --blue-bg:rgba(120,160,220,.22);
+    }
+  }
+  :root[data-theme="dark"] {
+    --card:#333;--ink:#e6e6e6;--primary:#3b6fc4;--primary-fg:#fff;--muted:#b5b5b5;
+    --border:rgba(255,255,255,.12);--link:#60a5fa;--tint:rgba(59,111,196,.22);
+    --hair:rgba(255,255,255,.07);--rule:rgba(96,165,250,.3);--page:#1e1e1e;
+    --hot:#ef6b6b;
+    --dgline:rgba(255,255,255,.42); --amber:#d09b1c; --amber-ink:#1c1500; --peach:#c9855a;
+    --amber-bg:rgba(255,194,0,.18); --blue-bg:rgba(120,160,220,.22);
+  }
+  :root[data-theme="light"] {
+    --card:#fff;--ink:#2e2e2e;--primary:#2d5ba8;--primary-fg:#fff;--muted:#64748b;
+    --border:#e5e9ef;--link:#2d5ba8;--tint:rgba(45,91,168,.1);
+    --hair:rgba(46,46,46,.06);--rule:rgba(45,91,168,.22);--page:#f6f7f9;
+    --hot:#d92b2b;
+    --dgline:#8a8a8a; --amber:#ffc000; --amber-ink:#3a2c00; --peach:#f4b183;
+    --amber-bg:#fff2cc; --blue-bg:#dae3f3;
+  }
+
+  body {
+    margin:0; background:var(--page); color:var(--ink); line-height:1.5;
+    font-family: system-ui, -apple-system, "Segoe UI", "Malgun Gothic",
+      "Apple SD Gothic Neo", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width:1180px; margin:0 auto; padding:32px 18px 64px; }
+
+  header { margin-bottom:22px; }
+  .eyebrow { margin:0 0 6px; font-size:11px; letter-spacing:.12em; font-weight:700; color:var(--muted); }
+  h1 { margin:0 0 8px; font-size:clamp(20px,3vw,27px); letter-spacing:-.02em; }
+  .lede { margin:0; color:var(--muted); font-size:14px; max-width:68ch; }
+  .lede b { color:var(--ink); }
+
+  .panel {
+    background:var(--card); border:1px solid var(--border); border-radius:14px;
+    overflow:hidden; margin-bottom:18px;
+  }
+  .panel > h2 {
+    margin:0; padding:10px 16px; border-bottom:1px solid var(--border);
+    font-size:12px; font-weight:700; letter-spacing:.04em; color:var(--muted);
+    display:flex; flex-wrap:wrap; gap:8px; align-items:baseline;
+  }
+  .panel > h2 .src { font-weight:600; letter-spacing:0; opacity:.8; }
+
+  /* ── 국제출원절차 표 ─────────────────────────────── */
+  .tablewrap { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; font-size:13px; }
+  th, td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--border); vertical-align:top; }
+  th { width:150px; min-width:120px; font-weight:700; background:var(--hair); }
+  tr:last-child th, tr:last-child td { border-bottom:0; }
+
+  ol.items { margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:7px; }
+  .n { color:var(--link); font-weight:800; margin-right:5px; font-variant-numeric:tabular-nums; }
+  ul.subs {
+    margin:4px 0 0; padding:0 0 0 12px; list-style:none;
+    border-left:1px solid var(--rule); display:flex; flex-direction:column; gap:3px;
+  }
+  ul.subs li { position:relative; padding-left:12px; font-size:12.5px;
+    color:color-mix(in srgb, var(--ink) 86%, transparent); }
+  /* 교재의 ○ 를 그대로 쓴다 — 채운 점으로 바꾸면 층이 하나 사라진 것처럼 보인다. */
+  ul.subs li::before {
+    content:""; position:absolute; left:0; top:.5em; width:5px; height:5px;
+    border-radius:50%; border:1px solid var(--rule);
+  }
+  .law {
+    margin-left:5px; font-size:10.5px; font-weight:700; color:var(--muted);
+    background:var(--hair); border-radius:5px; padding:1px 5px;
+    white-space:nowrap; font-variant-numeric:tabular-nums;
+  }
+
+  /* ── 강의노트 566p 그림 ─────────────────────────────
+     상자는 HTML 글자, 연결선은 SVG. 좁아지면 옆으로 밀어 본다 — 줄여 버리면
+     한 눈에 보라고 만든 그림이 못 읽게 된다. */
+  .dgwrap { overflow-x:auto; padding:14px 16px 16px; }
+  .dg {
+    position:relative; width:100%; min-width:940px;
+    aspect-ratio:10556801 / 6017687; container-type:inline-size;
+  }
+  .dgsvg { position:absolute; inset:0; width:100%; height:100%; }
+  .ln { fill:none; stroke:var(--dgline); stroke-width:9597; }
+  .ln.hot { stroke:var(--hot); }
+  .mg { fill:var(--dgline); }
+  .mh { fill:var(--hot); }
+
+  /* ★글자는 상자 종류를 가리지 않고 한 벌로 — 크기·굵기를 달리하면 같은 층인데도
+     어떤 상자가 더 중요해 보인다. 갈래는 채움색이 말한다. */
+  .bx {
+    position:absolute; display:flex; flex-direction:column; justify-content:center;
+    align-items:center; text-align:center; border:1px solid var(--dgline);
+    border-radius:2px; font-size:1cqw; line-height:1.3; font-weight:700;
+    letter-spacing:-.01em; padding:0 .3cqw; overflow:hidden;
+  }
+  .bx span { display:block; white-space:nowrap; }
+  .bx.key  { background:var(--amber); color:var(--amber-ink); }
+  .bx.also { background:var(--peach); color:var(--amber-ink); }
+  .bx.item { background:var(--amber-bg); color:var(--ink); }
+  .bx.ref  { background:var(--blue-bg); color:var(--ink); }
+  .bx.mark { background:var(--card); color:var(--ink); }
+
+  .foot {
+    margin-top:8px; border-left:3px solid var(--primary); background:var(--card);
+    border-radius:0 10px 10px 0; padding:13px 16px; font-size:13px; color:var(--muted);
+  }
+  .foot b { color:var(--ink); }
+  .foot + .foot { margin-top:10px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">정리비교표 11p · 재작화</p>
+    <h1>국제출원</h1>
+    <p class="lede">
+      교재 11p 는 왼쪽 <b>국제출원절차 표</b>와 오른쪽 <b>국내단계의 번역문 제출 도해</b> 두 덩이입니다.
+      도해는 <b>강의노트 566p 「제201조와 관련된 법조문」</b> 의 그림을 <b>자리·색·꺾임 그대로</b> 옮겼습니다.
+      상자는 이미지가 아니라 글자라 어느 낱말에든 빈칸을 걸 수 있습니다.
+    </p>
+  </header>
+
+  <section class="panel">
+    <h2>국제출원절차 · 내용</h2>
+    <div class="tablewrap">
+      <table>
+        <tbody>
+            <tr><th>주체</th><td><ol class="items"><li><span class="n">1.</span><span class="t">국제출원인</span><span class="law">法 192</span></li><li><span class="n">2.</span><span class="t">대표자</span><span class="law">法 197①②</span></li><li><span class="n">3.</span><span class="t">대리인</span><span class="law">法 197③</span></li></ol></td></tr>
+            <tr><th>서류 등의 제출</th><td><ol class="items"><li><span class="n">1.</span><span class="t">첨부서류 &amp; 언어</span><span class="law">法 193①</span></li><li><span class="n">2.</span><span class="t">기재방법</span><ul class="subs"><li><span class="t">출원서</span><span class="law">法 193②</span></li><li><span class="t">발명의 설명</span><span class="law">法 193③</span></li><li><span class="t">청구범위</span><span class="law">法 193④</span></li><li><span class="t">기타</span><span class="law">法 193⑤</span></li></ul></li><li><span class="n">3.</span><span class="t">수수료의 납부</span><span class="law">法 198</span></li></ol></td></tr>
+            <tr><th>출원일인정</th><td><ol class="items"><li><span class="n">1.</span><span class="t">보완</span><ul class="subs"><li><span class="t">보완사유</span><span class="law">法 194①각호</span></li><li><span class="t">보완명령</span><span class="law">法 194②</span></li><li><span class="t">보완한 경우의 효과</span><span class="law">法 194④전단부</span></li><li><span class="t">보완하지 아니한 경우의 효과</span><span class="law">法 194①단서</span></li></ul></li><li><span class="n">2.</span><span class="t">보정</span><ul class="subs"><li><span class="t">보정사유</span><span class="law">法 195</span></li><li><span class="t">보정명령</span><span class="law">法 195</span></li><li><span class="t">보정한 경우의 효과(명문의 규정 없음)</span></li><li><span class="t">보정하지 아니한 경우의 효과</span><span class="law">法 196①Ⅰ,Ⅱ</span></li></ul></li><li><span class="n">3.</span><span class="t">누락 부분 등의 보완</span><span class="law">法 194③④, 施規 99의2</span><ul class="subs"><li><span class="t">보완사유</span></li><li><span class="t">명령 또는 의사에 의한 보완</span></li><li><span class="t">보완한 경우의 효과</span></li><li><span class="t">보완하지 아니한 경우의 효과</span></li><li><span class="t">보완의 취하</span></li></ul></li></ol></td></tr>
+            <tr><th>기타</th><td><ol class="items"><li><span class="n">1.</span><span class="t">취하된 것으로 보는 국제출원 등</span><span class="law">法 196</span><ul class="subs"><li><span class="t">국제출원의 취하간주</span><span class="law">法 196①</span></li><li><span class="t">지정국의 취하간주</span><span class="law">法 196②</span></li><li><span class="t">출원인에게 통지</span><span class="law">法 196③</span></li></ul></li><li><span class="n">2.</span><span class="t">국제조사 및 국제예비심사기관 등</span><span class="law">法 198의2</span></li></ol></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>국내단계의 번역문 제출<span class="src">강의노트 566p 「제201조와 관련된 법조문」</span></h2>
+    <div class="dgwrap">
+      <div class="dg">
+        <svg class="dgsvg" viewBox="0 0 10556801 6017687" preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5"
+                    orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="mg"/></marker>
+            <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5"
+                    orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="mh"/></marker>
+          </defs>
+            <path class="ln" d="M10256801 4021605 L10406801 4021605 L10406801 2281201 L10256801 2281201" marker-start="url(#ag)" marker-end="url(#ag)"/>
+            <path class="ln" d="M5510440 3767605 L5510440 2281201 L7384675 2281201" marker-start="url(#ag)" marker-end="url(#ag)"/>
+            <path class="ln" d="M6946503 4021605 L7384675 4021605" marker-start="url(#ag)" marker-end="url(#ag)"/>
+            <path class="ln" d="M6946503 1240053 L7384675 1240053" marker-start="url(#ag)" marker-end="url(#ag)"/>
+            <path class="ln hot" d="M7702175 4878603 L10426801 4878603 L10426801 2775616 L7693878 2775616" marker-start="url(#ah)" marker-end="url(#ah)"/>
+            <path class="ln hot" d="M4074377 4878603 L3854500 4878603 L3854500 5837687 L10426801 5837687 L10426801 2775616 L7693878 2775616" marker-start="url(#ah)" marker-end="url(#ah)"/>
+            <path class="ln hot" d="M7384675 5222008 L5888276 5222008 L5888276 5565413 L4391877 5565413" marker-start="url(#ah)" marker-end="url(#ah)"/>
+            <path class="ln hot" d="M4391877 4878603 L7384675 4878603" marker-start="url(#ah)" marker-end="url(#ah)"/>
+            <path class="ln hot" d="M4391877 4535198 L7384675 4535198" marker-start="url(#ah)" marker-end="url(#ah)"/>
+            <path class="ln" d="M3644502 4593105 L3859440 4593105 L3859440 4021605 L4074377 4021605" marker-start="url(#ag)" marker-end="url(#ag)"/>
+            <path class="ln hot" d="M4328377 2779865 L3974500 2779865 L3974500 1895354 L2731343 1895354 L2731343 1494053" marker-start="url(#ah)" marker-end="url(#ah)"/>
+            <path class="ln hot" d="M8820738 1494053 L8820738 1765354 L4874500 1765354 L4874500 2385912 L4645877 2385912" marker-start="url(#ah)" marker-end="url(#ah)"/>
+            <path class="ln" d="M3644506 1240053 L4074377 1240053" marker-start="url(#ag)" marker-end="url(#ag)"/>
+            <path class="ln" d="M3644507 554000 L4074377 554000" marker-start="url(#ag)" marker-end="url(#ag)"/>
+            <path class="ln" d="M808000 2751354 L808000 3335553" marker-start="url(#ag)" marker-end="url(#ag)"/>
+            <path class="ln" d="M1316000 2306854 L1567089 2306854 L1567089 3221001 L1818177 3221001"/>
+            <path class="ln" d="M1316000 2306854 L1567089 2306854 L1567089 2528977 L1818178 2528977"/>
+            <path class="ln" d="M1316000 2306854 L1567088 2306854 L1567088 3907053 L1818176 3907053"/>
+            <path class="ln" d="M1316000 2306854 L1567090 2306854 L1567090 1240053 L1818179 1240053"/>
+            <path class="ln" d="M1316000 2306854 L1567088 2306854 L1567088 4593105 L1818175 4593105"/>
+            <path class="ln" d="M1316000 2306854 L1567090 2306854 L1567090 554000 L1818180 554000"/>
+        </svg>
+        <div class="bx mark" style="left:69.873%;top:55.438%;width:3.008%;height:5.061%"><span>④</span></div>
+        <div class="bx mark" style="left:69.873%;top:49.731%;width:3.008%;height:5.061%"><span>③</span></div>
+        <div class="bx mark" style="left:69.873%;top:43.594%;width:3.008%;height:5.061%"><span>①</span></div>
+        <div class="bx mark" style="left:69.952%;top:84.247%;width:3.008%;height:5.061%"><span>③</span></div>
+        <div class="bx mark" style="left:69.952%;top:78.541%;width:3.008%;height:5.061%"><span>②</span></div>
+        <div class="bx mark" style="left:69.952%;top:72.834%;width:3.008%;height:5.061%"><span>①</span></div>
+        <div class="bx mark" style="left:38.595%;top:89.954%;width:3.008%;height:5.061%"><span>④</span></div>
+        <div class="bx mark" style="left:38.595%;top:84.247%;width:3.008%;height:5.061%"><span>③</span></div>
+        <div class="bx mark" style="left:38.595%;top:78.541%;width:3.008%;height:5.061%"><span>②</span></div>
+        <div class="bx mark" style="left:38.595%;top:72.834%;width:3.008%;height:5.061%"><span>①</span></div>
+        <div class="bx mark" style="left:41.001%;top:43.292%;width:3.008%;height:5.806%"><span>2</span></div>
+        <div class="bx mark" style="left:41.001%;top:36.745%;width:3.008%;height:5.806%"><span>1</span></div>
+        <div class="bx also" style="left:2.842%;top:55.429%;width:9.624%;height:14.773%"><span>제42조의3</span></div>
+        <div class="bx ref" style="left:69.952%;top:16.386%;width:27.206%;height:8.442%"><span>변경출원시기의 제한</span><span>(제209조)</span></div>
+        <div class="bx ref" style="left:69.952%;top:33.687%;width:27.206%;height:8.442%"><span>보정의 특례 등</span><span>(제208조)</span></div>
+        <div class="bx ref" style="left:69.952%;top:62.609%;width:27.206%;height:8.442%"><span>국제예비심사보고서 작정 전의 보정</span><span>(제205조)</span></div>
+        <div class="bx ref" style="left:38.595%;top:62.609%;width:27.206%;height:8.442%"><span>국제조사보고서를 받은 후의 보정</span><span>(제204조)</span></div>
+        <div class="bx ref" style="left:38.595%;top:4.985%;width:27.206%;height:8.442%"><span>서면의 제출</span><span>(제203조)</span></div>
+        <div class="bx ref" style="left:38.595%;top:16.386%;width:27.206%;height:8.442%"><span>출원심사청구시기의 제한</span><span>(제210조)</span></div>
+        <div class="bx item" style="left:17.223%;top:72.106%;width:17.300%;height:8.442%"><span>PCT 19 보정 번역문</span><span>(제201조제2항,제8항)</span></div>
+        <div class="bx item" style="left:17.223%;top:60.705%;width:17.300%;height:8.442%"><span>오역 정정</span><span>(제201조제6항,제7항)</span></div>
+        <div class="bx item" style="left:17.223%;top:49.305%;width:17.300%;height:8.442%"><span>제출 효과</span><span>(제201조제5항)</span></div>
+        <div class="bx item" style="left:17.223%;top:37.805%;width:17.300%;height:8.442%"><span>부제출 효과</span><span>(제201조제4항)</span></div>
+        <div class="bx item" style="left:17.223%;top:16.386%;width:17.300%;height:8.442%"><span>번역문 교체</span><span>(제201조제3항)</span></div>
+        <div class="bx item" style="left:17.223%;top:4.985%;width:17.300%;height:8.442%"><span>번역문 제출</span><span>(제201조제1항)</span></div>
+        <div class="bx key" style="left:2.842%;top:30.948%;width:9.624%;height:14.773%"><span>제201조</span></div>
+      </div>
+    </div>
+  </section>
+
+  <p class="foot">
+    <b>왼쪽 표는 도형이 아니라 교재의 표에서 가져왔습니다.</b> 같은 내용이 도형으로도
+    그려져 있지만, 도형 쪽에는 <b>보정명령(法 195)</b> 이 빠져 있어 표가 더 완전합니다.
+  </p>
+  <p class="foot">
+    <b>도해는 그림을 옮긴 것입니다.</b> 강의노트 파일에서 상자의 자리·크기와 연결선의
+    꺾임을 그대로 읽어 다시 그렸습니다 — 선마다 <b>어느 상자에 붙었는지가 id 로 적혀</b> 있어
+    21줄기가 한 줄도 어긋나지 않습니다. 정리비교표 파일만 보고 좌표로 풀었을 때는 세 군데가
+    틀렸습니다(제205조③↔제204조④를 ③↔③으로, 제208조↔제204조 누락, <b>1·2</b> 를 호(號) 묶음으로).
+  </p>
+  <p class="foot">
+    <b>제208조에 ②·⑤가 없는 것은 맞습니다.</b> 그 두 항은 2001년에 삭제되어 조문에 ①③④만
+    남아 있습니다(조문 원문으로 확인). 제208조①이 <b>"제204조제2항 및 제205조제2항에 따른
+    보정은 제외한다"</b> 고 적고 있어, 두 ②가 제208조①로 이어지는 빨간 선도 문언과 맞습니다.
+  </p>
+</div>

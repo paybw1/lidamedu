@@ -21,6 +21,7 @@ import type { ArticleAnnotationCounts } from "~/features/annotations/queries.ser
 import type { CaseListItem } from "~/features/cases/queries.server";
 import type {
   ArticleNode,
+  SystematicDigest,
   SystematicNode,
 } from "~/features/laws/queries.server";
 import type {
@@ -55,6 +56,8 @@ interface SubjectHubProps {
   lawId?: string;
   articles?: ArticleNode[];
   systematicNodes?: SystematicNode[];
+  /** 체계도 대분류별 정리비교표(조문 탭 "정리" 화면). staff 전용 — RLS. */
+  systematicDigests?: SystematicDigest[];
   progressByArticle?: import("./node-progress-gauge").NodeProgressByArticle;
   cases?: CaseListItem[];
   casesTotal?: number;
@@ -108,6 +111,7 @@ function SubjectHubInner({
   lawId,
   articles,
   systematicNodes,
+  systematicDigests,
   cases,
   casesTotal,
   diagramCaseIds,
@@ -229,6 +233,7 @@ function SubjectHubInner({
               lawId={lawId}
               articles={articles ?? []}
               systematicNodes={systematicNodes ?? []}
+              systematicDigests={systematicDigests ?? []}
               progress={progress ?? null}
               bookmarkLevels={bookmarkLevels}
               annotationCounts={annotationCounts}

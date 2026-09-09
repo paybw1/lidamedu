@@ -1,0 +1,125 @@
+<title>심사제도 — 정리비교표 재작화</title>
+
+<style>
+  :root {
+    --card:#fff; --ink:#2e2e2e; --primary:#2d5ba8; --primary-fg:#fff; --muted:#64748b;
+    --border:#dfe4ec; --link:#2d5ba8; --hair:rgba(46,46,46,.05); --page:#f6f7f9;
+    --headbg:#eef2f8; --keybg:#f5f7fa;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --card:#333; --ink:#e6e6e6; --primary:#3b6fc4; --primary-fg:#fff; --muted:#b5b5b5;
+      --border:rgba(255,255,255,.14); --link:#60a5fa; --hair:rgba(255,255,255,.05);
+      --page:#1e1e1e; --headbg:rgba(120,160,220,.16); --keybg:rgba(255,255,255,.05);
+    }
+  }
+  :root[data-theme="dark"] {
+    --card:#333;--ink:#e6e6e6;--primary:#3b6fc4;--primary-fg:#fff;--muted:#b5b5b5;
+    --border:rgba(255,255,255,.14);--link:#60a5fa;--hair:rgba(255,255,255,.05);
+    --page:#1e1e1e;--headbg:rgba(120,160,220,.16);--keybg:rgba(255,255,255,.05);
+  }
+  :root[data-theme="light"] {
+    --card:#fff;--ink:#2e2e2e;--primary:#2d5ba8;--primary-fg:#fff;--muted:#64748b;
+    --border:#dfe4ec;--link:#2d5ba8;--hair:rgba(46,46,46,.05);--page:#f6f7f9;
+    --headbg:#eef2f8;--keybg:#f5f7fa;
+  }
+
+  body {
+    margin:0; background:var(--page); color:var(--ink); line-height:1.5;
+    font-family: system-ui, -apple-system, "Segoe UI", "Malgun Gothic",
+      "Apple SD Gothic Neo", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width:1400px; margin:0 auto; padding:32px 18px 64px; }
+
+  header { margin-bottom:20px; }
+  .eyebrow { margin:0 0 6px; font-size:11px; letter-spacing:.12em; font-weight:700; color:var(--muted); }
+  h1 { margin:0 0 8px; font-size:clamp(20px,3vw,27px); letter-spacing:-.02em; }
+  .lede { margin:0; color:var(--muted); font-size:14px; max-width:70ch; }
+  .lede b { color:var(--ink); }
+
+  .panel {
+    background:var(--card); border:1px solid var(--border); border-radius:14px;
+    overflow:hidden; margin-bottom:16px;
+  }
+  .cap {
+    margin:0; padding:11px 14px 10px; font-size:13px; font-weight:800;
+    border-bottom:1px solid var(--border);
+  }
+  /* 표가 넓다 — 줄여 버리면 못 읽으므로 옆으로 밀어 본다. */
+  .tablewrap { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; font-size:12.5px; }
+  /* 열이 많은 쪽은 너비를 못박아야 목차가 좁아진다. 내용이 두세 열뿐인 쪽은
+     브라우저가 재도록 둔다 — 목차 이름이 길어 못박으면 칸을 넘친다. */
+  table.fixed { table-layout:fixed; }
+  table.auto { table-layout:auto; }
+  table.auto th.k { white-space:nowrap; }
+  th, td {
+    border:1px solid var(--border); padding:6px 7px; vertical-align:top;
+    /* ★keep-all 은 한글 어절을 통째로 넘겨 줄 끝이 크게 비고 한 줄에 들어가는 글자가
+       확 줄어든다. 한글은 글자 단위로 끊어야 칸을 꽉 채운다.
+       ★양쪽 맞춤은 쓰지 않는다 — 한자·괄호 사이를 벌려 성기게 보인다(원장 지적). */
+    text-align:left; word-break:normal; overflow-wrap:anywhere;
+  }
+  th.h, th.k { text-align:center; }
+  /* 머리줄 — 가로로 훑을 때 기준이 되므로 위에 붙여 둔다.
+     ★머리줄이 두 줄인 쪽은 둘째 줄을 첫 줄 높이만큼 내려야 겹치지 않는다. */
+  thead tr:first-child th { height:30px; }
+  thead tr:first-child th.h { position:sticky; top:0; z-index:3; }
+  thead tr:nth-child(2) th.h { position:sticky; top:30px; z-index:2; }
+  th.h { background:var(--headbg); color:var(--ink); font-weight:800; }
+  /* 줄머리 이름 칸 — 너비는 colgroup 이 정한다. 좌우 여백을 줄여 한 글자 폭에 맞춘다. */
+  th.k {
+    background:var(--keybg); font-weight:700; color:var(--ink);
+    word-break:keep-all; padding:6px 3px;
+  }
+  /* 내용 칸은 바탕색 없이 — 색은 목차와 머리줄만 갖는다(원장 지시). */
+  td { color:color-mix(in srgb, var(--ink) 88%, transparent); background:transparent; }
+
+  .foot {
+    margin-top:8px; border-left:3px solid var(--primary); background:var(--card);
+    border-radius:0 10px 10px 0; padding:13px 16px; font-size:13px; color:var(--muted);
+  }
+  .foot b { color:var(--ink); }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">정리비교표 6p · 재작화</p>
+    <h1>심사제도</h1>
+    <p class="lede">
+      교재 6쪽은 도형 없이 <b>표 한 장</b>입니다. 병합된 칸까지 그대로 옮겼고
+      (9줄 · 94칸), 글은 손대지 않았습니다. 전부 텍스트라
+      어느 낱말에든 빈칸을 걸 수 있습니다.
+    </p>
+  </header>
+
+  <section class="panel">
+    
+    <div class="tablewrap">
+      <table class="fixed" style="min-width:1280px">
+        <colgroup><col style="width:22px"><col style="width:22px"><col style="width:22px"><col><col><col><col><col><col><col><col><col></colgroup>
+        <thead>
+            <tr><th class="h" colspan="3">심사<br>제도</th><th class="h">심사청구제도<br>(法 59, 60)</th><th class="h">우선심사제도<br>(法 61)</th><th class="h">특허여부결정제도<br>(法 62, 63, 66, 67)</th><th class="h">재심사청구제도<br>(法 67의2)</th><th class="h">직권보정제도<br>(法 66의2)</th><th class="h">직권재심사제도<br>(法 66의3)</th><th class="h">출원취하/포기제도</th><th class="h">정보제공제도<br>(法 63의2)</th><th class="h">출원공개제도<br>(法 64, 65)</th></tr>
+        </thead>
+        <tbody>
+            <tr><th class="k" rowspan="5">요<br>건</th><th class="k" colspan="2">주체적</th><td>1.누구든지, 비법인사단 등(法 4)<br>2.출원인은 1)명세서에 청구범위를 적지 아니한 경우, 2)외국어특허출원인데 국어번역문을 제출하지 아니한 경우 심사청구 不可</td><td>1.누구든지<br>2.국가ㆍ지방자치단체의 직무에 관한 특허출원의 경우는 국가 또는 지방자치단체(전담조직도 포함)만</td><td>심사관</td><td>출원인 또는 그 승계인</td><td>심사관</td><td>심사관</td><td>1.공동출원의 경우 전원<br>2.임의대리인은 특별수권<br>3.법정대리인 중 후견인은 후견감독인의 동의</td><td>누구든지</td><td>지식재산처장에 의한 강제공개, 출원인의 신청에 의한 조기공개</td></tr>
+            <tr><th class="k" rowspan="2">객<br>체<br>적</th><th class="k">대<br>상</th><td>적법하게 출원계속중인 발명</td><td>1.출원공개후 제3자의 무단실시의 경우(法 61Ⅰ)<br>2.긴급처리가 필요하다고 인정되는 경우(法 61Ⅱ)<br>3.재난의 예방ㆍ대응ㆍ복구등에 필요하다고 인정되는 경우(法 61Ⅲ)<br>4.타법에서 규정하고 있는 경우-의지</td><td>1.심사청구된출원<br>2.보정된 경우<br>①法47①본,Ⅰ-보정된 내용 반영한 명세서 또는 도면<br>②法47①Ⅱ,Ⅲ-보정적법성을 판단<br>3.외국어특허출원-번역문</td><td>특허여부결정등본을 송달받은 출원으로서 그 특허출원의 명세서 또는 도면을 보정</td><td>특허출원서에 첨부된 명세서, 도면 또는 요약서에명백히 잘못 기재된 내용(사소한 오탈자 이외에 명백히 잘못 기재된 기재불비).단, 신규사항이 추가되지 않는 범위 내에서 가능</td><td>특허결정된 특허출원에 관하여 배경기술 기재(法 42③Ⅱ), 다항제 기재방법(法 42⑧) 및 하나의 특허출원의 범위(法 45) 위반을 제외한 명백한 거절이유를 발견한 경우</td><td>1.의사에 의한 경우<br>①출원전체<br>②단,등록료 납부시 청구항별포기 가능(法215)<br>2.법률에 의한 경우</td><td>거절이유(法 62)(단, 절차적 요건(발명의 설명 중 배경기술 기재(法 42③Ⅱ), 다항제기재방법(法42⑧) + 1특허출원의 범위(法 45) 제외)</td><td>1.원칙-출원 계속 중인 모든 특허출원<br>2.예외<br>①청구범위를 적지 아니한 경우(法 64②Ⅰ)<br>②국어번역문 제출하지 아니한 경우(法 64②Ⅱ)<br>③등록공고를 한 특허의 경우(法 64②Ⅲ)<br>④국방상 필요한 발명으로서 비밀취급이 필요한 경우(法 64③)<br>⑤불특허발명의 경우</td></tr>
+            <tr><th class="k">범<br>위</th><td>청구항별 불가</td><td>하나의 청구항이라도 대상인 경우 가능</td><td></td><td></td><td></td><td></td><td></td><td>청구항별로 가능</td><td></td></tr>
+            <tr><th class="k" rowspan="2">시<br>기<br>적</th><th class="k">원<br>칙</th><td>출원일로부터 3년이내</td><td>1.출원공개후 제3자의 무단실시의 경우-심사청구+출원공개후<br>2.그 밖의 사유-심사청구</td><td>1.거절결정<br>①거절이유통지<br>②의견서/보정서제출<br>③거절결정<br>2.특허결정</td><td>그 특허출원에 관하여 특허결정의 등본을 송달받은 날부터 제79조에 따른 설정등록을 받기 전까지의 기간 또는 특허거절결정등본을 송달받은 날부터 3개월(제15조제1항에 따라 제132조의17에 따른 기간이 연장된 경우 그 연장된 기간을 말한다)</td><td>특허결정할때</td><td>특허권이 설정등록되기전이나 특허출원이 취하/포기되기 전</td><td>출원계속중</td><td>1.당해 출원이 지식재산처에 계속중인 경우<br>2.거절결정불복심판단계에서 가능(단, 심판원장에게 제출)</td><td>출원일로부터 1년6월 지난 후</td></tr>
+            <tr><th class="k">예<br>외</th><td>1.조약우선권주장출원(法54①),국내우선권주장출원(法55②)의 경우 소급효×<br>2.분할ㆍ분리ㆍ변경출원ㆍ정당한권리자출원의 특례(法59③)<br>3.국제특허출원(法 210)</td><td></td><td></td><td>1.재심사를 청구할 때에 이미 재심사에 따른 특허여부의 결정이 있는 경우<br>2.거절결정불복심판청구(法 132의17)가 있는 경우(제176조제1항에 따라 특허거절결정이 취소된 경우는 제외한다)<br>3.그 특허출원이 분리출원인 경우</td><td></td><td></td><td></td><td></td><td>1.출원일/판단시점은 모두 소급효<br>2.1년6월 전이라도 출원인의 신청에 의하여 조기공개가 가능</td></tr>
+            <tr><th class="k" colspan="3">절차</th><td>1.심사청구서 제출(法 60①)<br>2.심사청구사실의 게재(法 60②)<br>3.심사청구사실의 통지(法 60③)<br>– 法 42의2②, 42의3②<br>4.심사청구료 납부(法 82②․16①단서)</td><td>1.우선심사의 신청<br>2.우선심사여부의 결정-우선심사 각하 불복X</td><td>1.서면+이유<br>2.지식재산처장 등본 송달</td><td>1.명세서등의 보정서에 그 취지를 병기하여 제출<br>2.출원인은 재심사청구와 함께 의견서 제출 가능</td><td>특허결정의 등본 송달과 함께 그 직권보정 사항을 특허출원인에게 통지(法 66의2②)</td><td>특허결정을 취소한다는 사실을 특허출원인에게통지(法 66의3②) /통지 받기 전 특허권이 설정등록된 경우나 특허출원이 취하/포기된 경우에는 특허결정의 취소는 없었던 것으로 간주(法 66의3③)</td><td>취하/포기서 제출</td><td>1.정보제공<br>2.활용여부 및 특허여부결정 통보</td><td>1.전문공개,CD-ROM<br>2.조기공개신청의 경우<br>①신청서의 제출<br>②외국어출원, 국제특허출원의경우 번역문 제출 후에 신청가능<br>③신청일로부터 10일 이내 취하</td></tr>
+            <tr><th class="k" colspan="2" rowspan="2">효과</th><th class="k">적<br>법</th><td>1.심사의 개시(法 59①)<br>①원칙 - 심사청구순위<br>②예외 - 분할/변경/분리출원, 우선심사<br>2.취하금지(法 59④)</td><td>우선심사-신속한 권리구제 및 권리이용</td><td>1.특허료납부<br>2.직권보정<br>3.직권재심사<br>4.재심사청구<br>5.공지예외적용주장, 분할출원 또는 변경출원</td><td>1.특허여부결정 취소간주(法 67의2③), 재심사를 진행<br>2.출원인은 재심사에 따른 거절결정등본송달후 3개월이내 거절결정불복심판(法132의2)을 청구하거나 분할출원(法52)가능<br>3.보정각하의예외(法51①Ⅲ).<br>4.취하 不可(法 67의2④).</td><td>출원인이 의견서를 제출하지 아니한 경우 의사에 의한 보정과 같이 취급(法 66의2③). 단, 직권보정이 신규사항을 추가하거나 명백히 잘못되지 아니한 사항을 직권보정한 경우 그 직권보정은 처음부터 없었던 것으로 간주(法 66의2⑤)</td><td>1.특허결정취소 후 최초거절이유통지(法 63①Ⅱ+51①Ⅱ+47①Ⅱ괄호)<br>2.보정각하의 예외(法 51①Ⅱ)</td><td>1.절차의 종료<br>2.등록금지적 효력<br>3.보상금청구권의 소멸<br>4.출원료등의 반환</td><td>1.심사에 참고<br>2.심사의 신속성 및 정확성 향상</td><td>1.보상금청구권의 발생(法 65)<br>2.우선심사신청(法61Ⅰ)<br>3.특허출원에 관한 서류의 열람신청(法 216)<br>4.기탁된 미생물의 분양<br>5.공지기술로 활용<br>6.확대된 선출원인정</td></tr>
+            <tr><th class="k">부<br>적<br>법</th><td>출원 취하간주(法 59⑤)</td><td>1.심사청구순서에 따라 심사<br>2.수수료의 반환</td><td>1.거절결정의 불복<br>2.거절결정의 확정<br>3.재심사청구</td><td>1.재심사의 청구절차가 무효로 된 경우 특허여부결정은 취소되지 아니한 것으로 간주(法 67의2③단서)<br>2.①보정서가 제출되지 아니한 경우<br>②시기에 위반된 재심사청구의 경우 재심사 청구서는 반려</td><td>1.특허료를 낼 때까지 의견서를 지식재산처장에게 제출하면 특허결정과 직권보정 취소간주(단, 요약서에 대한 의견서는 직권보정만 취소간주) (法 66의2④)<br>2.직권보정 전 명세서, 도면에 의하여 심사(직권보정사항이 아닌 거절이유에 대해서는 다시 거절이유통지)<br>3.보정각하의 예외(法 51①Ⅰ)</td><td></td><td></td><td></td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <p class="foot">
+    <b>칸은 교재 표를 그대로 옮겼습니다.</b> 가로로 합친 칸(colspan)과 세로로 합친
+    칸(rowspan)을 손대지 않았습니다 — 병합을 잃으면 표가 한 줄씩 밀립니다.
+    목차 칸은 한 줄에 한 글자로 세워 폭을 줄였고, 그만큼 내용 칸이 넓어집니다.
+    넓어서 좁은 화면에서는 옆으로 밀어 보셔야 합니다.
+  </p>
+</div>

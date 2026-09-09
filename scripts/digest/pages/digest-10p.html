@@ -1,0 +1,282 @@
+<title>심결취소소송 — 정리비교표 재작화</title>
+
+<style>
+  :root {
+    --bg: #ffffff;
+    --card: #ffffff;
+    --ink: #2e2e2e;
+    --primary: #2d5ba8;
+    --primary-fg: #ffffff;
+    --muted: #64748b;
+    --border: #e5e9ef;
+    --link: #2d5ba8;
+    --tint: rgba(45, 91, 168, 0.1);
+    --hair: rgba(46, 46, 46, 0.06);
+    --stop: #a8502d;
+    --stop-bg: rgba(168, 80, 45, 0.09);
+    --go: #1d7a52;
+    --page: #f6f7f9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #252525; --card: #333333; --ink: #e6e6e6;
+      --primary: #3b6fc4; --primary-fg: #ffffff; --muted: #b5b5b5;
+      --border: rgba(255,255,255,.12); --link: #60a5fa;
+      --tint: rgba(59,111,196,.22); --hair: rgba(255,255,255,.07);
+      --stop: #e08a5f; --stop-bg: rgba(224,138,95,.14); --go: #5cc59a;
+      --page: #1e1e1e;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:#252525;--card:#333;--ink:#e6e6e6;--primary:#3b6fc4;--primary-fg:#fff;
+    --muted:#b5b5b5;--border:rgba(255,255,255,.12);--link:#60a5fa;
+    --tint:rgba(59,111,196,.22);--hair:rgba(255,255,255,.07);
+    --stop:#e08a5f;--stop-bg:rgba(224,138,95,.14);--go:#5cc59a;--page:#1e1e1e;
+  }
+  :root[data-theme="light"] {
+    --bg:#fff;--card:#fff;--ink:#2e2e2e;--primary:#2d5ba8;--primary-fg:#fff;
+    --muted:#64748b;--border:#e5e9ef;--link:#2d5ba8;
+    --tint:rgba(45,91,168,.1);--hair:rgba(46,46,46,.06);
+    --stop:#a8502d;--stop-bg:rgba(168,80,45,.09);--go:#1d7a52;--page:#f6f7f9;
+  }
+
+  body {
+    margin: 0; background: var(--page); color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", "Malgun Gothic",
+      "Apple SD Gothic Neo", sans-serif;
+    line-height: 1.55; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 32px 18px 64px; }
+
+  header { margin-bottom: 22px; }
+  .eyebrow {
+    margin: 0 0 6px; font-size: 11px; letter-spacing: .12em; font-weight: 700;
+    color: var(--muted); text-transform: uppercase;
+  }
+  h1 { margin: 0 0 8px; font-size: clamp(20px, 3vw, 27px); letter-spacing: -.02em; }
+  .lede { margin: 0; color: var(--muted); font-size: 14px; max-width: 66ch; }
+
+  .cols { display: grid; gap: 18px; grid-template-columns: minmax(280px, 360px) 1fr; align-items: start; }
+  @media (max-width: 800px) { .cols { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .panel > h2 {
+    margin: 0; padding: 10px 16px; border-bottom: 1px solid var(--border);
+    font-size: 12px; font-weight: 700; letter-spacing: .04em; color: var(--muted);
+  }
+  .panel > .body { padding: 16px; }
+
+  /* ── 흐름도 ─────────────────────────────────────────── */
+  .flow { display: flex; flex-direction: column; gap: 0; }
+  .step { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
+  .node {
+    border: 1px solid var(--primary); background: var(--tint); color: var(--link);
+    border-radius: 10px; padding: 9px 12px; font-size: 14px; font-weight: 700;
+    text-align: center;
+  }
+  .node.start { background: var(--primary); color: var(--primary-fg); border-color: transparent; }
+  .node.end { background: var(--primary); color: var(--primary-fg); border-color: transparent; }
+  .out {
+    border: 1px dashed var(--stop); background: var(--stop-bg); color: var(--stop);
+    border-radius: 999px; padding: 5px 11px; font-size: 12px; font-weight: 700; white-space: nowrap;
+  }
+  .branch { display: flex; align-items: center; gap: 6px; }
+  .no {
+    font-size: 10px; font-weight: 800; color: var(--stop);
+    letter-spacing: .04em;
+  }
+  .arrow { color: var(--stop); font-size: 12px; }
+  .down {
+    display: flex; align-items: center; gap: 6px;
+    margin: 0 0 0 22px; padding: 5px 0;
+  }
+  .down .bar { width: 2px; height: 20px; background: var(--border); border-radius: 2px; }
+  .down .yes { font-size: 10px; font-weight: 800; color: var(--go); letter-spacing: .04em; }
+
+  /* ── 항목표 ─────────────────────────────────────────── */
+  .tablewrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th {
+    width: 30%; min-width: 130px; font-weight: 700; color: var(--ink);
+    background: var(--hair);
+  }
+  tr:last-child th, tr:last-child td { border-bottom: 0; }
+  td { color: color-mix(in srgb, var(--ink) 85%, transparent); }
+
+  /* 어느 심리 단계의 쟁점인지 — 흐름도의 단계 이름과 같은 말을 쓴다. */
+  .group th {
+    background: var(--tint); color: var(--link); width: auto;
+    font-size: 11px; letter-spacing: .06em; padding: 7px 12px;
+    border-bottom: 1px solid var(--primary);
+  }
+  .group th .cnt { color: var(--muted); font-weight: 700; margin-left: 6px; letter-spacing: 0; }
+  .group + tr th, .group + tr td { border-top: 0; }
+
+  /* 상자에 딸린 근거 조문 — 교재에서 화살표로 그 상자를 가리키던 것. */
+  .node .art {
+    display: block; margin-top: 3px; font-size: 11px; font-weight: 700;
+    opacity: .78; letter-spacing: .02em;
+  }
+
+  /* 교재가 한 칸 안에 / 로 이어 놓은 것을 줄로 나눈다. 줄머리 구분자는 남긴다.
+     ★한 줄짜리 칸도 같은 꼴로 둔다 - 구분자가 열마다 세로로 맞아야 통일감이 산다. */
+  .items { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 5px; }
+  .items li { position: relative; padding-left: 13px; }
+  .items li::before {
+    content: ""; position: absolute; left: 0; top: .55em;
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--primary); opacity: .42;
+  }
+
+  .foot {
+    margin-top: 22px; border-left: 3px solid var(--primary); background: var(--card);
+    border-radius: 0 10px 10px 0; padding: 13px 16px; font-size: 13px; color: var(--muted);
+  }
+  .foot b { color: var(--ink); }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">정리비교표 10p · 재작화</p>
+    <h1>심결취소소송</h1>
+    <p class="lede">
+      교재의 흐름도를 이미지가 아니라 <b>글과 구조</b>로 다시 짰습니다. 상자 안 문구는 교재
+      그대로이고 전부 텍스트라, 나중에 어느 낱말에든 빈칸을 걸 수 있습니다.
+    </p>
+  </header>
+
+  <div class="cols">
+    <section class="panel">
+      <h2>소송의 진행</h2>
+      <div class="body">
+        <div class="flow">
+          <div class="step"><div class="node start">소의 제기</div></div>
+
+          <div class="down"><div class="bar"></div><span class="yes">↓</span></div>
+
+          <div class="step">
+            <div class="node">소장심사</div>
+            <div class="branch"><span class="no">No</span><span class="arrow">→</span><span class="out">소장 각하</span></div>
+          </div>
+
+          <div class="down"><div class="bar"></div><span class="yes">Yes ↓</span></div>
+
+          <div class="step">
+            <div class="node">소송요건심리</div>
+            <div class="branch"><span class="no">No</span><span class="arrow">→</span><span class="out">소 각하</span></div>
+          </div>
+
+          <div class="down"><div class="bar"></div><span class="yes">Yes ↓</span></div>
+
+          <div class="step">
+            <div class="node">본안심리</div>
+            <div class="branch"><span class="no">No</span><span class="arrow">→</span><span class="out">기각판결</span></div>
+          </div>
+
+          <div class="down"><div class="bar"></div><span class="yes">Yes ↓</span></div>
+
+          <div class="step"><div class="node end">인용판결(취소환송)<span class="art">제189조</span></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>쟁점별 정리</h2>
+      <div class="tablewrap">
+        <table>
+          <tbody>
+            <tr class="group"><th colspan="2">소송요건심리 <span class="cnt">5항목</span></th></tr>
+            <tr>
+              <th>소송물</th>
+              <td>
+                <ul class="items">
+                <li>행정처분의 위법성 일반(실체상/절차상 위법, 판단누락(유탈)의 유무 등)</li>
+              </ul></td>
+            </tr>
+            <tr>
+              <th>소의 이익</th>
+              <td>
+                <ul class="items">
+                <li>원고가 심결을 취소할 이익</li>
+                <li>사정변경되거나 유리한 심결을 받을 가능성이 없는 경우 소의 이익 부정</li>
+                <li>변론종결시를 기준으로 판단하나 상고심 계속 중 생긴 사정도 고려</li>
+              </ul></td>
+            </tr>
+            <tr>
+              <th>관할</th>
+              <td>
+                <ul class="items">
+                <li>심급관할</li>
+                <li>전속관할(제186조제1항, 제6항 내지 제8항)</li>
+              </ul></td>
+            </tr>
+            <tr>
+              <th>당사자</th>
+              <td>
+                <ul class="items">
+                <li>원피고 적격(제186조제2항, 제187조)</li>
+                <li>복수 당사자</li>
+              </ul></td>
+            </tr>
+            <tr>
+              <th>제소기간</th>
+              <td>
+                <ul class="items">
+                <li>등본 송달받은 날로부터 30일</li>
+                <li>심판장 직권으로 부가기간(제186조제3항 내지 제5항)</li>
+              </ul></td>
+            </tr>
+            <tr class="group"><th colspan="2">본안심리 <span class="cnt">5항목</span></th></tr>
+            <tr>
+              <th>변론주의 원칙<br>(직권주의 가미)</th>
+              <td>
+                <ul class="items">
+                <li>당사자가 주장한 사항에 대하여 심리</li>
+                <li>단, 변론종결전까지 일건 기록에 현출되어 있는 사항에 대해서는 직권주의 가미</li>
+              </ul></td>
+            </tr>
+            <tr>
+              <th>위법판단의 기준시점</th>
+              <td>
+                <ul class="items">
+                <li>심결 당시의 법령과 사실상태를 기준으로 판단(단, 심결후라도 소급효가 인정되는 경우는 예외)</li>
+              </ul></td>
+            </tr>
+            <tr>
+              <th>심리범위</th>
+              <td>
+                <ul class="items">
+                <li>심판원에서 주장하지 아니한 사항을 주장할 때 심리할 수 있는지 여부</li>
+                <li>원칙은 무제한설이나 특허취소결정과 결정계 심판의 심결에 대한 취소소송의 경우에는 강행규정(대응기회 부여)에 위반되지 않기 위해서 지식재산처장이 새로운 주장/증거 제출 불가</li>
+              </ul></td>
+            </tr>
+            <tr>
+              <th>주장증명책임</th>
+              <td>
+                <ul class="items">
+                <li>법률요건분류설(자기에게 유리한 조문은 자기가 주장증명) – 특허발생요건, 특허장애요건</li>
+              </ul></td>
+            </tr>
+            <tr>
+              <th>자백</th>
+              <td>
+                <ul class="items">
+                <li>사실 인정</li>
+                <li>법적 판단 내지 평가는 불인정</li>
+              </ul></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <p class="foot">
+    <b>교재와 다른 점</b> — 상자 위치와 선 모양은 교재와 똑같지 않습니다. 교재는 왼쪽에
+    단계, 오른쪽에 쟁점을 나란히 놓아 높이를 맞췄지만, 여기서는 좁은 화면에서도 읽히도록
+    두 덩이로 나눴습니다. 쟁점표의 <b>소송요건심리 / 본안심리</b> 구분은 교재에 없던 것을
+    더한 것입니다 — 앞의 다섯은 소송요건, 뒤의 다섯은 본안심리에 걸리는 쟁점이라
+    흐름도의 두 단계와 이름을 맞췄습니다. <b>문구는 하나도 바꾸지 않았습니다.</b>
+  </p>
+</div>

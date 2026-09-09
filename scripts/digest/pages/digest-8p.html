@@ -1,0 +1,130 @@
+<title>심판제도 — 정리비교표 재작화</title>
+
+<style>
+  :root {
+    --card:#fff; --ink:#2e2e2e; --primary:#2d5ba8; --primary-fg:#fff; --muted:#64748b;
+    --border:#dfe4ec; --link:#2d5ba8; --hair:rgba(46,46,46,.05); --page:#f6f7f9;
+    --headbg:#eef2f8; --keybg:#f5f7fa;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --card:#333; --ink:#e6e6e6; --primary:#3b6fc4; --primary-fg:#fff; --muted:#b5b5b5;
+      --border:rgba(255,255,255,.14); --link:#60a5fa; --hair:rgba(255,255,255,.05);
+      --page:#1e1e1e; --headbg:rgba(120,160,220,.16); --keybg:rgba(255,255,255,.05);
+    }
+  }
+  :root[data-theme="dark"] {
+    --card:#333;--ink:#e6e6e6;--primary:#3b6fc4;--primary-fg:#fff;--muted:#b5b5b5;
+    --border:rgba(255,255,255,.14);--link:#60a5fa;--hair:rgba(255,255,255,.05);
+    --page:#1e1e1e;--headbg:rgba(120,160,220,.16);--keybg:rgba(255,255,255,.05);
+  }
+  :root[data-theme="light"] {
+    --card:#fff;--ink:#2e2e2e;--primary:#2d5ba8;--primary-fg:#fff;--muted:#64748b;
+    --border:#dfe4ec;--link:#2d5ba8;--hair:rgba(46,46,46,.05);--page:#f6f7f9;
+    --headbg:#eef2f8;--keybg:#f5f7fa;
+  }
+
+  body {
+    margin:0; background:var(--page); color:var(--ink); line-height:1.5;
+    font-family: system-ui, -apple-system, "Segoe UI", "Malgun Gothic",
+      "Apple SD Gothic Neo", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width:1400px; margin:0 auto; padding:32px 18px 64px; }
+
+  header { margin-bottom:20px; }
+  .eyebrow { margin:0 0 6px; font-size:11px; letter-spacing:.12em; font-weight:700; color:var(--muted); }
+  h1 { margin:0 0 8px; font-size:clamp(20px,3vw,27px); letter-spacing:-.02em; }
+  .lede { margin:0; color:var(--muted); font-size:14px; max-width:70ch; }
+  .lede b { color:var(--ink); }
+
+  .panel {
+    background:var(--card); border:1px solid var(--border); border-radius:14px;
+    overflow:hidden; margin-bottom:16px;
+  }
+  .cap {
+    margin:0; padding:11px 14px 10px; font-size:13px; font-weight:800;
+    border-bottom:1px solid var(--border);
+  }
+  /* 표가 넓다 — 줄여 버리면 못 읽으므로 옆으로 밀어 본다. */
+  .tablewrap { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; font-size:12.5px; }
+  /* 열이 많은 쪽은 너비를 못박아야 목차가 좁아진다. 내용이 두세 열뿐인 쪽은
+     브라우저가 재도록 둔다 — 목차 이름이 길어 못박으면 칸을 넘친다. */
+  table.fixed { table-layout:fixed; }
+  table.auto { table-layout:auto; }
+  table.auto th.k { white-space:nowrap; }
+  th, td {
+    border:1px solid var(--border); padding:6px 7px; vertical-align:top;
+    /* ★keep-all 은 한글 어절을 통째로 넘겨 줄 끝이 크게 비고 한 줄에 들어가는 글자가
+       확 줄어든다. 한글은 글자 단위로 끊어야 칸을 꽉 채운다.
+       ★양쪽 맞춤은 쓰지 않는다 — 한자·괄호 사이를 벌려 성기게 보인다(원장 지적). */
+    text-align:left; word-break:normal; overflow-wrap:anywhere;
+  }
+  th.h, th.k { text-align:center; }
+  /* 머리줄 — 가로로 훑을 때 기준이 되므로 위에 붙여 둔다.
+     ★머리줄이 두 줄인 쪽은 둘째 줄을 첫 줄 높이만큼 내려야 겹치지 않는다. */
+  thead tr:first-child th { height:30px; }
+  thead tr:first-child th.h { position:sticky; top:0; z-index:3; }
+  thead tr:nth-child(2) th.h { position:sticky; top:30px; z-index:2; }
+  th.h { background:var(--headbg); color:var(--ink); font-weight:800; }
+  /* 줄머리 이름 칸 — 너비는 colgroup 이 정한다. 좌우 여백을 줄여 한 글자 폭에 맞춘다. */
+  th.k {
+    background:var(--keybg); font-weight:700; color:var(--ink);
+    word-break:keep-all; padding:6px 3px;
+  }
+  /* 내용 칸은 바탕색 없이 — 색은 목차와 머리줄만 갖는다(원장 지시). */
+  td { color:color-mix(in srgb, var(--ink) 88%, transparent); background:transparent; }
+
+  .foot {
+    margin-top:8px; border-left:3px solid var(--primary); background:var(--card);
+    border-radius:0 10px 10px 0; padding:13px 16px; font-size:13px; color:var(--muted);
+  }
+  .foot b { color:var(--ink); }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">정리비교표 8p · 재작화</p>
+    <h1>심판제도</h1>
+    <p class="lede">
+      교재 8쪽은 도형 없이 <b>표 한 장</b>입니다. 병합된 칸까지 그대로 옮겼고
+      (14줄 · 97칸), 글은 손대지 않았습니다. 전부 텍스트라
+      어느 낱말에든 빈칸을 걸 수 있습니다.
+    </p>
+  </header>
+
+  <section class="panel">
+    
+    <div class="tablewrap">
+      <table class="fixed" style="min-width:1280px">
+        <colgroup><col style="width:22px"><col style="width:22px"><col><col><col><col><col><col><col></colgroup>
+        <thead>
+            <tr><th class="h" colspan="2">심판<br>제도</th><th class="h">거절결정불복심판<br>(法 132의17)</th><th class="h">정정심판<br>(法 136)</th><th class="h">특허무효심판<br>(法 133, 133의2)</th><th class="h">연장등록무효심판<br>(法 134)</th><th class="h">정정무효심판<br>(法 137)</th><th class="h">권리범위확인심판<br>(法 135)</th><th class="h">통상실시권허락심판<br>(法 138)</th></tr>
+        </thead>
+        <tbody>
+            <tr><th class="k" rowspan="4">요<br>건</th><th class="k">청<br>구<br>인</th><td>출원인</td><td>특허권자</td><td>이해관계인(제2호 본문의 경우 특허를 받을 수 있는 권리를 가진 자) 또는 심사관</td><td colspan="2">이해관계인 또는 심사관</td><td>1.적극적 - 특허권자 또는 전용실시권자<br>2.소극적 – 실시한 적/하고 있거나 예정이 있는 이해관계인</td><td>1.일반적 - 후출원 특허권자, 전용실시권자, 통상실시권자<br>2.CROSS LICENSE- 통상실시권을 허락한 선출원권리자</td></tr>
+            <tr><th class="k">피<br>청<br>구<br>인</th><td>×</td><td>×</td><td colspan="3">특허권자</td><td>1.적극적 – 실시한 적/실시하고 있는 이해관계인<br>2.소극적 - 특허권자</td><td>1.일반적 - 선출원특허권자, 전용실시권자, 실용실안권자, 디자인권자<br>2.CROSS LICENSE - 통상실시권을 허락받은 후출원특허권자, 전용실시권자</td></tr>
+            <tr><th class="k">대<br>상</th><td>거절결정</td><td>1.청구범위의 감축, 잘못 기재된 사항의 정정 및 분명하지 아니하게 기재된 사항의 명확화 중 어느 하나<br>2.특허발명의 명세서ㆍ도면(단, 잘못 기재된 사항의 정정은 최초 명세서ㆍ도면)<br>3.청구범위를 실질적으로 확장하거나 변경하지 아니할 것<br>4.청구범위의 감축, 잘못 기재된 사항의 정정은 정정 후의 청구범위에 적혀 있는 사항이 특허출원을 하였을 때 특허를 받을 수 있을 것</td><td>청구항마다 특허무효사유에 해당함을 이유로 청구</td><td>허가 등/등록지연에 따른 연장등록이 연장등록무효사유(거절이유와 동일)에 해당함을 이유로 청구</td><td>특허취소신청에서의 정정, 특허무효심판 또는 정정무효심판에서의 정정, 정정심판에서의 정정이 정정무효사유(정정사유와 동일)에 해당함을 이유로 청구</td><td>청구항마다 가능</td><td>1.이용ㆍ저촉관계<br>2.실시허락 ×<br>3.자기의 특허발명의 실시에 필요한 범위일 것<br>4.선출원된 타인의 특허발명 또는 등록실용신안과 비교하여 기술상의 진보가 있을 것</td></tr>
+            <tr><th class="k">시<br>기</th><td>등본송달받은날로부터 3개월 이내<br>(연장, 추후보완 가능)</td><td>1. 존속기간 중은 물론 장래를 향해 소멸한 경우도 가능<br>2. 특허취소신청이 특허심판원에 계속 중인 때부터 그 결정이 확정될 때까지의 기간(단, 특허/정정무효심판의 심결에대한 소가 특허법원에 계속 중인 경우에는 특허법원에서 변론이 종결(변론 없이 한 판결의 경우에는 판결의 선고를 말한다)된 날까지 가능)과 특허/정정무효심판이 특허심판원에 계속 중인 기간에는 불가</td><td colspan="3">존속기간 중은 물론 장래를 향해 소멸한 경우도 가능</td><td>특허권 존속기간 중에만 가능</td><td>타방 권리 존속 중에만 가능</td></tr>
+            <tr><th class="k" rowspan="3">절<br>차</th><th class="k">청<br>구</th><td>출원일 및 출원번호, 발명의 명칭, 특허거절결정일을 추가 기재</td><td>1. 정정한 명세서 또는 도면의 첨부<br>2. 전용실시권자, 허락에 의한 통상실시권자, 직무발명에 대한 통상실시권자및 질권자의 동의서를 첨부(단, 동의받아야하는 자가 무효심판청구한 경우 제외)</td><td colspan="3">1.부본 송달 및 답변서 제출기회 부여<br>2.등록한 권리자에게 취지 통지</td><td>1.확인대상발명의 설명서 및 필요한 도면의 첨부<br>2.부본 송달 및 답변서 제출기회 부여</td><td>1.청구서에 자기의 권리, 타인의 권리 특정과 범위ㆍ기간ㆍ대가의추가 기재<br>2.부본 송달 및 답변서 제출기회 부여</td></tr>
+            <tr><th class="k">진<br>행</th><td>1.보정각하도 함께 불복한 경우 심리범위포함<br>2.심사에서 밟은 절차의 효력이 심판에도 미침<br>3.거절이유 전면적 판단</td><td>1. 정정사유를 만족하는지 직권심리 후 의견서를 제출할 수 있는 기회 부여<br>2. 심리종결통지 전까지 정정명세서 또는 도면의 보정</td><td>신청한 청구항에 대해서 특허무효사유가 있는지 심리</td><td>연장등록무효사유가 있는지 심리</td><td>정정무효사유가 있는지 심리</td><td>확인대상발명이 특허발명의 권리범위에 속하는지 심리</td><td>이용ㆍ저촉관계에 있는지, 기술적 진보 여부, 범위ㆍ기간ㆍ대가ㆍ지급시기ㆍ지급방법등에 관해 심리</td></tr>
+            <tr><th class="k">종<br>료</th><td>1.심판청구가 타당한 경우 원거절결정을취소하고 자판(특허심결) 또는 환송<br>2.환송 시 심사관의 기속 / reset 후 심사</td><td>일부인용ㆍ기각불가</td><td>1.청구항마다 일부인용ㆍ기각가능<br>2.청구항별 취하 가능</td><td></td><td></td><td>1.심판청구가 타당하지 않은 경우 기각한다고 하여야 되며, 청구취지에 반하는 심결을해서는 안됨<br>2.청구항별 취하 가능</td><td>심결의 주문에 통상실시권의 범위, 기간 및 대가를 구체적으로 명시하여 인용심결</td></tr>
+            <tr><th class="k" rowspan="2">확<br>정<br>효<br>과</th><th class="k">인<br>용</th><td>1.특허결정된경우 특허료 내면 특허권 발생<br>2.연장등록결정된경우 지식재산처장이 특허원부 등록/특허공보 게재</td><td>1.정정된 내용대로 출원ㆍ공개ㆍ결정ㆍ심결ㆍ등록된것으로 간주<br>2.심판원장이 지식재산처장에게 알리면, 지식재산처장이 특허공보에 게재<br>3.침해죄는 정정 전 청구범위 기준 판단<br>4.정정전후 과실 추정 불변</td><td>특허권이 처음부터 없었던 것으로 간주(단, 후발적 무효사유는 발생 시부터 장래효)</td><td>1.연장등록이 처음부터 없었던 것으로 간주(단, 연장기간을 초과 등록된 경우 초과된 기간에 대해서만 연장등록 불인정)<br>2.하나의 허가 등에 대하여 둘 이상의 특허권의 존속기간이 연장등록된경우 연장등록출원은 처음부터 없었던 것으로 간주</td><td>정정이 처음부터 없었던 것으로 간주</td><td rowspan="2">보호범위의 공적 확인/단, 법원의 기속력 불인정</td><td>1.통상실시권 허락<br>2.실시권은 해당 특허권과 함께 이전하며, 함께 소멸<br>3.대가 지급하지 않거나 공탁하지 않으면 실시불가</td></tr>
+            <tr><th class="k">기<br>각</th><td>거절결정 확정</td><td>정정의 불인정</td><td>특허권의 유지</td><td>연장등록의 유지</td><td>정정의 유지</td><td>통상실시권 불허</td></tr>
+            <tr><th class="k" colspan="2">심판비용</th><td colspan="2">청구인</td><td colspan="4">패심자</td><td>청구인</td></tr>
+            <tr><th class="k" colspan="2">일사<br>부재리</th><td colspan="2">부적용</td><td>적용(전부무효심판과 일부무효심판)</td><td colspan="2">적용</td><td>적용(적극적 권리범위확인심판과 소극적 권리범위확인심판)</td><td>적용</td></tr>
+            <tr><th class="k" colspan="2">참가여부</th><td colspan="2">불허(단, 정보제공 가능)</td><td colspan="4">허용</td><td>보조참가만이 허용</td></tr>
+            <tr><th class="k" colspan="2">비 고</th><td></td><td>정정심판과 특허취소신청/특허무효심판의 관계</td><td>1.특허무효심판이 심판원에 계속 중 정정청구 가능<br>2.일부인용ㆍ기각가능</td><td></td><td>정정무효심판이 심판원에 계속 중 정정청구 가능</td><td>권리 대 권리 간의 권리범위확인심판의 경우 적극적의 이용관계 확인과 소극적 인정</td><td>CROSS LICENSE 요건<br>-통상실시권허락심판에 의하여 실시권허락<br>-후출원권리자가 실시허락×<br>-허락받아 실시하려는 특허발명의 범위 이내일 것</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <p class="foot">
+    <b>칸은 교재 표를 그대로 옮겼습니다.</b> 가로로 합친 칸(colspan)과 세로로 합친
+    칸(rowspan)을 손대지 않았습니다 — 병합을 잃으면 표가 한 줄씩 밀립니다.
+    목차 칸은 한 줄에 한 글자로 세워 폭을 줄였고, 그만큼 내용 칸이 넓어집니다.
+    넓어서 좁은 화면에서는 옆으로 밀어 보셔야 합니다.
+  </p>
+</div>

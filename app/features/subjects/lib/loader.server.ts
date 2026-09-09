@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
-import type { LawSubjectSlug, SubjectTab } from "./subjects";
+import { type LawSubjectSlug, type SubjectTab, subjectHasDigestAxis } from "./subjects";
 
 import makeServerClient from "~/core/lib/supa-client.server";
 import {
@@ -29,11 +29,13 @@ import {
 import {
   type ArticleNode,
   type LawHeader,
+  type SystematicDigest,
   type SystematicNode,
   getArticleSkeleton,
   getLatestPublishedRevisionDate,
   getLawByCode,
   getStaffRole,
+  getSystematicDigests,
   getSystematicSkeleton,
 } from "~/features/laws/queries.server";
 import {
@@ -146,6 +148,9 @@ export interface SubjectHubData {
   law: LawHeader | null;
   articles: ArticleNode[];
   systematicNodes: SystematicNode[];
+  // 조문 탭 "정리" 화면 — 체계도 대분류에 붙는 교재 정리비교표.
+  // 노출은 RLS(현재 staff 전용) — 학생에게는 빈 배열이 내려간다.
+  systematicDigests: SystematicDigest[];
   cases: CaseListItem[];
   casesTotal: number;
   // feat-2-035 — 표시 목록 중 도식 보유 판례 id(학생=승인분만, RLS).
@@ -720,6 +725,7 @@ export async function loadSubjectHub(
       law: null,
       articles: [],
       systematicNodes: [],
+      systematicDigests: [],
       systematicNodeProblemStats: {},
       problemNodeFilter: null,
       cases: [],
@@ -1098,6 +1104,12 @@ export async function loadSubjectHub(
     : null;
 
   // 주관식 카드 배지 — 표시되는 주관식 문항의 배치 노드 목록 (staff 전용 탭).
+  // 정리비교표 — 축이 있는 과목(특허법)에서만 부른다. 다른 과목은 화면에 칸 자체가 없다.
+  // RLS 가 노출을 정하므로(현재 staff 전용) 여기서 역할을 다시 보지 않는다.
+  const systematicDigests = subjectHasDigestAxis(lawCode)
+    ? await getSystematicDigests(client, lawCode)
+    : [];
+
   const subjectivePlacements = staffRole
     ? await getProblemPlacementsBulk(
         client,
@@ -1111,6 +1123,7 @@ export async function loadSubjectHub(
     law,
     articles,
     systematicNodes,
+    systematicDigests,
     systematicNodeProblemStats,
     problemNodeFilter,
     cases,

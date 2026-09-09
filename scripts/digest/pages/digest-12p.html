@@ -1,0 +1,131 @@
+<title>특허법 · 실용신안법 — 정리비교표 재작화</title>
+
+<style>
+  :root {
+    --card:#fff; --ink:#2e2e2e; --primary:#2d5ba8; --primary-fg:#fff; --muted:#64748b;
+    --border:#dfe4ec; --link:#2d5ba8; --hair:rgba(46,46,46,.05); --page:#f6f7f9;
+    --headbg:#eef2f8; --keybg:#f5f7fa;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --card:#333; --ink:#e6e6e6; --primary:#3b6fc4; --primary-fg:#fff; --muted:#b5b5b5;
+      --border:rgba(255,255,255,.14); --link:#60a5fa; --hair:rgba(255,255,255,.05);
+      --page:#1e1e1e; --headbg:rgba(120,160,220,.16); --keybg:rgba(255,255,255,.05);
+    }
+  }
+  :root[data-theme="dark"] {
+    --card:#333;--ink:#e6e6e6;--primary:#3b6fc4;--primary-fg:#fff;--muted:#b5b5b5;
+    --border:rgba(255,255,255,.14);--link:#60a5fa;--hair:rgba(255,255,255,.05);
+    --page:#1e1e1e;--headbg:rgba(120,160,220,.16);--keybg:rgba(255,255,255,.05);
+  }
+  :root[data-theme="light"] {
+    --card:#fff;--ink:#2e2e2e;--primary:#2d5ba8;--primary-fg:#fff;--muted:#64748b;
+    --border:#dfe4ec;--link:#2d5ba8;--hair:rgba(46,46,46,.05);--page:#f6f7f9;
+    --headbg:#eef2f8;--keybg:#f5f7fa;
+  }
+
+  body {
+    margin:0; background:var(--page); color:var(--ink); line-height:1.5;
+    font-family: system-ui, -apple-system, "Segoe UI", "Malgun Gothic",
+      "Apple SD Gothic Neo", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width:1400px; margin:0 auto; padding:32px 18px 64px; }
+
+  header { margin-bottom:20px; }
+  .eyebrow { margin:0 0 6px; font-size:11px; letter-spacing:.12em; font-weight:700; color:var(--muted); }
+  h1 { margin:0 0 8px; font-size:clamp(20px,3vw,27px); letter-spacing:-.02em; }
+  .lede { margin:0; color:var(--muted); font-size:14px; max-width:70ch; }
+  .lede b { color:var(--ink); }
+
+  .panel {
+    background:var(--card); border:1px solid var(--border); border-radius:14px;
+    overflow:hidden; margin-bottom:16px;
+  }
+  .cap {
+    margin:0; padding:11px 14px 10px; font-size:13px; font-weight:800;
+    border-bottom:1px solid var(--border);
+  }
+  /* 표가 넓다 — 줄여 버리면 못 읽으므로 옆으로 밀어 본다. */
+  .tablewrap { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; font-size:12.5px; }
+  /* 열이 많은 쪽은 너비를 못박아야 목차가 좁아진다. 내용이 두세 열뿐인 쪽은
+     브라우저가 재도록 둔다 — 목차 이름이 길어 못박으면 칸을 넘친다. */
+  table.fixed { table-layout:fixed; }
+  table.auto { table-layout:auto; }
+  table.auto th.k { white-space:nowrap; }
+  th, td {
+    border:1px solid var(--border); padding:6px 7px; vertical-align:top;
+    /* ★keep-all 은 한글 어절을 통째로 넘겨 줄 끝이 크게 비고 한 줄에 들어가는 글자가
+       확 줄어든다. 한글은 글자 단위로 끊어야 칸을 꽉 채운다.
+       ★양쪽 맞춤은 쓰지 않는다 — 한자·괄호 사이를 벌려 성기게 보인다(원장 지적). */
+    text-align:left; word-break:normal; overflow-wrap:anywhere;
+  }
+  th.h, th.k { text-align:center; }
+  /* 머리줄 — 가로로 훑을 때 기준이 되므로 위에 붙여 둔다.
+     ★머리줄이 두 줄인 쪽은 둘째 줄을 첫 줄 높이만큼 내려야 겹치지 않는다. */
+  thead tr:first-child th { height:30px; }
+  thead tr:first-child th.h { position:sticky; top:0; z-index:3; }
+  thead tr:nth-child(2) th.h { position:sticky; top:30px; z-index:2; }
+  th.h { background:var(--headbg); color:var(--ink); font-weight:800; }
+  /* 줄머리 이름 칸 — 너비는 colgroup 이 정한다. 좌우 여백을 줄여 한 글자 폭에 맞춘다. */
+  th.k {
+    background:var(--keybg); font-weight:700; color:var(--ink);
+    word-break:keep-all; padding:6px 3px;
+  }
+  /* 내용 칸은 바탕색 없이 — 색은 목차와 머리줄만 갖는다(원장 지시). */
+  td { color:color-mix(in srgb, var(--ink) 88%, transparent); background:transparent; }
+
+  .foot {
+    margin-top:8px; border-left:3px solid var(--primary); background:var(--card);
+    border-radius:0 10px 10px 0; padding:13px 16px; font-size:13px; color:var(--muted);
+  }
+  .foot b { color:var(--ink); }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">정리비교표 12p · 재작화</p>
+    <h1>특허법 · 실용신안법</h1>
+    <p class="lede">
+      교재 12쪽은 도형 없이 <b>표 한 장</b>입니다. 병합된 칸까지 그대로 옮겼고
+      (15줄 · 48칸), 글은 손대지 않았습니다. 전부 텍스트라
+      어느 낱말에든 빈칸을 걸 수 있습니다.
+    </p>
+  </header>
+
+  <section class="panel">
+    
+    <div class="tablewrap">
+      <table class="auto" style="min-width:900px">
+        
+        <thead>
+            <tr><th class="h" colspan="2">구분</th><th class="h">특허법</th><th class="h">실용신안법</th></tr>
+        </thead>
+        <tbody>
+            <tr><th class="k" colspan="2">보호대상</th><td>발명(방법, 물질, 용도발명도 특허 가능)</td><td>물품의 형상ㆍ구조ㆍ조합에 관한 고안(∴물품성要, 방법 또는 물질에 관한 고안은 등록불가)</td></tr>
+            <tr><th class="k" colspan="2">성립요건</th><td>고도성 要</td><td>고도성 不要</td></tr>
+            <tr><th class="k" rowspan="2">등록요건</th><th class="k">진보성</th><td>용이성</td><td>「극히 용이성」(즉 낮은 수준의 진보성)</td></tr>
+            <tr><th class="k">부등록사유</th><td>공서양속에 어긋나거나 공중의 위생을 해칠 우려가 있는 발명</td><td>〃＋국기 또는 훈장과 동일하거나 유사한 고안</td></tr>
+            <tr><th class="k" rowspan="3">출원 및 심사</th><th class="k">도면첨부</th><td>필요한 경우에만 첨부</td><td>필수적으로 첨부/미첨부시 불수리</td></tr>
+            <tr><th class="k" rowspan="2">우선심사사유의 상이</th><td>녹색기술과 직접 관련된 특허출원</td><td>공해방지에 유용한 실용신안등록출원</td></tr>
+            <tr><td>1. 인공지능 또는 사물인터넷 등 4차 산업혁명과 관련된 기술을 활용한 특허출원<br>2. 반도체 등 국민경제 및 국가경쟁력 강화에 중요한 첨단기술과 관련된 특허출원(지식재산처장이 우선심사의 구체적인 대상과 신청 기간을 정하여 공고하는 특허출원으로 한정한다)<br>3제198조의2에 따라 지식재산처가 「특허협력조약」에 따른 국제조사기관으로서 국제조사를 수행한 국제특허출원<br>4지식재산처장이 외국 특허담당 정부기관장과 우선심사 하기로 합의한 특허출원<br>5규제자유특구 및 지역특화발전특구에 관한  규제특례법 제36조의8에 따라 규제특례가 적용된 특화사업과 직접 관련된 특허출원<br>6첨단의료복합단지 육성에 관한 특별법 제26조에 따라 규제 특례가 적용되는 입주의료연구개발기관이 제출한 첨단의료복합단지 안 의료연구개발과 관련한 특허출원</td><td>-</td></tr>
+            <tr><th class="k" rowspan="6">효력</th><th class="k">존속기간</th><td>특허권 설정등록을 한 날부터 특허출원일 후 20년이 되는 날까지</td><td>실용신안권 설정등록을 한 날부터 실용신안등록출원일 후 10년이 되는 날까지</td></tr>
+            <tr><th class="k">존속기간연장</th><td>허가등에 따른 연장 + 등록지연에 따른 연장</td><td>등록지연에 따른 연장만 가능</td></tr>
+            <tr><th class="k">효력범위제한</th><td>의약, 의약제법방법 적용 可(法 96②)</td><td>의약, 의약제법방법 적용 不可</td></tr>
+            <tr><th class="k">간접침해</th><td>물건발명, 방법발명 모두 적용 可能</td><td>방법발명 / 물질발명은 적용 不可</td></tr>
+            <tr><th class="k">생산방법추정</th><td>규정 有</td><td>규정 無</td></tr>
+            <tr><th class="k">몰수규정</th><td>필요적 몰수</td><td>임의적 몰수</td></tr>
+            <tr><th class="k">PCT</th><th class="k">도면의 제출</th><td>도면의 설명부분에 대한 국어번역문을 제출하지 아니한 경우 도면의 설명부분에 대한 기재가 없었던 것으로 본다(法 201⑤)</td><td>1국제실용신안등록출원이 도면(도면에 간단한 설명을포함)을 포함하지 아니한 경우 「기준일」까지 이를 제출(實用 36①)<br>2제출시 지식재산처장은 기간을 정하여 도면 및 도면의 설명부분의 국어번역문의 제출을 명령(實用 36②)<br>3지식재산처장의 명령에도 불구하고 도면을 제출하지 아니한 경우 그 국제실용신안등록출원을 무효로 할 수 있다(實用 36③).<br>4제출된 도면 및 도면의 설명부분의 국어번역문은 「특허법」 제47조제1항에 따른 보정으로 간주(단, 보정기간은 부적용)(實用 36④).</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <p class="foot">
+    <b>칸은 교재 표를 그대로 옮겼습니다.</b> 가로로 합친 칸(colspan)과 세로로 합친
+    칸(rowspan)을 손대지 않았습니다 — 병합을 잃으면 표가 한 줄씩 밀립니다.
+    목차 칸은 한 줄에 한 글자로 세워 폭을 줄였고, 그만큼 내용 칸이 넓어집니다.
+    넓어서 좁은 화면에서는 옆으로 밀어 보셔야 합니다.
+  </p>
+</div>

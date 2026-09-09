@@ -13919,6 +13919,53 @@ export type Database = {
         }
         Relationships: []
       }
+      systematic_digests: {
+        Row: {
+          body_html: string
+          created_at: string
+          css: string
+          digest_id: string
+          law_code: string
+          node_id: string | null
+          ord: number
+          page: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body_html: string
+          created_at?: string
+          css?: string
+          digest_id?: string
+          law_code: string
+          node_id?: string | null
+          ord?: number
+          page: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body_html?: string
+          created_at?: string
+          css?: string
+          digest_id?: string
+          law_code?: string
+          node_id?: string | null
+          ord?: number
+          page?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "systematic_digests_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "systematic_nodes"
+            referencedColumns: ["node_id"]
+          },
+        ]
+      }
       systematic_nodes: {
         Row: {
           article_only: boolean

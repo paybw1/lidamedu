@@ -1,0 +1,131 @@
+<title>이익제도 — 정리비교표 재작화</title>
+
+<style>
+  :root {
+    --card:#fff; --ink:#2e2e2e; --primary:#2d5ba8; --primary-fg:#fff; --muted:#64748b;
+    --border:#dfe4ec; --link:#2d5ba8; --hair:rgba(46,46,46,.05); --page:#f6f7f9;
+    --headbg:#eef2f8; --keybg:#f5f7fa;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --card:#333; --ink:#e6e6e6; --primary:#3b6fc4; --primary-fg:#fff; --muted:#b5b5b5;
+      --border:rgba(255,255,255,.14); --link:#60a5fa; --hair:rgba(255,255,255,.05);
+      --page:#1e1e1e; --headbg:rgba(120,160,220,.16); --keybg:rgba(255,255,255,.05);
+    }
+  }
+  :root[data-theme="dark"] {
+    --card:#333;--ink:#e6e6e6;--primary:#3b6fc4;--primary-fg:#fff;--muted:#b5b5b5;
+    --border:rgba(255,255,255,.14);--link:#60a5fa;--hair:rgba(255,255,255,.05);
+    --page:#1e1e1e;--headbg:rgba(120,160,220,.16);--keybg:rgba(255,255,255,.05);
+  }
+  :root[data-theme="light"] {
+    --card:#fff;--ink:#2e2e2e;--primary:#2d5ba8;--primary-fg:#fff;--muted:#64748b;
+    --border:#dfe4ec;--link:#2d5ba8;--hair:rgba(46,46,46,.05);--page:#f6f7f9;
+    --headbg:#eef2f8;--keybg:#f5f7fa;
+  }
+
+  body {
+    margin:0; background:var(--page); color:var(--ink); line-height:1.5;
+    font-family: system-ui, -apple-system, "Segoe UI", "Malgun Gothic",
+      "Apple SD Gothic Neo", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width:1400px; margin:0 auto; padding:32px 18px 64px; }
+
+  header { margin-bottom:20px; }
+  .eyebrow { margin:0 0 6px; font-size:11px; letter-spacing:.12em; font-weight:700; color:var(--muted); }
+  h1 { margin:0 0 8px; font-size:clamp(20px,3vw,27px); letter-spacing:-.02em; }
+  .lede { margin:0; color:var(--muted); font-size:14px; max-width:70ch; }
+  .lede b { color:var(--ink); }
+
+  .panel {
+    background:var(--card); border:1px solid var(--border); border-radius:14px;
+    overflow:hidden; margin-bottom:16px;
+  }
+  .cap {
+    margin:0; padding:11px 14px 10px; font-size:13px; font-weight:800;
+    border-bottom:1px solid var(--border);
+  }
+  /* 표가 넓다 — 줄여 버리면 못 읽으므로 옆으로 밀어 본다. */
+  .tablewrap { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; font-size:12.5px; }
+  /* 열이 많은 쪽은 너비를 못박아야 목차가 좁아진다. 내용이 두세 열뿐인 쪽은
+     브라우저가 재도록 둔다 — 목차 이름이 길어 못박으면 칸을 넘친다. */
+  table.fixed { table-layout:fixed; }
+  table.auto { table-layout:auto; }
+  table.auto th.k { white-space:nowrap; }
+  th, td {
+    border:1px solid var(--border); padding:6px 7px; vertical-align:top;
+    /* ★keep-all 은 한글 어절을 통째로 넘겨 줄 끝이 크게 비고 한 줄에 들어가는 글자가
+       확 줄어든다. 한글은 글자 단위로 끊어야 칸을 꽉 채운다.
+       ★양쪽 맞춤은 쓰지 않는다 — 한자·괄호 사이를 벌려 성기게 보인다(원장 지적). */
+    text-align:left; word-break:normal; overflow-wrap:anywhere;
+  }
+  th.h, th.k { text-align:center; }
+  /* 머리줄 — 가로로 훑을 때 기준이 되므로 위에 붙여 둔다.
+     ★머리줄이 두 줄인 쪽은 둘째 줄을 첫 줄 높이만큼 내려야 겹치지 않는다. */
+  thead tr:first-child th { height:30px; }
+  thead tr:first-child th.h { position:sticky; top:0; z-index:3; }
+  thead tr:nth-child(2) th.h { position:sticky; top:30px; z-index:2; }
+  th.h { background:var(--headbg); color:var(--ink); font-weight:800; }
+  /* 줄머리 이름 칸 — 너비는 colgroup 이 정한다. 좌우 여백을 줄여 한 글자 폭에 맞춘다. */
+  th.k {
+    background:var(--keybg); font-weight:700; color:var(--ink);
+    word-break:keep-all; padding:6px 3px;
+  }
+  /* 내용 칸은 바탕색 없이 — 색은 목차와 머리줄만 갖는다(원장 지시). */
+  td { color:color-mix(in srgb, var(--ink) 88%, transparent); background:transparent; }
+
+  .foot {
+    margin-top:8px; border-left:3px solid var(--primary); background:var(--card);
+    border-radius:0 10px 10px 0; padding:13px 16px; font-size:13px; color:var(--muted);
+  }
+  .foot b { color:var(--ink); }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">정리비교표 5p · 재작화</p>
+    <h1>이익제도</h1>
+    <p class="lede">
+      교재 5쪽은 도형 없이 <b>표 한 장</b>입니다. 병합된 칸까지 그대로 옮겼고
+      (15줄 · 94칸), 글은 손대지 않았습니다. 전부 텍스트라
+      어느 낱말에든 빈칸을 걸 수 있습니다.
+    </p>
+  </header>
+
+  <section class="panel">
+    
+    <div class="tablewrap">
+      <table class="fixed" style="min-width:1280px">
+        <colgroup><col style="width:22px"><col style="width:22px"><col><col><col><col><col><col><col><col></colgroup>
+        <thead>
+            <tr><th class="h" colspan="2">이익<br>제도</th><th class="h">공지예외적용주장<br>출원(法 30)</th><th class="h">정당한권리자출원<br>(法 34, 35)</th><th class="h">보정<br>(法 47, 51)</th><th class="h">분할출원<br>(法 52)</th><th class="h">분리출원<br>(法 52의2)</th><th class="h">변경출원<br>(法 53)</th><th class="h">조약우선권주장출원<br>(法 54)</th><th class="h">국내우선권주장출원<br>(法 55, 56)</th></tr>
+        </thead>
+        <tbody>
+            <tr><th class="k" rowspan="3">요<br>건</th><th class="k">주<br>체</th><td>특허를 받을 수 있는 권리를 가진 자의 발명이 공지가 되었을 것</td><td>무권리자의출원/특허</td><td>1.공동출원의 경우 각자<br>2.임의대리인은 특별히 권한 위임 不要</td><td>분할출원당시 원출원인 또는 그 승계인과 분할출원인이동일인</td><td>분리출원당시 원출원인 또는 그 승계인과 변경출원인이 동일인</td><td>1.변경출원당시 원출원인 또는 그 승계인과 변경출원인이 동일인<br>2.임의대리인은 특별수권 要</td><td>1.대한민국 국민, 조약당사국 국민, 준당사국 국민<br>2.출원인의 동일성 불필요(승계인은 우선권 별도로 승계)</td><td>1.특허를 받을 수 있는 권리가 있다면 출원인의 동일성 불필요<br>2.임의대리인은 특별수권 要</td></tr>
+            <tr><th class="k">객<br>체</th><td>공지가 법 30① 각호에 해당<br>①의사에 의한 공지<br>(단, 출원공개/등록공고제외)<br>②의사에 반한 공지</td><td>정ㆍ명ㆍ도가 무ㆍ최ㆍ명ㆍ도에 기재된 범위이내일것</td><td>1.법47①본,Ⅰ-신규사항추가금지(法 47②)<br>2.법47①ⅡⅢ<br>①신규사항추가금지(法 47②)<br>②청구범위 보정범위제한(法 47③)<br>③보정에 의하여 새로운 거절이유 발생 X</td><td>1.원출원의 요건<br>①분할출원당시 지식재산처에 적법하게 계속중<br>②분리출원이 아닐 것<br>③원출원의 최ㆍ명ㆍ도에 2이상의 발명 포함<br>2.분할출원의 요건<br>분ㆍ명ㆍ도가 원ㆍ최ㆍ명ㆍ도에 기재된 범위이내일것</td><td>1.원출원의 요건<br>①분리출원당시 지식재산처에 적법하게 계속중<br>②분리출원이 아닐 것<br>2.분리출원의 요건<br>①분ㆍ명ㆍ도가 원ㆍ최ㆍ명ㆍ도에기재된 범위이내일것<br>②청구범위에 기재된 청구항이 다음의 ⅰ) 내지 ⅳ) 중 어느 하나에 해당할 것*</td><td>1.원출원의 요건<br>①변경출원당시 지식재산처에 적법하게 계속중<br>②분리출원이 아닐 것<br>2.변경출원의 요건<br>변ㆍ명ㆍ도가 원ㆍ최ㆍ명ㆍ도에기재된 범위이내일것</td><td>1.선출원의요건<br>①최선성<br>②정규성<br>③형식제한×-디자인○<br>2.우선권출원의 요건<br>후ㆍ청구범위가 선ㆍ최ㆍ명ㆍ도에기재된 범위이내일것</td><td>1.선출원의 요건<br>①후출원당시선출원이 출원계속중일것<br>②분할ㆍ분리ㆍ변경출원이아닐 것<br>③형식 제한 ○-디자인 ×<br>2.우선권출원의 요건<br>후ㆍ청구범위가 선ㆍ최ㆍ명ㆍ도에기재된 범위이내일것</td></tr>
+            <tr><th class="k">시<br>기</th><td>최선의 공지일로부터 12월 이내 출원</td><td>1.특허를 받지 못한 경우(法 34)-무권리자의 출원후 거절결정이확정된 날로부터 30일이내<br>2.착오로 특허를 받은 경우(法 35)-무권리자 출원후 무효심결확정일로부터 30일이내</td><td>1.원칙→특허결정등본 송달받기전<br>2.예외<br>①최초거절이유통지받은경우 의견서제출기간<br>②최후거절이유통지받은경우 의견서제출기간<br>③재심사를 청구할 때</td><td>1.법47①에 의하여 보정할 수 있는 기간<br>2.거절결정등본을 송달받은날부터 3개월(연장된 경우에는 연장된 기간) 이내<br>3.특허결정등본을 송달받은날부터 3개월 기간(다만, 설정등록을 받으려는 날이 3개월보다 짧은 경우에는 그 날까지의 기간)</td><td>거절결정불복심판청구가 기각된 경우 그 심결의등본을 송달받은날부터 30일(제186조제5항에 따라 심판장이 부가기간을 정한 경우에는 그 기간)</td><td>실용신안등록출원후 최초의 거절결정등본을 송달받은날부터 3개월(연장된 경우에는 연장된 기간)</td><td>1.동종우선-제1국 출원일로부터 1년이내<br>2.이종우선-제1국 출원일로부터 6개월이내</td><td>선출원의 출원일로부터 1년이내</td></tr>
+            <tr><th class="k" colspan="2" rowspan="2">절차</th><td rowspan="2">법 30①Ⅰ의 경우 출원서에취지 기재하고 출원일로부터 30일 이내 증명서류 제출(단,보완수수료를 납부한 경우 보정기간 또는 특허결정등본송달일로부터 3개월이나 설정등록일까지)</td><td rowspan="2">출원하면서 정당한 권리자임을 증명하는 서류 첨부</td><td rowspan="2">1.보정서제출+수수료 납부<br>2.최초/최후거절이유통지에 대응한 의견서 제출기간에보정을 하는 경우에는 각각의 보정절차에서 마지막 보정 전에 한 모든 보정은 취하</td><td colspan="3">그 취지 및 원출원표시를 한 분할ㆍ분리ㆍ변경출원서와 명세서, 필요한 도면 및 요약서 제출</td><td rowspan="2">1.출원과 동시에 취지, 출원국가명, 출원연월일기재(法 54③)<br>2.우선권주장의 보정 또는 추가(法 54⑦)<br>3.우선권증명서류를 최우선일로부터 1년 4월이내제출(法 54④⑤⑥)</td><td rowspan="2">1.출원과 동시에 취지, 선출원의 표시(法 55②)<br>2.우선권주장의 보정 또는 추가(法 55⑦)-단,1년3월 지난 후에는 우선권주장의 취하 不可<br>3.증명서류제출 불요</td></tr>
+            <tr><td colspan="2">원출원이 우선권을 주장한 특허출원인 경우에는 자동 주장 간주하며, 원출원에 대하여 조약우선권주장증명서류제출기간 내 증명서류 제출이 있는 자동 제출간주. 이 경우 우선권주장의 보정 또는 추가기간이 지난 후에도 분할ㆍ분리출원을한 날부터 30일 이내 우선권 주장의 전부 또는 일부 취하가능</td><td>변경출원과 동시에 우선권주장을 하고 증명서류를 별도로 제출</td></tr>
+            <tr><th class="k" rowspan="4">효<br>과</th><th class="k" rowspan="3">적<br>법</th><td rowspan="3">공지 등이 되지 아니한 것으로 간주</td><td rowspan="3">1.무권리자 출원일로소급<br>2.단,등록지연에 따른 특허권의 존속기간의 연장시 특허출원일의 기산일은 불소급<br>3.심사청구기간의 특례-무권리자출원일로부터 3년 지난 경우 정당한 권리자출원일로부터 30일이내</td><td rowspan="3">소급효</td><td colspan="3">1.출원일의 소급효(확공조국등)<br>2.원출원과의 독립성. 단 심사순서는 지식재산처장이 정하는 바에 의함/ 원출원이 우선권주장하지 않은 경우 분할ㆍ분리ㆍ변경출원도불가<br>3.심사청구기간의 특례 – 원출원일로부터 3년 지난 후라도 분할출원, 분리출원, 변경출원일로부터 30일 이내<br>4.국내우선권주장출원과의 관계 - 분할ㆍ분리ㆍ변경출원은 국내우선권주장출원의 선출원불가</td><td rowspan="3">1.판단시점의 소급효(심공존재등)<br>2.확대된 선출원의 적용은 국내우선권주장출원과 동일</td><td rowspan="3">1.판단시점의 소급효(심공존재등이)<br>2.확대된 선출원<br>3.우선권주장의 취하금지 및 간주(法 56②③)</td></tr>
+            <tr><td>5.분할출원이 조약우선권주장을수반하는 경우에는 최우선일로부터 1년 4개월의 기간이 지난 후에도 분할출원을 한 날부터 3개월 이내에 지식재산처장에게 증명서류 제출</td><td>5. 우선권증명서류제출기간의특례 불비</td><td>5.변경출원이 조약우선권주장을수반하는 경우에는 최우선일로부터 1년 4개월의 기간이 지난 후에도 변경출원을 한 날부터 3개월 이내에 지식재산처장에게 증명서류 제출</td></tr>
+            <tr><td>6.청구범위제출유예기간이 지난 후라도 분할출원일로부터 30일 이내 제출</td><td>6. 청구범위제출유예제도 이용 불가</td><td>6.청구범위제출유예기간이 지난 후라도 변경출원일로부터 30일 이내 제출</td></tr>
+            <tr><th class="k">부<br>적<br>법</th><td>1.공지예외적용주장의 무효<br>2.출원은 공지기술에 의하여 신규성, 진보성 판단</td><td>1.소급효 불인정(단, 무권리자의 출원에 의하여 거절결정되지않음)<br>2.청구범위제출유예기간 지난 경우 불수리</td><td>1.기간경과-불수리<br>2.법47①본,Ⅰ시기 범위 위반-거절이유<br>3.법47①ⅡⅢ시기 범위 위반-보정각하(단, 예외 존재)</td><td colspan="3">1.일반요건 불만족-불수리<br>2.명도가 원출원의 최명도에 기재된 범위 이내일 것 위반-거절이유, 정보제공사유, 무효사유<br>(분리출원의 경우 청구범위의 요건을 만족하지 않은 경우 거절이유, 정보제공사유)</td><td colspan="2">1.우선권주장의 무효<br>2.출원은 실제출원일을 기준으로 판단</td></tr>
+            <tr><th class="k" colspan="2">협의제회피</th><td></td><td>무권리자 출원의 선출원지위 불인정</td><td></td><td colspan="2">원출원과 청구범위가 동일한 경우 회피 필요</td><td>변경출원과 동시에 원출원의 취하간주</td><td>선출원이 외국출원이므로 협의제회피 不要</td><td>1.선출원의 취하간주(法 56①)<br>2.선출원등록불가(法 55⑧)</td></tr>
+            <tr><th class="k" colspan="2" rowspan="2">외국어 출원</th><td rowspan="2"></td><td rowspan="2"></td><td rowspan="2"></td><td colspan="3">1.원출원이 외국어출원인 경우에는 국어번역문이 제출된 경우에만 분할ㆍ변경출원가능</td><td rowspan="2"></td><td rowspan="2"></td></tr>
+            <tr><td>2.분할출원이 외국어출원인 경우에는 국어번역문 제출기간이 지난 후라도 분할출원일로부터 30일 이내(다만, 보정하거나 출원인이 심사청구한 경우 새로운 국어번역문 제출 불가)</td><td>2.분리출원은 외국어 출원 불가</td><td>2.변경출원이 외국어출원인 경우에는 국어번역문 제출기간이 지난 후라도 변경출원일로부터 30일 이내(다만, 보정하거나 출원인이 심사청구한 경우 새로운 국어번역문 제출 불가)</td></tr>
+            <tr><th class="k" colspan="2">PCT<br>특례</th><td>기준일 지난 후 30일 이내 취지 및 증명서류 제출</td><td></td><td>1.시기-수수료납부+번역문제출+기준일 후<br>2.범위-원문&amp;번역문(오역정정이 있는 정정된 국어번역문) 또는 도면(설명X)</td><td>수수료 납부 + 번역문 제출 + 기준일 지난 후</td><td></td><td>수수료 납부+번역문 제출 후</td><td>PCT 제8조 (1),(2)(a)를 적용(法 199②)</td><td>PCT 제8조 (1),(2)(b)를 적용(法 55, 56, 202)</td></tr>
+            <tr><td colspan="10">* ⅰ) 특허거절결정에서거절되지 아니한 청구항, ⅱ) 거절된 청구항에서 그 특허거절결정의기초가 된 선택적 기재사항을 삭제한 청구항, ⅲ) ⅰ) 또는 ⅱ)에 따른 청구항을 제47조제3항 각 호(같은 항 제4호는 제외한다)의 어느 하나에 해당하도록 적은 청구항, ⅳ) ⅰ)부터 ⅲ)까지 중 어느 하나의 청구항에서 원출원의 최초 명세서 또는 도면에 기재된 사항의 범위를 벗어난 부분을 삭제한 청구항</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <p class="foot">
+    <b>칸은 교재 표를 그대로 옮겼습니다.</b> 가로로 합친 칸(colspan)과 세로로 합친
+    칸(rowspan)을 손대지 않았습니다 — 병합을 잃으면 표가 한 줄씩 밀립니다.
+    목차 칸은 한 줄에 한 글자로 세워 폭을 줄였고, 그만큼 내용 칸이 넓어집니다.
+    넓어서 좁은 화면에서는 옆으로 밀어 보셔야 합니다.
+  </p>
+</div>

@@ -1,0 +1,359 @@
+<title>총칙 — 정리비교표 재작화</title>
+
+<style>
+  :root {
+    --card:#fff; --ink:#2e2e2e; --primary:#2d5ba8; --primary-fg:#fff; --muted:#64748b;
+    --border:#e5e9ef; --link:#2d5ba8; --hair:rgba(46,46,46,.06); --page:#f6f7f9;
+    --hot:#d92b2b;
+    --dgline:#8a8a8a; --anchor:#2f5597; --anchor-fg:#fff; --blue-bg:#dae3f3;
+    --blue-line:#8faadc; --gray-bg:#e7e6e6; --panel-line:#bfbfbf; --panel-ink:#943634;
+    --note-line:#b9b9b9; --note-mark:#5b6b8c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --card:#333; --ink:#e6e6e6; --primary:#3b6fc4; --primary-fg:#fff; --muted:#b5b5b5;
+      --border:rgba(255,255,255,.12); --link:#60a5fa; --hair:rgba(255,255,255,.07);
+      --page:#1e1e1e; --hot:#ef6b6b;
+      --dgline:rgba(255,255,255,.42); --anchor:#4a72b8; --anchor-fg:#fff;
+    --blue-bg:rgba(120,160,220,.24); --blue-line:rgba(143,170,220,.5);
+    --gray-bg:rgba(255,255,255,.1); --panel-line:rgba(255,255,255,.24); --panel-ink:#e0857f;
+    --note-line:rgba(255,255,255,.3); --note-mark:#8fa6cc;
+    }
+  }
+  :root[data-theme="dark"] {
+    --card:#333;--ink:#e6e6e6;--primary:#3b6fc4;--primary-fg:#fff;--muted:#b5b5b5;
+    --border:rgba(255,255,255,.12);--link:#60a5fa;--hair:rgba(255,255,255,.07);
+    --page:#1e1e1e;--hot:#ef6b6b;
+    --dgline:rgba(255,255,255,.42); --anchor:#4a72b8; --anchor-fg:#fff;
+    --blue-bg:rgba(120,160,220,.24); --blue-line:rgba(143,170,220,.5);
+    --gray-bg:rgba(255,255,255,.1); --panel-line:rgba(255,255,255,.24); --panel-ink:#e0857f;
+    --note-line:rgba(255,255,255,.3); --note-mark:#8fa6cc;
+  }
+  :root[data-theme="light"] {
+    --card:#fff;--ink:#2e2e2e;--primary:#2d5ba8;--primary-fg:#fff;--muted:#64748b;
+    --border:#e5e9ef;--link:#2d5ba8;--hair:rgba(46,46,46,.06);--page:#f6f7f9;--hot:#d92b2b;
+    --dgline:#8a8a8a; --anchor:#2f5597; --anchor-fg:#fff; --blue-bg:#dae3f3;
+    --blue-line:#8faadc; --gray-bg:#e7e6e6; --panel-line:#bfbfbf; --panel-ink:#943634;
+    --note-line:#b9b9b9; --note-mark:#5b6b8c;
+  }
+
+  body {
+    margin:0; background:var(--page); color:var(--ink); line-height:1.5;
+    font-family: system-ui, -apple-system, "Segoe UI", "Malgun Gothic",
+      "Apple SD Gothic Neo", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width:1240px; margin:0 auto; padding:32px 18px 64px; }
+
+  header { margin-bottom:22px; }
+  .eyebrow { margin:0 0 6px; font-size:11px; letter-spacing:.12em; font-weight:700; color:var(--muted); }
+  h1 { margin:0 0 8px; font-size:clamp(20px,3vw,27px); letter-spacing:-.02em; }
+  .lede { margin:0; color:var(--muted); font-size:14px; max-width:70ch; }
+  .lede b { color:var(--ink); }
+
+  .panel {
+    background:var(--card); border:1px solid var(--border); border-radius:14px;
+    overflow:hidden; margin-bottom:18px;
+  }
+  .panel > h2 {
+    margin:0; padding:10px 16px; border-bottom:1px solid var(--border);
+    font-size:12px; font-weight:700; letter-spacing:.04em; color:var(--muted);
+    display:flex; flex-wrap:wrap; gap:8px; align-items:baseline;
+  }
+  .panel > h2 .src { font-weight:600; letter-spacing:0; opacity:.8; }
+
+  .dgwrap { overflow-x:auto; padding:14px 16px 16px; }
+  .dg { position:relative; width:100%; container-type:inline-size; }
+  .dgsvg { position:absolute; inset:0; width:100%; height:100%; }
+  .ln { fill:none; stroke:var(--dgline); stroke-width:var(--sw); }
+  .ln.hot { stroke:var(--hot); }
+  .mg { fill:var(--dgline); }
+  .mh { fill:var(--hot); }
+
+  .bx {
+    position:absolute; display:flex; flex-direction:column; justify-content:center;
+    align-items:center; text-align:center; border:1px solid var(--dgline);
+    border-radius:2px; font-size:1cqw; line-height:1.3; font-weight:700;
+    letter-spacing:-.01em; padding:0 .3cqw; overflow:hidden;
+  }
+  .bx span { display:block; white-space:nowrap; }
+  .bx.anchor { background:var(--anchor); color:var(--anchor-fg); border-color:transparent; }
+  .bx.spine  { background:var(--blue-bg); color:var(--ink); border-color:var(--blue-line); }
+  .bx.leaf   { background:var(--gray-bg); color:var(--ink); }
+  /* 테두리 없는 이름표 — 묶음 이름처럼 상자가 필요 없는 글자. */
+  /* 선 위에 얹는 이름표 — 테두리는 없지만 바탕은 깔아 선을 가린다. */
+  .bx.label  { background:var(--card); border-color:transparent; color:var(--ink); }
+  /* 설명 상자 — 점선 테두리, 왼쪽 맞춤, 줄머리 네모. 원본 그대로다. */
+  .bx.note {
+    background:transparent; border-style:dashed; border-color:var(--note-line);
+    justify-content:flex-start; align-items:stretch; text-align:left;
+    /* 틀을 조금 줄였으니 글자도 살짝 줄여 넘치지 않게 한다. */
+    font-weight:600; font-size:.92cqw; line-height:1.45; padding:.25cqw .55cqw;
+  }
+  .bx.note span { position:relative; padding-left:1cqw; white-space:normal; }
+  .bx.note span.l:not(.num):not(.sub)::before {
+    content:""; position:absolute; left:.15cqw; top:.5em;
+    width:.32cqw; height:.32cqw; background:var(--note-mark);
+  }
+  /* 번호 줄·붙임표 줄은 그 자체가 구분자라 표시를 달지 않는다(원장 지시). */
+  .bx.note span.num { padding-left:.55cqw; }
+  .bx.note span.sub { padding-left:1.5cqw; }
+  /* 가름틀 — 제목이 왼쪽 위에 붙는다. 안쪽은 비워 두고 상자들이 그 위에 얹힌다.
+     ★글자 크기는 다른 상자와 같게 둔다(원장 지시 2026-09-09) — 갈래는 색과 자리가 말한다. */
+  .bx.panel {
+    justify-content:flex-start; align-items:flex-start; text-align:left;
+    background:transparent; border-color:var(--panel-line); color:var(--panel-ink);
+    padding:.7cqw .8cqw .5cqw;
+  }
+
+  .foot {
+    margin-top:8px; border-left:3px solid var(--primary); background:var(--card);
+    border-radius:0 10px 10px 0; padding:13px 16px; font-size:13px; color:var(--muted);
+  }
+  .foot b { color:var(--ink); }
+  .foot + .foot { margin-top:10px; }
+
+  /* 교재와 강의노트의 글이 다른 곳 */
+  ul.diffs { margin:10px 0 0; padding:0; list-style:none; display:flex; flex-direction:column; gap:8px; }
+  ul.diffs li {
+    display:grid; grid-template-columns:auto 1fr auto 1fr; gap:4px 8px; align-items:baseline;
+    font-size:12.5px; padding-bottom:8px; border-bottom:1px dashed var(--border);
+  }
+  ul.diffs li:last-child { border-bottom:0; padding-bottom:0; }
+  .side {
+    font-size:10px; font-weight:800; letter-spacing:.04em; color:var(--link);
+    background:var(--hair); border-radius:5px; padding:1px 5px; white-space:nowrap;
+  }
+  .v { color:var(--ink); }
+  .why { grid-column:1 / -1; color:var(--muted); font-size:12px; }
+  @media (max-width:640px) {
+    ul.diffs li { grid-template-columns:auto 1fr; }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">정리비교표 3p · 재작화</p>
+    <h1>총칙</h1>
+    <p class="lede">
+      정리비교표 3p 는 강의노트 <b>45p · 46p 두 장을 한 쪽에 합친</b> 것입니다. 그림은
+      강의노트에서 가져왔습니다 — 연결선마다 어느 상자에 붙었는지가 적혀 있어 정확합니다.
+      상자는 이미지가 아니라 글자라 어느 낱말에든 빈칸을 걸 수 있습니다.
+    </p>
+  </header>
+
+  <section class="panel">
+    <h2>총칙 체계 · 제1장 (1)<span class="src">강의노트 45p — 발명의 성립성 · 행위능력 · 대리인 · 복수당사자 대표</span></h2>
+    <div class="dgwrap">
+      <div class="dg" style="aspect-ratio:12423134 / 5913245;min-width:940px">
+        <div class="bx panel" style="left:66.405%;top:49.328%;width:30.737%;height:44.669%"><span class="l">복수당사자 대표(法 11)</span></div>
+        <div class="bx panel" style="left:34.101%;top:49.328%;width:30.737%;height:44.669%"><span class="l">대리인(法 3②, 5②~10, 12)</span></div>
+        <div class="bx panel" style="left:66.405%;top:6.003%;width:30.737%;height:40.695%"><span class="l">행위능력(法 3~5①)</span></div>
+        <div class="bx panel" style="left:34.101%;top:6.003%;width:30.737%;height:40.695%"><span class="l">발명의 성립성(法 2)</span></div>
+        <svg class="dgsvg" viewBox="0 0 12423134 5913245" preserveAspectRatio="none" aria-hidden="true"
+             style="--sw:11294">
+          <defs>
+            <marker id="aga" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5"
+                    orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="mg"/></marker>
+            <marker id="aha" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5"
+                    orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="mh"/></marker>
+          </defs>
+            
+            <path class="ln" d="M9748567 4744706 L9884040 4744706 L9884040 5099767 L10019512 5099767"/>
+            <path class="ln" d="M9748567 4744706 L9884040 4744706 L9884040 4744706 L10019512 4744706"/>
+            <path class="ln" d="M9748567 3788604 L9884040 3788604 L9884040 4143665 L10019512 4143665"/>
+            <path class="ln" d="M9748567 3788604 L9884040 3788604 L9884040 3788604 L10019512 3788604"/>
+            <path class="ln" d="M8630964 3788604 L8490964 3788604 L8490964 4744706 L8630964 4744706"/>
+            <path class="ln" d="M6143067 3909641 L6227083 3909641 L6227083 4777991 L6311098 4777991"/>
+            <path class="ln" d="M6143067 3909641 L6227083 3909641 L6227083 5377169 L6311098 5377169"/>
+            <path class="ln" d="M6143067 3909641 L6227083 3909641 L6227083 4477023 L6311098 4477023"/>
+            <path class="ln" d="M6143067 3909641 L6227083 3909641 L6227083 4188216 L6311098 4188216"/>
+            <path class="ln" d="M6143067 3909641 L6227083 3909641 L6227083 5078546 L6311098 5078546"/>
+            <path class="ln" d="M6143067 3909641 L6227083 3909641 L6227083 3901174 L6311098 3901174"/>
+            <path class="ln" d="M4507697 3500726 L4367697 3500726 L4367697 3909641 L4507697 3909641"/>
+            <path class="ln" d="M9693223 1858023 L9915636 1858023 L9915636 2183704 L10138048 2183704"/>
+            <path class="ln" d="M9693223 1186631 L9915636 1186631 L9915636 1502409 L10138048 1502409"/>
+            <path class="ln" d="M10138048 1859459 L9915636 1859459 L9915636 1858023 L9693223 1858023"/>
+            <path class="ln" d="M10138048 1178164 L9915636 1178164 L9915636 1186631 L9693223 1186631"/>
+            <path class="ln" d="M9054315 1186631 L8914315 1186631 L8914315 1858023 L9054315 1858023"/>
+            <path class="ln" d="M6143067 1536277 L6227083 1536277 L6227083 2103659 L6311098 2103659"/>
+            <path class="ln" d="M6143067 1536277 L6227083 1536277 L6227083 1814852 L6311098 1814852"/>
+            <path class="ln" d="M6143067 1536277 L6227083 1536277 L6227083 2391526 L6311098 2391526"/>
+            <path class="ln" d="M6143067 1536277 L6227083 1536277 L6227083 1527810 L6311098 1527810"/>
+            <path class="ln" d="M4507697 1110428 L4367697 1110428 L4367697 1536277 L4507697 1536277"/>
+            <path class="ln" d="M902531 2971942 L1077588 2971942 L1077588 2968776 L1252644 2968776"/>
+            <path class="ln" d="M902531 2971942 L1077588 2971942 L1077588 2494555 L1252644 2494555"/>
+            <path class="ln" d="M902531 2971942 L1077588 2971942 L1077588 2038890 L1252644 2038890"/>
+            <path class="ln" d="M902531 2971942 L1077588 2971942 L1077588 4381316 L1252644 4381316"/>
+            <path class="ln" d="M902531 2971942 L1077588 2971942 L1077588 3914567 L1252644 3914567"/>
+            <path class="ln" d="M902531 2971942 L1077588 2971942 L1077588 3460217 L1252644 3460217"/>
+            <path class="ln" d="M902531 2971942 L1077588 2971942 L1077588 1564669 L1252644 1564669"/>
+            <path class="ln" d="M902531 2971942 L1077588 2971942 L1077588 1104460 L1252644 1104460"/>
+            <path class="ln" d="M902531 2971942 L1077588 2971942 L1077588 4834854 L1252644 4834854"/>
+            <path class="ln" d="M902531 2971942 L1077588 2971942 L1077588 630239 L1252644 630239"/>
+        </svg>
+        <div class="bx leaf" style="left:80.652%;top:84.136%;width:13.730%;height:4.214%"><span class="l">대표자 선정(法 11①단서)</span></div>
+        <div class="bx leaf" style="left:80.652%;top:78.131%;width:13.730%;height:4.214%"><span class="l">대표자 不선정(法 11①본문)</span></div>
+        <div class="bx leaf" style="left:80.652%;top:67.967%;width:13.730%;height:4.214%"><span class="l">심판청구(法 139)</span></div>
+        <div class="bx leaf" style="left:80.652%;top:61.963%;width:13.730%;height:4.214%"><span class="l">출원(法 44, 90, 92의3)</span></div>
+        <div class="bx leaf" style="left:69.475%;top:78.131%;width:8.996%;height:4.214%"><span class="l">그 밖의 절차</span></div>
+        <div class="bx leaf" style="left:69.475%;top:61.963%;width:8.996%;height:4.214%"><span class="l">출원 및 심판청구</span></div>
+        <div class="bx leaf" style="left:50.801%;top:78.694%;width:13.164%;height:4.214%"><span class="l">개별대리(法 9)</span></div>
+        <div class="bx leaf" style="left:50.801%;top:88.827%;width:13.164%;height:4.214%"><span class="l">민사소송법의 준용(法 12)</span></div>
+        <div class="bx leaf" style="left:50.801%;top:83.777%;width:13.164%;height:4.214%"><span class="l">대리인의 선임/교체(法10)</span></div>
+        <div class="bx leaf" style="left:50.801%;top:73.605%;width:13.164%;height:4.214%"><span class="l">대리권의 불소멸(法 8)</span></div>
+        <div class="bx leaf" style="left:50.801%;top:68.721%;width:13.164%;height:4.214%"><span class="l">대리권의 증명(法 7)</span></div>
+        <div class="bx leaf" style="left:50.801%;top:63.866%;width:13.164%;height:4.214%"><span class="l">대리권의 범위(法 6)</span></div>
+        <div class="bx leaf" style="left:36.285%;top:64.010%;width:13.164%;height:4.214%"><span class="l">대리권의 내용</span></div>
+        <div class="bx leaf" style="left:36.285%;top:57.094%;width:13.164%;height:4.214%"><span class="l">대리인의 종류(法 3 ②, 5②)</span></div>
+        <div class="bx leaf" style="left:81.606%;top:34.822%;width:7.119%;height:4.214%"><span class="l">예외</span></div>
+        <div class="bx leaf" style="left:81.606%;top:29.339%;width:7.119%;height:4.214%"><span class="l">원칙(法 5①)</span></div>
+        <div class="bx leaf" style="left:81.606%;top:23.300%;width:7.119%;height:4.214%"><span class="l">예외(法 3, 4)</span></div>
+        <div class="bx leaf" style="left:81.606%;top:17.817%;width:7.119%;height:4.214%"><span class="l">원칙</span></div>
+        <div class="bx leaf" style="left:72.883%;top:29.314%;width:5.143%;height:4.214%"><span class="l">재외자</span></div>
+        <div class="bx leaf" style="left:72.883%;top:17.960%;width:5.143%;height:4.214%"><span class="l">재내자</span></div>
+        <div class="bx leaf" style="left:50.801%;top:38.336%;width:13.164%;height:4.214%"><span class="l">컴퓨터프로그램관련발명</span></div>
+        <div class="bx leaf" style="left:50.801%;top:33.468%;width:13.164%;height:4.214%"><span class="l">용도발명</span></div>
+        <div class="bx leaf" style="left:50.801%;top:28.584%;width:13.164%;height:4.214%"><span class="l">미생물발명</span></div>
+        <div class="bx leaf" style="left:50.801%;top:23.730%;width:13.164%;height:4.214%"><span class="l">식물발명</span></div>
+        <div class="bx leaf" style="left:36.285%;top:23.873%;width:13.164%;height:4.214%"><span class="l">예외: 탄력적 해석</span></div>
+        <div class="bx leaf" style="left:36.285%;top:16.672%;width:13.164%;height:4.214%"><span class="l">원칙: 발명의 정의 규정 만족</span></div>
+        <div class="bx spine" style="left:10.083%;top:78.756%;width:22.731%;height:6.015%"><span class="l">절차의 정지(法 20~24, 78, 164)</span></div>
+        <div class="bx spine" style="left:10.083%;top:71.086%;width:22.731%;height:6.015%"><span class="l">절차의 효력의 승계 및 절차의 속행(法 18, 19)</span></div>
+        <div class="bx spine" style="left:10.083%;top:63.193%;width:22.731%;height:6.015%"><span class="l">특허에 관한 절차 일반(法 16, 28~28의5)</span></div>
+        <div class="bx spine" style="left:10.083%;top:55.509%;width:22.731%;height:6.015%"><span class="l">기일, 기간 및 추후보완(法 14,15,16,67의3)</span></div>
+        <div class="bx spine" style="left:10.083%;top:47.198%;width:22.731%;height:6.015%"><span class="l">재외자의 재판관할(法 13)</span></div>
+        <div class="bx spine" style="left:10.083%;top:39.179%;width:22.731%;height:6.015%"><span class="l">복수당사자 대표(法 11)</span></div>
+        <div class="bx spine" style="left:10.083%;top:31.473%;width:22.731%;height:6.015%"><span class="l">대리인(法 3②, 5②~10, 12)</span></div>
+        <div class="bx spine" style="left:10.083%;top:23.453%;width:22.731%;height:6.015%"><span class="l">행위능력(法 3~5①, 7의2)</span></div>
+        <div class="bx spine" style="left:10.083%;top:15.670%;width:22.731%;height:6.015%"><span class="l">정의(法 2)</span></div>
+        <div class="bx spine" style="left:10.083%;top:7.651%;width:22.731%;height:6.015%"><span class="l">목적(法 1)</span></div>
+        <div class="bx anchor" style="left:2.415%;top:45.124%;width:4.850%;height:10.271%"><span class="l">총칙</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>총칙 체계 · 제1장 (2)<span class="src">강의노트 46p — 기일과 기간 · 특허에 관한 절차 일반 · 절차의 정지</span></h2>
+    <div class="dgwrap">
+      <div class="dg" style="aspect-ratio:12219941 / 5969060;min-width:940px">
+        <div class="bx panel" style="left:34.668%;top:59.033%;width:62.427%;height:35.020%"><span class="l">절차의 정지(法 20~24, 78, 164)</span></div>
+        <div class="bx panel" style="left:64.184%;top:5.947%;width:32.911%;height:49.724%"><span class="l">특허에 관한 절차 일반(法 16, 28~28의5)</span></div>
+        <div class="bx panel" style="left:34.668%;top:5.947%;width:27.576%;height:49.724%"><span class="l">기일과 기간(法 14, 15)</span></div>
+        <svg class="dgsvg" viewBox="0 0 12219941 5969060" preserveAspectRatio="none" aria-hidden="true"
+             style="--sw:11109">
+          <defs>
+            <marker id="agb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5"
+                    orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="mg"/></marker>
+            <marker id="ahb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5"
+                    orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="mh"/></marker>
+          </defs>
+            <path class="ln" d="M10434043 4013471 L10616456 4013471 L10616456 5528770 L10464445 5528770"/>
+            <path class="ln" d="M4765608 2201191 L4765608 2810791 L5214341 2810791"/>
+            <path class="ln" d="M4765608 2201191 L4765608 2387458 L5205875 2387458"/>
+            <path class="ln" d="M8173441 4664293 L8282183 4664293 L8282183 4664293 L8390924 4664293"/>
+            <path class="ln" d="M10616458 4620024 L11038029 4620024" marker-end="url(#agb)"/>
+            <path class="ln" d="M8753420 4664293 L8602599 4664293"/>
+            <path class="ln" d="M8173441 4664293 L8282183 4664293 L8282183 4950237 L8390924 4950237"/>
+            <path class="ln" d="M6144812 5366486 L6242454 5366486 L6242454 5364611 L6340095 5364611"/>
+            <path class="ln" d="M6144812 5075988 L6242454 5075988 L6242454 5074113 L6340095 5074113"/>
+            <path class="ln" d="M6144812 4130037 L6242454 4130037 L6242454 4356553 L6340095 4356553"/>
+            <path class="ln" d="M6144812 4130037 L6242454 4130037 L6242454 4664293 L6340095 4664293"/>
+            <path class="ln" d="M6144812 4130037 L6242454 4130037 L6242454 4058405 L6340095 4058405"/>
+            <path class="ln" d="M4536006 4275093 L4396006 4275093 L4396006 5190564 L4536006 5190564"/>
+            <path class="ln" d="M5061941 5190564 L5180466 5190564 L5180466 5075988 L5298990 5075988"/>
+            <path class="ln" d="M5061941 5190564 L5180466 5190564 L5180466 5366486 L5298990 5366486"/>
+            <path class="ln" d="M5061941 4275093 L5180466 4275093 L5180466 4130037 L5298990 4130037"/>
+            <path class="ln" d="M5061941 4275093 L5180466 4275093 L5180466 4437689 L5298990 4437689"/>
+            <path class="ln" d="M10785408 3101290 L10916646 3101290 L10916646 3102017 L11047884 3102017"/>
+            <path class="ln" d="M10785408 3101290 L10916646 3101290 L10916646 2694874 L11047884 2694874"/>
+            <path class="ln" d="M9828675 2652408 L9955677 2652408 L9955677 3101290 L10082679 3101290"/>
+            <path class="ln" d="M9828675 2652408 L9955677 2652408 L9955677 2659394 L10082679 2659394"/>
+            <path class="ln" d="M9828675 1779397 L9955677 1779397 L9955677 2212055 L10082679 2212055"/>
+            <path class="ln" d="M9828675 1779397 L9955677 1779397 L9955677 1779397 L10082679 1779397"/>
+            <path class="ln" d="M7960741 2212055 L8160741 2212055"/>
+            <path class="ln" d="M7960741 1779397 L8160741 1779397"/>
+            <path class="ln" d="M7960741 1355978 L8160741 1355978"/>
+            <path class="ln" d="M8160741 923575 L8020741 923575 L8020741 2652408 L8160741 2652408"/>
+            <path class="ln" d="M6145667 2810203 L6228383 2810203 L6228383 3097347 L6311098 3097347"/>
+            <path class="ln" d="M6145667 2810203 L6228383 2810203 L6228383 2809480 L6311098 2809480"/>
+            <path class="ln" d="M6145667 2386864 L6228383 2386864 L6228383 2520673 L6311098 2520673"/>
+            <path class="ln" d="M6145667 2386864 L6228383 2386864 L6228383 2233631 L6311098 2233631"/>
+            <path class="ln" d="M6143067 867384 L6227083 867384 L6227083 1434766 L6311098 1434766"/>
+            <path class="ln" d="M6143067 867384 L6227083 867384 L6227083 1145959 L6311098 1145959"/>
+            <path class="ln" d="M6143067 867384 L6227083 867384 L6227083 1722633 L6311098 1722633"/>
+            <path class="ln" d="M6143067 867384 L6227083 867384 L6227083 858917 L6311098 858917"/>
+            <path class="ln" d="M4507697 2079708 L4367697 2079708 L4367697 867384 L4507697 867384"/>
+            <path class="ln" d="M902531 2971942 L1077588 2971942 L1077588 2968776 L1252644 2968776"/>
+            <path class="ln" d="M902531 2971942 L1077588 2971942 L1077588 2494555 L1252644 2494555"/>
+            <path class="ln" d="M902531 2971942 L1077588 2971942 L1077588 2038890 L1252644 2038890"/>
+            <path class="ln" d="M902531 2971942 L1077588 2971942 L1077588 4381316 L1252644 4381316"/>
+            <path class="ln" d="M902531 2971942 L1077588 2971942 L1077588 3914567 L1252644 3914567"/>
+            <path class="ln" d="M902531 2971942 L1077588 2971942 L1077588 3460217 L1252644 3460217"/>
+            <path class="ln" d="M902531 2971942 L1077588 2971942 L1077588 1564669 L1252644 1564669"/>
+            <path class="ln" d="M902531 2971942 L1077588 2971942 L1077588 1104460 L1252644 1104460"/>
+            <path class="ln" d="M902531 2971942 L1077588 2971942 L1077588 4834854 L1252644 4834854"/>
+            <path class="ln" d="M902531 2971942 L1077588 2971942 L1077588 630239 L1252644 630239"/>
+        </svg>
+        <div class="bx leaf" style="left:90.328%;top:72.191%;width:5.520%;height:10.417%"><span class="l">정지</span><span class="l">효과</span><span class="l">(法 24)</span></div>
+        <div class="bx leaf" style="left:68.666%;top:80.942%;width:15.560%;height:3.980%"><span class="l">명령에 의한 수계(法 22⑤⑥⑦)</span></div>
+        <div class="bx leaf" style="left:68.666%;top:76.151%;width:15.560%;height:3.980%"><span class="l">신청에 의한 수계(法 22①②③④)</span></div>
+        <div class="bx leaf" style="left:51.883%;top:87.884%;width:15.003%;height:3.980%"><span class="l">결정중지 및 해소(法 23②③④)</span></div>
+        <div class="bx leaf" style="left:51.883%;top:83.017%;width:15.003%;height:3.980%"><span class="l">당연중지 및 해소(法 23①④)</span></div>
+        <div class="bx leaf" style="left:51.883%;top:76.151%;width:15.003%;height:3.980%"><span class="l">수계방법(法 22)</span></div>
+        <div class="bx leaf" style="left:51.883%;top:70.996%;width:15.003%;height:3.980%"><span class="l">수계자(法 21)</span></div>
+        <div class="bx leaf" style="left:51.883%;top:66.001%;width:15.003%;height:3.980%"><span class="l">중단사유(法 20)</span></div>
+        <div class="bx leaf" style="left:43.363%;top:87.952%;width:6.922%;height:3.906%"><span class="l">결정중지 ○</span></div>
+        <div class="bx leaf" style="left:43.363%;top:83.085%;width:6.922%;height:3.906%"><span class="l">당연중지 ○</span></div>
+        <div class="bx leaf" style="left:43.363%;top:72.392%;width:6.922%;height:3.906%"><span class="l">결정중단 ×</span></div>
+        <div class="bx leaf" style="left:43.363%;top:67.238%;width:6.922%;height:3.906%"><span class="l">당연중단 ○</span></div>
+        <div class="bx leaf" style="left:37.120%;top:85.036%;width:4.304%;height:3.844%"><span class="l">중지</span></div>
+        <div class="bx leaf" style="left:37.120%;top:69.699%;width:4.304%;height:3.844%"><span class="l">중단</span></div>
+        <div class="bx leaf" style="left:90.409%;top:49.323%;width:5.751%;height:5.290%"><span class="l">施規 11</span></div>
+        <div class="bx leaf" style="left:90.409%;top:42.502%;width:5.751%;height:5.290%"><span class="l">法 46, 16</span></div>
+        <div class="bx leaf" style="left:82.510%;top:49.311%;width:5.751%;height:5.290%"><span class="l">흠결 ○</span></div>
+        <div class="bx leaf" style="left:82.510%;top:41.908%;width:5.751%;height:5.290%"><span class="l">흠결 ×</span></div>
+        <div class="bx leaf" style="left:82.510%;top:34.414%;width:13.649%;height:5.290%"><span class="l">전자문서에 의한 제출</span><span class="l">(法 28의 3, 4)</span></div>
+        <div class="bx leaf" style="left:82.510%;top:27.165%;width:13.649%;height:5.290%"><span class="l">서면에 의한 제출</span><span class="l">(法 28)</span></div>
+        <div class="bx leaf" style="left:66.782%;top:41.791%;width:13.649%;height:5.290%"><span class="l">방식심사</span></div>
+        <div class="bx leaf" style="left:66.782%;top:34.414%;width:13.649%;height:5.290%"><span class="l">수수료의 납부</span><span class="l">(法 82)</span></div>
+        <div class="bx leaf" style="left:66.782%;top:27.165%;width:13.649%;height:5.290%"><span class="l">특허에 관한 서류의 제출</span></div>
+        <div class="bx leaf" style="left:66.782%;top:20.072%;width:13.649%;height:5.290%"><span class="l">특허에 관한 서류의 작성</span></div>
+        <div class="bx leaf" style="left:51.646%;top:49.803%;width:9.178%;height:4.175%"><span class="l">지정기간 ○</span></div>
+        <div class="bx leaf" style="left:51.646%;top:44.980%;width:9.178%;height:4.175%"><span class="l">법정기간 ○</span></div>
+        <div class="bx leaf" style="left:51.646%;top:40.142%;width:9.178%;height:4.175%"><span class="l">지정기일 ○</span></div>
+        <div class="bx leaf" style="left:51.646%;top:35.333%;width:9.178%;height:4.175%"><span class="l">법정기일 ×</span></div>
+        <div class="bx leaf" style="left:42.671%;top:44.992%;width:7.621%;height:4.175%"><span class="l">기간</span></div>
+        <div class="bx leaf" style="left:42.671%;top:37.900%;width:7.621%;height:4.175%"><span class="l">기일</span></div>
+        <div class="bx leaf" style="left:66.782%;top:12.828%;width:13.649%;height:5.290%"><span class="l">고유번호의 부여 및 기재</span><span class="l">(法 28의2)</span></div>
+        <div class="bx leaf" style="left:51.646%;top:26.772%;width:9.178%;height:4.175%"><span class="l">만료일 결정</span></div>
+        <div class="bx leaf" style="left:51.646%;top:21.949%;width:9.178%;height:4.175%"><span class="l">계산방법 결정</span></div>
+        <div class="bx leaf" style="left:51.646%;top:17.111%;width:9.178%;height:4.175%"><span class="l">기산일 결정</span></div>
+        <div class="bx leaf" style="left:51.646%;top:12.302%;width:9.178%;height:4.175%"><span class="l">초일 결정</span></div>
+        <div class="bx leaf" style="left:36.888%;top:12.444%;width:13.383%;height:4.175%"><span class="l">기간 계산(法 14)</span></div>
+        <div class="bx leaf" style="left:36.888%;top:32.754%;width:13.383%;height:4.175%"><span class="l">기일과 기간의 종류(法 15)</span></div>
+        <div class="bx spine" style="left:10.251%;top:78.019%;width:23.109%;height:5.958%"><span class="l">절차의 정지(法 20~24, 78, 164)</span></div>
+        <div class="bx spine" style="left:10.251%;top:70.421%;width:23.109%;height:5.958%"><span class="l">절차의 효력의 승계 및 절차의 속행(法 18, 19)</span></div>
+        <div class="bx spine" style="left:10.251%;top:62.602%;width:23.109%;height:5.958%"><span class="l">특허에 관한 절차 일반(法 16, 28~28의5)</span></div>
+        <div class="bx spine" style="left:10.251%;top:54.990%;width:23.109%;height:5.958%"><span class="l">기일, 기간 및 추후보완(法 14,15,16,67의3)</span></div>
+        <div class="bx spine" style="left:10.251%;top:46.757%;width:23.109%;height:5.958%"><span class="l">재외자의 재판관할(法 13)</span></div>
+        <div class="bx spine" style="left:10.251%;top:38.812%;width:23.109%;height:5.958%"><span class="l">복수당사자 대표(法 11)</span></div>
+        <div class="bx spine" style="left:10.251%;top:31.178%;width:23.109%;height:5.958%"><span class="l">대리인(法 3②, 5②~10, 12)</span></div>
+        <div class="bx spine" style="left:10.251%;top:23.234%;width:23.109%;height:5.958%"><span class="l">행위능력(法 3~5①, 7의2)</span></div>
+        <div class="bx spine" style="left:10.251%;top:15.524%;width:23.109%;height:5.958%"><span class="l">정의(法 2)</span></div>
+        <div class="bx spine" style="left:10.251%;top:7.579%;width:23.109%;height:5.958%"><span class="l">목적(法 1)</span></div>
+        <div class="bx anchor" style="left:2.455%;top:44.702%;width:4.931%;height:10.175%"><span class="l">총칙</span></div>
+      </div>
+    </div>
+  </section>
+
+  <p class="foot">
+    <b>연결선은 강의노트에서 가져왔습니다.</b> 파일에 선마다 <b>붙은 상자의 id 와 면</b>이
+    적혀 있어 추측이 필요 없습니다. 이은 뒤에 <b>남의 상자를 뚫고 지나가는 선이 없는지</b>
+    검사했습니다 — 45p 0/32, 46p 0/43(가름틀 안 0.16인치짜리 장식선 하나는 상자 뒤에 가립니다).
+  </p>
+  <p class="foot">
+    <b>교재(정리비교표 3p)와 강의노트의 글이 다른 곳</b> — 아래 다섯이고, <b>원장님 결정대로 반영했습니다</b>.
+  </p>
+  <ul class="diffs"><li><span class="side">강의노트</span><span class="v">대리인의 선임/개임(法 10)</span><span class="side">정리비교표</span><span class="v">대리인의 선임/교체(法 10)</span><span class="why">교체로 그렸습니다 — 제10조 현행 표제가 「대리인의 선임 또는 교체 명령 등」</span></li><li><span class="side">강의노트</span><span class="v">기일과 기간(法 14, 15) + 추후보완(法 17, 67의3) 두 줄</span><span class="side">정리비교표</span><span class="v">기일, 기간 및 추후보완(法 14,15,16,67의3) 한 줄</span><span class="why">한 줄로 합쳤습니다 — 뼈대가 열한 줄에서 열 줄이 됩니다</span></li><li><span class="side">강의노트</span><span class="v">원칙: 발명의 정의 규정 만족</span><span class="side">정리비교표</span><span class="v">원칙: 발명 정의 규정 만족</span><span class="why">강의노트대로 두었습니다</span></li><li><span class="side">강의노트</span><span class="v">특허에 관한 서류의 제출</span><span class="side">정리비교표</span><span class="v">특허에 관한 서류 제출</span><span class="why">강의노트대로 두었습니다</span></li><li><span class="side">강의노트</span><span class="v">수수료의 납부(法 82)</span><span class="side">정리비교표</span><span class="v">수수료의 납부</span><span class="why">강의노트대로 두었습니다 — 法 82 를 살립니다</span></li></ul>
+</div>

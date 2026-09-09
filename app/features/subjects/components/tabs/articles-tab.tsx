@@ -16,6 +16,7 @@ import type { ArticleAnnotationCounts } from "~/features/annotations/queries.ser
 import type { CaseListItem } from "~/features/cases/labels";
 import type {
   ArticleNode,
+  SystematicDigest,
   SystematicNode,
 } from "~/features/laws/queries.server";
 import type { ProblemListItem } from "~/features/problems/labels";
@@ -34,7 +35,12 @@ import {
   subjectHasSystematicAxis,
 } from "../../lib/subjects";
 import { ArticleTree } from "../article-tree";
-import { DigestContent, DigestOutline, topLevelNodes } from "../digest-panel";
+import {
+  DigestContent,
+  DigestOutline,
+  digestsByNode,
+  topLevelNodes,
+} from "../digest-panel";
 import { FilteredArticlesReader } from "../filtered-articles-reader";
 import { MobileNavDrawer } from "../mobile-nav-drawer";
 import { Segmented, useSortAxis } from "../sort-axis";
@@ -57,6 +63,7 @@ export function ArticlesTab({
   lawId,
   articles,
   systematicNodes,
+  systematicDigests,
   progress,
   bookmarkLevels,
   annotationCounts,
@@ -72,6 +79,8 @@ export function ArticlesTab({
   lawId?: string;
   articles: ArticleNode[];
   systematicNodes: SystematicNode[];
+  /** 체계도 대분류별 정리비교표. staff 전용(RLS) — 학생에게는 빈 배열. */
+  systematicDigests: SystematicDigest[];
   progress: SubjectProgress | null;
   bookmarkLevels?: Record<string, number>;
   annotationCounts?: Record<string, ArticleAnnotationCounts>;
@@ -98,6 +107,17 @@ export function ArticlesTab({
     () => (hasDigest ? topLevelNodes(systematicNodes) : []),
     [hasDigest, systematicNodes],
   );
+  const digestMap = useMemo(
+    () => digestsByNode(systematicDigests),
+    [systematicDigests],
+  );
+  const digestCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const [nodeId, list] of Object.entries(digestMap)) {
+      counts[nodeId] = list.length;
+    }
+    return counts;
+  }, [digestMap]);
   const showDigest = hasDigest && digestOpen;
   const digestNode = digestNodes.find((n) => n.nodeId === digestNodeId) ?? null;
 
@@ -152,6 +172,7 @@ export function ArticlesTab({
         {showDigest ? (
           <DigestOutline
             nodes={digestNodes}
+            digestCounts={digestCounts}
             activeNodeId={digestNodeId}
             onSelect={setDigestNodeId}
             emptyHint={`${subject.name} 체계도가 아직 등록되지 않았습니다.`}
@@ -224,7 +245,10 @@ export function ArticlesTab({
         </div>
 
         {showDigest ? (
-          <DigestContent node={digestNode} />
+          <DigestContent
+            node={digestNode}
+            digests={digestNode ? (digestMap[digestNode.nodeId] ?? []) : []}
+          />
         ) : filterReading ? (
           // 필터 정독 — 매칭 조문 전문을 가운데에 순차 로드.
           <FilteredArticlesReader

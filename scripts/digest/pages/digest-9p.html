@@ -1,0 +1,156 @@
+<title>정정청구 제도 · 재심 제도 — 정리비교표 재작화</title>
+
+<style>
+  :root {
+    --card:#fff; --ink:#2e2e2e; --primary:#2d5ba8; --primary-fg:#fff; --muted:#64748b;
+    --border:#dfe4ec; --link:#2d5ba8; --hair:rgba(46,46,46,.05); --page:#f6f7f9;
+    --headbg:#eef2f8; --keybg:#f5f7fa;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --card:#333; --ink:#e6e6e6; --primary:#3b6fc4; --primary-fg:#fff; --muted:#b5b5b5;
+      --border:rgba(255,255,255,.14); --link:#60a5fa; --hair:rgba(255,255,255,.05);
+      --page:#1e1e1e; --headbg:rgba(120,160,220,.16); --keybg:rgba(255,255,255,.05);
+    }
+  }
+  :root[data-theme="dark"] {
+    --card:#333;--ink:#e6e6e6;--primary:#3b6fc4;--primary-fg:#fff;--muted:#b5b5b5;
+    --border:rgba(255,255,255,.14);--link:#60a5fa;--hair:rgba(255,255,255,.05);
+    --page:#1e1e1e;--headbg:rgba(120,160,220,.16);--keybg:rgba(255,255,255,.05);
+  }
+  :root[data-theme="light"] {
+    --card:#fff;--ink:#2e2e2e;--primary:#2d5ba8;--primary-fg:#fff;--muted:#64748b;
+    --border:#dfe4ec;--link:#2d5ba8;--hair:rgba(46,46,46,.05);--page:#f6f7f9;
+    --headbg:#eef2f8;--keybg:#f5f7fa;
+  }
+
+  body {
+    margin:0; background:var(--page); color:var(--ink); line-height:1.5;
+    font-family: system-ui, -apple-system, "Segoe UI", "Malgun Gothic",
+      "Apple SD Gothic Neo", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width:1400px; margin:0 auto; padding:32px 18px 64px; }
+
+  header { margin-bottom:20px; }
+  .eyebrow { margin:0 0 6px; font-size:11px; letter-spacing:.12em; font-weight:700; color:var(--muted); }
+  h1 { margin:0 0 8px; font-size:clamp(20px,3vw,27px); letter-spacing:-.02em; }
+  .lede { margin:0; color:var(--muted); font-size:14px; max-width:70ch; }
+  .lede b { color:var(--ink); }
+
+  .panel {
+    background:var(--card); border:1px solid var(--border); border-radius:14px;
+    overflow:hidden; margin-bottom:16px;
+  }
+  .cap {
+    margin:0; padding:11px 14px 10px; font-size:13px; font-weight:800;
+    border-bottom:1px solid var(--border);
+  }
+  /* 표가 넓다 — 줄여 버리면 못 읽으므로 옆으로 밀어 본다. */
+  .tablewrap { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; font-size:12.5px; }
+  /* 열이 많은 쪽은 너비를 못박아야 목차가 좁아진다. 내용이 두세 열뿐인 쪽은
+     브라우저가 재도록 둔다 — 목차 이름이 길어 못박으면 칸을 넘친다. */
+  table.fixed { table-layout:fixed; }
+  table.auto { table-layout:auto; }
+  table.auto th.k { white-space:nowrap; }
+  th, td {
+    border:1px solid var(--border); padding:6px 7px; vertical-align:top;
+    /* ★keep-all 은 한글 어절을 통째로 넘겨 줄 끝이 크게 비고 한 줄에 들어가는 글자가
+       확 줄어든다. 한글은 글자 단위로 끊어야 칸을 꽉 채운다.
+       ★양쪽 맞춤은 쓰지 않는다 — 한자·괄호 사이를 벌려 성기게 보인다(원장 지적). */
+    text-align:left; word-break:normal; overflow-wrap:anywhere;
+  }
+  th.h, th.k { text-align:center; }
+  /* 머리줄 — 가로로 훑을 때 기준이 되므로 위에 붙여 둔다.
+     ★머리줄이 두 줄인 쪽은 둘째 줄을 첫 줄 높이만큼 내려야 겹치지 않는다. */
+  thead tr:first-child th { height:30px; }
+  thead tr:first-child th.h { position:sticky; top:0; z-index:3; }
+  thead tr:nth-child(2) th.h { position:sticky; top:30px; z-index:2; }
+  th.h { background:var(--headbg); color:var(--ink); font-weight:800; }
+  /* 줄머리 이름 칸 — 너비는 colgroup 이 정한다. 좌우 여백을 줄여 한 글자 폭에 맞춘다. */
+  th.k {
+    background:var(--keybg); font-weight:700; color:var(--ink);
+    word-break:keep-all; padding:6px 3px;
+  }
+  /* 내용 칸은 바탕색 없이 — 색은 목차와 머리줄만 갖는다(원장 지시). */
+  td { color:color-mix(in srgb, var(--ink) 88%, transparent); background:transparent; }
+
+  .foot {
+    margin-top:8px; border-left:3px solid var(--primary); background:var(--card);
+    border-radius:0 10px 10px 0; padding:13px 16px; font-size:13px; color:var(--muted);
+  }
+  .foot b { color:var(--ink); }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">정리비교표 9p · 재작화</p>
+    <h1>정정청구 제도 · 재심 제도</h1>
+    <p class="lede">
+      교재 9쪽은 도형 없이 <b>표 두 장</b>입니다. 병합된 칸까지 그대로 옮겼고
+      (27줄 · 66칸), 글은 손대지 않았습니다. 전부 텍스트라
+      어느 낱말에든 빈칸을 걸 수 있습니다.
+    </p>
+  </header>
+
+  <section class="panel">
+    <p class="cap">정정청구 제도</p>
+    <div class="tablewrap">
+      <table class="auto" style="min-width:980px">
+        
+        <thead>
+            <tr><th class="h" colspan="3">정정청구 제도</th><th class="h">특허취소신청에서 정정<br>(法 132의3)</th><th class="h">특허무효심판에서 정정<br>(法 133의2)</th><th class="h">정정무효심판에서 정정<br>(法 137③④)</th></tr>
+        </thead>
+        <tbody>
+            <tr><th class="k" rowspan="2">서</th><th class="k" colspan="2">의 의</th><td colspan="3">특허의 정정이란 특허권자가 특허취소신청, 특허무효심판 또는 정정무효심판이 특허심판원에 계속 중에 특허발명의 명세서 또는 도면의 정정을 청구하는 것을 말한다.</td></tr>
+            <tr><th class="k" colspan="2">취 지</th><td colspan="3">명세서 또는 도면을 정정할 수 있게 하여 특허취소신청, 특허무효심판, 정정무효심판에 대한 방어적 기회를 줌</td></tr>
+            <tr><th class="k" rowspan="5">요 건</th><th class="k" colspan="2">주체적</th><td colspan="3">1. 특허권자만이 할 수 있으며, 특허권이 공유인 경우 공유자 모두가 하여야 함<br>2. 전용실시권자, 직무발명 통상실시권자, 허락에 의한 통상실시권자, 질권자의 동의 要(다만 특허권자가 정정청구를 하려면 동의를 받아야 하는 자가 특허취소신청, 무효심판을 청구한 경우는 제외)</td></tr>
+            <tr><th class="k" colspan="2" rowspan="2">객체적</th><td colspan="3">1. 청구범위를 감축하는 경우, 잘못 기재된 사항을 정정하는 경우 및 분명하지 아니하게 기재된 사항을 명확하게 하는 경우 중 어느 하나<br>2. 특허발명의 명세서ㆍ도면의 범위 이내이어야 하며, 잘못 기재된 사항을 정정하는 경우 출원서에 최초로 첨부한 명세서 또는 도면에 기재된 사항의 범위일 것<br>3. 명세서 또는 도면의 정정은 청구범위의 실질적 확장ㆍ변경×<br>4. 청구범위의 감축이나 잘못 기재된 사항을 정정하는 경우 정정 후의 청구범위 기재사항이 특허출원을 하였을 때 특허를 받을 수 있을 것</td></tr>
+            <tr><td colspan="2">단, 특허취소신청, 특허무효심판에 대한 정정청구에 있어서 특허취소신청, 특허무효심판이 청구된 청구항을 정정하는 경우에는 4번의 판단×</td><td></td></tr>
+            <tr><th class="k" colspan="2" rowspan="2">시기적</th><td>취소결정하려고 취소이유를 통지하고 준 의견서 제출기간</td><td colspan="2">1. 답변서 제출기간<br>2. 답변서 제출기간 후에도 청구인이 증거서류를 제출하거나 새로운 무효사유를 주장함으로 인하여 정정청구를 허용할 필요가 있다고 인정되는 경우에 심판장이 정한 기간<br>3. 무효심판의 직권심리에 의한 의견서 제출기간</td></tr>
+            <tr><td colspan="3">해당 특허취소신청절차, 특허무효심판절차, 정정무효심판절차에서 그 정정청구 전에 한 정정청구는 취하</td></tr>
+            <tr><th class="k" rowspan="4">절차</th><th class="k" colspan="2">제출</th><td colspan="3">1. 정정청구서를 제출<br>2. 정정을 청구하는 때에는 정정청구서에 정정한 명세서 또는 도면과 전용실시권자, 허락에 의한 통상실시권자, 직무발명에 대한 통상실시권자 및 질권자의 동의가 필요한 경우(다만 특허권자가 정정청구를 하기 위하여 동의를 받아야 하는 자가 특허취소신청, 특허무효심판, 정정무효심판을 청구한 경우에는 제외)에는 그 동의를 증명하는 서류를 첨부</td></tr>
+            <tr><th class="k" colspan="2">부본송달</th><td>-</td><td colspan="2">심판장은 특허무효심판, 정정무효심판 절차 중에 특허권자의 정정청구가 있을 때에는 그 부본을 심판청구인에게 송달</td></tr>
+            <tr><th class="k" colspan="2">정정명세서 등의 보정</th><td colspan="3">정정청구를 할 수 있는 기간 또는 정정청구의 직권심리에 의한 의견서 제출기간에 정정명세서 등을 다시 보정가능</td></tr>
+            <tr><th class="k" colspan="2">취하</th><td colspan="3">ⅰ) 정정청구를 할 수 있는 기간과 그 기간의 만료일로부터 1개월 이내의 기간과 ⅱ) 정정청구의 직권심리에 의한 의견서 제출기간 중 어느 하나에 해당하는 기간</td></tr>
+            <tr><th class="k" rowspan="6">효 과</th><th class="k" rowspan="3">적 법</th><th class="k">원칙</th><td colspan="3">정정한 명세서 또는 도면에 의하여 특허취소신청, 심판청구에 대한 심리를 진행하게 되며, 최종적으로 결정문, 심결문의 주문 및 이유란에 기재</td></tr>
+            <tr><th class="k">소급효</th><td colspan="3">1. 정정된 내용으로 특허출원, 출원공개, 특허결정 또는 심결 및 특허권이 설정등록된 것으로 간주<br>2. 정정만이 따로 확정되지 않고 특허취소신청의 결정 또는 무효심판의 심결이 확정된 때 함께 확정</td></tr>
+            <tr><th class="k">특허공보 게재</th><td colspan="3">특허발명의 명세서 또는 도면에 대한 정정을 한다는 심결이 있는 경우 특허심판원장은 그 내용을 지식재산처장에게 알려야 하며 지식재산처장은 통보가 있으면 이를 특허공보에 게재</td></tr>
+            <tr><th class="k" rowspan="3">부적법</th><th class="k">원칙</th><td colspan="3">별도의 각하결정없이 결정, 심결의 「이유란」에 특허의 정정 불채택이유 기재</td></tr>
+            <tr><th class="k">간과</th><td colspan="3">정정무효사유에 해당</td></tr>
+            <tr><th class="k">불 복</th><td colspan="3">독립하여 불복×</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <p class="cap">재심 제도</p>
+    <div class="tablewrap">
+      <table class="auto" style="min-width:700px">
+        
+        <thead>
+            <tr><th class="h" colspan="3">재심 제도</th><th class="h">내 용</th></tr>
+        </thead>
+        <tbody>
+            <tr><th class="k" colspan="3">의의</th><td>1. 확정된 특허취소결정 또는 심결에대한 비상의 불복방법(法 178①)<br>2. 원특허취소결정또는 심결의취소와 재심판을구함</td></tr>
+            <tr><th class="k" colspan="3">취지</th><td>법적 안정성의 바탕 위에 구체적 타당성(재심)의 확보</td></tr>
+            <tr><th class="k" rowspan="3">요건</th><th class="k" colspan="2">관할</th><td>특허심판원(法 178② 준용 民訴法 453)</td></tr>
+            <tr><th class="k" colspan="2">재심사유</th><td>1. 일반재심사유(法 178② 준용 民訴法 451)<br>2. 사해심결에대한 재심사유(法 179)</td></tr>
+            <tr><th class="k" colspan="2">재심청구기간</th><td>1. 원칙 - 法 180①③<br>2. 예외 - 法 180②④⑤</td></tr>
+            <tr><th class="k" rowspan="3">절차 및 효과</th><th class="k" colspan="2">공통점</th><td>원심판절차준용(法 184)</td></tr>
+            <tr><th class="k" rowspan="2">차이점</th><th class="k">절차</th><td>1. 심리순서 - 방식심리, 적법성 심리, 재심사유의 존부확인(원특허취소결정 또는 심결의취소), 본안심리(재심판)<br>2. 재심사유의 존부확인 - 재심청구이유에 한함(法 185)</td></tr>
+            <tr><th class="k">효과</th><td>원심판효과 이외에 plus 효과 발생<br>- 法 181, 182(심결확정(3), 취소결정확정(1))<br>- 法 183(심결확정(1)): 법 제98조, 제138조</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <p class="foot">
+    <b>칸은 교재 표를 그대로 옮겼습니다.</b> 가로로 합친 칸(colspan)과 세로로 합친
+    칸(rowspan)을 손대지 않았습니다 — 병합을 잃으면 표가 한 줄씩 밀립니다.
+    목차 칸은 한 줄에 한 글자로 세워 폭을 줄였고, 그만큼 내용 칸이 넓어집니다.
+    넓어서 좁은 화면에서는 옆으로 밀어 보셔야 합니다.
+  </p>
+</div>
