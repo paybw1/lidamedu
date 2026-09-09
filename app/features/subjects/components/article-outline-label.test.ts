@@ -41,9 +41,24 @@ describe("splitOutlineLabel", () => {
     });
   });
 
-  it("조문은 배지로 만들지 않는다 — 번호가 이름의 일부다", () => {
-    expect(splitOutlineLabel("제5조 신의성실")).toBeNull();
+  it("조(條)도 배지로 만든다 — 원장 결정 2026-09-09(검토안 B)", () => {
+    expect(splitOutlineLabel("제5조 미성년자의 능력")).toEqual({
+      no: "5",
+      unit: "조",
+      branch: "",
+      title: "미성년자의 능력",
+    });
+    expect(splitOutlineLabel("제14조의2 특정후견의 심판")).toEqual({
+      no: "14",
+      unit: "조",
+      branch: "의2",
+      title: "특정후견의 심판",
+    });
+  });
+
+  it("제목이 없는 조문은 라벨 그대로 둔다 — 배지만 남으면 빈 줄이 된다", () => {
     expect(splitOutlineLabel("제29조의2")).toBeNull();
+    expect(splitOutlineLabel("제5조")).toBeNull();
   });
 
   it("번호 없는 목차는 그대로 둔다", () => {
