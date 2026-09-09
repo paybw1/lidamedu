@@ -35,12 +35,7 @@ import {
   subjectHasSystematicAxis,
 } from "../../lib/subjects";
 import { ArticleTree } from "../article-tree";
-import {
-  DigestContent,
-  DigestOutline,
-  buildDigestOutline,
-  topLevelNodes,
-} from "../digest-panel";
+import { DigestPopup } from "../digest-popup";
 import { FilteredArticlesReader } from "../filtered-articles-reader";
 import { MobileNavDrawer } from "../mobile-nav-drawer";
 import { Segmented, useSortAxis } from "../sort-axis";
@@ -51,11 +46,10 @@ import {
 } from "../subject-study-status";
 import { SystematicTree } from "../systematic-tree";
 
-// 좌패널 토글 — 축 두 칸(체계도·조문)에 이 탭 전용 화면(정리) 한 칸을 더한다.
+// 좌패널 토글 — 축 두 칸(체계도·조문).
 const OUTLINE_OPTIONS = [
   { value: "systematic", label: "체계도", icon: NetworkIcon },
   { value: "statutory", label: "조문", icon: LayoutListIcon },
-  { value: "digest", label: "정리", icon: FileTextIcon },
 ] as const;
 
 export function ArticlesTab({
@@ -98,27 +92,20 @@ export function ArticlesTab({
   const hasSystematicAxis = subjectHasSystematicAxis(subject.slug);
   const systematicEmpty = systematicNodes.length === 0;
 
-  // "정리" 는 축(체계도/조문)이 아니라 이 탭 안의 화면이다. 축에 넣으면 문제·판례 탭
-  // 토글에도 칸이 생기므로 좌패널 토글에서만 세 칸으로 합쳐 보여 준다.
-  const hasDigest = subjectHasDigestAxis(subject.slug) && !systematicEmpty;
-  const [digestOpen, setDigestOpen] = useState(false);
-  const [digestKey, setDigestKey] = useState<string | null>(null);
-  // 목차 = 독립 항목(체계도) + 체계도 대분류. 번호는 이 목록 자리로 매겨진다.
-  const digestItems = useMemo(
+  // 정리비교표는 **단원 화면의 「정리」 배지**에서 본다(원장 지시 2026-09-10 — 좌패널
+  // 목차는 걷어냈다). 다만 전체 체계도(2p)는 어느 단원에도 속하지 않아 그 길로는 닿지
+  // 않는다 — 여기 토글 옆 버튼 하나로 남긴다.
+  const overviewDigests = useMemo(
     () =>
-      hasDigest
-        ? buildDigestOutline(topLevelNodes(systematicNodes), systematicDigests)
+      subjectHasDigestAxis(subject.slug)
+        ? systematicDigests.filter((d) => d.nodeId === null)
         : [],
-    [hasDigest, systematicNodes, systematicDigests],
+    [subject.slug, systematicDigests],
   );
-  const showDigest = hasDigest && digestOpen;
-  const digestItem = digestItems.find((n) => n.key === digestKey) ?? null;
+  const [overviewOpen, setOverviewOpen] = useState(false);
 
   const renderSystematic =
-    hasSystematicAxis &&
-    !showDigest &&
-    axis === "systematic" &&
-    !systematicEmpty;
+    hasSystematicAxis && axis === "systematic" && !systematicEmpty;
 
   // 트리 필터(중요도/즐겨찾기)가 켜지면 가운데 본문 영역을 매칭 조문 정독으로 전환.
   const [treeFilter, setTreeFilter] = useState({ importance: 0, bookmark: 0 });
@@ -139,21 +126,36 @@ export function ArticlesTab({
           hasSystematicAxis ? "justify-end" : "justify-start",
         )}
       >
+        {/* 전체 체계도(정리비교표 2p) — 어느 단원에도 속하지 않아 단원 화면의 「정리」
+            배지로는 닿지 않는다. 여기서 화면 전체 팝업으로 연다. */}
+        {overviewDigests.length > 0 ? (
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setOverviewOpen(true)}
+              title="특허법 전체 체계도(교재 정리비교표)"
+              className="mr-auto h-7 gap-1 rounded-full px-2 text-[11px] font-bold"
+            >
+              <FileTextIcon className="size-3" />
+              전체 체계도
+            </Button>
+            <DigestPopup
+              label="특허법"
+              digests={overviewDigests}
+              open={overviewOpen}
+              onOpenChange={setOverviewOpen}
+            />
+          </>
+        ) : null}
         {hasSystematicAxis ? (
           <Segmented
             size="sm"
             ariaLabel="목차 보기"
-            value={showDigest ? "digest" : axis}
-            options={hasDigest ? OUTLINE_OPTIONS : OUTLINE_OPTIONS.slice(0, 2)}
+            value={axis}
+            options={OUTLINE_OPTIONS}
             disabled={systematicEmpty ? ["systematic"] : undefined}
-            onChange={(next) => {
-              if (next === "digest") {
-                setDigestOpen(true);
-                return;
-              }
-              setDigestOpen(false);
-              setAxis(next);
-            }}
+            onChange={setAxis}
           />
         ) : (
           <span className="text-muted-foreground text-[11px] font-medium">
@@ -162,14 +164,7 @@ export function ArticlesTab({
         )}
       </div>
       <div className="p-2">
-        {showDigest ? (
-          <DigestOutline
-            items={digestItems}
-            activeKey={digestKey}
-            onSelect={setDigestKey}
-            emptyHint={`${subject.name} 체계도가 아직 등록되지 않았습니다.`}
-          />
-        ) : renderSystematic ? (
+        {renderSystematic ? (
           <SystematicTree
             nodes={systematicNodes}
             lawCode={subject.slug}
@@ -191,7 +186,7 @@ export function ArticlesTab({
             onFilterChange={setTreeFilter}
           />
         )}
-        {!showDigest && axis === "systematic" && systematicEmpty ? (
+        {axis === "systematic" && systematicEmpty ? (
           <p className="text-muted-foreground mt-2 px-2 text-xs">
             * {subject.name} 테크 트리 데이터 미입력 — 조문 트리로 표시
           </p>
@@ -236,9 +231,7 @@ export function ArticlesTab({
           </MobileNavDrawer>
         </div>
 
-        {showDigest ? (
-          <DigestContent item={digestItem} />
-        ) : filterReading ? (
+        {filterReading ? (
           // 필터 정독 — 매칭 조문 전문을 가운데에 순차 로드.
           <FilteredArticlesReader
             lawCode={subject.slug}

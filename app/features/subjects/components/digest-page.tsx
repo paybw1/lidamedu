@@ -4,12 +4,16 @@
 //   (≈760px)을 넘고 5·6p 는 8px 로도 넘는다(scripts/digest/estimate-height.mjs).
 //   판짜기를 기준 폭(`.digest-page`, 적재 때 감싼다)에 고정해 두고 그 장 전체를 줄여야
 //   표의 가로세로 비가 교재와 같은 채로 한눈에 들어온다.
-// ★`zoom` 을 쓴다(transform 아님) — transform 은 줄여도 **자리는 원래 크기만큼**
-//   차지해 밑에 빈 공간이 남는다. zoom 은 배치까지 줄어든다.
+//
+// ★줄이기는 `transform: scale` + **줄인 크기만큼의 빈 상자**로 한다.
+//   `zoom` 으로 줄였더니 아래가 잘렸다(원장 지적 2026-09-10) — 줄어든 뒤 바깥이 차지할
+//   높이를 브라우저 계산에 맡기면 어긋난다. 여기서는 자연 높이를 직접 재서 상자 크기를
+//   `자연크기 × 배율` 로 못박는다. transform 은 배치를 건드리지 않으므로 안쪽 높이를
+//   그대로 잴 수 있고, 바깥은 정확히 그만큼만 차지한다.
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /** 줄일 수 있는 한계 — 이보다 작아지면 글자가 아니라 무늬가 된다. */
-const MIN_ZOOM = 0.4;
+const MIN_SCALE = 0.4;
 /** 자료 아래로 남겨 둘 여백. */
 const BOTTOM_GAP = 24;
 
@@ -24,24 +28,31 @@ export function FitPage({
   page: number;
 }) {
   const box = useRef<HTMLDivElement>(null);
-  const [zoom, setZoom] = useState(1);
+  const doc = useRef<HTMLDivElement>(null);
   const [fit, setFit] = useState(true);
   // 적재 때 감싼 기준 폭(`.digest-page`). 판짜기가 이 폭에서 계산돼 있다.
   const pageW = Number(
     html.match(/class="digest-page" style="width:(\d+)px"/)?.[1] ?? 1180,
   );
+  const [size, setSize] = useState<{ w: number; h: number; s: number }>({
+    w: pageW,
+    h: 0,
+    s: 1,
+  });
 
   const measure = useCallback(() => {
     const el = box.current;
-    const sheet = el?.firstElementChild as HTMLElement | null;
-    const paper = sheet?.firstElementChild as HTMLElement | null;
-    if (!el || !sheet || !paper) return;
+    const node = doc.current;
+    const paper = node?.firstElementChild as HTMLElement | null;
+    if (!el || !node || !paper) return;
+
     if (!fit) {
       paper.style.width = `${pageW}px`;
-      setZoom(1);
+      setSize({ w: pageW, h: 0, s: 1 });
       return;
     }
     const availW = el.clientWidth;
+    if (!availW) return;
     const availH = Math.max(
       280,
       window.innerHeight - el.getBoundingClientRect().top - BOTTOM_GAP,
@@ -50,12 +61,20 @@ export function FitPage({
     //   세로가 확 짧아진다(4p: 1180→1850 폭이면 높이가 6할). 줄이기 전에 이것부터.
     const usedW = Math.max(pageW, availW);
     paper.style.width = `${usedW}px`;
-    // ★재는 동안 배율을 1 로 돌린다 — 줄어든 상태에서 재면 배율이 계속 작아진다.
-    sheet.style.zoom = "1";
-    const natH = sheet.scrollHeight;
-    sheet.style.zoom = "";
+    // transform 은 배치를 건드리지 않으므로 여기서 잰 높이가 곧 자연 높이다.
+    const natH = node.scrollHeight;
     if (!natH) return;
-    setZoom(Math.max(MIN_ZOOM, Math.min(1, availW / usedW, availH / natH)));
+    const s = Math.max(
+      MIN_SCALE,
+      Math.min(1, availW / usedW, availH / natH),
+    );
+    // ★값이 같으면 상태를 건드리지 않는다 — 상자 높이가 바뀌면 ResizeObserver 가 다시
+    //   울리므로, 매번 새 객체를 넣으면 다시 그리기가 꼬리를 문다.
+    setSize((prev) =>
+      prev.w === usedW && prev.h === natH && prev.s === s
+        ? prev
+        : { w: usedW, h: natH, s },
+    );
   }, [fit, pageW]);
 
   useEffect(() => {
@@ -69,9 +88,9 @@ export function FitPage({
       ro.disconnect();
       window.removeEventListener("resize", measure);
     };
-  }, [measure, html, fit]);
+  }, [measure, html]);
 
-  const shrunk = fit && zoom < 1;
+  const shrunk = fit && size.s < 1;
   return (
     <>
       {/* ★React 는 text child 를 이스케이프한다 — `.panel > h2`·content:"" 가 깨진다. */}
@@ -79,7 +98,7 @@ export function FitPage({
       <div className="mb-1.5 flex items-center justify-end gap-2">
         {shrunk ? (
           <span className="text-muted-foreground text-[11px] font-semibold tabular-nums">
-            {Math.round(zoom * 100)}%
+            {Math.round(size.s * 100)}%
           </span>
         ) : null}
         <button
@@ -91,11 +110,32 @@ export function FitPage({
         </button>
       </div>
       <div ref={box} className={fit ? "" : "overflow-x-auto"}>
+        {/* 줄인 만큼만 자리를 차지하는 상자 — 높이를 재기 전(h=0)에는 그냥 흘려 둔다. */}
         <div
-          className={`digest-doc dp${page}`}
-          style={fit ? { zoom } : undefined}
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
+          style={
+            fit && size.h
+              ? {
+                  width: size.w * size.s,
+                  height: size.h * size.s,
+                  overflow: "hidden",
+                }
+              : undefined
+          }
+        >
+          <div
+            ref={doc}
+            className={`digest-doc dp${page}`}
+            style={
+              fit && size.s < 1
+                ? {
+                    transform: `scale(${size.s})`,
+                    transformOrigin: "top left",
+                  }
+                : undefined
+            }
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
+        </div>
       </div>
     </>
   );
