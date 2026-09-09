@@ -537,7 +537,9 @@ function TreeItem({
   const highlights = annotation?.highlights ?? 0;
 
   // 편·장·절·관은 배지로(조문은 번호가 이름의 일부라 그대로).
-  const labelEl = <ArticleOutlineLabel label={node.displayLabel} />;
+  const labelEl = (
+    <ArticleOutlineLabel label={node.displayLabel} depth={depth} />
+  );
   const importance = Math.max(0, Math.min(3, node.importance));
   const starEl =
     isArticle && importance > 0 ? (

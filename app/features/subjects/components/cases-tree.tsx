@@ -747,7 +747,7 @@ function ArticleItem({
         aria-current={isActive ? "page" : undefined}
       >
         {expandToggle}
-        <ArticleOutlineLabel label={node.displayLabel} />
+        <ArticleOutlineLabel label={node.displayLabel} depth={depth} />
         <CountChip value={count} isActive={isActive} />
       </Link>
       {hasChildren && open ? (

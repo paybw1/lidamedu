@@ -45,28 +45,36 @@ export function splitOutlineLabel(label: string): ArticleOutlineParts | null {
 // 단위별 무게 — 위로 갈수록 진하다. 색은 토큰으로만(다크 모드 대응).
 const UNIT_CLASS: Record<ArticleOutlineParts["unit"], string> = {
   편: "bg-primary text-primary-foreground border-transparent",
-  장: "bg-primary/10 text-link border-transparent",
-  절: "text-muted-foreground border-border",
-  관: "text-muted-foreground/80 border-transparent bg-foreground/[0.06]",
+  장: "bg-primary/15 text-link border-transparent",
+  절: "text-foreground/70 border-foreground/20",
+  관: "text-foreground/65 border-transparent bg-foreground/[0.08]",
   // 조는 줄 수가 압도적으로 많다(한 절에 열댓 줄). 가장 옅게 두어 목차 층을 덮지 않게.
-  조: "text-muted-foreground border-transparent bg-foreground/[0.06]",
+  조: "text-foreground/70 border-transparent bg-foreground/[0.08]",
 };
+
+// ★가장 진한 배지는 **단위가 아니라 층 위치**가 정한다. 특허·상표·디자인에는 편이
+//   없어 최상위가 장인데, 장 색(옅은 파랑)을 쓰면 장(章)이 흐릿해 목차 머리가
+//   서지 않는다(원장 지적 2026-09-09). 어느 법이든 최상위는 민법 편과 같은 무게로.
+const TOP_CLASS = UNIT_CLASS.편;
 
 export function ArticleOutlineBadge({
   no,
   unit,
   branch = "",
+  top = false,
 }: {
   no: string;
   unit: ArticleOutlineParts["unit"];
   branch?: string;
+  /** 목차의 최상위 줄인가. true 면 단위와 상관없이 가장 진한 배지. */
+  top?: boolean;
 }) {
   return (
     <span
       className={cn(
         // min-w — 한 자리(제1편)와 두 자리(제11장)가 섞여도 제목 시작선이 맞게.
         "inline-flex h-[18px] min-w-[38px] flex-none items-center justify-center rounded-md border px-1 text-[10px] leading-none font-bold",
-        UNIT_CLASS[unit],
+        top ? TOP_CLASS : UNIT_CLASS[unit],
       )}
     >
       {/* 원문 표기 그대로 "제1편" — '제' 를 빼면 목차를 읽던 감각과 어긋난다(원장 지적). */}
@@ -85,9 +93,12 @@ export function ArticleOutlineBadge({
  */
 export function ArticleOutlineLabel({
   label,
+  depth = 1,
   className,
 }: {
   label: string;
+  /** 트리에서의 깊이. 0 이면 그 법의 최상위 층이라 가장 진한 배지를 쓴다. */
+  depth?: number;
   className?: string;
 }) {
   const parts = splitOutlineLabel(label);
@@ -99,6 +110,7 @@ export function ArticleOutlineLabel({
         no={parts.no}
         unit={parts.unit}
         branch={parts.branch}
+        top={depth === 0}
       />
       <span className={cn("flex-1 truncate", className)}>{parts.title}</span>
     </>

@@ -139,6 +139,7 @@ export function SystematicTreeLabel({
           no={outline.no}
           unit={outline.unit}
           branch={outline.branch}
+          top={depth === 0}
         />
         <span className="flex-1 truncate">{outline.title}</span>
       </>
