@@ -307,6 +307,7 @@ create table public.systematic_digests (
   digest_id  uuid primary key default gen_random_uuid(),
   law_code   text not null,
   node_id    uuid references systematic_nodes(node_id) on delete set null,
+  outline_label text,                          -- node_id is null 일 때 목차에 서는 이름
   page       integer not null,                 -- 교재 정리비교표 쪽번호
   title      text not null,
   body_html  text not null,                    -- 재작화 본문(글자만 — 이미지 금지)
@@ -320,6 +321,11 @@ create table public.systematic_digests (
 
 ★**이미지로 넣지 않는다** — 나중에 빈칸 학습을 걸어야 하므로 모든 칸이 선택 가능한
 글자여야 한다(원장 지시). 도형 쪽도 절대배치 div + SVG 선으로 그려 글자를 살렸다.
+
+★`node_id is null` = **어느 단원의 자료도 아닌 독립 항목**. 정리 화면 목차 **맨 앞**에
+`outline_label` 이름으로 선다(2p 특허법 체계도 = 「체계도」). 체계도 노드를 새로 만들지
+않는 이유 — 노드는 조문·판례·주관식 화면이 함께 쓰므로 정리 화면 하나 때문에 추가하면
+세 화면 목차가 같이 바뀐다. 목차 번호는 「독립 항목 + 대분류」 합친 목록의 자리로 매긴다.
 
 ★RLS = `systematic_digests_staff_all`(staff 만 읽고 쓴다). 학생에게는 0건이 내려가
 화면이 "아직 등록되지 않았습니다"를 유지한다 — **학생 공개는 read 정책 한 줄 추가**로 전환.

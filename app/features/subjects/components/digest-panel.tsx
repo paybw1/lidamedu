@@ -30,43 +30,74 @@ export function topLevelNodes(nodes: SystematicNode[]): SystematicNode[] {
     .sort((a, b) => a.ord - b.ord);
 }
 
-/** 대분류 → 그 단원에 붙은 정리비교표(적재 순서 유지). */
-export function digestsByNode(
+/** 정리 화면 목차 한 줄 — 체계도 대분류이거나, 노드에 붙지 않는 독립 항목이거나. */
+export interface DigestOutlineItem {
+  key: string;
+  label: string;
+  digests: SystematicDigest[];
+}
+
+/**
+ * 목차 = **독립 항목 먼저, 그다음 체계도 대분류**.
+ *
+ * ★독립 항목(`nodeId === null`)은 어느 단원의 자료도 아닌 것이다 — 2p 특허법 체계도가
+ *   그렇다. 체계도 노드를 새로 만들어 끼우면 조문·판례·주관식 화면의 목차까지 함께
+ *   바뀌므로, 정리 화면에서만 서는 줄로 둔다(원장 지시 2026-09-09).
+ * ★번호는 이 목록의 자리로 매긴다 — 항목이 앞에 끼면 뒤가 저절로 밀린다.
+ */
+export function buildDigestOutline(
+  nodes: SystematicNode[],
   digests: SystematicDigest[],
-): Record<string, SystematicDigest[]> {
-  const map: Record<string, SystematicDigest[]> = {};
-  for (const d of digests) (map[d.nodeId] ??= []).push(d);
-  return map;
+): DigestOutlineItem[] {
+  const standalone = digests
+    .filter((d) => d.nodeId === null)
+    .map((d) => ({
+      key: `digest:${d.digestId}`,
+      label: d.outlineLabel ?? d.title,
+      digests: [d],
+    }));
+
+  const byNode: Record<string, SystematicDigest[]> = {};
+  for (const d of digests) {
+    if (d.nodeId) (byNode[d.nodeId] ??= []).push(d);
+  }
+
+  return [
+    ...standalone,
+    ...nodes.map((n) => ({
+      key: n.nodeId,
+      label: stripSystematicNumber(n.displayLabel),
+      digests: byNode[n.nodeId] ?? [],
+    })),
+  ];
 }
 
 export function DigestOutline({
-  nodes,
-  digestCounts,
-  activeNodeId,
+  items,
+  activeKey,
   onSelect,
   emptyHint,
 }: {
-  nodes: SystematicNode[];
-  digestCounts: Record<string, number>;
-  activeNodeId: string | null;
-  onSelect: (nodeId: string) => void;
+  items: DigestOutlineItem[];
+  activeKey: string | null;
+  onSelect: (key: string) => void;
   emptyHint: string;
 }) {
-  if (nodes.length === 0) {
+  if (items.length === 0) {
     return (
       <p className="text-muted-foreground px-2 py-4 text-xs">{emptyHint}</p>
     );
   }
   return (
     <ul className="space-y-0.5 text-sm">
-      {nodes.map((n, i) => {
-        const active = n.nodeId === activeNodeId;
-        const count = digestCounts[n.nodeId] ?? 0;
+      {items.map((n, i) => {
+        const active = n.key === activeKey;
+        const count = n.digests.length;
         return (
-          <li key={n.nodeId}>
+          <li key={n.key}>
             <button
               type="button"
-              onClick={() => onSelect(n.nodeId)}
+              onClick={() => onSelect(n.key)}
               aria-current={active ? "true" : undefined}
               className={cn(
                 "group flex w-full items-center gap-1.5 rounded-lg px-2 py-[5px] text-left text-[13px] font-extrabold transition-colors",
@@ -76,9 +107,7 @@ export function DigestOutline({
               )}
             >
               <SystematicNumberBadge depth={0} no={i + 1} />
-              <span className="flex-1 truncate">
-                {stripSystematicNumber(n.displayLabel)}
-              </span>
+              <span className="flex-1 truncate">{n.label}</span>
               {/* 자료가 없는 단원은 눌러 보기 전에 알 수 있어야 한다. */}
               {count > 0 ? (
                 <span className="text-muted-foreground text-[11px] font-bold tabular-nums">
@@ -116,14 +145,8 @@ function DigestSheet({ digest }: { digest: SystematicDigest }) {
   );
 }
 
-export function DigestContent({
-  node,
-  digests,
-}: {
-  node: SystematicNode | null;
-  digests: SystematicDigest[];
-}) {
-  if (!node) {
+export function DigestContent({ item }: { item: DigestOutlineItem | null }) {
+  if (!item) {
     return (
       <div className="border-border bg-card text-muted-foreground rounded-xl border px-5 py-10 text-center text-sm">
         왼쪽 목차에서 정리를 볼 단원을 고르세요.
@@ -134,11 +157,9 @@ export function DigestContent({
     <div className="border-border bg-card rounded-xl border">
       <div className="border-border flex items-center gap-2 border-b px-5 py-3">
         <FileTextIcon className="text-muted-foreground size-4 flex-none" />
-        <h2 className="text-sm font-semibold">
-          {stripSystematicNumber(node.displayLabel)} 정리
-        </h2>
+        <h2 className="text-sm font-semibold">{item.label} 정리</h2>
       </div>
-      {digests.length === 0 ? (
+      {item.digests.length === 0 ? (
         <div className="px-5 py-10 text-center">
           <p className="text-foreground/80 text-sm font-medium">
             이 단원의 정리비교표가 아직 등록되지 않았습니다.
@@ -149,7 +170,7 @@ export function DigestContent({
         </div>
       ) : (
         <div className="space-y-6 px-4 py-4">
-          {digests.map((d) => (
+          {item.digests.map((d) => (
             <DigestSheet key={d.digestId} digest={d} />
           ))}
         </div>

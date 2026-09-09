@@ -38,7 +38,7 @@ import { ArticleTree } from "../article-tree";
 import {
   DigestContent,
   DigestOutline,
-  digestsByNode,
+  buildDigestOutline,
   topLevelNodes,
 } from "../digest-panel";
 import { FilteredArticlesReader } from "../filtered-articles-reader";
@@ -102,24 +102,17 @@ export function ArticlesTab({
   // 토글에도 칸이 생기므로 좌패널 토글에서만 세 칸으로 합쳐 보여 준다.
   const hasDigest = subjectHasDigestAxis(subject.slug) && !systematicEmpty;
   const [digestOpen, setDigestOpen] = useState(false);
-  const [digestNodeId, setDigestNodeId] = useState<string | null>(null);
-  const digestNodes = useMemo(
-    () => (hasDigest ? topLevelNodes(systematicNodes) : []),
-    [hasDigest, systematicNodes],
+  const [digestKey, setDigestKey] = useState<string | null>(null);
+  // 목차 = 독립 항목(체계도) + 체계도 대분류. 번호는 이 목록 자리로 매겨진다.
+  const digestItems = useMemo(
+    () =>
+      hasDigest
+        ? buildDigestOutline(topLevelNodes(systematicNodes), systematicDigests)
+        : [],
+    [hasDigest, systematicNodes, systematicDigests],
   );
-  const digestMap = useMemo(
-    () => digestsByNode(systematicDigests),
-    [systematicDigests],
-  );
-  const digestCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const [nodeId, list] of Object.entries(digestMap)) {
-      counts[nodeId] = list.length;
-    }
-    return counts;
-  }, [digestMap]);
   const showDigest = hasDigest && digestOpen;
-  const digestNode = digestNodes.find((n) => n.nodeId === digestNodeId) ?? null;
+  const digestItem = digestItems.find((n) => n.key === digestKey) ?? null;
 
   const renderSystematic =
     hasSystematicAxis &&
@@ -171,10 +164,9 @@ export function ArticlesTab({
       <div className="p-2">
         {showDigest ? (
           <DigestOutline
-            nodes={digestNodes}
-            digestCounts={digestCounts}
-            activeNodeId={digestNodeId}
-            onSelect={setDigestNodeId}
+            items={digestItems}
+            activeKey={digestKey}
+            onSelect={setDigestKey}
             emptyHint={`${subject.name} 체계도가 아직 등록되지 않았습니다.`}
           />
         ) : renderSystematic ? (
@@ -245,10 +237,7 @@ export function ArticlesTab({
         </div>
 
         {showDigest ? (
-          <DigestContent
-            node={digestNode}
-            digests={digestNode ? (digestMap[digestNode.nodeId] ?? []) : []}
-          />
+          <DigestContent item={digestItem} />
         ) : filterReading ? (
           // 필터 정독 — 매칭 조문 전문을 가운데에 순차 로드.
           <FilteredArticlesReader

@@ -13928,6 +13928,7 @@ export type Database = {
           law_code: string
           node_id: string | null
           ord: number
+          outline_label: string | null
           page: number
           title: string
           updated_at: string
@@ -13940,6 +13941,7 @@ export type Database = {
           law_code: string
           node_id?: string | null
           ord?: number
+          outline_label?: string | null
           page: number
           title: string
           updated_at?: string
@@ -13952,6 +13954,7 @@ export type Database = {
           law_code?: string
           node_id?: string | null
           ord?: number
+          outline_label?: string | null
           page?: number
           title?: string
           updated_at?: string

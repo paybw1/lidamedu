@@ -1034,12 +1034,19 @@ export async function listArticleRevisionHistory(
 /** 체계도 대분류에 붙는 정리비교표(교재 부록) 한 장. */
 export interface SystematicDigest {
   digestId: string;
-  nodeId: string;
+  /**
+   * 붙는 대분류. ★null 이면 **어느 단원의 것도 아닌 독립 항목**이다 —
+   * 2p 특허법 체계도처럼 과목 전체를 그린 자료가 그렇고, 목차 맨 앞에
+   * `outlineLabel` 이름으로 선다.
+   */
+  nodeId: string | null;
+  /** 독립 항목의 목차 이름(노드에 붙으면 null). */
+  outlineLabel: string | null;
   /** 교재 정리비교표 쪽번호 — 화면에 출처로 표시한다. */
   page: number;
   title: string;
   bodyHtml: string;
-  /** `.digest-doc` 아래로 접어 둔 전용 CSS. 앱 전역으로 새지 않는다. */
+  /** `.digest-doc.dpN` 으로 좁혀 둔 전용 CSS. 앱 전역으로 새지 않는다. */
   css: string;
 }
 
@@ -1053,18 +1060,19 @@ export async function getSystematicDigests(
 ): Promise<SystematicDigest[]> {
   const { data, error } = await client
     .from("systematic_digests")
-    .select("digest_id, node_id, page, title, body_html, css")
+    .select("digest_id, node_id, outline_label, page, title, body_html, css")
     .eq("law_code", lawCode)
-    .order("ord");
+    // ord 만으로는 같은 값끼리 순서가 들쭉날쭉하다 — 쪽번호로 묶어 못박는다.
+    .order("ord")
+    .order("page");
   if (error) throw error;
-  return (data ?? [])
-    .filter((d): d is typeof d & { node_id: string } => d.node_id !== null)
-    .map((d) => ({
-      digestId: d.digest_id,
-      nodeId: d.node_id,
-      page: d.page,
-      title: d.title,
-      bodyHtml: d.body_html,
-      css: d.css,
-    }));
+  return (data ?? []).map((d) => ({
+    digestId: d.digest_id,
+    nodeId: d.node_id,
+    outlineLabel: d.outline_label,
+    page: d.page,
+    title: d.title,
+    bodyHtml: d.body_html,
+    css: d.css,
+  }));
 }

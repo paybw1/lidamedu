@@ -12,11 +12,13 @@ import "dotenv/config";
 import { convert } from "./convert.mjs";
 
 // 교재 쪽 → 체계도 대분류. 한 단원에 여러 쪽이 붙으면 ord 순서로 세로로 쌓인다.
-//   ★2p(특허법 전체 체계도)는 어느 한 단원의 것이 아니라 과목 전체 지도다.
-//     지금은 첫 단원(01 총칙/보칙) 맨 앞에 두었다 — 옮기려면 이 표만 고치면 된다.
+//   ★`node` 대신 `outline`(목차 이름)을 적으면 **노드에 붙지 않는 독립 항목**이 되어
+//     정리 화면 목차 맨 앞에 자기 이름으로 선다. 2p 는 어느 한 단원의 자료가 아니라
+//     과목 전체 지도라 이쪽이다(원장 지시 2026-09-09).
+//     체계도 노드를 새로 만들지 않는 이유 — 노드는 조문·판례·주관식이 함께 쓴다.
 const PAGES = [
-  { page: 2, node: "01 총칙/보칙", ord: 0 },
-  { page: 3, node: "01 총칙/보칙", ord: 1 },
+  { page: 2, outline: "체계도", ord: 0 },
+  { page: 3, node: "01 총칙/보칙", ord: 0 },
   { page: 4, node: "02 특허요건", ord: 0 },
   { page: 5, node: "03 이익제도", ord: 0 },
   { page: 6, node: "04 심사", ord: 0 },
@@ -51,13 +53,14 @@ const byLabel = new Map(nodes.map((n) => [n.display_label, n.node_id]));
 
 const rows = [];
 for (const p of PAGES) {
-  const nodeId = byLabel.get(p.node);
-  if (!nodeId) throw new Error(`체계도 대분류를 찾지 못했습니다: ${p.node}`);
+  const nodeId = p.node ? byLabel.get(p.node) : null;
+  if (p.node && !nodeId) throw new Error(`체계도 대분류를 찾지 못했습니다: ${p.node}`);
   const html = readFileSync(`scripts/digest/pages/digest-${p.page}p.html`, "utf8");
   const { title, bodyHtml, css } = convert(html, p.page);
   rows.push({
     law_code: LAW_CODE,
-    node_id: nodeId,
+    node_id: nodeId ?? null,
+    outline_label: p.outline ?? null,
     page: p.page,
     title,
     body_html: bodyHtml,
@@ -65,7 +68,7 @@ for (const p of PAGES) {
     ord: p.ord,
   });
   console.log(
-    `${String(p.page).padStart(2)}p ${title.padEnd(18)} → ${p.node} (ord ${p.ord}) · 본문 ${bodyHtml.length}자 CSS ${css.length}자`,
+    `${String(p.page).padStart(2)}p ${title.padEnd(18)} → ${(p.node ?? `「${p.outline}」(독립 항목)`).padEnd(22)} (ord ${p.ord}) · 본문 ${bodyHtml.length}자 CSS ${css.length}자`,
   );
 }
 
