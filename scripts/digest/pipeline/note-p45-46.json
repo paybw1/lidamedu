@@ -1,0 +1,3372 @@
+{
+ "slide": "[object Object]+[object Object]",
+ "shapes": [
+  {
+   "id": "95",
+   "name": "직사각형 94",
+   "x": 8077192,
+   "y": 3734088,
+   "cx": 3928533,
+   "cy": 2751374,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "복수당사자 대표(法 11)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 0
+   }
+  },
+  {
+   "id": "93",
+   "name": "직사각형 92",
+   "x": 4063993,
+   "y": 3734088,
+   "cx": 3928533,
+   "cy": 2751374,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "대리인(法 3②, 5②~10, 12)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 0
+   }
+  },
+  {
+   "id": "92",
+   "name": "직사각형 91",
+   "x": 8077193,
+   "y": 1172217,
+   "cx": 3928533,
+   "cy": 2516370,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "행위능력(法 3~5①)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 0
+   }
+  },
+  {
+   "id": "91",
+   "name": "직사각형 90",
+   "x": 4063993,
+   "y": 1172217,
+   "cx": 3928533,
+   "cy": 2516370,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "발명의 성립성(法 2)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 0
+   }
+  },
+  {
+   "id": "90",
+   "name": "직사각형 89",
+   "x": 9902104,
+   "y": 5847384,
+   "cx": 1705690,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "대표자 선정(法 11①단서)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "89",
+   "name": "직사각형 88",
+   "x": 9902104,
+   "y": 5492323,
+   "cx": 1705690,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "대표자 不선정(法 11①본문)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "88",
+   "name": "직사각형 87",
+   "x": 9902104,
+   "y": 4891282,
+   "cx": 1705690,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "심판청구(法 139)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "87",
+   "name": "직사각형 86",
+   "x": 9902104,
+   "y": 4536221,
+   "cx": 1705690,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "출원(法 44, 90, 92의3)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "86",
+   "name": "직사각형 85",
+   "x": 8513556,
+   "y": 5492323,
+   "cx": 1117603,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "그 밖의 절차"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "85",
+   "name": "직사각형 84",
+   "x": 8513556,
+   "y": 4536221,
+   "cx": 1117603,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "출원 및 심판청구"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "79",
+   "name": "직사각형 78",
+   "x": 6193690,
+   "y": 5525608,
+   "cx": 1635370,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "개별대리(法 9)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "78",
+   "name": "직사각형 77",
+   "x": 6193690,
+   "y": 6124786,
+   "cx": 1635370,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "민사소송법의 준용(法 12)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "69",
+   "name": "직사각형 68",
+   "x": 6193690,
+   "y": 5826163,
+   "cx": 1635370,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "대리인의 선임/개임(法 10)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "68",
+   "name": "직사각형 67",
+   "x": 6193690,
+   "y": 5224640,
+   "cx": 1635370,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "대리권의 불소멸(法 8)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "67",
+   "name": "직사각형 66",
+   "x": 6193690,
+   "y": 4935833,
+   "cx": 1635370,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "대리권의 증명(法 7)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "66",
+   "name": "직사각형 65",
+   "x": 6193690,
+   "y": 4648791,
+   "cx": 1635370,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "대리권의 범위(法 6)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "65",
+   "name": "직사각형 64",
+   "x": 4390289,
+   "y": 4657258,
+   "cx": 1635370,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "대리권의 내용"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "64",
+   "name": "직사각형 63",
+   "x": 4390289,
+   "y": 4248343,
+   "cx": 1635370,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "대리인의 종류(法 3 ②, 5②)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "56",
+   "name": "직사각형 55",
+   "x": 10020640,
+   "y": 2931321,
+   "cx": 884442,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "예외"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "55",
+   "name": "직사각형 54",
+   "x": 10020640,
+   "y": 2607076,
+   "cx": 884442,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "원칙(法 5①)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "53",
+   "name": "직사각형 52",
+   "x": 10020640,
+   "y": 2250026,
+   "cx": 884442,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "예외(法 3, 4)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "52",
+   "name": "직사각형 51",
+   "x": 10020640,
+   "y": 1925781,
+   "cx": 884442,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "원칙"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "49",
+   "name": "직사각형 48",
+   "x": 8936907,
+   "y": 2605640,
+   "cx": 638908,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "재외자"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "48",
+   "name": "직사각형 47",
+   "x": 8936907,
+   "y": 1934248,
+   "cx": 638908,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "재내자"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "37",
+   "name": "직사각형 36",
+   "x": 6193690,
+   "y": 3139143,
+   "cx": 1635370,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "컴퓨터프로그램관련발명"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "35",
+   "name": "직사각형 34",
+   "x": 6193690,
+   "y": 2851276,
+   "cx": 1635370,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "용도발명"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "33",
+   "name": "직사각형 32",
+   "x": 6193690,
+   "y": 2562469,
+   "cx": 1635370,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "미생물발명"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "30",
+   "name": "직사각형 29",
+   "x": 6193690,
+   "y": 2275427,
+   "cx": 1635370,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "식물발명"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "60",
+   "name": "직사각형 59",
+   "x": 4390289,
+   "y": 2283894,
+   "cx": 1635370,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "예외: 탄력적 해석"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "41",
+   "name": "직사각형 40",
+   "x": 4390289,
+   "y": 1858045,
+   "cx": 1635370,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "원칙: 발명의 정의 규정 만족"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "32",
+   "name": "직사각형 31",
+   "x": 1135236,
+   "y": 5983588,
+   "cx": 2823906,
+   "cy": 355666,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "절차의 정지(法 20~24, 78, 164)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 0
+   }
+  },
+  {
+   "id": "31",
+   "name": "직사각형 30",
+   "x": 1135236,
+   "y": 5529238,
+   "cx": 2823906,
+   "cy": 355666,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "절차의 효력의 승계 및 절차의 속행(法 18, 19)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 0
+   }
+  },
+  {
+   "id": "76",
+   "name": "직사각형 75",
+   "x": 1135236,
+   "y": 5075700,
+   "cx": 2823906,
+   "cy": 355666,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "추후보완(法 17, 67의3)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 0
+   }
+  },
+  {
+   "id": "75",
+   "name": "직사각형 74",
+   "x": 1135236,
+   "y": 4608951,
+   "cx": 2823906,
+   "cy": 355666,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "특허에 관한 절차 일반(法 16, 28~28의5)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 0
+   }
+  },
+  {
+   "id": "74",
+   "name": "직사각형 73",
+   "x": 1135236,
+   "y": 4154601,
+   "cx": 2823906,
+   "cy": 355666,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "기일과 기간(法 14, 15)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 0
+   }
+  },
+  {
+   "id": "12",
+   "name": "직사각형 11",
+   "x": 1135236,
+   "y": 3663160,
+   "cx": 2823906,
+   "cy": 355666,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "재외자의 재판관할(法 13)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 0
+   }
+  },
+  {
+   "id": "11",
+   "name": "직사각형 10",
+   "x": 1135236,
+   "y": 3188939,
+   "cx": 2823906,
+   "cy": 355666,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "복수당사자 대표(法 11)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 0
+   }
+  },
+  {
+   "id": "10",
+   "name": "직사각형 9",
+   "x": 1135236,
+   "y": 2733274,
+   "cx": 2823906,
+   "cy": 355666,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "대리인(法 3②, 5②~10, 12)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 0
+   }
+  },
+  {
+   "id": "9",
+   "name": "직사각형 8",
+   "x": 1135236,
+   "y": 2259053,
+   "cx": 2823906,
+   "cy": 355666,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "행위능력(法 3~5①, 7의2)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 0
+   }
+  },
+  {
+   "id": "8",
+   "name": "직사각형 7",
+   "x": 1135236,
+   "y": 1798844,
+   "cx": 2823906,
+   "cy": 355666,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "정의(法 2)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 0
+   }
+  },
+  {
+   "id": "7",
+   "name": "직사각형 6",
+   "x": 1135236,
+   "y": 1324623,
+   "cx": 2823906,
+   "cy": 355666,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "목적(法 1)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 0
+   }
+  },
+  {
+   "id": "5",
+   "name": "직사각형 4",
+   "x": 182592,
+   "y": 3540483,
+   "cx": 602531,
+   "cy": 607352,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "총칙"
+   ],
+   "fill": null,
+   "line": {}
+  },
+  {
+   "id": "b227",
+   "name": "직사각형 226",
+   "x": 12417206,
+   "y": 4340926,
+   "cx": 7738540,
+   "cy": 2200351,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "절차의 정지(法 20~24, 78, 164)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 0
+   }
+  },
+  {
+   "id": "b226",
+   "name": "직사각형 225",
+   "x": 16024006,
+   "y": 1172217,
+   "cx": 4131740,
+   "cy": 3078050,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "특허에 관한 절차 일반(法 16, 28~28의5)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 0
+   }
+  },
+  {
+   "id": "b225",
+   "name": "직사각형 224",
+   "x": 12417206,
+   "y": 1172217,
+   "cx": 3479807,
+   "cy": 3078050,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "기일과 기간(法 14, 15)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 0
+   }
+  },
+  {
+   "id": "b178",
+   "name": "자유형 177",
+   "x": 18669848,
+   "y": 4885688,
+   "cx": 182413,
+   "cy": 1515299,
+   "flipH": false,
+   "flipV": false,
+   "geom": null,
+   "adj": [
+    {
+     "name": "connsiteX0",
+     "fmla": "*/ 0 w 685800"
+    },
+    {
+     "name": "connsiteY0",
+     "fmla": "*/ 0 h 2959100"
+    },
+    {
+     "name": "connsiteX1",
+     "fmla": "*/ 685800 w 685800"
+    },
+    {
+     "name": "connsiteY1",
+     "fmla": "*/ 0 h 2959100"
+    },
+    {
+     "name": "connsiteX2",
+     "fmla": "*/ 685800 w 685800"
+    },
+    {
+     "name": "connsiteY2",
+     "fmla": "*/ 2959100 h 2959100"
+    },
+    {
+     "name": "connsiteX3",
+     "fmla": "*/ 114300 w 685800"
+    },
+    {
+     "name": "connsiteY3",
+     "fmla": "*/ 2959100 h 2959100"
+    }
+   ],
+   "text": [],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b177",
+   "name": "직사각형 176",
+   "x": 19273834,
+   "y": 5181349,
+   "cx": 674515,
+   "cy": 621783,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "정지",
+    "효과",
+    "(法 24)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b169",
+   "name": "직사각형 168",
+   "x": 16626729,
+   "y": 5703666,
+   "cx": 1901436,
+   "cy": 237576,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "명령에 의한 수계(法 22⑤⑥⑦)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b168",
+   "name": "직사각형 167",
+   "x": 16626729,
+   "y": 5417722,
+   "cx": 1901436,
+   "cy": 237576,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "신청에 의한 수계(法 22①②③④)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b167",
+   "name": "직사각형 166",
+   "x": 14575900,
+   "y": 6118040,
+   "cx": 1833346,
+   "cy": 237576,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "결정중지 및 해소(法 23②③④)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b166",
+   "name": "직사각형 165",
+   "x": 14575900,
+   "y": 5827542,
+   "cx": 1833346,
+   "cy": 237576,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "당연중지 및 해소(法 23①④)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b165",
+   "name": "직사각형 164",
+   "x": 14575900,
+   "y": 5417722,
+   "cx": 1833346,
+   "cy": 237576,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "수계방법(法 22)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b164",
+   "name": "직사각형 163",
+   "x": 14575900,
+   "y": 5109982,
+   "cx": 1833346,
+   "cy": 237576,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "수계자(法 21)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b162",
+   "name": "직사각형 161",
+   "x": 14575900,
+   "y": 4811834,
+   "cx": 1833346,
+   "cy": 237576,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "중단사유(法 20)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b161",
+   "name": "직사각형 160",
+   "x": 13534795,
+   "y": 6122137,
+   "cx": 845822,
+   "cy": 233131,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "결정중지 ○"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b160",
+   "name": "직사각형 159",
+   "x": 13534795,
+   "y": 5831639,
+   "cx": 845822,
+   "cy": 233131,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "당연중지 ○"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b159",
+   "name": "직사각형 158",
+   "x": 13534795,
+   "y": 5193340,
+   "cx": 845822,
+   "cy": 233131,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "결정중단 ×"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b158",
+   "name": "직사각형 157",
+   "x": 13534795,
+   "y": 4885688,
+   "cx": 845822,
+   "cy": 233131,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "당연중단 ○"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b153",
+   "name": "직사각형 152",
+   "x": 12771811,
+   "y": 5948065,
+   "cx": 525935,
+   "cy": 229432,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "중지"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b152",
+   "name": "직사각형 151",
+   "x": 12771811,
+   "y": 5032594,
+   "cx": 525935,
+   "cy": 229432,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "중단"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b130",
+   "name": "직사각형 129",
+   "x": 19283689,
+   "y": 3816345,
+   "cx": 702729,
+   "cy": 315778,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "施規 11"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b129",
+   "name": "직사각형 128",
+   "x": 19283689,
+   "y": 3409202,
+   "cx": 702729,
+   "cy": 315778,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "法 46, 16"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b128",
+   "name": "직사각형 127",
+   "x": 18318484,
+   "y": 3815618,
+   "cx": 702729,
+   "cy": 315778,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "흠결 ○"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b126",
+   "name": "직사각형 125",
+   "x": 18318484,
+   "y": 3373722,
+   "cx": 702729,
+   "cy": 315778,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "흠결 ×"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b125",
+   "name": "직사각형 124",
+   "x": 18318484,
+   "y": 2926383,
+   "cx": 1667934,
+   "cy": 315778,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "전자문서에 의한 제출",
+    "(法 28의 3, 4)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b124",
+   "name": "직사각형 123",
+   "x": 18318484,
+   "y": 2493725,
+   "cx": 1667934,
+   "cy": 315778,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "서면에 의한 제출",
+    "(法 28)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b123",
+   "name": "직사각형 122",
+   "x": 16396546,
+   "y": 3366736,
+   "cx": 1667934,
+   "cy": 315778,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "방식심사"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b122",
+   "name": "직사각형 121",
+   "x": 16396546,
+   "y": 2926383,
+   "cx": 1667934,
+   "cy": 315778,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "수수료의 납부",
+    "(法 82)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b121",
+   "name": "직사각형 120",
+   "x": 16396546,
+   "y": 2493725,
+   "cx": 1667934,
+   "cy": 315778,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "특허에 관한 서류의 제출"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b120",
+   "name": "직사각형 119",
+   "x": 16396546,
+   "y": 2070306,
+   "cx": 1667934,
+   "cy": 315778,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "특허에 관한 서류의 작성"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b104",
+   "name": "자유형 103",
+   "x": 13001413,
+   "y": 3073408,
+   "cx": 448733,
+   "cy": 609600,
+   "flipH": false,
+   "flipV": false,
+   "geom": null,
+   "adj": [
+    {
+     "name": "connsiteX0",
+     "fmla": "*/ 0 w 448733"
+    },
+    {
+     "name": "connsiteY0",
+     "fmla": "*/ 0 h 609600"
+    },
+    {
+     "name": "connsiteX1",
+     "fmla": "*/ 0 w 448733"
+    },
+    {
+     "name": "connsiteY1",
+     "fmla": "*/ 609600 h 609600"
+    },
+    {
+     "name": "connsiteX2",
+     "fmla": "*/ 448733 w 448733"
+    },
+    {
+     "name": "connsiteY2",
+     "fmla": "*/ 609600 h 609600"
+    }
+   ],
+   "text": [],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b63",
+   "name": "자유형 62",
+   "x": 13001413,
+   "y": 3073408,
+   "cx": 440267,
+   "cy": 186267,
+   "flipH": false,
+   "flipV": false,
+   "geom": null,
+   "adj": [
+    {
+     "name": "connsiteX0",
+     "fmla": "*/ 0 w 440267"
+    },
+    {
+     "name": "connsiteY0",
+     "fmla": "*/ 0 h 186267"
+    },
+    {
+     "name": "connsiteX1",
+     "fmla": "*/ 0 w 440267"
+    },
+    {
+     "name": "connsiteY1",
+     "fmla": "*/ 186267 h 186267"
+    },
+    {
+     "name": "connsiteX2",
+     "fmla": "*/ 440267 w 440267"
+    },
+    {
+     "name": "connsiteY2",
+     "fmla": "*/ 186267 h 186267"
+    }
+   ],
+   "text": [],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 0
+   }
+  },
+  {
+   "id": "b100",
+   "name": "직사각형 99",
+   "x": 14546903,
+   "y": 3844964,
+   "cx": 1121510,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "지정기간 ○"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b98",
+   "name": "직사각형 97",
+   "x": 14546903,
+   "y": 3557097,
+   "cx": 1121510,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "법정기간 ○"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b96",
+   "name": "직사각형 95",
+   "x": 14546903,
+   "y": 3268290,
+   "cx": 1121510,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "지정기일 ○"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b94",
+   "name": "직사각형 93",
+   "x": 14546903,
+   "y": 2981248,
+   "cx": 1121510,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "법정기일 ×"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b84",
+   "name": "직사각형 83",
+   "x": 13450146,
+   "y": 3557820,
+   "cx": 931326,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "기간"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b82",
+   "name": "직사각형 81",
+   "x": 13450146,
+   "y": 3134481,
+   "cx": 931326,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "기일"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b48",
+   "name": "직사각형 47",
+   "x": 16396546,
+   "y": 1637903,
+   "cx": 1667934,
+   "cy": 315778,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "고유번호의 부여 및 기재",
+    "(法 28의2)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b37",
+   "name": "직사각형 36",
+   "x": 14546903,
+   "y": 2470250,
+   "cx": 1121510,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "만료일 결정"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b35",
+   "name": "직사각형 34",
+   "x": 14546903,
+   "y": 2182383,
+   "cx": 1121510,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "계산방법 결정"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b33",
+   "name": "직사각형 32",
+   "x": 14546903,
+   "y": 1893576,
+   "cx": 1121510,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "기산일 결정"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b30",
+   "name": "직사각형 29",
+   "x": 14546903,
+   "y": 1606534,
+   "cx": 1121510,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "초일 결정"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b60",
+   "name": "직사각형 59",
+   "x": 12743502,
+   "y": 1615001,
+   "cx": 1635370,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "기간 계산(法 14)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b41",
+   "name": "직사각형 40",
+   "x": 12743502,
+   "y": 2827325,
+   "cx": 1635370,
+   "cy": 249199,
+   "flipH": false,
+   "flipV": false,
+   "geom": "rect",
+   "adj": [],
+   "text": [
+    "기일과 기간의 종류(法 15)"
+   ],
+   "fill": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  }
+ ],
+ "links": [
+  {
+   "id": "105",
+   "name": "꺾인 연결선 104",
+   "x": 9631159,
+   "y": 5616923,
+   "cx": 270945,
+   "cy": 355061,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "86",
+   "fromIdx": "3",
+   "to": "90",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "103",
+   "name": "꺾인 연결선 102",
+   "x": 9631159,
+   "y": 5616923,
+   "cx": 270945,
+   "cy": 12700,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "86",
+   "fromIdx": "3",
+   "to": "89",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "101",
+   "name": "꺾인 연결선 100",
+   "x": 9631159,
+   "y": 4660821,
+   "cx": 270945,
+   "cy": 355061,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "85",
+   "fromIdx": "3",
+   "to": "88",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "99",
+   "name": "꺾인 연결선 98",
+   "x": 9631159,
+   "y": 4660821,
+   "cx": 270945,
+   "cy": 12700,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "85",
+   "fromIdx": "3",
+   "to": "87",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "97",
+   "name": "꺾인 연결선 96",
+   "x": 8513556,
+   "y": 4660821,
+   "cx": 12700,
+   "cy": 956102,
+   "flipH": false,
+   "flipV": true,
+   "geom": "bentConnector3",
+   "adj": [
+    {
+     "name": "adj1",
+     "fmla": "val 1800000"
+    }
+   ],
+   "from": "85",
+   "fromIdx": "1",
+   "to": "86",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "83",
+   "name": "꺾인 연결선 82",
+   "x": 6025659,
+   "y": 4781858,
+   "cx": 168031,
+   "cy": 868350,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "65",
+   "fromIdx": "3",
+   "to": "79",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "81",
+   "name": "꺾인 연결선 80",
+   "x": 6025659,
+   "y": 4781858,
+   "cx": 168031,
+   "cy": 1467528,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "65",
+   "fromIdx": "3",
+   "to": "78",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "77",
+   "name": "꺾인 연결선 76",
+   "x": 6025659,
+   "y": 4781858,
+   "cx": 168031,
+   "cy": 567382,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "65",
+   "fromIdx": "3",
+   "to": "68",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "73",
+   "name": "꺾인 연결선 72",
+   "x": 6025659,
+   "y": 4781858,
+   "cx": 168031,
+   "cy": 278575,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "65",
+   "fromIdx": "3",
+   "to": "67",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "72",
+   "name": "꺾인 연결선 71",
+   "x": 6025659,
+   "y": 4781858,
+   "cx": 168031,
+   "cy": 1168905,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "65",
+   "fromIdx": "3",
+   "to": "69",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "71",
+   "name": "꺾인 연결선 70",
+   "x": 6025659,
+   "y": 4773391,
+   "cx": 168031,
+   "cy": 8467,
+   "flipH": false,
+   "flipV": true,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "65",
+   "fromIdx": "3",
+   "to": "66",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "70",
+   "name": "꺾인 연결선 69",
+   "x": 4390289,
+   "y": 4372942,
+   "cx": 12700,
+   "cy": 408915,
+   "flipH": false,
+   "flipV": true,
+   "geom": "bentConnector3",
+   "adj": [
+    {
+     "name": "adj1",
+     "fmla": "val 1800000"
+    }
+   ],
+   "from": "64",
+   "fromIdx": "1",
+   "to": "65",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "59",
+   "name": "꺾인 연결선 58",
+   "x": 9575815,
+   "y": 2730240,
+   "cx": 444825,
+   "cy": 325681,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "49",
+   "fromIdx": "3",
+   "to": "56",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "47",
+   "name": "꺾인 연결선 46",
+   "x": 9575815,
+   "y": 2058848,
+   "cx": 444825,
+   "cy": 315778,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "48",
+   "fromIdx": "3",
+   "to": "53",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "57",
+   "name": "꺾인 연결선 56",
+   "x": 9575816,
+   "y": 2730240,
+   "cx": 444825,
+   "cy": 1436,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [
+    {
+     "name": "adj1",
+     "fmla": "val 50000"
+    }
+   ],
+   "from": "55",
+   "fromIdx": "1",
+   "to": "49",
+   "toIdx": "3",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "54",
+   "name": "꺾인 연결선 53",
+   "x": 9575816,
+   "y": 2050380,
+   "cx": 444825,
+   "cy": 8467,
+   "flipH": false,
+   "flipV": true,
+   "geom": "bentConnector3",
+   "adj": [
+    {
+     "name": "adj1",
+     "fmla": "val 50000"
+    }
+   ],
+   "from": "52",
+   "fromIdx": "1",
+   "to": "48",
+   "toIdx": "3",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "50",
+   "name": "꺾인 연결선 49",
+   "x": 8936907,
+   "y": 2058848,
+   "cx": 12700,
+   "cy": 671392,
+   "flipH": false,
+   "flipV": true,
+   "geom": "bentConnector3",
+   "adj": [
+    {
+     "name": "adj1",
+     "fmla": "val 1800000"
+    }
+   ],
+   "from": "48",
+   "fromIdx": "1",
+   "to": "49",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "26",
+   "name": "꺾인 연결선 25",
+   "x": 6025659,
+   "y": 2408494,
+   "cx": 168031,
+   "cy": 567382,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "60",
+   "fromIdx": "3",
+   "to": "35",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "23",
+   "name": "꺾인 연결선 22",
+   "x": 6025659,
+   "y": 2408494,
+   "cx": 168031,
+   "cy": 278575,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "60",
+   "fromIdx": "3",
+   "to": "33",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "20",
+   "name": "꺾인 연결선 19",
+   "x": 6025659,
+   "y": 2408494,
+   "cx": 168031,
+   "cy": 855249,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "60",
+   "fromIdx": "3",
+   "to": "37",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "16",
+   "name": "꺾인 연결선 15",
+   "x": 6025659,
+   "y": 2400027,
+   "cx": 168031,
+   "cy": 8467,
+   "flipH": false,
+   "flipV": true,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "60",
+   "fromIdx": "3",
+   "to": "30",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "6",
+   "name": "꺾인 연결선 5",
+   "x": 4390289,
+   "y": 1982644,
+   "cx": 12700,
+   "cy": 425849,
+   "flipH": false,
+   "flipV": true,
+   "geom": "bentConnector3",
+   "adj": [
+    {
+     "name": "adj1",
+     "fmla": "val 1800000"
+    }
+   ],
+   "from": "41",
+   "fromIdx": "1",
+   "to": "60",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "40",
+   "name": "꺾인 연결선 39",
+   "x": 785123,
+   "y": 3840993,
+   "cx": 350113,
+   "cy": 3166,
+   "flipH": false,
+   "flipV": true,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "5",
+   "fromIdx": "3",
+   "to": "12",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 0
+   }
+  },
+  {
+   "id": "38",
+   "name": "꺾인 연결선 37",
+   "x": 785123,
+   "y": 3366772,
+   "cx": 350113,
+   "cy": 477387,
+   "flipH": false,
+   "flipV": true,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "5",
+   "fromIdx": "3",
+   "to": "11",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 0
+   }
+  },
+  {
+   "id": "36",
+   "name": "꺾인 연결선 35",
+   "x": 785123,
+   "y": 2911107,
+   "cx": 350113,
+   "cy": 933052,
+   "flipH": false,
+   "flipV": true,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "5",
+   "fromIdx": "3",
+   "to": "10",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 0
+   }
+  },
+  {
+   "id": "34",
+   "name": "꺾인 연결선 33",
+   "x": 785123,
+   "y": 3844159,
+   "cx": 350113,
+   "cy": 1862912,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "5",
+   "fromIdx": "3",
+   "to": "31",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 0
+   }
+  },
+  {
+   "id": "29",
+   "name": "꺾인 연결선 28",
+   "x": 785123,
+   "y": 3844159,
+   "cx": 350113,
+   "cy": 1409374,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "5",
+   "fromIdx": "3",
+   "to": "76",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 0
+   }
+  },
+  {
+   "id": "27",
+   "name": "꺾인 연결선 26",
+   "x": 785123,
+   "y": 3844159,
+   "cx": 350113,
+   "cy": 942625,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "5",
+   "fromIdx": "3",
+   "to": "75",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 0
+   }
+  },
+  {
+   "id": "25",
+   "name": "꺾인 연결선 24",
+   "x": 785123,
+   "y": 3844159,
+   "cx": 350113,
+   "cy": 488275,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "5",
+   "fromIdx": "3",
+   "to": "74",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 0
+   }
+  },
+  {
+   "id": "21",
+   "name": "꺾인 연결선 20",
+   "x": 785123,
+   "y": 2436886,
+   "cx": 350113,
+   "cy": 1407273,
+   "flipH": false,
+   "flipV": true,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "5",
+   "fromIdx": "3",
+   "to": "9",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 0
+   }
+  },
+  {
+   "id": "19",
+   "name": "꺾인 연결선 18",
+   "x": 785123,
+   "y": 1976677,
+   "cx": 350113,
+   "cy": 1867482,
+   "flipH": false,
+   "flipV": true,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "5",
+   "fromIdx": "3",
+   "to": "8",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 0
+   }
+  },
+  {
+   "id": "17",
+   "name": "꺾인 연결선 16",
+   "x": 785123,
+   "y": 3844159,
+   "cx": 350113,
+   "cy": 2317262,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "5",
+   "fromIdx": "3",
+   "to": "32",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 0
+   }
+  },
+  {
+   "id": "15",
+   "name": "꺾인 연결선 14",
+   "x": 785123,
+   "y": 1502456,
+   "cx": 350113,
+   "cy": 2341703,
+   "flipH": false,
+   "flipV": true,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "5",
+   "fromIdx": "3",
+   "to": "7",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 0
+   }
+  },
+  {
+   "id": "b221",
+   "name": "꺾인 연결선 220",
+   "x": 16409246,
+   "y": 5536510,
+   "cx": 217483,
+   "cy": 12700,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [
+    {
+     "name": "adj1",
+     "fmla": "val 50000"
+    }
+   ],
+   "from": "b165",
+   "fromIdx": "3",
+   "to": "b168",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b175",
+   "name": "꺾인 연결선 174",
+   "x": 16409246,
+   "y": 5536510,
+   "cx": 217483,
+   "cy": 285944,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [
+    {
+     "name": "adj1",
+     "fmla": "val 50000"
+    }
+   ],
+   "from": "b165",
+   "fromIdx": "3",
+   "to": "b169",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b174",
+   "name": "꺾인 연결선 173",
+   "x": 14380617,
+   "y": 6236828,
+   "cx": 195283,
+   "cy": 1875,
+   "flipH": false,
+   "flipV": true,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "b161",
+   "fromIdx": "3",
+   "to": "b167",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b173",
+   "name": "꺾인 연결선 172",
+   "x": 14380617,
+   "y": 5946330,
+   "cx": 195283,
+   "cy": 1875,
+   "flipH": false,
+   "flipV": true,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "b160",
+   "fromIdx": "3",
+   "to": "b166",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b172",
+   "name": "꺾인 연결선 171",
+   "x": 14380617,
+   "y": 5002254,
+   "cx": 195283,
+   "cy": 226516,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "b158",
+   "fromIdx": "3",
+   "to": "b164",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b171",
+   "name": "꺾인 연결선 170",
+   "x": 14380617,
+   "y": 5002254,
+   "cx": 195283,
+   "cy": 534256,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "b158",
+   "fromIdx": "3",
+   "to": "b165",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b170",
+   "name": "꺾인 연결선 169",
+   "x": 14380617,
+   "y": 4930622,
+   "cx": 195283,
+   "cy": 71632,
+   "flipH": false,
+   "flipV": true,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "b158",
+   "fromIdx": "3",
+   "to": "b162",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b163",
+   "name": "꺾인 연결선 162",
+   "x": 12771811,
+   "y": 5147309,
+   "cx": 12700,
+   "cy": 915471,
+   "flipH": false,
+   "flipV": true,
+   "geom": "bentConnector3",
+   "adj": [
+    {
+     "name": "adj1",
+     "fmla": "val 1800000"
+    }
+   ],
+   "from": "b152",
+   "fromIdx": "1",
+   "to": "b153",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b157",
+   "name": "꺾인 연결선 156",
+   "x": 13297746,
+   "y": 5948205,
+   "cx": 237049,
+   "cy": 114576,
+   "flipH": false,
+   "flipV": true,
+   "geom": "bentConnector3",
+   "adj": [
+    {
+     "name": "adj1",
+     "fmla": "val 50000"
+    }
+   ],
+   "from": "b153",
+   "fromIdx": "3",
+   "to": "b160",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b156",
+   "name": "꺾인 연결선 155",
+   "x": 13297746,
+   "y": 6062781,
+   "cx": 237049,
+   "cy": 175922,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [
+    {
+     "name": "adj1",
+     "fmla": "val 50000"
+    }
+   ],
+   "from": "b153",
+   "fromIdx": "3",
+   "to": "b161",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b155",
+   "name": "꺾인 연결선 154",
+   "x": 13297746,
+   "y": 5002254,
+   "cx": 237049,
+   "cy": 145056,
+   "flipH": false,
+   "flipV": true,
+   "geom": "bentConnector3",
+   "adj": [
+    {
+     "name": "adj1",
+     "fmla": "val 50000"
+    }
+   ],
+   "from": "b152",
+   "fromIdx": "3",
+   "to": "b158",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b154",
+   "name": "꺾인 연결선 153",
+   "x": 13297746,
+   "y": 5147310,
+   "cx": 237049,
+   "cy": 162596,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [
+    {
+     "name": "adj1",
+     "fmla": "val 50000"
+    }
+   ],
+   "from": "b152",
+   "fromIdx": "3",
+   "to": "b159",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b150",
+   "name": "꺾인 연결선 149",
+   "x": 19021213,
+   "y": 3973507,
+   "cx": 262476,
+   "cy": 727,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "b128",
+   "fromIdx": "3",
+   "to": "b130",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b148",
+   "name": "꺾인 연결선 147",
+   "x": 19021213,
+   "y": 3567091,
+   "cx": 262476,
+   "cy": 406416,
+   "flipH": false,
+   "flipV": true,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "b128",
+   "fromIdx": "3",
+   "to": "b129",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b146",
+   "name": "꺾인 연결선 145",
+   "x": 18064480,
+   "y": 3524625,
+   "cx": 254004,
+   "cy": 448882,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "b123",
+   "fromIdx": "3",
+   "to": "b128",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b144",
+   "name": "꺾인 연결선 143",
+   "x": 18064480,
+   "y": 3524625,
+   "cx": 254004,
+   "cy": 6986,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "b123",
+   "fromIdx": "3",
+   "to": "b126",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b142",
+   "name": "꺾인 연결선 141",
+   "x": 18064480,
+   "y": 2651614,
+   "cx": 254004,
+   "cy": 432658,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "b121",
+   "fromIdx": "3",
+   "to": "b125",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b140",
+   "name": "꺾인 연결선 139",
+   "x": 18064480,
+   "y": 2651614,
+   "cx": 254004,
+   "cy": 12700,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "b121",
+   "fromIdx": "3",
+   "to": "b124",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b132",
+   "name": "꺾인 연결선 131",
+   "x": 16396546,
+   "y": 1795791,
+   "cx": 12700,
+   "cy": 1728833,
+   "flipH": false,
+   "flipV": true,
+   "geom": "bentConnector3",
+   "adj": [
+    {
+     "name": "adj1",
+     "fmla": "val 1800000"
+    }
+   ],
+   "from": "b48",
+   "fromIdx": "1",
+   "to": "b123",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b58",
+   "name": "꺾인 연결선 57",
+   "x": 14381472,
+   "y": 3682420,
+   "cx": 165431,
+   "cy": 287144,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "b84",
+   "fromIdx": "3",
+   "to": "b100",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b46",
+   "name": "꺾인 연결선 45",
+   "x": 14381472,
+   "y": 3681697,
+   "cx": 165431,
+   "cy": 723,
+   "flipH": false,
+   "flipV": true,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "b84",
+   "fromIdx": "3",
+   "to": "b98",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b44",
+   "name": "꺾인 연결선 43",
+   "x": 14381472,
+   "y": 3259081,
+   "cx": 165431,
+   "cy": 133809,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "b82",
+   "fromIdx": "3",
+   "to": "b96",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b42",
+   "name": "꺾인 연결선 41",
+   "x": 14381472,
+   "y": 3105848,
+   "cx": 165431,
+   "cy": 153233,
+   "flipH": false,
+   "flipV": true,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "b82",
+   "fromIdx": "3",
+   "to": "b94",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b26",
+   "name": "꺾인 연결선 25",
+   "x": 14378872,
+   "y": 1739601,
+   "cx": 168031,
+   "cy": 567382,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "b60",
+   "fromIdx": "3",
+   "to": "b35",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b23",
+   "name": "꺾인 연결선 22",
+   "x": 14378872,
+   "y": 1739601,
+   "cx": 168031,
+   "cy": 278575,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "b60",
+   "fromIdx": "3",
+   "to": "b33",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b20",
+   "name": "꺾인 연결선 19",
+   "x": 14378872,
+   "y": 1739601,
+   "cx": 168031,
+   "cy": 855249,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "b60",
+   "fromIdx": "3",
+   "to": "b37",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b16",
+   "name": "꺾인 연결선 15",
+   "x": 14378872,
+   "y": 1731134,
+   "cx": 168031,
+   "cy": 8467,
+   "flipH": false,
+   "flipV": true,
+   "geom": "bentConnector3",
+   "adj": [],
+   "from": "b60",
+   "fromIdx": "3",
+   "to": "b30",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b6",
+   "name": "꺾인 연결선 5",
+   "x": 12743502,
+   "y": 1739601,
+   "cx": 12700,
+   "cy": 1212324,
+   "flipH": false,
+   "flipV": false,
+   "geom": "bentConnector3",
+   "adj": [
+    {
+     "name": "adj1",
+     "fmla": "val 1800000"
+    }
+   ],
+   "from": "b41",
+   "fromIdx": "1",
+   "to": "b60",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  }
+ ]
+}

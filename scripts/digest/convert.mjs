@@ -28,8 +28,10 @@ const CLASS_PREFIX = "dg-";
  * 나눈 값이다 — 4p 10.5px → 0.97vh. 열이 많은 쪽일수록 작아진다.
  * ★도형 쪽(2·3·10·11·13p)은 넣지 않는다 — 글자가 폭에 비례(cqw)해 vh 로 묶으면 어긋난다.
  */
+// ★키는 **나뉜 화면 기준**(scopeKey) — 9p·11p 는 덩이별로 다르다.
 const TABLE_VH = {
-  4: 0.97, 5: 0.85, 6: 0.88, 7: 0.97, 8: 0.84, 9: 0.78, 10: 1.2, 11: 0.62, 12: 1.15,
+  4: 0.97, 5: 0.85, 6: 0.88, 7: 0.97, 8: 0.84, 10: 1.2, 12: 1.15,
+  "9-0": 0.9, "9-1": 1.2, "11-0": 0.95,
 };
 
 /**
@@ -37,7 +39,7 @@ const TABLE_VH = {
  * 폭 천장을 `가로세로비 × 이 값` 으로 씌우면 높이가 화면에 묶인다.
  * 적지 않으면 78 을 도형 수로 나눠 쓴다. 표가 함께 있는 쪽(11p)은 표 몫을 남겨야 한다.
  */
-const DG_VH = { 3: 35, 11: 12, 13: 71 };
+const DG_VH = { 3: 76, "11-1": 74, 13: 71 };
 
 /** `sel { ... }` 을 중괄호 짝을 세어 잘라 낸다. @media 는 안쪽을 다시 부른다. */
 function parseRules(css) {
@@ -186,7 +188,7 @@ export function convert(html, page, opts = {}) {
   //   그 최소 폭을 걷어내고 `max-width:비율 × Nvh` 로 바꿔 **높이를 화면에 묶는다**.
   //   한 쪽에 도형이 여럿이면 몫을 나눈다.
   const dgCount = (bodyHtml.match(/class="dg"/g) ?? []).length;
-  const share = DG_VH[page] ?? (dgCount ? Math.max(24, Math.floor(78 / dgCount)) : 0);
+  const share = DG_VH[scopeKey] ?? DG_VH[page] ?? (dgCount ? Math.max(24, Math.floor(78 / dgCount)) : 0);
   const withDg = bodyHtml.replace(
     /aspect-ratio:(\d+) \/ (\d+);min-width:\d+px/g,
     (_m, w, h) =>
@@ -234,7 +236,7 @@ export function convert(html, page, opts = {}) {
   // ★`--digest-zoom` — 보는 사람이 키우고 줄일 수 있게 곱한다(팝업 머리의 글자 크기
   //   조절). 기본 1. 화면 배율이 높거나 창이 작으면 vh 값이 8px 바닥에 걸려 너무 작게
   //   나오는데, 그때 손으로 키우면 된다(원장 지시 2026-09-10). 키우면 스크롤이 붙는다.
-  const vh = TABLE_VH[page];
+  const vh = TABLE_VH[scopeKey] ?? TABLE_VH[page];
   let fitCss = vh
     ? `\n${scope} table{font-size:calc(clamp(8px, ${vh}vh, 12.5px) * var(--digest-zoom, 1))}` +
       `\n${scope} th,${scope} td{padding:.48em .56em;line-height:1.42}`

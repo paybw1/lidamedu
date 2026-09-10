@@ -23,8 +23,11 @@ const common = (file, key) => ({
   renames: { 74: [MERGED], 69: ["대리인의 선임/교체(法10)"] },
   drop: ["76"], shift: rowsUp(file),
 });
-const A = buildDiagram("scripts/digest/pipeline/note-p45.json", common("scripts/digest/pipeline/note-p45.json", "a"));
-const B = buildDiagram("scripts/digest/pipeline/note-p46.json", common("scripts/digest/pipeline/note-p46.json", "b"));
+// ★원장 지시 2026-09-10 — 두 그림을 **한 장으로** 합친다. 축(왼쪽 뼈대)은 45p 것을
+//   그대로 두고, 46p 에서는 「기일과 기간」·「특허에 관한 절차 일반」·「절차의 정지」
+//   세 갈래만 오른쪽에 붙인다(scripts/digest/pipeline/p3-merge.mjs 가 만든 합본).
+const MERGED_JSON = "scripts/digest/pipeline/note-p45-46.json";
+const A = buildDiagram(MERGED_JSON, common(MERGED_JSON, "a"));
 
 // 교재(정리비교표 3p)와 강의노트의 글이 다른 곳. 손대지 않고 적어만 둔다.
 const DIFFS = [
@@ -131,13 +134,7 @@ ${DIAGRAM_CSS}
   </header>
 
   <section class="panel">
-    <h2>총칙 체계 · 제1장 (1)<span class="src">강의노트 45p — 발명의 성립성 · 행위능력 · 대리인 · 복수당사자 대표</span></h2>
     ${A.html}
-  </section>
-
-  <section class="panel">
-    <h2>총칙 체계 · 제1장 (2)<span class="src">강의노트 46p — 기일과 기간 · 특허에 관한 절차 일반 · 절차의 정지</span></h2>
-    ${B.html}
   </section>
 
   <p class="foot">

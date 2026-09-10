@@ -6,7 +6,9 @@ import { CircleIcon, XCircleIcon } from "lucide-react";
 import { Badge } from "~/core/components/ui/badge";
 import { cn } from "~/core/lib/utils";
 import type { OxQuestionItem, OxTruth } from "~/features/problems/labels";
+import { MarkdownView } from "~/features/problems/components/markdown-view";
 import { stripLeadingOxMark } from "~/features/problems/lib/auto-ox";
+import { hasRichText } from "~/features/problems/lib/rich-text";
 
 export type Answer = OxTruth | null;
 
@@ -99,9 +101,16 @@ export function QuestionCard({
           {submitted && item.explanationMd && (
             <details className="bg-muted/40 mt-1 rounded-lg border p-2.5 text-xs">
               <summary className="cursor-pointer font-semibold">해설</summary>
-              <p className="text-foreground/80 mt-2 leading-relaxed whitespace-pre-wrap">
-                {stripLeadingOxMark(item.explanationMd)}
-              </p>
+              {hasRichText(item.explanationMd) ? (
+                <MarkdownView
+                  className="text-foreground/80 mt-2 leading-relaxed"
+                  text={stripLeadingOxMark(item.explanationMd)}
+                />
+              ) : (
+                <p className="text-foreground/80 mt-2 leading-relaxed whitespace-pre-wrap">
+                  {stripLeadingOxMark(item.explanationMd)}
+                </p>
+              )}
             </details>
           )}
         </div>

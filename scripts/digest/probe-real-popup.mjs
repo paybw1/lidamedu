@@ -85,6 +85,7 @@ for (const vp of [
         가로스크롤: body.scrollWidth > body.clientWidth,
       },
       자료폭: doc?.getBoundingClientRect().width,
+      도형크기: [...document.querySelectorAll(".dg-dg")].map((e) => Math.round(e.getBoundingClientRect().width) + "×" + Math.round(e.getBoundingClientRect().height)),
       표: table
         ? { w: Math.round(table.getBoundingClientRect().width), 글자: getComputedStyle(table).fontSize }
         : null,

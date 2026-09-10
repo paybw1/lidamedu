@@ -22,7 +22,9 @@ import { cn } from "~/core/lib/utils";
 import { BookmarkStars } from "~/features/annotations/components/bookmark-stars";
 import { CommentsPanel } from "~/features/comments/components/comments-panel";
 import { ORIGIN_LABEL, type ProblemOrigin } from "~/features/problems/labels";
+import { MarkdownView } from "~/features/problems/components/markdown-view";
 import { stripLeadingOxMark } from "~/features/problems/lib/auto-ox";
+import { hasRichText } from "~/features/problems/lib/rich-text";
 import { stripLeadingMarker } from "~/features/problems/lib/ox-dedup";
 import type {
   OxQuestionItem,
@@ -657,9 +659,18 @@ function OxPanelCard({
             </span>
           </p>
           {item.explanationMd ? (
-            <p className="text-muted-foreground text-xs leading-relaxed">
-              {stripLeadingOxMark(item.explanationMd)}
-            </p>
+            // ★표·이미지가 든 해설을 글자로 찍으면 코드가 그대로 보인다(오류신고
+            //   2026-09-10). 서식이 있으면 MarkdownView 로 그린다.
+            hasRichText(item.explanationMd) ? (
+              <MarkdownView
+                className="text-muted-foreground text-xs leading-relaxed"
+                text={stripLeadingOxMark(item.explanationMd)}
+              />
+            ) : (
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                {stripLeadingOxMark(item.explanationMd)}
+              </p>
+            )
           ) : (
             <p className="text-muted-foreground text-xs italic">
               해설이 아직 등록되지 않았습니다.
