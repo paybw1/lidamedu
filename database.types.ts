@@ -13930,6 +13930,8 @@ export type Database = {
           ord: number
           outline_label: string | null
           page: number
+          part: number
+          scope_key: string | null
           title: string
           updated_at: string
         }
@@ -13943,6 +13945,8 @@ export type Database = {
           ord?: number
           outline_label?: string | null
           page: number
+          part?: number
+          scope_key?: string | null
           title: string
           updated_at?: string
         }
@@ -13956,6 +13960,8 @@ export type Database = {
           ord?: number
           outline_label?: string | null
           page?: number
+          part?: number
+          scope_key?: string | null
           title?: string
           updated_at?: string
         }

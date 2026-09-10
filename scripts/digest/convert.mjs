@@ -86,6 +86,20 @@ function tokenBlock(body, { aliases }) {
 const prefix = (sel, scope) =>
   sel.split(",").map((s) => `${scope} ${s.trim()}`).join(",\n");
 
+/** 본문에서 n 번째 `<section>` 덩이만 잘라 낸다(중첩 없음 — 자료 구조가 평평하다). */
+function sectionAt(html, n) {
+  const parts = [];
+  const re = /<section\b[^>]*>/g;
+  let m;
+  while ((m = re.exec(html))) {
+    const end = html.indexOf("</section>", m.index);
+    if (end < 0) break;
+    parts.push(html.slice(m.index, end + "</section>".length));
+  }
+  if (!parts[n]) throw new Error(`${n} 번째 덩이가 없습니다(총 ${parts.length}개)`);
+  return parts[n];
+}
+
 function transform(rules, scope) {
   const out = [];
   for (const r of rules) {
@@ -128,8 +142,13 @@ function transform(rules, scope) {
  * @param page 교재 쪽번호. ★한 단원에 두 쪽이 붙으면(01 총칙 = 2p+3p) 같은
  *   `.digest-doc` 아래에서 두 쪽의 규칙이 섞인다 — 쪽마다 `.dpN` 을 덧붙여 가른다.
  */
-export function convert(html, page) {
-  const scope = page ? `.digest-doc.dp${page}` : ".digest-doc";
+export function convert(html, page, opts = {}) {
+  // ★한 쪽에 덩이가 둘이면 **각각 한 화면**으로 나눈다(원장 지시 2026-09-10):
+  //   9p = 정정청구 제도 / 재심 제도, 11p = 국제출원절차 / 국내단계의 번역문 제출.
+  //   part 는 그 덩이(section) 번호. 스코프도 갈라야 CSS 가 섞이지 않는다.
+  const { part } = opts;
+  const scopeKey = part === undefined ? `${page}` : `${page}-${part}`;
+  const scope = page ? `.digest-doc.dp${scopeKey}` : ".digest-doc";
   const title = (html.match(/<title>([^<]*)<\/title>/)?.[1] ?? "")
     .split("—")[0]
     .trim();
@@ -146,13 +165,16 @@ export function convert(html, page) {
   //   아니다. 학습 화면에는 자료만 올라가야 한다(원장 지적 2026-09-09).
   //   마지막 `</section>` 뒤를 통째로 자르면 안 된다 — 2p·10p 는 그 뒤에 감싸개를
   //   닫는 `</div>` 가 있어 태그가 어긋난다. 꼬리 문단만 집어낸다.
-  const bodyHtml = inner
+  const whole = inner
     .slice(0, close)
     .replace(/<header>[\s\S]*?<\/header>/, "")
     //   ★목록(`고친 곳`·`다른 곳`)은 문단 **밖 형제**로 붙어 있어 따로 집어야 한다.
     .replace(/<p class="foot">[\s\S]*?<\/p>/g, "")
     .replace(/<ul class="(?:changes|diffs)">[\s\S]*?<\/ul>/g, "")
     .trim();
+
+  // 덩이 나누기 — `part` 가 있으면 그 번호의 `<section>` 만 쓴다.
+  const bodyHtml = part === undefined ? whole : sectionAt(whole, part);
 
   // ★자료는 **교재 한 쪽처럼 통째로** 화면에 들어와야 한다(원장 지적 2026-09-09).
   //   글자만 줄여서는 안 된다 — 4p 는 11px 로도 세로 1,094px 이라 한 화면(≈760px)을
@@ -231,7 +253,7 @@ export function convert(html, page) {
     fitCss += `\n${scope} .${CLASS_PREFIX}dg{min-width:0 !important;max-width:calc(${r} * ${share}vh * var(--digest-zoom, 1))}`;
   }
 
-  return { title, bodyHtml: paged, css: css + fitCss };
+  return { title, bodyHtml: paged, css: css + fitCss, scopeKey };
 }
 
 // ★argv[1] 은 `node -e` 로 부를 때 없다 — 없으면 라이브러리로 쓰인 것이다.

@@ -1042,8 +1042,10 @@ export interface SystematicDigest {
   nodeId: string | null;
   /** 독립 항목의 목차 이름(노드에 붙으면 null). */
   outlineLabel: string | null;
-  /** 교재 정리비교표 쪽번호 — 화면에 출처로 표시한다. */
+  /** 교재 정리비교표 쪽번호. */
   page: number;
+  /** 자료 전용 CSS 를 가르는 꼬리표 — 화면은 `dp{scopeKey}` 클래스를 붙인다. */
+  scopeKey: string;
   title: string;
   bodyHtml: string;
   /** `.digest-doc.dpN` 으로 좁혀 둔 전용 CSS. 앱 전역으로 새지 않는다. */
@@ -1060,17 +1062,19 @@ export async function getSystematicDigests(
 ): Promise<SystematicDigest[]> {
   const { data, error } = await client
     .from("systematic_digests")
-    .select("digest_id, node_id, outline_label, page, title, body_html, css")
+    .select("digest_id, node_id, outline_label, page, part, scope_key, title, body_html, css")
     .eq("law_code", lawCode)
-    // ord 만으로는 같은 값끼리 순서가 들쭉날쭉하다 — 쪽번호로 묶어 못박는다.
+    // ord 만으로는 같은 값끼리 순서가 들쭉날쭉하다 — 쪽·덩이로 묶어 못박는다.
     .order("ord")
-    .order("page");
+    .order("page")
+    .order("part");
   if (error) throw error;
   return (data ?? []).map((d) => ({
     digestId: d.digest_id,
     nodeId: d.node_id,
     outlineLabel: d.outline_label,
     page: d.page,
+    scopeKey: d.scope_key ?? `${d.page}`,
     title: d.title,
     bodyHtml: d.body_html,
     css: d.css,

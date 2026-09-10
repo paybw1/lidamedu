@@ -24,9 +24,13 @@ const PAGES = [
   { page: 6, node: "04 심사", ord: 0 },
   { page: 7, node: "05 특허권", ord: 0 },
   { page: 8, node: "06 심판", ord: 0 },
-  { page: 9, node: "06 심판", ord: 1 },
+  // ★한 쪽에 덩이가 둘이면 **각각 한 화면**으로 나눈다(원장 지시 2026-09-10).
+  //   `part` = 그 쪽의 몇 번째 `<section>` 인가. 제목은 여기서 정한다(쪽 제목은 합본 이름).
+  { page: 9, part: 0, title: "정정청구 제도", node: "06 심판", ord: 1 },
+  { page: 9, part: 1, title: "재심 제도", node: "06 심판", ord: 2 },
   { page: 10, node: "07 소송", ord: 0 },
-  { page: 11, node: "08 특허협력조약에 의한 국제출원", ord: 0 },
+  { page: 11, part: 0, title: "국제출원절차", node: "08 특허협력조약에 의한 국제출원", ord: 0 },
+  { page: 11, part: 1, title: "국내단계의 번역문 제출", node: "08 특허협력조약에 의한 국제출원", ord: 1 },
   { page: 12, node: "09 실용신안법", ord: 0 },
   { page: 13, node: "10 국제조약", ord: 0 },
 ];
@@ -56,19 +60,24 @@ for (const p of PAGES) {
   const nodeId = p.node ? byLabel.get(p.node) : null;
   if (p.node && !nodeId) throw new Error(`체계도 대분류를 찾지 못했습니다: ${p.node}`);
   const html = readFileSync(`scripts/digest/pages/digest-${p.page}p.html`, "utf8");
-  const { title, bodyHtml, css } = convert(html, p.page);
+  const { title, bodyHtml, css, scopeKey } = convert(html, p.page, {
+    part: p.part,
+  });
   rows.push({
     law_code: LAW_CODE,
     node_id: nodeId ?? null,
     outline_label: p.outline ?? null,
     page: p.page,
-    title,
+    part: p.part ?? 0,
+    scope_key: scopeKey,
+    title: p.title ?? title,
     body_html: bodyHtml,
     css,
     ord: p.ord,
   });
+  const label = `${p.page}p${p.part === undefined ? "" : `-${p.part}`}`;
   console.log(
-    `${String(p.page).padStart(2)}p ${title.padEnd(18)} → ${(p.node ?? `「${p.outline}」(독립 항목)`).padEnd(22)} (ord ${p.ord}) · 본문 ${bodyHtml.length}자 CSS ${css.length}자`,
+    `${label.padStart(5)} ${(p.title ?? title).padEnd(18)} → ${(p.node ?? `「${p.outline}」(독립 항목)`).padEnd(22)} (ord ${p.ord}) · 본문 ${bodyHtml.length}자 CSS ${css.length}자`,
   );
 }
 
@@ -85,13 +94,13 @@ if (!apply) {
 
 const { error } = await supa
   .from("systematic_digests")
-  .upsert(rows, { onConflict: "law_code,page" });
+  .upsert(rows, { onConflict: "law_code,page,part" });
 if (error) throw error;
 
 const { data: after } = await supa
   .from("systematic_digests")
-  .select("page, title, ord")
+  .select("page, part, title, ord")
   .eq("law_code", LAW_CODE)
   .order("page");
 console.log(`반영 완료 — 등록 ${after?.length ?? 0}쪽`);
-for (const r of after ?? []) console.log(`  ${String(r.page).padStart(2)}p ${r.title}`);
+for (const r of after ?? []) console.log(`  ${String(r.page).padStart(2)}p-${r.part} ${r.title}`);

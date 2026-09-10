@@ -35,6 +35,7 @@ import {
   subjectHasSystematicAxis,
 } from "../../lib/subjects";
 import { ArticleTree } from "../article-tree";
+import { buildDigestGroups } from "../../lib/digest-outline";
 import { DigestPopup } from "../digest-popup";
 import { FilteredArticlesReader } from "../filtered-articles-reader";
 import { MobileNavDrawer } from "../mobile-nav-drawer";
@@ -95,12 +96,13 @@ export function ArticlesTab({
   // 정리비교표는 **단원 화면의 「정리」 배지**에서 본다(원장 지시 2026-09-10 — 좌패널
   // 목차는 걷어냈다). 다만 전체 체계도(2p)는 어느 단원에도 속하지 않아 그 길로는 닿지
   // 않는다 — 여기 토글 옆 버튼 하나로 남긴다.
-  const overviewDigests = useMemo(
+  // 목록은 목차 순서 전체 — 팝업 안에서 ‹ › 로 다른 단원 정리표까지 넘어간다.
+  const digestGroups = useMemo(
     () =>
       subjectHasDigestAxis(subject.slug)
-        ? systematicDigests.filter((d) => d.nodeId === null)
+        ? buildDigestGroups(systematicNodes, systematicDigests)
         : [],
-    [subject.slug, systematicDigests],
+    [subject.slug, systematicNodes, systematicDigests],
   );
   const [overviewOpen, setOverviewOpen] = useState(false);
 
@@ -128,21 +130,21 @@ export function ArticlesTab({
       >
         {/* 전체 체계도(정리비교표 2p) — 어느 단원에도 속하지 않아 단원 화면의 「정리」
             배지로는 닿지 않는다. 여기서 화면 전체 팝업으로 연다. */}
-        {overviewDigests.length > 0 ? (
+        {digestGroups.length > 0 ? (
           <>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setOverviewOpen(true)}
-              title="특허법 전체 체계도(교재 정리비교표)"
+              title="교재 정리비교표 — 전체 체계도부터 단원별로"
               className="mr-auto h-7 gap-1 rounded-full px-2 text-[11px] font-bold"
             >
               <FileTextIcon className="size-3" />
-              전체 체계도
+              정리비교표
             </Button>
             <DigestPopup
-              label="특허법"
-              digests={overviewDigests}
+              groups={digestGroups}
+              startIndex={0}
               open={overviewOpen}
               onOpenChange={setOverviewOpen}
             />

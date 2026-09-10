@@ -17,12 +17,13 @@
 export function FitPage({
   html,
   css,
-  page,
+  scopeKey,
 }: {
   html: string;
-  /** `.digest-doc.dpN` 으로 좁혀 둔 자료 전용 CSS. */
+  /** `.digest-doc.dp{scopeKey}` 로 좁혀 둔 자료 전용 CSS. */
   css: string;
-  page: number;
+  /** 자료를 가르는 꼬리표(적재 때 만든 값 그대로). */
+  scopeKey: string;
 }) {
   return (
     <>
@@ -31,7 +32,7 @@ export function FitPage({
       {/* ★여기에 스크롤 상자를 두지 않는다 — 팝업 본문이 이미 양쪽으로 스크롤한다.
           겹쳐 두면 표 머리줄 고정(sticky)이 바깥 스크롤을 못 따라가 안 붙는다. */}
       <div
-        className={`digest-doc dp${page}`}
+        className={`digest-doc dp${scopeKey}`}
         dangerouslySetInnerHTML={{ __html: html }}
       />
     </>

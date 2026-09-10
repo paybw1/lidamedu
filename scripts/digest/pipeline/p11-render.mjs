@@ -128,7 +128,7 @@ ${DIAGRAM_CSS}
   </header>
 
   <section class="panel">
-    <h2>국제출원절차 · 내용</h2>
+    <h2>국제출원절차</h2>
     <div class="tablewrap">
       <table>
         <tbody>${procRows}
@@ -138,7 +138,7 @@ ${DIAGRAM_CSS}
   </section>
 
   <section class="panel">
-    <h2>${TRANS_TITLE}<span class="src">${TRANS_SOURCE}</span></h2>
+    <h2>${TRANS_TITLE}</h2>
     ${DIAGRAM_HTML}
   </section>
 

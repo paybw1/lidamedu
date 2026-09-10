@@ -105,6 +105,10 @@ import {
 import { stripSystematicNumber } from "~/features/subjects/components/systematic-node-label";
 import { SubjectBookmarkRail } from "~/features/subjects/components/subject-bookmark-rail";
 import { SystematicTree } from "~/features/subjects/components/systematic-tree";
+import {
+  buildDigestGroups,
+  digestGroupIndex,
+} from "~/features/subjects/lib/digest-outline";
 import { getSubjectAxisCounts } from "~/features/subjects/lib/loader.server";
 import { buildNodeProgressByArticle } from "~/features/subjects/lib/node-progress.server";
 import {
@@ -378,13 +382,15 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     }
     return cur?.nodeId ?? node.nodeId;
   })();
-  const nodeDigests = (await getSystematicDigests(client, lawCode)).filter(
-    (d) => d.nodeId === rootNodeId,
-  );
+  // ★전부 내려준다 — 팝업의 ‹ › 이동이 목차 전체를 오간다(원장 지시 2026-09-10).
+  //   지금 단원이 어디인지는 rootNodeId 로 찾는다.
+  const systematicDigests = await getSystematicDigests(client, lawCode);
+  const digestRootNodeId = rootNodeId;
 
   return {
     dohaeUnits,
-    nodeDigests,
+    systematicDigests,
+    digestRootNodeId,
     subject: LAW_SUBJECTS[lawCode],
     axisCounts,
     nodeProblems: nodeProblemSeq?.problems ?? [],
@@ -442,7 +448,8 @@ function Inner({
     subject,
     blankV2,
     dohaeUnits,
-    nodeDigests,
+    systematicDigests,
+    digestRootNodeId,
     lawId,
     node,
     nodeQnaThreads,
@@ -488,6 +495,16 @@ function Inner({
   const [dohaeOpen, setDohaeOpen] = useState(false);
   // 정리비교표 팝업 — 넓은 표라 화면 전체를 쓴다(원장 지시 2026-09-09).
   const [digestOpen, setDigestOpen] = useState(false);
+  // ★목록은 목차 순서 **전체**다(팝업 안 ‹ › 이동). 지금 단원이 몇 번째인지만 찾아
+  //   그 자리에서 연다. 자료가 없는 단원은 목록에서 빠져 있다.
+  const digestGroups = useMemo(
+    () => buildDigestGroups(systematicNodes, systematicDigests),
+    [systematicNodes, systematicDigests],
+  );
+  const digestAt = digestGroupIndex(digestGroups, digestRootNodeId);
+  const nodeDigestCount = digestGroups.filter(
+    (g) => g.nodeId === digestRootNodeId,
+  ).length;
   useEffect(() => {
     if (dohaeParam) setDohaeOpen(true);
   }, [dohaeParam]);
@@ -564,10 +581,10 @@ function Inner({
           initialUnitId={dohaeParam}
         />
       ) : null}
-      {nodeDigests.length > 0 ? (
+      {digestGroups.length > 0 ? (
         <DigestPopup
-          label={stripSystematicNumber(node.displayLabel)}
-          digests={nodeDigests}
+          groups={digestGroups}
+          startIndex={digestAt}
           open={digestOpen}
           onOpenChange={setDigestOpen}
         />
@@ -789,9 +806,10 @@ function Inner({
                     </span>
                   </Button>
                 ) : null}
-                {nodeDigests.length > 0 ? (
+                {nodeDigestCount > 0 ? (
                   // 정리비교표 — 이 노드가 속한 **장(章)** 의 자료. 넓은 표라 화면
                   // 전체를 쓰는 팝업으로 연다(원장 지시 2026-09-09).
+                  // 팝업 안에서는 ‹ › 로 목차 전체를 오간다.
                   <Button
                     variant="outline"
                     size="sm"
@@ -801,9 +819,9 @@ function Inner({
                   >
                     <TableIcon className="size-3.5" />
                     정리
-                    {nodeDigests.length > 1 ? (
+                    {nodeDigestCount > 1 ? (
                       <span className="ml-0.5 tabular-nums">
-                        {nodeDigests.length}
+                        {nodeDigestCount}
                       </span>
                     ) : null}
                   </Button>

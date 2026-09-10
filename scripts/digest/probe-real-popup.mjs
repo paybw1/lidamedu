@@ -13,6 +13,7 @@ import { convert } from "./convert.mjs";
 const SITE = "https://www.lidamipedu.com";
 const page = Number(process.argv[2] ?? 4);
 const zoom = Number(process.argv[3] ?? 1);
+const part = process.argv[4] === undefined ? undefined : Number(process.argv[4]);
 
 // dialog.tsx 의 기본 클래스 + 팝업이 덧붙이는 클래스(digest-popup.tsx 와 같아야 한다).
 const DIALOG_BASE =
@@ -29,9 +30,10 @@ let siteCss = "";
 for (const u of cssUrls) siteCss += await fetch(SITE + u).then((r) => r.text());
 console.log(`운영 CSS ${cssUrls.length}개 · ${siteCss.length}자`);
 
-const { bodyHtml, css } = convert(
+const { bodyHtml, css, scopeKey } = convert(
   readFileSync(`scripts/digest/pages/digest-${page}p.html`, "utf8"),
   page,
+  { part },
 );
 
 // cn(=twMerge) 을 그대로 돌려 실제로 남는 클래스를 얻는다.
@@ -49,7 +51,7 @@ const html = `<!doctype html><meta charset="utf-8">
   </div>
   <div id="body" class="${BODY_CLS}" style="--digest-zoom:${zoom}">
     <div class="space-y-6"><section>
-      <div class="digest-doc dp${page}">${bodyHtml}</div>
+      <div class="digest-doc dp${scopeKey}">${bodyHtml}</div>
     </section></div>
   </div>
 </div>
