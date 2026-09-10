@@ -19,6 +19,8 @@ const ALIAS = {
 };
 /** 페이지 배경·바깥 여백은 패널이 갖는다. */
 const BODY_DROP = new Set(["margin", "background"]);
+/** 자료 클래스에 붙일 접두사 — 앱 유틸리티와 이름이 겹치지 않게 한다. */
+const CLASS_PREFIX = "dg-";
 
 /**
  * 표 쪽별 글자 크기 = 화면 높이의 몇 %인가(vh).
@@ -133,7 +135,7 @@ export function convert(html, page) {
     .trim();
 
   const styleRaw = html.match(/<style>([\s\S]*?)<\/style>/)?.[1] ?? "";
-  const css = transform(parseRules(styleRaw), scope);
+  let css = transform(parseRules(styleRaw), scope);
 
   const open = html.indexOf('<div class="wrap">');
   if (open < 0) throw new Error("`.wrap` 을 찾지 못했습니다");
@@ -173,7 +175,34 @@ export function convert(html, page) {
   //   좁을 때 오른쪽이 잘린다(원장 지적 2026-09-10). 최소 폭을 풀면 칸이 폭에 맞춰 접혀
   //   잘릴 일이 없고, 작아서 안 읽히면 팝업 머리의 글자 크기로 키우면 된다.
   const fluid = withDg.replace(/(<table[^>]*?) style="min-width:\d+px"/g, "$1");
-  const paged = `<div class="digest-page" style="width:100%">\n${fluid}\n</div>`;
+
+  // ★★자료의 클래스 이름에 **전부 접두사를 붙인다**. 자료 CSS 를 `.digest-doc` 아래로
+  //   접어도 **앱의 전역 Tailwind 유틸리티는 그대로 맞는다** — 이름이 겹치면 우리가
+  //   뜻하지 않은 스타일이 얹힌다.
+  //   2026-09-10 실사례: 표의 `class="fixed"`(뜻: table-layout:fixed)가 Tailwind 의
+  //   `.fixed`(position:fixed)를 먹어 **표가 흐름에서 빠져 팝업에 붙었다** — 오른쪽이
+  //   잘리고 스크롤도 듣지 않았다. 2p 의 `.grid` 는 `display:grid` 를 먹었다.
+  //   한 이름씩 고치면 다음에 또 겹친다. 통째로 접두사를 붙여 뿌리를 끊는다.
+  //   검사: scripts/digest/check-class-clash.mjs
+  const names = new Set();
+  for (const m of fluid.matchAll(/class="([^"]+)"/g)) {
+    for (const c of m[1].trim().split(/\s+/)) if (c) names.add(c);
+  }
+  const prefixed = fluid.replace(
+    /class="([^"]+)"/g,
+    (_m, v) =>
+      `class="${v.trim().split(/\s+/).filter(Boolean).map((c) => `${CLASS_PREFIX}${c}`).join(" ")}"`,
+  );
+  // CSS 선택자도 같이 바꾼다. 긴 이름부터, 뒤에 낱말문자가 오지 않을 때만
+  // (`.l` 이 `.law` 를 건드리지 않게).
+  for (const n of [...names].sort((a, b) => b.length - a.length)) {
+    css = css.replace(
+      new RegExp(`\\.${n.replace(/[.*+?^${}()|[\]\\-]/g, "\\$&")}(?![\\w-])`, "g"),
+      `.${CLASS_PREFIX}${n}`,
+    );
+  }
+
+  const paged = `<div class="digest-page" style="width:100%">\n${prefixed}\n</div>`;
 
   // ★표 글자 크기를 **화면 높이에 묶는다**(vh). 자바스크립트로 재서 맞추는 방식은
   //   원장 화면에서 세 번 연속 듣지 않았다(2026-09-10) — 무엇이 어긋났든, 재지 않고
@@ -191,12 +220,15 @@ export function convert(html, page) {
 
   // ★도형 크기가 **인라인이 아니라 CSS 규칙**에 적힌 쪽(11p)도 있다. 그쪽은 규칙으로
   //   덮는다 — `min-width` 는 `max-width` 를 이기므로 반드시 함께 풀어야 한다.
+  //   ★이름은 접두사가 붙은 뒤의 것(`.dg-dg`)을 써야 한다 — 위에서 이미 바꿨다.
   const ruleAr = css.match(
-    new RegExp(`${scope.replace(/\./g, "\\.")} \\.dg \\{[^}]*aspect-ratio:(\\d+) / (\\d+)`),
+    new RegExp(
+      `${scope.replace(/\./g, "\\.")} \\.${CLASS_PREFIX}dg \\{[^}]*aspect-ratio:(\\d+) / (\\d+)`,
+    ),
   );
   if (ruleAr && share) {
     const r = (Number(ruleAr[1]) / Number(ruleAr[2])).toFixed(3);
-    fitCss += `\n${scope} .dg{min-width:0 !important;max-width:calc(${r} * ${share}vh)}`;
+    fitCss += `\n${scope} .${CLASS_PREFIX}dg{min-width:0 !important;max-width:calc(${r} * ${share}vh * var(--digest-zoom, 1))}`;
   }
 
   return { title, bodyHtml: paged, css: css + fitCss };
