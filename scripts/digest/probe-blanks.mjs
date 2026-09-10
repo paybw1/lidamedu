@@ -8,7 +8,7 @@
 //   값으로 확인한다.
 // ★재는 것: ① 글자가 정말 투명한가(칸 안의 `.dg-law` 같은 자기 색까지) ② 칸 크기가
 //   그대로인가(가렸다고 판이 흔들리면 학습이 안 된다) ③ 목차칸은 그대로 보이는가.
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { chromium } from "playwright";
 
 import { convert } from "./convert.mjs";
@@ -16,7 +16,11 @@ import { convert } from "./convert.mjs";
 const page = Number(process.argv[2] ?? 4);
 const part = process.argv[3] === undefined ? undefined : Number(process.argv[3]);
 
-const appCss = readFileSync("build/client/assets/root-BF5vJ89M.css", "utf8");
+// 빌드 산출물의 이름은 바뀐다 — 찾아 쓴다.
+const APP_CSS = "build/client/assets/" +
+  (readdirSync("build/client/assets").find((f) => /^root-.*.css$/.test(f)) ??
+    (() => { throw new Error("빌드된 CSS 가 없습니다 — npm run build 먼저"); })());
+const appCss = readFileSync(APP_CSS, "utf8");
 const { bodyHtml, css, scopeKey } = convert(
   readFileSync(`scripts/digest/pages/digest-${page}p.html`, "utf8"),
   page,

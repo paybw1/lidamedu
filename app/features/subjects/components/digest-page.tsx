@@ -13,8 +13,14 @@
 //       폭에 천장을 씌우면 높이가 화면에 묶인다(자료에 박힌 min-width 는 걷어냈다)
 //
 //   넘치는 만큼은 팝업 본문이 스크롤한다.
+//
+// ★★memo 로 감싼 것은 꾸밈이 아니라 **필수**다. 이 컴포넌트가 다시 그려지면 React 가
+//   본문 HTML 을 통째로 다시 박는다 — 그 순간 ① 빈칸 표시가 지워지고 ② 스크롤 위치가
+//   처음으로 돌아간다. 실제로 글자 크기를 한 칸 키우기만 해도 그랬다(측정 2026-09-10,
+//   scripts/digest/probe-popup-blanks.mjs). 넘겨받는 값은 모두 고정이라 memo 면 멈춘다.
+import { memo } from "react";
 
-export function FitPage({
+export const FitPage = memo(function FitPage({
   html,
   css,
   scopeKey,
@@ -41,4 +47,4 @@ export function FitPage({
       />
     </>
   );
-}
+});

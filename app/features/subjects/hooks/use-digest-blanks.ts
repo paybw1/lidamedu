@@ -8,7 +8,10 @@
 //   여기가 하는 일은 박힌 좌표를 읽어 **어느 칸을 가릴지 고르는 것**뿐이다.
 // ★본문은 dangerouslySetInnerHTML 로 들어온 붙박이 HTML 이라 React 가 다시 그리지
 //   않는다. 그래서 상태(가릴 칸 목록)는 React 가 갖고, 화면 반영만 클래스로 한다.
-import type { RefObject } from "react";
+// ★★자리는 **RefObject 가 아니라 콜백 ref 로 받는다.** 팝업은 늘 붙어 있고 열릴 때만
+//   속을 그리는데(Radix Dialog), RefObject 로 받으면 붙는 순간 다시 부를 계기가 없어
+//   **처음 열었을 때 손잡이가 안 붙는다**. 콜백 ref 는 붙고 떨어질 때마다 불린다 —
+//   열기·닫기·‹ › 이동이 모두 같은 길로 처리된다.
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /** 가려진 칸에 붙는 클래스 — 모양은 app.css 가 갖는다. */
@@ -24,6 +27,8 @@ interface Cell {
 }
 
 export interface DigestBlanks {
+  /** 자료를 그린 자리에 걸어 준다(FitPage 의 rootRef). */
+  ref: (el: HTMLDivElement | null) => void;
   /** 지금 가려 둔 칸 수. */
   count: number;
   /** 가릴 수 있는 칸 수(글자가 있는 내용칸). 0 이면 빈칸을 붙일 수 없는 자료다. */
@@ -60,27 +65,33 @@ function targetsOf(head: HTMLElement, cells: Cell[]): Cell[] {
 }
 
 export function useDigestBlanks(
-  rootRef: RefObject<HTMLElement | null>,
   /** 자료가 바뀌면 처음부터 — 팝업의 ‹ › 이동에 쓰인다. */
   groupKey: string,
 ): DigestBlanks {
+  const [node, setNode] = useState<HTMLDivElement | null>(null);
   const cellsRef = useRef<Cell[]>([]);
+  const [total, setTotal] = useState(0);
   const [keys, setKeys] = useState<ReadonlySet<string>>(() => new Set<string>());
-  const [ready, setReady] = useState(0);
 
-  // 자료가 바뀌면 칸을 다시 읽고 가린 것을 모두 푼다.
+  // 자리가 붙거나 자료가 바뀌면 칸을 다시 읽고 가린 것을 모두 푼다.
   useEffect(() => {
-    cellsRef.current = rootRef.current ? readCells(rootRef.current) : [];
+    cellsRef.current = node ? readCells(node) : [];
+    setTotal(cellsRef.current.length);
     setKeys(new Set<string>());
-    setReady((v) => v + 1);
-  }, [groupKey, rootRef]);
+  }, [node, groupKey]);
 
   // 상태 → 화면. 붙박이 HTML 이라 클래스만 갈아 끼운다.
+  // ★본문이 통째로 다시 박히면 잡아 둔 칸이 문서에서 떨어져 나간다 — 표시가 조용히
+  //   사라진다. FitPage 를 memo 로 묶어 막았지만, 여기서도 한 번 더 확인해 다시 잡는다.
+  //   자리(행·열)는 HTML 에 박혀 있으니 다시 읽어도 가려 둔 칸은 그대로 살아난다.
   useEffect(() => {
+    if (node && cellsRef.current.length && !cellsRef.current[0].el.isConnected) {
+      cellsRef.current = readCells(node);
+    }
     for (const cell of cellsRef.current) {
       cell.el.classList.toggle(BLANK_CLASS, keys.has(cell.key));
     }
-  }, [keys, ready]);
+  }, [keys, total, node]);
 
   const toggleMany = useCallback((hit: Cell[]) => {
     if (!hit.length) return;
@@ -98,8 +109,7 @@ export function useDigestBlanks(
 
   // 누르기 — 붙박이 HTML 에는 손잡이를 달 수 없으니 위임해서 받는다.
   useEffect(() => {
-    const root = rootRef.current;
-    if (!root) return;
+    if (!node) return;
 
     const act = (target: EventTarget | null) => {
       if (!(target instanceof Element)) return false;
@@ -126,13 +136,13 @@ export function useDigestBlanks(
       if (act(ev.target)) ev.preventDefault();
     };
 
-    root.addEventListener("click", onClick);
-    root.addEventListener("keydown", onKeyDown);
+    node.addEventListener("click", onClick);
+    node.addEventListener("keydown", onKeyDown);
     return () => {
-      root.removeEventListener("click", onClick);
-      root.removeEventListener("keydown", onKeyDown);
+      node.removeEventListener("click", onClick);
+      node.removeEventListener("keydown", onKeyDown);
     };
-  }, [rootRef, ready, toggleMany]);
+  }, [node, toggleMany]);
 
   const blankAll = useCallback(() => {
     setKeys(new Set(cellsRef.current.map((x) => x.key)));
@@ -141,5 +151,5 @@ export function useDigestBlanks(
     setKeys(new Set<string>());
   }, []);
 
-  return { count: keys.size, total: cellsRef.current.length, blankAll, revealAll };
+  return { ref: setNode, count: keys.size, total, blankAll, revealAll };
 }

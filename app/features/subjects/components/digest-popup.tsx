@@ -15,7 +15,7 @@ import {
   PlusIcon,
   SquareDashedIcon,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "~/core/components/ui/button";
 import {
@@ -53,9 +53,6 @@ export function DigestPopup({
     if (open) setAt(startIndex);
   }, [open, startIndex]);
 
-  // 빈칸 학습이 칸을 찾아 들어갈 자리.
-  const bodyRef = useRef<HTMLDivElement>(null);
-
   const [idx, setIdx] = useState(DEFAULT_ZOOM);
   // 고른 크기는 기억한다 — 화면 배율은 사람마다 고정이라 매번 다시 맞추는 건 번거롭다.
   useEffect(() => {
@@ -76,7 +73,7 @@ export function DigestPopup({
 
   const group = groups[at];
   // ★훅은 언제나 같은 수만큼 불러야 한다 — 자료가 없어도 먼저 부르고 뒤에서 판단한다.
-  const blanks = useDigestBlanks(bodyRef, group?.key ?? "");
+  const blanks = useDigestBlanks(group?.key ?? "");
   if (!group) return null;
 
   return (
@@ -191,7 +188,7 @@ export function DigestPopup({
             html={group.digest.bodyHtml}
             css={group.digest.css}
             scopeKey={group.digest.scopeKey}
-            rootRef={bodyRef}
+            rootRef={blanks.ref}
           />
         </div>
       </DialogContent>
