@@ -56,6 +56,12 @@ function readCells(root: HTMLElement): Cell[] {
 function targetsOf(head: HTMLElement, cells: Cell[]): Cell[] {
   const kind = head.dataset.dgBlank;
   if (kind === "all") return cells;
+  // 줄·칸으로 떨어지지 않는 묶음(체계도의 묶음 제목, 도형의 갈래 제목)은 적재 때
+  // 자리를 적어 둔다 — 어디에 붙는지는 자료마다 다르고, 화면이 추측할 일이 아니다.
+  if (kind === "set") {
+    const want = new Set((head.dataset.dgKeys ?? "").split(" ").filter(Boolean));
+    return cells.filter((x) => want.has(x.key));
+  }
   const from = Number(head.dataset.dgFrom);
   const to = Number(head.dataset.dgTo);
   if (!Number.isFinite(from) || !Number.isFinite(to)) return [];

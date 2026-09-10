@@ -646,3 +646,9 @@ body {
 .digest-doc .dg-blank.dg-blank:hover {
   background: color-mix(in oklch, var(--primary) 22%, transparent);
 }
+/* ★도형의 연결선은 도형 전체를 덮는 SVG 한 장이다(aria-hidden = 장식). 그대로 두면
+   그 위의 상자를 눌러도 SVG 가 먼저 받아 **빈칸이 아예 눌리지 않는다**
+   (측정 2026-09-10, scripts/digest/probe-popup-blanks.mjs). 클릭을 통과시킨다. */
+.digest-doc svg[aria-hidden="true"] {
+  pointer-events: none;
+}

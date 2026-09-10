@@ -204,7 +204,7 @@ export function convert(html, page, opts = {}) {
 
   // ★빈칸 학습용 좌표 — 목차를 누르면 그 줄·그 칸이 빈칸이 된다(scripts/digest/blank-stamp.mjs).
   //   data- 속성이라 아래 클래스 접두사 붙이기와 서로 건드리지 않는다.
-  const { html: stamped, stats: blankStats } = stampBlanks(fluid);
+  const { html: stamped, stats: blankStats } = stampBlanks(fluid, scopeKey);
 
   // ★★자료의 클래스 이름에 **전부 접두사를 붙인다**. 자료 CSS 를 `.digest-doc` 아래로
   //   접어도 **앱의 전역 Tailwind 유틸리티는 그대로 맞는다** — 이름이 겹치면 우리가

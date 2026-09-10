@@ -49,25 +49,44 @@ const built = await esbuild.build({
 });
 const bundle = built.outputFiles[0].text;
 
-/** 두 화면을 넣어 ‹ › 이동까지 눌러 본다. */
-const groups = [4, 8].map((page) => {
-  const r = convert(readFileSync(`scripts/digest/pages/digest-${page}p.html`, "utf8"), page);
+/**
+ * 여러 화면을 넣어 ‹ › 이동까지 눌러 본다.
+ * 표 두 쪽 + **표가 아닌 네 쪽**(체계도·총칙·국제조약·번역문 제출) — 뒤 넷은 묶음(set)이라
+ * 자리 계산이 표와 다르다. 진짜로 눌리는지 여기서 본다.
+ */
+const SCREENS = [
+  { page: 4, label: "특허요건" },
+  { page: 8, label: "심판제도" },
+  { page: 2, label: "체계도" },
+  { page: 3, label: "총칙" },
+  { page: 13, label: "국제조약" },
+  { page: 11, part: 1, label: "번역문 제출" },
+];
+const groups = SCREENS.map(({ page, part, label }) => {
+  const r = convert(readFileSync(`scripts/digest/pages/digest-${page}p.html`, "utf8"), page, { part });
+  const key = `p${r.scopeKey}`;
   return {
-    key: `p${page}`,
-    label: r.title,
-    nodeId: `n${page}`,
+    key,
+    label,
+    nodeId: key,
     digest: {
-      digestId: `p${page}`,
-      nodeId: `n${page}`,
+      digestId: key,
+      nodeId: key,
       outlineLabel: null,
       page,
       scopeKey: r.scopeKey,
-      title: r.title,
+      title: label,
       bodyHtml: r.bodyHtml,
       css: r.css,
     },
   };
 });
+
+/** 화면마다 **첫 묶음 목차**가 몇 칸을 다스리는지 미리 세어 둔다(브라우저 결과와 대조). */
+const setHeadOf = (bodyHtml) => {
+  const m = bodyHtml.match(/data-dg-blank="set" data-dg-keys="([^"]+)"/);
+  return m ? m[1].split(" ").length : 0;
+};
 
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
@@ -145,6 +164,30 @@ await p.waitForSelector("[data-dg-r]");
 await headByText("의의").click();
 n = await blanks();
 say(n === 10, `다시 열어도 목차가 듣는다 (${n}칸, 기대 10)`);
+
+// ── 표가 아닌 화면 — 묶음(set) 목차가 제 몫만큼 가리는가.
+console.log("\n[표가 아닌 화면 — 묶음 목차]");
+for (let i = 2; i < groups.length; i += 1) {
+  // 앞에서부터 ‹ › 로 걸어간다(다음 단추의 이름 = 다음 자료 이름).
+  await p.keyboard.press("Escape");
+  await p.waitForTimeout(150);
+  await p.click("#badge");
+  await p.waitForSelector(".digest-doc");
+  for (let k = 1; k <= i; k += 1) {
+    await p.getByRole("button", { name: groups[k].label, exact: true }).click();
+    await p.waitForTimeout(120);
+  }
+  const want = setHeadOf(groups[i].digest.bodyHtml);
+  // ★목차 **글자**를 누른다. 총칙의 갈래 테두리는 속이 잎 상자로 덮여 있어 한가운데를
+  //   누르면 잎이 먼저 받는다 — 사람이 누르는 자리도 제목 글자다.
+  await p.locator('[data-dg-blank="set"]').first().locator("span").first().click();
+  await p.waitForTimeout(120);
+  n = await blanks();
+  say(n === want, `${groups[i].label}: 첫 묶음 목차 → 빈칸 ${n}칸 (기대 ${want})`);
+  await p.getByRole("button", { name: "모두 보기" }).click();
+  n = await blanks();
+  say(n === 0, `${groups[i].label}: 모두 보기 (${n}칸)`);
+}
 
 await browser.close();
 console.log(bad === 0 ? "\n어긋난 곳 없음" : `\n★어긋난 곳 ${bad}건`);
