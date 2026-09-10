@@ -28,8 +28,10 @@ export function DigestPopup({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {/* ★크기 규약은 도해 팝업(잘 도는 쪽)과 같게 — max-h + flex-col + 본문만 스크롤. */}
-      <DialogContent className="flex max-h-[94vh] w-[98vw] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
+      {/* ★높이는 **반드시 고정**(h-)이다. max-h- 로 두면 팝업 높이가 내용을 따라가는데,
+          내용 크기는 팝업 높이를 보고 정하므로(FitPage) 서로 물려 바닥까지 오그라든다
+          — 2026-09-10 실제로 머리줄만 남은 띠가 됐다. */}
+      <DialogContent className="flex h-[94vh] w-[98vw] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
         <div className="border-border flex flex-none items-center gap-2 border-b px-4 py-2.5 pr-12">
           <DialogTitle className="text-sm font-bold">
             {label} 정리비교표

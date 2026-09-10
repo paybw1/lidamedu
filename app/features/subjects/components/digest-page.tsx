@@ -19,6 +19,8 @@ import { useCallback, useEffect, useRef } from "react";
 const FONT_STEPS = [12.5, 11.5, 10.5, 9.5, 9, 8.5, 8];
 /** 자료 아래로 남겨 둘 여백. */
 const BOTTOM_GAP = 16;
+/** 이보다 낮게 나오면 잰 값을 믿지 않는다(되먹임으로 오그라든 상태). */
+const MIN_AVAIL_H = 420;
 
 /** 위로 올라가며 실제로 스크롤하는 조상을 찾는다(팝업 본문). 없으면 null=창 기준. */
 function scrollParent(el: HTMLElement): HTMLElement | null {
@@ -67,13 +69,16 @@ export function FitPage({
     //   팝업 바닥이 창 바닥보다 위에 있는 만큼(94vh 가운데 정렬이면 위아래 3vh씩)
     //   더 크게 잡혀, 딱 그만큼이 화면 밖으로 밀려난다.
     const scroller = scrollParent(el);
-    const availH = Math.max(
-      280,
+    const availH =
       (scroller
         ? scroller.clientHeight -
           (el.getBoundingClientRect().top - scroller.getBoundingClientRect().top)
-        : window.innerHeight - el.getBoundingClientRect().top) - BOTTOM_GAP,
-    );
+        : window.innerHeight - el.getBoundingClientRect().top) - BOTTOM_GAP;
+    // ★잰 높이가 터무니없이 작으면 **아무것도 하지 않는다**. 담는 상자 높이가 내용을
+    //   따라가는 배치(max-height 등)에서는 "내용을 상자에 맞추고 상자는 내용을 따라가는"
+    //   되먹임이 생겨 바닥까지 오그라든다 — 2026-09-10 머리줄만 남은 띠가 됐다.
+    //   그럴 때는 자연 크기로 두고 스크롤에 맡기는 편이 맞다.
+    if (availH < MIN_AVAIL_H) return;
     // ② 도형만 있는 쪽(3p 총칙·13p 국제조약 등)은 글자 조절이 듣지 않는다 — 글자가
     //    폭에 비례(cqw)하고 그림이 가로세로 비로 묶여 있어, **폭을 줄이면 높이가 그대로
     //    비례해 준다**. 한 번 계산으로 맞는다.

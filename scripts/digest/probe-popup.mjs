@@ -66,6 +66,7 @@ for (const vp of [
       body.clientHeight -
       (box.getBoundingClientRect().top - body.getBoundingClientRect().top) -
       16;
+    if (availH < 420) return { 재기실패: true, availH };
     if (diagram && !table) {
       tune.textContent = `.digest-doc.${[...node.classList].find((c) => c.startsWith("dp"))} .dg{min-width:0 !important}`;
       for (let i = 0; i < 3; i += 1) {
