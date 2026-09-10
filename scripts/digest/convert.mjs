@@ -22,6 +22,23 @@ const BODY_DROP = new Set(["margin", "background"]);
 /** 기준 폭 — 자료에 박힌 최소 폭이 이보다 넓으면 그쪽을 쓴다. 교재 한 쪽에 해당한다. */
 const DEFAULT_PAGE_W = 1180;
 
+/**
+ * 표 쪽별 글자 크기 = 화면 높이의 몇 %인가(vh).
+ * 실측(1920×1080 전체화면 팝업, 가용 943px)에서 한 화면에 들어가는 크기를 화면 높이로
+ * 나눈 값이다 — 4p 10.5px → 0.97vh. 열이 많은 쪽일수록 작아진다.
+ * ★도형 쪽(2·3·10·11·13p)은 넣지 않는다 — 글자가 폭에 비례(cqw)해 vh 로 묶으면 어긋난다.
+ */
+const TABLE_VH = {
+  4: 0.97, 5: 0.85, 6: 0.88, 7: 0.97, 8: 0.84, 9: 0.78, 10: 1.2, 11: 0.62, 12: 1.15,
+};
+
+/**
+ * 도형 쪽별 **도형 하나가 쓸 화면 높이(vh)**. 도형은 폭에 비례해 높이가 정해지므로
+ * 폭 천장을 `가로세로비 × 이 값` 으로 씌우면 높이가 화면에 묶인다.
+ * 적지 않으면 78 을 도형 수로 나눠 쓴다. 표가 함께 있는 쪽(11p)은 표 몫을 남겨야 한다.
+ */
+const DG_VH = { 3: 35, 11: 12, 13: 71 };
+
 /** `sel { ... }` 을 중괄호 짝을 세어 잘라 낸다. @media 는 안쪽을 다시 부른다. */
 function parseRules(css) {
   const rules = [];
@@ -144,9 +161,45 @@ export function convert(html, page) {
   //   화면에서는 그 장을 통째로 줄여 맞춘다(digest-panel 의 FitPage).
   const widths = [...bodyHtml.matchAll(/min-width:(\d+)px/g)].map((m) => Number(m[1]));
   const pageW = Math.max(DEFAULT_PAGE_W, ...widths);
-  const paged = `<div class="digest-page" style="width:${pageW}px">\n${bodyHtml}\n</div>`;
 
-  return { title, bodyHtml: paged, css };
+  // ★도형은 **폭에 비례해 높이가 정해진다**(가로세로 비 고정). 한 화면에 담으려면 폭에
+  //   천장을 씌워야 하는데, 자료에는 `min-width:940px` 만 박혀 있어 넓은 화면에서 커진다.
+  //   그 최소 폭을 걷어내고 `max-width:비율 × Nvh` 로 바꿔 **높이를 화면에 묶는다**.
+  //   한 쪽에 도형이 여럿이면 몫을 나눈다.
+  const dgCount = (bodyHtml.match(/class="dg"/g) ?? []).length;
+  const share = DG_VH[page] ?? (dgCount ? Math.max(24, Math.floor(78 / dgCount)) : 0);
+  const withDg = bodyHtml.replace(
+    /aspect-ratio:(\d+) \/ (\d+);min-width:\d+px/g,
+    (_m, w, h) =>
+      `aspect-ratio:${w} / ${h};max-width:calc(${(Number(w) / Number(h)).toFixed(3)} * ${share}vh)`,
+  );
+
+  // ★폭도 CSS 로 정한다 — 자리가 넓으면 채우고(100%), 좁아도 기준 폭은 지킨다.
+  //   자바스크립트로 재서 넣던 것을 걷어냈다(원장 화면에서 듣지 않았다).
+  const paged = `<div class="digest-page" style="width:max(${pageW}px,100%)">\n${withDg}\n</div>`;
+
+  // ★표 글자 크기를 **화면 높이에 묶는다**(vh). 자바스크립트로 재서 맞추는 방식은
+  //   원장 화면에서 세 번 연속 듣지 않았다(2026-09-10) — 무엇이 어긋났든, 재지 않고
+  //   CSS 만으로 정해지면 늘 적용된다. 값은 실측에서 얻었다(1920×1080 팝업에서 한
+  //   화면에 들어가는 크기 ÷ 화면 높이). 위아래를 clamp 로 묶어 어느 화면에서도
+  //   8~12.5px 사이에 있게 한다. 여백은 em 이라 글자를 따라 함께 줄어든다.
+  const vh = TABLE_VH[page];
+  let fitCss = vh
+    ? `\n${scope} table{font-size:clamp(8px, ${vh}vh, 12.5px)}` +
+      `\n${scope} th,${scope} td{padding:.48em .56em;line-height:1.42}`
+    : "";
+
+  // ★도형 크기가 **인라인이 아니라 CSS 규칙**에 적힌 쪽(11p)도 있다. 그쪽은 규칙으로
+  //   덮는다 — `min-width` 는 `max-width` 를 이기므로 반드시 함께 풀어야 한다.
+  const ruleAr = css.match(
+    new RegExp(`${scope.replace(/\./g, "\\.")} \\.dg \\{[^}]*aspect-ratio:(\\d+) / (\\d+)`),
+  );
+  if (ruleAr && share) {
+    const r = (Number(ruleAr[1]) / Number(ruleAr[2])).toFixed(3);
+    fitCss += `\n${scope} .dg{min-width:0 !important;max-width:calc(${r} * ${share}vh)}`;
+  }
+
+  return { title, bodyHtml: paged, css: css + fitCss };
 }
 
 // ★argv[1] 은 `node -e` 로 부를 때 없다 — 없으면 라이브러리로 쓰인 것이다.
