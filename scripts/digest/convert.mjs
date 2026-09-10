@@ -238,7 +238,10 @@ export function convert(html, page, opts = {}) {
   //   나오는데, 그때 손으로 키우면 된다(원장 지시 2026-09-10). 키우면 스크롤이 붙는다.
   const vh = TABLE_VH[scopeKey] ?? TABLE_VH[page];
   let fitCss = vh
-    ? `\n${scope} table{font-size:calc(clamp(8px, ${vh}vh, 12.5px) * var(--digest-zoom, 1))}` +
+    // ★바닥 10px — 8px 는 화면에 맞추기는 해도 읽히지 않는다(원장 지적 2026-09-10:
+    //   특허요건·이익제도·심사·특허권·심판·정정청구가 다 작다). 바닥에 걸리면 넘치는
+    //   만큼 스크롤하고, 더 키우려면 팝업 머리의 글자 크기(기본 120%)를 쓴다.
+    ? `\n${scope} table{font-size:calc(clamp(10px, ${vh}vh, 13.5px) * var(--digest-zoom, 1))}` +
       `\n${scope} th,${scope} td{padding:.48em .56em;line-height:1.42}`
     : "";
 

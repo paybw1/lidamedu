@@ -42,9 +42,32 @@ const dx = maxAx + GAP - minBx;
 
 const rid = (id) => `b${id}`;
 const moved = keep.map((s) => ({ ...s, id: rid(s.id), x: s.x + dx }));
+
+// ★한쪽 끝만 도형에 붙은 선도 가져와야 한다 — 꺾쇠에서 「정지 효과」로 가는 화살표가
+//   그렇다. 양끝이 다 붙은 선만 챙기면 그 화살표가 사라진다(원장 지적 2026-09-10).
+//   붙지 않은 끝은 제 좌표가 곧 진실이므로, 그 좌표가 가져올 갈래 안에 있으면 챙긴다.
+const area = panels.reduce(
+  (a, p) => ({
+    x1: Math.min(a.x1, p.x), y1: Math.min(a.y1, p.y),
+    x2: Math.max(a.x2, p.x + p.cx), y2: Math.max(a.y2, p.y + p.cy),
+  }),
+  { x1: Infinity, y1: Infinity, x2: -Infinity, y2: -Infinity },
+);
+const inArea = (l) =>
+  l.x >= area.x1 - 1000 && l.y >= area.y1 - 1000 &&
+  l.x + l.cx <= area.x2 + 1000 && l.y + l.cy <= area.y2 + 1000;
+const endOk = (id) => (id ? keepIds.has(id) : true);
+
 const movedLinks = B.links
-  .filter((l) => keepIds.has(l.from) && keepIds.has(l.to))
-  .map((l) => ({ ...l, id: rid(l.id), from: rid(l.from), to: rid(l.to), x: l.x + dx }));
+  .filter((l) => endOk(l.from) && endOk(l.to) && (l.from || l.to ? true : inArea(l)))
+  .filter((l) => (l.from && l.to) || inArea(l))
+  .map((l) => ({
+    ...l,
+    id: rid(l.id),
+    from: l.from ? rid(l.from) : l.from,
+    to: l.to ? rid(l.to) : l.to,
+    x: l.x + dx,
+  }));
 
 // 46p 에만 있던 선 중 한쪽 끝이 버려진 상자에 붙은 것은 함께 버린다(위 filter).
 const out = {

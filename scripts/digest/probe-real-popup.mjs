@@ -85,6 +85,15 @@ for (const vp of [
         가로스크롤: body.scrollWidth > body.clientWidth,
       },
       자료폭: doc?.getBoundingClientRect().width,
+      넘친상자: (() => {
+        const bad = [];
+        for (const b of document.querySelectorAll(".dg-bx")) {
+          if (b.scrollWidth > b.clientWidth + 1 || b.scrollHeight > b.clientHeight + 1) {
+            bad.push((b.textContent || "").trim().slice(0, 18) + " " + b.clientWidth + "<" + b.scrollWidth);
+          }
+        }
+        return { 수: bad.length, 보기: bad.slice(0, 6) };
+      })(),
       도형크기: [...document.querySelectorAll(".dg-dg")].map((e) => Math.round(e.getBoundingClientRect().width) + "×" + Math.round(e.getBoundingClientRect().height)),
       표: table
         ? { w: Math.round(table.getBoundingClientRect().width), 글자: getComputedStyle(table).fontSize }

@@ -18,10 +18,28 @@ const rowsUp = (file) => {
   const y = (id) => S.find((s) => s.id === id).y;
   return { 31: [0, y("76") - y("31")], 32: [0, y("31") - y("32")] };
 };
+// ★도형 글자는 **도판 폭의 1%**(cqw)로 잡혀 있다. 두 장을 합치면서 도판이 13.1인치 →
+//   22.5인치로 넓어졌는데 글자만 그대로라 상자를 넘쳤다(원장 지적 2026-09-10).
+//   설계 폭 대비로 줄인다 — 상자 대비 글자 크기가 합치기 전과 같아진다.
+const DESIGN_W = 13.13;
+const widthIn = (file) => {
+  const S = JSON.parse(readFileSync(file, "utf8")).shapes;
+  const xs = S.flatMap((s) => [s.x, s.x + s.cx]);
+  return (Math.max(...xs) - Math.min(...xs)) / 914400 + 0.66; // 좌우 여백(PAD) 포함
+};
 const common = (file, key) => ({
   key, detours: DETOURS[key === "a" ? "note-p45" : "note-p46"],
-  renames: { 74: [MERGED], 69: ["대리인의 선임/교체(法10)"] },
+  renames: {
+    74: [MERGED],
+    69: ["대리인의 선임/교체(法10)"],
+    // ★원장 지시 2026-09-10 — 제46조(절차의 보정)를 넣는다. 뼈대와 갈래 이름 둘 다.
+    75: ["특허에 관한 절차 일반(法 16, 46, 28~28의5)"],
+    b226: ["특허에 관한 절차 일반(法 16, 46, 28~28의5)"],
+    // 조 뒤 항 표기는 붙여 쓴다 — 「法 3 ②」 → 「法 3②」.
+    64: ["대리인의 종류(法 3②, 5②)"],
+  },
   drop: ["76"], shift: rowsUp(file),
+  fontScale: Number((DESIGN_W / widthIn(file)).toFixed(3)),
 });
 // ★원장 지시 2026-09-10 — 두 그림을 **한 장으로** 합친다. 축(왼쪽 뼈대)은 45p 것을
 //   그대로 두고, 46p 에서는 「기일과 기간」·「특허에 관한 절차 일반」·「절차의 정지」

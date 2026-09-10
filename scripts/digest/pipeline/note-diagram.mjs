@@ -225,7 +225,7 @@ export function buildDiagram(file, opts = {}) {
   const front = D.shapes.filter((s) => kindOf(s) !== "panel").map(div).join("\n        ");
 
   const html = `<div class="dgwrap">
-      <div class="dg" style="aspect-ratio:${BOX.w} / ${BOX.h};min-width:${opts.minWidth ?? 940}px">
+      <div class="dg" style="aspect-ratio:${BOX.w} / ${BOX.h};min-width:${opts.minWidth ?? 940}px${opts.fontScale ? `;--dgfs:${opts.fontScale}` : ""}">
         ${back}
         <svg class="dgsvg" viewBox="0 0 ${BOX.w} ${BOX.h}" preserveAspectRatio="none" aria-hidden="true"
              style="--sw:${Math.round(BOX.w / 1100)}">
@@ -258,8 +258,8 @@ export const DIAGRAM_CSS = `
   .bx {
     position:absolute; display:flex; flex-direction:column; justify-content:center;
     align-items:center; text-align:center; border:1px solid var(--dgline);
-    border-radius:2px; font-size:1cqw; line-height:1.3; font-weight:700;
-    letter-spacing:-.01em; padding:0 .3cqw; overflow:hidden;
+    border-radius:2px; font-size:calc(1cqw * var(--dgfs, 1)); line-height:1.3; font-weight:700;
+    letter-spacing:-.01em; padding:0 calc(.3cqw * var(--dgfs, 1)); overflow:hidden;
   }
   .bx span { display:block; white-space:nowrap; }
   .bx.anchor { background:var(--anchor); color:var(--anchor-fg); border-color:transparent; }
@@ -273,22 +273,22 @@ export const DIAGRAM_CSS = `
     background:transparent; border-style:dashed; border-color:var(--note-line);
     justify-content:flex-start; align-items:stretch; text-align:left;
     /* 틀을 조금 줄였으니 글자도 살짝 줄여 넘치지 않게 한다. */
-    font-weight:600; font-size:.92cqw; line-height:1.45; padding:.25cqw .55cqw;
+    font-weight:600; font-size:calc(.92cqw * var(--dgfs, 1)); line-height:1.45; padding:calc(.25cqw * var(--dgfs, 1)) calc(.55cqw * var(--dgfs, 1));
   }
-  .bx.note span { position:relative; padding-left:1cqw; white-space:normal; }
+  .bx.note span { position:relative; padding-left:calc(1cqw * var(--dgfs, 1)); white-space:normal; }
   .bx.note span.l:not(.num):not(.sub)::before {
-    content:""; position:absolute; left:.15cqw; top:.5em;
-    width:.32cqw; height:.32cqw; background:var(--note-mark);
+    content:""; position:absolute; left:calc(.15cqw * var(--dgfs, 1)); top:.5em;
+    width:calc(.32cqw * var(--dgfs, 1)); height:calc(.32cqw * var(--dgfs, 1)); background:var(--note-mark);
   }
   /* 번호 줄·붙임표 줄은 그 자체가 구분자라 표시를 달지 않는다(원장 지시). */
-  .bx.note span.num { padding-left:.55cqw; }
-  .bx.note span.sub { padding-left:1.5cqw; }
+  .bx.note span.num { padding-left:calc(.55cqw * var(--dgfs, 1)); }
+  .bx.note span.sub { padding-left:calc(1.5cqw * var(--dgfs, 1)); }
   /* 가름틀 — 제목이 왼쪽 위에 붙는다. 안쪽은 비워 두고 상자들이 그 위에 얹힌다.
      ★글자 크기는 다른 상자와 같게 둔다(원장 지시 2026-09-09) — 갈래는 색과 자리가 말한다. */
   .bx.panel {
     justify-content:flex-start; align-items:flex-start; text-align:left;
     background:transparent; border-color:var(--panel-line); color:var(--panel-ink);
-    padding:.7cqw .8cqw .5cqw;
+    padding:calc(.7cqw * var(--dgfs, 1)) calc(.8cqw * var(--dgfs, 1)) calc(.5cqw * var(--dgfs, 1));
   }
 `;
 

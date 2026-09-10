@@ -73,8 +73,8 @@
   .bx {
     position:absolute; display:flex; flex-direction:column; justify-content:center;
     align-items:center; text-align:center; border:1px solid var(--dgline);
-    border-radius:2px; font-size:1cqw; line-height:1.3; font-weight:700;
-    letter-spacing:-.01em; padding:0 .3cqw; overflow:hidden;
+    border-radius:2px; font-size:calc(1cqw * var(--dgfs, 1)); line-height:1.3; font-weight:700;
+    letter-spacing:-.01em; padding:0 calc(.3cqw * var(--dgfs, 1)); overflow:hidden;
   }
   .bx span { display:block; white-space:nowrap; }
   .bx.anchor { background:var(--anchor); color:var(--anchor-fg); border-color:transparent; }
@@ -88,22 +88,22 @@
     background:transparent; border-style:dashed; border-color:var(--note-line);
     justify-content:flex-start; align-items:stretch; text-align:left;
     /* 틀을 조금 줄였으니 글자도 살짝 줄여 넘치지 않게 한다. */
-    font-weight:600; font-size:.92cqw; line-height:1.45; padding:.25cqw .55cqw;
+    font-weight:600; font-size:calc(.92cqw * var(--dgfs, 1)); line-height:1.45; padding:calc(.25cqw * var(--dgfs, 1)) calc(.55cqw * var(--dgfs, 1));
   }
-  .bx.note span { position:relative; padding-left:1cqw; white-space:normal; }
+  .bx.note span { position:relative; padding-left:calc(1cqw * var(--dgfs, 1)); white-space:normal; }
   .bx.note span.l:not(.num):not(.sub)::before {
-    content:""; position:absolute; left:.15cqw; top:.5em;
-    width:.32cqw; height:.32cqw; background:var(--note-mark);
+    content:""; position:absolute; left:calc(.15cqw * var(--dgfs, 1)); top:.5em;
+    width:calc(.32cqw * var(--dgfs, 1)); height:calc(.32cqw * var(--dgfs, 1)); background:var(--note-mark);
   }
   /* 번호 줄·붙임표 줄은 그 자체가 구분자라 표시를 달지 않는다(원장 지시). */
-  .bx.note span.num { padding-left:.55cqw; }
-  .bx.note span.sub { padding-left:1.5cqw; }
+  .bx.note span.num { padding-left:calc(.55cqw * var(--dgfs, 1)); }
+  .bx.note span.sub { padding-left:calc(1.5cqw * var(--dgfs, 1)); }
   /* 가름틀 — 제목이 왼쪽 위에 붙는다. 안쪽은 비워 두고 상자들이 그 위에 얹힌다.
      ★글자 크기는 다른 상자와 같게 둔다(원장 지시 2026-09-09) — 갈래는 색과 자리가 말한다. */
   .bx.panel {
     justify-content:flex-start; align-items:flex-start; text-align:left;
     background:transparent; border-color:var(--panel-line); color:var(--panel-ink);
-    padding:.7cqw .8cqw .5cqw;
+    padding:calc(.7cqw * var(--dgfs, 1)) calc(.8cqw * var(--dgfs, 1)) calc(.5cqw * var(--dgfs, 1));
   }
 
   .foot {
@@ -144,13 +144,13 @@
 
   <section class="panel">
     <div class="dgwrap">
-      <div class="dg" style="aspect-ratio:20573154 / 5969060;min-width:940px">
+      <div class="dg" style="aspect-ratio:20573154 / 5969060;min-width:940px;--dgfs:0.583">
         <div class="bx panel" style="left:40.099%;top:48.867%;width:18.561%;height:44.251%"><span class="l">복수당사자 대표(法 11)</span></div>
         <div class="bx panel" style="left:20.592%;top:48.867%;width:18.561%;height:44.251%"><span class="l">대리인(法 3②, 5②~10, 12)</span></div>
         <div class="bx panel" style="left:40.099%;top:5.947%;width:18.561%;height:40.314%"><span class="l">행위능력(法 3~5①)</span></div>
         <div class="bx panel" style="left:20.592%;top:5.947%;width:18.561%;height:40.314%"><span class="l">발명의 성립성(法 2)</span></div>
         <div class="bx panel" style="left:61.194%;top:59.033%;width:37.080%;height:35.020%"><span class="l">절차의 정지(法 20~24, 78, 164)</span></div>
-        <div class="bx panel" style="left:78.726%;top:5.947%;width:19.548%;height:49.724%"><span class="l">특허에 관한 절차 일반(法 16, 28~28의5)</span></div>
+        <div class="bx panel" style="left:78.726%;top:5.947%;width:19.548%;height:49.724%"><span class="l">특허에 관한 절차 일반(法 16, 46, 28~28의5)</span></div>
         <div class="bx panel" style="left:61.194%;top:5.947%;width:16.380%;height:49.724%"><span class="l">기일과 기간(法 14, 15)</span></div>
         <svg class="dgsvg" viewBox="0 0 20573154 5969060" preserveAspectRatio="none" aria-hidden="true"
              style="--sw:18703">
@@ -196,6 +196,8 @@
             <path class="ln" d="M902531 2971942 L1077588 2971942 L1077588 4834854 L1252644 4834854"/>
             <path class="ln" d="M902531 2971942 L1077588 2971942 L1077588 630239 L1252644 630239"/>
             <path class="ln" d="M16526654 4664293 L16635396 4664293 L16635396 4664293 L16744137 4664293"/>
+            <path class="ln" d="M18969671 4620024 L19391242 4620024" marker-end="url(#aga)"/>
+            <path class="ln" d="M17106633 4664293 L16955812 4664293"/>
             <path class="ln" d="M16526654 4664293 L16635396 4664293 L16635396 4950237 L16744137 4950237"/>
             <path class="ln" d="M14498025 5366486 L14595667 5366486 L14595667 5364611 L14693308 5364611"/>
             <path class="ln" d="M14498025 5075988 L14595667 5075988 L14595667 5074113 L14693308 5074113"/>
@@ -213,6 +215,9 @@
             <path class="ln" d="M18181888 2652408 L18308890 2652408 L18308890 2659394 L18435892 2659394"/>
             <path class="ln" d="M18181888 1779397 L18308890 1779397 L18308890 2212055 L18435892 2212055"/>
             <path class="ln" d="M18181888 1779397 L18308890 1779397 L18308890 1779397 L18435892 1779397"/>
+            <path class="ln" d="M16313954 2212055 L16513954 2212055"/>
+            <path class="ln" d="M16313954 1779397 L16513954 1779397"/>
+            <path class="ln" d="M16313954 1355978 L16513954 1355978"/>
             <path class="ln" d="M16513954 923575 L16373954 923575 L16373954 2652408 L16513954 2652408"/>
             <path class="ln" d="M14498880 2810203 L14581596 2810203 L14581596 3097347 L14664311 3097347"/>
             <path class="ln" d="M14498880 2810203 L14581596 2810203 L14581596 2809480 L14664311 2809480"/>
@@ -237,7 +242,7 @@
         <div class="bx leaf" style="left:30.676%;top:68.078%;width:7.949%;height:4.175%"><span class="l">대리권의 증명(法 7)</span></div>
         <div class="bx leaf" style="left:30.676%;top:63.269%;width:7.949%;height:4.175%"><span class="l">대리권의 범위(法 6)</span></div>
         <div class="bx leaf" style="left:21.911%;top:63.411%;width:7.949%;height:4.175%"><span class="l">대리권의 내용</span></div>
-        <div class="bx leaf" style="left:21.911%;top:56.560%;width:7.949%;height:4.175%"><span class="l">대리인의 종류(法 3 ②, 5②)</span></div>
+        <div class="bx leaf" style="left:21.911%;top:56.560%;width:7.949%;height:4.175%"><span class="l">대리인의 종류(法 3②, 5②)</span></div>
         <div class="bx leaf" style="left:49.278%;top:34.496%;width:4.299%;height:4.175%"><span class="l">예외</span></div>
         <div class="bx leaf" style="left:49.278%;top:29.064%;width:4.299%;height:4.175%"><span class="l">원칙(法 5①)</span></div>
         <div class="bx leaf" style="left:49.278%;top:23.083%;width:4.299%;height:4.175%"><span class="l">예외(法 3, 4)</span></div>
@@ -252,7 +257,7 @@
         <div class="bx leaf" style="left:21.911%;top:16.516%;width:7.949%;height:4.175%"><span class="l">원칙: 발명의 정의 규정 만족</span></div>
         <div class="bx spine" style="left:6.089%;top:78.019%;width:13.726%;height:5.958%"><span class="l">절차의 정지(法 20~24, 78, 164)</span></div>
         <div class="bx spine" style="left:6.089%;top:70.421%;width:13.726%;height:5.958%"><span class="l">절차의 효력의 승계 및 절차의 속행(法 18, 19)</span></div>
-        <div class="bx spine" style="left:6.089%;top:62.602%;width:13.726%;height:5.958%"><span class="l">특허에 관한 절차 일반(法 16, 28~28의5)</span></div>
+        <div class="bx spine" style="left:6.089%;top:62.602%;width:13.726%;height:5.958%"><span class="l">특허에 관한 절차 일반(法 16, 46, 28~28의5)</span></div>
         <div class="bx spine" style="left:6.089%;top:54.990%;width:13.726%;height:5.958%"><span class="l">기일, 기간 및 추후보완(法 14,15,16,67의3)</span></div>
         <div class="bx spine" style="left:6.089%;top:46.757%;width:13.726%;height:5.958%"><span class="l">재외자의 재판관할(法 13)</span></div>
         <div class="bx spine" style="left:6.089%;top:38.812%;width:13.726%;height:5.958%"><span class="l">복수당사자 대표(法 11)</span></div>

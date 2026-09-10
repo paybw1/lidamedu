@@ -72,8 +72,8 @@
   .bx {
     position:absolute; display:flex; flex-direction:column; justify-content:center;
     align-items:center; text-align:center; border:1px solid var(--dgline);
-    border-radius:2px; font-size:1cqw; line-height:1.3; font-weight:700;
-    letter-spacing:-.01em; padding:0 .3cqw; overflow:hidden;
+    border-radius:2px; font-size:calc(var(--dgin) * 0.1313); line-height:1.3; font-weight:700;
+    letter-spacing:-.01em; padding:0 calc(var(--dgin) * 0.0394); overflow:hidden;
   }
   .bx span { display:block; white-space:nowrap; }
   .bx.anchor { background:var(--anchor); color:var(--anchor-fg); border-color:transparent; }
@@ -87,22 +87,22 @@
     background:transparent; border-style:dashed; border-color:var(--note-line);
     justify-content:flex-start; align-items:stretch; text-align:left;
     /* 틀을 조금 줄였으니 글자도 살짝 줄여 넘치지 않게 한다. */
-    font-weight:600; font-size:.92cqw; line-height:1.45; padding:.25cqw .55cqw;
+    font-weight:600; font-size:calc(var(--dgin) * 0.1208); line-height:1.45; padding:calc(var(--dgin) * 0.0328) calc(var(--dgin) * 0.0722);
   }
-  .bx.note span { position:relative; padding-left:1cqw; white-space:normal; }
+  .bx.note span { position:relative; padding-left:calc(var(--dgin) * 0.1313); white-space:normal; }
   .bx.note span.l:not(.num):not(.sub)::before {
-    content:""; position:absolute; left:.15cqw; top:.5em;
-    width:.32cqw; height:.32cqw; background:var(--note-mark);
+    content:""; position:absolute; left:calc(var(--dgin) * 0.0197); top:.5em;
+    width:calc(var(--dgin) * 0.0420); height:calc(var(--dgin) * 0.0420); background:var(--note-mark);
   }
   /* 번호 줄·붙임표 줄은 그 자체가 구분자라 표시를 달지 않는다(원장 지시). */
-  .bx.note span.num { padding-left:.55cqw; }
-  .bx.note span.sub { padding-left:1.5cqw; }
+  .bx.note span.num { padding-left:calc(var(--dgin) * 0.0722); }
+  .bx.note span.sub { padding-left:calc(var(--dgin) * 0.1970); }
   /* 가름틀 — 제목이 왼쪽 위에 붙는다. 안쪽은 비워 두고 상자들이 그 위에 얹힌다.
      ★글자 크기는 다른 상자와 같게 둔다(원장 지시 2026-09-09) — 갈래는 색과 자리가 말한다. */
   .bx.panel {
     justify-content:flex-start; align-items:flex-start; text-align:left;
     background:transparent; border-color:var(--panel-line); color:var(--panel-ink);
-    padding:.7cqw .8cqw .5cqw;
+    padding:calc(var(--dgin) * 0.0919) calc(var(--dgin) * 0.1050) calc(var(--dgin) * 0.0657);
   }
 
   .foot {
@@ -141,7 +141,7 @@
   <section class="panel">
     <h2>특허와 관련된 조약<span class="src">발명의 국제적 보호 vs 지배수단</span></h2>
     <div class="dgwrap">
-      <div class="dg" style="aspect-ratio:8884464 / 7020441;min-width:980px">
+      <div class="dg" style="aspect-ratio:8884464 / 7020441;min-width:980px;--dgin:calc(100cqw / 9.716)">
         
         <svg class="dgsvg" viewBox="0 0 8884464 7020441" preserveAspectRatio="none" aria-hidden="true"
              style="--sw:8077">

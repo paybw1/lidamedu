@@ -2735,6 +2735,50 @@
    }
   },
   {
+   "id": "b179",
+   "name": "직선 화살표 연결선 178",
+   "x": 18852263,
+   "y": 5492241,
+   "cx": 421572,
+   "cy": 1,
+   "flipH": false,
+   "flipV": false,
+   "geom": "straightConnector1",
+   "adj": [],
+   "from": null,
+   "fromIdx": null,
+   "to": "b177",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "triangle",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b176",
+   "name": "직선 연결선 175",
+   "x": 16838404,
+   "y": 5536510,
+   "cx": 150821,
+   "cy": 0,
+   "flipH": true,
+   "flipV": false,
+   "geom": "line",
+   "adj": [],
+   "from": null,
+   "fromIdx": null,
+   "to": null,
+   "toIdx": null,
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
    "id": "b175",
    "name": "꺾인 연결선 174",
    "x": 16409246,
@@ -3130,6 +3174,72 @@
    "from": "b121",
    "fromIdx": "3",
    "to": "b124",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b138",
+   "name": "꺾인 연결선 137",
+   "x": 15646473,
+   "y": 2334198,
+   "cx": 1288481,
+   "cy": 211666,
+   "flipH": true,
+   "flipV": false,
+   "geom": "bentConnector2",
+   "adj": [],
+   "from": null,
+   "fromIdx": null,
+   "to": "b122",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b136",
+   "name": "꺾인 연결선 135",
+   "x": 15892773,
+   "y": 2147840,
+   "cx": 795881,
+   "cy": 211666,
+   "flipH": true,
+   "flipV": false,
+   "geom": "bentConnector2",
+   "adj": [],
+   "from": null,
+   "fromIdx": null,
+   "to": "b121",
+   "toIdx": "1",
+   "line": {
+    "color": null,
+    "head": "none",
+    "tail": "none",
+    "w": 3175
+   }
+  },
+  {
+   "id": "b134",
+   "name": "꺾인 연결선 133",
+   "x": 16076038,
+   "y": 1907686,
+   "cx": 429351,
+   "cy": 211666,
+   "flipH": true,
+   "flipV": false,
+   "geom": "bentConnector2",
+   "adj": [],
+   "from": null,
+   "fromIdx": null,
+   "to": "b120",
    "toIdx": "1",
    "line": {
     "color": null,
