@@ -18,12 +18,15 @@ export function FitPage({
   html,
   css,
   scopeKey,
+  rootRef,
 }: {
   html: string;
   /** `.digest-doc.dp{scopeKey}` 로 좁혀 둔 자료 전용 CSS. */
   css: string;
   /** 자료를 가르는 꼬리표(적재 때 만든 값 그대로). */
   scopeKey: string;
+  /** 빈칸 학습이 칸을 찾아 들어갈 자리(hooks/use-digest-blanks.ts). */
+  rootRef?: React.Ref<HTMLDivElement>;
 }) {
   return (
     <>
@@ -32,6 +35,7 @@ export function FitPage({
       {/* ★여기에 스크롤 상자를 두지 않는다 — 팝업 본문이 이미 양쪽으로 스크롤한다.
           겹쳐 두면 표 머리줄 고정(sticky)이 바깥 스크롤을 못 따라가 안 붙는다. */}
       <div
+        ref={rootRef}
         className={`digest-doc dp${scopeKey}`}
         dangerouslySetInnerHTML={{ __html: html }}
       />

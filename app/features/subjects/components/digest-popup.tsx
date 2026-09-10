@@ -7,8 +7,15 @@
 //   키우고 줄일 수 있게** 했다(원장 지시 2026-09-10). 키우면 넘치는 만큼 스크롤한다.
 // ★‹ › 이동은 **목차 순서**를 따른다(체계도 → 총칙/보칙 → 특허요건 …). 자료가 없는
 //   단원은 목록에서 빠져 있어 빈 화면으로 넘어가지 않는다(lib/digest-outline.ts).
-import { ChevronLeftIcon, ChevronRightIcon, MinusIcon, PlusIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  EyeIcon,
+  MinusIcon,
+  PlusIcon,
+  SquareDashedIcon,
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "~/core/components/ui/button";
 import {
@@ -17,6 +24,7 @@ import {
   DialogTitle,
 } from "~/core/components/ui/dialog";
 
+import { useDigestBlanks } from "../hooks/use-digest-blanks";
 import type { DigestGroup } from "../lib/digest-outline";
 import { FitPage } from "./digest-page";
 
@@ -45,6 +53,9 @@ export function DigestPopup({
     if (open) setAt(startIndex);
   }, [open, startIndex]);
 
+  // 빈칸 학습이 칸을 찾아 들어갈 자리.
+  const bodyRef = useRef<HTMLDivElement>(null);
+
   const [idx, setIdx] = useState(DEFAULT_ZOOM);
   // 고른 크기는 기억한다 — 화면 배율은 사람마다 고정이라 매번 다시 맞추는 건 번거롭다.
   useEffect(() => {
@@ -64,6 +75,8 @@ export function DigestPopup({
   };
 
   const group = groups[at];
+  // ★훅은 언제나 같은 수만큼 불러야 한다 — 자료가 없어도 먼저 부르고 뒤에서 판단한다.
+  const blanks = useDigestBlanks(bodyRef, group?.key ?? "");
   if (!group) return null;
 
   return (
@@ -107,6 +120,37 @@ export function DigestPopup({
             </Button>
           </div>
 
+          {/* 빈칸 학습 — 목차(의의·진보성·표 이름)를 눌러도 되고, 여기서 한 번에 해도 된다.
+              표가 아닌 자료(체계도·도해)는 가릴 칸이 없어 아예 나오지 않는다. */}
+          {blanks.total > 0 ? (
+            <div className="ml-3 flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={blanks.blankAll}
+                className="h-6 gap-1 px-1.5 text-[11px] font-bold"
+              >
+                <SquareDashedIcon className="size-3" />
+                전부 빈칸
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={blanks.count === 0}
+                onClick={blanks.revealAll}
+                className="h-6 gap-1 px-1.5 text-[11px] font-bold"
+              >
+                <EyeIcon className="size-3" />
+                모두 보기
+              </Button>
+              <span className="text-muted-foreground ml-1 hidden text-[11px] font-semibold tabular-nums lg:inline">
+                {blanks.count > 0
+                  ? `빈칸 ${blanks.count} / ${blanks.total}`
+                  : "목차를 누르면 그 줄·칸이 빈칸"}
+              </span>
+            </div>
+          ) : null}
+
           <div className="ml-auto flex items-center gap-1">
             <span className="text-muted-foreground mr-1 hidden text-[11px] font-semibold sm:inline">
               글자 크기
@@ -147,6 +191,7 @@ export function DigestPopup({
             html={group.digest.bodyHtml}
             css={group.digest.css}
             scopeKey={group.digest.scopeKey}
+            rootRef={bodyRef}
           />
         </div>
       </DialogContent>

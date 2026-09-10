@@ -8,6 +8,8 @@
 // 그래서 선택자를 전부 `.digest-doc` 아래로 접고, 앱과 겹치는 색 토큰은 앱 것을 쓴다.
 import { readFileSync } from "node:fs";
 
+import { stampBlanks } from "./blank-stamp.mjs";
+
 /** 앱(app.css)이 이미 정의하는 토큰 — 정리비교표 쪽에서 덮어쓰지 않는다. */
 const APP_OWNED = new Set(["--card", "--border", "--primary", "--link"]);
 /** 이름만 다를 뿐 같은 뜻인 토큰 — 앱 토큰을 가리키게 한다(다크 전환이 저절로 따라온다). */
@@ -200,6 +202,10 @@ export function convert(html, page, opts = {}) {
   //   잘릴 일이 없고, 작아서 안 읽히면 팝업 머리의 글자 크기로 키우면 된다.
   const fluid = withDg.replace(/(<table[^>]*?) style="min-width:\d+px"/g, "$1");
 
+  // ★빈칸 학습용 좌표 — 목차를 누르면 그 줄·그 칸이 빈칸이 된다(scripts/digest/blank-stamp.mjs).
+  //   data- 속성이라 아래 클래스 접두사 붙이기와 서로 건드리지 않는다.
+  const { html: stamped, stats: blankStats } = stampBlanks(fluid);
+
   // ★★자료의 클래스 이름에 **전부 접두사를 붙인다**. 자료 CSS 를 `.digest-doc` 아래로
   //   접어도 **앱의 전역 Tailwind 유틸리티는 그대로 맞는다** — 이름이 겹치면 우리가
   //   뜻하지 않은 스타일이 얹힌다.
@@ -209,10 +215,10 @@ export function convert(html, page, opts = {}) {
   //   한 이름씩 고치면 다음에 또 겹친다. 통째로 접두사를 붙여 뿌리를 끊는다.
   //   검사: scripts/digest/check-class-clash.mjs
   const names = new Set();
-  for (const m of fluid.matchAll(/class="([^"]+)"/g)) {
+  for (const m of stamped.matchAll(/class="([^"]+)"/g)) {
     for (const c of m[1].trim().split(/\s+/)) if (c) names.add(c);
   }
-  const prefixed = fluid.replace(
+  const prefixed = stamped.replace(
     /class="([^"]+)"/g,
     (_m, v) =>
       `class="${v.trim().split(/\s+/).filter(Boolean).map((c) => `${CLASS_PREFIX}${c}`).join(" ")}"`,
@@ -258,7 +264,22 @@ export function convert(html, page, opts = {}) {
     fitCss += `\n${scope} .${CLASS_PREFIX}dg{min-width:0 !important;max-width:calc(${r} * ${share}vh * var(--digest-zoom, 1))}`;
   }
 
-  return { title, bodyHtml: paged, css: css + fitCss, scopeKey };
+  // ★다크에서 칸이 구분되지 않았다(원장 지적 2026-09-10). 앱의 --border 는 흰색 10% 라
+  //   #333 바탕에 13열 표를 그리면 선이 사라진다. **자료 안에서만** 진하게 올린다 —
+  //   앱의 다른 화면은 그대로다. 고정 hex 는 쓰지 않고 앱 토큰에서 섞는다(다크 정합).
+  //   맨 뒤에 붙여야 자료 CSS 의 다크 묶음(--headbg·--keybg)을 덮는다(같은 세기 → 나중 것).
+  fitCss +=
+    `
+.dark ${scope}{` +
+    `--border:color-mix(in oklch, var(--foreground) 32%, transparent);` +
+    `--hair:color-mix(in oklch, var(--foreground) 9%, transparent);` +
+    `--headbg:color-mix(in oklch, var(--primary) 34%, var(--card));` +
+    `--keybg:color-mix(in oklch, var(--foreground) 13%, var(--card));}` +
+    // 내용 글자도 88% 로 흐려 두면 선까지 옅은 다크에서 더 안 읽힌다.
+    `
+.dark ${scope} td{color:var(--foreground)}`;
+
+  return { title, bodyHtml: paged, css: css + fitCss, scopeKey, blankStats };
 }
 
 // ★argv[1] 은 `node -e` 로 부를 때 없다 — 없으면 라이브러리로 쓰인 것이다.
