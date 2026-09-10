@@ -14,8 +14,10 @@ const pages = process.argv.slice(2).map(Number);
 const 대상 = pages.length ? pages : [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
 const VIEWPORTS = [
   { width: 1920, height: 1080 },
-  { width: 1440, height: 900 },
+  { width: 1280, height: 800 },
 ];
+// 글자 크기 조절(팝업 머리) 확인용 배율 — 1 = 기본.
+const ZOOM = Number(process.env.ZOOM ?? 1);
 
 const browser = await chromium.launch();
 for (const page of 대상) {
@@ -38,7 +40,7 @@ ${css}
 </style>
 <div class="dlg">
   <div class="dlg-head">정리비교표</div>
-  <div class="dlg-body" id="body"><div class="digest-doc dp${page}">${bodyHtml}</div></div>
+  <div class="dlg-body" id="body" style="--digest-zoom:${ZOOM}"><div class="digest-doc dp${page}">${bodyHtml}</div></div>
 </div>
 `;
   const file = "scripts/digest/.probe-popup.html";

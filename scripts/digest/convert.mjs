@@ -19,8 +19,6 @@ const ALIAS = {
 };
 /** 페이지 배경·바깥 여백은 패널이 갖는다. */
 const BODY_DROP = new Set(["margin", "background"]);
-/** 기준 폭 — 자료에 박힌 최소 폭이 이보다 넓으면 그쪽을 쓴다. 교재 한 쪽에 해당한다. */
-const DEFAULT_PAGE_W = 1180;
 
 /**
  * 표 쪽별 글자 크기 = 화면 높이의 몇 %인가(vh).
@@ -159,9 +157,6 @@ export function convert(html, page) {
   //   넘고, 5·6p 는 8px 로 줄여도 넘는다(`estimate-height.mjs`).
   //   그래서 **기준 폭을 가진 한 장**으로 감싼다. 판짜기는 언제나 이 폭에서 계산되고,
   //   화면에서는 그 장을 통째로 줄여 맞춘다(digest-panel 의 FitPage).
-  const widths = [...bodyHtml.matchAll(/min-width:(\d+)px/g)].map((m) => Number(m[1]));
-  const pageW = Math.max(DEFAULT_PAGE_W, ...widths);
-
   // ★도형은 **폭에 비례해 높이가 정해진다**(가로세로 비 고정). 한 화면에 담으려면 폭에
   //   천장을 씌워야 하는데, 자료에는 `min-width:940px` 만 박혀 있어 넓은 화면에서 커진다.
   //   그 최소 폭을 걷어내고 `max-width:비율 × Nvh` 로 바꿔 **높이를 화면에 묶는다**.
@@ -171,21 +166,26 @@ export function convert(html, page) {
   const withDg = bodyHtml.replace(
     /aspect-ratio:(\d+) \/ (\d+);min-width:\d+px/g,
     (_m, w, h) =>
-      `aspect-ratio:${w} / ${h};max-width:calc(${(Number(w) / Number(h)).toFixed(3)} * ${share}vh)`,
+      `aspect-ratio:${w} / ${h};max-width:calc(${(Number(w) / Number(h)).toFixed(3)} * ${share}vh * var(--digest-zoom, 1))`,
   );
 
-  // ★폭도 CSS 로 정한다 — 자리가 넓으면 채우고(100%), 좁아도 기준 폭은 지킨다.
-  //   자바스크립트로 재서 넣던 것을 걷어냈다(원장 화면에서 듣지 않았다).
-  const paged = `<div class="digest-page" style="width:max(${pageW}px,100%)">\n${withDg}\n</div>`;
+  // ★폭은 **자리에 맞춘다**. 표에 박힌 최소 폭(min-width:1180px 등)을 그대로 두면 창이
+  //   좁을 때 오른쪽이 잘린다(원장 지적 2026-09-10). 최소 폭을 풀면 칸이 폭에 맞춰 접혀
+  //   잘릴 일이 없고, 작아서 안 읽히면 팝업 머리의 글자 크기로 키우면 된다.
+  const fluid = withDg.replace(/(<table[^>]*?) style="min-width:\d+px"/g, "$1");
+  const paged = `<div class="digest-page" style="width:100%">\n${fluid}\n</div>`;
 
   // ★표 글자 크기를 **화면 높이에 묶는다**(vh). 자바스크립트로 재서 맞추는 방식은
   //   원장 화면에서 세 번 연속 듣지 않았다(2026-09-10) — 무엇이 어긋났든, 재지 않고
   //   CSS 만으로 정해지면 늘 적용된다. 값은 실측에서 얻었다(1920×1080 팝업에서 한
   //   화면에 들어가는 크기 ÷ 화면 높이). 위아래를 clamp 로 묶어 어느 화면에서도
   //   8~12.5px 사이에 있게 한다. 여백은 em 이라 글자를 따라 함께 줄어든다.
+  // ★`--digest-zoom` — 보는 사람이 키우고 줄일 수 있게 곱한다(팝업 머리의 글자 크기
+  //   조절). 기본 1. 화면 배율이 높거나 창이 작으면 vh 값이 8px 바닥에 걸려 너무 작게
+  //   나오는데, 그때 손으로 키우면 된다(원장 지시 2026-09-10). 키우면 스크롤이 붙는다.
   const vh = TABLE_VH[page];
   let fitCss = vh
-    ? `\n${scope} table{font-size:clamp(8px, ${vh}vh, 12.5px)}` +
+    ? `\n${scope} table{font-size:calc(clamp(8px, ${vh}vh, 12.5px) * var(--digest-zoom, 1))}` +
       `\n${scope} th,${scope} td{padding:.48em .56em;line-height:1.42}`
     : "";
 
