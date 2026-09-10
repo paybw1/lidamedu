@@ -187,6 +187,15 @@ for (let i = 2; i < groups.length; i += 1) {
   await p.getByRole("button", { name: "모두 보기" }).click();
   n = await blanks();
   say(n === 0, `${groups[i].label}: 모두 보기 (${n}칸)`);
+
+  // 총칙은 **축(왼쪽 뼈대)** 을 눌러도 제 갈래가 빈칸이 돼야 한다(원장 지시 2026-09-10).
+  if (groups[i].label === "총칙") {
+    await headByText("정의(法 2)").locator("span").first().click();
+    await p.waitForTimeout(120);
+    n = await blanks();
+    say(n === 6, `총칙: 축 「정의(法 2)」 → 빈칸 ${n}칸 (기대 6 — 발명의 성립성 갈래)`);
+    await p.getByRole("button", { name: "모두 보기" }).click();
+  }
 }
 
 await browser.close();

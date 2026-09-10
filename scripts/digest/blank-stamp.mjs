@@ -30,6 +30,10 @@ const spanOf = (attrs, name) => {
 const hasText = (html) =>
   html.replace(/<[^>]*>/g, "").replace(/&nbsp;|&#160;/g, " ").trim().length > 0;
 
+/** 태그를 걷어낸 글자. */
+const text = (html) =>
+  html.replace(/<[^>]*>/g, "").replace(/&nbsp;|&#160;/g, " ").replace(/\s+/g, " ").trim();
+
 /** 여는 태그에 속성을 덧붙인다(`<td>` → `<td data-...>`). */
 const withAttrs = (tag, attrs, add) => `<${tag}${attrs}${add}>`;
 
@@ -242,11 +246,35 @@ export function stampCards(bodyHtml) {
  * 화면별 규칙. 도형은 쪽마다 상자 종류가 달라 한 규칙으로 묶이지 않는다 —
  * **확실한 것만** 적는다. 근거 없이 묶으면 학생이 엉뚱한 짝을 외운다.
  */
+/**
+ * 총칙 축(왼쪽 뼈대) ↔ 갈래(오른쪽 테두리) 짝.
+ * ★자동으로 풀리지 않는다 — 좌표로 줄을 맞추면 이 그림은 나무처럼 퍼져서 엉뚱한 짝이
+ *   되고, 원본 연결선은 축을 몸통(「총칙」)에만 이어 놓았다
+ *   (확인: scripts/digest/pipeline/p3-spine-map.mjs — 축 11개 모두 선 1개, 갈래 연결 없음).
+ *   그래서 **적어 둔다.** 대신 이름이 하나라도 어긋나면 적재가 그 자리에서 멈춘다.
+ * 갈래가 없는 셋(목적 法 1 · 재외자의 재판관할 法 13 · 절차의 효력의 승계 法 18,19)은
+ * 딸린 상자가 아예 없어 누를 것이 없다.
+ */
+const CHONGCHIK_SPINE_TO_PANEL = {
+  "정의(法 2)": "발명의 성립성(法 2)",
+  "행위능력(法 3~5①, 7의2)": "행위능력(法 3~5①)",
+  "대리인(法 3②, 5②~10, 12)": "대리인(法 3②, 5②~10, 12)",
+  "복수당사자 대표(法 11)": "복수당사자 대표(法 11)",
+  "기일, 기간 및 추후보완(法 14,15,16,67의3)": "기일과 기간(法 14, 15)",
+  "특허에 관한 절차 일반(法 16, 46, 28~28의5)": "특허에 관한 절차 일반(法 16, 46, 28~28의5)",
+  "절차의 정지(法 20~24, 78, 164)": "절차의 정지(法 20~24, 78, 164)",
+};
+
 const DIAGRAM_RULES = {
   // 총칙: 갈래 테두리(panel) 제목을 누르면 그 테두리 **안에 든** 상자가 빈칸.
-  //   축(spine·anchor)은 총칙의 뼈대라 목차로 남기고 누르지 않는다 — 이 그림은 나무처럼
-  //   퍼져서 축의 줄과 잎의 줄이 맞지 않는다(줄로 맞추면 엉뚱한 짝이 된다).
-  3: { content: ["leaf"], group: { head: "panel", by: "inside" } },
+  //   축(spine)을 눌러도 같은 갈래가 빈칸이 된다(원장 지시 2026-09-10) — 짝은 위 표.
+  3: {
+    content: ["leaf"],
+    groups: [
+      { head: "panel", by: "inside" },
+      { head: "spine", by: "pairs", pairs: CHONGCHIK_SPINE_TO_PANEL },
+    ],
+  },
   // 번역문 제출: 왼쪽 칸(item)은 전부 「제201조 제N항」이다 — 글에 적혀 있어 확실하다.
   //   오른쪽 관련 조문(ref)은 어느 항에 붙는지 그림만으로 정해지지 않아 묶지 않는다
   //   (하나씩 누르거나 「전부 빈칸」으로 쓴다).
@@ -296,26 +324,52 @@ export function stampDiagram(bodyHtml, rule) {
     b.key = `0:${i}`;
   });
 
-  const heads = boxes.filter((b) => b.kind === rule.group.head && hasText(b.body));
-  for (const h of heads) {
-    if (rule.group.by === "inside") {
-      h.keys = content.filter((c) => inside(c.geo, h.geo)).map((c) => c.key);
-    } else if (rule.group.by === "kind") {
-      h.keys = content.filter((c) => c.kind === rule.group.take).map((c) => c.key);
-    } else if (rule.group.by === "rightOf") {
-      // 설명마다 **왼쪽에서 가장 가까운** 머리 하나에만 붙인다.
-      h.keys = content
-        .filter((c) => {
-          const cands = heads.filter(
-            (x) => overlapsRow(c.geo, x.geo) && x.geo.left + x.geo.width <= c.geo.left + EPS,
-          );
-          if (!cands.length) return false;
-          const best = cands.reduce((a, b) =>
-            b.geo.left + b.geo.width > a.geo.left + a.geo.width ? b : a,
-          );
-          return best === h;
-        })
-        .map((c) => c.key);
+  const flat = (h) => text(h.body).replace(/\s+/g, "");
+  const heads = [];
+  for (const g of rule.groups ?? [rule.group]) {
+    const mine = boxes.filter((b) => b.kind === g.head && hasText(b.body));
+    // ★적어 둔 짝은 **전부** 제 상자를 찾아야 한다. 이름이 하나라도 바뀌면 조용히
+    //   빠지는 대신 여기서 멈춘다 — 못 누르게 된 걸 나중에 화면에서 알아채기 어렵다.
+    if (g.by === "pairs") {
+      const seen = new Set(mine.map(flat));
+      for (const k of Object.keys(g.pairs)) {
+        if (!seen.has(k.replace(/\s+/g, ""))) {
+          throw new Error(`짝을 지을 상자를 찾지 못했습니다: ${k}`);
+        }
+      }
+    }
+    for (const h of mine) {
+      if (g.by === "inside") {
+        h.keys = content.filter((c) => inside(c.geo, h.geo)).map((c) => c.key);
+      } else if (g.by === "kind") {
+        h.keys = content.filter((c) => c.kind === g.take).map((c) => c.key);
+      } else if (g.by === "pairs") {
+        // 적어 둔 짝의 갈래를 찾아 그 안의 상자를 가리킨다.
+        const want = Object.entries(g.pairs).find(([k]) => k.replace(/\s+/g, "") === flat(h))?.[1];
+        if (!want) continue; // 표에 없는 축 = 딸린 갈래가 없다
+        const panel = boxes.find(
+          (b) => b.kind === "panel" && flat(b) === want.replace(/\s+/g, ""),
+        );
+        if (!panel) {
+          throw new Error(`총칙 축↔갈래 짝이 어긋났습니다 — 갈래를 찾지 못함: ${want}`);
+        }
+        h.keys = content.filter((c) => inside(c.geo, panel.geo)).map((c) => c.key);
+      } else if (g.by === "rightOf") {
+        // 설명마다 **왼쪽에서 가장 가까운** 머리 하나에만 붙인다.
+        h.keys = content
+          .filter((c) => {
+            const cands = mine.filter(
+              (x) => overlapsRow(c.geo, x.geo) && x.geo.left + x.geo.width <= c.geo.left + EPS,
+            );
+            if (!cands.length) return false;
+            const best = cands.reduce((a, b) =>
+              b.geo.left + b.geo.width > a.geo.left + a.geo.width ? b : a,
+            );
+            return best === h;
+          })
+          .map((c) => c.key);
+      }
+      heads.push(h);
     }
   }
 
