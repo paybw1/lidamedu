@@ -2,8 +2,8 @@
 // staff 로 체계도 노드 → 도해 팝업(r1-3 절차의 불수리 — 행·열 목차가 둘 다 있는 2칸 표)
 // → 저작권 고지 확인 → 「칸 가리기」 모드 켜기 → 열 목차 클릭(세로줄 가림) → 모서리(전체)
 // → 행 목차(가로줄) → 내용칸 하나 토글 → 「전부 가리기」(접힌 절이 열리는지) → 낱말 빈칸
-// 모드로 들어가면 칸 가리기가 꺼지는지 → 다시 켜기 → 모드를 끄면 풀리는지. 학생에게는 모드
-// 단추도 손잡이도 없어야 한다(staff 선출시).
+// 모드로 들어가면 칸 가리기가 꺼지는지 → 다시 켜기 → 모드를 끄면 풀리는지. 학생에게도 모드
+// 단추가 있고 켜면 손잡이가 나와야 한다(2026-09-11 학생 공개). 낱말 「빈칸」 단추는 여전히 없다.
 // ★정리비교표의 교훈: 따로 만든 재현은 되는데 진짜 팝업에서는 안 되는 사고가 전부였다 —
 //   그래서 실제 화면을 그대로 띄워 누른다.
 import { type Page, expect, test } from "@playwright/test";
@@ -253,17 +253,33 @@ test.describe.serial("도해 표 칸 가리기 (feat-2-037 S7)", () => {
     dump();
   });
 
-  test("학생: 모드 단추도 손잡이도 없다 (staff 선출시)", async ({ page }) => {
+  test("학생: 칸 가리기는 쓸 수 있고, 낱말 빈칸은 아직 없다 (2026-09-11 공개)", async ({
+    page,
+  }) => {
     await loginUser(page, STUDENT_EMAIL, PASSWORD);
     const dialog = await openDohae(page);
     await expect(dialog.locator("table").first()).toBeAttached();
-    await expect(dialog.getByRole("button", { name: "칸 가리기" })).toHaveCount(
-      0,
-    );
+    // 읽기 상태에서는 손잡이·가림이 없다.
     await expect(dialog.locator("[data-dh-cell]")).toHaveCount(0);
     await expect(dialog.locator("[data-dg-blank]")).toHaveCount(0);
+    // 낱말 빈칸(유형 1·2·3)은 staff 전용 그대로.
+    await expect(dialog.getByRole("button", { name: /^빈칸$/ })).toHaveCount(0);
+    // 칸 가리기 단추가 있고, 켜면 손잡이와 「전부 가리기」가 나온다.
+    const modeBtn = dialog.getByRole("button", { name: "칸 가리기" });
+    await expect(modeBtn).toHaveCount(1);
+    await expect(modeBtn).toBeEnabled();
+    await modeBtn.click();
     await expect(
       dialog.getByRole("button", { name: "전부 가리기" }),
-    ).toHaveCount(0);
+    ).toBeVisible();
+    await expect.poll(() => dialog.locator("[data-dg-blank]").count()).toBeGreaterThan(0);
+    // 열 목차 하나를 누르면 그 줄이 가려진다. 끄면 풀리고 손잡이도 사라진다.
+    const hidden = dialog.locator(".dg-blank");
+    await dialog.locator("th[data-dg-blank]").first().click();
+    await expect.poll(() => hidden.count()).toBeGreaterThan(0);
+    await modeBtn.click();
+    await expect(hidden).toHaveCount(0);
+    await expect(dialog.locator("[data-dh-cell]")).toHaveCount(0);
+    await expect(dialog.locator("[data-dg-blank]")).toHaveCount(0);
   });
 });

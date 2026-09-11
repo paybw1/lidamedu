@@ -777,12 +777,12 @@ export function DohaePopup({
             </>
           ) : null}
           <div className="ml-auto flex items-center gap-1.5">
-            {/* feat-2-037 S7 — 표 칸 가리기. staff 선출시 — 원장 검수 뒤 학생 공개는 이 조건과
-                아래 Provider 의 viewerIsStaff 두 곳만 풀면 된다. */}
-            {activeSummary && viewerIsStaff && unit && cellMode ? (
+            {/* feat-2-037 S7 — 표 칸 가리기. 2026-09-11 학생 공개(원장 결정) — 데이터·RLS 변경 없이
+                UI 상태만 쓰는 모드라 게이트가 없다. 낱말 빈칸(아래)은 아직 staff 전용. */}
+            {activeSummary && unit && cellMode ? (
               <DohaeCellBlankBar ctx={cellBlanks} />
             ) : null}
-            {activeSummary && viewerIsStaff ? (
+            {activeSummary ? (
               <button
                 type="button"
                 onClick={() => {
@@ -979,7 +979,7 @@ export function DohaePopup({
                       viewerIsStaff={viewerIsStaff}
                     >
                       <DohaeCellBlankProvider
-                        value={viewerIsStaff && cellMode ? cellBlanks : null}
+                        value={cellMode ? cellBlanks : null}
                       >
                         <DohaeBlocks
                           blocks={unit.blocks}
