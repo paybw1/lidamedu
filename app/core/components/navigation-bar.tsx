@@ -34,6 +34,7 @@ import {
   subjectSlugFromHref,
 } from "~/core/lib/subject-groups";
 import { cn } from "~/core/lib/utils";
+import { useSettlementMenu } from "~/features/subscriptions/components/use-settlement-menu";
 
 import { openCommandPalette } from "./command-palette";
 import { PlatformSwitch } from "./platform-switch";
@@ -461,6 +462,8 @@ export function NavigationBar({
   // 사이드바 모드 — 상단 nav 전체 숨김(로고·도구·유저메뉴 포함). 사이드바가 모든 역할 흡수.
   hideAll?: boolean;
 }) {
+  // 정산현황(강사·원장) — 계정 메뉴 항목 + 메뉴 바깥의 팝업. ★조기 return 앞에서 호출한다.
+  const settlement = useSettlementMenu(isStaff);
   // 사이드바 모드 — 상단 nav 전체 미렌더. 사이드바가 로고·도구·유저메뉴 흡수.
   if (hideAll) return null;
   // 잠금 판정은 등급 기준(체험 모드 반영), 미전달 시 역할 기준 폴백.
@@ -470,219 +473,230 @@ export function NavigationBar({
   // feat-8-008 — 영역 잠금은 TOPBAR_DROPDOWNS 의 area 로 드롭다운별 판정(isAreaLocked) →
   //   흐림(dim) 처리. staff 면제·미산정 시 미표시. 서버 영역 게이트가 권위(시각 힌트만).
   return (
-    <nav
-      className={cn(
-        "dark:bg-background/85 dark:border-border sticky top-0 z-50 mx-auto flex h-16 w-full items-center justify-between border-b border-black/[0.06] bg-white/80 px-4 backdrop-blur-lg backdrop-saturate-150 transition-opacity md:px-6 print:hidden",
-        // 인증 사용자는 모바일에서 하단 탭바가 모든 nav·도구를 담당하므로 상단 바를
-        // 숨겨 학습 콘텐츠 영역을 넓힌다. 비인증은 하단바가 없어 상단 햄버거 유지.
-        name && "hidden md:flex",
-      )}
-    >
-      <div className="mx-auto flex h-full w-full max-w-[1200px] items-center gap-4">
-        <Link
-          to="/"
-          aria-label="리담변리사학원 홈 — Study Platform"
-          className="flex shrink-0 items-center gap-3"
-        >
-          {/* 로고 PNG 의 텍스트 부분이 검정이라 dark 모드에서 안 보임. invert + hue-rotate(180)
+    <>
+      <nav
+        className={cn(
+          "dark:bg-background/85 dark:border-border sticky top-0 z-50 mx-auto flex h-16 w-full items-center justify-between border-b border-black/[0.06] bg-white/80 px-4 backdrop-blur-lg backdrop-saturate-150 transition-opacity md:px-6 print:hidden",
+          // 인증 사용자는 모바일에서 하단 탭바가 모든 nav·도구를 담당하므로 상단 바를
+          // 숨겨 학습 콘텐츠 영역을 넓힌다. 비인증은 하단바가 없어 상단 햄버거 유지.
+          name && "hidden md:flex",
+        )}
+      >
+        <div className="mx-auto flex h-full w-full max-w-[1200px] items-center gap-4">
+          <Link
+            to="/"
+            aria-label="리담변리사학원 홈 — Study Platform"
+            className="flex shrink-0 items-center gap-3"
+          >
+            {/* 로고 PNG 의 텍스트 부분이 검정이라 dark 모드에서 안 보임. invert + hue-rotate(180)
               조합으로 검정→흰색 변환하면서 심볼 브랜드 컬러는 그대로 보존. */}
-          {/* shrink-0(Link) + max-w-none(img): 네비가 좁아져도 Tailwind preflight 의
+            {/* shrink-0(Link) + max-w-none(img): 네비가 좁아져도 Tailwind preflight 의
               max-width:100% 가 로고를 가로로 압축하지 못하게 막는다. */}
-          <img
-            src="/lidam-logo.png"
-            alt="리담변리사학원"
-            className="h-7 w-auto max-w-none dark:[filter:invert(1)_hue-rotate(180deg)]"
-          />
-          {/* 학습 플랫폼 태그라인(lidamipedu ↔ lidamedu 구분) — 메뉴가 붐비는
+            <img
+              src="/lidam-logo.png"
+              alt="리담변리사학원"
+              className="h-7 w-auto max-w-none dark:[filter:invert(1)_hue-rotate(180deg)]"
+            />
+            {/* 학습 플랫폼 태그라인(lidamipedu ↔ lidamedu 구분) — 메뉴가 붐비는
               md~lg 폭에서는 숨겨 로고만 유지. */}
-        </Link>
+          </Link>
 
-        {/* 플랫폼 스위처 — 학습 ↔ 강의. 학생에게도 노출하되, 학생의 '강의'는 외부 운영
+          {/* 플랫폼 스위처 — 학습 ↔ 강의. 학생에게도 노출하되, 학생의 '강의'는 외부 운영
             사이트(lidamedu.com)로 연결(개발 중 내부 플랫폼 대신). staff 는 내부 /lecture. */}
-        <PlatformSwitch className="shrink-0" isStaff={isStaff} />
+          <PlatformSwitch className="shrink-0" isStaff={isStaff} />
 
-        {/* 데스크톱 네비게이션 — 로고 바로 오른쪽, '운영자'까지 왼쪽 정렬 */}
-        <div
-          className={cn(
-            "hidden h-full items-center md:flex",
-            hideMenus && "md:hidden",
-          )}
-        >
-          <NavigationMenu viewport={false}>
-            <NavigationMenuList>
-              {leadingFlats.map((m) => (
-                <FlatLink key={m.to} {...m} />
-              ))}
-              {/* SSOT 파생 — 현행 6 드롭다운 순서·구성 동일. 학습과목만 chip 렌더.
+          {/* 데스크톱 네비게이션 — 로고 바로 오른쪽, '운영자'까지 왼쪽 정렬 */}
+          <div
+            className={cn(
+              "hidden h-full items-center md:flex",
+              hideMenus && "md:hidden",
+            )}
+          >
+            <NavigationMenu viewport={false}>
+              <NavigationMenuList>
+                {leadingFlats.map((m) => (
+                  <FlatLink key={m.to} {...m} />
+                ))}
+                {/* SSOT 파생 — 현행 6 드롭다운 순서·구성 동일. 학습과목만 chip 렌더.
                   종합반 접근자는 '모의고사'→'종합반' 교체(getTopbarDropdowns). */}
-              {topbarDropdowns.map((d) =>
-                d.subjects ? (
-                  <SubjectsDropdown
-                    key={d.label}
-                    locked={isAreaLocked(d.area, lockStaff, features)}
-                    isStaff={lockStaff}
-                    subjects={subjects}
-                    staffPreparing={staffPreparing}
+                {topbarDropdowns.map((d) =>
+                  d.subjects ? (
+                    <SubjectsDropdown
+                      key={d.label}
+                      locked={isAreaLocked(d.area, lockStaff, features)}
+                      isStaff={lockStaff}
+                      subjects={subjects}
+                      staffPreparing={staffPreparing}
+                    />
+                  ) : (
+                    <SimpleDropdown
+                      key={d.label}
+                      label={d.label}
+                      items={(d.groupLinks
+                        ? topbarGroupLinks
+                        : topbarDropdownItems)(
+                        d.groupIds ?? [],
+                        lockStaff,
+                        features,
+                      )}
+                      locked={isAreaLocked(d.area, lockStaff, features)}
+                    />
+                  ),
+                )}
+              </NavigationMenuList>
+            </NavigationMenu>
+          </div>
+
+          {/* 우측 정렬 — 운영관리(운영자 전용)를 학생 메뉴와 분리해 도구/계정 영역에 둔다. */}
+          <div className="ml-auto hidden h-full items-center gap-3 md:flex">
+            {isStaff ? (
+              <>
+                <Link
+                  to="/admin"
+                  className="border-border text-foreground hover:bg-accent inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[13px] font-semibold whitespace-nowrap transition-colors"
+                >
+                  <span
+                    className="size-1.5 rounded-full bg-amber-500"
+                    aria-hidden
                   />
-                ) : (
-                  <SimpleDropdown
-                    key={d.label}
-                    label={d.label}
-                    items={(d.groupLinks
-                      ? topbarGroupLinks
-                      : topbarDropdownItems)(
-                      d.groupIds ?? [],
-                      lockStaff,
-                      features,
-                    )}
-                    locked={isAreaLocked(d.area, lockStaff, features)}
-                  />
-                ),
-              )}
-            </NavigationMenuList>
-          </NavigationMenu>
-        </div>
+                  운영관리
+                </Link>
+                <Separator orientation="vertical" />
+              </>
+            ) : null}
+            {/* 전역 검색·인박스·테마 — 검색은 인증만(팔레트는 private.layout 마운트). */}
+            <Actions
+              inboxUnread={inboxUnread}
+              inboxHref={inboxHref}
+              showNavModeToggle={Boolean(name)}
+              showSearch={Boolean(name)}
+            />
+            <Separator orientation="vertical" />
 
-        {/* 우측 정렬 — 운영관리(운영자 전용)를 학생 메뉴와 분리해 도구/계정 영역에 둔다. */}
-        <div className="ml-auto hidden h-full items-center gap-3 md:flex">
-          {isStaff ? (
-            <>
-              <Link
-                to="/admin"
-                className="border-border text-foreground hover:bg-accent inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[13px] font-semibold whitespace-nowrap transition-colors"
-              >
-                <span
-                  className="size-1.5 rounded-full bg-amber-500"
-                  aria-hidden
-                />
-                운영관리
-              </Link>
-              <Separator orientation="vertical" />
-            </>
-          ) : null}
-          {/* 전역 검색·인박스·테마 — 검색은 인증만(팔레트는 private.layout 마운트). */}
-          <Actions
-            inboxUnread={inboxUnread}
-            inboxHref={inboxHref}
-            showNavModeToggle={Boolean(name)}
-            showSearch={Boolean(name)}
-          />
-          <Separator orientation="vertical" />
+            {loading ? (
+              <div className="flex items-center">
+                <div className="bg-muted-foreground/20 size-8 animate-pulse rounded-lg" />
+              </div>
+            ) : name ? (
+              <UserMenu
+                name={name}
+                email={email}
+                avatarUrl={avatarUrl}
+                extraItems={settlement.item}
+              />
+            ) : (
+              <AuthButtons />
+            )}
+          </div>
 
-          {loading ? (
-            <div className="flex items-center">
-              <div className="bg-muted-foreground/20 size-8 animate-pulse rounded-lg" />
-            </div>
-          ) : name ? (
-            <UserMenu name={name} email={email} avatarUrl={avatarUrl} />
-          ) : (
-            <AuthButtons />
-          )}
-        </div>
-
-        {/* Mobile 우측 — 인증 사용자는 하단 탭바가 nav 를 담당하므로 상단엔
+          {/* Mobile 우측 — 인증 사용자는 하단 탭바가 nav 를 담당하므로 상단엔
             도구(검색·알림·테마)+계정만 노출(중복 메뉴 제거). 비인증은 하단 탭바가
             없으므로 햄버거 시트로 전체 nav 제공. */}
-        {name ? (
-          <div className="ml-auto flex items-center gap-0.5 md:hidden">
-            <Actions inboxUnread={inboxUnread} inboxHref={inboxHref} />
-            <UserMenu
-              hideName
-              name={name}
-              email={email}
-              avatarUrl={avatarUrl}
-            />
-          </div>
-        ) : (
-          <Sheet>
-            <SheetTrigger className="ml-auto size-6 md:hidden">
-              <MenuIcon />
-            </SheetTrigger>
-            <SheetContent>
-              <SheetHeader>
-                <nav className="flex flex-col gap-1 text-sm">
-                  {leadingFlats.map((m) => (
-                    <SheetClose key={m.to} asChild>
-                      <Link
-                        to={m.to}
-                        className="hover:bg-accent rounded-md px-3 py-2"
-                      >
-                        {m.label}
-                      </Link>
-                    </SheetClose>
-                  ))}
+          {name ? (
+            <div className="ml-auto flex items-center gap-0.5 md:hidden">
+              <Actions inboxUnread={inboxUnread} inboxHref={inboxHref} />
+              <UserMenu
+                hideName
+                name={name}
+                email={email}
+                avatarUrl={avatarUrl}
+                extraItems={settlement.item}
+              />
+            </div>
+          ) : (
+            <Sheet>
+              <SheetTrigger className="ml-auto size-6 md:hidden">
+                <MenuIcon />
+              </SheetTrigger>
+              <SheetContent>
+                <SheetHeader>
+                  <nav className="flex flex-col gap-1 text-sm">
+                    {leadingFlats.map((m) => (
+                      <SheetClose key={m.to} asChild>
+                        <Link
+                          to={m.to}
+                          className="hover:bg-accent rounded-md px-3 py-2"
+                        >
+                          {m.label}
+                        </Link>
+                      </SheetClose>
+                    ))}
 
-                  {/* SSOT 파생 — 로그아웃 햄버거(잠금 N/A: 비인증=구독 없음). */}
-                  {topbarDropdowns.map((d) =>
-                    d.subjects ? (
-                      <MobileSubjects key={d.label} />
+                    {/* SSOT 파생 — 로그아웃 햄버거(잠금 N/A: 비인증=구독 없음). */}
+                    {topbarDropdowns.map((d) =>
+                      d.subjects ? (
+                        <MobileSubjects key={d.label} />
+                      ) : (
+                        <MobileGroup
+                          key={d.label}
+                          label={d.label}
+                          items={(d.groupLinks
+                            ? topbarGroupLinks
+                            : topbarDropdownItems)(d.groupIds ?? [], lockStaff)}
+                        />
+                      ),
+                    )}
+
+                    {isStaff
+                      ? trailingFlats.map((m) => (
+                          <SheetClose key={m.to} asChild>
+                            <Link
+                              to={m.to}
+                              className="hover:bg-accent mt-1 rounded-md px-3 py-2"
+                            >
+                              {m.label}
+                            </Link>
+                          </SheetClose>
+                        ))
+                      : null}
+                  </nav>
+                </SheetHeader>
+                {loading ? (
+                  <div className="flex items-center">
+                    <div className="bg-muted-foreground h-4 w-24 animate-pulse rounded-full" />
+                  </div>
+                ) : (
+                  <SheetFooter>
+                    {name ? (
+                      <div className="grid grid-cols-3">
+                        <div className="col-span-2 flex w-full justify-between">
+                          <Actions
+                            inboxUnread={inboxUnread}
+                            inboxHref={inboxHref}
+                          />
+                        </div>
+                        <div className="flex justify-end">
+                          <UserMenu
+                            name={name}
+                            email={email}
+                            avatarUrl={avatarUrl}
+                            extraItems={settlement.item}
+                          />
+                        </div>
+                      </div>
                     ) : (
-                      <MobileGroup
-                        key={d.label}
-                        label={d.label}
-                        items={(d.groupLinks
-                          ? topbarGroupLinks
-                          : topbarDropdownItems)(d.groupIds ?? [], lockStaff)}
-                      />
-                    ),
-                  )}
-
-                  {isStaff
-                    ? trailingFlats.map((m) => (
-                        <SheetClose key={m.to} asChild>
-                          <Link
-                            to={m.to}
-                            className="hover:bg-accent mt-1 rounded-md px-3 py-2"
-                          >
-                            {m.label}
-                          </Link>
-                        </SheetClose>
-                      ))
-                    : null}
-                </nav>
-              </SheetHeader>
-              {loading ? (
-                <div className="flex items-center">
-                  <div className="bg-muted-foreground h-4 w-24 animate-pulse rounded-full" />
-                </div>
-              ) : (
-                <SheetFooter>
-                  {name ? (
-                    <div className="grid grid-cols-3">
-                      <div className="col-span-2 flex w-full justify-between">
-                        <Actions
-                          inboxUnread={inboxUnread}
-                          inboxHref={inboxHref}
-                        />
+                      <div className="flex flex-col gap-5">
+                        <div className="flex justify-between">
+                          <Actions
+                            inboxUnread={inboxUnread}
+                            inboxHref={inboxHref}
+                            showNavModeToggle={false}
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <AuthButtons />
+                        </div>
                       </div>
-                      <div className="flex justify-end">
-                        <UserMenu
-                          name={name}
-                          email={email}
-                          avatarUrl={avatarUrl}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-5">
-                      <div className="flex justify-between">
-                        <Actions
-                          inboxUnread={inboxUnread}
-                          inboxHref={inboxHref}
-                          showNavModeToggle={false}
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <AuthButtons />
-                      </div>
-                    </div>
-                  )}
-                </SheetFooter>
-              )}
-            </SheetContent>
-          </Sheet>
-        )}
-      </div>
-    </nav>
+                    )}
+                  </SheetFooter>
+                )}
+              </SheetContent>
+            </Sheet>
+          )}
+        </div>
+      </nav>
+      {/* 정산현황 팝업 — 계정 드롭다운 바깥에 둔다(메뉴가 닫힐 때 함께 언마운트되면 안 된다). */}
+      {settlement.dialog}
+    </>
   );
 }

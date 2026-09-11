@@ -33,6 +33,10 @@ export default [
     route("/search", "features/search/api/search.tsx"),
     route("/search/clear-history", "features/search/api/clear-history.tsx"),
     route("/bug-report", "features/bug-reports/api/bug-report.tsx"),
+    // feat-8-031 강사 정산현황 — 두 플랫폼의 계정 메뉴 팝업이 함께 부른다.
+    //   ★lecture.layout 아래에 두지 않는다(그 게이트는 화면용). 권한은 라우트가 requireStaff 로 자체 검증.
+    //   ★이 블록은 prefix("/api") 안이다 — 경로에 /api 를 또 쓰면 /api/api/... 가 된다.
+    route("/lecture/settlement", "features/subscriptions/api/lecture-settlement.tsx"),
     route(
       "/notifications/mark-read",
       "features/notifications/api/mark-read.tsx",
@@ -336,10 +340,6 @@ export default [
     route(
       "/lecture/settlements",
       "features/subscriptions/screens/lecture-settlements.tsx",
-    ),
-    route(
-      "/api/lecture/settlement",
-      "features/subscriptions/api/lecture-settlement.tsx",
     ),
     // feat-6-011 — 고객센터 문의(강의 플랫폼 소속). 접근통제는 RLS 가 DB 에서 강제.
     route("/lecture/support", "features/cs-inquiries/screens/support-list.tsx"),
@@ -841,7 +841,10 @@ export default [
       // feat-11-011 — 포인트 정책·쿠폰 전환·이용내역.
       route("/admin/points", "features/points/screens/admin-points.tsx"),
       // feat-11-011 P5 — 강의·판매 운영 대시보드(요청서 §1.2 "0. 대시보드").
-      route("/admin/dashboard", "features/admin/screens/admin-ops-dashboard.tsx"),
+      route(
+        "/admin/dashboard",
+        "features/admin/screens/admin-ops-dashboard.tsx",
+      ),
       route(
         "/admin/coupons/new",
         "features/coupons/screens/admin-coupon-edit.tsx",
@@ -964,10 +967,7 @@ export default [
       // feat-11-006 Phase 3 — HTML 에디터 이미지 업로드(staff 전용).
       route("/api/lms/editor-image", "features/lms/api/editor-image.tsx"),
       // feat-11-010 — [수강연장] → 연장 주문 + pending 결제(서버에서 정책 재검증).
-      route(
-        "/api/lms/extension-order",
-        "features/lms/api/extension-order.tsx",
-      ),
+      route("/api/lms/extension-order", "features/lms/api/extension-order.tsx"),
       // feat-11-006 Phase 4 — 수강평/교재평 학생 뮤테이션.
       route("/api/lms/review", "features/lms/api/review.tsx"),
       // 관리자 관리 — 운영 업무별 알림 담당자 지정 (admin 전용).

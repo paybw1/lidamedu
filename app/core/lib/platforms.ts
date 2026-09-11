@@ -76,26 +76,46 @@ export type LectureNavItem = {
   children?: ReadonlyArray<{ label: string; to: string }>;
 };
 // 리담안내 하위 6개 — 상단 드롭다운과 /about 섹션 sticky 서브내비가 공유(단일 소스).
-export const LECTURE_GUIDE_LINKS: ReadonlyArray<{ label: string; to: string }> = [
-  { label: "인사말", to: "/about" },
-  { label: "강사소개", to: "/about/instructors" },
-  { label: "시험정보", to: "/lecture/exam-info" },
-  { label: "공지사항", to: "/lecture/announcements" },
-  { label: "리담소식", to: "/lecture/news" },
-  { label: "학원시설", to: "/lecture/facilities" },
-  { label: "찾아오시는 길", to: "/location" },
-];
+export const LECTURE_GUIDE_LINKS: ReadonlyArray<{ label: string; to: string }> =
+  [
+    { label: "인사말", to: "/about" },
+    { label: "강사소개", to: "/about/instructors" },
+    { label: "시험정보", to: "/lecture/exam-info" },
+    { label: "공지사항", to: "/lecture/announcements" },
+    { label: "리담소식", to: "/lecture/news" },
+    { label: "학원시설", to: "/lecture/facilities" },
+    { label: "찾아오시는 길", to: "/location" },
+  ];
 
 // 마이페이지 하위 — 상단 드롭다운과 마이페이지 화면 sticky 서브내비가 공유(단일 소스).
-export const LECTURE_MYPAGE_LINKS: ReadonlyArray<{ label: string; to: string }> =
-  [
-    { label: "수강현황", to: "/lecture" },
-    { label: "주문·배송", to: "/lecture/orders" },
-    { label: "증명서 발급", to: "/lecture/certificates" },
-    { label: "결제내역 조회", to: "/lecture/payments" },
-    { label: "쿠폰 관리", to: "/lecture/coupons" },
-    { label: "포인트 관리", to: "/lecture/points" },
-  ];
+export const LECTURE_MYPAGE_LINKS: ReadonlyArray<{
+  label: string;
+  to: string;
+}> = [
+  { label: "수강현황", to: "/lecture" },
+  { label: "주문·배송", to: "/lecture/orders" },
+  { label: "증명서 발급", to: "/lecture/certificates" },
+  { label: "결제내역 조회", to: "/lecture/payments" },
+  { label: "쿠폰 관리", to: "/lecture/coupons" },
+  { label: "포인트 관리", to: "/lecture/points" },
+];
+
+/**
+ * 강사·원장에게만 붙는 마이페이지 항목(feat-8-031 정산현황).
+ * ★LECTURE_MYPAGE_LINKS 에 그냥 넣으면 수험생에게도 보인다 — 반드시 이 함수로 합친다.
+ */
+export const LECTURE_MYPAGE_STAFF_LINKS: ReadonlyArray<{
+  label: string;
+  to: string;
+}> = [{ label: "정산현황", to: "/lecture/settlements" }];
+
+export function lectureMypageLinks(
+  isStaff: boolean,
+): ReadonlyArray<{ label: string; to: string }> {
+  return isStaff
+    ? [...LECTURE_MYPAGE_LINKS, ...LECTURE_MYPAGE_STAFF_LINKS]
+    : LECTURE_MYPAGE_LINKS;
+}
 
 // 커뮤니티 하위 — 학습 플랫폼과 공유하는 게시판(자유·스터디·합격수기). 강의 플랫폼 상단바에서도
 //   같은 커뮤니티로 진입한다(별도 게시판 신설 아님 = 단일 소스). 커뮤니티 화면은 인증 영역

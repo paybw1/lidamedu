@@ -11,16 +11,11 @@
 //   - 접힘 시 모든 항목 아이콘 + hover flyout
 //   - 메뉴 항목 클릭 시 자동 접힘 (사용자 학습 동선 방해 최소)
 //   - 모바일(md 미만) 자체 숨김 — StudentBottomBar 가 별도 담당
-
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
+import { BookOpenIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router";
 
-import {
-  SUBJECT_NAV_ITEMS,
-  subjectSlugFromHref,
-} from "~/core/lib/subject-groups";
-import { cn } from "~/core/lib/utils";
 import {
   FLAT_ADMIN,
   FLAT_HOME,
@@ -28,12 +23,18 @@ import {
   LOCKED_HINT,
   type NavGroup,
   isAreaLocked,
-  isSubjectLocked,
-  subjectLockedHint,
   isNavActive,
+  isSubjectLocked,
   pickActiveLinkTo,
+  subjectLockedHint,
   useNavLayout,
 } from "~/core/lib/nav-groups";
+import {
+  SUBJECT_NAV_ITEMS,
+  subjectSlugFromHref,
+} from "~/core/lib/subject-groups";
+import { cn } from "~/core/lib/utils";
+import { useSettlementMenu } from "~/features/subscriptions/components/use-settlement-menu";
 
 import { RightTools, UserMenu } from "./navigation-bar";
 import { PlatformSwitch } from "./platform-switch";
@@ -69,6 +70,8 @@ export function StudentSidebar({
   subjects,
   staffPreparing,
 }: StudentSidebarProps) {
+  // 정산현황(강사·원장) — 계정 메뉴 항목 + 사이드바 바깥의 팝업.
+  const settlement = useSettlementMenu(isStaff);
   // 잠금·staffOnly 항목 판정은 등급 기준(원장 체험 모드 반영) — 운영관리 링크 노출은 역할(isStaff) 기준 유지.
   const lockStaff = gradeStaff ?? isStaff;
   const { core, secondary } = useNavLayout(lockStaff, features);
@@ -111,7 +114,6 @@ export function StudentSidebar({
     setOpenId(id);
   };
 
-
   // 그룹 펼침 — accordion exclusive (한 번에 한 그룹만).
   // 초기: 현재 path 가 속한 그룹, 없으면 subjects 기본.
   const initialOpen = useMemo<string | null>(() => {
@@ -133,6 +135,7 @@ export function StudentSidebar({
     setOpenId((prev) => (prev === id ? null : id));
 
   return (
+    <>
     <aside
       data-testid="student-sidebar"
       data-collapsed={collapsed}
@@ -145,7 +148,7 @@ export function StudentSidebar({
       <div
         className={cn(
           "border-border flex border-b p-2",
-          collapsed ? "justify-center" : "px-3 justify-start",
+          collapsed ? "justify-center" : "justify-start px-3",
         )}
       >
         <button
@@ -153,7 +156,7 @@ export function StudentSidebar({
           onClick={toggleCollapsed}
           title={collapsed ? "사이드바 펼치기" : "사이드바 접기"}
           aria-label={collapsed ? "사이드바 펼치기" : "사이드바 접기"}
-          className="hover:opacity-80 transition-opacity flex shrink-0 items-center"
+          className="flex shrink-0 items-center transition-opacity hover:opacity-80"
         >
           {collapsed ? (
             <img
@@ -189,8 +192,8 @@ export function StudentSidebar({
       {/* ── 계정 메뉴 — 접힘=아바타만, 펼침=아바타+이름 (메뉴 아이콘 줄에 맞춤) ── */}
       <div
         className={cn(
-          "border-border border-b p-2 flex",
-          collapsed ? "justify-center" : "px-3 justify-start",
+          "border-border flex border-b p-2",
+          collapsed ? "justify-center" : "justify-start px-3",
         )}
       >
         <UserMenu
@@ -198,11 +201,17 @@ export function StudentSidebar({
           name={user.name}
           email={user.email}
           avatarUrl={user.avatarUrl}
+          extraItems={settlement.item}
         />
       </div>
 
       {/* ── 본문 — 메뉴 ── */}
-      <div className={cn("flex-1 overflow-y-auto overflow-x-hidden", collapsed ? "p-1" : "p-3")}>
+      <div
+        className={cn(
+          "flex-1 overflow-x-hidden overflow-y-auto",
+          collapsed ? "p-1" : "p-3",
+        )}
+      >
         {!collapsed && <SidebarSection label="핵심" />}
         <Row
           collapsed={collapsed}
@@ -303,7 +312,7 @@ export function StudentSidebar({
       {/* ── 하단 — RightTools (검색·인박스·다크모드·상단전환 통합) ── */}
       <div
         className={cn(
-          "border-border border-t p-2 flex",
+          "border-border flex border-t p-2",
           collapsed
             ? "flex-col items-center gap-1"
             : "items-center justify-around gap-1",
@@ -317,6 +326,9 @@ export function StudentSidebar({
         />
       </div>
     </aside>
+    {/* 정산현황 팝업 — 계정 드롭다운 바깥에 둔다(메뉴와 함께 언마운트되면 안 된다). */}
+    {settlement.dialog}
+    </>
   );
 }
 
@@ -432,7 +444,7 @@ function GroupFull({
         aria-expanded={open}
         title={locked ? LOCKED_HINT : undefined}
         className={cn(
-          "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-muted",
+          "hover:bg-muted flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors",
           hasActive ? "text-link font-semibold" : "text-foreground/80",
           locked && LOCKED_DIM_CLASS,
         )}
@@ -453,21 +465,21 @@ function GroupFull({
             return group.items.map((it) => {
               const active = it.to === activeTo;
               return (
-              <Link
-                key={it.to}
-                to={it.to}
-                viewTransition
-                prefetch="intent"
-                onClick={onPick}
-                className={cn(
-                  "rounded-md px-2 py-1 text-xs transition-colors",
-                  active
-                    ? "bg-primary/10 text-link font-semibold"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                )}
-              >
-                {it.label}
-              </Link>
+                <Link
+                  key={it.to}
+                  to={it.to}
+                  viewTransition
+                  prefetch="intent"
+                  onClick={onPick}
+                  className={cn(
+                    "rounded-md px-2 py-1 text-xs transition-colors",
+                    active
+                      ? "bg-primary/10 text-link font-semibold"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                >
+                  {it.label}
+                </Link>
               );
             });
           })()}
@@ -532,7 +544,7 @@ function GroupIcon({
         onClick={onExpand}
         aria-label={group.label}
         className={cn(
-          "flex h-8 w-full items-center justify-center rounded-lg transition-colors hover:bg-muted",
+          "hover:bg-muted flex h-8 w-full items-center justify-center rounded-lg transition-colors",
           hasActive ? "bg-primary/10 text-link" : "text-foreground/80",
           locked && LOCKED_DIM_CLASS,
         )}
@@ -613,7 +625,7 @@ function SubjectsFull({
         aria-expanded={open}
         title={locked ? LOCKED_HINT : undefined}
         className={cn(
-          "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-muted",
+          "hover:bg-muted flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm",
           locked && LOCKED_DIM_CLASS,
         )}
       >
@@ -626,7 +638,7 @@ function SubjectsFull({
         )}
       </button>
       {open ? (
-        <div className="border-border ml-6 mt-1 flex flex-col gap-0.5 border-l pl-2">
+        <div className="border-border mt-1 ml-6 flex flex-col gap-0.5 border-l pl-2">
           {/* 1/2차 구분 없는 평면 6과목. 권한 없는 과목은 비활성(클릭 불가). */}
           {SUBJECT_NAV_ITEMS.map((item) => {
             const active = isNavActive(item.href, path, search);
@@ -697,7 +709,7 @@ function SubjectsIcon({
         onClick={onExpand}
         aria-label="학습과목"
         className={cn(
-          "flex h-8 w-full items-center justify-center rounded-lg transition-colors hover:bg-muted",
+          "hover:bg-muted flex h-8 w-full items-center justify-center rounded-lg transition-colors",
           hasActive ? "bg-primary/10 text-link" : "text-foreground/80",
           locked && LOCKED_DIM_CLASS,
         )}
@@ -717,5 +729,4 @@ function Flyout({ children }: { children: React.ReactNode }) {
   );
 }
 
-import { BookOpenIcon } from "lucide-react";
 const SUBJECT_ICON = BookOpenIcon;

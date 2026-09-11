@@ -6,8 +6,7 @@
 //   "학생 강의 클릭 = lidamedu.com" 정책과 동일 소스. 오픈 시 이 게이트만 제거하면 된다.
 import type { Route } from "./+types/lecture.layout";
 
-import { BellIcon, SearchIcon, WalletIcon } from "lucide-react";
-import { useState } from "react";
+import { BellIcon, SearchIcon } from "lucide-react";
 import { Link, Outlet, data, redirect, useLocation } from "react-router";
 
 import { BugReportWidget } from "~/features/bug-reports/components/bug-report-widget";
@@ -15,7 +14,7 @@ import { getStaffRole } from "~/features/laws/queries.server";
 import { CartClearOnPurchase } from "~/features/lms/components/cart-clear-on-purchase";
 import { CartLink } from "~/features/lms/components/cart-link";
 import { getUnreadCount } from "~/features/notifications/queries.server";
-import { SettlementDialog } from "~/features/subscriptions/components/settlement-dialog";
+import { useSettlementMenu } from "~/features/subscriptions/components/use-settlement-menu";
 
 import {
   CommandPalette,
@@ -27,11 +26,10 @@ import { LectureSubNav } from "../components/lecture-sub-nav";
 import { UserMenu } from "../components/navigation-bar";
 import { PlatformSwitch } from "../components/platform-switch";
 import { Button } from "../components/ui/button";
-import { DropdownMenuItem } from "../components/ui/dropdown-menu";
 import {
   EXTERNAL_LECTURE_URL,
   LECTURE_GUIDE_LINKS,
-  LECTURE_MYPAGE_LINKS,
+  lectureMypageLinks,
 } from "../lib/platforms";
 import makeServerClient from "../lib/supa-client.server";
 
@@ -68,8 +66,8 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export default function LectureLayout({ loaderData }: Route.ComponentProps) {
   const { user, inboxUnread, inboxHref, isStaff, role } = loaderData;
-  // 정산현황 팝업 — 드롭다운은 항목을 고르면 닫히므로 열림 상태를 레이아웃이 들고 있는다.
-  const [settlementOpen, setSettlementOpen] = useState(false);
+  // 정산현황 — 항목은 계정 메뉴에, 팝업은 메뉴 바깥에(메뉴와 함께 언마운트되면 안 된다).
+  const settlement = useSettlementMenu(!!role);
   // 홈(히어로 캐러셀)에서는 헤더 하단 구분선을 없애 히어로가 상단바에 붙어 보이게.
   //   다른 강의 페이지에선 nav/본문 구분선 유지.
   const pathname = useLocation().pathname;
@@ -78,7 +76,7 @@ export default function LectureLayout({ loaderData }: Route.ComponentProps) {
     <div className="flex min-h-screen flex-col justify-between">
       <header
         className={`dark:bg-background/85 dark:border-border sticky top-0 z-50 bg-white/80 backdrop-blur-lg backdrop-saturate-150${
-          isHome ? "" : " border-b border-black/[0.06]"
+          isHome ? "" : "border-b border-black/[0.06]"
         }`}
       >
         <div className="mx-auto flex h-16 w-full max-w-[1200px] items-center gap-2 px-4 md:px-6">
@@ -131,21 +129,7 @@ export default function LectureLayout({ loaderData }: Route.ComponentProps) {
                   name={user.name}
                   email={user.email}
                   avatarUrl={user.avatarUrl}
-                  extraItems={
-                    role ? (
-                      <DropdownMenuItem
-                        // ★preventDefault 로 드롭다운을 열어둔 채 Dialog 를 띄우면, 닫은 뒤
-                        //   body 에 pointer-events:none 가 남아 화면 전체가 죽는다(E2E 재현).
-                        //   드롭다운을 정상 종료시키고 그 다음 tick 에 팝업을 연다.
-                        onSelect={() => {
-                          setTimeout(() => setSettlementOpen(true), 0);
-                        }}
-                      >
-                        <WalletIcon className="size-4" />
-                        정산현황
-                      </DropdownMenuItem>
-                    ) : null
-                  }
+                  extraItems={settlement.item}
                 />
               </>
             ) : (
@@ -161,15 +145,10 @@ export default function LectureLayout({ loaderData }: Route.ComponentProps) {
 
         {/* 리담안내/마이페이지 화면에서만 — 하위 sticky 서브내비(헤더에 포함돼 함께 고정) */}
         <LectureSubNav links={LECTURE_GUIDE_LINKS} />
-        {user ? <LectureSubNav links={LECTURE_MYPAGE_LINKS} /> : null}
+        {user ? <LectureSubNav links={lectureMypageLinks(!!role)} /> : null}
       </header>
 
-      {role ? (
-        <SettlementDialog
-          open={settlementOpen}
-          onOpenChange={setSettlementOpen}
-        />
-      ) : null}
+      {settlement.dialog}
       <CartClearOnPurchase />
       {user ? <CommandPalette /> : null}
       {/* 오류 신고 — 종전에는 학습 플랫폼(navigation.layout)에만 있어 강의 플랫폼에서

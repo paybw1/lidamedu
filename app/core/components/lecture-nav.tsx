@@ -4,20 +4,28 @@ import { ChevronDownIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink, useLocation } from "react-router";
 
-import { cn } from "~/core/lib/utils";
 import {
   LECTURE_NAV_LINKS,
-  childMatchesPath,
   type LectureNavItem,
+  childMatchesPath,
+  lectureMypageLinks,
 } from "~/core/lib/platforms";
+import { cn } from "~/core/lib/utils";
+
+/** 마이페이지 자식은 역할에 따라 달라진다(강사·원장에게만 정산현황). */
+function navLinksFor(isStaff: boolean): ReadonlyArray<LectureNavItem> {
+  return LECTURE_NAV_LINKS.map((l) =>
+    l.label === "마이페이지" && l.children
+      ? { ...l, children: lectureMypageLinks(isStaff) }
+      : l,
+  );
+}
 
 const itemCls = (active: boolean) =>
   cn(
     // 학습 플랫폼처럼 여유 있는 간격(px-3.5)·글자크기(15px) — 한 줄 유지(whitespace-nowrap).
     "inline-flex items-center gap-0.5 whitespace-nowrap rounded-md px-3.5 py-1.5 text-[15px] font-medium transition-colors",
-    active
-      ? "bg-accent text-foreground"
-      : "text-foreground hover:bg-accent/60",
+    active ? "bg-accent text-foreground" : "text-foreground hover:bg-accent/60",
   );
 
 function Dropdown({ item }: { item: LectureNavItem }) {
@@ -56,7 +64,7 @@ function Dropdown({ item }: { item: LectureNavItem }) {
       <div
         aria-hidden={!open}
         className={cn(
-          "absolute right-0 top-full z-50 pt-2 transition-all duration-200 ease-out",
+          "absolute top-full right-0 z-50 pt-2 transition-all duration-200 ease-out",
           open
             ? "translate-y-0 opacity-100"
             : "pointer-events-none -translate-y-1 opacity-0",
@@ -91,25 +99,25 @@ function Dropdown({ item }: { item: LectureNavItem }) {
 export function LectureNav({ isStaff }: { isStaff: boolean }) {
   return (
     <nav className="hidden h-full items-center gap-1 md:flex">
-        {LECTURE_NAV_LINKS.map((l) =>
-          l.children ? (
-            <Dropdown key={l.label} item={l} />
-          ) : (
-            <NavLink
-              key={l.to}
-              to={l.to!}
-              className={({ isActive }) => itemCls(isActive)}
-            >
-              {l.label}
-            </NavLink>
-          ),
-        )}
-        {isStaff ? (
-          <NavLink to="/admin" className={({ isActive }) => itemCls(isActive)}>
-            운영관리
+      {navLinksFor(isStaff).map((l) =>
+        l.children ? (
+          <Dropdown key={l.label} item={l} />
+        ) : (
+          <NavLink
+            key={l.to}
+            to={l.to!}
+            className={({ isActive }) => itemCls(isActive)}
+          >
+            {l.label}
           </NavLink>
-        ) : null}
-      </nav>
+        ),
+      )}
+      {isStaff ? (
+        <NavLink to="/admin" className={({ isActive }) => itemCls(isActive)}>
+          운영관리
+        </NavLink>
+      ) : null}
+    </nav>
   );
 }
 
@@ -117,23 +125,25 @@ export function LectureNav({ isStaff }: { isStaff: boolean }) {
 export function LectureNavMobile({ isStaff }: { isStaff: boolean }) {
   return (
     <nav className="flex items-center gap-1 overflow-x-auto border-t border-black/[0.04] px-4 py-1.5 md:hidden dark:border-white/[0.04]">
-      {LECTURE_NAV_LINKS.flatMap((l) =>
-        l.children ? l.children.slice() : [{ label: l.label, to: l.to! }],
-      ).map((c) => (
-        <NavLink
-          key={c.to}
-          to={c.to}
-          end={c.to === "/lecture"}
-          className={({ isActive }) =>
-            cn(
-              "rounded-md px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors",
-              isActive ? "bg-accent text-foreground" : "text-foreground",
-            )
-          }
-        >
-          {c.label}
-        </NavLink>
-      ))}
+      {navLinksFor(isStaff)
+        .flatMap((l) =>
+          l.children ? l.children.slice() : [{ label: l.label, to: l.to! }],
+        )
+        .map((c) => (
+          <NavLink
+            key={c.to}
+            to={c.to}
+            end={c.to === "/lecture"}
+            className={({ isActive }) =>
+              cn(
+                "rounded-md px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors",
+                isActive ? "bg-accent text-foreground" : "text-foreground",
+              )
+            }
+          >
+            {c.label}
+          </NavLink>
+        ))}
       {isStaff ? (
         <NavLink
           to="/admin"

@@ -576,7 +576,7 @@ export function CasesTab({
                     column="importance"
                     sort={filters.sort}
                     searchParams={searchParams}
-                    className="w-10"
+                    className="w-12 px-1"
                     align="center"
                   />
                   <SortableCaseHead
@@ -584,7 +584,7 @@ export function CasesTab({
                     column="overall"
                     sort={filters.sort}
                     searchParams={searchParams}
-                    className="w-12"
+                    className="w-10 px-1"
                   />
                   {topicNodes.length > 0 ? (
                     <SortableCaseHead
@@ -592,7 +592,7 @@ export function CasesTab({
                       column="topic"
                       sort={filters.sort}
                       searchParams={searchParams}
-                      className="hidden w-16 md:table-cell"
+                      className="hidden w-14 px-1 md:table-cell"
                     />
                   ) : null}
                   <SortableCaseHead
@@ -600,28 +600,28 @@ export function CasesTab({
                     column="court"
                     sort={filters.sort}
                     searchParams={searchParams}
-                    className="hidden w-24 md:table-cell"
+                    className="hidden w-[4.5rem] px-1 md:table-cell"
                   />
                   <SortableCaseHead
                     label="선고일"
                     column="decided"
                     sort={filters.sort}
                     searchParams={searchParams}
-                    className="hidden w-28 md:table-cell"
+                    className="hidden w-[5.5rem] px-1 md:table-cell"
                   />
                   <SortableCaseHead
                     label="사건번호"
                     column="caseNo"
                     sort={filters.sort}
                     searchParams={searchParams}
-                    className="w-24 md:w-32"
+                    className="w-24 md:w-28"
                   />
                   <SortableCaseHead
                     label="전합"
                     column="enbanc"
                     sort={filters.sort}
                     searchParams={searchParams}
-                    className="hidden w-14 md:table-cell"
+                    className="hidden w-12 px-1 md:table-cell"
                     align="center"
                   />
                   <SortableCaseHead
@@ -780,7 +780,10 @@ function SortableCaseHead({
   }
   return (
     <TableHead
-      className={`text-muted-foreground/70 text-[11px] font-bold tracking-[0.04em] uppercase${className ?? ""}`}
+      // ★공백 필수 — 없으면 "uppercase" 와 className 첫 토큰이 붙어(예: "uppercasew-10")
+      //   그 클래스가 통째로 죽는다. table-fixed 라 너비가 죽으면 그 칸이 남는 폭을
+      //   사건명과 나눠 가져 사건명이 좁아진다(2026-09-12 원인).
+      className={`text-muted-foreground/70 text-[11px] font-bold tracking-[0.04em] uppercase ${className ?? ""}`}
     >
       <Link
         to={`?${sp.toString()}`}
@@ -853,7 +856,7 @@ function CaseRow({
 
   return (
     <TableRow className="hover:bg-muted/40 cursor-pointer">
-      <TableCell className="text-center">
+      <TableCell className="px-1 text-center">
         {/* 중요도는 별 "개수"로 구분한다(원장 지시 2026-08-20) — 색 농도만으로는
             1·2·3 이 구분되지 않았다. 미부여(null)는 별 없음.
             기출 여부는 옆 칸의 연도 칩이 이미 보여 준다. */}
@@ -872,11 +875,11 @@ function CaseRow({
           </span>
         ) : null}
       </TableCell>
-      <TableCell className="text-link text-xs font-semibold tabular-nums">
+      <TableCell className="text-link px-1 text-xs font-semibold tabular-nums">
         {item.overallNo ?? "—"}
       </TableCell>
       {topicColumn ? (
-        <TableCell className="hidden md:table-cell">
+        <TableCell className="hidden px-1 md:table-cell">
           {topicShort && item.primaryNodeId ? (
             <Link
               to={(() => {
@@ -895,12 +898,12 @@ function CaseRow({
           ) : null}
         </TableCell>
       ) : null}
-      <TableCell className="hidden md:table-cell">
+      <TableCell className="hidden px-1 md:table-cell">
         <span className="text-link text-xs font-semibold">
           {COURT_LABELS[item.court]}
         </span>
       </TableCell>
-      <TableCell className="text-muted-foreground hidden text-center text-xs tabular-nums md:table-cell">
+      <TableCell className="text-muted-foreground hidden px-1 text-center text-xs tabular-nums md:table-cell">
         {item.decidedAt}
       </TableCell>
       <TableCell className="text-xs font-semibold">
@@ -929,7 +932,7 @@ function CaseRow({
           {item.decidedAt}
         </span>
       </TableCell>
-      <TableCell className="hidden text-center md:table-cell">
+      <TableCell className="hidden px-1 text-center md:table-cell">
         {item.isEnBanc ? (
           <span className="bg-primary/10 text-link inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold">
             전합

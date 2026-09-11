@@ -103,6 +103,46 @@ test.describe.serial("강사 정산현황 팝업", () => {
     await page.keyboard.press("Escape");
   });
 
+  // ★원장 보고(2026-09-12): 강의 플랫폼에서만 뜨고 학습 플랫폼에서는 안 떴다.
+  //   계정 메뉴는 두 플랫폼이 공유하지만 항목은 레이아웃이 주입하므로 양쪽을 다 지킨다.
+  test("학습 플랫폼 계정 메뉴에서도 열린다", async ({ page }) => {
+    // 대시보드는 팝업 공지·온보딩이 클릭을 가로챈다 — 억제값을 선주입한다
+    //   ("never:" = 앞으로 보지 않기, popup-notice 컴포넌트 규약).
+    const { data: notices } = await admin
+      .from("popup_notices")
+      .select("notice_id");
+    await page.addInitScript((ids: string[]) => {
+      for (const id of ids) {
+        window.localStorage.setItem(
+          `popupNoticeHiddenUntil:${id}`,
+          "never:32503680000000",
+        );
+      }
+    }, (notices ?? []).map((n) => n.notice_id));
+
+    await loginUser(page, EMAIL, PASSWORD);
+    await page.goto("/dashboard");
+    // 신규 계정은 목표 입력 온보딩 시트가 모달로 떠 계정 메뉴를 가린다 — 건너뛴다.
+    const skip = page.getByRole("button", { name: /지금은 건너뛰기/ });
+    if (await skip.isVisible().catch(() => false)) {
+      await skip.click();
+      await expect(skip).toBeHidden();
+    }
+    // 상단바는 역할(isStaff)을 스트리밍으로 늦게 받는다 — staff 전용 링크가 뜬 뒤에 연다.
+    await expect(
+      page.getByRole("link", { name: "운영관리" }).first(),
+    ).toBeVisible({ timeout: 30_000 });
+    await page.getByRole("button", { name: "E2E 강사" }).first().click();
+    const menuItem = page.getByRole("menuitem", { name: "정산현황" });
+    await expect(menuItem).toBeVisible();
+    await menuItem.click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    await expect(
+      dialog.getByText("정산 지급액", { exact: true }),
+    ).toBeVisible({ timeout: 20_000 });
+  });
+
   test("전체 화면 /lecture/settlements 가 렌더된다", async ({ page }) => {
     await loginUser(page, EMAIL, PASSWORD);
     await page.goto("/lecture/settlements");
