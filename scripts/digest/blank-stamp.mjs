@@ -275,10 +275,10 @@ const DIAGRAM_RULES = {
       { head: "spine", by: "pairs", pairs: CHONGCHIK_SPINE_TO_PANEL },
     ],
   },
-  // 번역문 제출: 왼쪽 칸(item)은 전부 「제201조 제N항」이다 — 글에 적혀 있어 확실하다.
-  //   오른쪽 관련 조문(ref)은 어느 항에 붙는지 그림만으로 정해지지 않아 묶지 않는다
-  //   (하나씩 누르거나 「전부 빈칸」으로 쓴다).
-  "11-1": { content: ["item", "ref"], group: { head: "key", by: "kind", take: "item" } },
+  // 번역문 제출: 「제201조」를 누르면 상자 제목 **전부**(왼쪽 항 6칸 + 오른쪽 관련 조문 6칸)가
+  //   빈칸 — 원장 지시(2026-09-11 "제201조를 클릭하면 박스 안 제목 전체가 빈칸").
+  //   (이전엔 왼쪽 item 만 묶었다 — 관련 조문이 어느 항에 붙는지 그림만으로 안 정해져서.)
+  "11-1": { content: ["item", "ref"], group: { head: "key", by: "all" } },
   // 국제조약: 조약 이름(spine)을 누르면 **바로 오른쪽** 설명(note)이 빈칸.
   //   설명마다 왼쪽에서 가장 가까운 조약 하나에만 붙인다 — PHT 처럼 아래를 거느리는
   //   조약은 제 설명이 없으므로 누를 수 없다.
@@ -343,6 +343,9 @@ export function stampDiagram(bodyHtml, rule) {
         h.keys = content.filter((c) => inside(c.geo, h.geo)).map((c) => c.key);
       } else if (g.by === "kind") {
         h.keys = content.filter((c) => c.kind === g.take).map((c) => c.key);
+      } else if (g.by === "all") {
+        // 이 화면의 내용 상자 전부 — 머리가 하나뿐인 그림(번역문 제출의 제201조)에서만 쓴다.
+        h.keys = content.map((c) => c.key);
       } else if (g.by === "pairs") {
         // 적어 둔 짝의 갈래를 찾아 그 안의 상자를 가리킨다.
         const want = Object.entries(g.pairs).find(([k]) => k.replace(/\s+/g, "") === flat(h))?.[1];
