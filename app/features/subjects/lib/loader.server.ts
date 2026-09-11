@@ -1104,8 +1104,8 @@ export async function loadSubjectHub(
     : null;
 
   // 주관식 카드 배지 — 표시되는 주관식 문항의 배치 노드 목록 (staff 전용 탭).
-  // 정리비교표 — 축이 있는 과목(특허법)에서만 부른다. 다른 과목은 화면에 칸 자체가 없다.
-  // RLS 가 노출을 정하므로(현재 staff 전용) 여기서 역할을 다시 보지 않는다.
+  // 정리비교표 **목차**(본문 제외) — 축이 있는 과목(특허법)에서만 부른다. 다른 과목은 화면에
+  // 칸 자체가 없다. 노출은 RLS 가 정한다(2026-09-11 학생 공개 — 로그인 사용자 읽기).
   const systematicDigests = subjectHasDigestAxis(lawCode)
     ? await getSystematicDigests(client, lawCode)
     : [];

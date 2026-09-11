@@ -1047,14 +1047,22 @@ export interface SystematicDigest {
   /** 자료 전용 CSS 를 가르는 꼬리표 — 화면은 `dp{scopeKey}` 클래스를 붙인다. */
   scopeKey: string;
   title: string;
+}
+
+/** 정리비교표 본문 — 목차와 따로, 팝업이 한 장씩 요청할 때만 내려간다(열람 로그와 한 요청). */
+export interface SystematicDigestBody {
+  digestId: string;
+  scopeKey: string;
   bodyHtml: string;
   /** `.digest-doc.dpN` 으로 좁혀 둔 전용 CSS. 앱 전역으로 새지 않는다. */
   css: string;
 }
 
 /**
- * 정리비교표 조회. 노출은 RLS 가 정한다 — 현재는 staff 전용이라
- * 학생 요청에는 빈 배열이 돌아오고 화면은 "아직 등록되지 않았습니다"를 유지한다.
+ * 정리비교표 **목차**(본문 제외). 노출은 RLS 가 정한다 — 2026-09-11 학생 공개(로그인 사용자 읽기).
+ * 비로그인이면 빈 배열이 돌아오고 화면은 「정리」 배지를 그리지 않는다.
+ * ★본문(body_html·css, 14장 ≈ 190KB)은 여기서 내려보내지 않는다 — 팝업이 한 장씩
+ *   `/api/laws/digest` 로 받고, 그 요청이 곧 열람 로그다(유출방지 ⑤).
  */
 export async function getSystematicDigests(
   client: SupabaseClient<Database>,
@@ -1062,7 +1070,7 @@ export async function getSystematicDigests(
 ): Promise<SystematicDigest[]> {
   const { data, error } = await client
     .from("systematic_digests")
-    .select("digest_id, node_id, outline_label, page, part, scope_key, title, body_html, css")
+    .select("digest_id, node_id, outline_label, page, part, scope_key, title")
     .eq("law_code", lawCode)
     // ord 만으로는 같은 값끼리 순서가 들쭉날쭉하다 — 쪽·덩이로 묶어 못박는다.
     .order("ord")
@@ -1076,7 +1084,25 @@ export async function getSystematicDigests(
     page: d.page,
     scopeKey: d.scope_key ?? `${d.page}`,
     title: d.title,
-    bodyHtml: d.body_html,
-    css: d.css,
   }));
+}
+
+/** 정리비교표 한 장의 본문. RLS 를 못 넘으면 null(= 권한 없음과 미존재를 구분하지 않는다). */
+export async function getSystematicDigestBody(
+  client: SupabaseClient<Database>,
+  digestId: string,
+): Promise<SystematicDigestBody | null> {
+  const { data, error } = await client
+    .from("systematic_digests")
+    .select("digest_id, page, scope_key, body_html, css")
+    .eq("digest_id", digestId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return {
+    digestId: data.digest_id,
+    scopeKey: data.scope_key ?? `${data.page}`,
+    bodyHtml: data.body_html,
+    css: data.css,
+  };
 }

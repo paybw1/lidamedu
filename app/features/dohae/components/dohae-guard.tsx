@@ -13,10 +13,10 @@
 // ★상시 경고 띠는 두지 않는다(원장 지시 2026-08-23) — 매번 보는 학습 화면이라
 //   본문을 밀어내고 눈에 거슬린다. 고지는 첫 열람 1회 게이트가 맡는다.
 
-import { AlertTriangleIcon, ShieldAlertIcon } from "lucide-react";
+import { AlertTriangleIcon } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
-import { Button } from "~/core/components/ui/button";
+import { CopyrightGate } from "~/core/components/leak-guard";
 
 // 워터마크·복사차단은 판례 도식과 공유한다(core/components/leak-guard).
 export { ViewerWatermark as DohaeWatermark, copyGuardProps } from "~/core/components/leak-guard";
@@ -24,37 +24,13 @@ export { ViewerWatermark as DohaeWatermark, copyGuardProps } from "~/core/compon
 /** 고지 문구를 고치면 키 버전을 올린다(다시 한 번 받는다). */
 const NOTICE_KEY = "dohae-copyright-notice-v1";
 
-/** 첫 열람 1회 고지 모달(기기당). 확인 전에는 본문을 가린다. */
+/** 첫 열람 1회 고지 모달(기기당). 확인 전에는 본문을 가린다 — 본체는 core/leak-guard 의 CopyrightGate. */
 export function DohaeCopyrightGate({ children }: { children: ReactNode }) {
-  // null = 아직 localStorage 를 못 읽음(SSR·첫 페인트) → 게이트를 그리지 않는다.
-  const [agreed, setAgreed] = useState<boolean | null>(null);
-  useEffect(() => {
-    setAgreed(window.localStorage.getItem(NOTICE_KEY) === "1");
-  }, []);
-
-  if (agreed === false) {
-    return (
-      <div className="flex flex-col items-center gap-3 px-6 py-14 text-center">
-        <ShieldAlertIcon className="size-7 text-amber-500" />
-        <h3 className="text-base font-bold">『도해특허법』 열람 안내</h3>
-        <p className="text-muted-foreground max-w-md text-[13px] leading-relaxed">
-          이 자료는 리담변리사학원이 저작권을 가진 교재입니다. 학습 목적의 열람만
-          허용되며, <b className="text-foreground">복제·촬영·배포·전송은 금지</b>
-          됩니다. 화면에는 열람자 정보가 표시되고 열람 기록이 서버에 남습니다.
-        </p>
-        <Button
-          size="sm"
-          onClick={() => {
-            window.localStorage.setItem(NOTICE_KEY, "1");
-            setAgreed(true);
-          }}
-        >
-          확인했습니다
-        </Button>
-      </div>
-    );
-  }
-  return <>{children}</>;
+  return (
+    <CopyrightGate storageKey={NOTICE_KEY} title="『도해특허법』 열람 안내">
+      {children}
+    </CopyrightGate>
+  );
 }
 
 /** 단시간 대량 열람 감지 안내 — 세션 1회. */

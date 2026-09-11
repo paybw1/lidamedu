@@ -1,3 +1,6 @@
+// ★2026-09-11 구조 변경(본문을 /api/laws/digest 로 한 장씩 받음·viewerIsStaff 필수·첫 열람 고지)으로
+//   이 하네스는 그대로는 돌지 않는다 — fetch 스텁·localStorage(digest-copyright-notice-v1) 선심기·
+//   viewerIsStaff={true} 를 넣어야 한다. memo 근거 측정(2026-09-10)은 그때 기록이다.
 // **진짜 팝업**을 그대로 띄워 빈칸 학습이 듣는지 확인한다.
 //
 //   npm run build && node scripts/digest/probe-popup-blanks.mjs

@@ -370,7 +370,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   // 정리비교표(교재 부록) — **이 노드가 속한 대분류**의 자료. 자료는 장(章) 단위라
   // 어느 층에 있든 그 장의 정리표를 볼 수 있어야 한다(원장 지시 2026-09-09 — 도해
-  // 배지 옆). ★노출은 RLS 가 정한다(현재 staff 전용).
+  // 배지 옆). ★노출은 RLS 가 정한다(2026-09-11 학생 공개 — 로그인 사용자 읽기). 본문은 팝업이 한 장씩 받는다.
   const rootNodeId = ((): string => {
     let cur = systematicNodes.find((n) => n.nodeId === node.nodeId);
     while (cur?.parentId) {
@@ -587,6 +587,7 @@ function Inner({
           startIndex={digestAt}
           open={digestOpen}
           onOpenChange={setDigestOpen}
+          viewerIsStaff={loaderData.isStaff}
         />
       ) : null}
 

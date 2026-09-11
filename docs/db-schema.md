@@ -1532,6 +1532,33 @@ alter type staff_notification_kind add value 'dohae_abuse';
 - 유출방지 화면단은 `app/features/dohae/components/dohae-guard.tsx` — 워터마크·복사차단·
   인쇄차단·저작권 고지. ★**선택(selection)은 막지 않는다** — 막으면 하이라이트를 못 긋는다.
 
+## 정리비교표 학생 공개 + 열람 로그 (systematic_digest_views)  ✅ 적용됨 (2026-09-11, feat-2-038)
+
+```sql
+create table public.systematic_digest_views (
+  view_id    uuid primary key default gen_random_uuid(),
+  profile_id uuid not null references profiles(profile_id) on delete cascade,
+  digest_id  uuid not null references systematic_digests(digest_id) on delete cascade,
+  viewed_at  timestamptz not null default now()
+);
+create index systematic_digest_views_profile_time on systematic_digest_views (profile_id, viewed_at desc);
+-- SELECT staff 만(systematic_digest_views_staff_select). INSERT 정책 없음 = 서버(service_role)만 기록.
+
+-- 공개 전환(유출방지 코드 배포 뒤 적용): staff 전용 → 로그인 사용자 읽기.
+create policy systematic_digests_read on public.systematic_digests
+  for select using (auth.uid() is not null);
+-- 쓰기는 systematic_digests_staff_all 그대로.
+```
+
+- 유출방지 화면단은 도해와 같은 다섯 겹 — 워터마크 · 복사 차단(`copyGuardProps`, 판례 도식과 같이 staff 제외) ·
+  인쇄 숨김 · 첫 열람 고지(`CopyrightGate`, core/leak-guard 로 도해와 공유) · 열람 로그.
+- ★본문은 허브·단원 로더가 내려보내지 않는다(목차 메타만, `getSystematicDigests`). 팝업이 한 장씩
+  `GET /api/laws/digest?digestId=` 로 받고, 그 loader 가 **요청 클라이언트(RLS)** 로 본문을 읽어 워터마크
+  (`buildViewerWatermark`, 요청 시각)와 함께 주면서 staff 가 아니면 `systematic_digest_views` 에 기록한다
+  (응답 후, best-effort). 로그 없이 본문에 닿는 길이 없고, 특허법 화면 payload 에서 190KB 가 빠졌다.
+- **이상 열람 감지는 두지 않는다** — 자료가 14장뿐이라 ‹ › 로 한 바퀴 넘기는 정상 열람과 대량 열람을 고유 자료 수로
+  가를 수 없다. 누가 무엇을 언제 봤는지는 남으므로 유출 시 대조는 된다.
+
 ## 도해 빈칸 낱말 (dohae_blank_terms)  ✅ 적용됨 (2026-09-04, feat-2-037)
 
 ```sql

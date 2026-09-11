@@ -59,6 +59,7 @@ export function ArticlesTab({
   articles,
   systematicNodes,
   systematicDigests,
+  isStaff = false,
   progress,
   bookmarkLevels,
   annotationCounts,
@@ -74,8 +75,10 @@ export function ArticlesTab({
   lawId?: string;
   articles: ArticleNode[];
   systematicNodes: SystematicNode[];
-  /** 체계도 대분류별 정리비교표. staff 전용(RLS) — 학생에게는 빈 배열. */
+  /** 체계도 대분류별 정리비교표. 2026-09-11 학생 공개 — 로그인 사용자면 RLS 가 내려준다. */
   systematicDigests: SystematicDigest[];
+  /** staff 는 복사 차단·열람 로그를 받지 않는다(정리비교표 팝업). */
+  isStaff?: boolean;
   progress: SubjectProgress | null;
   bookmarkLevels?: Record<string, number>;
   annotationCounts?: Record<string, ArticleAnnotationCounts>;
@@ -131,24 +134,16 @@ export function ArticlesTab({
         {/* 전체 체계도(정리비교표 2p) — 어느 단원에도 속하지 않아 단원 화면의 「정리」
             배지로는 닿지 않는다. 여기서 화면 전체 팝업으로 연다. */}
         {digestGroups.length > 0 ? (
-          <>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setOverviewOpen(true)}
-              title="교재 정리비교표 — 전체 체계도부터 단원별로"
-              className="mr-auto h-7 gap-1 rounded-full px-2 text-[11px] font-bold"
-            >
-              <FileTextIcon className="size-3" />
-              정리비교표
-            </Button>
-            <DigestPopup
-              groups={digestGroups}
-              startIndex={0}
-              open={overviewOpen}
-              onOpenChange={setOverviewOpen}
-            />
-          </>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setOverviewOpen(true)}
+            title="교재 정리비교표 — 전체 체계도부터 단원별로"
+            className="mr-auto h-7 gap-1 rounded-full px-2 text-[11px] font-bold"
+          >
+            <FileTextIcon className="size-3" />
+            정리비교표
+          </Button>
         ) : null}
         {hasSystematicAxis ? (
           <Segmented
@@ -202,6 +197,17 @@ export function ArticlesTab({
       className="grid gap-6 lg:grid-cols-[var(--left-w,280px)_1fr]"
       style={{ ["--left-w" as string]: `${leftWidth}px` }}
     >
+      {/* 정리비교표 팝업 — ★treePanel 이 aside·모바일 드로어 두 곳에 그려지므로 팝업은
+          여기 한 번만 둔다. 둘 다에 두면 모바일에서 다이얼로그가 겹치고 열람 로그가 2건 남는다. */}
+      {digestGroups.length > 0 ? (
+        <DigestPopup
+          groups={digestGroups}
+          startIndex={0}
+          open={overviewOpen}
+          onOpenChange={setOverviewOpen}
+          viewerIsStaff={isStaff}
+        />
+      ) : null}
       {/* Left: chapter outline — 데스크톱만 sticky 사이드바. 모바일은 드로어. 경계 드래그로 폭 조절. */}
       <aside className="relative hidden lg:sticky lg:top-20 lg:block">
         <LeftPanelResizer width={leftWidth} onWidth={setLeftWidth} />

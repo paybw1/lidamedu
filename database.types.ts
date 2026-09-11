@@ -13919,6 +13919,49 @@ export type Database = {
         }
         Relationships: []
       }
+      systematic_digest_views: {
+        Row: {
+          digest_id: string
+          profile_id: string
+          view_id: string
+          viewed_at: string
+        }
+        Insert: {
+          digest_id: string
+          profile_id: string
+          view_id?: string
+          viewed_at?: string
+        }
+        Update: {
+          digest_id?: string
+          profile_id?: string
+          view_id?: string
+          viewed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "systematic_digest_views_digest_id_fkey"
+            columns: ["digest_id"]
+            isOneToOne: false
+            referencedRelation: "systematic_digests"
+            referencedColumns: ["digest_id"]
+          },
+          {
+            foreignKeyName: "systematic_digest_views_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "systematic_digest_views_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       systematic_digests: {
         Row: {
           body_html: string

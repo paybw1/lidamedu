@@ -56,7 +56,7 @@ interface SubjectHubProps {
   lawId?: string;
   articles?: ArticleNode[];
   systematicNodes?: SystematicNode[];
-  /** 체계도 대분류별 정리비교표(조문 탭 "정리" 화면). staff 전용 — RLS. */
+  /** 체계도 대분류별 정리비교표 목차(조문 탭 「정리」 배지·팝업). 노출은 RLS(2026-09-11 학생 공개). */
   systematicDigests?: SystematicDigest[];
   progressByArticle?: import("./node-progress-gauge").NodeProgressByArticle;
   cases?: CaseListItem[];
@@ -234,6 +234,7 @@ function SubjectHubInner({
               articles={articles ?? []}
               systematicNodes={systematicNodes ?? []}
               systematicDigests={systematicDigests ?? []}
+              isStaff={isStaff}
               progress={progress ?? null}
               bookmarkLevels={bookmarkLevels}
               annotationCounts={annotationCounts}

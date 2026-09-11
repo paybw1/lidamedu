@@ -173,6 +173,8 @@ export default [
         "/filtered-articles",
         "features/subjects/api/filtered-articles.tsx",
       ),
+      // 정리비교표 한 장 — 본문·워터마크·열람 로그를 한 요청에(유출방지 ①⑤).
+      route("/digest", "features/subjects/api/digest.tsx"),
     ]),
     ...prefix("/admin", [
       route("/case", "features/admin/api/case.tsx"),
