@@ -621,30 +621,72 @@ body {
    목차(의의·진보성·표 이름)를 누르면 그 줄·그 칸이 빈칸이 된다.
    자리는 적재 때 박고(scripts/digest/blank-stamp.mjs), 고르는 일만 화면이 한다
    (app/features/subjects/hooks/use-digest-blanks.ts).
+   도해 표의 칸 가리기(.dohae-doc, feat-2-037 S7)도 같은 모양을 쓴다 — 규칙은
+   app/features/dohae/lib/dohae-cell-blanks.ts. :is() 라 세기는 클래스 하나와 같다.
    ★세기 주의: 자료 CSS 는 `<style>` 로 **나중에** 실린다. `.digest-doc.dpN td` 가
      (0,2,1) 이라 여기서 (0,2,0) 으로 쓰면 진다 — 클래스를 겹쳐 세기를 올린다.
      글자 감추기는 칸 안의 `.dg-law` 같은 자기 색을 이겨야 해서 !important 가 필요하다. */
-.digest-doc [data-dg-blank] {
+:is(.digest-doc, .dohae-doc) [data-dg-blank] {
   cursor: pointer;
 }
-.digest-doc [data-dg-blank]:hover,
-.digest-doc [data-dg-blank]:focus-visible {
+:is(.digest-doc, .dohae-doc) [data-dg-blank]:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: -2px;
 }
-.digest-doc .dg-blank,
-.digest-doc .dg-blank * {
+/* ★hover 는 마우스가 있는 기기에서만 — iPad 는 한 번 누른 칸의 테두리가 다음 탭까지 남는다. */
+@media (hover: hover) {
+  :is(.digest-doc, .dohae-doc) [data-dg-blank]:hover {
+    outline: 2px solid var(--primary);
+    outline-offset: -2px;
+  }
+}
+/* 도해 — 가릴 수 있는 내용칸에는 손 모양만(테두리는 목차칸에만). 모드가 켜졌을 때만 붙는 속성이다. */
+.dohae-doc [data-dh-blankable] {
+  cursor: pointer;
+}
+:is(.digest-doc, .dohae-doc) .dg-blank,
+:is(.digest-doc, .dohae-doc) .dg-blank * {
   color: transparent !important;
   text-shadow: none !important;
 }
-.digest-doc .dg-blank.dg-blank {
+:is(.digest-doc, .dohae-doc) .dg-blank.dg-blank {
   background: color-mix(in oklch, var(--primary) 13%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--primary) 50%, transparent);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in oklch, var(--primary) 50%, transparent);
   cursor: pointer;
   user-select: none;
 }
-.digest-doc .dg-blank.dg-blank:hover {
-  background: color-mix(in oklch, var(--primary) 22%, transparent);
+@media (hover: hover) {
+  :is(.digest-doc, .dohae-doc) .dg-blank.dg-blank:hover {
+    background: color-mix(in oklch, var(--primary) 22%, transparent);
+  }
+}
+/* 도해 — 가려진 칸 안의 하이라이트·포스트잇 표시는 지운다. 배경·밑줄이 남으면 낱말의
+   자리와 길이가 새어 나온다(검토 지적 2026-09-11). 이름은 위 ::highlight 정의와 같은 목록. */
+.dohae-doc .dg-blank::highlight(lidam-hl-yellow),
+.dohae-doc .dg-blank *::highlight(lidam-hl-yellow),
+.dohae-doc .dg-blank::highlight(lidam-hl-green),
+.dohae-doc .dg-blank *::highlight(lidam-hl-green),
+.dohae-doc .dg-blank::highlight(lidam-hl-red),
+.dohae-doc .dg-blank *::highlight(lidam-hl-red),
+.dohae-doc .dg-blank::highlight(lidam-hl-blue),
+.dohae-doc .dg-blank *::highlight(lidam-hl-blue),
+.dohae-doc .dg-blank::highlight(lidam-memo),
+.dohae-doc .dg-blank *::highlight(lidam-memo),
+.dohae-doc .dg-blank::highlight(lidam-hl-staff-yellow),
+.dohae-doc .dg-blank *::highlight(lidam-hl-staff-yellow),
+.dohae-doc .dg-blank::highlight(lidam-hl-staff-green),
+.dohae-doc .dg-blank *::highlight(lidam-hl-staff-green),
+.dohae-doc .dg-blank::highlight(lidam-hl-staff-red),
+.dohae-doc .dg-blank *::highlight(lidam-hl-staff-red),
+.dohae-doc .dg-blank::highlight(lidam-hl-staff-blue),
+.dohae-doc .dg-blank *::highlight(lidam-hl-staff-blue),
+.dohae-doc .dg-blank::highlight(lidam-hl-underline),
+.dohae-doc .dg-blank *::highlight(lidam-hl-underline),
+.dohae-doc .dg-blank::highlight(lidam-hl-staff-underline),
+.dohae-doc .dg-blank *::highlight(lidam-hl-staff-underline) {
+  background-color: transparent;
+  text-decoration: none;
 }
 /* ★도형의 연결선은 도형 전체를 덮는 SVG 한 장이다(aria-hidden = 장식). 그대로 두면
    그 위의 상자를 눌러도 SVG 가 먼저 받아 **빈칸이 아예 눌리지 않는다**

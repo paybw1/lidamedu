@@ -5,6 +5,7 @@
 // 학습 툴: HighlightOverlay(dohae_unit)+MemoMarksOverlay+우측 MemoList. 선택 툴바는
 // 조문 뷰어의 prop-less HighlightToolbar 가 컨테이너 dataset 으로 대상 판별.
 import type { loader as unitLoader } from "../api/unit";
+import type { DohaeBlankType } from "../lib/dohae-blanks";
 
 import {
   BookOpenIcon,
@@ -16,26 +17,11 @@ import {
   PanelRightIcon,
   PenLineIcon,
   PencilLineIcon,
+  SquareDashedIcon,
   SquareIcon,
 } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useFetcher, useFetchers } from "react-router";
-
-import {
-  DohaeBlankBar,
-  DohaeBlankEmpty,
-  DohaeBlankProvider,
-  DohaeText,
-  useDohaeBlankPractice,
-  useDohaeBlanks,
-} from "./dohae-blank-ui";
-import {
-  copyGuardProps,
-  DohaeAbnormalNotice,
-  DohaeCopyrightGate,
-  DohaeWatermark,
-} from "./dohae-guard";
-import { shiftRanges } from "./dohae-text";
 
 import { KoreanLabel } from "~/core/components/korean-label";
 import {
@@ -63,7 +49,30 @@ import {
   type DohaeUnitSummary,
   dohaeUnitLabel,
 } from "../labels";
-import type { DohaeBlankType } from "../lib/dohae-blanks";
+import { gridStartCols } from "../lib/dohae-cell-blanks";
+import {
+  DohaeBlankBar,
+  DohaeBlankEmpty,
+  DohaeBlankProvider,
+  DohaeText,
+  useDohaeBlankPractice,
+  useDohaeBlanks,
+} from "./dohae-blank-ui";
+import {
+  DohaeCellBlankBar,
+  DohaeCellBlankProvider,
+  cellBlankProps,
+  useCellBlankHandlers,
+  useDohaeCellBlankCtx,
+  useDohaeCellBlanks,
+} from "./dohae-cell-blank-ui";
+import {
+  DohaeAbnormalNotice,
+  DohaeCopyrightGate,
+  DohaeWatermark,
+  copyGuardProps,
+} from "./dohae-guard";
+import { shiftRanges } from "./dohae-text";
 
 /** 유닛이 아직 안 왔을 때 넘기는 빈 블록 — 매 렌더 새 배열을 만들면 연습 상태가 초기화된다. */
 const EMPTY_BLOCKS: DohaeBlock[] = [];
@@ -77,26 +86,7 @@ const DOHAE_LAW_SLUG = "patent" as const;
 // 접힘 상태 맵에서 "도해 해설" 축을 가리키는 키(조문 id 와 섞이지 않게 uuid 형태를 피한다).
 const DOHAE_AXIS_KEY = "dohae";
 
-/**
- * 각 셀이 실제로 놓이는 격자 열 번호. rowspan 이 걸린 앞 행의 칸이 자리를 차지하므로
- * 배열 인덱스(ci)와 열 번호가 어긋난다 — 라벨 판정은 반드시 이 값으로 해야 한다.
- */
-function gridStartCols(cells: DohaeCell[][]): number[][] {
-  const pending: number[] = [];
-  const out = cells.map((row) => {
-    let cur = 0;
-    const starts = row.map((c) => {
-      while ((pending[cur] ?? 0) > 0) cur++;
-      const start = cur;
-      for (let k = start; k < start + c.colSpan; k++) pending[k] = c.rowSpan;
-      cur = start + c.colSpan;
-      return start;
-    });
-    for (let k = 0; k < pending.length; k++) if (pending[k] > 0) pending[k]--;
-    return starts;
-  });
-  return out;
-}
+// 격자 열 번호(gridStartCols)는 lib/dohae-cell-blanks.ts 에 있다 — 칸 가리기 규칙과 같이 쓴다.
 
 /**
  * 원본 칸 너비(hp:cellSz)로 열 비율을 낸다.
@@ -210,7 +200,9 @@ function CellContent({ cell, path }: { cell: DohaeCell; path: string }) {
     });
   });
   if (marks.length === 0)
-    return <DohaeText path={path} text={cell.text} boldRanges={cell.boldRanges} />;
+    return (
+      <DohaeText path={path} text={cell.text} boldRanges={cell.boldRanges} />
+    );
 
   marks.sort((a, b) => a.at - b.at);
   const out: ReactNode[] = [];
@@ -244,6 +236,8 @@ function CellContent({ cell, path }: { cell: DohaeCell; path: string }) {
 }
 
 function DohaeTable({ cells, path }: { cells: DohaeCell[][]; path: string }) {
+  // S7 칸 가리기 — 읽기 화면에서만 Provider 가 있다. 없으면 칸에 아무 속성도 달지 않는다.
+  const cellBlanks = useDohaeCellBlankCtx();
   if (cells.length === 0) return null;
   const startCols = gridStartCols(cells);
   // 열 비율 — 원본 그대로. ★table-layout:fixed 를 함께 걸어야 비율이 선다
@@ -280,11 +274,14 @@ function DohaeTable({ cells, path }: { cells: DohaeCell[][]; path: string }) {
                 // 첫 행의 음영 칸만 머리글로 — 그 밖은 전부 본문 칸(서식은 아래 클래스로).
                 const Tag = ri === 0 && c.shade ? "th" : "td";
                 const narrow = (col: number) => pctOf(ri, col) < NARROW_PCT;
+                const cellPath = `${path}.r${ri}.c${ci}`;
+                const blank = cellBlankProps(cellBlanks, cellPath);
                 return (
                   <Tag
                     key={ci}
                     colSpan={c.colSpan > 1 ? c.colSpan : undefined}
                     rowSpan={c.rowSpan > 1 ? c.rowSpan : undefined}
+                    {...blank.attrs}
                     className={cn(
                       "border-border border py-1.5 text-left leading-[1.65] font-normal whitespace-pre-wrap",
                       // ★좁은 열은 좌우 여백을 줄인다 — 교재는 라벨 열을 화면 폭의 5% 안팎
@@ -313,9 +310,12 @@ function DohaeTable({ cells, path }: { cells: DohaeCell[][]; path: string }) {
                       c.shade && "bg-muted/50",
                       c.align === "center" && "text-center",
                       c.bold && "font-semibold",
+                      // S7 — 가려진 칸. 클래스만 바꾼다(글자·태그를 건드리면 하이라이트
+                      //   오프셋이 어긋난다). 모양은 app.css `.dohae-doc .dg-blank`.
+                      blank.className,
                     )}
                   >
-                    <CellContent cell={c} path={`${path}.r${ri}.c${ci}`} />
+                    <CellContent cell={c} path={cellPath} />
                   </Tag>
                 );
               })}
@@ -500,12 +500,26 @@ function DohaeBlocks({
   const blankMode = useDohaeBlanks() !== null;
   useEffect(() => {
     if (!blankMode) return;
-    rootRef.current
-      ?.querySelectorAll("details")
-      .forEach((d) => {
-        d.open = true;
-      });
+    rootRef.current?.querySelectorAll("details").forEach((d) => {
+      d.open = true;
+    });
   }, [blankMode, blocks]);
+  // S7 칸 가리기 — 손잡이는 뿌리에서 위임으로 받는다(칸마다 달면 속표에서 두 번 잡힌다).
+  //   「전부 가리기」는 접힌 절도 편다 — 가려진 칸이 안 보이면 「가린 칸 40」이 무슨 뜻인지
+  //   알 수 없다. 여는 것은 누를 때 한 번(openTick).
+  const cellBlanks = useDohaeCellBlankCtx();
+  const cellHandlers = useCellBlankHandlers(cellBlanks);
+  const openTick = cellBlanks?.openTick ?? 0;
+  // ★mount 때는 열지 않는다 — 본문은 유닛 이동·모드 전환마다 다시 붙는데 openTick 은
+  //   그대로라, 한 번 「전부 가리기」 한 뒤로 모든 유닛이 전부 펼쳐진 채 열린다(검토 지적).
+  const seenTick = useRef(openTick);
+  useEffect(() => {
+    if (openTick === seenTick.current) return;
+    seenTick.current = openTick;
+    rootRef.current?.querySelectorAll("details").forEach((d) => {
+      d.open = true;
+    });
+  }, [openTick]);
 
   const lead: ReactNode[] = [];
   const sections: Array<{ numeral: string; title: string; body: ReactNode[] }> =
@@ -520,7 +534,7 @@ function DohaeBlocks({
     else sections[sections.length - 1].body.push(node);
   });
   return (
-    <div className="space-y-3" ref={rootRef}>
+    <div className="dohae-doc space-y-3" ref={rootRef} {...cellHandlers}>
       {lead}
       {sections.map((s, si) => (
         <details
@@ -605,6 +619,8 @@ export function DohaePopup({
   // feat-2-037 — 빈칸 학습 모드. 유닛을 옮겨도 모드는 유지한다(연습을 이어서 한다).
   const [blankMode, setBlankMode] = useState(false);
   const [blankType, setBlankType] = useState<DohaeBlankType>(3);
+  // feat-2-037 S7 — 표 칸 가리기 모드. 낱말 빈칸과 배타(한 칸에 같이 걸 수 없다).
+  const [cellMode, setCellMode] = useState(false);
   const fetcher = useFetcher<UnitPayload>();
   const termFetcher = useFetcher<{ ok: boolean }>();
   const fetchers = useFetchers();
@@ -665,13 +681,26 @@ export function DohaePopup({
       0,
     );
   // 빈칸 낱말 — RLS 가 staff 전용이라 학생 응답은 빈 목록이다.
-  const blankTerms = useMemo(() => payload?.blankTerms ?? [], [payload?.blankTerms]);
+  const blankTerms = useMemo(
+    () => payload?.blankTerms ?? [],
+    [payload?.blankTerms],
+  );
   const practice = useDohaeBlankPractice(
     unit?.unitId ?? null,
     unit?.blocks ?? EMPTY_BLOCKS,
     blankTerms,
     blankType,
   );
+  // feat-2-037 S7 — 표 칸 가리기(정리비교표식). 낱말 빈칸 모드로 들어가면 가린 칸은 푼다
+  //   (두 모드는 한 칸에 같이 걸 수 없다 — 저쪽은 글 속 입력 칸, 이쪽은 칸 통째).
+  const cellBlanks = useDohaeCellBlanks(
+    unit?.unitId ?? null,
+    unit?.blocks ?? EMPTY_BLOCKS,
+  );
+  const revealAllCells = cellBlanks.revealAll;
+  useEffect(() => {
+    if (!cellMode) revealAllCells();
+  }, [cellMode, revealAllCells]);
   // 말을 빼거나 되돌리면 낱말 목록을 다시 읽는다.
   useEffect(() => {
     if (termFetcher.state === "idle" && termFetcher.data?.ok && activeUnitId) {
@@ -748,11 +777,46 @@ export function DohaePopup({
             </>
           ) : null}
           <div className="ml-auto flex items-center gap-1.5">
+            {/* feat-2-037 S7 — 표 칸 가리기. staff 선출시 — 원장 검수 뒤 학생 공개는 이 조건과
+                아래 Provider 의 viewerIsStaff 두 곳만 풀면 된다. */}
+            {activeSummary && viewerIsStaff && unit && cellMode ? (
+              <DohaeCellBlankBar ctx={cellBlanks} />
+            ) : null}
+            {activeSummary && viewerIsStaff ? (
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !cellMode;
+                  setCellMode(next);
+                  // 두 모드는 한 칸에 같이 걸 수 없다 — 켜면 낱말 빈칸은 끈다.
+                  if (next) setBlankMode(false);
+                }}
+                aria-pressed={cellMode}
+                disabled={!unit || cellBlanks.total === 0}
+                title={
+                  unit && cellBlanks.total === 0
+                    ? "가릴 수 있는 표가 없습니다"
+                    : "목차칸을 누르면 그 줄·칸이 가려집니다 (정리비교표와 같은 방식)"
+                }
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] disabled:opacity-40",
+                  cellMode
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border text-muted-foreground hover:bg-muted",
+                )}
+              >
+                <SquareDashedIcon className="size-3" />칸 가리기
+              </button>
+            ) : null}
             {/* feat-2-037 — 읽기 / 빈칸. 지금은 staff 전용(뽑힌 말을 검수한 뒤 학생 공개). */}
             {activeSummary && viewerIsStaff ? (
               <button
                 type="button"
-                onClick={() => setBlankMode(!blankMode)}
+                onClick={() => {
+                  const next = !blankMode;
+                  setBlankMode(next);
+                  if (next) setCellMode(false);
+                }}
                 aria-pressed={blankMode}
                 disabled={!unit || blankTerms.length === 0}
                 title={
@@ -914,14 +978,18 @@ export function DohaePopup({
                       highlights={payload?.highlights ?? []}
                       viewerIsStaff={viewerIsStaff}
                     >
-                      <DohaeBlocks
-                        blocks={unit.blocks}
-                        articles={payload?.articles ?? []}
-                        articleHighlights={payload?.articleHighlights ?? {}}
-                        articleMemos={payload?.articleMemos ?? {}}
-                        titleMap={titleMap}
-                        viewerIsStaff={viewerIsStaff}
-                      />
+                      <DohaeCellBlankProvider
+                        value={viewerIsStaff && cellMode ? cellBlanks : null}
+                      >
+                        <DohaeBlocks
+                          blocks={unit.blocks}
+                          articles={payload?.articles ?? []}
+                          articleHighlights={payload?.articleHighlights ?? {}}
+                          articleMemos={payload?.articleMemos ?? {}}
+                          titleMap={titleMap}
+                          viewerIsStaff={viewerIsStaff}
+                        />
+                      </DohaeCellBlankProvider>
                     </HighlightOverlay>
                   </MemoMarksOverlay>
                 )}
@@ -956,12 +1024,16 @@ export function DohaePopup({
                         expandedArticle[a.articleId] ??
                         (ms.length > 0 || snippetArticleId === a.articleId)
                       }
-                      onToggle={(e) =>
+                      onToggle={(e) => {
+                        // ★갱신 함수 안에서 e.currentTarget 을 읽지 않는다 — 갱신이 다음
+                        //   렌더로 미뤄지면 currentTarget 은 이미 null 이라 화면이 통째로
+                        //   죽는다(토글이 연달아 오면 재현. E2E 2026-09-11 실측).
+                        const open = e.currentTarget.open;
                         setExpandedArticle((prev) => ({
                           ...prev,
-                          [a.articleId]: e.currentTarget.open,
-                        }))
-                      }
+                          [a.articleId]: open,
+                        }));
+                      }}
                       className="border-border bg-background/60 rounded-md border px-2 py-1.5"
                     >
                       <summary className="cursor-pointer text-[11px] font-medium">
@@ -989,12 +1061,13 @@ export function DohaePopup({
 
                 <details
                   open={expandedArticle[DOHAE_AXIS_KEY] ?? true}
-                  onToggle={(e) =>
+                  onToggle={(e) => {
+                    const open = e.currentTarget.open;
                     setExpandedArticle((prev) => ({
                       ...prev,
-                      [DOHAE_AXIS_KEY]: e.currentTarget.open,
-                    }))
-                  }
+                      [DOHAE_AXIS_KEY]: open,
+                    }));
+                  }}
                   className="border-border bg-background/60 rounded-md border px-2 py-1.5"
                 >
                   <summary className="cursor-pointer text-[11px] font-medium">
