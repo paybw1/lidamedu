@@ -11,6 +11,8 @@ import {
   ClipboardCheckIcon,
   GaugeIcon,
   GraduationCapIcon,
+  HeadsetIcon,
+  MegaphoneIcon,
   MessageCircleQuestionIcon,
   ShieldAlertIcon,
 } from "lucide-react";
@@ -66,6 +68,11 @@ const KIND_LABEL: Partial<Record<StaffNotificationKind, string>> = {
   cohort_inactive_alert: "무접속 경보",
   exam_certificate_submitted: "합격증 제출",
   gs_cap_reached: "AI 한도 경보",
+  // STAFF_KINDS(kinds.ts)에 있는데 라벨이 빠져 영문 kind 가 그대로 보이던 것들(2026-09-11).
+  announcement: "공지",
+  dohae_abuse: "도해 이상 열람",
+  cs_inquiry_created: "고객센터 문의",
+  security_alert: "보안 경보",
 };
 
 const KIND_ICON: Partial<
@@ -76,6 +83,10 @@ const KIND_ICON: Partial<
   lecture_note_abuse: ShieldAlertIcon,
   cohort_upgrade_requested: GraduationCapIcon,
   gs_cap_reached: GaugeIcon,
+  announcement: MegaphoneIcon,
+  dohae_abuse: ShieldAlertIcon,
+  cs_inquiry_created: HeadsetIcon,
+  security_alert: ShieldAlertIcon,
 };
 
 function formatRelative(iso: string): string {

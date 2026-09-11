@@ -62,6 +62,13 @@ const KIND_LABEL: Partial<Record<NotificationKind, string>> = {
   bug_report_resolved: "오류신고 처리",
   staff_message: "강사 쪽지",
   coupon_granted: "쿠폰 발급",
+  // STUDENT_KINDS(kinds.ts)에 있는데 라벨이 빠져 영문 kind 가 그대로 보이던 것들(2026-09-11).
+  book_restock: "도서 재입고",
+  cs_inquiry_answered: "문의 답변",
+  broadcast_message: "운영 안내",
+  payment_failed: "결제 실패",
+  subscription_lapsed: "수강권 만료",
+  study_plan_updated_by_staff: "학습계획 수정",
 };
 
 // 답변/쪽지 내용이 알림 본문에만 있는 종류 — 클릭 시 이동 대신 제자리에서 펼쳐
