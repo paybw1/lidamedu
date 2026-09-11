@@ -1,10 +1,10 @@
-// 판례 전문 PDF 자동 조판 — pdf-lib + @pdf-lib/fontkit + 나눔명조.
+// 판례 전문 PDF 자동 조판 — pdf-lib + @pdf-lib/fontkit + Noto Serif KR(TTF, 아래 FONT_URL).
 //
 // 입력: 머리말 메타(사건번호·법원·선고일·사건명) + 본문 텍스트(official_text_md).
 // 출력: PDF bytes + 미커버 글자 리스트 (한자 등).
 //
 // 미커버 정책: 폰트가 렌더 못 하는 글자가 1자라도 있으면 PDF 생성 skip + 보고만.
-// 사용자 결정: "□ 로 조용히 내보내지 말 것" — Noto Serif CJK KR 등 대체 검토 위함.
+// 사용자 결정: "□ 로 조용히 내보내지 말 것" — 폰트 보강(치환표 확장) 검토 위함.
 
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";

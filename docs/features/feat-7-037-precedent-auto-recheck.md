@@ -63,7 +63,7 @@ export async function renderAndStorePdf(caseId, textMd, meta): Promise<
 
 - search/service 호출·`pickAllPrec`·`caseNumbersEqual`·`verifyTripleMatch`·`normalizeOfficialText` 재사용.
 - `import-law-precedents.ts` 스크립트도 이 모듈을 쓰도록 리팩토링(중복 제거, 동작 동일 — 별도 검증).
-- 서버리스 호환: `pdf-lib`(순수 JS) + 폰트 파일 `public/fonts/NotoSerifCJKkr-Regular.otf`. Vercel 함수 번들에 폰트 포함되도록 `vercel.json` `functions.includeFiles` 또는 import-time 번들 확인 필요(구현 시 점검 항목).
+- 서버리스 호환: `pdf-lib`(순수 JS) + 폰트 파일 `public/fonts/NotoSerifCJKkr-Regular.otf`(→ 2026-06-08 25686847 로 `NotoSerifKR-Regular.ttf` 교체, OTF 는 CFF 서브셋이 깨져 탈락·2026-09-11 정리로 삭제). 번들 포함은 `vercel.json` includeFiles 대신 `import.meta.url` 상대경로(nft 추적)로 처리 — 2026-09-11 정리 주석.
 
 ## 5. cron 라우트
 

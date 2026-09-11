@@ -69,7 +69,7 @@ export function FlowSection() {
             >
               <div
                 style={{
-                  font: "700 11px/1 Pretendard, sans-serif",
+                  font: "700 11px/1 var(--font-sans)",
                   letterSpacing: "0.12em",
                   color: PALETTE.link,
                   marginBottom: 14,
@@ -79,7 +79,7 @@ export function FlowSection() {
               </div>
               <div
                 style={{
-                  font: "700 19px/1.35 Pretendard, sans-serif",
+                  font: "700 19px/1.35 var(--font-sans)",
                   color: PALETTE.ink,
                   letterSpacing: "-0.02em",
                   marginBottom: 8,
@@ -89,7 +89,7 @@ export function FlowSection() {
               </div>
               <div
                 style={{
-                  font: "400 14px/1.65 Pretendard, sans-serif",
+                  font: "400 14px/1.65 var(--font-sans)",
                   color: PALETTE.inkSoft,
                   letterSpacing: "-0.01em",
                 }}

@@ -131,7 +131,7 @@ function Donut({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            font: "800 17px/1 Pretendard, sans-serif",
+            font: "800 17px/1 var(--font-sans)",
             color: T.ink,
             letterSpacing: "-0.02em",
             fontVariantNumeric: "tabular-nums",
@@ -143,7 +143,7 @@ function Donut({
       <div style={{ textAlign: "center" }}>
         <div
           style={{
-            font: "700 13px/1 Pretendard, sans-serif",
+            font: "700 13px/1 var(--font-sans)",
             color: T.ink,
             marginBottom: 2,
           }}
@@ -152,7 +152,7 @@ function Donut({
         </div>
         <div
           style={{
-            font: "400 11px/1 Pretendard, sans-serif",
+            font: "400 11px/1 var(--font-sans)",
             color: T.inkSoft,
             fontVariantNumeric: "tabular-nums",
           }}
@@ -206,7 +206,7 @@ export function TodayProgressCard({ data }: { data: TodayProgressData }) {
         <Num value={data.todayHours.toFixed(1)} unit="h" size={32} />
         <span
           style={{
-            font: "500 13px/1 Pretendard, sans-serif",
+            font: "500 13px/1 var(--font-sans)",
             color: T.inkSoft,
           }}
         >
@@ -218,7 +218,7 @@ export function TodayProgressCard({ data }: { data: TodayProgressData }) {
           style={{
             display: "flex",
             justifyContent: "space-between",
-            font: "500 11px/1 Pretendard, sans-serif",
+            font: "500 11px/1 var(--font-sans)",
             color: T.inkSoft,
             marginBottom: 6,
           }}
@@ -233,7 +233,7 @@ export function TodayProgressCard({ data }: { data: TodayProgressData }) {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "baseline",
-          font: "400 12px/1.5 Pretendard, sans-serif",
+          font: "400 12px/1.5 var(--font-sans)",
           color: T.inkSoft,
         }}
       >
@@ -303,7 +303,7 @@ function SubjectExamGroup({
     <div>
       <div
         style={{
-          font: "700 11px/1 Pretendard, sans-serif",
+          font: "700 11px/1 var(--font-sans)",
           letterSpacing: "0.08em",
           textTransform: "uppercase",
           color: T.link,
@@ -334,7 +334,7 @@ function SubjectExamGroup({
             >
               <span
                 style={{
-                  font: "600 13px/1 Pretendard, sans-serif",
+                  font: "600 13px/1 var(--font-sans)",
                   color: T.ink,
                   letterSpacing: "-0.012em",
                 }}
@@ -343,7 +343,7 @@ function SubjectExamGroup({
               </span>
               <span
                 style={{
-                  font: "700 12px/1 Pretendard, sans-serif",
+                  font: "700 12px/1 var(--font-sans)",
                   color: T.ink,
                   fontVariantNumeric: "tabular-nums",
                 }}
@@ -356,7 +356,7 @@ function SubjectExamGroup({
               style={{
                 display: "flex",
                 justifyContent: "space-between",
-                font: "400 11px/1 Pretendard, sans-serif",
+                font: "400 11px/1 var(--font-sans)",
                 color: T.inkSoft,
                 marginTop: 4,
                 fontVariantNumeric: "tabular-nums",
@@ -400,7 +400,7 @@ export function ScienceProgressCard({
         }}
       >
         <Eyebrow>자연과학 진도</Eyebrow>
-        <Sub style={{ font: "500 11px/1 Pretendard, sans-serif" }}>
+        <Sub style={{ font: "500 11px/1 var(--font-sans)" }}>
           1차 필수 4과목
         </Sub>
       </div>
@@ -432,7 +432,7 @@ export function ScienceProgressCard({
               >
                 <span
                   style={{
-                    font: "600 13px/1 Pretendard, sans-serif",
+                    font: "600 13px/1 var(--font-sans)",
                     color: T.ink,
                     letterSpacing: "-0.012em",
                   }}
@@ -452,7 +452,7 @@ export function ScienceProgressCard({
                 </span>
                 <span
                   style={{
-                    font: "700 12px/1 Pretendard, sans-serif",
+                    font: "700 12px/1 var(--font-sans)",
                     color: T.ink,
                     fontVariantNumeric: "tabular-nums",
                   }}

@@ -62,7 +62,7 @@ export function OxRecentCard({ data }: { data: OxRecentData }) {
         <Link
           to="/me/ox-sessions"
           style={{
-            font: "600 12px/1 Pretendard, sans-serif",
+            font: "600 12px/1 var(--font-sans)",
             color: T.link,
             textDecoration: "none",
             display: "inline-flex",
@@ -84,7 +84,7 @@ export function OxRecentCard({ data }: { data: OxRecentData }) {
             gap: 8,
             padding: "24px 8px",
             color: T.inkSoft,
-            font: "400 12px/1.5 Pretendard, sans-serif",
+            font: "400 12px/1.5 var(--font-sans)",
             textAlign: "center",
           }}
         >
@@ -98,7 +98,7 @@ export function OxRecentCard({ data }: { data: OxRecentData }) {
             to="/latest/mcq?kind=mock_progressive"
             style={{
               marginTop: 4,
-              font: "600 12px/1 Pretendard, sans-serif",
+              font: "600 12px/1 var(--font-sans)",
               color: T.link,
               textDecoration: "none",
             }}
@@ -188,7 +188,7 @@ export function OxRecentCard({ data }: { data: OxRecentData }) {
 
           <p
             style={{
-              font: "400 11px/1.4 Pretendard, sans-serif",
+              font: "400 11px/1.4 var(--font-sans)",
               color: T.inkSoft,
               marginTop: 8,
               margin: "8px 0 0",
@@ -218,7 +218,7 @@ function StatCell({
     <>
       <div
         style={{
-          font: "500 11px/1 Pretendard, sans-serif",
+          font: "500 11px/1 var(--font-sans)",
           color: T.inkSoft,
           letterSpacing: "-0.005em",
           marginBottom: 4,
@@ -228,7 +228,7 @@ function StatCell({
       </div>
       <div
         style={{
-          font: "700 18px/1 Pretendard, sans-serif",
+          font: "700 18px/1 var(--font-sans)",
           color: accent ?? T.ink,
           letterSpacing: "-0.015em",
           fontVariantNumeric: "tabular-nums",

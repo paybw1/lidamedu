@@ -16,7 +16,7 @@ import { z } from "zod";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { PALETTE, Reveal } from "~/features/home/lib/landing";
 
-const FONT = "Pretendard, sans-serif";
+const FONT = "var(--font-sans)";
 
 export const meta: Route.MetaFunction = () => [
   { title: `새 비밀번호 | 리담변리사학원` },

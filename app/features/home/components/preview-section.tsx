@@ -73,7 +73,7 @@ export function PreviewSection() {
           </h2>
           <p
             style={{
-              font: "400 16px/1.7 Pretendard, sans-serif",
+              font: "400 16px/1.7 var(--font-sans)",
               color: PALETTE.inkSoft,
               margin: "0 0 24px",
               letterSpacing: "-0.01em",
@@ -155,7 +155,7 @@ function Lbl({ children, dark }: { children: ReactNode; dark?: boolean }) {
   return (
     <div
       style={{
-        font: "600 11px/1 Pretendard, sans-serif",
+        font: "600 11px/1 var(--font-sans)",
         letterSpacing: "0.1em",
         textTransform: "uppercase",
         color: dark ? "rgba(255,255,255,0.7)" : PALETTE.link,
@@ -179,7 +179,7 @@ function Num({
   return (
     <div
       style={{
-        font: "800 26px/1 Pretendard, sans-serif",
+        font: "800 26px/1 var(--font-sans)",
         letterSpacing: "-0.02em",
         fontVariantNumeric: "tabular-nums",
         color: dark ? "#fff" : PALETTE.ink,
@@ -199,7 +199,7 @@ function Sub({ children, dark }: { children: ReactNode; dark?: boolean }) {
   return (
     <div
       style={{
-        font: "400 12px/1.5 Pretendard, sans-serif",
+        font: "400 12px/1.5 var(--font-sans)",
         color: dark ? "rgba(255,255,255,0.75)" : PALETTE.inkSoft,
         marginTop: 4,
         letterSpacing: "-0.005em",

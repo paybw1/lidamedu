@@ -278,7 +278,7 @@ export default function AdminCasePdfMissing({
         올리면 텍스트를 추출해 적재 + 학습 인덱스(검색·AI Q&A)에 반영됩니다. (스캔 이미지
         PDF 는 텍스트가 비어 OCR 본문이 별도 필요)
         <br />💡 <b>텍스트만 있음</b> = 텍스트는 적재됐으나 폰트가 못 그리는 글자(옛 한자,
-        단위 기호 등)가 있어 PDF 생성 skip. 향후 폰트 교체(Noto Serif CJK KR 등) 시
+        단위 기호 등)가 있어 PDF 생성 skip. 향후 폰트 보강(치환표 확장) 시
         재생성.
       </p>
     </AdminShell>

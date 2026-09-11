@@ -323,7 +323,7 @@ export function CaseBlankFillView({
         if (!it.body) return null;
         return (
           <section key={`s${i}`} className="space-y-2">
-            <h3 className="text-link font-mono text-[11px] font-bold tracking-widest uppercase">
+            <h3 className="text-link text-[11px] font-bold tracking-widest uppercase">
               {summaryItems.length > 1 ? `판결요지 [${i + 1}]` : "판결요지"}
             </h3>
             <div className="text-foreground text-[16px] leading-[1.9]">
@@ -345,7 +345,7 @@ export function CaseBlankFillView({
       {/* 판시이유 — 빈칸 없어도 표시(풀기 중 맥락·이미지 유지). */}
       {reasoningMd ? (
         <section className="space-y-2">
-          <h3 className="text-link font-mono text-[11px] font-bold tracking-widest uppercase">판시이유</h3>
+          <h3 className="text-link text-[11px] font-bold tracking-widest uppercase">판시이유</h3>
           <div className="text-foreground text-[16px] leading-[1.9]">
             <CaseBlankText
               text={reasoningMd}
@@ -364,7 +364,7 @@ export function CaseBlankFillView({
       {/* 평석 — 빈칸 없어도 표시(풀기 중 맥락·이미지 유지). */}
       {commentMd ? (
         <section className="space-y-2">
-          <h3 className="text-link font-mono text-[11px] font-bold tracking-widest uppercase">평석</h3>
+          <h3 className="text-link text-[11px] font-bold tracking-widest uppercase">평석</h3>
           <div className="text-foreground text-[16px] leading-[1.9]">
             <CaseBlankText
               text={commentMd}

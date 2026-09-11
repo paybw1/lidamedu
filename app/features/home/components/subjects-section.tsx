@@ -41,7 +41,7 @@ export function SubjectsSection() {
         >
           <div
             style={{
-              font: "600 12px/1 Pretendard, sans-serif",
+              font: "600 12px/1 var(--font-sans)",
               letterSpacing: "0.12em",
               textTransform: "uppercase",
               color: PALETTE.link,
@@ -52,7 +52,7 @@ export function SubjectsSection() {
           </div>
           <div
             style={{
-              font: "700 22px/1.3 Pretendard, sans-serif",
+              font: "700 22px/1.3 var(--font-sans)",
               color: PALETTE.ink,
               letterSpacing: "-0.02em",
               marginBottom: 6,
@@ -62,7 +62,7 @@ export function SubjectsSection() {
           </div>
           <div
             style={{
-              font: "400 14px/1.6 Pretendard, sans-serif",
+              font: "400 14px/1.6 var(--font-sans)",
               color: PALETTE.inkSoft,
               marginBottom: 20,
               letterSpacing: "-0.01em",
@@ -78,7 +78,7 @@ export function SubjectsSection() {
             <div key={g.label} style={{ marginBottom: 10 }}>
               <div
                 style={{
-                  font: "600 11px/1 Pretendard, sans-serif",
+                  font: "600 11px/1 var(--font-sans)",
                   letterSpacing: "0.06em",
                   textTransform: "uppercase",
                   color: PALETTE.inkSoft,
@@ -98,7 +98,7 @@ export function SubjectsSection() {
                       color: PALETTE.link,
                       padding: "6px 12px",
                       borderRadius: 9999,
-                      font: "500 13px/1 Pretendard, sans-serif",
+                      font: "500 13px/1 var(--font-sans)",
                       letterSpacing: "-0.01em",
                     }}
                   >
@@ -137,7 +137,7 @@ export function SubjectsSection() {
           />
           <div
             style={{
-              font: "600 12px/1 Pretendard, sans-serif",
+              font: "600 12px/1 var(--font-sans)",
               letterSpacing: "0.12em",
               textTransform: "uppercase",
               color: "rgba(255,255,255,0.7)",
@@ -149,7 +149,7 @@ export function SubjectsSection() {
           </div>
           <div
             style={{
-              font: "700 22px/1.3 Pretendard, sans-serif",
+              font: "700 22px/1.3 var(--font-sans)",
               letterSpacing: "-0.02em",
               marginBottom: 6,
               position: "relative",
@@ -159,7 +159,7 @@ export function SubjectsSection() {
           </div>
           <div
             style={{
-              font: "400 14px/1.6 Pretendard, sans-serif",
+              font: "400 14px/1.6 var(--font-sans)",
               color: "rgba(255,255,255,0.78)",
               marginBottom: 20,
               letterSpacing: "-0.01em",
@@ -187,7 +187,7 @@ export function SubjectsSection() {
                   color: "#fff",
                   padding: "6px 12px",
                   borderRadius: 9999,
-                  font: "500 13px/1 Pretendard, sans-serif",
+                  font: "500 13px/1 var(--font-sans)",
                   letterSpacing: "-0.01em",
                 }}
               >

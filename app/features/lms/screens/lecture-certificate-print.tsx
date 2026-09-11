@@ -78,7 +78,7 @@ export default function LectureCertificatePrint({ loaderData }: Route.ComponentP
       {/* 증명서 본문 */}
       <div
         className="mx-auto max-w-[720px] bg-white px-14 py-16 text-neutral-900 shadow-lg print:max-w-none print:px-16 print:py-20 print:shadow-none"
-        style={{ fontFamily: '"Pretendard Variable",Pretendard,serif' }}
+        style={{ fontFamily: "var(--font-sans)" }}
       >
         <div className="border-prestige-navy border-b-2 pb-4 text-center">
           <p className="text-gilt text-[13px] font-bold tracking-[0.4em]">

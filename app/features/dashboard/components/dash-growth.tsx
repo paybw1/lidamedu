@@ -98,7 +98,7 @@ export function GrowthStripCard({ g }: { g: GrowthStripData }) {
                   display: "flex",
                   alignItems: "center",
                   gap: 6,
-                  font: "600 11px/1 Pretendard, sans-serif",
+                  font: "600 11px/1 var(--font-sans)",
                   letterSpacing: "0.04em",
                   color: "var(--ink-faint)",
                 }}
@@ -109,7 +109,7 @@ export function GrowthStripCard({ g }: { g: GrowthStripData }) {
               <Num value={c.value} unit={c.unit} size={24} weight={700} />
               <div
                 style={{
-                  font: "400 12px/1.4 Pretendard, sans-serif",
+                  font: "400 12px/1.4 var(--font-sans)",
                   color: c.subColor ?? "var(--ink-soft)",
                   letterSpacing: "-0.005em",
                 }}

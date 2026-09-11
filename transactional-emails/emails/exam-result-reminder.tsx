@@ -8,9 +8,10 @@ import {
   Html,
   Preview,
   Section,
-  Tailwind,
   Text,
 } from "@react-email/components";
+
+import { EmailTailwind } from "../lib/email-theme";
 
 interface Props {
   link: string;
@@ -26,14 +27,14 @@ export default function ExamResultReminder({
   examRoundLabel,
 }: Props) {
   return (
-    <Tailwind>
+    <EmailTailwind>
       <Html>
         <Head />
         <Body className="bg-gray-50 font-sans">
           <Preview>
             {`${studentName}님, ${examYear}년 ${examRoundLabel} 시험 결과를 입력해 주세요`}
           </Preview>
-          <Container className="mx-auto max-w-[600px] bg-white py-6 pb-12">
+          <Container className="font-sans mx-auto max-w-[600px] bg-white py-6 pb-12">
             <Section className="px-8">
               <Text className="m-0 text-xs font-semibold tracking-wide text-gray-500 uppercase">
                 시험 결과 입력 요청
@@ -73,7 +74,7 @@ export default function ExamResultReminder({
             <Section className="mt-6 px-8 text-center">
               <Button
                 href={link}
-                className="rounded-md bg-[#16a34a] px-5 py-3 text-[14px] font-semibold text-white"
+                className="font-sans rounded-md bg-[#16a34a] px-5 py-3 text-[14px] font-semibold text-white"
               >
                 결과 입력 (1분 소요)
               </Button>
@@ -90,7 +91,7 @@ export default function ExamResultReminder({
           </Container>
         </Body>
       </Html>
-    </Tailwind>
+    </EmailTailwind>
   );
 }
 

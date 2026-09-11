@@ -240,8 +240,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         background: "var(--background)",
         minHeight: "100vh",
         color: "var(--foreground)",
-        fontFamily:
-          'Pretendard, "Pretendard Variable", -apple-system, system-ui, sans-serif',
+        fontFamily: "var(--font-sans)",
       }}
     >
       <Hero preview={loaderData.heroPreview} isLoggedIn={loaderData.isLoggedIn} />

@@ -70,7 +70,7 @@ export function FinalCta() {
         </h2>
         <p
           style={{
-            font: "400 16px/1.7 Pretendard, sans-serif",
+            font: "400 16px/1.7 var(--font-sans)",
             color: "rgba(255,255,255,0.84)",
             letterSpacing: "-0.01em",
             margin: "0 0 28px",

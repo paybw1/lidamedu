@@ -166,7 +166,7 @@ export function PassPredictionCard({
             <Num value={Math.round(score)} size={48} color={ratingColor} />
             <div
               style={{
-                font: "500 11px/1 Pretendard, sans-serif",
+                font: "500 11px/1 var(--font-sans)",
                 color: T.inkSoft,
                 marginTop: 4,
               }}
@@ -186,7 +186,7 @@ export function PassPredictionCard({
               borderRadius: 9999,
               background: ratingBg,
               color: ratingColor,
-              font: "700 12px/1 Pretendard, sans-serif",
+              font: "700 12px/1 var(--font-sans)",
               marginBottom: 10,
             }}
           >
@@ -202,7 +202,7 @@ export function PassPredictionCard({
           </div>
           <div
             style={{
-              font: "400 13px/1.6 Pretendard, sans-serif",
+              font: "400 13px/1.6 var(--font-sans)",
               color: T.ink,
               background: T.blueSoft,
               padding: "10px 14px",
@@ -237,7 +237,7 @@ export function PassPredictionCard({
                 <span
                   style={{
                     flex: 1,
-                    font: "500 12px/1 Pretendard, sans-serif",
+                    font: "500 12px/1 var(--font-sans)",
                     color: T.inkSoft,
                     letterSpacing: "-0.005em",
                   }}
@@ -256,7 +256,7 @@ export function PassPredictionCard({
                   style={{
                     width: 30,
                     textAlign: "right",
-                    font: "700 11px/1 Pretendard, sans-serif",
+                    font: "700 11px/1 var(--font-sans)",
                     color: T.ink,
                     fontVariantNumeric: "tabular-nums",
                   }}
@@ -296,7 +296,7 @@ export interface PasserBenchmarkData {
 const TH_STYLE = (align?: "right"): React.CSSProperties => ({
   textAlign: align ?? "left",
   padding: "8px 8px 10px",
-  font: "600 11px/1 Pretendard, sans-serif",
+  font: "600 11px/1 var(--font-sans)",
   letterSpacing: "0.04em",
   textTransform: "uppercase",
   color: T.inkMute,
@@ -304,7 +304,7 @@ const TH_STYLE = (align?: "right"): React.CSSProperties => ({
 const TD_STYLE = (align?: "right"): React.CSSProperties => ({
   textAlign: align ?? "left",
   padding: "10px 8px",
-  font: "500 13px/1 Pretendard, sans-serif",
+  font: "500 13px/1 var(--font-sans)",
   color: T.ink,
   letterSpacing: "-0.01em",
   fontVariantNumeric: "tabular-nums",
@@ -344,7 +344,7 @@ export function PasserBenchmarkCard({
         <Link
           to="/study/passer-trend"
           style={{
-            font: "600 12px/1 Pretendard, sans-serif",
+            font: "600 12px/1 var(--font-sans)",
             color: T.link,
             textDecoration: "none",
           }}
@@ -397,7 +397,7 @@ export function PasserBenchmarkCard({
                         borderRadius: 9999,
                         background: ahead ? T.emeraldSoft : T.coralSoft,
                         color: ahead ? T.emerald : T.coral,
-                        font: "700 11px/1 Pretendard, sans-serif",
+                        font: "700 11px/1 var(--font-sans)",
                         fontVariantNumeric: "tabular-nums",
                       }}
                     >
@@ -431,7 +431,7 @@ export function PasserBenchmarkCard({
           })}
         </tbody>
       </table>
-      <Sub style={{ marginTop: 10, font: "500 11px/1.4 Pretendard, sans-serif" }}>
+      <Sub style={{ marginTop: 10, font: "500 11px/1.4 var(--font-sans)" }}>
         합격자 표본 {benchmark.sampleSize}명
         {benchmark.fallbackUsed ? " · 인접 연도 표본 포함" : ""}
       </Sub>
@@ -467,7 +467,7 @@ export function PasserSummariesCard({
         <Link
           to="/study/passer-summaries"
           style={{
-            font: "600 12px/1 Pretendard, sans-serif",
+            font: "600 12px/1 var(--font-sans)",
             color: T.link,
             textDecoration: "none",
           }}
@@ -517,7 +517,7 @@ export function PasserSummariesCard({
               </div>
               <p
                 style={{
-                  font: "400 13px/1.65 Pretendard, sans-serif",
+                  font: "400 13px/1.65 var(--font-sans)",
                   color: T.ink,
                   letterSpacing: "-0.005em",
                   margin: 0,

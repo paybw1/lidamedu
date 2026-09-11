@@ -8,9 +8,10 @@ import {
   Html,
   Preview,
   Section,
-  Tailwind,
   Text,
 } from "@react-email/components";
+
+import { EmailTailwind } from "../lib/email-theme";
 
 interface WeakItem {
   label: string;
@@ -56,14 +57,14 @@ export default function WeeklyReportStudent({
   pendingAssignments,
 }: Props) {
   return (
-    <Tailwind>
+    <EmailTailwind>
       <Html>
         <Head />
         <Body className="bg-gray-50 font-sans">
           <Preview>
             {`${studentName}님의 주간 학습 리포트 — ${weekRangeLabel}`}
           </Preview>
-          <Container className="mx-auto max-w-[600px] bg-white py-6 pb-12">
+          <Container className="font-sans mx-auto max-w-[600px] bg-white py-6 pb-12">
             <Section className="px-8">
               <Text className="m-0 text-xs font-semibold tracking-wide text-gray-500 uppercase">
                 주간 학습 리포트 · {weekRangeLabel}
@@ -79,7 +80,7 @@ export default function WeeklyReportStudent({
               <Heading as="h2" className="mb-2 text-base font-semibold text-black">
                 📊 이번 주 학습
               </Heading>
-              <table className="w-full border-collapse text-sm">
+              <table className="w-full border-collapse font-sans text-sm">
                 <tbody>
                   <tr>
                     <td className="py-1 text-gray-600">문제 풀이</td>
@@ -152,7 +153,7 @@ export default function WeeklyReportStudent({
             <Section className="mt-6 px-8 text-center">
               <Button
                 href={link}
-                className="rounded-md bg-[#16a34a] px-5 py-3 text-[14px] font-semibold text-white"
+                className="font-sans rounded-md bg-[#16a34a] px-5 py-3 text-[14px] font-semibold text-white"
               >
                 학습 계속하기
               </Button>
@@ -168,7 +169,7 @@ export default function WeeklyReportStudent({
           </Container>
         </Body>
       </Html>
-    </Tailwind>
+    </EmailTailwind>
   );
 }
 

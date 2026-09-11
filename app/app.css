@@ -6,12 +6,15 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  /* 본문은 Pretendard Variable 우선 — 한국어 화면 가독성/자족 모두 Geist·Noto 보다 우수.
-     Pretendard 가 라틴 글리프도 충분히 polish 되어 있어 Geist 는 fallback 으로만 둔다. */
+  /* 웹폰트는 Pretendard Variable 하나(root.tsx 가 jsdelivr CSS 로 로드). 라틴 글리프도 충분해
+     별도 라틴 폰트를 두지 않는다(Geist·Noto Sans KR 웹폰트 링크는 2026-09-11 정리로 제거).
+     "Noto Sans KR" 은 Android 등 시스템에 설치된 경우의 한글 폴백으로만 남긴다.
+     ★인라인 font 축약에서 family 는 var(--font-sans) 로 참조 — 맨 'Pretendard' 는 CDN 이
+       선언하는 이름('Pretendard Variable')과 달라 매칭되지 않는다(2026-09-11 193줄 정정). */
   --font-sans:
-    "Pretendard Variable", "Pretendard", "Geist", -apple-system,
-    "BlinkMacSystemFont", ui-sans-serif, system-ui, "Noto Sans KR", sans-serif,
-    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    "Pretendard Variable", "Pretendard", -apple-system, "BlinkMacSystemFont",
+    ui-sans-serif, system-ui, "Noto Sans KR", sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   /* font-serif 도 Pretendard 로 통일 — 사용자 요청에 따라 단일 family.
      기존 시리프 의도된 곳(인용/판례 본문) 도 Pretendard 로 표시된다. */
   --font-serif:

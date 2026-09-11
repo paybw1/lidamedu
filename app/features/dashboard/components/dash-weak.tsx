@@ -50,7 +50,7 @@ export function WeakReviewCard({
         <Link
           to="/study/wrong-note"
           style={{
-            font: "600 11px/1 Pretendard, sans-serif",
+            font: "600 11px/1 var(--font-sans)",
             color: T.link,
             textDecoration: "none",
           }}
@@ -86,7 +86,7 @@ export function WeakReviewCard({
                     borderRadius: 8,
                     background: T.muted,
                     color: T.inkSoft,
-                    font: "700 12px/1 Pretendard, sans-serif",
+                    font: "700 12px/1 var(--font-sans)",
                     display: "inline-flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -118,7 +118,7 @@ export function WeakReviewCard({
                   </div>
                   <div
                     style={{
-                      font: "500 13px/1.4 Pretendard, sans-serif",
+                      font: "500 13px/1.4 var(--font-sans)",
                       color: T.ink,
                       letterSpacing: "-0.01em",
                       overflow: "hidden",
@@ -132,7 +132,7 @@ export function WeakReviewCard({
                 <div style={{ textAlign: "right", flexShrink: 0 }}>
                   <div
                     style={{
-                      font: "700 13px/1 Pretendard, sans-serif",
+                      font: "700 13px/1 var(--font-sans)",
                       color: T.coral,
                       fontVariantNumeric: "tabular-nums",
                     }}
@@ -143,7 +143,7 @@ export function WeakReviewCard({
                   </div>
                   <Sub
                     style={{
-                      font: "500 10px/1 Pretendard, sans-serif",
+                      font: "500 10px/1 var(--font-sans)",
                       marginTop: 2,
                     }}
                   >
@@ -198,7 +198,7 @@ export function WeakNodesCard({
         }}
       >
         <Eyebrow>약점 단원</Eyebrow>
-        <Sub style={{ font: "500 11px/1 Pretendard, sans-serif" }}>
+        <Sub style={{ font: "500 11px/1 var(--font-sans)" }}>
           정답률 낮은 단원
         </Sub>
       </div>
@@ -245,7 +245,7 @@ export function WeakNodesCard({
                     </Chip>
                     <div
                       style={{
-                        font: "600 13px/1.4 Pretendard, sans-serif",
+                        font: "600 13px/1.4 var(--font-sans)",
                         color: T.ink,
                         letterSpacing: "-0.012em",
                       }}
@@ -265,7 +265,7 @@ export function WeakNodesCard({
                 {n.passerAvgAttempts !== null ? (
                   <div
                     style={{
-                      font: "500 11px/1.5 Pretendard, sans-serif",
+                      font: "500 11px/1.5 var(--font-sans)",
                       color: T.inkSoft,
                       letterSpacing: "-0.005em",
                       paddingTop: 8,
@@ -321,7 +321,7 @@ export function WeakNodesCard({
             border: `1px solid ${T.lineSoft}`,
             background: T.subtle,
             color: T.link,
-            font: "600 12px/1 Pretendard, sans-serif",
+            font: "600 12px/1 var(--font-sans)",
             cursor: busy ? "default" : "pointer",
             opacity: busy ? 0.6 : 1,
           }}
@@ -333,7 +333,7 @@ export function WeakNodesCard({
         <div
           style={{
             marginTop: 8,
-            font: "500 11px/1.4 Pretendard, sans-serif",
+            font: "500 11px/1.4 var(--font-sans)",
             color: T.coral,
           }}
         >
@@ -356,7 +356,7 @@ export function WeakNodesCard({
               border: `1px solid ${T.lineSoft}`,
               background: "transparent",
               color: T.inkSoft,
-              font: "600 12px/1 Pretendard, sans-serif",
+              font: "600 12px/1 var(--font-sans)",
               cursor: asgBusy ? "default" : "pointer",
               opacity: asgBusy ? 0.6 : 1,
             }}
@@ -369,7 +369,7 @@ export function WeakNodesCard({
         <div
           style={{
             marginTop: 8,
-            font: "500 11px/1.4 Pretendard, sans-serif",
+            font: "500 11px/1.4 var(--font-sans)",
             color: T.coral,
           }}
         >

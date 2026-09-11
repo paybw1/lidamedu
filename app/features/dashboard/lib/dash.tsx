@@ -40,7 +40,7 @@ export const T = {
   amberSoft: "rgba(247,181,0,0.12)",
   amberInk: "#A77B3F",
 
-  font: "Pretendard, system-ui, -apple-system, sans-serif",
+  font: "var(--font-sans)",
 
   elev2: "0 1px 2px rgba(0,0,0,0.04)",
   elev4: "0 0 0 1px rgba(0,0,0,0.02), 0 4px 12px rgba(0,0,0,0.08)",
@@ -200,7 +200,7 @@ export function Eyebrow({
   return (
     <div
       style={{
-        font: `600 12px/1 Pretendard, sans-serif`,
+        font: `600 12px/1 var(--font-sans)`,
         letterSpacing: "0.08em",
         textTransform: "uppercase",
         color: color ?? "var(--ink-faint)",
@@ -333,7 +333,7 @@ export function Num({
   return (
     <span
       style={{
-        font: `${weight} ${size}px/1 Pretendard, sans-serif`,
+        font: `${weight} ${size}px/1 var(--font-sans)`,
         letterSpacing: "-0.02em",
         fontVariantNumeric: "tabular-nums",
         color: color ?? "var(--foreground)",
@@ -366,7 +366,7 @@ export function Sub({
   return (
     <div
       style={{
-        font: "400 13px/1.5 Pretendard, sans-serif",
+        font: "400 13px/1.5 var(--font-sans)",
         color: "var(--ink-soft)",
         letterSpacing: "-0.005em",
         ...style,
@@ -390,7 +390,7 @@ export function Title({
   return (
     <div
       style={{
-        font: `600 ${size}px/1.3 Pretendard, sans-serif`,
+        font: `600 ${size}px/1.3 var(--font-sans)`,
         color: "var(--foreground)",
         letterSpacing: "-0.015em",
         ...style,

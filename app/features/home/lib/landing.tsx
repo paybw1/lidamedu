@@ -38,8 +38,8 @@ export const PALETTE = {
 // 랜딩 타이포 SSOT — 제목·본문 모두 Pretendard(사용자 요청으로 명조 환원).
 // 제목류 font 숏핸드에서 FONT.display 참조(PALETTE 와 같은 SSOT 패턴) — 값은 Pretendard.
 export const FONT = {
-  display: "Pretendard, sans-serif",
-  body: "Pretendard, sans-serif",
+  display: "var(--font-sans)",
+  body: "var(--font-sans)",
 } as const;
 
 export const EASE_REVEAL = "cubic-bezier(0.22, 1, 0.36, 1)";
@@ -272,7 +272,7 @@ export function LandingButton({
     height: h,
     padding: `0 ${px}px`,
     borderRadius: 9999,
-    font: `600 ${fs}px/1 Pretendard, sans-serif`,
+    font: `600 ${fs}px/1 var(--font-sans)`,
     letterSpacing: "-0.01em",
     cursor: "pointer",
     whiteSpace: "nowrap",

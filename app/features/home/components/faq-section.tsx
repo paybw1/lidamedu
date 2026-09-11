@@ -90,7 +90,7 @@ export function FaqSection() {
                   display: "flex",
                   alignItems: "center",
                   gap: 12,
-                  font: "600 16px/1.5 Pretendard, sans-serif",
+                  font: "600 16px/1.5 var(--font-sans)",
                   color: PALETTE.ink,
                   letterSpacing: "-0.015em",
                 }}
@@ -126,7 +126,7 @@ export function FaqSection() {
                     padding: 16,
                     borderRadius: 12,
                     background: PALETTE.tint,
-                    font: "400 14px/1.7 Pretendard, sans-serif",
+                    font: "400 14px/1.7 var(--font-sans)",
                     color: PALETTE.ink,
                     letterSpacing: "-0.01em",
                   }}

@@ -17,7 +17,7 @@ import { EASE_REVEAL, PALETTE, Reveal } from "~/features/home/lib/landing";
 
 import { KakaoLogo } from "../components/logos/kakao";
 
-const FONT = "Pretendard, sans-serif";
+const FONT = "var(--font-sans)";
 
 export const meta: Route.MetaFunction = () => [
   { title: `회원가입 | 리담변리사학원` },

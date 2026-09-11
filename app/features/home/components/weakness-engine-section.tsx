@@ -83,7 +83,7 @@ export function WeaknessEngineSection() {
               <div
                 key={k}
                 style={{
-                  font: "600 11px/1 Pretendard, sans-serif",
+                  font: "600 11px/1 var(--font-sans)",
                   letterSpacing: "0.04em",
                   color: PALETTE.inkSoft,
                   textAlign: "center",
@@ -97,7 +97,7 @@ export function WeaknessEngineSection() {
               <Fragment key={UNITS[r]}>
                 <div
                   style={{
-                    font: "600 12px/1 Pretendard, sans-serif",
+                    font: "600 12px/1 var(--font-sans)",
                     color: PALETTE.ink,
                     letterSpacing: "-0.01em",
                     display: "flex",
@@ -131,7 +131,7 @@ export function WeaknessEngineSection() {
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 6,
-                  font: "500 12px/1 Pretendard, sans-serif",
+                  font: "500 12px/1 var(--font-sans)",
                   color: PALETTE.inkSoft,
                 }}
               >
@@ -170,7 +170,7 @@ export function WeaknessEngineSection() {
             <CardLabel dark>자동 복습 큐</CardLabel>
             <div
               style={{
-                font: "700 19px/1.35 Pretendard, sans-serif",
+                font: "700 19px/1.35 var(--font-sans)",
                 letterSpacing: "-0.018em",
                 marginTop: 2,
               }}
@@ -179,7 +179,7 @@ export function WeaknessEngineSection() {
             </div>
             <div
               style={{
-                font: "400 13px/1.6 Pretendard, sans-serif",
+                font: "400 13px/1.6 var(--font-sans)",
                 color: "rgba(255,255,255,0.82)",
                 letterSpacing: "-0.005em",
               }}
@@ -219,7 +219,7 @@ export function WeaknessEngineSection() {
                     display: "flex",
                     alignItems: "center",
                     gap: 8,
-                    font: "500 14px/1.5 Pretendard, sans-serif",
+                    font: "500 14px/1.5 var(--font-sans)",
                     color: PALETTE.ink,
                     letterSpacing: "-0.01em",
                   }}
@@ -253,7 +253,7 @@ export function WeaknessEngineSection() {
         </LandingButton>
         <div
           style={{
-            font: "400 12px/1.5 Pretendard, sans-serif",
+            font: "400 12px/1.5 var(--font-sans)",
             color: PALETTE.inkSoft,
             marginTop: 10,
           }}
@@ -281,7 +281,7 @@ function CardLabel({
   return (
     <div
       style={{
-        font: "600 11px/1 Pretendard, sans-serif",
+        font: "600 11px/1 var(--font-sans)",
         letterSpacing: "0.1em",
         textTransform: "uppercase",
         color: dark ? "rgba(255,255,255,0.72)" : PALETTE.link,
@@ -303,7 +303,7 @@ function Tag({ children }: { children: ReactNode }) {
         color: PALETTE.link,
         padding: "2px 7px",
         borderRadius: 6,
-        font: "600 10px/1.4 Pretendard, sans-serif",
+        font: "600 10px/1.4 var(--font-sans)",
         letterSpacing: "0.02em",
       }}
     >
@@ -316,7 +316,7 @@ function CardFoot({ children }: { children: ReactNode }) {
   return (
     <div
       style={{
-        font: "400 12px/1.6 Pretendard, sans-serif",
+        font: "400 12px/1.6 var(--font-sans)",
         color: PALETTE.inkSoft,
         letterSpacing: "-0.005em",
         marginTop: "auto",

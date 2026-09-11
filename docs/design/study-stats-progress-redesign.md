@@ -143,7 +143,7 @@
   - 텍스트: `--foreground`, `--muted-foreground`, `--ink-soft`, `--ink-faint`
   - 경계: `--border`, `--line-strong`
   - 차트/진도: `--chart-1..5`(blue·light-blue·emerald·amber·violet). 성취도 색은 `scoreBgTone` 규칙(emerald→lime→amber→orange→rose), 학습량/활동은 primary blue.
-- **반경** `0.65rem`(카드 `rounded-xl`). **폰트** Pretendard(본문). 제목 강조엔 명조(Noto Serif KR) 사용 가능.
+- **반경** `0.65rem`(카드 `rounded-xl`). **폰트** Pretendard 단일(본문·제목). ~~제목 강조엔 명조(Noto Serif KR) 사용 가능.~~ → Noto Serif KR 은 2026-06-26 환원(e47af36a)으로 로드되지 않으며 `font-serif` 도 Pretendard 로 별칭됨. 세리프 재도입은 통일 브리프 §4 '명시 승인 후' 별건(2026-09-11 정리로 정정).
 - **차트 라이브러리 없음** — 도넛/바/히트맵은 **SVG·CSS 수제**(`ProgressDonut` 등 기존 패턴 재사용). recharts 등 도입 금지.
 - **반응형 필수** — 모바일 우선(1열) → 데스크톱 그리드.
 - **문체**(한국어): 제목·배지·칩·버튼 = **명사형, 마침표 없음**; 설명·빈상태 본문·안내 = **서술어 `~합니다`, 마침표 있음**. 영어 UI 단어 금지(OX/PDF/AI 등 약어만 예외).

@@ -57,7 +57,7 @@ export function QnaRecentCard({
         <Link
           to="/qna"
           style={{
-            font: "600 12px/1 Pretendard, sans-serif",
+            font: "600 12px/1 var(--font-sans)",
             color: T.link,
             textDecoration: "none",
             display: "inline-flex",
@@ -84,7 +84,7 @@ export function QnaRecentCard({
           <MessageCircleQuestionIcon size={24} color={T.inkSoft} strokeWidth={1.5} />
           <p
             style={{
-              font: "400 12px/1.5 Pretendard, sans-serif",
+              font: "400 12px/1.5 var(--font-sans)",
               color: T.inkSoft,
               margin: 0,
             }}
@@ -99,7 +99,7 @@ export function QnaRecentCard({
               borderRadius: 9999,
               background: T.blue,
               color: "#fff",
-              font: "600 12px/1 Pretendard, sans-serif",
+              font: "600 12px/1 var(--font-sans)",
               textDecoration: "none",
               display: "inline-flex",
               alignItems: "center",
@@ -145,7 +145,7 @@ export function QnaRecentCard({
                   >
                     <p
                       style={{
-                        font: "600 13px/1.3 Pretendard, sans-serif",
+                        font: "600 13px/1.3 var(--font-sans)",
                         color: T.ink,
                         letterSpacing: "-0.012em",
                         margin: 0,
@@ -159,7 +159,7 @@ export function QnaRecentCard({
                     </p>
                     <span
                       style={{
-                        font: "500 11px/1 Pretendard, sans-serif",
+                        font: "500 11px/1 var(--font-sans)",
                         color: T.inkSoft,
                         flexShrink: 0,
                         tabSize: "tabular-nums",
@@ -170,7 +170,7 @@ export function QnaRecentCard({
                   </div>
                   <span
                     style={{
-                      font: "500 11px/1 Pretendard, sans-serif",
+                      font: "500 11px/1 var(--font-sans)",
                       color: T.inkSoft,
                       margin: "4px 0 0",
                       display: "inline-block",
@@ -194,7 +194,7 @@ export function QnaRecentCard({
               width: "100%",
               borderRadius: 9999,
               border: `1px solid ${T.lineSoft}`,
-              font: "600 12px/1 Pretendard, sans-serif",
+              font: "600 12px/1 var(--font-sans)",
               color: T.ink,
               textDecoration: "none",
               background: T.paper,

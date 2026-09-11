@@ -29,7 +29,7 @@ export function TrialCalloutSection() {
               display: "inline-flex",
               alignItems: "center",
               gap: 6,
-              font: "700 12px/1 Pretendard, sans-serif",
+              font: "700 12px/1 var(--font-sans)",
               letterSpacing: "0.1em",
               textTransform: "uppercase",
               color: PALETTE.link,
@@ -40,7 +40,7 @@ export function TrialCalloutSection() {
           </div>
           <h2
             style={{
-              font: "800 clamp(22px, 3vw, 30px)/1.2 Pretendard, sans-serif",
+              font: "800 clamp(22px, 3vw, 30px)/1.2 var(--font-sans)",
               letterSpacing: "-0.02em",
               color: PALETTE.ink,
               margin: "0 0 8px",
@@ -50,7 +50,7 @@ export function TrialCalloutSection() {
           </h2>
           <p
             style={{
-              font: "400 15px/1.6 Pretendard, sans-serif",
+              font: "400 15px/1.6 var(--font-sans)",
               color: PALETTE.inkSoft,
               letterSpacing: "-0.005em",
               maxWidth: 620,
@@ -80,7 +80,7 @@ export function TrialCalloutSection() {
                   borderRadius: 9999,
                   background: "var(--card)",
                   border: `1px solid ${PALETTE.line}`,
-                  font: "500 13px/1 Pretendard, sans-serif",
+                  font: "500 13px/1 var(--font-sans)",
                   color: PALETTE.ink,
                 }}
               >

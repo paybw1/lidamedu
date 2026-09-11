@@ -69,7 +69,7 @@ export function SectionHeader({
         <Reveal delay={160}>
           <p
             style={{
-              font: "400 16px/1.7 Pretendard, sans-serif",
+              font: "400 16px/1.7 var(--font-sans)",
               color: PALETTE.inkSoft,
               margin: "14px auto 0",
               maxWidth: subtitleMaxWidth,

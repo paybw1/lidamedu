@@ -268,7 +268,7 @@ markDistinguished (intent=mark):
 | 검증 | `scripts/precedents/verify-pdf-render.ts`, `verify-pdf-storage.ts`, `verify-e2e-search.ts` |
 | 컬럼 (cases) | `official_text_md` text, `official_text_pdf_path` text, `law_api_serial_id` text |
 | 버킷 | `case-fulltext` (private, signed URL only) |
-| 폰트 | `public/fonts/NanumMyeongjo-Regular.ttf` (OFL 1.1) + `@pdf-lib/fontkit` |
+| 폰트 | `public/fonts/NanumMyeongjo-Regular.ttf` (OFL 1.1) → 2026-06-08 `NotoSerifKR-Regular.ttf`(OFL, 25686847)로 교체 + `@pdf-lib/fontkit` (2026-09-11 정리 주석 — 나눔명조 파일은 삭제됨) |
 
 매칭 안전망: API 응답 first-result 사용 금지. **3중 정확 매칭** (입력 정규화 = 목록 응답 사건번호 = 본문 응답 사건번호 = cases.case_number) 통과 시에만 적재.
 
@@ -298,4 +298,4 @@ PDF 정책: 폰트가 렌더 못 하는 codepoint 1자라도 발견 시 PDF skip
 ---
 
 *Last updated: 2026-06-02.*
-*다음 주요 업데이트 후보: AI 채점 자동 반영 (sample 검수 모드), 우수 답안 cross-회차 검색, 미커버 한자 케이스 발생 시 Noto Serif CJK KR 폰트 교체.*
+*다음 주요 업데이트 후보: AI 채점 자동 반영 (sample 검수 모드), 우수 답안 cross-회차 검색, 미커버 한자 케이스 발생 시 Noto Serif CJK KR 폰트 교체(✅ 2026-06-02 CJK OTF → 2026-06-08 Noto Serif KR TTF 로 교체 완료, 25686847 — 2026-09-11 정리 주석).*

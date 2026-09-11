@@ -859,7 +859,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
                   <Link
                     to="/study/stats"
                     style={{
-                      font: "600 11px/1 Pretendard, sans-serif",
+                      font: "600 11px/1 var(--font-sans)",
                       color: T.link,
                       textDecoration: "none",
                     }}

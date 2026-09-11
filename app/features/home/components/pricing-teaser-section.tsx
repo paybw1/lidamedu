@@ -144,7 +144,7 @@ export function PricingTeaserSection({
                   color: "#fff",
                   padding: "4px 12px",
                   borderRadius: 9999,
-                  font: "700 11px/1 Pretendard, sans-serif",
+                  font: "700 11px/1 var(--font-sans)",
                   letterSpacing: "0.08em",
                   textTransform: "uppercase",
                 }}
@@ -155,7 +155,7 @@ export function PricingTeaserSection({
             <div>
               <div
                 style={{
-                  font: "600 12px/1 Pretendard, sans-serif",
+                  font: "600 12px/1 var(--font-sans)",
                   letterSpacing: "0.1em",
                   textTransform: "uppercase",
                   color: PALETTE.link,
@@ -168,7 +168,7 @@ export function PricingTeaserSection({
                 <>
                   <div
                     style={{
-                      font: "700 11px/1 Pretendard, sans-serif",
+                      font: "700 11px/1 var(--font-sans)",
                       color: PALETTE.link,
                       marginBottom: 5,
                       letterSpacing: "0.02em",
@@ -182,7 +182,7 @@ export function PricingTeaserSection({
                       alignItems: "baseline",
                       flexWrap: "wrap",
                       gap: 8,
-                      font: "800 32px/1 Pretendard, sans-serif",
+                      font: "800 32px/1 var(--font-sans)",
                       letterSpacing: "-0.025em",
                       fontVariantNumeric: "tabular-nums",
                       color: PALETTE.ink,
@@ -205,7 +205,7 @@ export function PricingTeaserSection({
                   <div
                     style={{
                       marginTop: 8,
-                      font: "500 12px/1.45 Pretendard, sans-serif",
+                      font: "500 12px/1.45 var(--font-sans)",
                       color: PALETTE.inkSoft,
                       letterSpacing: "-0.005em",
                     }}
@@ -223,7 +223,7 @@ export function PricingTeaserSection({
                 <>
                   <div
                     style={{
-                      font: "800 32px/1 Pretendard, sans-serif",
+                      font: "800 32px/1 var(--font-sans)",
                       letterSpacing: "-0.025em",
                       fontVariantNumeric: "tabular-nums",
                       color: PALETTE.ink,
@@ -247,7 +247,7 @@ export function PricingTeaserSection({
                     <div
                       style={{
                         marginTop: 8,
-                        font: "500 12px/1.45 Pretendard, sans-serif",
+                        font: "500 12px/1.45 var(--font-sans)",
                         color: PALETTE.inkSoft,
                         letterSpacing: "-0.005em",
                       }}
@@ -276,7 +276,7 @@ export function PricingTeaserSection({
                     display: "flex",
                     alignItems: "baseline",
                     gap: 8,
-                    font: "400 14px/1.5 Pretendard, sans-serif",
+                    font: "400 14px/1.5 var(--font-sans)",
                     color: PALETTE.ink,
                     letterSpacing: "-0.005em",
                   }}
@@ -311,7 +311,7 @@ export function PricingTeaserSection({
           <Link
             to="/pricing"
             style={{
-              font: "500 13px/1 Pretendard, sans-serif",
+              font: "500 13px/1 var(--font-sans)",
               color: PALETTE.inkSoft,
               letterSpacing: "-0.01em",
               textDecoration: "none",

@@ -85,7 +85,7 @@ export function FeaturesSection() {
                 borderRadius: 10,
                 background: PALETTE.tint,
                 color: PALETTE.link,
-                font: "700 13px/1 Pretendard, sans-serif",
+                font: "700 13px/1 var(--font-sans)",
                 letterSpacing: "0.04em",
                 marginBottom: 16,
               }}
@@ -94,7 +94,7 @@ export function FeaturesSection() {
             </div>
             <div
               style={{
-                font: "700 17px/1.4 Pretendard, sans-serif",
+                font: "700 17px/1.4 var(--font-sans)",
                 color: PALETTE.ink,
                 letterSpacing: "-0.018em",
                 marginBottom: 8,
@@ -104,7 +104,7 @@ export function FeaturesSection() {
             </div>
             <div
               style={{
-                font: "400 14px/1.65 Pretendard, sans-serif",
+                font: "400 14px/1.65 var(--font-sans)",
                 color: PALETTE.inkSoft,
                 letterSpacing: "-0.01em",
               }}

@@ -8,9 +8,10 @@ import {
   Html,
   Preview,
   Section,
-  Tailwind,
   Text,
 } from "@react-email/components";
+
+import { EmailTailwind } from "../lib/email-theme";
 
 interface InactiveStudent {
   name: string;
@@ -54,14 +55,14 @@ export default function WeeklyReportStaff({
   const activeRatio =
     memberCount > 0 ? Math.round((active7dCount / memberCount) * 100) : 0;
   return (
-    <Tailwind>
+    <EmailTailwind>
       <Html>
         <Head />
         <Body className="bg-gray-50 font-sans">
           <Preview>
             {`[${cohortName}] 주간 운영 리포트 · ${weekRangeLabel}`}
           </Preview>
-          <Container className="mx-auto max-w-[600px] bg-white py-6 pb-12">
+          <Container className="font-sans mx-auto max-w-[600px] bg-white py-6 pb-12">
             <Section className="px-8">
               <Text className="m-0 text-xs font-semibold tracking-wide text-gray-500 uppercase">
                 주간 운영 리포트 · {weekRangeLabel}
@@ -81,7 +82,7 @@ export default function WeeklyReportStaff({
               <Heading as="h2" className="mb-2 text-base font-semibold text-black">
                 📊 반 평균
               </Heading>
-              <table className="w-full border-collapse text-sm">
+              <table className="w-full border-collapse font-sans text-sm">
                 <tbody>
                   <tr>
                     <td className="py-1 text-gray-600">평균 정답률</td>
@@ -139,7 +140,7 @@ export default function WeeklyReportStaff({
             <Section className="mt-6 px-8 text-center">
               <Button
                 href={link}
-                className="rounded-md bg-[#2563eb] px-5 py-3 text-[14px] font-semibold text-white"
+                className="font-sans rounded-md bg-[#2563eb] px-5 py-3 text-[14px] font-semibold text-white"
               >
                 반 진도 상세 보기
               </Button>
@@ -154,7 +155,7 @@ export default function WeeklyReportStaff({
           </Container>
         </Body>
       </Html>
-    </Tailwind>
+    </EmailTailwind>
   );
 }
 

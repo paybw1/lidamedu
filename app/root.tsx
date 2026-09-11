@@ -54,20 +54,9 @@ export const links: Route.LinksFunction = () => [
   { rel: "icon", type: "image/png", href: "/favicon.png" },
   { rel: "icon", type: "image/x-icon", href: "/favicon.ico" },
   { rel: "apple-touch-icon", href: "/favicon.png" },
-  { rel: "preconnect", href: "https://fonts.googleapis.com" },
-  {
-    rel: "preconnect",
-    href: "https://fonts.gstatic.com",
-    crossOrigin: "anonymous",
-  },
-  {
-    rel: "stylesheet",
-    href: "https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap",
-  },
-  {
-    rel: "stylesheet",
-    href: "https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&family=Caveat:wght@400;600&display=swap",
-  },
+  // 웹폰트는 Pretendard Variable 하나(app.css --font-sans SSOT). Google Fonts(Geist·Noto Sans KR·
+  // Caveat)는 어디서도 쓰이지 않아 2026-09-11 정리로 제거 — 열화 경로는 시스템 고딕.
+  // ★CDN 이 선언하는 family 이름은 'Pretendard Variable' 뿐 — 맨 'Pretendard' 로 지정하면 매칭되지 않는다.
   {
     rel: "stylesheet",
     href: "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css",

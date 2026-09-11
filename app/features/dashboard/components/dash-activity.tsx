@@ -41,7 +41,7 @@ export function HeatmapCard({
         }}
       >
         <Eyebrow>학습 히트맵</Eyebrow>
-        <Sub style={{ font: "500 11px/1 Pretendard, sans-serif" }}>
+        <Sub style={{ font: "500 11px/1 var(--font-sans)" }}>
           최근 {weekCount}주
         </Sub>
       </div>
@@ -58,7 +58,7 @@ export function HeatmapCard({
           style={{
             display: "grid",
             gridTemplateRows: "repeat(7, 1fr)",
-            font: "500 9px/1 Pretendard, sans-serif",
+            font: "500 9px/1 var(--font-sans)",
             color: T.inkMute,
             rowGap: 3,
             alignItems: "center",
@@ -115,7 +115,7 @@ export function HeatmapCard({
             display: "flex",
             alignItems: "center",
             gap: 6,
-            font: "500 11px/1 Pretendard, sans-serif",
+            font: "500 11px/1 var(--font-sans)",
             color: T.inkSoft,
           }}
         >
@@ -137,7 +137,7 @@ export function HeatmapCard({
         </div>
         <Sub
           style={{
-            font: "500 11px/1.4 Pretendard, sans-serif",
+            font: "500 11px/1.4 var(--font-sans)",
             fontVariantNumeric: "tabular-nums",
           }}
         >
@@ -171,7 +171,7 @@ export function WeekBarsCard({ bars }: { bars: ReadonlyArray<WeekBar> }) {
         }}
       >
         <Eyebrow>이번 주 학습량</Eyebrow>
-        <Sub style={{ font: "500 11px/1 Pretendard, sans-serif" }}>일별 시간</Sub>
+        <Sub style={{ font: "500 11px/1 var(--font-sans)" }}>일별 시간</Sub>
       </div>
       <div
         ref={ref}
@@ -222,7 +222,7 @@ export function WeekBarsCard({ bars }: { bars: ReadonlyArray<WeekBar> }) {
                         top: -22,
                         left: "50%",
                         transform: "translateX(-50%)",
-                        font: "700 11px/1 Pretendard, sans-serif",
+                        font: "700 11px/1 var(--font-sans)",
                         color: T.link,
                         fontVariantNumeric: "tabular-nums",
                       }}
@@ -234,7 +234,7 @@ export function WeekBarsCard({ bars }: { bars: ReadonlyArray<WeekBar> }) {
               </div>
               <span
                 style={{
-                  font: `${b.today ? 700 : 500} 11px/1 Pretendard, sans-serif`,
+                  font: `${b.today ? 700 : 500} 11px/1 var(--font-sans)`,
                   color: b.today ? T.blue : T.inkSoft,
                 }}
               >

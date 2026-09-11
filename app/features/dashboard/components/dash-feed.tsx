@@ -38,14 +38,14 @@ export function RecentActivityCard({
         }}
       >
         <Eyebrow>최근 학습</Eyebrow>
-        <Sub style={{ font: "500 11px/1 Pretendard, sans-serif" }}>
+        <Sub style={{ font: "500 11px/1 var(--font-sans)" }}>
           최근 {items.length}건
         </Sub>
       </div>
       {items.length === 0 ? (
         <p
           style={{
-            font: "400 12px/1.5 Pretendard, sans-serif",
+            font: "400 12px/1.5 var(--font-sans)",
             color: T.inkSoft,
             margin: 0,
           }}
@@ -85,7 +85,7 @@ export function RecentActivityCard({
                   />
                   <span
                     style={{
-                      font: "600 11px/1 Pretendard, sans-serif",
+                      font: "600 11px/1 var(--font-sans)",
                       color: meta.color,
                       width: 30,
                       flexShrink: 0,
@@ -97,7 +97,7 @@ export function RecentActivityCard({
                     style={{
                       flex: 1,
                       minWidth: 0,
-                      font: "500 13px/1.4 Pretendard, sans-serif",
+                      font: "500 13px/1.4 var(--font-sans)",
                       color: T.ink,
                       letterSpacing: "-0.01em",
                       overflow: "hidden",
@@ -109,7 +109,7 @@ export function RecentActivityCard({
                   </span>
                   <span
                     style={{
-                      font: "500 11px/1 Pretendard, sans-serif",
+                      font: "500 11px/1 var(--font-sans)",
                       color: T.inkMute,
                       flexShrink: 0,
                     }}
@@ -156,7 +156,7 @@ export function RecentRevisionsCard({
         <Link
           to="/latest/laws"
           style={{
-            font: "600 12px/1 Pretendard, sans-serif",
+            font: "600 12px/1 var(--font-sans)",
             color: T.link,
             textDecoration: "none",
           }}
@@ -167,7 +167,7 @@ export function RecentRevisionsCard({
       {items.length === 0 ? (
         <p
           style={{
-            font: "400 12px/1.5 Pretendard, sans-serif",
+            font: "400 12px/1.5 var(--font-sans)",
             color: T.inkSoft,
             margin: 0,
           }}
@@ -201,7 +201,7 @@ export function RecentRevisionsCard({
                 <Chip tone="blue">{r.lawName}</Chip>
                 <span
                   style={{
-                    font: "500 13px/1.4 Pretendard, sans-serif",
+                    font: "500 13px/1.4 var(--font-sans)",
                     color: T.ink,
                     flex: 1,
                     letterSpacing: "-0.01em",
@@ -209,13 +209,13 @@ export function RecentRevisionsCard({
                 >
                   {r.version}
                 </span>
-                <Sub style={{ font: "500 11px/1 Pretendard, sans-serif" }}>
+                <Sub style={{ font: "500 11px/1 var(--font-sans)" }}>
                   {r.date}
                 </Sub>
                 {r.affectedCount > 0 ? (
                   <span
                     style={{
-                      font: "600 11px/1 Pretendard, sans-serif",
+                      font: "600 11px/1 var(--font-sans)",
                       color: T.link,
                       padding: "2px 6px",
                       background: T.blueSoft,
@@ -264,7 +264,7 @@ export function RecentCasesCard({
         <Link
           to="/latest/cases"
           style={{
-            font: "600 12px/1 Pretendard, sans-serif",
+            font: "600 12px/1 var(--font-sans)",
             color: T.link,
             textDecoration: "none",
           }}
@@ -275,7 +275,7 @@ export function RecentCasesCard({
       {items.length === 0 ? (
         <p
           style={{
-            font: "400 12px/1.5 Pretendard, sans-serif",
+            font: "400 12px/1.5 var(--font-sans)",
             color: T.inkSoft,
             margin: 0,
           }}
@@ -315,20 +315,20 @@ export function RecentCasesCard({
                 >
                   <span
                     style={{
-                      font: "700 12px/1.3 Pretendard, sans-serif",
+                      font: "700 12px/1.3 var(--font-sans)",
                       color: "#7B6BA0",
                       letterSpacing: "0.01em",
                     }}
                   >
                     {c.cite}
                   </span>
-                  <Sub style={{ font: "500 11px/1 Pretendard, sans-serif" }}>
+                  <Sub style={{ font: "500 11px/1 var(--font-sans)" }}>
                     {c.date}
                   </Sub>
                 </div>
                 <div
                   style={{
-                    font: "500 12px/1.5 Pretendard, sans-serif",
+                    font: "500 12px/1.5 var(--font-sans)",
                     color: T.inkSoft,
                     letterSpacing: "-0.005em",
                   }}

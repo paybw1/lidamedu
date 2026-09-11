@@ -131,7 +131,7 @@ export function PasserStatsSection() {
                   color: PALETTE.link,
                   padding: "4px 10px",
                   borderRadius: 9999,
-                  font: "700 11px/1 Pretendard, sans-serif",
+                  font: "700 11px/1 var(--font-sans)",
                   letterSpacing: "-0.01em",
                 }}
               >
@@ -145,7 +145,7 @@ export function PasserStatsSection() {
               style={{
                 display: "flex",
                 justifyContent: "space-between",
-                font: "500 11px/1 Pretendard, sans-serif",
+                font: "500 11px/1 var(--font-sans)",
                 color: PALETTE.inkMute,
                 marginTop: 2,
               }}
@@ -199,7 +199,7 @@ export function PasserStatsSection() {
                   <div style={{ minWidth: 0 }}>
                     <div
                       style={{
-                        font: "700 14px/1.4 Pretendard, sans-serif",
+                        font: "700 14px/1.4 var(--font-sans)",
                         color: PALETTE.ink,
                         letterSpacing: "-0.01em",
                       }}
@@ -208,7 +208,7 @@ export function PasserStatsSection() {
                     </div>
                     <div
                       style={{
-                        font: "400 12px/1.5 Pretendard, sans-serif",
+                        font: "400 12px/1.5 var(--font-sans)",
                         color: PALETTE.inkSoft,
                         letterSpacing: "-0.005em",
                       }}
@@ -235,7 +235,7 @@ export function PasserStatsSection() {
                   color: PALETTE.link,
                   padding: "3px 9px",
                   borderRadius: 9999,
-                  font: "700 10px/1.4 Pretendard, sans-serif",
+                  font: "700 10px/1.4 var(--font-sans)",
                   letterSpacing: "0.02em",
                   flexShrink: 0,
                 }}
@@ -244,7 +244,7 @@ export function PasserStatsSection() {
               </span>
               <span
                 style={{
-                  font: "500 12px/1.5 Pretendard, sans-serif",
+                  font: "500 12px/1.5 var(--font-sans)",
                   color: PALETTE.inkSoft,
                   letterSpacing: "-0.005em",
                 }}
@@ -259,7 +259,7 @@ export function PasserStatsSection() {
           delay={300}
           as="p"
           style={{
-            font: "400 12px/1.6 Pretendard, sans-serif",
+            font: "400 12px/1.6 var(--font-sans)",
             color: PALETTE.inkSoft,
             marginTop: 14,
             textAlign: "center",
@@ -289,7 +289,7 @@ export function PasserStatsSection() {
             >
               <div
                 style={{
-                  font: "700 15px/1.4 Pretendard, sans-serif",
+                  font: "700 15px/1.4 var(--font-sans)",
                   color: PALETTE.ink,
                   letterSpacing: "-0.015em",
                   marginBottom: 6,
@@ -299,7 +299,7 @@ export function PasserStatsSection() {
               </div>
               <div
                 style={{
-                  font: "400 13px/1.6 Pretendard, sans-serif",
+                  font: "400 13px/1.6 var(--font-sans)",
                   color: PALETTE.inkSoft,
                   letterSpacing: "-0.01em",
                 }}
@@ -321,7 +321,7 @@ export function PasserStatsSection() {
           </LandingButton>
           <div
             style={{
-              font: "400 12px/1.5 Pretendard, sans-serif",
+              font: "400 12px/1.5 var(--font-sans)",
               color: PALETTE.inkSoft,
               marginTop: 10,
             }}
@@ -401,7 +401,7 @@ function DistributionPreview() {
         y="55"
         textAnchor="middle"
         fill={PALETTE.primary}
-        style={{ font: "700 11px/1 Pretendard, sans-serif" }}
+        style={{ font: "700 11px/1 var(--font-sans)" }}
       >
         본인
       </text>
@@ -413,7 +413,7 @@ function PanelLabel({ children }: { children: ReactNode }) {
   return (
     <div
       style={{
-        font: "600 11px/1 Pretendard, sans-serif",
+        font: "600 11px/1 var(--font-sans)",
         letterSpacing: "0.1em",
         textTransform: "uppercase",
         color: PALETTE.link,
@@ -435,7 +435,7 @@ function Tag({ children }: { children: ReactNode }) {
         color: PALETTE.link,
         padding: "2px 7px",
         borderRadius: 6,
-        font: "600 10px/1.4 Pretendard, sans-serif",
+        font: "600 10px/1.4 var(--font-sans)",
         letterSpacing: "0.02em",
       }}
     >
@@ -448,7 +448,7 @@ function PanelFoot({ children }: { children: ReactNode }) {
   return (
     <div
       style={{
-        font: "400 12px/1.6 Pretendard, sans-serif",
+        font: "400 12px/1.6 var(--font-sans)",
         color: PALETTE.inkSoft,
         letterSpacing: "-0.005em",
         marginTop: "auto",

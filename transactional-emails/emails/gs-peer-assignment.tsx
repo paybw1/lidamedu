@@ -8,9 +8,10 @@ import {
   Html,
   Preview,
   Section,
-  Tailwind,
   Text,
 } from "@react-email/components";
+
+import { EmailTailwind } from "../lib/email-theme";
 
 interface Props {
   link: string;
@@ -28,12 +29,12 @@ export default function GsPeerAssignmentEmail({
   deadline,
 }: Props) {
   return (
-    <Tailwind>
+    <EmailTailwind>
       <Html>
         <Head />
         <Body className="bg-white font-sans">
           <Preview>{`동료 채점 ${assignedCount}건 배정 — ${roundTitle}`}</Preview>
-          <Container className="mx-auto max-w-[560px] py-5 pb-12">
+          <Container className="font-sans mx-auto max-w-[560px] py-5 pb-12">
             <Heading className="pt-4 text-xl leading-tight font-semibold text-black">
               동료 채점 {assignedCount}건이 배정되었습니다
             </Heading>
@@ -55,7 +56,7 @@ export default function GsPeerAssignmentEmail({
             <Section className="mt-6">
               <Button
                 href={link}
-                className="rounded-md bg-[#2563eb] px-5 py-3 text-[14px] font-semibold text-white"
+                className="font-sans rounded-md bg-[#2563eb] px-5 py-3 text-[14px] font-semibold text-white"
               >
                 채점하러 가기
               </Button>
@@ -67,7 +68,7 @@ export default function GsPeerAssignmentEmail({
           </Container>
         </Body>
       </Html>
-    </Tailwind>
+    </EmailTailwind>
   );
 }
 

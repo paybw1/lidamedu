@@ -10,7 +10,7 @@ import { z } from "zod";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { PALETTE, Reveal } from "~/features/home/lib/landing";
 
-const FONT = "Pretendard, sans-serif";
+const FONT = "var(--font-sans)";
 
 export const meta: Route.MetaFunction = () => [
   { title: `비밀번호 재설정 | 리담변리사학원` },

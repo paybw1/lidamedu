@@ -100,7 +100,7 @@ for (const c of cases) {
 process.stdout.write(`\n=== 결과 ===\n`);
 process.stdout.write(`  ok=${ok}  skip(미커버)=${skip}  err=${err}\n`);
 if (skipList.length > 0) {
-  process.stdout.write(`\n⚠ 미커버 skip 목록 — 향후 Noto Serif CJK KR 등 대체 폰트 검토:\n`);
+  process.stdout.write(`\n⚠ 미커버 skip 목록 — 폰트 보강(치환표 확장) 검토:\n`);
   for (const s of skipList) {
     process.stdout.write(`  ${s.caseNumber}  미커버 ${s.total}자 — ${s.chars.join(" ")}\n`);
   }

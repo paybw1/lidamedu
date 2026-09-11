@@ -554,7 +554,7 @@ async function main() {
   process.stdout.write(`\nupgrade 결과: ${ok} 성공 / ${ng} 실패\n`);
   process.stdout.write(`PDF 결과: ${pdfOk} ok / ${pdfSkip} skip(미커버) / ${pdfErr} err\n`);
   if (pdfSkipList.length > 0) {
-    process.stdout.write(`\n⚠ PDF 미커버로 skip된 판례 — Noto Serif CJK KR 등 대체 폰트 검토 필요:\n`);
+    process.stdout.write(`\n⚠ PDF 미커버로 skip된 판례 — 폰트 보강(치환표 확장) 검토 필요:\n`);
     for (const s of pdfSkipList) {
       process.stdout.write(`   ${s.caseNumber}  미커버 ${s.total}자 — ${s.sampleChars.join(" ")}\n`);
     }

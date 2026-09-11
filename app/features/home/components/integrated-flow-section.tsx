@@ -95,7 +95,7 @@ export function IntegratedFlowSection() {
             >
               <span
                 style={{
-                  font: "600 11px/1 Pretendard, sans-serif",
+                  font: "600 11px/1 var(--font-sans)",
                   letterSpacing: "0.12em",
                   textTransform: "uppercase",
                   color: PALETTE.link,
@@ -105,7 +105,7 @@ export function IntegratedFlowSection() {
               </span>
               <span
                 style={{
-                  font: "700 17px/1.4 Pretendard, sans-serif",
+                  font: "700 17px/1.4 var(--font-sans)",
                   color: PALETTE.ink,
                   letterSpacing: "-0.018em",
                 }}
@@ -114,7 +114,7 @@ export function IntegratedFlowSection() {
               </span>
               <span
                 style={{
-                  font: "400 13px/1.6 Pretendard, sans-serif",
+                  font: "400 13px/1.6 var(--font-sans)",
                   color: PALETTE.inkSoft,
                   letterSpacing: "-0.005em",
                 }}
@@ -140,7 +140,7 @@ export function IntegratedFlowSection() {
                       color: PALETTE.link,
                       padding: "4px 10px",
                       borderRadius: 9999,
-                      font: "500 11px/1 Pretendard, sans-serif",
+                      font: "500 11px/1 var(--font-sans)",
                     }}
                   >
                     {m}
@@ -158,7 +158,7 @@ export function IntegratedFlowSection() {
       <Reveal delay={600}>
         <p
           style={{
-            font: "400 14px/1.6 Pretendard, sans-serif",
+            font: "400 14px/1.6 var(--font-sans)",
             color: PALETTE.inkSoft,
             textAlign: "center",
             marginTop: 24,

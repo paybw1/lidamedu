@@ -104,7 +104,7 @@ export function LatestSection({ items }: { items: LatestFeedItem[] }) {
                   <span
                     className="latest-cat"
                     style={{
-                      font: "600 12px/1 Pretendard, sans-serif",
+                      font: "600 12px/1 var(--font-sans)",
                       letterSpacing: "0.08em",
                       textTransform: "uppercase",
                       color: PALETTE.inkSoft,
@@ -127,7 +127,7 @@ export function LatestSection({ items }: { items: LatestFeedItem[] }) {
               </div>
               <div
                 style={{
-                  font: "500 15px/1.5 Pretendard, sans-serif",
+                  font: "500 15px/1.5 var(--font-sans)",
                   color: PALETTE.ink,
                   letterSpacing: "-0.012em",
                 }}

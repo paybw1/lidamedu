@@ -8,9 +8,10 @@ import {
   Html,
   Preview,
   Section,
-  Tailwind,
   Text,
 } from "@react-email/components";
+
+import { EmailTailwind } from "../lib/email-theme";
 
 interface Props {
   link: string;
@@ -40,12 +41,12 @@ export default function QnaNewAnswer({
   const excerpt =
     answerMd.length > 600 ? answerMd.slice(0, 600) + "…" : answerMd;
   return (
-    <Tailwind>
+    <EmailTailwind>
       <Html>
         <Head />
         <Body className="bg-white font-sans">
           <Preview>{`${targetLabel} 질문에 답변이 도착했습니다`}</Preview>
-          <Container className="mx-auto max-w-[560px] py-5 pb-12">
+          <Container className="font-sans mx-auto max-w-[560px] py-5 pb-12">
             <Heading className="pt-4 text-xl leading-tight font-semibold text-black">
               [{targetLabel}] {title}
             </Heading>
@@ -62,7 +63,7 @@ export default function QnaNewAnswer({
             <Section className="mt-6">
               <Button
                 href={link}
-                className="rounded-md bg-[#2563eb] px-5 py-3 text-[14px] font-semibold text-white"
+                className="font-sans rounded-md bg-[#2563eb] px-5 py-3 text-[14px] font-semibold text-white"
               >
                 답변 전체 보기
               </Button>
@@ -70,7 +71,7 @@ export default function QnaNewAnswer({
           </Container>
         </Body>
       </Html>
-    </Tailwind>
+    </EmailTailwind>
   );
 }
 

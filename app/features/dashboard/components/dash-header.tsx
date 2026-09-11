@@ -61,7 +61,7 @@ export function DashHeader({ data }: { data: DashHeaderData }) {
         </Eyebrow>
         <h1
           style={{
-            font: "800 28px/1.25 Pretendard, sans-serif",
+            font: "800 28px/1.25 var(--font-sans)",
             color: T.ink,
             letterSpacing: "-0.022em",
             margin: 0,
@@ -71,7 +71,7 @@ export function DashHeader({ data }: { data: DashHeaderData }) {
         </h1>
         <p
           style={{
-            font: "400 14px/1.6 Pretendard, sans-serif",
+            font: "400 14px/1.6 var(--font-sans)",
             color: T.inkSoft,
             margin: "8px 0 0",
             letterSpacing: "-0.005em",
@@ -108,7 +108,7 @@ export function DashHeader({ data }: { data: DashHeaderData }) {
             </div>
             <div
               style={{
-                font: "400 12px/1.5 Pretendard, sans-serif",
+                font: "400 12px/1.5 var(--font-sans)",
                 color: "var(--secondary-foreground)",
                 opacity: 0.7,
                 letterSpacing: "-0.005em",
@@ -128,7 +128,7 @@ export function DashHeader({ data }: { data: DashHeaderData }) {
             <Link
               to="/goals"
               style={{
-                font: "700 15px/1.4 Pretendard, sans-serif",
+                font: "700 15px/1.4 var(--font-sans)",
                 color: "var(--secondary-foreground)",
                 textDecoration: "underline",
                 letterSpacing: "-0.01em",
@@ -212,7 +212,7 @@ export function DashKpiStrip({ data }: { data: DashKpiData }) {
                     borderRadius: 9999,
                     background: T.emeraldSoft,
                     color: T.emerald,
-                    font: "700 11px/1 Pretendard, sans-serif",
+                    font: "700 11px/1 var(--font-sans)",
                     fontVariantNumeric: "tabular-nums",
                   }}
                 >

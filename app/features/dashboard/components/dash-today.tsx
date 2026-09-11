@@ -94,7 +94,7 @@ export function WeekTrackCard({ track }: { track: WeekTrackData }) {
       {items.length === 0 ? (
         <p
           style={{
-            font: "400 13px/1.5 Pretendard, sans-serif",
+            font: "400 13px/1.5 var(--font-sans)",
             color: T.inkSoft,
             margin: "14px 0 0",
           }}
@@ -182,7 +182,7 @@ function TrackRow({
       <span
         style={{
           flex: 1,
-          font: "500 14px/1.4 Pretendard, sans-serif",
+          font: "500 14px/1.4 var(--font-sans)",
           color: item.isDone ? T.inkMute : T.ink,
           letterSpacing: "-0.01em",
           textDecoration: item.isDone ? "line-through" : "none",
@@ -242,7 +242,7 @@ export function PendingAssignmentsCard({
         <Link
           to="/assignments"
           style={{
-            font: "600 12px/1 Pretendard, sans-serif",
+            font: "600 12px/1 var(--font-sans)",
             color: T.link,
             textDecoration: "none",
           }}
@@ -293,7 +293,7 @@ export function PendingAssignmentsCard({
                 >
                   <span
                     style={{
-                      font: "600 13px/1.4 Pretendard, sans-serif",
+                      font: "600 13px/1.4 var(--font-sans)",
                       color: T.ink,
                       letterSpacing: "-0.012em",
                     }}
@@ -302,7 +302,7 @@ export function PendingAssignmentsCard({
                   </span>
                   <span
                     style={{
-                      font: "700 11px/1 Pretendard, sans-serif",
+                      font: "700 11px/1 var(--font-sans)",
                       color: urgent ? T.coral : T.inkSoft,
                       whiteSpace: "nowrap",
                       fontVariantNumeric: "tabular-nums",
@@ -324,7 +324,7 @@ export function PendingAssignmentsCard({
                   </div>
                   <span
                     style={{
-                      font: "700 11px/1 Pretendard, sans-serif",
+                      font: "700 11px/1 var(--font-sans)",
                       color: T.inkSoft,
                       fontVariantNumeric: "tabular-nums",
                     }}
@@ -398,7 +398,7 @@ export function RecommendedActionsCard({
       >
         <Eyebrow>자동 추천 액션</Eyebrow>
         {dataBacked ? (
-          <Sub style={{ font: "500 11px/1 Pretendard, sans-serif" }}>
+          <Sub style={{ font: "500 11px/1 var(--font-sans)" }}>
             합격자 데이터 기반
           </Sub>
         ) : null}
@@ -449,7 +449,7 @@ export function RecommendedActionsCard({
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div
                     style={{
-                      font: "600 13px/1.4 Pretendard, sans-serif",
+                      font: "600 13px/1.4 var(--font-sans)",
                       color: T.ink,
                       letterSpacing: "-0.012em",
                     }}
@@ -459,7 +459,7 @@ export function RecommendedActionsCard({
                   {a.metric ? (
                     <div
                       style={{
-                        font: "400 11px/1.4 Pretendard, sans-serif",
+                        font: "400 11px/1.4 var(--font-sans)",
                         color: T.inkSoft,
                         marginTop: 2,
                       }}
@@ -477,7 +477,7 @@ export function RecommendedActionsCard({
                     borderRadius: 9999,
                     background: T.blue,
                     color: "#fff",
-                    font: "600 12px/1 Pretendard, sans-serif",
+                    font: "600 12px/1 var(--font-sans)",
                     whiteSpace: "nowrap",
                     flexShrink: 0,
                   }}

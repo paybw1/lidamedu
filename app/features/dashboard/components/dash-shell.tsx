@@ -107,7 +107,7 @@ export function DashSidebar({
                 gap: 12,
                 padding: "9px 12px",
                 borderRadius: 8,
-                font: `${it.active ? 700 : 500} 14px/1 Pretendard, sans-serif`,
+                font: `${it.active ? 700 : 500} 14px/1 var(--font-sans)`,
                 color: it.active ? T.blue : T.ink,
                 background: it.active ? T.blueSoft : "transparent",
                 letterSpacing: "-0.01em",
@@ -132,14 +132,14 @@ export function DashSidebar({
             borderRadius: 12,
             background: T.blueTint,
             border: `1px solid ${T.blueSoft}`,
-            font: "400 12px/1.5 Pretendard, sans-serif",
+            font: "400 12px/1.5 var(--font-sans)",
             color: T.inkSoft,
             letterSpacing: "-0.005em",
           }}
         >
           <div
             style={{
-              font: "700 13px/1.3 Pretendard, sans-serif",
+              font: "700 13px/1.3 var(--font-sans)",
               color: T.ink,
               marginBottom: 4,
             }}
@@ -153,7 +153,7 @@ export function DashSidebar({
               display: "block",
               marginTop: 8,
               color: T.link,
-              font: "600 12px/1 Pretendard, sans-serif",
+              font: "600 12px/1 var(--font-sans)",
               textDecoration: "none",
             }}
           >
@@ -204,7 +204,7 @@ export function DashTopbar({
           background: T.subtle,
           border: 0,
           borderRadius: 8,
-          font: "400 13px/1 Pretendard, sans-serif",
+          font: "400 13px/1 var(--font-sans)",
           color: T.inkMute,
           letterSpacing: "-0.01em",
           cursor: "pointer",
@@ -223,7 +223,7 @@ export function DashTopbar({
             background: T.paper,
             border: `1px solid ${T.line}`,
             borderRadius: 4,
-            font: "600 10px/1 Pretendard, sans-serif",
+            font: "600 10px/1 var(--font-sans)",
             color: T.inkSoft,
           }}
         >
@@ -277,7 +277,7 @@ export function DashTopbar({
             borderRadius: 9999,
             background: "transparent",
             border: `1px solid ${T.lineSoft}`,
-            font: "600 13px/1 Pretendard, sans-serif",
+            font: "600 13px/1 var(--font-sans)",
             color: T.ink,
             textDecoration: "none",
           }}
@@ -289,7 +289,7 @@ export function DashTopbar({
               borderRadius: "50%",
               background: `linear-gradient(135deg, ${T.blueDeep}, ${T.blueStrong})`,
               color: "#fff",
-              font: "700 12px/28px Pretendard, sans-serif",
+              font: "700 12px/28px var(--font-sans)",
               textAlign: "center",
             }}
           >

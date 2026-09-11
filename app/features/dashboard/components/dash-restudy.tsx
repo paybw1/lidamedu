@@ -102,7 +102,7 @@ export function ReentryChipsCard({
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div
                   style={{
-                    font: "600 13px/1 Pretendard, sans-serif",
+                    font: "600 13px/1 var(--font-sans)",
                     color: T.ink,
                     letterSpacing: "-0.012em",
                   }}
@@ -111,7 +111,7 @@ export function ReentryChipsCard({
                 </div>
                 <div
                   style={{
-                    font: "700 16px/1 Pretendard, sans-serif",
+                    font: "700 16px/1 var(--font-sans)",
                     color: T.ink,
                     fontVariantNumeric: "tabular-nums",
                     marginTop: 4,
@@ -162,7 +162,7 @@ export function BookmarksQuickCard({
         <Link
           to="/study/bookmarks"
           style={{
-            font: "600 12px/1 Pretendard, sans-serif",
+            font: "600 12px/1 var(--font-sans)",
             color: T.link,
             textDecoration: "none",
           }}
@@ -173,7 +173,7 @@ export function BookmarksQuickCard({
       {bookmarks.length === 0 ? (
         <p
           style={{
-            font: "400 12px/1.5 Pretendard, sans-serif",
+            font: "400 12px/1.5 var(--font-sans)",
             color: T.inkSoft,
             margin: 0,
           }}
@@ -194,7 +194,7 @@ export function BookmarksQuickCard({
                 borderRadius: 9999,
                 background: T.subtle,
                 border: `1px solid ${T.lineSoft}`,
-                font: "500 12px/1 Pretendard, sans-serif",
+                font: "500 12px/1 var(--font-sans)",
                 color: T.ink,
                 letterSpacing: "-0.01em",
                 textDecoration: "none",

@@ -105,7 +105,7 @@ export function Hero({
           <Reveal delay={250}>
             <p
               style={{
-                font: "400 17px/1.7 Pretendard, sans-serif",
+                font: "400 17px/1.7 var(--font-sans)",
                 color: PALETTE.inkSoft,
                 letterSpacing: "-0.01em",
                 margin: "0 0 28px",
@@ -142,7 +142,7 @@ export function Hero({
                 marginTop: 28,
                 paddingTop: 24,
                 borderTop: `1px solid ${PALETTE.line}`,
-                font: "400 13px/1.5 Pretendard, sans-serif",
+                font: "400 13px/1.5 var(--font-sans)",
                 color: PALETTE.inkSoft,
                 letterSpacing: "-0.01em",
               }}
@@ -229,7 +229,7 @@ function HeroPreviewCard({ preview }: { preview?: HeroPreview | null }) {
           color: "#fff",
           padding: "4px 10px",
           borderRadius: 9999,
-          font: "600 10px/1 Pretendard, sans-serif",
+          font: "600 10px/1 var(--font-sans)",
           letterSpacing: "0.1em",
           textTransform: "uppercase",
         }}
@@ -240,7 +240,7 @@ function HeroPreviewCard({ preview }: { preview?: HeroPreview | null }) {
       <div style={{ marginBottom: 20 }}>
         <div
           style={{
-            font: "600 11px/1 Pretendard, sans-serif",
+            font: "600 11px/1 var(--font-sans)",
             letterSpacing: "0.1em",
             textTransform: "uppercase",
             color: PALETTE.inkSoft,
@@ -251,7 +251,7 @@ function HeroPreviewCard({ preview }: { preview?: HeroPreview | null }) {
         </div>
         <div
           style={{
-            font: "800 56px/1 Pretendard, sans-serif",
+            font: "800 56px/1 var(--font-sans)",
             letterSpacing: "-0.03em",
             fontVariantNumeric: "tabular-nums",
             color: PALETTE.link,
@@ -261,7 +261,7 @@ function HeroPreviewCard({ preview }: { preview?: HeroPreview | null }) {
         </div>
         <div
           style={{
-            font: "400 13px/1.5 Pretendard, sans-serif",
+            font: "400 13px/1.5 var(--font-sans)",
             color: PALETTE.inkSoft,
             marginTop: 4,
             letterSpacing: "-0.01em",
@@ -291,7 +291,7 @@ function HeroPreviewCard({ preview }: { preview?: HeroPreview | null }) {
           >
             <div
               style={{
-                font: "500 11px/1 Pretendard, sans-serif",
+                font: "500 11px/1 var(--font-sans)",
                 color: PALETTE.inkSoft,
                 marginBottom: 4,
               }}
@@ -300,7 +300,7 @@ function HeroPreviewCard({ preview }: { preview?: HeroPreview | null }) {
             </div>
             <div
               style={{
-                font: "700 20px/1 Pretendard, sans-serif",
+                font: "700 20px/1 var(--font-sans)",
                 fontVariantNumeric: "tabular-nums",
                 color: PALETTE.ink,
                 letterSpacing: "-0.02em",
@@ -323,7 +323,7 @@ function HeroPreviewCard({ preview }: { preview?: HeroPreview | null }) {
 
       <div
         style={{
-          font: "600 12px/1 Pretendard, sans-serif",
+          font: "600 12px/1 var(--font-sans)",
           letterSpacing: "0.1em",
           textTransform: "uppercase",
           color: PALETTE.inkSoft,
@@ -352,7 +352,7 @@ function HeroPreviewCard({ preview }: { preview?: HeroPreview | null }) {
               padding: "8px 10px",
               borderRadius: 10,
               background: it.done ? PALETTE.tint : "transparent",
-              font: "400 13px/1.4 Pretendard, sans-serif",
+              font: "400 13px/1.4 var(--font-sans)",
               color: it.done ? PALETTE.ink : PALETTE.inkSoft,
               letterSpacing: "-0.01em",
               textDecoration: it.done ? "line-through" : "none",
@@ -392,7 +392,7 @@ function HeroPreviewCard({ preview }: { preview?: HeroPreview | null }) {
           display: "flex",
           alignItems: "center",
           gap: 8,
-          font: "500 12px/1.4 Pretendard, sans-serif",
+          font: "500 12px/1.4 var(--font-sans)",
           color: PALETTE.inkSoft,
           letterSpacing: "-0.01em",
           flexWrap: "nowrap",
