@@ -102,6 +102,11 @@ export async function toggleBookSettlementRule(
 }
 
 // ─── 도서정산 계산·지급 (강사정산 instructor_settlements 와 동형) ───────────────
+//
+// ★기준액은 **정가**(unit_price_krw × quantity)다 — 주문 쿠폰 할인을 빼지 않는다.
+//   강사정산(feat-8-031)은 할인을 항목별로 안분해 빼므로 두 정산의 기준이 서로 다르다.
+//   **원장 결정(2026-09-12): 서로 다른 것이 맞다 — 통일하지 말 것.**
+//   불일치로 보고 맞추려 들면 이미 지급한 도서 정산액의 근거가 바뀐다.
 
 export type SettlementStatus = "draft" | "confirmed" | "paid";
 

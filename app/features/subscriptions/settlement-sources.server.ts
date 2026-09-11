@@ -12,6 +12,8 @@
 //     마지막 항목이 반올림 잔액을 흡수한다(장바구니 세트 안분과 같은 방식).
 //   · 환불액도 같은 비율로 축소해 전액 환불이 결제액을 정확히 상쇄하게 한다
 //     (order_items.refund_amount_krw 는 할인 전 금액으로 기록된다).
+//   · ★도서정산(book-settlements-admin.server)은 할인을 빼지 않고 **정가**를 기준으로 쓴다.
+//     원장 결정(2026-09-12): 두 정산의 기준이 다른 것이 맞다 — 통일하지 말 것.
 //   · 월 귀속: 결제는 orders.paid_at(무통장은 입금 확인 시각) / payments.created_at, 환불은 refunded_at.
 import adminClient from "~/core/lib/supa-admin-client.server";
 
