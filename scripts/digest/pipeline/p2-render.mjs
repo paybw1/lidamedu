@@ -14,10 +14,10 @@ function line(text) {
 
 function render(node, depth) {
   if (typeof node === "string") return `<li class="leaf">${line(node)}</li>`;
-  if (!node.c)
-    return `<li class="leaf${node.add ? " add" : ""}">${line(node.t)}${
-      node.add ? '<span class="badge">보충</span>' : ""
-    }</li>`;
+  // ★교재에 없던 보충 항목이라도 화면에는 표시를 달지 않는다(원장 지시 2026-09-12) —
+  //   상자 글 끝에 「보충」이 붙어 본문처럼 읽힌다. 무엇을 보탰는지는 맨 아래
+  //   「교재에서 고친 곳」 목록이 말한다.
+  if (!node.c) return `<li class="leaf">${line(node.t)}</li>`;
   const kids = (node.c ?? []).map((k) => render(k, depth + 1)).join("");
   return `<li class="grp d${depth}"><span class="cap">${line(node.t)}</span><ul class="lv">${kids}</ul></li>`;
 }
@@ -144,13 +144,6 @@ const html = `<title>${TITLE} — 정리비교표 재작화</title>
     white-space: nowrap; font-variant-numeric: tabular-nums;
   }
   .cap .law { background: transparent; padding: 1px 0; }
-  /* 교재 2p 상자에 없던 줄 — 원본과 섞이지 않게 점선으로 구분한다. */
-  .leaf.add { border-left: 2px dotted var(--rule); padding-left: 6px; margin-left: -8px; }
-  .badge {
-    margin-left: 5px; font-size: 9.5px; font-weight: 800; letter-spacing: .04em;
-    color: var(--link); border: 1px dashed var(--rule); border-radius: 5px; padding: 0 4px;
-  }
-
   /* 교재와 달라진 곳 — 무엇을 고쳤는지 화면이 스스로 말하게 둔다. */
   .changes { margin: 8px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 5px; }
   .changes li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; }
