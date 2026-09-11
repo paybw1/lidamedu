@@ -3,6 +3,10 @@
 //   목차 연습 — 본문을 보여 주고 **제목**이 빈칸. "이 글에 붙일 이름은 무엇인가"
 //   내용 연습 — 목차를 보여 주고 **본문**이 빈칸. "이 자리에 무슨 법리를 쓰는가"
 //
+// ★위아래는 **실제 답안 틀 그대로 제목이 위, 본문이 아래**다(원장 2026-09-12).
+//   목차 연습에서 본문을 먼저 깔고 입력칸을 아래에 두었더니 답안과 순서가 뒤집혀
+//   읽혔다. 두 연습 모두 [제목 자리] → [본문 자리] 로 세운다.
+//
 // ★칸이 제자리에 있으므로 순서를 묻지 않는다. 목차를 한 칸에 통째로 받던 방식에서는
 //   순서 신호가 필요했지만, 빈칸 방식에서는 물을 일이 없다.
 // ★비워 둔 칸은 채점에서 뺀다 — 0점으로 깔면 한두 칸만 연습한 학생이 크게 손해다
@@ -140,7 +144,7 @@ export function EssayPractice({
       <div className="mb-3 space-y-1">
         <p className="text-muted-foreground text-xs">
           {mode === "outline"
-            ? "본문을 읽고 그 글에 붙일 소제목을 써 보세요. 비워 둔 칸은 채점에서 뺍니다."
+            ? "칸 아래 본문을 읽고, 그 글에 붙일 소제목을 위 칸에 써 보세요. 비워 둔 칸은 채점에서 뺍니다."
             : "목차를 보고 그 자리에 들어갈 내용을 써 보세요. 비워 둔 칸은 채점에서 뺍니다."}
         </p>
         {/* ★채점은 모범답안의 낱말이 답에 담겼는지를 센다. 뜻이 맞아도 법률용어를 피해
@@ -197,15 +201,30 @@ function PracticeRow({
   onBlur: () => void;
   bind: (el: HTMLTextAreaElement | HTMLInputElement | null) => void;
 }) {
+  const asksTitle = mode === "outline" && isBlank; // 목차 연습의 빈칸 — 제목을 묻는다
+  const asksBody = mode === "content" && isBlank; // 내용 연습의 빈칸 — 본문을 묻는다
+  const rowResult = result && !result.blank ? <RowResult result={result} /> : null;
+
   return (
     <div className="space-y-1.5">
-      {/* 보여 주는 쪽 — 목차 연습은 본문, 내용 연습은 제목.
+      {/* 제목 자리 — 묻는 연습이면 입력칸, 아니면 그냥 보여 준다.
           ★본문 없이 하위를 묶기만 하는 자리는 목차 연습에서도 **제목을 그냥 보여 준다**
           (원장 2026-09-04). 단서가 없어 물어도 맞힐 근거가 없고, 트리 모양을 보여 주는
           역할은 그대로 해야 한다. */}
-      {mode === "content" || !isBlank ? (
-        <p className="text-sm font-semibold">{node.title}</p>
+      {asksTitle ? (
+        <Input
+          ref={bind}
+          onBlur={onBlur}
+          placeholder="이 글의 소제목"
+          className="h-8 text-sm"
+        />
       ) : (
+        <p className="text-sm font-semibold">{node.title}</p>
+      )}
+      {asksTitle ? rowResult : null}
+
+      {/* 본문 자리 — 목차 연습은 단서로 보여 주고, 내용 연습은 입력칸으로 받는다. */}
+      {asksTitle ? (
         <div className="border-border/70 bg-muted/40 rounded-lg border px-3 py-2">
           <MarkdownView
             text={node.bodyMd}
@@ -213,29 +232,17 @@ function PracticeRow({
             className="prose-sm max-w-none text-sm"
           />
         </div>
-      )}
-
-      {isBlank ? (
-        <>
-          {mode === "outline" ? (
-            <Input
-              ref={bind}
-              onBlur={onBlur}
-              placeholder="이 글의 소제목"
-              className="h-8 text-sm"
-            />
-          ) : (
-            <Textarea
-              ref={bind}
-              rows={4}
-              onBlur={onBlur}
-              placeholder="이 자리에 들어갈 내용"
-              className="text-sm leading-relaxed"
-            />
-          )}
-          {result && !result.blank ? <RowResult result={result} /> : null}
-        </>
       ) : null}
+      {asksBody ? (
+        <Textarea
+          ref={bind}
+          rows={4}
+          onBlur={onBlur}
+          placeholder="이 자리에 들어갈 내용"
+          className="text-sm leading-relaxed"
+        />
+      ) : null}
+      {asksBody ? rowResult : null}
     </div>
   );
 }
