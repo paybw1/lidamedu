@@ -15,8 +15,15 @@ import { Button } from "~/core/components/ui/button";
 import makeServerClient from "~/core/lib/supa-client.server";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
-import { Chip, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
+import {
+  Chip,
+  IndexTable,
+  TD,
+  TR,
+  type TableHeaderDef,
+} from "~/features/admin/components/admin-ui";
 import { hasDutyAccess } from "~/features/admin/lib/duties.server";
+import { groupBooksBySubject } from "~/features/bookstore/lib/book-taxonomy";
 import { createUserNotifications } from "~/features/notifications/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 
@@ -61,7 +68,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     client
       .from("books")
       .select(
-        "book_id, title, author, publisher, price_krw, sale_status, isbn, description, cover_path, track_stock, sort_order",
+        "book_id, title, author, publisher, price_krw, sale_status, isbn, description, cover_path, track_stock, sort_order, subject_code",
       )
       .is("deleted_at", null)
       .order("sort_order", { ascending: true })
@@ -97,6 +104,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       publisher: b.publisher,
       priceKrw: b.price_krw,
       saleStatus: b.sale_status,
+      subjectCode: b.subject_code,
       isbn: b.isbn,
       description: b.description,
       coverPath: b.cover_path,
@@ -137,15 +145,24 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   if (intent === "move_book") {
-    // 진열 순서 이동 — 인접 도서와 sort_order 교환(동률 대비 전체 재부여 후 swap).
+    // 진열 순서 이동 — 같은 과목 묶음 안에서 인접 도서와 sort_order 교환(동률 대비 묶음 재부여 후 swap).
+    // 도서몰·도서 관리 모두 과목 → sort_order 로 진열하므로(book-taxonomy.ts) 다른 과목과의 상대 순서는 없다.
     const bookId = String(fd.get("bookId") ?? "");
     const dir = String(fd.get("dir") ?? "");
     if (!bookId || (dir !== "up" && dir !== "down"))
       return data({ error: "잘못된 요청" }, { status: 400 });
-    const { data: list } = await client
+    const { data: me } = await client
       .from("books")
-      .select("book_id")
+      .select("subject_code")
+      .eq("book_id", bookId)
       .is("deleted_at", null)
+      .maybeSingle();
+    if (!me) return data({ error: "도서를 찾을 수 없습니다." }, { status: 404 });
+    const groupQuery = client.from("books").select("book_id").is("deleted_at", null);
+    const { data: list } = await (me.subject_code === null
+      ? groupQuery.is("subject_code", null)
+      : groupQuery.eq("subject_code", me.subject_code)
+    )
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: false });
     const rows = list ?? [];
@@ -312,40 +329,55 @@ export default function AdminBooks({ loaderData }: Route.ComponentProps) {
       }
     >
       <CategoryManager categories={categories} />
-      <div className="mt-4">
+      <div className="mt-4 flex flex-col gap-6">
         {books.length === 0 ? (
           <p className="text-muted-foreground rounded-xl border border-dashed px-4 py-10 text-center text-sm">
             등록된 도서가 없습니다.
           </p>
         ) : (
-          <IndexTable
-            minWidth={960}
-            headers={[
-              { label: "순서", align: "center", width: "3.5rem" },
-              { label: "도서" },
-              { label: "판매가", align: "right", width: "6.5rem" },
-              { label: "재고", align: "right", width: "4.5rem" },
-              { label: "판매상태", width: "7rem" },
-              { label: "연결 상품", width: "16rem" },
-              { label: "입고", width: "11rem" },
-              { label: "미리보기", width: "13rem" },
-            ]}
-          >
-            {books.map((b, i) => (
-              <BookRow
-                key={b.bookId}
-                book={b}
-                plans={plans}
-                isFirst={i === 0}
-                isLast={i === books.length - 1}
-              />
-            ))}
-          </IndexTable>
+          // 과목별 묶음(2026-09-11) — 도서몰과 같은 순서. 위·아래 화살표는 묶음 안에서만 움직인다.
+          groupBooksBySubject(books).map((g) => (
+            <section key={g.subjectCode ?? "unassigned"}>
+              <h2 className="mb-2 flex flex-wrap items-baseline gap-2 text-sm font-bold">
+                {g.label}
+                <span className="text-muted-foreground text-[11px] font-medium tabular-nums">
+                  {g.items.length}종
+                </span>
+                {g.subjectCode === null ? (
+                  <span className="text-muted-foreground text-[11px] font-normal">
+                    — 도서 수정에서 과목을 지정하면 그 과목 묶음으로 옮겨집니다(도서몰에서는 맨 뒤 「기타」)
+                  </span>
+                ) : null}
+              </h2>
+              <IndexTable minWidth={960} headers={BOOK_TABLE_HEADERS}>
+                {g.items.map((b, i) => (
+                  <BookRow
+                    key={b.bookId}
+                    book={b}
+                    plans={plans}
+                    isFirst={i === 0}
+                    isLast={i === g.items.length - 1}
+                  />
+                ))}
+              </IndexTable>
+            </section>
+          ))
         )}
       </div>
     </AdminShell>
   );
 }
+
+const BOOK_TABLE_HEADERS: TableHeaderDef[] = [
+  { label: "순서", align: "center", width: "3.5rem" },
+  { label: "도서" },
+  { label: "판매가", align: "right", width: "6.5rem" },
+  { label: "재고", align: "right", width: "4.5rem" },
+  { label: "판매상태", width: "7rem" },
+  { label: "연결 상품", width: "16rem" },
+  { label: "입고", width: "11rem" },
+  { label: "미리보기", width: "13rem" },
+];
 
 // 카테고리 관리 — 추가/삭제(도서등록 드롭다운에 노출).
 function CategoryManager({

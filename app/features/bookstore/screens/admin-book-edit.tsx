@@ -61,6 +61,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const book: BookFormData = {
     bookId: b.book_id,
     title: b.title,
+    subjectCode: b.subject_code,
     categoryId: b.category_id,
     coverPath: b.cover_path,
     coverFilePath: b.cover_file_path,

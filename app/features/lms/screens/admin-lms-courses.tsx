@@ -24,6 +24,7 @@ import {
   LECTURE_TYPE_LABEL,
   toLectureType,
 } from "~/features/lms/lib/lecture-type";
+import { LMS_SUBJECT_OPTIONS } from "~/features/lms/lib/subject-options";
 import {
   listCourseCategories,
   listSeriesWithEditions,
@@ -40,14 +41,8 @@ export const meta: Route.MetaFunction = () => [
   { title: "강의개설 | 리담변리사학원" },
 ];
 
-const SUBJECT_OPTIONS = [
-  { value: "patent", label: "특허법" },
-  { value: "trademark", label: "상표법" },
-  { value: "design", label: "디자인보호법" },
-  { value: "civil", label: "민법" },
-  { value: "civil-procedure", label: "민사소송법" },
-  { value: "science", label: "자연과학" },
-];
+// 과목 코드는 도서(books.subject_code)와 공용 SSOT — app/features/lms/lib/subject-options.ts.
+const SUBJECT_OPTIONS = LMS_SUBJECT_OPTIONS;
 
 async function requireStaff(request: Request) {
   const [client] = makeServerClient(request);

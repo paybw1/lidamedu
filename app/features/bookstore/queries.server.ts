@@ -38,6 +38,8 @@ export interface BookCard {
   coverPath: string | null;
   labelText: string | null;
   labelColor: string | null;
+  /** 과목별 진열(2026-09-11) — subject-options.ts 코드. null = 미분류. */
+  subjectCode: string | null;
   stock: number | null; // null = 재고 미집계
   soldOut: boolean;
 }
@@ -101,7 +103,7 @@ export async function listBookstoreBooks(
   let query = client
     .from("books")
     .select(
-      "book_id, title, author, publisher, price_krw, list_price_krw, cover_path, cover_file_path, label_text, label_color, track_stock",
+      "book_id, title, author, publisher, price_krw, list_price_krw, cover_path, cover_file_path, label_text, label_color, subject_code, track_stock",
     )
     .eq("sale_status", "on_sale")
     .eq("course_only", false) // 과정전용은 목록 미노출
@@ -144,6 +146,7 @@ export async function listBookstoreBooks(
       coverPath: pickCover(r.cover_path, r.cover_file_path),
       labelText: r.label_text,
       labelColor: r.label_color,
+      subjectCode: r.subject_code,
       stock,
       soldOut: stock !== null && stock <= 0,
     };
@@ -166,7 +169,7 @@ export async function listWishlistBooks(
   const { data: books } = await client
     .from("books")
     .select(
-      "book_id, title, author, publisher, price_krw, list_price_krw, cover_path, cover_file_path, label_text, label_color, track_stock",
+      "book_id, title, author, publisher, price_krw, list_price_krw, cover_path, cover_file_path, label_text, label_color, subject_code, track_stock",
     )
     .in("book_id", ids)
     .eq("sale_status", "on_sale")
@@ -188,6 +191,7 @@ export async function listWishlistBooks(
       coverPath: pickCover(b.cover_path, b.cover_file_path),
       labelText: b.label_text,
       labelColor: b.label_color,
+      subjectCode: b.subject_code,
       stock,
       soldOut: stock !== null && stock <= 0,
     });
@@ -269,7 +273,7 @@ export async function getBookDetail(
   const { data: b, error } = await client
     .from("books")
     .select(
-      "book_id, title, author, publisher, price_krw, list_price_krw, cover_path, cover_file_path, label_text, label_color, description, isbn, book_type, short_intro, author_bio, toc, published_on, preview_url, event_phrase, course_only, sale_status, track_stock",
+      "book_id, title, author, publisher, price_krw, list_price_krw, cover_path, cover_file_path, label_text, label_color, subject_code, description, isbn, book_type, short_intro, author_bio, toc, published_on, preview_url, event_phrase, course_only, sale_status, track_stock",
     )
     .eq("book_id", bookId)
     .is("deleted_at", null)
@@ -327,6 +331,7 @@ export async function getBookDetail(
     coverPath: pickCover(b.cover_path, b.cover_file_path),
     labelText: b.label_text,
     labelColor: b.label_color,
+    subjectCode: b.subject_code,
     stock,
     soldOut: stock !== null && stock <= 0,
     description: b.description,

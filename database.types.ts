@@ -2123,6 +2123,7 @@ export type Database = {
           short_info: string | null
           short_intro: string | null
           sort_order: number
+          subject_code: string | null
           tax_free: boolean
           title: string
           toc: string | null
@@ -2164,6 +2165,7 @@ export type Database = {
           short_info?: string | null
           short_intro?: string | null
           sort_order?: number
+          subject_code?: string | null
           tax_free?: boolean
           title: string
           toc?: string | null
@@ -2205,6 +2207,7 @@ export type Database = {
           short_info?: string | null
           short_intro?: string | null
           sort_order?: number
+          subject_code?: string | null
           tax_free?: boolean
           title?: string
           toc?: string | null

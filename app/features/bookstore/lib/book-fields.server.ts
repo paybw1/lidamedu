@@ -1,9 +1,9 @@
 // 도서 등록/수정 폼 필드 파싱·DB 행 매핑 (신규·수정 액션 공용). 구 플랫폼 도서등록 사양.
 import { randomUUID } from "node:crypto";
-
 import { z } from "zod";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
+import { LMS_SUBJECT_CODES } from "~/features/lms/lib/subject-options";
 
 /** 표지(공개 버킷)·PDF(비공개 버킷) 파일 업로드. 없으면 undefined(기존 유지). */
 export async function uploadBookFiles(
@@ -44,10 +44,13 @@ const nz = (v: FormDataEntryValue | null) => {
   const s = typeof v === "string" ? v.trim() : "";
   return s === "" ? undefined : s;
 };
-const bool = (v: FormDataEntryValue | null) => v === "on" || v === "1" || v === "true";
+const bool = (v: FormDataEntryValue | null) =>
+  v === "on" || v === "1" || v === "true";
 
 export const bookFormSchema = z.object({
   title: z.string().trim().min(1).max(200),
+  // 과목별 진열(2026-09-11) — 값 집합은 DB CHECK 와 동기(subject-options.ts).
+  subjectCode: z.enum(LMS_SUBJECT_CODES).optional(),
   categoryId: z.string().uuid().optional(),
   coverPath: z.string().trim().url().max(500).optional(),
   bookType: z.enum(["physical", "pdf"]).default("physical"),
@@ -89,6 +92,7 @@ export function parseBookForm(
 ): { ok: true; values: BookFormValues } | { ok: false; error: string } {
   const raw = {
     title: nz(fd.get("title")),
+    subjectCode: nz(fd.get("subjectCode")),
     categoryId: nz(fd.get("categoryId")),
     coverPath: nz(fd.get("coverPath")),
     bookType: nz(fd.get("bookType")) ?? "physical",
@@ -137,6 +141,7 @@ export function bookRow(
 ) {
   return {
     title: v.title,
+    subject_code: v.subjectCode ?? null,
     category_id: v.categoryId ?? null,
     cover_path: v.coverPath ?? null,
     ...(files.coverFilePath !== undefined

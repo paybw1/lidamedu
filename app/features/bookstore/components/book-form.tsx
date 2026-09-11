@@ -4,10 +4,13 @@ import type { ReactNode } from "react";
 
 import { ImageUploadHint } from "~/core/components/image-upload-hint";
 import { HtmlEditor } from "~/features/lms/components/html-editor";
+import { LMS_SUBJECT_OPTIONS } from "~/features/lms/lib/subject-options";
 
 export interface BookFormData {
   bookId?: string;
   title: string;
+  /** 과목별 진열(2026-09-11). null = 미분류(도서몰 맨 뒤 「기타」). */
+  subjectCode: string | null;
   categoryId: string | null;
   coverPath: string | null;
   coverFilePath: string | null;
@@ -67,6 +70,19 @@ export function BookForm({
   const b = book;
   return (
     <>
+      <Row label="과목">
+        <div className="flex flex-col gap-1">
+          <select name="subjectCode" defaultValue={b?.subjectCode ?? ""} className={IN}>
+            <option value="">(미분류 — 도서몰 맨 뒤 「기타」에 진열)</option>
+            {LMS_SUBJECT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+          <p className="text-muted-foreground text-[11px]">
+            도서몰은 과목별로 나뉘어 진열되고, 진열 순서(도서 관리의 위·아래)는 같은 과목 안에서만 바뀝니다.
+          </p>
+        </div>
+      </Row>
       <Row label="도서 카테고리">
         <select name="categoryId" defaultValue={b?.categoryId ?? ""} className={IN}>
           <option value="">(선택 안 함)</option>
