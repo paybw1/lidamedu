@@ -26,9 +26,27 @@ const PAGES = {
   12: { title: "특허법 · 실용신안법", min: 900, parts: [{ index: 0, head: 1 }] },
 };
 
+// ★원장 지시로 교재와 **다르게** 고친 칸(2p 체계도의 EDIT 와 같은 뜻). 화면에는 now 를 그리고
+//   교재 원문 was 는 `data-was` 로 칸에 남겨 대조(table-verify)가 계속 통과하게 한다. 꼬리의
+//   「고친 곳」에도 적는다(검토용 기록 — convert 가 걷어내 학생 화면에는 안 나간다).
+//   was 는 <br>·공백을 뺀 글자로 찾는다. 못 찾으면 여기서 멈춘다 — 조용히 빠지면 못 알아챈다.
+const EDITS = {
+  8: [
+    {
+      was: "권리 대 권리 간의 권리범위확인심판의 경우 적극적의 이용관계 확인과 소극적 인정",
+      now: "권리 대 권리 간의 권리범위확인심판의 경우 동종이면 적극적의 이용관계 확인과 소극적 인정, 이종이면 모두 인정",
+      by: "원장 지시 2026-09-11",
+    },
+  ],
+};
+const flatText = (html) => html.replace(/<br>/g, "").replace(/\s+/g, "");
+const escAttr = (s) =>
+  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
 const [pageArg, out] = process.argv.slice(2);
 const page = Number(pageArg);
 const cfg = PAGES[page];
+const edits = (EDITS[page] ?? []).map((e) => ({ ...e, hit: false }));
 if (!cfg || !out) {
   console.log("사용: node scripts/digest/pipeline/table-render.mjs <쪽번호> <out.html>");
   process.exit(1);
@@ -64,6 +82,14 @@ const KEYFIX = {
   출원및심사: "출원 및 심사",
   우선심사사유의상이: "우선심사사유의 상이",
   특허공보게재: "특허공보 게재",
+  // 8p 심판제도 두 칸짜리 목차 — 원장 지시(2026-09-11): 낱말 단위로 두 줄, 「비 고」는 붙여서.
+  심판비용: "심판<br>비용",
+  참가여부: "참가<br>여부",
+  비고: "비고",
+  // 9p 정정청구 제도 목차 — 원장 지시(2026-09-11): 교재의 「효 과」「적 법」「불 복」을 붙여서.
+  효과: "효과",
+  적법: "적법",
+  불복: "불복",
 };
 const keyText = (html, cs, dense) => {
   if (dense && cs === 1) return vertical(html);
@@ -133,8 +159,18 @@ function renderTable(src, part) {
       //   가로지르는 각주 줄(5p 의 `* ⅰ) 특허거절결정에서…`)까지 목차가 된다.
       const cls = ri < part.head ? "h" : at + cs <= keycols ? "k" : "";
       const tag = cls ? "th" : "td";
-      const inner = cls === "k" ? keyText(html, cs, dense) : breakCircled(html);
-      return `<${tag}${cls ? ` class="${cls}"` : ""}${attrs}>${inner}</${tag}>`;
+      let inner = cls === "k" ? keyText(html, cs, dense) : breakCircled(html);
+      let extra = "";
+      if (!cls) {
+        // 고친 칸 — 내용 칸(td)만. 같은 글이 두 칸이면 앞의 것부터 하나씩 짝짓는다.
+        const e = edits.find((x) => !x.hit && flatText(x.was) === flatText(html));
+        if (e) {
+          e.hit = true;
+          inner = breakCircled(e.now);
+          extra = ` data-was="${escAttr(e.was)}"`;
+        }
+      }
+      return `<${tag}${cls ? ` class="${cls}"` : ""}${attrs}${extra}>${inner}</${tag}>`;
     }).join("");
     for (let i = 0; i < total; i += 1) if (held[i] > 0) held[i] -= 1;
     return `<tr>${tds}</tr>`;
@@ -170,6 +206,10 @@ const parts = cfg.parts.map((p) => {
   if (!src) throw new Error(`${page}p 에 ${p.index}번 표가 없습니다`);
   return { ...renderTable(src, p), part: p };
 });
+
+for (const e of edits) {
+  if (!e.hit) throw new Error(`${page}p 에서 고칠 칸을 찾지 못했습니다: ${e.was}`);
+}
 
 const rowSum = parts.reduce((n, p) => n + p.rows, 0);
 const cellSum = parts.reduce((n, p) => n + p.cells, 0);
@@ -260,6 +300,12 @@ const html = `<title>${cfg.title} — 정리비교표 재작화</title>
     border-radius:0 10px 10px 0; padding:13px 16px; font-size:13px; color:var(--muted);
   }
   .foot b { color:var(--ink); }
+  /* 꼬리 「고친 곳」 — 검토용. convert 가 걷어내 학생 화면에는 안 나간다. */
+  .changes { margin:8px 0 0; padding-left:18px; font-size:12px; color:var(--muted); }
+  .changes .kind { font-weight:700; color:var(--link); margin-right:6px; }
+  .changes .was { text-decoration:line-through; }
+  .changes .to { margin:0 6px; }
+  .changes .now { color:var(--ink); }
 </style>
 
 <div class="wrap">
@@ -280,7 +326,15 @@ const html = `<title>${cfg.title} — 정리비교표 재작화</title>
     칸(rowspan)을 손대지 않았습니다 — 병합을 잃으면 표가 한 줄씩 밀립니다.
     목차 칸은 한 줄에 한 글자로 세워 폭을 줄였고, 그만큼 내용 칸이 넓어집니다.
     넓어서 좁은 화면에서는 옆으로 밀어 보셔야 합니다.
+  </p>${edits.length ? `
+
+  <p class="foot">
+    <b>교재에서 고친 곳</b> — 아래 ${edits.length}건. 교재 원문은 그 칸의 <b>data-was</b> 에 남겨
+    대조(table-verify)에 씁니다. 그 밖의 칸은 교재 그대로입니다.
   </p>
+  <ul class="changes">${edits.map((e) => `
+    <li><span class="kind">수정</span><span class="was">${esc(e.was)}</span><span class="to">→</span><span class="now">${esc(e.now)}</span> <span class="by">(${esc(e.by)})</span></li>`).join("")}
+  </ul>` : ""}
 </div>
 `;
 

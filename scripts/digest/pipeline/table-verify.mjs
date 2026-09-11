@@ -12,14 +12,21 @@ const doc = JSON.parse(readFileSync("scripts/digest/pipeline/정리비교표.jso
 const srcTables = doc.pages[page - 1].tables ?? [];
 const outHtml = readFileSync(file, "utf8");
 
+const unescAttr = (s) =>
+  s.replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+
 const cellsOf = (html) =>
   // ★`<thead>` 가 `<th` + `ead` 로 걸린다 — 속성은 공백으로 시작해야 한다.
-  [...html.matchAll(/<(td|th)((?:\s[^>]*)?)>([\s\S]*?)<\/\1>/g)].map((m) => ({
-    attrs: m[2],
-    text: m[3].replace(/<br>/g, "").replace(/\s+/g, ""),
-    cs: Number(m[2].match(/colspan="(\d+)"/)?.[1] ?? 1),
-    rs: Number(m[2].match(/rowspan="(\d+)"/)?.[1] ?? 1),
-  }));
+  [...html.matchAll(/<(td|th)((?:\s[^>]*)?)>([\s\S]*?)<\/\1>/g)].map((m) => {
+    // ★원장 지시로 고친 칸은 `data-was` 에 교재 원문이 있다(table-render EDITS) — 그걸로 대조한다.
+    const was = m[2].match(/data-was="([^"]*)"/)?.[1];
+    return {
+      attrs: m[2],
+      text: (was !== undefined ? unescAttr(was) : m[3]).replace(/<br>/g, "").replace(/\s+/g, ""),
+      cs: Number(m[2].match(/colspan="(\d+)"/)?.[1] ?? 1),
+      rs: Number(m[2].match(/rowspan="(\d+)"/)?.[1] ?? 1),
+    };
+  });
 
 const src = srcTables.flatMap((t) => cellsOf(t));
 const got = cellsOf(outHtml.slice(outHtml.indexOf("<div class=\"wrap\">")));

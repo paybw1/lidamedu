@@ -81,6 +81,12 @@
     border-radius:0 10px 10px 0; padding:13px 16px; font-size:13px; color:var(--muted);
   }
   .foot b { color:var(--ink); }
+  /* 꼬리 「고친 곳」 — 검토용. convert 가 걷어내 학생 화면에는 안 나간다. */
+  .changes { margin:8px 0 0; padding-left:18px; font-size:12px; color:var(--muted); }
+  .changes .kind { font-weight:700; color:var(--link); margin-right:6px; }
+  .changes .was { text-decoration:line-through; }
+  .changes .to { margin:0 6px; }
+  .changes .now { color:var(--ink); }
 </style>
 
 <div class="wrap">
@@ -112,10 +118,10 @@
             <tr><th class="k">종<br>료</th><td>1.심판청구가 타당한 경우 원거절결정을취소하고 자판(특허심결) 또는 환송<br>2.환송 시 심사관의 기속 / reset 후 심사</td><td>일부인용ㆍ기각불가</td><td>1.청구항마다 일부인용ㆍ기각가능<br>2.청구항별 취하 가능</td><td></td><td></td><td>1.심판청구가 타당하지 않은 경우 기각한다고 하여야 되며, 청구취지에 반하는 심결을해서는 안됨<br>2.청구항별 취하 가능</td><td>심결의 주문에 통상실시권의 범위, 기간 및 대가를 구체적으로 명시하여 인용심결</td></tr>
             <tr><th class="k" rowspan="2">확<br>정<br>효<br>과</th><th class="k">인<br>용</th><td>1.특허결정된경우 특허료 내면 특허권 발생<br>2.연장등록결정된경우 지식재산처장이 특허원부 등록/특허공보 게재</td><td>1.정정된 내용대로 출원ㆍ공개ㆍ결정ㆍ심결ㆍ등록된것으로 간주<br>2.심판원장이 지식재산처장에게 알리면, 지식재산처장이 특허공보에 게재<br>3.침해죄는 정정 전 청구범위 기준 판단<br>4.정정전후 과실 추정 불변</td><td>특허권이 처음부터 없었던 것으로 간주(단, 후발적 무효사유는 발생 시부터 장래효)</td><td>1.연장등록이 처음부터 없었던 것으로 간주(단, 연장기간을 초과 등록된 경우 초과된 기간에 대해서만 연장등록 불인정)<br>2.하나의 허가 등에 대하여 둘 이상의 특허권의 존속기간이 연장등록된경우 연장등록출원은 처음부터 없었던 것으로 간주</td><td>정정이 처음부터 없었던 것으로 간주</td><td rowspan="2">보호범위의 공적 확인/단, 법원의 기속력 불인정</td><td>1.통상실시권 허락<br>2.실시권은 해당 특허권과 함께 이전하며, 함께 소멸<br>3.대가 지급하지 않거나 공탁하지 않으면 실시불가</td></tr>
             <tr><th class="k">기<br>각</th><td>거절결정 확정</td><td>정정의 불인정</td><td>특허권의 유지</td><td>연장등록의 유지</td><td>정정의 유지</td><td>통상실시권 불허</td></tr>
-            <tr><th class="k" colspan="2">심판비용</th><td colspan="2">청구인</td><td colspan="4">패심자</td><td>청구인</td></tr>
+            <tr><th class="k" colspan="2">심판<br>비용</th><td colspan="2">청구인</td><td colspan="4">패심자</td><td>청구인</td></tr>
             <tr><th class="k" colspan="2">일사<br>부재리</th><td colspan="2">부적용</td><td>적용(전부무효심판과 일부무효심판)</td><td colspan="2">적용</td><td>적용(적극적 권리범위확인심판과 소극적 권리범위확인심판)</td><td>적용</td></tr>
-            <tr><th class="k" colspan="2">참가여부</th><td colspan="2">불허(단, 정보제공 가능)</td><td colspan="4">허용</td><td>보조참가만이 허용</td></tr>
-            <tr><th class="k" colspan="2">비 고</th><td></td><td>정정심판과 특허취소신청/특허무효심판의 관계</td><td>1.특허무효심판이 심판원에 계속 중 정정청구 가능<br>2.일부인용ㆍ기각가능</td><td></td><td>정정무효심판이 심판원에 계속 중 정정청구 가능</td><td>권리 대 권리 간의 권리범위확인심판의 경우 적극적의 이용관계 확인과 소극적 인정</td><td>CROSS LICENSE 요건<br>-통상실시권허락심판에 의하여 실시권허락<br>-후출원권리자가 실시허락×<br>-허락받아 실시하려는 특허발명의 범위 이내일 것</td></tr>
+            <tr><th class="k" colspan="2">참가<br>여부</th><td colspan="2">불허(단, 정보제공 가능)</td><td colspan="4">허용</td><td>보조참가만이 허용</td></tr>
+            <tr><th class="k" colspan="2">비고</th><td></td><td>정정심판과 특허취소신청/특허무효심판의 관계</td><td>1.특허무효심판이 심판원에 계속 중 정정청구 가능<br>2.일부인용ㆍ기각가능</td><td></td><td>정정무효심판이 심판원에 계속 중 정정청구 가능</td><td data-was="권리 대 권리 간의 권리범위확인심판의 경우 적극적의 이용관계 확인과 소극적 인정">권리 대 권리 간의 권리범위확인심판의 경우 동종이면 적극적의 이용관계 확인과 소극적 인정, 이종이면 모두 인정</td><td>CROSS LICENSE 요건<br>-통상실시권허락심판에 의하여 실시권허락<br>-후출원권리자가 실시허락×<br>-허락받아 실시하려는 특허발명의 범위 이내일 것</td></tr>
         </tbody>
       </table>
     </div>
@@ -127,4 +133,12 @@
     목차 칸은 한 줄에 한 글자로 세워 폭을 줄였고, 그만큼 내용 칸이 넓어집니다.
     넓어서 좁은 화면에서는 옆으로 밀어 보셔야 합니다.
   </p>
+
+  <p class="foot">
+    <b>교재에서 고친 곳</b> — 아래 1건. 교재 원문은 그 칸의 <b>data-was</b> 에 남겨
+    대조(table-verify)에 씁니다. 그 밖의 칸은 교재 그대로입니다.
+  </p>
+  <ul class="changes">
+    <li><span class="kind">수정</span><span class="was">권리 대 권리 간의 권리범위확인심판의 경우 적극적의 이용관계 확인과 소극적 인정</span><span class="to">→</span><span class="now">권리 대 권리 간의 권리범위확인심판의 경우 동종이면 적극적의 이용관계 확인과 소극적 인정, 이종이면 모두 인정</span> <span class="by">(원장 지시 2026-09-11)</span></li>
+  </ul>
 </div>
