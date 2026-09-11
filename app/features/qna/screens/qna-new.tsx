@@ -439,7 +439,7 @@ function QnaTargetPicker() {
 
   const subjectSelect = (
     <label className="block">
-      <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+      <span className="text-muted-foreground mb-1.5 block text-[11px] font-bold tracking-[0.1em] uppercase">
         과목
       </span>
       <select
@@ -524,7 +524,7 @@ function QnaTargetPicker() {
       <div className="border-border bg-card rounded-2xl border p-5 shadow-sm md:p-6">
         {/* 대상 유형 */}
         <div className="mb-5">
-          <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+          <span className="text-muted-foreground mb-1.5 block text-[11px] font-bold tracking-[0.1em] uppercase">
             질문 대상
           </span>
           <div className="flex flex-wrap gap-1.5">
@@ -549,7 +549,7 @@ function QnaTargetPicker() {
           <div className="grid grid-cols-2 gap-3">
             {subjectSelect}
             <label className="block">
-              <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+              <span className="text-muted-foreground mb-1.5 block text-[11px] font-bold tracking-[0.1em] uppercase">
                 조문번호
               </span>
               <Input
@@ -564,7 +564,7 @@ function QnaTargetPicker() {
 
         {kind === "case" ? (
           <label className="block">
-            <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+            <span className="text-muted-foreground mb-1.5 block text-[11px] font-bold tracking-[0.1em] uppercase">
               판례번호
             </span>
             <Input
@@ -579,7 +579,7 @@ function QnaTargetPicker() {
           <div className="space-y-3">
             {/* 특정 방법 — 체계번호 / 기출번호 / 문제번호(P) 중 택1 */}
             <div>
-              <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+              <span className="text-muted-foreground mb-1.5 block text-[11px] font-bold tracking-[0.1em] uppercase">
                 특정 방법
               </span>
               <div className="flex flex-wrap gap-1.5">
@@ -607,7 +607,7 @@ function QnaTargetPicker() {
             {/* 문제번호(P-코드) — 과목 불필요, 고유 식별 */}
             {problemMethod === "code" ? (
               <label className="block">
-                <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+                <span className="text-muted-foreground mb-1.5 block text-[11px] font-bold tracking-[0.1em] uppercase">
                   문제 고유번호
                 </span>
                 <Input
@@ -627,7 +627,7 @@ function QnaTargetPicker() {
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <div className="col-span-2">{subjectSelect}</div>
                 <label className="block">
-                  <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+                  <span className="text-muted-foreground mb-1.5 block text-[11px] font-bold tracking-[0.1em] uppercase">
                     기출 연도
                   </span>
                   <Input
@@ -638,7 +638,7 @@ function QnaTargetPicker() {
                   />
                 </label>
                 <label className="block">
-                  <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+                  <span className="text-muted-foreground mb-1.5 block text-[11px] font-bold tracking-[0.1em] uppercase">
                     기출번호
                   </span>
                   <Input
@@ -657,7 +657,7 @@ function QnaTargetPicker() {
                 <div className="grid grid-cols-2 gap-3">
                   {subjectSelect}
                   <label className="block">
-                    <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+                    <span className="text-muted-foreground mb-1.5 block text-[11px] font-bold tracking-[0.1em] uppercase">
                       출처
                     </span>
                     <select
@@ -677,7 +677,7 @@ function QnaTargetPicker() {
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                   <label className="col-span-2 block">
-                    <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+                    <span className="text-muted-foreground mb-1.5 block text-[11px] font-bold tracking-[0.1em] uppercase">
                       체계도(단원)
                     </span>
                     <NodeCombobox
@@ -688,7 +688,7 @@ function QnaTargetPicker() {
                     />
                   </label>
                   <label className="block">
-                    <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+                    <span className="text-muted-foreground mb-1.5 block text-[11px] font-bold tracking-[0.1em] uppercase">
                       체계번호
                     </span>
                     <Input
@@ -854,7 +854,7 @@ function QnaForm({
 
           {mode === "content" ? (
             <div className="border-border bg-muted/40 mb-5 flex flex-wrap items-center gap-2 rounded-xl border p-3">
-              <span className="text-muted-foreground font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+              <span className="text-muted-foreground text-[11px] font-bold tracking-[0.1em] uppercase">
                 대상
               </span>
               <Chip tone={TARGET_TONE[targetType]}>
@@ -868,7 +868,7 @@ function QnaForm({
             </div>
           ) : (
             <label className="mb-5 block">
-              <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+              <span className="text-muted-foreground mb-1.5 block text-[11px] font-bold tracking-[0.1em] uppercase">
                 과목
               </span>
               <select
@@ -891,7 +891,7 @@ function QnaForm({
           )}
 
           <label className="block">
-            <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+            <span className="text-muted-foreground mb-1.5 block text-[11px] font-bold tracking-[0.1em] uppercase">
               제목
             </span>
             <Input
@@ -905,7 +905,7 @@ function QnaForm({
           </label>
 
           <label className="mt-4 block">
-            <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+            <span className="text-muted-foreground mb-1.5 block text-[11px] font-bold tracking-[0.1em] uppercase">
               내용
             </span>
             <QnaImageTextarea

@@ -371,7 +371,7 @@ function PlanForm({
       encType="multipart/form-data"
       className="bg-card border-border space-y-3 rounded-xl border p-4 shadow-sm"
     >
-      <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+      <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.08em] uppercase">
         {mode === "create" ? "새 상품 추가" : `상품 수정 · ${plan?.code}`}
       </p>
       <input type="hidden" name="intent" value={mode} />
@@ -525,7 +525,7 @@ function PlanForm({
 
       {showPolicy ? (
         <div className="border-border bg-muted/30 space-y-1.5 rounded-lg border border-dashed p-3">
-          <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+          <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.08em] uppercase">
             연결 강의 (에디션)
           </p>
           <p className="text-muted-foreground/70 text-[11px]">
@@ -599,7 +599,7 @@ function PlanForm({
 
       {showPolicy ? (
         <div className="border-border bg-muted/30 space-y-2 rounded-lg border border-dashed p-3">
-          <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+          <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.08em] uppercase">
             수강신청 상세 페이지
           </p>
           <p className="text-muted-foreground/70 text-[11px]">

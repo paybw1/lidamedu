@@ -126,7 +126,7 @@ export default function GsIssueTake({ loaderData }: Route.ComponentProps) {
     >
       {/* 사례 본문 — 모든 phase 에서 노출 */}
       <section className="border-border bg-card mb-4 rounded-2xl border p-4 shadow-sm">
-        <p className="text-muted-foreground mb-1 font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+        <p className="text-muted-foreground mb-1 text-[10px] font-bold tracking-[0.06em] uppercase">
           사례
         </p>
         <p className="text-foreground whitespace-pre-line text-sm leading-relaxed">
@@ -393,7 +393,7 @@ function SelfCheckStage({
     <section className="space-y-4">
       {/* 내 작성 (read-only) */}
       <div className="border-border bg-card rounded-2xl border p-4 shadow-sm">
-        <p className="text-muted-foreground mb-1 font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+        <p className="text-muted-foreground mb-1 text-[10px] font-bold tracking-[0.06em] uppercase">
           내가 적은 논점
         </p>
         <p className="text-foreground whitespace-pre-line text-sm leading-relaxed">
@@ -502,7 +502,7 @@ function SelfCheckStage({
 
       {/* 잘못 넣은 자작 논점 */}
       <div>
-        <p className="text-muted-foreground mb-1 font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+        <p className="text-muted-foreground mb-1 text-[10px] font-bold tracking-[0.06em] uppercase">
           잘못 넣은 논점 (자유 입력 — 모범에 없는 논점)
         </p>
         <Textarea
@@ -626,7 +626,7 @@ function DoneStage({
       ) : null}
 
       <div className="border-border bg-card rounded-2xl border p-4 shadow-sm">
-        <p className="text-muted-foreground mb-1 font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+        <p className="text-muted-foreground mb-1 text-[10px] font-bold tracking-[0.06em] uppercase">
           내가 적은 논점
         </p>
         <p className="text-foreground whitespace-pre-line text-sm leading-relaxed">
@@ -758,7 +758,7 @@ function Stat({
         : "text-rose-600 dark:text-rose-300";
   return (
     <div className="border-border bg-card rounded-xl border p-3 shadow-sm">
-      <p className="text-muted-foreground font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+      <p className="text-muted-foreground text-[10px] font-bold tracking-[0.06em] uppercase">
         {label}
       </p>
       <p className={cn("text-foreground mt-1 text-2xl font-extrabold tabular-nums", color)}>

@@ -132,7 +132,7 @@ export function BookSectionsEditor({
                 maxLength={60}
               />
             )}
-            <span className="text-muted-foreground font-mono text-[10px]">
+            <span className="text-muted-foreground text-[10px]">
               {choiceForKey(sec.key)?.group ?? sec.key}
             </span>
             <div className="ml-auto flex items-center gap-1">

@@ -91,7 +91,7 @@ export function PlanPolicyFields({
 
   return (
     <div className="border-border bg-muted/30 space-y-3 rounded-lg border border-dashed p-3">
-      <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+      <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.08em] uppercase">
         강의 수강 정책 (DRM)
       </p>
 

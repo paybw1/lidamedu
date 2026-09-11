@@ -21,7 +21,7 @@ export function Stat({
 }) {
   return (
     <div className="border-border bg-card rounded-xl border p-3 shadow-sm">
-      <p className="text-muted-foreground font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+      <p className="text-muted-foreground text-[10px] font-bold tracking-[0.06em] uppercase">
         {label}
       </p>
       <p

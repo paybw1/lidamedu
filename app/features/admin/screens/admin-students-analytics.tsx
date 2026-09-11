@@ -202,7 +202,7 @@ function KpiBand({ o }: { o: AllStudentsOverview }) {
             title={t.hint}
             className="border-border bg-card rounded-xl border p-3.5 shadow-sm"
           >
-            <p className="text-muted-foreground font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+            <p className="text-muted-foreground text-[10px] font-bold tracking-[0.06em] uppercase">
               {t.label}
             </p>
             <p
@@ -392,7 +392,7 @@ function QnaNodeRow({ node, index }: { node: QnaNodeStat; index: number }) {
           미답 {node.open}
         </Chip>
       ) : null}
-      <span className="text-foreground w-10 shrink-0 text-right font-mono text-xs font-bold tabular-nums">
+      <span className="text-foreground w-10 shrink-0 text-right text-xs font-bold tabular-nums">
         {node.total}건
       </span>
     </div>
@@ -570,7 +570,7 @@ function WeakNodeCohorts({
 }) {
   return (
     <div>
-      <p className="text-muted-foreground mb-1.5 font-mono text-[10px] font-bold tracking-[0.08em] uppercase">
+      <p className="text-muted-foreground mb-1.5 text-[10px] font-bold tracking-[0.08em] uppercase">
         약한 반
       </p>
       {rows.length === 0 ? (
@@ -612,7 +612,7 @@ function WeakNodeStudents({
 }) {
   return (
     <div>
-      <p className="text-muted-foreground mb-1.5 font-mono text-[10px] font-bold tracking-[0.08em] uppercase">
+      <p className="text-muted-foreground mb-1.5 text-[10px] font-bold tracking-[0.08em] uppercase">
         약한 학생 (정답률 낮은 순)
       </p>
       {rows.length === 0 ? (

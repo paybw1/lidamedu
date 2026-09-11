@@ -237,7 +237,7 @@ export function CaseMemorizeView({
                 <div className="space-y-3 px-4 py-3">
                   {/* 힌트 ① — 빈칸 정답 키워드(등장 순) */}
                   <div>
-                    <p className="text-muted-foreground mb-1.5 font-mono text-[10.5px] font-bold tracking-widest uppercase">
+                    <p className="text-muted-foreground mb-1.5 text-[10.5px] font-bold tracking-widest uppercase">
                       힌트 ① 키워드
                     </p>
                     <div className="flex flex-wrap gap-1.5">
@@ -254,7 +254,7 @@ export function CaseMemorizeView({
                   {/* 힌트 ② — 핵심어만 가린 요지 본문 */}
                   {stage >= STAGE_MASKED ? (
                     <div>
-                      <p className="text-muted-foreground mb-1.5 font-mono text-[10.5px] font-bold tracking-widest uppercase">
+                      <p className="text-muted-foreground mb-1.5 text-[10.5px] font-bold tracking-widest uppercase">
                         힌트 ② 빈칸 본문
                       </p>
                       <MaskedBody text={it.body ?? ""} blanks={bl} />

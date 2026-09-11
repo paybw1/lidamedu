@@ -173,7 +173,7 @@ export default function QuizSetup({
 
         {/* Header */}
         <header className="mb-6">
-          <p className="mb-2 inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.10em] uppercase text-link">
+          <p className="mb-2 inline-flex items-center gap-1.5 text-[11px] font-bold tracking-[0.10em] uppercase text-link">
             <SlidersHorizontalIcon className="size-3.5" />
             맞춤 퀴즈 설정
           </p>
@@ -189,7 +189,7 @@ export default function QuizSetup({
           {/* Filter card */}
           <div className="rounded-xl border bg-card shadow-sm">
             <div className="px-6 pt-5 pb-1">
-              <p className="font-mono text-[11px] font-bold tracking-[0.10em] uppercase text-link">
+              <p className="text-[11px] font-bold tracking-[0.10em] uppercase text-link">
                 필터
               </p>
             </div>
@@ -245,7 +245,7 @@ export default function QuizSetup({
           {/* Session card */}
           <div className="rounded-xl border bg-card shadow-sm">
             <div className="px-6 pt-5 pb-1">
-              <p className="font-mono text-[11px] font-bold tracking-[0.10em] uppercase text-link">
+              <p className="text-[11px] font-bold tracking-[0.10em] uppercase text-link">
                 풀이 설정
               </p>
             </div>

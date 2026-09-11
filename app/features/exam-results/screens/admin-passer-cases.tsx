@@ -163,7 +163,7 @@ function SummaryCard({
   };
   return (
     <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
-      <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+      <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.08em] uppercase">
         {label}
       </p>
       <p
@@ -242,7 +242,7 @@ export default function AdminPasserCases({
       {/* 연도·차수별 분포 */}
       {pool.byYearRound.length > 0 ? (
         <div className="border-border bg-card mb-4 rounded-xl border p-4 shadow-sm">
-          <p className="text-muted-foreground mb-2 font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+          <p className="text-muted-foreground mb-2 text-[11px] font-semibold tracking-[0.08em] uppercase">
             연도·차수별 분포
           </p>
           <div className="flex flex-wrap gap-2">
@@ -554,7 +554,7 @@ function PasserCard({ item }: { item: PasserCase }) {
 
         {item.studySummaryMd ? (
           <div className="rounded-lg border-l-2 border-emerald-300 bg-emerald-50/40 p-3 dark:bg-emerald-950/20">
-            <p className="mb-1 font-mono text-[10px] font-bold tracking-[0.1em] uppercase text-emerald-800 dark:text-emerald-300">
+            <p className="mb-1 text-[10px] font-bold tracking-[0.1em] uppercase text-emerald-800 dark:text-emerald-300">
               <ClipboardCheckIcon className="mr-1 inline size-3" />
               본인 학습 요약
             </p>

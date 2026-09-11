@@ -95,7 +95,7 @@ export default function McqExamResult({ loaderData }: Route.ComponentProps) {
       {/* 평균 점수 · 합격 판정 · 등수 */}
       <div className="border-border bg-card mb-4 flex flex-wrap items-center justify-between gap-4 rounded-2xl border p-5 shadow-sm">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1.5">
-          <span className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
+          <span className="text-muted-foreground text-[11px] font-semibold tracking-[0.04em] uppercase">
             전 과목 평균
           </span>
           <span
@@ -148,7 +148,7 @@ export default function McqExamResult({ loaderData }: Route.ComponentProps) {
                   <th
                     key={h}
                     className={cn(
-                      "text-muted-foreground px-3 py-3 font-mono text-[11px] font-semibold tracking-[0.04em] whitespace-nowrap uppercase",
+                      "text-muted-foreground px-3 py-3 text-[11px] font-semibold tracking-[0.04em] whitespace-nowrap uppercase",
                       i === 0 || i >= 2 ? "text-center" : "text-left",
                     )}
                   >

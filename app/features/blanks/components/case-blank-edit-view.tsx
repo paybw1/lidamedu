@@ -162,7 +162,7 @@ function EditSection({
 
   return (
     <section className="space-y-2">
-      <h3 className="text-link font-mono text-[11px] font-bold tracking-widest uppercase">
+      <h3 className="text-link text-[11px] font-bold tracking-widest uppercase">
         {label}
       </h3>
       <div

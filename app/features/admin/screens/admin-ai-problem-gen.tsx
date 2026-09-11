@@ -325,7 +325,7 @@ function ReportPanel({ report }: { report: GenReport }) {
             <p className="text-muted-foreground mb-1 text-[10px] font-bold tracking-wide uppercase">
               오류·skip ({report.perTargetErrors.length})
             </p>
-            <ul className="max-h-40 overflow-auto rounded border border-border bg-muted/30 p-2 text-[11px] font-mono">
+            <ul className="max-h-40 overflow-auto rounded border border-border bg-muted/30 p-2 text-[11px]">
               {report.perTargetErrors.map((e, i) => (
                 <li key={i}>
                   <span className="text-muted-foreground">

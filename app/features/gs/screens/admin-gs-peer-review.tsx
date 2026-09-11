@@ -237,7 +237,7 @@ export default function AdminGsPeerReview({
 
         {/* 학생별 채점 부담 */}
         <div>
-          <p className="text-muted-foreground mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+          <p className="text-muted-foreground mb-2 text-[11px] font-bold tracking-[0.1em] uppercase">
             학생별 채점 부담
           </p>
           {reviewerStats.size === 0 ? (
@@ -299,7 +299,7 @@ export default function AdminGsPeerReview({
 
         {/* 답안별 배정 */}
         <div>
-          <p className="text-muted-foreground mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+          <p className="text-muted-foreground mb-2 text-[11px] font-bold tracking-[0.1em] uppercase">
             답안별 배정
           </p>
           {submitted.length === 0 ? (

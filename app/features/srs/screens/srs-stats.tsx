@@ -175,7 +175,7 @@ function Kpi({
             : "border-border bg-card text-muted-foreground";
   return (
     <div className={cn("rounded-xl border p-3.5 shadow-sm", cls)}>
-      <p className="inline-flex items-center gap-1 font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+      <p className="inline-flex items-center gap-1 text-[10px] font-bold tracking-[0.06em] uppercase">
         {icon} {label}
       </p>
       <p className="text-foreground mt-1.5 text-[20px] leading-none font-extrabold tabular-nums">

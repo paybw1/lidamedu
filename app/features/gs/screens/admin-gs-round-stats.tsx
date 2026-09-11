@@ -258,7 +258,7 @@ function SummaryCard({
 }) {
   return (
     <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
-      <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+      <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.08em] uppercase">
         {label}
       </p>
       <p
@@ -282,7 +282,7 @@ function SummaryCard({
 
 function SectionTitle({ title }: { title: string }) {
   return (
-    <p className="text-muted-foreground mb-2 font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+    <p className="text-muted-foreground mb-2 text-[11px] font-semibold tracking-[0.08em] uppercase">
       {title}
     </p>
   );
@@ -430,7 +430,7 @@ function UsageCard({ usage }: { usage: RoundSummaryRow[] }) {
   }
   return (
     <section className="mb-6">
-      <p className="text-muted-foreground mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+      <p className="text-muted-foreground mb-2 text-[11px] font-bold tracking-[0.1em] uppercase">
         AI · OCR 사용량 (이 회차)
       </p>
       <div className="border-border bg-card grid gap-3 rounded-xl border p-4 shadow-sm sm:grid-cols-2">

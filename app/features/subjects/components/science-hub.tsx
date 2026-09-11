@@ -175,7 +175,7 @@ export default function ScienceHub({
                 viewTransition
                 className="group bg-card hover:border-primary rounded-xl border p-4 shadow-sm transition-colors"
               >
-                <p className="text-link mb-1 font-mono text-[10px] font-bold tracking-widest uppercase">
+                <p className="text-link mb-1 text-[10px] font-bold tracking-widest uppercase">
                   이어서 풀기
                 </p>
                 <p className="inline-flex items-center gap-1.5 text-sm font-bold">
@@ -196,7 +196,7 @@ export default function ScienceHub({
               viewTransition
               className="group bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl p-4 shadow-sm transition-colors"
             >
-              <p className="mb-1 font-mono text-[10px] font-bold tracking-widest uppercase opacity-70">
+              <p className="mb-1 text-[10px] font-bold tracking-widest uppercase opacity-70">
                 맞춤 퀴즈
               </p>
               <p className="inline-flex items-center gap-1.5 text-sm font-bold">
@@ -221,7 +221,7 @@ export default function ScienceHub({
                   type="submit"
                   className="group h-full w-full rounded-xl border border-amber-300/70 bg-amber-50 p-4 text-left shadow-sm transition-colors hover:border-amber-400 dark:border-amber-700/60 dark:bg-amber-950/40 dark:hover:border-amber-600"
                 >
-                  <p className="mb-1 font-mono text-[10px] font-bold tracking-widest text-amber-700 uppercase dark:text-amber-400">
+                  <p className="mb-1 text-[10px] font-bold tracking-widest text-amber-700 uppercase dark:text-amber-400">
                     오답
                   </p>
                   <p className="inline-flex items-center gap-1.5 text-sm font-bold text-amber-900 dark:text-amber-100">

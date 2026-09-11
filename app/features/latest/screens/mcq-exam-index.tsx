@@ -64,7 +64,7 @@ export default function McqExamIndex({ loaderData }: Route.ComponentProps) {
                   <th
                     key={label}
                     className={cn(
-                      "text-muted-foreground px-3 py-3 font-mono text-[11px] font-semibold tracking-[0.04em] whitespace-nowrap uppercase",
+                      "text-muted-foreground px-3 py-3 text-[11px] font-semibold tracking-[0.04em] whitespace-nowrap uppercase",
                       i === 0 || i === 2 || i === 3
                         ? "text-center"
                         : "text-left",

@@ -92,7 +92,7 @@ export default function AdminGsIssues({ loaderData }: Route.ComponentProps) {
       <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
         {/* 좌측 — 문항 목록 */}
         <aside className="space-y-1.5">
-          <p className="text-muted-foreground mb-1 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+          <p className="text-muted-foreground mb-1 text-[11px] font-bold tracking-[0.1em] uppercase">
             문항 ({questions.length})
           </p>
           {questions.length === 0 ? (
@@ -246,7 +246,7 @@ function IssuesPanel({
     <>
       {/* 문항 본문 미리보기 */}
       <section className="border-border bg-card rounded-xl border p-4">
-        <p className="text-muted-foreground mb-1 font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+        <p className="text-muted-foreground mb-1 text-[10px] font-bold tracking-[0.06em] uppercase">
           Q{question.orderIndex + 1} 문항 본문 (참고)
         </p>
         {question.title ? (
@@ -376,7 +376,7 @@ function IssueSection({
   if (issues.length === 0) return null;
   return (
     <section>
-      <p className="text-muted-foreground mb-2 inline-flex items-center gap-1.5 font-mono text-[10px] font-bold tracking-[0.1em] uppercase">
+      <p className="text-muted-foreground mb-2 inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.1em] uppercase">
         <Chip tone={tone}>{issues.length}</Chip>
         {title}
       </p>

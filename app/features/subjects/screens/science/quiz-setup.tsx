@@ -175,7 +175,7 @@ export default function ScienceQuizSetup({
         </Link>
 
         <header className="mb-8 space-y-2">
-          <p className="text-link inline-flex items-center gap-1 font-mono text-[10px] font-bold uppercase tracking-widest">
+          <p className="text-link inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest">
             <SlidersHorizontalIcon className="size-3" /> 자연과학 맞춤 퀴즈
           </p>
           <h1 className="text-2xl font-extrabold tracking-tight md:text-3xl">
@@ -221,7 +221,7 @@ export default function ScienceQuizSetup({
                       className="size-4 accent-primary"
                     />
                     <span className="flex-1">{s.label}</span>
-                    <span className="text-muted-foreground font-mono text-[11px] tabular-nums">
+                    <span className="text-muted-foreground text-[11px] tabular-nums">
                       {s.problemCount}문항
                     </span>
                   </label>

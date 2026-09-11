@@ -132,7 +132,7 @@ export default function AdminProblemsSystemEdit({
           ))}
           {result.emptyArticles.length > 0 ? (
             <section className="border-t pt-6">
-              <p className="text-muted-foreground mb-3 font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+              <p className="text-muted-foreground mb-3 text-[11px] font-semibold tracking-[0.08em] uppercase">
                 문제 없는 조문 ({result.emptyArticles.length})
               </p>
               <div className="flex flex-wrap gap-2">
@@ -463,7 +463,7 @@ function ProblemCard({ problem }: { problem: ProblemDetail }) {
             </div>
             {problem.boxItems.length > 0 ? (
               <div className="space-y-2">
-                <p className="text-muted-foreground font-mono text-[10px] font-semibold tracking-wide uppercase">
+                <p className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
                   박스 보기 ({problem.boxItems.length})
                 </p>
                 <input
@@ -488,7 +488,7 @@ function ProblemCard({ problem }: { problem: ProblemDetail }) {
             ) : null}
             <div className="space-y-2">
               {problem.boxItems.length > 0 ? (
-                <p className="text-muted-foreground font-mono text-[10px] font-semibold tracking-wide uppercase">
+                <p className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
                   지문 ({problem.choices.length})
                 </p>
               ) : null}

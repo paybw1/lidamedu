@@ -1174,7 +1174,7 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                 <div className="mb-5 flex items-center gap-2 rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-2.5 dark:border-amber-700/40 dark:bg-amber-950/30">
                   <TimerIcon className="size-4 text-amber-600 dark:text-amber-400" />
                   <span
-                    className="font-mono text-sm font-bold text-amber-700 tabular-nums dark:text-amber-300"
+                    className="text-sm font-bold text-amber-700 tabular-nums dark:text-amber-300"
                     data-testid="exam-timer-banner"
                   >
                     남은 시간 {timerText}

@@ -230,7 +230,7 @@ export default function AdminProblemStats({
             {mcqHardest.map((p) => (
               <TR key={p.problemId}>
                 <TD>
-                  <p className="font-mono text-[13px] font-semibold tabular-nums">
+                  <p className="text-[13px] font-semibold tabular-nums">
                     {p.year ?? "—"}
                     {p.problemNumber ? ` · ${p.problemNumber}번` : ""}
                   </p>
@@ -299,7 +299,7 @@ export default function AdminProblemStats({
             {oxHardest.map((it) => (
               <TR key={`${it.refType}:${it.refId}`}>
                 <TD>
-                  <p className="font-mono text-[13px] font-semibold tabular-nums">
+                  <p className="text-[13px] font-semibold tabular-nums">
                     {it.year ?? "—"}
                     {it.problemNumber ? ` · ${it.problemNumber}번` : ""}
                   </p>
@@ -363,7 +363,7 @@ export default function AdminProblemStats({
 
 function TableTitle({ title }: { title: string }) {
   return (
-    <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+    <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.08em] uppercase">
       {title}
     </p>
   );
@@ -401,14 +401,14 @@ function KpiCard({
 }) {
   return (
     <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
-      <p className="text-muted-foreground mb-3 inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+      <p className="text-muted-foreground mb-3 inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase">
         {icon}
         {title}
       </p>
       <div className="grid grid-cols-2 gap-3">
         {stats.map((s) => (
           <div key={s.label}>
-            <p className="text-muted-foreground font-mono text-[11px] tracking-wide uppercase">
+            <p className="text-muted-foreground text-[11px] tracking-wide uppercase">
               {s.label}
             </p>
             <p

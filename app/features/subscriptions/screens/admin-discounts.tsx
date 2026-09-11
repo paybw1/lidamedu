@@ -280,7 +280,7 @@ function DiscountForm({
       action="/api/admin/discount"
       className="bg-card border-border space-y-3 rounded-xl border p-4 shadow-sm"
     >
-      <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+      <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.08em] uppercase">
         {mode === "create" ? "새 할인 추가" : `할인 수정 · ${d?.name}`}
       </p>
       <input type="hidden" name="intent" value={mode} />

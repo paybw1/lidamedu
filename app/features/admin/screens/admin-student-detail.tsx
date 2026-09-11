@@ -756,7 +756,7 @@ export default function AdminStudentDetail({
                         <TableRow className="bg-muted/40 hover:bg-muted/40">
                           <TableCell
                             colSpan={4}
-                            className="text-link py-1.5 font-mono text-[11px] font-bold tracking-[0.08em] uppercase"
+                            className="text-link py-1.5 text-[11px] font-bold tracking-[0.08em] uppercase"
                           >
                             {g.label}
                           </TableCell>
@@ -3029,7 +3029,7 @@ function StudentSrsCard({ summary }: { summary: StudentSrsSummary }) {
       <CardHeader className="pb-3">
         <div className="flex items-baseline justify-between">
           <h2 className="text-base font-bold tracking-tight">복습 큐</h2>
-          <div className="text-xs font-mono">
+          <div className="text-xs">
             <span className="text-muted-foreground">총 due </span>
             <span
               className={
@@ -3103,7 +3103,7 @@ function SrsTile({
 }) {
   return (
     <div className="border-border bg-card rounded-xl border p-3.5 shadow-sm">
-      <p className="text-muted-foreground font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+      <p className="text-muted-foreground text-[10px] font-bold tracking-[0.06em] uppercase">
         {label}
       </p>
       <p

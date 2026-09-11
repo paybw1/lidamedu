@@ -72,7 +72,7 @@ export function SubjectLearningHub({
       {/* 오늘의 학습 추천 — "이어서 학습" 블록은 SubjectStudyStatus 의
           "마지막 학습 조문" 카드와 중복이라 제거함. */}
       <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
-        <p className="text-muted-foreground mb-1 inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.08em] uppercase">
+        <p className="text-muted-foreground mb-1 inline-flex items-center gap-1.5 text-[11px] font-bold tracking-[0.08em] uppercase">
           <SparklesIcon className="text-link size-3.5" /> 오늘의 학습 추천
         </p>
         <div className="divide-border divide-y">

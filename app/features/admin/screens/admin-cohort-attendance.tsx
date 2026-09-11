@@ -286,7 +286,7 @@ function SessionRow({
   const unrecorded = Math.max(0, studentCount - s.recordedCount);
   return (
     <li className="flex flex-wrap items-center gap-2 px-3 py-2">
-      <span className="text-muted-foreground w-10 text-center font-mono text-xs tabular-nums">
+      <span className="text-muted-foreground w-10 text-center text-xs tabular-nums">
         {s.sessionNo}회
       </span>
       <span className="text-xs font-medium tabular-nums">{s.heldOn}</span>

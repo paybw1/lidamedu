@@ -41,9 +41,12 @@
 | 카드 제목 | `text-base font-semibold` | Surface 내부 h3 |
 | 본문 | `text-sm leading-relaxed` | 기본 |
 | 보조 | `text-xs text-ink-soft` | hint, 캡션 |
-| Eyebrow | `font-mono text-[11px] font-semibold tracking-[0.08em] uppercase text-ink-faint` | `Eyebrow` 컴포넌트가 캡슐화 |
+| Eyebrow | `text-[11px] font-semibold tracking-[0.08em] uppercase text-ink-faint` | `Eyebrow` 컴포넌트가 캡슐화. ★고딕(Pretendard) — `font-mono` 금지 |
+| 숫자·코드 | `font-mono tabular-nums` | 사건번호·P-번호·날짜·금액·식별자·단축키처럼 **한글이 섞이지 않는** 값에만 |
 
 폰트: `Pretendard Variable` (한국어 우선, `app/app.css:11-14`).
+
+> ★한글 라벨에 `font-mono` 를 쓰지 않는다(2026-09-11 전수 전환, 119개 파일 330곳). Tailwind 기본 mono 스택에 한글 글꼴이 없어 Windows Chrome 이 한글을 굴림체로 그린다(CDP 실측: 라틴 Consolas · 한글 GulimChe). `--font-mono` 에 Pretendard 를 한글 폴백으로 넣어 두었지만(`app/app.css`) 그건 안전망이지 허가가 아니다 — 라벨·제목·표 머리글은 고딕, mono 는 숫자·코드 값에만.
 
 ### 1.3 Spacing 4·8 그리드
 

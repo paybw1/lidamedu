@@ -353,7 +353,7 @@ function OxReviewRow({
   return (
     <TR>
       <TD soft className={cn(ineligible && "opacity-60")}>
-        <p className="font-mono text-[13px] font-semibold tabular-nums">
+        <p className="text-[13px] font-semibold tabular-nums">
           {item.year ?? "—"}
           {item.problemNumber ? ` · ${item.problemNumber}번` : ""}
         </p>

@@ -62,7 +62,7 @@ export default function AdminLawsHub({ loaderData }: Route.ComponentProps) {
             >
               <div className="flex items-baseline justify-between gap-2">
                 <h2 className="text-lg font-bold tracking-tight">{meta.name}</h2>
-                <span className="text-muted-foreground text-[11px] font-mono uppercase tracking-wider">
+                <span className="text-muted-foreground text-[11px] uppercase tracking-wider">
                   {meta.categoryLabel}
                 </span>
               </div>

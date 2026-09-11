@@ -104,7 +104,7 @@ export default function QuizResult({ loaderData }: Route.ComponentProps) {
 
         {/* Header */}
         <header className="mb-6">
-          <p className="mb-2 font-mono text-[11px] font-bold tracking-[0.10em] uppercase text-link">
+          <p className="mb-2 text-[11px] font-bold tracking-[0.10em] uppercase text-link">
             퀴즈 결과
           </p>
           <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -185,7 +185,7 @@ export default function QuizResult({ loaderData }: Route.ComponentProps) {
         {/* Per-question result list */}
         <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
           <div className="border-b border-border px-[18px] py-3.5">
-            <p className="font-mono text-[11px] font-bold tracking-[0.10em] uppercase text-muted-foreground">
+            <p className="text-[11px] font-bold tracking-[0.10em] uppercase text-muted-foreground">
               문항별 결과
             </p>
           </div>
@@ -203,7 +203,7 @@ export default function QuizResult({ loaderData }: Route.ComponentProps) {
 
                   {/* Year / number chip */}
                   {it.year ? (
-                    <span className="shrink-0 inline-flex h-[22px] items-center rounded-full bg-primary/10 px-2 font-mono text-[11px] font-semibold text-link tabular-nums">
+                    <span className="shrink-0 inline-flex h-[22px] items-center rounded-full bg-primary/10 px-2 text-[11px] font-semibold text-link tabular-nums">
                       {it.year}
                       {it.problemNumber ? ` · ${it.problemNumber}번` : ""}
                     </span>
@@ -227,7 +227,7 @@ export default function QuizResult({ loaderData }: Route.ComponentProps) {
 
                   {/* Time spent */}
                   {it.timeSpentMs ? (
-                    <span className="shrink-0 font-mono text-[12px] text-muted-foreground tabular-nums">
+                    <span className="shrink-0 text-[12px] text-muted-foreground tabular-nums">
                       {formatDuration(it.timeSpentMs)}
                     </span>
                   ) : null}
@@ -287,7 +287,7 @@ function KpiCard({
           : "bg-muted/40 border-border/60",
       )}
     >
-      <p className="mb-1.5 flex items-center gap-1 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+      <p className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
         {icon}
         {label}
       </p>

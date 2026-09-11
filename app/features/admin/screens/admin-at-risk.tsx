@@ -316,28 +316,28 @@ export default function AdminAtRisk({ loaderData }: Route.ComponentProps) {
                       aria-label="모두 선택"
                     />
                   </th>
-                  <th className="text-muted-foreground px-3 py-2.5 text-left font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
+                  <th className="text-muted-foreground px-3 py-2.5 text-left text-[11px] font-semibold tracking-[0.04em] uppercase">
                     학생
                   </th>
-                  <th className="text-muted-foreground px-3 py-2.5 text-left font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
+                  <th className="text-muted-foreground px-3 py-2.5 text-left text-[11px] font-semibold tracking-[0.04em] uppercase">
                     반
                   </th>
                   <th className="text-muted-foreground px-3 py-2.5 text-right font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
                     risk
                   </th>
-                  <th className="text-muted-foreground px-3 py-2.5 text-right font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
+                  <th className="text-muted-foreground px-3 py-2.5 text-right text-[11px] font-semibold tracking-[0.04em] uppercase">
                     정답률
                   </th>
-                  <th className="text-muted-foreground px-3 py-2.5 text-right font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
+                  <th className="text-muted-foreground px-3 py-2.5 text-right text-[11px] font-semibold tracking-[0.04em] uppercase">
                     풀이수
                   </th>
-                  <th className="text-muted-foreground px-3 py-2.5 text-right font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
+                  <th className="text-muted-foreground px-3 py-2.5 text-right text-[11px] font-semibold tracking-[0.04em] uppercase">
                     무접속
                   </th>
-                  <th className="text-muted-foreground px-3 py-2.5 text-right font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
+                  <th className="text-muted-foreground px-3 py-2.5 text-right text-[11px] font-semibold tracking-[0.04em] uppercase">
                     마지막 상담
                   </th>
-                  <th className="text-muted-foreground px-3 py-2.5 text-left font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
+                  <th className="text-muted-foreground px-3 py-2.5 text-left text-[11px] font-semibold tracking-[0.04em] uppercase">
                     위험 사유
                   </th>
                   <th className="px-3 py-2.5" />
@@ -384,7 +384,7 @@ export default function AdminAtRisk({ loaderData }: Route.ComponentProps) {
                       <td className="px-3 py-2.5 text-right">
                         <span
                           className={cn(
-                            "inline-flex h-5 items-center rounded-full px-2 font-mono text-[10px] font-bold tabular-nums",
+                            "inline-flex h-5 items-center rounded-full px-2 text-[10px] font-bold tabular-nums",
                             tone.bg,
                             tone.text,
                           )}
@@ -552,7 +552,7 @@ function KpiTile({
     <div title={hint} className={cn("rounded-xl border p-3.5 shadow-sm", cls)}>
       <p
         className={cn(
-          "font-mono text-[10px] font-bold tracking-[0.06em] uppercase",
+          "text-[10px] font-bold tracking-[0.06em] uppercase",
           labelCls,
         )}
       >

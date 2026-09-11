@@ -151,7 +151,7 @@ function MaintenanceSection({
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="text-muted-foreground hover:text-foreground font-mono text-[11px] font-semibold tracking-[0.08em] uppercase"
+        className="text-muted-foreground hover:text-foreground text-[11px] font-semibold tracking-[0.08em] uppercase"
       >
         {open ? "▾" : "▸"} 조문 정정 스냅샷{" "}
         <span className="text-muted-foreground/60 tabular-nums">
@@ -218,7 +218,7 @@ function RevisionSection({
 }) {
   return (
     <section className="mb-6 space-y-2">
-      <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+      <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.08em] uppercase">
         {title}{" "}
         <span className="text-muted-foreground/60 tabular-nums">
           ({revisions.length})

@@ -227,7 +227,7 @@ export default function CommunityPostNew({ loaderData }: Route.ComponentProps) {
       <div className="border-border bg-card rounded-2xl border p-5 shadow-sm md:p-6">
         <form onSubmit={handleSubmit}>
           <label className="block">
-            <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+            <span className="text-muted-foreground mb-1.5 block text-[11px] font-bold tracking-[0.1em] uppercase">
               제목
             </span>
             <Input
@@ -242,7 +242,7 @@ export default function CommunityPostNew({ loaderData }: Route.ComponentProps) {
 
           <div className="mt-4">
             <div className="mb-1.5 flex items-center justify-between gap-2">
-              <span className="text-muted-foreground block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+              <span className="text-muted-foreground block text-[11px] font-bold tracking-[0.1em] uppercase">
                 내용
               </span>
               <button

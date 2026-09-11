@@ -91,7 +91,7 @@ export function StatTile({
           : "border-border bg-card",
       )}
     >
-      <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+      <p className="text-muted-foreground text-[11px] font-bold tracking-[0.1em] uppercase">
         {label}
       </p>
       <p
@@ -125,7 +125,7 @@ export function Section({
   return (
     <section className={cn("mt-6", className)}>
       <div className="mb-2.5 flex items-baseline justify-between gap-2">
-        <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+        <p className="text-muted-foreground text-[11px] font-bold tracking-[0.1em] uppercase">
           {eyebrow}
         </p>
         {right}

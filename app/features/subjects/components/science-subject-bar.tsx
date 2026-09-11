@@ -63,7 +63,7 @@ export function ScienceSubjectBar({
       className="border-border bg-background/95 sticky top-[49px] z-10 border-b backdrop-blur-lg md:top-[calc(var(--area-sticky-top,0px)+49px)]"
     >
       <div className="mx-auto flex w-full max-w-screen-lg items-center gap-2 px-5 py-2 md:px-10">
-        <p className="text-link mr-1 hidden shrink-0 font-mono text-[10px] font-bold tracking-widest uppercase sm:block">
+        <p className="text-link mr-1 hidden shrink-0 text-[10px] font-bold tracking-widest uppercase sm:block">
           자연과학
         </p>
         <div className="-mx-1 flex min-w-0 flex-1 gap-1.5 overflow-x-auto px-1">

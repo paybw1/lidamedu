@@ -178,7 +178,7 @@ export default function AdminLawRevisionWorkspace({
           {/* 조문에 반영 */}
           <Card>
             <CardContent className="flex flex-wrap items-center gap-3 px-4 py-3.5">
-              <p className="text-link font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+              <p className="text-link text-[11px] font-bold tracking-[0.1em] uppercase">
                 조문에 반영
               </p>
               <div className="flex flex-wrap items-center gap-2">
@@ -726,7 +726,7 @@ function BodyDiffView({
           </p>
         </div>
       ) : (
-        <div className="bg-background max-h-[480px] overflow-auto rounded-md border font-mono text-[11px] leading-relaxed">
+        <div className="bg-background max-h-[480px] overflow-auto rounded-md border text-[11px] leading-relaxed">
           {diff.map((d, idx) => (
             <div
               key={idx}

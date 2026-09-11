@@ -31,7 +31,7 @@ export function PeriodAmbiguousPanel({
             </p>
             <p className="mt-1 text-[11px]">
               <span className="text-muted-foreground">기준점 후보: </span>
-              <span className="font-mono">
+              <span>
                 {c.candidate.length > 80
                   ? "…" + c.candidate.slice(-80)
                   : c.candidate}

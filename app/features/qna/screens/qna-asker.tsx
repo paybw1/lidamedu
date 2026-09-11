@@ -234,7 +234,7 @@ export default function QnaAsker({ loaderData }: Route.ComponentProps) {
 
       {/* 질문 목록 */}
       <article className="border-border bg-card rounded-2xl border p-5 shadow-sm md:p-6">
-        <p className="text-muted-foreground mb-3 inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.08em] uppercase">
+        <p className="text-muted-foreground mb-3 inline-flex items-center gap-1.5 text-[11px] font-bold tracking-[0.08em] uppercase">
           <MessageCircleQuestionIcon className="size-3.5" /> 작성한 질문
         </p>
         {threads.length === 0 ? (

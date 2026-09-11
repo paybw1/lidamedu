@@ -870,7 +870,7 @@ function ConclusionsSection({
 
       {/* ⑤ GS 연결 */}
       <div className="border-border space-y-2 rounded-xl border border-dashed p-3">
-        <p className="text-muted-foreground font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+        <p className="text-muted-foreground text-[10px] font-bold tracking-[0.06em] uppercase">
           ⑤ GS 답안작성 회차 연결 (선택)
         </p>
         <p className="text-muted-foreground text-[11px]">
@@ -995,7 +995,7 @@ function NewIssueForm({ itemId }: { itemId: string }) {
     >
       <input type="hidden" name="intent" value="create" />
       <input type="hidden" name="itemId" value={itemId} />
-      <p className="text-muted-foreground font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+      <p className="text-muted-foreground text-[10px] font-bold tracking-[0.06em] uppercase">
         새 쟁점 추가
       </p>
       <Input name="label" placeholder="쟁점 라벨 (예: 신규성 위반 여부)" required />

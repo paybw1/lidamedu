@@ -144,7 +144,7 @@ export function ConclusionSelfCheckStage({
     <section className="space-y-4">
       {/* 내가 작성한 답안 목차 */}
       <div className="border-border bg-card rounded-2xl border p-4 shadow-sm">
-        <p className="text-muted-foreground mb-1 font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+        <p className="text-muted-foreground mb-1 text-[10px] font-bold tracking-[0.06em] uppercase">
           내가 짠 답안 목차
         </p>
         <p className="text-foreground whitespace-pre-line text-sm leading-relaxed">

@@ -351,7 +351,7 @@ function CohortForm({
       action="/api/admin/cohort"
       className="bg-card border-border space-y-3 rounded-xl border p-4 shadow-sm"
     >
-      <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+      <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.08em] uppercase">
         {mode === "create" ? "새 반 추가" : "반 정보 수정"}
       </p>
       <input type="hidden" name="intent" value={mode} />

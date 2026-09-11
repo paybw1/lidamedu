@@ -410,7 +410,7 @@ function SubjectCoverageCard({ rows }: { rows: SubjectCoverageRow[] }) {
   );
   return (
     <section className="mb-6" data-testid="admin-hub-seed-coverage">
-      <p className="text-muted-foreground mb-1 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+      <p className="text-muted-foreground mb-1 text-[11px] font-bold tracking-[0.1em] uppercase">
         과목 시드 진행률
       </p>
       <p className="text-muted-foreground mb-3 text-xs leading-relaxed">
@@ -511,7 +511,7 @@ function ClusterGrid({ role }: { role: UserRole | null }) {
         if (clusters.length === 0) return null;
         return (
           <section key={section.id}>
-            <p className="text-muted-foreground mb-3 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+            <p className="text-muted-foreground mb-3 text-[11px] font-bold tracking-[0.1em] uppercase">
               {section.label}
             </p>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

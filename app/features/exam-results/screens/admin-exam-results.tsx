@@ -180,7 +180,7 @@ function PoolCard({
         toneMap[tone],
       )}
     >
-      <p className="font-mono text-[10px] font-semibold tracking-[0.08em] uppercase opacity-80">
+      <p className="text-[10px] font-semibold tracking-[0.08em] uppercase opacity-80">
         {label}
       </p>
       <p className="mt-1.5 text-2xl font-extrabold tabular-nums">

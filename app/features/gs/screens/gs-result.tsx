@@ -165,7 +165,7 @@ export default function GsResult({ loaderData }: Route.ComponentProps) {
             <AwardIcon className="size-7" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+            <p className="text-muted-foreground text-[11px] font-bold tracking-[0.1em] uppercase">
               총점
             </p>
             <p
@@ -431,7 +431,7 @@ function ResultQuestionCard({
       {/* rubric 채점 기준 — 채점 완료 + rubric 점수 있을 때만 */}
       {graded && question.rubric.length > 0 ? (
         <div className="mt-3">
-          <p className="text-muted-foreground mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+          <p className="text-muted-foreground mb-2 text-[11px] font-bold tracking-[0.1em] uppercase">
             채점 기준
           </p>
           <ul className="space-y-2">
@@ -456,7 +456,7 @@ function ResultQuestionCard({
 
       {/* 매핑된 답안 페이지 */}
       <div className="mt-3">
-        <p className="text-muted-foreground mb-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+        <p className="text-muted-foreground mb-1.5 text-[11px] font-bold tracking-[0.1em] uppercase">
           매핑된 답안 페이지
         </p>
         {mappedPages.length === 0 ? (
@@ -481,7 +481,7 @@ function ResultQuestionCard({
       {/* 강사 피드백 */}
       {showGrading && answer?.feedbackMd ? (
         <div className="mt-3">
-          <p className="text-muted-foreground mb-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+          <p className="text-muted-foreground mb-1.5 text-[11px] font-bold tracking-[0.1em] uppercase">
             피드백
           </p>
           <div className="bg-primary/[0.06] border-primary rounded-xl border-l-[3px] p-3">
@@ -495,7 +495,7 @@ function ResultQuestionCard({
       {/* 모범답안 / 채점 기준 */}
       {showGrading && question.modelAnswerMd ? (
         <div className="mt-3">
-          <p className="text-muted-foreground mb-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+          <p className="text-muted-foreground mb-1.5 text-[11px] font-bold tracking-[0.1em] uppercase">
             모범답안 / 채점 기준
           </p>
           <div className="border-emerald-500/30 bg-emerald-500/[0.06] rounded-xl border p-3">

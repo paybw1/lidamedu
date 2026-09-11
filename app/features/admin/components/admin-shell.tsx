@@ -972,7 +972,7 @@ function AdminSidebar({
           return (
             <div key={section.id} className="mt-3 first:mt-2">
               {!collapsed ? (
-                <p className="text-muted-foreground/70 px-2.5 pt-1 pb-1 font-mono text-[10px] font-bold tracking-[0.1em] uppercase">
+                <p className="text-muted-foreground/70 px-2.5 pt-1 pb-1 text-[10px] font-bold tracking-[0.1em] uppercase">
                   {section.label}
                 </p>
               ) : (
@@ -1068,7 +1068,7 @@ function AdminPageHeader({
   return (
     <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
       <div className="min-w-0 space-y-1.5">
-        <p className="text-link inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+        <p className="text-link inline-flex items-center gap-1.5 text-[11px] font-bold tracking-[0.1em] uppercase">
           <Icon className="size-3" />
           ADMIN · {cluster.label}
         </p>

@@ -683,7 +683,7 @@ export function SectionTitle({
   return (
     <div className="mt-[22px] mb-2.5 flex items-baseline gap-2">
       <h2 className="text-[15px] font-bold tracking-tight">{title}</h2>
-      <span className="text-muted-foreground font-mono text-[11px] font-bold tabular-nums">
+      <span className="text-muted-foreground text-[11px] font-bold tabular-nums">
         {count}건
       </span>
     </div>

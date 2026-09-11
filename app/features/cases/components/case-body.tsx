@@ -603,7 +603,7 @@ function CasePrevNextButton({
       to={href}
       viewTransition
       aria-label={`${aria}: ${label}`}
-      className="border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground inline-flex h-8 items-center gap-1 rounded-full border px-3 font-mono text-[12px] font-semibold transition-colors"
+      className="border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground inline-flex h-8 items-center gap-1 rounded-full border px-3 text-[12px] font-semibold transition-colors"
     >
       {direction === "prev" ? <Icon className="size-3.5 shrink-0" /> : null}
       <span className="max-w-[120px] truncate">{label}</span>
@@ -1051,7 +1051,7 @@ function BodySection({
   return (
     <section className="space-y-3">
       <div className="flex items-baseline gap-3">
-        <h2 className="text-link font-mono text-[11px] font-bold tracking-widest uppercase">
+        <h2 className="text-link text-[11px] font-bold tracking-widest uppercase">
           {title}
         </h2>
         {meta ? (
@@ -1132,7 +1132,7 @@ function SummaryBlock({
         >
           <summary className="bg-muted/40 flex cursor-pointer items-center gap-2 rounded-t-md px-3.5 py-2 select-none [&::-webkit-details-marker]:hidden">
             <ChevronRightIcon className="text-muted-foreground size-3 shrink-0 transition-transform group-open/comment:rotate-90" />
-            <span className="bg-primary text-primary-foreground inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-wider">
+            <span className="bg-primary text-primary-foreground inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wider">
               비고{labelNumber ? ` ${labelNumber}` : ""}
             </span>
             <span className="text-muted-foreground text-[11px]">

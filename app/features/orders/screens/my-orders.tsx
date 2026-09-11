@@ -262,7 +262,7 @@ function OrderItemRow({ item: it, orderStatus }: { item: OrderItem; orderStatus:
         <span className="text-muted-foreground ml-auto text-[12px]">
           {SHIP_STATUS_LABEL[it.shipment.status] ?? it.shipment.status}
           {it.shipment.courier && it.shipment.trackingNo ? (
-            <span className="ml-1 font-mono">
+            <span className="ml-1">
               {it.shipment.courier} {it.shipment.trackingNo}
             </span>
           ) : null}

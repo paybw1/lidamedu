@@ -348,7 +348,7 @@ function FilterCol({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-muted-foreground font-mono text-[10px] font-bold tracking-wide uppercase">
+      <span className="text-muted-foreground text-[10px] font-bold tracking-wide uppercase">
         {label}
       </span>
       {children}

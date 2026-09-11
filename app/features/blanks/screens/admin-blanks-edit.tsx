@@ -615,7 +615,7 @@ export default function AdminBlanksEdit({ loaderData }: Route.ComponentProps) {
           <CardHeader className="pb-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
+                <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.04em] uppercase">
                   본문 (제{articleNumber}조)
                 </p>
                 <h2 className="text-base font-extrabold tracking-tight">
@@ -698,7 +698,7 @@ export default function AdminBlanksEdit({ loaderData }: Route.ComponentProps) {
         {/* 우: 빈칸 정답 입력 패널 */}
         <Card className="self-start">
           <CardHeader className="pb-3">
-            <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
+            <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.04em] uppercase">
               빈칸 정답 입력
             </p>
           </CardHeader>

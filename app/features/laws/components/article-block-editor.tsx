@@ -545,7 +545,7 @@ function FrozenCard({
             <LockIcon className="size-3" /> {kindLabel} (read-only)
           </p>
           <div className="flex items-center gap-2">
-            <span className="text-muted-foreground/70 font-mono text-[10px]">
+            <span className="text-muted-foreground/70 text-[10px]">
               JSON 모드에서 편집
             </span>
             {controls}

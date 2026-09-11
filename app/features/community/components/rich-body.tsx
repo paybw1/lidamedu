@@ -126,7 +126,7 @@ function RefCard({
         {icon}
       </span>
       <span className="min-w-0">
-        <span className="text-muted-foreground font-mono text-[9px] font-bold tracking-[0.06em] uppercase">
+        <span className="text-muted-foreground text-[9px] font-bold tracking-[0.06em] uppercase">
           {label}
         </span>
         <span className="text-foreground block truncate font-semibold">

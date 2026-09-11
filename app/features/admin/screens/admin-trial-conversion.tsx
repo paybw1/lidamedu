@@ -122,7 +122,7 @@ export default function AdminTrialConversion({
             key={k.label}
             className="border-border bg-card rounded-xl border p-3.5 shadow-sm"
           >
-            <p className="text-muted-foreground font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+            <p className="text-muted-foreground text-[10px] font-bold tracking-[0.06em] uppercase">
               {k.label}
             </p>
             <p

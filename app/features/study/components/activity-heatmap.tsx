@@ -147,7 +147,7 @@ function InsightTile({
 }) {
   return (
     <div className="border-border bg-card rounded-xl border p-3.5 shadow-sm">
-      <p className="text-muted-foreground font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+      <p className="text-muted-foreground text-[10px] font-bold tracking-[0.06em] uppercase">
         {label}
       </p>
       <p className="text-foreground mt-1.5 text-base font-extrabold tracking-tight tabular-nums">
@@ -164,13 +164,13 @@ function DowBars({ data }: { data: ActivityHeatmapData }) {
   const max = data.byDow.reduce((m, b) => Math.max(m, b.totalCount), 0) || 1;
   return (
     <div>
-      <p className="text-muted-foreground mb-2 font-mono text-[11px] font-bold tracking-[0.06em] uppercase">
+      <p className="text-muted-foreground mb-2 text-[11px] font-bold tracking-[0.06em] uppercase">
         요일별
       </p>
       <div className="space-y-1.5">
         {data.byDow.map((b) => (
           <div key={b.dow} className="flex items-center gap-2 text-xs">
-            <span className="text-muted-foreground w-5 shrink-0 font-mono">
+            <span className="text-muted-foreground w-5 shrink-0">
               {DOW_LABEL[b.dow]}
             </span>
             <div className="bg-muted h-2 flex-1 overflow-hidden rounded-full">
@@ -196,7 +196,7 @@ function HourBars({ data }: { data: ActivityHeatmapData }) {
   const max = data.byHour.reduce((m, b) => Math.max(m, b.totalCount), 0) || 1;
   return (
     <div>
-      <p className="text-muted-foreground mb-2 font-mono text-[11px] font-bold tracking-[0.06em] uppercase">
+      <p className="text-muted-foreground mb-2 text-[11px] font-bold tracking-[0.06em] uppercase">
         시간대별
       </p>
       <div className="flex items-end gap-[2px]">

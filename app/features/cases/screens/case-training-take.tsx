@@ -118,7 +118,7 @@ export default function CaseTrainingTake({
 
       {/* 지문 — 모든 phase 노출. 판례=사실관계(누출 lint 통과분) / 기출=발문 원문. */}
       <section className="border-border bg-card mb-4 rounded-2xl border p-4 shadow-sm">
-        <p className="text-muted-foreground mb-1 font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+        <p className="text-muted-foreground mb-1 text-[10px] font-bold tracking-[0.06em] uppercase">
           {problemRef ? "발문" : "사실관계"}
         </p>
         <p className="text-foreground whitespace-pre-line text-sm leading-relaxed">

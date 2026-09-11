@@ -118,7 +118,7 @@ export default function OnlineGs({ loaderData }: Route.ComponentProps) {
           <PencilLineIcon className="size-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-link font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+          <p className="text-link text-[11px] font-bold tracking-[0.1em] uppercase">
             논점추출
           </p>
           <p className="text-foreground text-base font-bold tracking-tight">
@@ -143,7 +143,7 @@ export default function OnlineGs({ loaderData }: Route.ComponentProps) {
           <CoinsIcon className="size-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-amber-700 dark:text-amber-400 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+          <p className="text-amber-700 dark:text-amber-400 text-[11px] font-bold tracking-[0.1em] uppercase">
             GS 포인트
           </p>
           <p className="text-foreground text-2xl font-extrabold tracking-tight tabular-nums">
@@ -180,7 +180,7 @@ export default function OnlineGs({ loaderData }: Route.ComponentProps) {
                     <Chip tone="primary">
                       {LAW_SUBJECTS[s.subject]?.name ?? s.subject}
                     </Chip>
-                    <span className="text-foreground ml-auto font-mono text-xs font-bold tabular-nums">
+                    <span className="text-foreground ml-auto text-xs font-bold tabular-nums">
                       {s.roundsTaken}/{s.expectedRounds}회
                     </span>
                   </div>

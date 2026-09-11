@@ -83,7 +83,7 @@ export default function LatestEssayViewer({
           <header className="border-border border-b px-6 pt-6 pb-4">
             <div className="flex flex-wrap items-center gap-1.5">
               {problem.year != null ? (
-                <Pill tone="outline" className="font-mono">
+                <Pill tone="outline">
                   {problem.year}년
                   {problem.examRoundNo != null
                     ? ` ${problem.examRoundNo}회`
@@ -91,7 +91,7 @@ export default function LatestEssayViewer({
                 </Pill>
               ) : null}
               {problem.problemNumber != null ? (
-                <Pill tone="outline" className="font-mono">
+                <Pill tone="outline">
                   {problem.problemNumber}번
                 </Pill>
               ) : null}
@@ -121,7 +121,7 @@ export default function LatestEssayViewer({
           {/* 본문 + 모범답안/채점기준 */}
           <div className="space-y-6 px-6 py-6">
             <section className="space-y-2">
-              <h2 className="text-link font-mono text-[11px] font-bold tracking-widest uppercase">
+              <h2 className="text-link text-[11px] font-bold tracking-widest uppercase">
                 문제
               </h2>
               <div className="border-border/60 border-t" />
@@ -139,7 +139,7 @@ export default function LatestEssayViewer({
                 <div className="space-y-5 border-t border-border/60 px-4 py-4">
                   {problem.explanationMd ? (
                     <section className="space-y-2">
-                      <h3 className="text-link font-mono text-[11px] font-bold tracking-widest uppercase">
+                      <h3 className="text-link text-[11px] font-bold tracking-widest uppercase">
                         해설
                       </h3>
                       <MarkdownView
@@ -150,7 +150,7 @@ export default function LatestEssayViewer({
                   ) : null}
                   {problem.modelAnswerMd ? (
                     <section className="space-y-2">
-                      <h3 className="text-link font-mono text-[11px] font-bold tracking-widest uppercase">
+                      <h3 className="text-link text-[11px] font-bold tracking-widest uppercase">
                         모범답안
                       </h3>
                       <MarkdownView
@@ -161,7 +161,7 @@ export default function LatestEssayViewer({
                   ) : null}
                   {problem.gradingRubricMd ? (
                     <section className="space-y-2">
-                      <h3 className="text-link font-mono text-[11px] font-bold tracking-widest uppercase">
+                      <h3 className="text-link text-[11px] font-bold tracking-widest uppercase">
                         채점기준
                       </h3>
                       <MarkdownView
@@ -172,7 +172,7 @@ export default function LatestEssayViewer({
                   ) : null}
                   {problem.rubricItems && problem.rubricItems.length > 0 ? (
                     <section className="space-y-1.5">
-                      <h3 className="text-link font-mono text-[11px] font-bold tracking-widest uppercase">
+                      <h3 className="text-link text-[11px] font-bold tracking-widest uppercase">
                         배점
                       </h3>
                       <ul className="space-y-1">
@@ -182,7 +182,7 @@ export default function LatestEssayViewer({
                             className="flex items-center justify-between gap-3 text-[13px]"
                           >
                             <span>{it.label}</span>
-                            <span className="text-muted-foreground font-mono tabular-nums">
+                            <span className="text-muted-foreground tabular-nums">
                               {it.points}점
                             </span>
                           </li>

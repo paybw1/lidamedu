@@ -382,7 +382,7 @@ export function ProblemsTab({
               </span>
               {/* 범위 — 체계도 1·2단계 노드(미선택 시 과목 전체) */}
               <label className="flex flex-col gap-0.5">
-                <span className="text-muted-foreground font-mono text-[10px] font-bold tracking-wide uppercase">
+                <span className="text-muted-foreground text-[10px] font-bold tracking-wide uppercase">
                   범위
                 </span>
                 <div className="relative">
@@ -454,7 +454,7 @@ export function ProblemsTab({
             ) : null}
             {/* Search chip-style input */}
             <div className="flex flex-col gap-0.5">
-              <span className="text-muted-foreground font-mono text-[10px] font-bold tracking-wide uppercase">
+              <span className="text-muted-foreground text-[10px] font-bold tracking-wide uppercase">
                 본문 검색
               </span>
               <input
@@ -674,7 +674,7 @@ export function ProblemsTab({
                     searchParams={searchParams}
                     className="hidden w-28 md:table-cell"
                   />
-                  <TableHead className="text-muted-foreground/70 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
+                  <TableHead className="text-muted-foreground/70 text-[11px] font-bold tracking-[0.04em] uppercase">
                     본문
                   </TableHead>
                 </TableRow>
@@ -713,7 +713,7 @@ function ProblemsKpiCard({
 }) {
   return (
     <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
-      <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-[0.08em] uppercase">
+      <p className="text-muted-foreground text-[11px] font-bold tracking-[0.08em] uppercase">
         {label}
       </p>
       <p
@@ -788,7 +788,7 @@ function FilterSelectChip({
 }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-muted-foreground font-mono text-[10px] font-bold tracking-wide uppercase">
+      <span className="text-muted-foreground text-[10px] font-bold tracking-wide uppercase">
         {label}
       </span>
       <div className="relative">
@@ -847,7 +847,7 @@ function SortableHead({
   return (
     <TableHead
       className={cn(
-        "text-muted-foreground/70 font-mono text-[11px] font-bold tracking-[0.04em] uppercase",
+        "text-muted-foreground/70 text-[11px] font-bold tracking-[0.04em] uppercase",
         className,
       )}
     >

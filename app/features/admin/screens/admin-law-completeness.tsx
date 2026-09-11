@@ -326,7 +326,7 @@ function GapSection({
   return (
     <section className="mb-6">
       <div className="mb-2 flex items-baseline justify-between">
-        <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+        <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.08em] uppercase">
           {title}
         </p>
         <p className="text-muted-foreground text-[11px] tabular-nums">
@@ -441,7 +441,7 @@ function SummaryCard({
 }) {
   return (
     <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
-      <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+      <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.08em] uppercase">
         {label}
       </p>
       <p className="mt-2 text-2xl font-extrabold tracking-tight tabular-nums">

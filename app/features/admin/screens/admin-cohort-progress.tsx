@@ -407,7 +407,7 @@ function KpiCard({
           : "text-foreground";
   return (
     <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
-      <p className="text-muted-foreground inline-flex items-center gap-1 font-mono text-[11px] font-semibold tracking-[0.06em] uppercase">
+      <p className="text-muted-foreground inline-flex items-center gap-1 text-[11px] font-semibold tracking-[0.06em] uppercase">
         {tone === "danger" || tone === "warn" ? (
           <AlertTriangleIcon className="size-3" />
         ) : (

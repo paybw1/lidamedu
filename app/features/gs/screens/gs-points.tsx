@@ -63,7 +63,7 @@ export default function GsPoints({ loaderData }: Route.ComponentProps) {
             <CoinsIcon className="size-7" />
           </span>
           <div>
-            <p className="font-mono text-[11px] font-bold tracking-[0.1em] uppercase text-amber-700 dark:text-amber-400">
+            <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-amber-700 dark:text-amber-400">
               잔액
             </p>
             <p className="text-foreground mt-1 text-4xl font-extrabold tracking-tight tabular-nums">
@@ -102,7 +102,7 @@ export default function GsPoints({ loaderData }: Route.ComponentProps) {
                       <th
                         key={label}
                         className={cn(
-                          "text-muted-foreground px-3.5 py-2.5 font-mono text-[11px] font-bold tracking-[0.06em] whitespace-nowrap uppercase",
+                          "text-muted-foreground px-3.5 py-2.5 text-[11px] font-bold tracking-[0.06em] whitespace-nowrap uppercase",
                           align === "right" ? "text-right" : "text-left",
                         )}
                       >

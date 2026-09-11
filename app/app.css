@@ -20,6 +20,13 @@
   --font-serif:
     "Pretendard Variable", "Pretendard", "Apple SD Gothic Neo", system-ui,
     "Noto Sans KR", sans-serif;
+  /* mono 는 숫자·코드 값 전용. 한글 폴백으로 Pretendard 를 넣는다 — Tailwind 기본 mono 스택에는
+     한글 글꼴이 없어 Windows Chrome 이 한글을 굴림체(GulimChe)로 그린다(2026-09-11 실측).
+     한글 라벨에 font-mono 를 쓰지 않는 것이 규칙이고(design-system.md 1.2), 이 폴백은 안전망이다. */
+  --font-mono:
+    ui-monospace, "SFMono-Regular", "Menlo", "Monaco", "Consolas",
+    "Liberation Mono", "Courier New", "Pretendard Variable", "Pretendard",
+    monospace;
 }
 
 html,

@@ -104,7 +104,7 @@ function KpiCard({
           : "bg-card",
       )}
     >
-      <p className="text-muted-foreground mb-1.5 flex items-center gap-1 font-mono text-[10px] font-bold tracking-widest uppercase">
+      <p className="text-muted-foreground mb-1.5 flex items-center gap-1 text-[10px] font-bold tracking-widest uppercase">
         {icon}
         {label}
       </p>
@@ -153,7 +153,7 @@ export default function ScienceQuizResult({ loaderData }: Route.ComponentProps) 
 
         {/* Header */}
         <header className="mb-6">
-          <p className="text-link mb-1.5 font-mono text-[11px] font-bold tracking-widest uppercase">
+          <p className="text-link mb-1.5 text-[11px] font-bold tracking-widest uppercase">
             자연과학 퀴즈 결과
           </p>
           <div className="flex flex-wrap items-center gap-2">
@@ -162,7 +162,7 @@ export default function ScienceQuizResult({ loaderData }: Route.ComponentProps) 
             </h1>
             <span
               className={cn(
-                "inline-flex items-center rounded-full px-2.5 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wide",
+                "inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide",
                 session.mode === "exam"
                   ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
                   : "bg-primary/10 text-link",
@@ -172,7 +172,7 @@ export default function ScienceQuizResult({ loaderData }: Route.ComponentProps) 
             </span>
             <span
               className={cn(
-                "inline-flex items-center rounded-full px-2.5 py-0.5 font-mono text-[11px] font-semibold",
+                "inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold",
                 session.completedAt
                   ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
                   : "bg-muted text-muted-foreground",
@@ -248,7 +248,7 @@ export default function ScienceQuizResult({ loaderData }: Route.ComponentProps) 
                 >
                   <ResultIcon isCorrect={it.isCorrect} />
                   {it.year ? (
-                    <span className="bg-primary/10 text-link inline-flex h-[22px] shrink-0 items-center rounded-full px-2 font-mono text-[11px] font-semibold tabular-nums">
+                    <span className="bg-primary/10 text-link inline-flex h-[22px] shrink-0 items-center rounded-full px-2 text-[11px] font-semibold tabular-nums">
                       {it.year}
                       {it.problemNumber ? ` · ${it.problemNumber}번` : ""}
                     </span>
@@ -261,7 +261,7 @@ export default function ScienceQuizResult({ loaderData }: Route.ComponentProps) 
                     {it.bodySnippet}
                   </p>
                   {it.timeSpentMs ? (
-                    <span className="text-muted-foreground shrink-0 font-mono text-xs tabular-nums">
+                    <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
                       {formatDuration(it.timeSpentMs)}
                     </span>
                   ) : null}

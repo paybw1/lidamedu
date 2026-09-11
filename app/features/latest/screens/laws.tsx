@@ -210,7 +210,7 @@ export default function LatestLaws({ loaderData }: Route.ComponentProps) {
                   <th
                     key={label}
                     className={cn(
-                      "text-muted-foreground px-3 py-3 font-mono text-[11px] font-semibold tracking-[0.04em] whitespace-nowrap uppercase",
+                      "text-muted-foreground px-3 py-3 text-[11px] font-semibold tracking-[0.04em] whitespace-nowrap uppercase",
                       i >= 4 ? "text-center" : "text-left",
                     )}
                   >

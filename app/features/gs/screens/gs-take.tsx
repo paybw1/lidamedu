@@ -244,7 +244,7 @@ export default function GsTake({ loaderData }: Route.ComponentProps) {
         {/* 좌측 — 문제 목록 (읽기) */}
         <aside>
           <div className="border-border bg-card sticky top-4 rounded-2xl border p-4">
-            <p className="text-muted-foreground mb-2.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+            <p className="text-muted-foreground mb-2.5 text-[11px] font-bold tracking-[0.1em] uppercase">
               문항 · {questions.length}개
             </p>
             <ul className="space-y-1.5">
@@ -271,7 +271,7 @@ export default function GsTake({ loaderData }: Route.ComponentProps) {
                       >
                         {q.title ?? `문 ${q.orderIndex + 1}`}
                       </span>
-                      <span className="text-muted-foreground ml-auto font-mono text-[10px] font-bold tabular-nums">
+                      <span className="text-muted-foreground ml-auto text-[10px] font-bold tabular-nums">
                         {q.maxScore}점
                       </span>
                     </div>
@@ -298,7 +298,7 @@ export default function GsTake({ loaderData }: Route.ComponentProps) {
         {/* 우측 — 페이지 슬롯 그리드 */}
         <section>
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+            <p className="text-muted-foreground text-[11px] font-bold tracking-[0.1em] uppercase">
               답안지 페이지 · {pages.length}/{round.expectedPages}
             </p>
             <ProgressDots

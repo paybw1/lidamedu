@@ -709,7 +709,7 @@ function ExplanationBlock({ problem }: { problem: ProblemDetail }) {
     problem.choices.find((c) => c.isCorrect)?.bodyMd ?? null;
   return (
     <div className="border-border space-y-2 rounded-xl border border-dashed p-4">
-      <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.06em] uppercase">
+      <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.06em] uppercase">
         해설
       </p>
       {problem.boxItems.length > 0
@@ -801,7 +801,7 @@ function ExplanationBlock({ problem }: { problem: ProblemDetail }) {
       })}
       {problem.explanationMd ? (
         <div className="border-border border-t pt-2 text-sm leading-relaxed">
-          <p className="text-muted-foreground mb-1 text-xs font-mono font-semibold tracking-[0.06em] uppercase">
+          <p className="text-muted-foreground mb-1 text-xs font-semibold tracking-[0.06em] uppercase">
             종합 해설
           </p>
           {MD_IMAGE_RE.test(problem.explanationMd) ||

@@ -346,7 +346,7 @@ function AnomalyPanel({ anomalies }: { anomalies: AuditAnomalyItem[] }) {
               <div className="flex items-center justify-between gap-2">
                 <span
                   className={cn(
-                    "font-mono text-[10px] font-bold tracking-[0.06em] uppercase",
+                    "text-[10px] font-bold tracking-[0.06em] uppercase",
                     tone.text,
                   )}
                 >
@@ -365,7 +365,7 @@ function AnomalyPanel({ anomalies }: { anomalies: AuditAnomalyItem[] }) {
               <p className="text-foreground mt-1.5 text-[13px] font-semibold">
                 {a.actorName ?? "(이름 없음)"} · {a.entityType}
               </p>
-              <p className="text-muted-foreground mt-0.5 font-mono text-[11px] tabular-nums">
+              <p className="text-muted-foreground mt-0.5 text-[11px] tabular-nums">
                 {new Date(a.bucketStart).toLocaleString("ko-KR")}
               </p>
               {a.anomalyType === "bulk_delete" ? (

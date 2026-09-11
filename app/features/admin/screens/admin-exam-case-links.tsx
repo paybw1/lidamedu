@@ -451,7 +451,7 @@ function CaseSearchBox({ lawCode }: { lawCode: LawSubjectSlug }) {
                     onClick={() => copyToken(token)}
                     title="사건번호 복사"
                     className={cn(
-                      "inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[11px] font-bold transition-colors",
+                      "inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-[11px] font-bold transition-colors",
                       copied === token
                         ? "bg-emerald-500 text-white"
                         : "bg-muted hover:bg-muted/70 text-foreground",

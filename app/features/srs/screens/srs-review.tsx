@@ -560,7 +560,7 @@ function Counter({
           : "border-border bg-card text-muted-foreground";
   return (
     <div className={cn("rounded-xl border p-3", cls)}>
-      <p className="font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+      <p className="text-[10px] font-bold tracking-[0.06em] uppercase">
         {label}
       </p>
       <p className="text-foreground mt-1 text-xl font-extrabold tabular-nums">
@@ -598,7 +598,7 @@ function CardArea({
     <Surface pad={0} tone="subtle">
       <div className="px-6 pt-6 pb-2">
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="bg-primary/10 text-link inline-flex h-5 items-center rounded-full px-2 font-mono text-[10px] font-bold tracking-[0.04em] uppercase">
+          <span className="bg-primary/10 text-link inline-flex h-5 items-center rounded-full px-2 text-[10px] font-bold tracking-[0.04em] uppercase">
             {subjectLabel(item.subject)}
           </span>
           {item.topic ? (
@@ -621,7 +621,7 @@ function CardArea({
       <div className="px-6 pb-6">
         {/* Front */}
         <div className="border-border bg-muted/30 rounded-lg border p-5">
-          <p className="text-muted-foreground mb-2 font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+          <p className="text-muted-foreground mb-2 text-[10px] font-bold tracking-[0.06em] uppercase">
             앞면 (질문)
           </p>
           <p className="text-foreground text-[15px] leading-relaxed whitespace-pre-line">
@@ -630,7 +630,7 @@ function CardArea({
           {/* 조문 카드는 lawRef 가 "code#num" raw 값(링크용)이라 표시 노이즈 → 숨김.
               판례 카드의 관련 조문(사람이 읽는 참조)만 노출. */}
           {item.lawRef && item.sourceType !== "article" ? (
-            <p className="text-muted-foreground mt-2 font-mono text-[11px]">
+            <p className="text-muted-foreground mt-2 text-[11px]">
               관련 조문: {item.lawRef}
             </p>
           ) : null}
@@ -652,7 +652,7 @@ function CardArea({
         {/* Back (flipped) */}
         {flipped ? (
           <div className="border-primary/30 bg-primary/5 mt-3 rounded-lg border p-5">
-            <p className="text-link mb-2 font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+            <p className="text-link mb-2 text-[10px] font-bold tracking-[0.06em] uppercase">
               뒷면 (정답)
             </p>
             <p className="text-foreground text-[15px] leading-relaxed whitespace-pre-line">
@@ -674,7 +674,7 @@ function CardArea({
           </div>
         ) : (
           <div className="mt-4">
-            <p className="text-muted-foreground mb-2 text-center font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+            <p className="text-muted-foreground mb-2 text-center text-[10px] font-bold tracking-[0.06em] uppercase">
               얼마나 잘 떠올렸나요?
             </p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">

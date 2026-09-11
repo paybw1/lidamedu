@@ -337,7 +337,7 @@ export default function LatestMcq({ loaderData }: Route.ComponentProps) {
                   <th
                     key={label}
                     className={cn(
-                      "text-muted-foreground px-3 py-3 font-mono text-[11px] font-semibold tracking-[0.04em] whitespace-nowrap uppercase",
+                      "text-muted-foreground px-3 py-3 text-[11px] font-semibold tracking-[0.04em] whitespace-nowrap uppercase",
                       label === "No" || label === "문항"
                         ? "text-center"
                         : "text-left",

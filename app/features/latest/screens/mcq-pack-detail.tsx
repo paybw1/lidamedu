@@ -420,7 +420,7 @@ function ProblemRow({
       <div className="min-w-0 flex-1 space-y-1.5">
         <div className="flex flex-wrap items-center gap-1.5">
           {problem.problemNumber ? (
-            <Pill tone="outline" className="font-mono">
+            <Pill tone="outline">
               {problem.year ? `${problem.year}년 ` : ""}
               {problem.problemNumber}번
             </Pill>

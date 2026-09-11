@@ -281,7 +281,7 @@ export default function QnaList({ loaderData }: Route.ComponentProps) {
       </Form>
 
       <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
-        <span className="text-muted-foreground mr-1 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+        <span className="text-muted-foreground mr-1 text-[11px] font-bold tracking-[0.1em] uppercase">
           분류
         </span>
         {SCOPE_VALUES.map((s) => {
@@ -320,7 +320,7 @@ export default function QnaList({ loaderData }: Route.ComponentProps) {
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-1.5">
-        <span className="text-muted-foreground mr-1 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+        <span className="text-muted-foreground mr-1 text-[11px] font-bold tracking-[0.1em] uppercase">
           대상
         </span>
         <Link to={buildHref({ target: null })}>
@@ -349,7 +349,7 @@ export default function QnaList({ loaderData }: Route.ComponentProps) {
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-1.5">
-        <span className="text-muted-foreground mr-1 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+        <span className="text-muted-foreground mr-1 text-[11px] font-bold tracking-[0.1em] uppercase">
           과목
         </span>
         <Link to={buildHref({ subject: null })}>

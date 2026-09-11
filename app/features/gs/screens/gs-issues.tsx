@@ -160,7 +160,7 @@ function Section({
     <section className="mb-5">
       <p
         className={cn(
-          "text-muted-foreground mb-2 inline-flex items-center gap-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase",
+          "text-muted-foreground mb-2 inline-flex items-center gap-2 text-[11px] font-bold tracking-[0.1em] uppercase",
         )}
       >
         {tone === "primary" ? (

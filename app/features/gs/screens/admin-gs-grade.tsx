@@ -274,7 +274,7 @@ export default function AdminGsGrade({ loaderData }: Route.ComponentProps) {
       {pages.length > 0 ? (
         <div className="bg-card border-border mb-5 rounded-xl border p-4 shadow-sm">
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.06em] uppercase">
+            <span className="text-muted-foreground text-[11px] font-semibold tracking-[0.06em] uppercase">
               답안지 페이지 ({pages.length} / {round.expectedPages})
             </span>
             {pages.map((p) => (
@@ -324,7 +324,7 @@ export default function AdminGsGrade({ loaderData }: Route.ComponentProps) {
       {/* 매핑 안된 페이지 (메모/여백) */}
       {pages.filter((p) => p.questionIds.length === 0).length > 0 ? (
         <div className="bg-muted/30 border-border mt-6 rounded-xl border p-4 shadow-sm">
-          <p className="text-muted-foreground mb-3 font-mono text-[11px] font-bold tracking-[0.06em] uppercase">
+          <p className="text-muted-foreground mb-3 text-[11px] font-bold tracking-[0.06em] uppercase">
             매핑되지 않은 페이지 (메모/여백)
           </p>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -619,7 +619,7 @@ function QuestionGradeCard({
           {/* 좌: 문제 + 모범답안 */}
           <div className="space-y-3">
             <div>
-              <p className="text-muted-foreground mb-1.5 font-mono text-[11px] font-semibold tracking-[0.06em] uppercase">
+              <p className="text-muted-foreground mb-1.5 text-[11px] font-semibold tracking-[0.06em] uppercase">
                 문제
               </p>
               <div className="bg-muted/30 rounded-lg border p-3">
@@ -630,7 +630,7 @@ function QuestionGradeCard({
             </div>
             {question.modelAnswerMd ? (
               <div>
-                <p className="text-muted-foreground mb-1.5 font-mono text-[11px] font-semibold tracking-[0.06em] uppercase">
+                <p className="text-muted-foreground mb-1.5 text-[11px] font-semibold tracking-[0.06em] uppercase">
                   모범답안 / 채점 기준
                 </p>
                 <div className="bg-emerald-50/60 border-emerald-200/60 dark:bg-emerald-950/20 dark:border-emerald-700/40 rounded-lg border p-3">
@@ -646,7 +646,7 @@ function QuestionGradeCard({
           <div className="space-y-3">
             {/* 학생 답안 페이지 */}
             <div>
-              <p className="text-muted-foreground mb-1.5 font-mono text-[11px] font-semibold tracking-[0.06em] uppercase">
+              <p className="text-muted-foreground mb-1.5 text-[11px] font-semibold tracking-[0.06em] uppercase">
                 학생 답안 — 매핑된 페이지
               </p>
               {mappedPages.length === 0 ? (
@@ -669,7 +669,7 @@ function QuestionGradeCard({
             {/* OCR 텍스트 */}
             {hasOcrText ? (
               <div>
-                <p className="text-muted-foreground mb-1.5 font-mono text-[11px] font-semibold tracking-[0.06em] uppercase">
+                <p className="text-muted-foreground mb-1.5 text-[11px] font-semibold tracking-[0.06em] uppercase">
                   OCR 인식 텍스트 (참고)
                 </p>
                 <div className="bg-background max-h-60 overflow-auto rounded-lg border p-3">
@@ -680,7 +680,7 @@ function QuestionGradeCard({
                         <p className="text-muted-foreground text-[10px]">
                           페이지 {p.pageNumber} · {p.attachment.fileName}
                         </p>
-                        <p className="whitespace-pre-line font-mono leading-snug">
+                        <p className="whitespace-pre-line leading-snug">
                           {p.attachment.ocrText}
                         </p>
                       </div>
@@ -694,7 +694,7 @@ function QuestionGradeCard({
             {peerReviews.length > 0 ? (
               <div>
                 <div className="mb-1.5 flex flex-wrap items-center gap-2">
-                  <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.06em] uppercase">
+                  <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.06em] uppercase">
                     동료 채점 · {peerReviews.length}건
                   </p>
                   {peerAvg != null ? (
@@ -765,7 +765,7 @@ function QuestionGradeCard({
               {/* rubric 항목 */}
               {useRubric ? (
                 <div className="bg-muted/30 mb-3 rounded-lg p-3">
-                  <p className="text-muted-foreground mb-2 font-mono text-[11px] font-semibold tracking-[0.06em] uppercase">
+                  <p className="text-muted-foreground mb-2 text-[11px] font-semibold tracking-[0.06em] uppercase">
                     채점 항목
                   </p>
                   <div className="space-y-2">

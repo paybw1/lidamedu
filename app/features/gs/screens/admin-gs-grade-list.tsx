@@ -201,7 +201,7 @@ export default function AdminGsGradeList({ loaderData }: Route.ComponentProps) {
       {/* 진행 중 (미제출) */}
       {inProgress.length > 0 ? (
         <div className="mt-6">
-          <p className="text-muted-foreground mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+          <p className="text-muted-foreground mb-2 text-[11px] font-bold tracking-[0.1em] uppercase">
             진행 중 (미제출) · {inProgress.length}
           </p>
           <IndexTable

@@ -39,7 +39,7 @@ export function CohortBoardShell({
       ) : null}
       <header className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+          <p className="text-muted-foreground text-[11px] font-bold tracking-[0.1em] uppercase">
             반별 게시판
           </p>
           <h1 className="mt-1 text-[22px] leading-tight font-extrabold tracking-tight">

@@ -245,7 +245,7 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
       <SrsTrendChart trend={trend} />
 
       {/* ── 객관식 SRS 섹션 ─────────────────────────────────────────── */}
-      <p className="text-muted-foreground mt-8 mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+      <p className="text-muted-foreground mt-8 mb-2 text-[11px] font-bold tracking-[0.1em] uppercase">
         객관식 문제
       </p>
 
@@ -363,14 +363,14 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
                           {it.bodySnippet.length === 100 ? "…" : ""}
                         </p>
                         {it.primaryArticleLabel ? (
-                          <p className="text-muted-foreground mt-1 font-mono text-[11px] sm:text-[10px]">
+                          <p className="text-muted-foreground mt-1 text-[11px] sm:text-[10px]">
                             {it.primaryArticleLabel}
                             {it.year ? ` · ${it.year}` : ""}
                             {it.problemNumber ? ` · ${it.problemNumber}번` : ""}
                           </p>
                         ) : null}
                         {/* 모바일 전용 — 숨긴 컬럼(과목·간격·틀림) 보조 표기 */}
-                        <p className="text-muted-foreground mt-1 font-mono text-[11px] sm:hidden">
+                        <p className="text-muted-foreground mt-1 text-[11px] sm:hidden">
                           {it.lawCode} · {it.intervalDays}d · 틀림 {it.lapses}
                         </p>
                       </TableCell>
@@ -390,7 +390,7 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
                       >
                         {it.lapses}
                       </TableCell>
-                      <TableCell className="text-muted-foreground text-right font-mono text-[11px]">
+                      <TableCell className="text-muted-foreground text-right text-[11px]">
                         {fmtRelative(it.nextDueAt)}
                       </TableCell>
                       <TableCell className="text-right">
@@ -418,7 +418,7 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
       )}
 
       {/* ── 빈칸 학습 섹션 ─────────────────────────────────────────── */}
-      <p className="text-muted-foreground mt-8 mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+      <p className="text-muted-foreground mt-8 mb-2 text-[11px] font-bold tracking-[0.1em] uppercase">
         빈칸 학습
       </p>
 
@@ -499,7 +499,7 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
       )}
 
       {/* ── 정오문제 채점 섹션 ─────────────────────────────────────────── */}
-      <p className="text-muted-foreground mt-8 mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+      <p className="text-muted-foreground mt-8 mb-2 text-[11px] font-bold tracking-[0.1em] uppercase">
         정오문제 채점
       </p>
 
@@ -568,7 +568,7 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
       )}
 
       {/* ── 조문 정독 복습 섹션 ────────────────────────────────────── */}
-      <p className="text-muted-foreground mt-8 mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+      <p className="text-muted-foreground mt-8 mb-2 text-[11px] font-bold tracking-[0.1em] uppercase">
         조문 정독 복습
       </p>
 
@@ -762,7 +762,7 @@ function PasserBenchmarkSection({
         <BenchmarkRow label="조문 다시 볼 것" metric={benchmark.articleDue} />
         <div className="border-border/40 mt-3 flex items-center justify-between gap-2 border-t pt-2 text-[11px]">
           <span className="text-muted-foreground">총 틀린 횟수</span>
-          <span className="font-mono tabular-nums">
+          <span className="tabular-nums">
             합격자 평균 {benchmark.totalLapsesAvg.toFixed(1)}회 / 본인{" "}
             {benchmark.userTotalLapses.toLocaleString("ko-KR")}회
           </span>
@@ -792,7 +792,7 @@ function BenchmarkRow({
   return (
     <div className="grid grid-cols-3 items-center gap-2 text-xs">
       <span className="text-muted-foreground">{label}</span>
-      <span className="text-right font-mono tabular-nums">
+      <span className="text-right tabular-nums">
         평균 {metric.passerAvg.toFixed(1)} · 본인{" "}
         <span className="text-foreground font-bold">{metric.userValue}</span>
       </span>
@@ -826,7 +826,7 @@ function ArticleReviewList({ items }: { items: DueArticleReviewItem[] }) {
               <p className="text-foreground truncate text-sm font-semibold">
                 {it.displayLabel}
               </p>
-              <p className="text-muted-foreground mt-0.5 font-mono text-[11px]">
+              <p className="text-muted-foreground mt-0.5 text-[11px]">
                 {LAW_SUBJECTS[it.lawCode].name} · {it.articleNumber} · 방문{" "}
                 {it.visitCount}회 · {fmtRelative(it.lastVisitedAt)}
               </p>
@@ -865,17 +865,17 @@ function OxSrsTable({ items }: { items: DueOxRefItem[] }) {
                   {it.refSnippet || "(본문 없음)"}
                 </p>
                 {it.year && it.problemNumber ? (
-                  <p className="text-muted-foreground mt-1 font-mono text-[11px] sm:text-[10px]">
+                  <p className="text-muted-foreground mt-1 text-[11px] sm:text-[10px]">
                     {it.year} · {it.problemNumber}번
                   </p>
                 ) : null}
                 {/* 모바일 전용 — 숨긴 컬럼(유형·과목·틀림) 보조 표기 */}
-                <p className="text-muted-foreground mt-1 font-mono text-[11px] sm:hidden">
+                <p className="text-muted-foreground mt-1 text-[11px] sm:hidden">
                   {it.refType === "choice" ? "선택지" : "박스"}
                   {it.lawCode ? ` · ${it.lawCode}` : ""} · 틀림 {it.lapses}
                 </p>
               </TableCell>
-              <TableCell className="hidden font-mono text-[11px] sm:table-cell">
+              <TableCell className="hidden text-[11px] sm:table-cell">
                 {it.refType === "choice" ? "선택지" : "박스"}
               </TableCell>
               <TableCell className="hidden font-mono text-[11px] sm:table-cell">
@@ -889,7 +889,7 @@ function OxSrsTable({ items }: { items: DueOxRefItem[] }) {
               >
                 {it.lapses}
               </TableCell>
-              <TableCell className="text-muted-foreground text-right font-mono text-[11px]">
+              <TableCell className="text-muted-foreground text-right text-[11px]">
                 {fmtRelative(it.nextDueAt)}
               </TableCell>
               <TableCell className="text-right">
@@ -938,11 +938,11 @@ function BlankSrsTable({ items }: { items: DueBlankSetItem[] }) {
                 <p className="text-foreground text-sm font-semibold">
                   {it.displayLabel}
                 </p>
-                <p className="text-muted-foreground mt-0.5 font-mono text-[11px] sm:text-[10px]">
+                <p className="text-muted-foreground mt-0.5 text-[11px] sm:text-[10px]">
                   {it.articleNumber}
                 </p>
                 {/* 모바일 전용 — 숨긴 컬럼(과목·오늘 풀 빈칸·총 빈칸) 보조 표기 */}
-                <p className="text-muted-foreground mt-1 font-mono text-[11px] sm:hidden">
+                <p className="text-muted-foreground mt-1 text-[11px] sm:hidden">
                   {it.lawCode} · 오늘 {it.dueBlankCount} / 총{" "}
                   {it.totalBlankSrsCount}
                 </p>
@@ -963,7 +963,7 @@ function BlankSrsTable({ items }: { items: DueBlankSetItem[] }) {
               <TableCell className="hidden text-right font-mono text-xs tabular-nums sm:table-cell">
                 {it.totalBlankSrsCount}
               </TableCell>
-              <TableCell className="text-muted-foreground text-right font-mono text-[11px]">
+              <TableCell className="text-muted-foreground text-right text-[11px]">
                 {fmtRelative(it.earliestDueAt)}
               </TableCell>
               <TableCell className="text-right">
@@ -1010,7 +1010,7 @@ function KpiTile({
           : "border-border bg-card text-muted-foreground";
   return (
     <div className={cn("rounded-xl border p-3.5", cls)}>
-      <p className="inline-flex items-center gap-1 font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+      <p className="inline-flex items-center gap-1 text-[10px] font-bold tracking-[0.06em] uppercase">
         {icon} {label}
       </p>
       <p className="text-foreground mt-1.5 text-[22px] leading-none font-extrabold tracking-tight tabular-nums">

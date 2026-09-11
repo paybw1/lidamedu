@@ -24,7 +24,7 @@ export function MiniStat({
 }) {
   return (
     <div className="border-border bg-background rounded-lg border px-2.5 py-2">
-      <p className="text-muted-foreground font-mono text-[9px] font-semibold tracking-[0.08em] uppercase">
+      <p className="text-muted-foreground text-[9px] font-semibold tracking-[0.08em] uppercase">
         {label}
       </p>
       <p className="mt-0.5 text-sm font-bold tabular-nums">{value}</p>
@@ -98,7 +98,7 @@ export function PasserAggView({
 
       {agg.subjectTopAttempts.length > 0 ? (
         <div>
-          <p className="text-muted-foreground mb-1 font-mono text-[10px] font-semibold tracking-[0.08em] uppercase">
+          <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-[0.08em] uppercase">
             과목별 풀이 (상위 5)
           </p>
           <div className="flex flex-wrap gap-1">
@@ -281,7 +281,7 @@ export function StatsSection({ stats }: { stats: PasserAggregateStats }) {
         </div>
         {stats.subjectAverages.length > 0 ? (
           <div>
-            <p className="text-muted-foreground mb-1.5 mt-2 font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+            <p className="text-muted-foreground mb-1.5 mt-2 text-[11px] font-semibold tracking-[0.08em] uppercase">
               과목별 평균 풀이 (1+회 푼 합격자 기준)
             </p>
             <SubjectAveragesBars items={stats.subjectAverages} />

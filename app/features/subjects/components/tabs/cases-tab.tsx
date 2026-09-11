@@ -397,7 +397,7 @@ export function CasesTab({
                 <span className="text-muted-foreground">+ 검색어:</span>
                 <Badge
                   variant="secondary"
-                  className="max-w-[200px] truncate font-mono"
+                  className="max-w-[200px] truncate"
                 >
                   {filters.q}
                 </Badge>
@@ -631,7 +631,7 @@ export function CasesTab({
                     searchParams={searchParams}
                     className="hidden w-28 md:table-cell"
                   />
-                  <TableHead className="text-muted-foreground/70 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
+                  <TableHead className="text-muted-foreground/70 text-[11px] font-bold tracking-[0.04em] uppercase">
                     사건명 / 기출
                   </TableHead>
                 </TableRow>
@@ -676,7 +676,7 @@ function CasesKpiCard({
 }) {
   return (
     <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
-      <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-[0.08em] uppercase">
+      <p className="text-muted-foreground text-[11px] font-bold tracking-[0.08em] uppercase">
         {label}
       </p>
       <p className="text-foreground mt-1.5 text-[26px] leading-none font-extrabold tracking-tight tabular-nums">
@@ -780,7 +780,7 @@ function SortableCaseHead({
   }
   return (
     <TableHead
-      className={`text-muted-foreground/70 font-mono text-[11px] font-bold tracking-[0.04em] uppercase ${className ?? ""}`}
+      className={`text-muted-foreground/70 text-[11px] font-bold tracking-[0.04em] uppercase${className ?? ""}`}
     >
       <Link
         to={`?${sp.toString()}`}
@@ -903,7 +903,7 @@ function CaseRow({
       <TableCell className="text-muted-foreground hidden text-center text-xs tabular-nums md:table-cell">
         {item.decidedAt}
       </TableCell>
-      <TableCell className="font-mono text-xs font-semibold">
+      <TableCell className="text-xs font-semibold">
         {/* 사건명이 비어 있는 case(예: 2018도14446) 도 본문 진입할 수 있도록 사건번호도
             Link 로 노출. 사건명 link 와 같은 detailHref 사용. */}
         <Link

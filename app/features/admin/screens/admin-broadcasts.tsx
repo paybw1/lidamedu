@@ -178,7 +178,7 @@ export default function AdminBroadcasts({ loaderData }: Route.ComponentProps) {
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center justify-between gap-2">
                       <span className="text-[13px] font-semibold">{s.label}</span>
-                      <span className="text-foreground font-mono text-xs font-bold tabular-nums">
+                      <span className="text-foreground text-xs font-bold tabular-nums">
                         {n.toLocaleString("ko-KR")}명
                       </span>
                     </span>

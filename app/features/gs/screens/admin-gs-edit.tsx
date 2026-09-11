@@ -818,7 +818,7 @@ function QuestionEditor({
             </p>
             <span
               className={cn(
-                "ml-auto font-mono text-[11px] tabular-nums",
+                "ml-auto text-[11px] tabular-nums",
                 rubricOver
                   ? "text-rose-600 font-semibold"
                   : "text-muted-foreground",

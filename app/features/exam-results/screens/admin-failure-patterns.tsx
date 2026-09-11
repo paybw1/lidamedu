@@ -118,7 +118,7 @@ export default function AdminFailurePatterns({
         <>
           {/* 핵심 격차 TOP 3 */}
           <section className="mb-5">
-            <p className="text-muted-foreground mb-2 font-mono text-[11px] font-semibold tracking-[0.1em] uppercase">
+            <p className="text-muted-foreground mb-2 text-[11px] font-semibold tracking-[0.1em] uppercase">
               두 그룹이 가장 갈리는 지표 (격차 상위 3)
             </p>
             <p className="text-muted-foreground mb-3 text-xs">
@@ -133,7 +133,7 @@ export default function AdminFailurePatterns({
 
           {/* 전체 비교 표 */}
           <section>
-            <p className="text-muted-foreground mb-2 font-mono text-[11px] font-semibold tracking-[0.1em] uppercase">
+            <p className="text-muted-foreground mb-2 text-[11px] font-semibold tracking-[0.1em] uppercase">
               전체 지표 비교
             </p>
             <IndexTable
@@ -191,7 +191,7 @@ function SampleTile({
     >
       <p
         className={cn(
-          "font-mono text-[10px] font-semibold tracking-[0.08em] uppercase opacity-80",
+          "text-[10px] font-semibold tracking-[0.08em] uppercase opacity-80",
           tone === "emerald"
             ? "text-emerald-700 dark:text-emerald-300"
             : "text-rose-600 dark:text-rose-400",

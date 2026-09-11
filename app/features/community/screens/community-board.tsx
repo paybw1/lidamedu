@@ -267,7 +267,7 @@ function PasserSummariesSection({
   return (
     <section className="mb-3.5">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+        <p className="text-muted-foreground text-[11px] font-bold tracking-[0.1em] uppercase">
           공식 합격자 수기
         </p>
         <Form method="get" className="flex items-center gap-2 text-[11px]">
@@ -308,7 +308,7 @@ function PasserSummariesSection({
               <div className="border-emerald-300/60 bg-emerald-50/50 dark:border-emerald-700/40 dark:bg-emerald-950/20 rounded-xl border p-3">
                 <div className="mb-1 flex flex-wrap items-center gap-1.5">
                   <Chip tone="emerald">합격</Chip>
-                  <span className="text-muted-foreground font-mono text-[10px] tabular-nums">
+                  <span className="text-muted-foreground text-[10px] tabular-nums">
                     {s.examYear} · {s.examRound === "first" ? "1차" : "2차"}
                   </span>
                   {s.scoreBucket ? (
@@ -349,7 +349,7 @@ function PopularSection({
 }) {
   return (
     <section className="mb-3.5">
-      <p className="text-muted-foreground mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+      <p className="text-muted-foreground mb-2 text-[11px] font-bold tracking-[0.1em] uppercase">
         이번 주 화제 (7일)
       </p>
       <ul className="grid gap-2 sm:grid-cols-3">

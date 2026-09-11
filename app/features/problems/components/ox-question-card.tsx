@@ -46,11 +46,11 @@ export function QuestionCard({
         <div className="min-w-0 flex-1 space-y-2.5">
           <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
             {item.year && item.problemNumber ? (
-              <Badge variant="outline" className="font-mono">
+              <Badge variant="outline">
                 {item.year} · {item.problemNumber}번
               </Badge>
             ) : null}
-            <Badge variant="secondary" className="font-mono">
+            <Badge variant="secondary">
               {item.refType === "choice" ? "보기" : "박스"}
             </Badge>
             {submitted && correct === true && (

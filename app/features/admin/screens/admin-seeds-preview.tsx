@@ -237,7 +237,7 @@ function PreviewTable({ preview }: { preview: SeedDiffResult }) {
   return (
     <section className="mt-4">
       <div className="mb-2 flex flex-wrap items-center gap-2">
-        <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+        <p className="text-muted-foreground text-[11px] font-bold tracking-[0.1em] uppercase">
           미리보기 결과
         </p>
         <Chip tone="amber">변경 {preview.changedCount}</Chip>
@@ -250,22 +250,22 @@ function PreviewTable({ preview }: { preview: SeedDiffResult }) {
           <table className="w-full border-collapse">
             <thead className="sticky top-0 z-10">
               <tr className="bg-muted/60">
-                <th className="text-muted-foreground px-3 py-2.5 text-left font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
+                <th className="text-muted-foreground px-3 py-2.5 text-left text-[11px] font-semibold tracking-[0.04em] uppercase">
                   대상
                 </th>
-                <th className="text-muted-foreground px-3 py-2.5 text-right font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
+                <th className="text-muted-foreground px-3 py-2.5 text-right text-[11px] font-semibold tracking-[0.04em] uppercase">
                   현재
                 </th>
                 <th className="text-muted-foreground px-3 py-2.5 text-right font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
                   →
                 </th>
-                <th className="text-muted-foreground px-3 py-2.5 text-right font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
+                <th className="text-muted-foreground px-3 py-2.5 text-right text-[11px] font-semibold tracking-[0.04em] uppercase">
                   신규
                 </th>
-                <th className="text-muted-foreground px-3 py-2.5 text-left font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
+                <th className="text-muted-foreground px-3 py-2.5 text-left text-[11px] font-semibold tracking-[0.04em] uppercase">
                   상태
                 </th>
-                <th className="text-muted-foreground px-3 py-2.5 text-left font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
+                <th className="text-muted-foreground px-3 py-2.5 text-left text-[11px] font-semibold tracking-[0.04em] uppercase">
                   비고
                 </th>
               </tr>
@@ -279,7 +279,7 @@ function PreviewTable({ preview }: { preview: SeedDiffResult }) {
                     className="border-border/60 border-t first:border-t-0"
                   >
                     <td className="px-3 py-2 font-mono text-xs">{r.key}</td>
-                    <td className="px-3 py-2 text-right font-mono text-xs tabular-nums">
+                    <td className="px-3 py-2 text-right text-xs tabular-nums">
                       {r.currentValue ?? "—"}
                     </td>
                     <td className="text-muted-foreground px-3 py-2 text-right text-xs">
@@ -287,7 +287,7 @@ function PreviewTable({ preview }: { preview: SeedDiffResult }) {
                     </td>
                     <td
                       className={cn(
-                        "px-3 py-2 text-right font-mono text-xs font-bold tabular-nums",
+                        "px-3 py-2 text-right text-xs font-bold tabular-nums",
                         r.status === "changed"
                           ? "text-amber-700 dark:text-amber-300"
                           : "",

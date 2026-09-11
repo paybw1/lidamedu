@@ -80,7 +80,7 @@ export default function SubjectOx({ loaderData }: Route.ComponentProps) {
 
         {/* Header */}
         <header className="mb-6">
-          <p className="mb-2 inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.10em] uppercase text-link">
+          <p className="mb-2 inline-flex items-center gap-1.5 text-[11px] font-bold tracking-[0.10em] uppercase text-link">
             <ShuffleIcon className="size-3.5" />
             정오문제 퀴즈
           </p>
@@ -114,7 +114,7 @@ export default function SubjectOx({ loaderData }: Route.ComponentProps) {
           <div className="rounded-xl border bg-card shadow-sm">
             {/* Card header — eyebrow label */}
             <div className="border-b border-border/60 px-6 py-4">
-              <p className="font-mono text-[11px] font-bold tracking-[0.10em] uppercase text-muted-foreground">
+              <p className="text-[11px] font-bold tracking-[0.10em] uppercase text-muted-foreground">
                 지문
               </p>
             </div>

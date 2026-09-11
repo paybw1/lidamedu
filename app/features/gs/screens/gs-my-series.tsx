@@ -138,7 +138,7 @@ export default function GsMySeries({ loaderData }: Route.ComponentProps) {
                       <th
                         key={label}
                         className={cn(
-                          "text-muted-foreground px-3.5 py-2.5 font-mono text-[11px] font-bold tracking-[0.06em] whitespace-nowrap uppercase",
+                          "text-muted-foreground px-3.5 py-2.5 text-[11px] font-bold tracking-[0.06em] whitespace-nowrap uppercase",
                           align === "right" ? "text-right" : "text-left",
                         )}
                       >
@@ -251,13 +251,13 @@ function ScoreBarPair({
   return (
     <div className="w-40 space-y-1">
       <div className="flex items-center gap-1.5">
-        <span className="text-link w-7 shrink-0 font-mono text-[10px]">
+        <span className="text-link w-7 shrink-0 text-[10px]">
           본인
         </span>
         <Bar value={myTotal} max={max} tone="primary" className="flex-1" />
       </div>
       <div className="flex items-center gap-1.5">
-        <span className="text-muted-foreground w-7 shrink-0 font-mono text-[10px]">
+        <span className="text-muted-foreground w-7 shrink-0 text-[10px]">
           평균
         </span>
         <Bar
@@ -339,7 +339,7 @@ function ZScoreTrend({
                   />
                 )}
               </div>
-              <p className="text-muted-foreground mt-1.5 font-mono text-[10px] tabular-nums">
+              <p className="text-muted-foreground mt-1.5 text-[10px] tabular-nums">
                 {p.roundNumber ?? i + 1}회
               </p>
               <p

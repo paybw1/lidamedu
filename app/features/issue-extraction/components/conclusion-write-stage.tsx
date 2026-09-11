@@ -207,7 +207,7 @@ export function ConclusionWriteStage({
       </ul>
 
       <div className="border-border bg-card space-y-2 rounded-2xl border p-4 shadow-sm">
-        <p className="text-muted-foreground font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+        <p className="text-muted-foreground text-[10px] font-bold tracking-[0.06em] uppercase">
           답안 목차 (순서 · 분량 비중)
         </p>
         <Textarea

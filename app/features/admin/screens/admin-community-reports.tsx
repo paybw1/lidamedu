@@ -195,7 +195,7 @@ function ReportCard({ item }: { item: ReportItem }) {
           </p>
         ) : null}
         <div className="mt-3 rounded-md bg-rose-50 px-3 py-2 dark:bg-rose-950/30">
-          <p className="text-muted-foreground font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+          <p className="text-muted-foreground text-[10px] font-bold tracking-[0.06em] uppercase">
             신고 사유 — {item.reporterName ?? "(이름 없음)"}
           </p>
           <p className="text-foreground mt-1 text-[13px] leading-relaxed whitespace-pre-line">

@@ -226,7 +226,7 @@ export default function LatestEssay({ loaderData }: Route.ComponentProps) {
                     {ORIGIN_LABEL[p.origin as ProblemOrigin] ?? p.origin}
                   </Pill>
                   {p.year ? (
-                    <Pill tone="outline" className="font-mono">
+                    <Pill tone="outline">
                       {p.year}
                       {p.problemNumber ? ` · ${p.problemNumber}번` : ""}
                     </Pill>

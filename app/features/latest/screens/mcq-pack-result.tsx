@@ -319,7 +319,7 @@ export default function McqPackResult({ loaderData }: Route.ComponentProps) {
                   <th
                     key={h}
                     className={cn(
-                      "text-muted-foreground px-3 py-3 font-mono text-[11px] font-semibold tracking-[0.04em] whitespace-nowrap uppercase",
+                      "text-muted-foreground px-3 py-3 text-[11px] font-semibold tracking-[0.04em] whitespace-nowrap uppercase",
                       i >= 4 ? "text-right" : i <= 1 ? "text-center" : "text-left",
                     )}
                   >
@@ -546,7 +546,7 @@ function ScoreSummary({
   return (
     <div className="border-border bg-card mb-4 flex flex-wrap items-center justify-between gap-4 rounded-2xl border p-5 shadow-sm">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1.5">
-        <span className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
+        <span className="text-muted-foreground text-[11px] font-semibold tracking-[0.04em] uppercase">
           점수
         </span>
         <span className="text-link text-4xl font-extrabold tabular-nums">
@@ -724,13 +724,13 @@ function AccuracyTable({
       <table className="w-full border-collapse">
         <thead>
           <tr className="border-border bg-muted/60 border-b">
-            <th className="text-muted-foreground px-4 py-2.5 text-left font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
+            <th className="text-muted-foreground px-4 py-2.5 text-left text-[11px] font-semibold tracking-[0.04em] uppercase">
               {headLabel}
             </th>
-            <th className="text-muted-foreground px-4 py-2.5 text-right font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
+            <th className="text-muted-foreground px-4 py-2.5 text-right text-[11px] font-semibold tracking-[0.04em] uppercase">
               본인
             </th>
-            <th className="text-muted-foreground px-4 py-2.5 text-right font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
+            <th className="text-muted-foreground px-4 py-2.5 text-right text-[11px] font-semibold tracking-[0.04em] uppercase">
               전체
             </th>
           </tr>
@@ -796,7 +796,7 @@ function KpiCard({
 }) {
   return (
     <div className="border-border bg-card rounded-2xl border p-4 shadow-sm">
-      <p className="text-muted-foreground inline-flex items-center gap-1 font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
+      <p className="text-muted-foreground inline-flex items-center gap-1 text-[11px] font-semibold tracking-[0.04em] uppercase">
         {icon}
         {label}
       </p>

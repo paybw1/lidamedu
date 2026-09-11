@@ -91,7 +91,7 @@ export function SubjectStudyStatus({
     >
       <h2
         id="subject-stat-heading"
-        className="text-muted-foreground font-mono text-[11px] font-bold tracking-[0.08em] uppercase"
+        className="text-muted-foreground text-[11px] font-bold tracking-[0.08em] uppercase"
       >
         내 학습 현황
       </h2>
@@ -133,7 +133,7 @@ export function SubjectStudyStatus({
             <StudyIcon className="size-4" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-muted-foreground font-mono text-[10px] font-bold tracking-[0.1em] uppercase">
+            <p className="text-muted-foreground text-[10px] font-bold tracking-[0.1em] uppercase">
               {lastLabel}
             </p>
             <p className="text-foreground mt-0.5 truncate text-[15px] font-extrabold leading-tight">

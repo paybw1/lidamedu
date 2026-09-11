@@ -132,7 +132,7 @@ export default function AdminGsUsage({ loaderData }: Route.ComponentProps) {
       {/* 7일 추이 표 */}
       <section className="mb-6">
         <div className="mb-2 flex items-baseline justify-between">
-          <p className="font-mono text-[11px] font-bold tracking-[0.1em] uppercase text-muted-foreground">
+          <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-muted-foreground">
             최근 {days}일 추이
           </p>
           <div className="flex gap-1 text-xs">
@@ -157,7 +157,7 @@ export default function AdminGsUsage({ loaderData }: Route.ComponentProps) {
 
       {/* 비용 상위 회차 */}
       <section>
-        <p className="mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase text-muted-foreground">
+        <p className="mb-2 text-[11px] font-bold tracking-[0.1em] uppercase text-muted-foreground">
           비용 상위 회차 (최근 {days}일)
         </p>
         <TopRoundsTable rows={topRounds} />
@@ -202,7 +202,7 @@ function CapCard({
           : "bg-muted-foreground/30";
   return (
     <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
-      <p className="text-muted-foreground inline-flex items-center gap-1.5 font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+      <p className="text-muted-foreground inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.06em] uppercase">
         <Icon className="size-3" /> {label}
       </p>
       <p className="text-foreground mt-1 text-[22px] font-extrabold tracking-tight tabular-nums">

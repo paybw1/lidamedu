@@ -144,7 +144,7 @@ export function StatCard({
     <>
       <p
         className={cn(
-          "font-mono text-[10px] font-bold tracking-[0.06em] uppercase",
+          "text-[10px] font-bold tracking-[0.06em] uppercase",
           labelCls,
         )}
       >
@@ -195,7 +195,7 @@ export function StatSection({
 }) {
   return (
     <section className="mb-6" data-testid={testid}>
-      <p className="text-muted-foreground mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+      <p className="text-muted-foreground mb-2 text-[11px] font-bold tracking-[0.1em] uppercase">
         {label}
       </p>
       <div className={STAT_GRID[cols]}>{children}</div>
@@ -340,7 +340,7 @@ export function IndexTable({
                   key={i}
                   style={h.width ? { width: h.width } : undefined}
                   className={cn(
-                    "text-muted-foreground px-3 py-2.5 font-mono text-[11px] font-semibold tracking-[0.04em] whitespace-nowrap uppercase",
+                    "text-muted-foreground px-3 py-2.5 text-[11px] font-semibold tracking-[0.04em] whitespace-nowrap uppercase",
                     h.align === "right"
                       ? "text-right"
                       : h.align === "center"

@@ -320,18 +320,18 @@ function PeerMatrix({
             <table className="w-full min-w-[640px] border-collapse text-sm">
               <thead>
                 <tr className="bg-muted/60 border-b">
-                  <th className="bg-muted/60 text-muted-foreground sticky left-0 z-10 px-3 py-2.5 text-left font-mono text-[11px] font-bold tracking-[0.06em] uppercase">
+                  <th className="bg-muted/60 text-muted-foreground sticky left-0 z-10 px-3 py-2.5 text-left text-[11px] font-bold tracking-[0.06em] uppercase">
                     항목
                   </th>
                   {columns.map((c, i) => (
                     <th
                       key={c.assignmentId}
-                      className="text-muted-foreground border-l px-3 py-2.5 text-right font-mono text-[11px] font-bold tracking-[0.06em] whitespace-nowrap uppercase"
+                      className="text-muted-foreground border-l px-3 py-2.5 text-right text-[11px] font-bold tracking-[0.06em] whitespace-nowrap uppercase"
                     >
                       {colLabels[i]}
                     </th>
                   ))}
-                  <th className="text-muted-foreground border-l px-3 py-2.5 text-right font-mono text-[11px] font-bold tracking-[0.06em] whitespace-nowrap uppercase">
+                  <th className="text-muted-foreground border-l px-3 py-2.5 text-right text-[11px] font-bold tracking-[0.06em] whitespace-nowrap uppercase">
                     평균
                   </th>
                 </tr>
@@ -420,7 +420,7 @@ function QuestionMatrixCard({
           </Chip>
         </div>
         <section>
-          <p className="text-muted-foreground mb-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+          <p className="text-muted-foreground mb-1.5 text-[11px] font-bold tracking-[0.1em] uppercase">
             문제
           </p>
           <div className="bg-muted/50 max-h-40 overflow-auto rounded-xl border p-3.5">
@@ -431,7 +431,7 @@ function QuestionMatrixCard({
         </section>
         {question.modelAnswerMd ? (
           <section>
-            <p className="text-muted-foreground mb-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+            <p className="text-muted-foreground mb-1.5 text-[11px] font-bold tracking-[0.1em] uppercase">
               모범답안 / 채점 기준
             </p>
             <div className="max-h-44 overflow-auto rounded-xl border border-emerald-500/30 bg-emerald-500/[0.07] p-3.5">
@@ -446,18 +446,18 @@ function QuestionMatrixCard({
           <table className="w-full min-w-[720px] border-collapse text-sm">
             <thead>
               <tr className="bg-muted/60 border-b">
-                <th className="bg-muted/60 text-muted-foreground sticky left-0 z-10 w-44 px-3 py-2.5 text-left font-mono text-[11px] font-bold tracking-[0.06em] uppercase">
+                <th className="bg-muted/60 text-muted-foreground sticky left-0 z-10 w-44 px-3 py-2.5 text-left text-[11px] font-bold tracking-[0.06em] uppercase">
                   소문제 / 배점
                 </th>
                 {columns.map((c, i) => (
                   <th
                     key={c.assignmentId}
-                    className="text-muted-foreground border-l px-2 py-2.5 text-center font-mono text-[11px] font-bold tracking-[0.06em] whitespace-nowrap uppercase"
+                    className="text-muted-foreground border-l px-2 py-2.5 text-center text-[11px] font-bold tracking-[0.06em] whitespace-nowrap uppercase"
                   >
                     {colLabels[i]}
                   </th>
                 ))}
-                <th className="text-muted-foreground border-l px-2 py-2.5 text-center font-mono text-[11px] font-bold tracking-[0.06em] whitespace-nowrap uppercase">
+                <th className="text-muted-foreground border-l px-2 py-2.5 text-center text-[11px] font-bold tracking-[0.06em] whitespace-nowrap uppercase">
                   평균
                 </th>
               </tr>
@@ -502,7 +502,7 @@ function QuestionMatrixCard({
                   >
                     <td className="bg-card sticky left-0 z-10 px-3 py-2 align-top">
                       <p className="text-sm font-semibold">{cr.label}</p>
-                      <p className="text-muted-foreground font-mono text-[10px]">
+                      <p className="text-muted-foreground text-[10px]">
                         / {cr.maxPoints}점
                       </p>
                     </td>

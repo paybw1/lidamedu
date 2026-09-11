@@ -180,7 +180,7 @@ export function SubjectCard({
             <span className="text-muted-foreground text-3xl font-extrabold tracking-tight">
               0<span className="text-base">%</span>
             </span>
-            <span className="text-ink-faint font-mono text-[9px] font-semibold tracking-[0.12em] uppercase">
+            <span className="text-ink-faint text-[9px] font-semibold tracking-[0.12em] uppercase">
               진도
             </span>
           </div>
@@ -233,7 +233,7 @@ export function SubjectCard({
               {s.progressPct}
               <span className="text-ink-soft text-base">%</span>
             </span>
-            <span className="text-muted-foreground font-mono text-[9px] font-semibold tracking-[0.12em] uppercase">
+            <span className="text-muted-foreground text-[9px] font-semibold tracking-[0.12em] uppercase">
               진도
             </span>
           </div>
@@ -304,7 +304,7 @@ export function SubjectCard({
       {/* 이어서 보기 — 조문·판례·문제별 마지막 학습 지점(각각 그 자리로 바로 이동) */}
       {s.lastPoints.length > 0 ? (
         <div className="mb-3.5 space-y-1.5">
-          <div className="text-muted-foreground font-mono text-[9px] font-bold tracking-[0.1em] uppercase">
+          <div className="text-muted-foreground text-[9px] font-bold tracking-[0.1em] uppercase">
             이어서 보기
           </div>
           {s.lastPoints.map((p) => {
@@ -476,7 +476,7 @@ export function ScienceCard({ s }: { s: LauncherScience }) {
             {s.progressPct}
             <span className="text-ink-soft text-base">%</span>
           </span>
-          <span className="text-muted-foreground font-mono text-[9px] font-semibold tracking-[0.12em] uppercase">
+          <span className="text-muted-foreground text-[9px] font-semibold tracking-[0.12em] uppercase">
             진도
           </span>
         </div>

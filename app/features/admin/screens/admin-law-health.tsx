@@ -112,7 +112,7 @@ export default function AdminLawHealth({ loaderData }: Route.ComponentProps) {
                 </h2>
                 <span
                   className={cn(
-                    "font-mono text-[10px] font-bold tracking-[0.06em] uppercase",
+                    "text-[10px] font-bold tracking-[0.06em] uppercase",
                     tone.text,
                   )}
                 >
@@ -150,7 +150,7 @@ export default function AdminLawHealth({ loaderData }: Route.ComponentProps) {
       </div>
 
       <section className="mt-6">
-        <p className="text-muted-foreground mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+        <p className="text-muted-foreground mb-2 text-[11px] font-bold tracking-[0.1em] uppercase">
           8지표 매트릭스
         </p>
         <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
@@ -158,18 +158,18 @@ export default function AdminLawHealth({ loaderData }: Route.ComponentProps) {
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-muted/60">
-                  <th className="text-muted-foreground sticky left-0 bg-muted/60 px-3 py-2.5 text-left font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
+                  <th className="text-muted-foreground sticky left-0 bg-muted/60 px-3 py-2.5 text-left text-[11px] font-semibold tracking-[0.04em] uppercase">
                     과목
                   </th>
                   {LAW_HEALTH_METRIC_KEYS.map((k) => (
                     <th
                       key={k}
-                      className="text-muted-foreground px-3 py-2.5 text-right font-mono text-[11px] font-semibold tracking-[0.04em] uppercase"
+                      className="text-muted-foreground px-3 py-2.5 text-right text-[11px] font-semibold tracking-[0.04em] uppercase"
                     >
                       {LAW_HEALTH_METRIC_LABEL[k]}
                     </th>
                   ))}
-                  <th className="text-muted-foreground px-3 py-2.5 text-right font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
+                  <th className="text-muted-foreground px-3 py-2.5 text-right text-[11px] font-semibold tracking-[0.04em] uppercase">
                     종합
                   </th>
                 </tr>

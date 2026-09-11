@@ -285,7 +285,7 @@ function PeerQuestionCard({
         </div>
 
         <section>
-          <p className="text-muted-foreground mb-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+          <p className="text-muted-foreground mb-1.5 text-[11px] font-bold tracking-[0.1em] uppercase">
             문제
           </p>
           <div className="bg-muted/50 rounded-xl border p-3.5">
@@ -297,7 +297,7 @@ function PeerQuestionCard({
 
         {question.modelAnswerMd ? (
           <section>
-            <p className="text-muted-foreground mb-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+            <p className="text-muted-foreground mb-1.5 text-[11px] font-bold tracking-[0.1em] uppercase">
               모범답안 / 채점 기준
             </p>
             <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/[0.07] p-3.5">
@@ -309,7 +309,7 @@ function PeerQuestionCard({
         ) : null}
 
         <section>
-          <p className="text-muted-foreground mb-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+          <p className="text-muted-foreground mb-1.5 text-[11px] font-bold tracking-[0.1em] uppercase">
             동료의 답안 — 매핑된 페이지 (익명)
           </p>
           {mappedPages.length === 0 ? (
@@ -331,11 +331,11 @@ function PeerQuestionCard({
 
         {ocrText ? (
           <section>
-            <p className="text-muted-foreground mb-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+            <p className="text-muted-foreground mb-1.5 text-[11px] font-bold tracking-[0.1em] uppercase">
               판독 텍스트 (참고)
             </p>
             <div className="bg-muted/50 max-h-60 overflow-auto rounded-xl border p-3.5">
-              <p className="text-foreground/80 font-mono text-xs leading-relaxed whitespace-pre-line">
+              <p className="text-foreground/80 text-xs leading-relaxed whitespace-pre-line">
                 {ocrText}
               </p>
             </div>
@@ -345,7 +345,7 @@ function PeerQuestionCard({
         <section className="bg-muted/40 rounded-xl border p-3.5">
           <div className="mb-2.5 flex flex-wrap items-center gap-2">
             <label className="inline-flex items-center gap-1.5 text-xs">
-              <span className="text-muted-foreground font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+              <span className="text-muted-foreground text-[11px] font-bold tracking-[0.1em] uppercase">
                 점수
               </span>
               <input

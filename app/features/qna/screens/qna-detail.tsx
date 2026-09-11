@@ -931,7 +931,7 @@ function CitationList({
 }) {
   return (
     <div className="border-border/60 mt-4 border-t pt-3">
-      <p className="text-muted-foreground mb-1.5 font-mono text-[10px] font-bold tracking-[0.1em] uppercase">
+      <p className="text-muted-foreground mb-1.5 text-[10px] font-bold tracking-[0.1em] uppercase">
         출처
       </p>
       <ul className="flex flex-col gap-1">

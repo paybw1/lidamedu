@@ -70,7 +70,7 @@ export function LowerCourtSheet({
           <SheetTitle className="flex flex-wrap items-center gap-2 text-sm font-semibold">
             <ScrollTextIcon className="text-link size-4" />
             원심 판결문
-            <span className="text-muted-foreground font-mono text-xs font-normal">
+            <span className="text-muted-foreground text-xs font-normal">
               {label}
             </span>
           </SheetTitle>

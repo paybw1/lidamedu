@@ -321,7 +321,7 @@ export default function ScienceProblemViewer({
             ) : null}
             <span
               className={cn(
-                "inline-flex items-center rounded-full px-2.5 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wide",
+                "inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide",
                 sessionMode === "exam"
                   ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
                   : "bg-muted text-muted-foreground",

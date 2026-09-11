@@ -239,7 +239,7 @@ export default function GsDistinguished({ loaderData }: Route.ComponentProps) {
                   <Chip tone="neutral">{q.maxScore}점 만점</Chip>
                 </div>
                 <div className="bg-muted/50 rounded-xl border p-3.5">
-                  <p className="text-muted-foreground mb-1 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+                  <p className="text-muted-foreground mb-1 text-[11px] font-bold tracking-[0.1em] uppercase">
                     문제
                   </p>
                   <p className="text-foreground/85 text-sm leading-relaxed whitespace-pre-line">
@@ -248,7 +248,7 @@ export default function GsDistinguished({ loaderData }: Route.ComponentProps) {
                 </div>
                 {q.modelAnswerMd ? (
                   <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/[0.07] p-3.5">
-                    <p className="text-muted-foreground mb-1 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+                    <p className="text-muted-foreground mb-1 text-[11px] font-bold tracking-[0.1em] uppercase">
                       모범답안
                     </p>
                     <p className="text-foreground/85 text-sm leading-relaxed whitespace-pre-line">
@@ -395,7 +395,7 @@ function DistinguishedItem({
             <summary className="text-muted-foreground cursor-pointer text-[11px] font-medium">
               자동 인식(OCR) 텍스트 펼치기
             </summary>
-            <p className="text-foreground/80 mt-2 font-mono text-[11px] leading-relaxed whitespace-pre-line">
+            <p className="text-foreground/80 mt-2 text-[11px] leading-relaxed whitespace-pre-line">
               {item.ocrTexts.join("\n\n---\n\n")}
             </p>
           </details>

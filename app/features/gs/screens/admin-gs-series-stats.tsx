@@ -213,13 +213,13 @@ export default function AdminGsSeriesStats({
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="border-border bg-muted/60 border-b">
-                    <th className="text-muted-foreground sticky left-0 z-10 bg-inherit min-w-[180px] px-3 py-2.5 text-left font-mono text-[11px] font-semibold tracking-[0.04em] uppercase whitespace-nowrap">
+                    <th className="text-muted-foreground sticky left-0 z-10 bg-inherit min-w-[180px] px-3 py-2.5 text-left text-[11px] font-semibold tracking-[0.04em] uppercase whitespace-nowrap">
                       학생
                     </th>
                     {roundIds.map((rid) => (
                       <th
                         key={rid}
-                        className="text-muted-foreground w-[110px] px-3 py-2.5 text-center font-mono text-[11px] font-semibold tracking-[0.04em] uppercase whitespace-nowrap"
+                        className="text-muted-foreground w-[110px] px-3 py-2.5 text-center text-[11px] font-semibold tracking-[0.04em] uppercase whitespace-nowrap"
                       >
                         {roundLabels.get(rid)?.label}
                       </th>
@@ -309,7 +309,7 @@ export default function AdminGsSeriesStats({
 
 function SectionTitle({ title }: { title: string }) {
   return (
-    <p className="text-muted-foreground mb-2 font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+    <p className="text-muted-foreground mb-2 text-[11px] font-semibold tracking-[0.08em] uppercase">
       {title}
     </p>
   );

@@ -244,7 +244,7 @@ export default function AdminCohortStats({
           <Card>
             <CardHeader className="pb-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+                <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.08em] uppercase">
                   정답률 분포
                 </p>
                 <span className="border-border text-muted-foreground rounded-full border px-2 py-0.5 text-[10px]">
@@ -285,7 +285,7 @@ export default function AdminCohortStats({
 
           {/* 과목별 평균 — 1차(객관식)/2차(주관식) 분리 */}
           <div>
-            <p className="text-muted-foreground mb-2 font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+            <p className="text-muted-foreground mb-2 text-[11px] font-semibold tracking-[0.08em] uppercase">
               과목별 평균
             </p>
             <IndexTable
@@ -312,7 +312,7 @@ export default function AdminCohortStats({
                   <tr>
                     <td
                       colSpan={4}
-                      className="bg-muted/60 text-link border-border/60 border-b px-3 py-1.5 font-mono text-[11px] font-bold tracking-[0.08em] uppercase"
+                      className="bg-muted/60 text-link border-border/60 border-b px-3 py-1.5 text-[11px] font-bold tracking-[0.08em] uppercase"
                     >
                       {g.label}
                     </td>
@@ -481,7 +481,7 @@ function WeeklyTrendCard({ weeks }: { weeks: CohortWeeklyTrendItem[] }) {
     <Card>
       <CardHeader className="pb-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+          <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.08em] uppercase">
             최근 {weeks.length}주 추이
           </p>
           <span className="border-border text-muted-foreground rounded-full border px-2 py-0.5 text-[10px]">
@@ -537,7 +537,7 @@ function KpiCard({
 }) {
   return (
     <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
-      <p className="text-muted-foreground inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold tracking-[0.06em] uppercase">
+      <p className="text-muted-foreground inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.06em] uppercase">
         <Icon className="size-3" />
         {label}
       </p>
@@ -572,7 +572,7 @@ function RankCard({
   return (
     <Card>
       <CardHeader className="pb-2">
-        <p className="inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+        <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase">
           <Icon className={cn("size-3.5", tone)} />
           {label}
         </p>
@@ -656,7 +656,7 @@ function CohortWeakNodesCard({
     <Card>
       <CardHeader className="pb-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+          <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase">
             <TargetIcon className="size-3.5 text-rose-500" /> 반 공통 약점 단원
           </p>
           <div className="flex items-center gap-2">
@@ -831,32 +831,32 @@ function CohortSrsSection({
           </div>
         ) : (
           <div>
-            <p className="text-muted-foreground mb-2 font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+            <p className="text-muted-foreground mb-2 text-[11px] font-semibold tracking-[0.08em] uppercase">
               정체 top 5 (전체 due 합산)
             </p>
             <div className="border-border overflow-hidden rounded-lg border">
               <table className="w-full">
                 <thead className="bg-muted/60">
                   <tr>
-                    <th className="text-muted-foreground px-3 py-2 text-left font-mono text-[10px] font-semibold tracking-[0.04em] uppercase">
+                    <th className="text-muted-foreground px-3 py-2 text-left text-[10px] font-semibold tracking-[0.04em] uppercase">
                       학생
                     </th>
-                    <th className="text-muted-foreground px-2 py-2 text-right font-mono text-[10px] font-semibold tracking-[0.04em] uppercase">
+                    <th className="text-muted-foreground px-2 py-2 text-right text-[10px] font-semibold tracking-[0.04em] uppercase">
                       총 due
                     </th>
-                    <th className="text-muted-foreground hidden px-2 py-2 text-right font-mono text-[10px] font-semibold tracking-[0.04em] uppercase sm:table-cell">
+                    <th className="text-muted-foreground hidden px-2 py-2 text-right text-[10px] font-semibold tracking-[0.04em] uppercase sm:table-cell">
                       객관식
                     </th>
-                    <th className="text-muted-foreground hidden px-2 py-2 text-right font-mono text-[10px] font-semibold tracking-[0.04em] uppercase sm:table-cell">
+                    <th className="text-muted-foreground hidden px-2 py-2 text-right text-[10px] font-semibold tracking-[0.04em] uppercase sm:table-cell">
                       빈칸
                     </th>
-                    <th className="text-muted-foreground hidden px-2 py-2 text-right font-mono text-[10px] font-semibold tracking-[0.04em] uppercase sm:table-cell">
+                    <th className="text-muted-foreground hidden px-2 py-2 text-right text-[10px] font-semibold tracking-[0.04em] uppercase sm:table-cell">
                       정오문제
                     </th>
-                    <th className="text-muted-foreground hidden px-2 py-2 text-right font-mono text-[10px] font-semibold tracking-[0.04em] uppercase sm:table-cell">
+                    <th className="text-muted-foreground hidden px-2 py-2 text-right text-[10px] font-semibold tracking-[0.04em] uppercase sm:table-cell">
                       조문
                     </th>
-                    <th className="text-muted-foreground px-2 py-2 text-right font-mono text-[10px] font-semibold tracking-[0.04em] uppercase">
+                    <th className="text-muted-foreground px-2 py-2 text-right text-[10px] font-semibold tracking-[0.04em] uppercase">
                       가장 오래
                     </th>
                     <th />
@@ -926,7 +926,7 @@ function SrsAvgTile({
 }) {
   return (
     <div className="border-border bg-card rounded-xl border p-3.5 shadow-sm">
-      <p className="text-muted-foreground font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+      <p className="text-muted-foreground text-[10px] font-bold tracking-[0.06em] uppercase">
         {label}
       </p>
       <p className="text-foreground mt-1.5 text-xl font-extrabold tabular-nums">

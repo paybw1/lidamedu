@@ -385,7 +385,7 @@ function PaperCard({
         <div className="bg-muted/50 mt-2.5 space-y-1.5 rounded-xl p-2.5">
           {paper.articles.length > 0 ? (
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-muted-foreground inline-flex items-center gap-0.5 font-mono text-[10px] font-semibold tracking-[0.04em] uppercase">
+              <span className="text-muted-foreground inline-flex items-center gap-0.5 text-[10px] font-semibold tracking-[0.04em] uppercase">
                 <NetworkIcon className="size-3" /> 관련 조문
               </span>
               {paper.articles.map((a) => (
@@ -395,7 +395,7 @@ function PaperCard({
           ) : null}
           {paper.cases.length > 0 ? (
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-muted-foreground inline-flex items-center gap-0.5 font-mono text-[10px] font-semibold tracking-[0.04em] uppercase">
+              <span className="text-muted-foreground inline-flex items-center gap-0.5 text-[10px] font-semibold tracking-[0.04em] uppercase">
                 <GavelIcon className="size-3" /> 관련 판례
               </span>
               {paper.cases.map((c) => (
@@ -538,7 +538,7 @@ function PaperLinksEditor({ paper }: { paper: PaperWithLinks }) {
   return (
     <div className="bg-muted/50 mt-2.5 space-y-3 rounded-xl p-3">
       <div className="space-y-1.5">
-        <p className="text-muted-foreground font-mono text-[10px] font-semibold tracking-[0.04em] uppercase">
+        <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.04em] uppercase">
           관련 조문
         </p>
         <div className="flex flex-wrap gap-1.5">
@@ -591,7 +591,7 @@ function PaperLinksEditor({ paper }: { paper: PaperWithLinks }) {
       </div>
 
       <div className="space-y-1.5">
-        <p className="text-muted-foreground font-mono text-[10px] font-semibold tracking-[0.04em] uppercase">
+        <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.04em] uppercase">
           관련 판례
         </p>
         <div className="flex flex-wrap gap-1.5">

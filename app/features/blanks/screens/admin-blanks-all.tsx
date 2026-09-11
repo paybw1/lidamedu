@@ -929,7 +929,7 @@ function ArticleEditCard({
       <CardHeader className="pb-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
+            <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.04em] uppercase">
               {articleDisplayPrefix(articleNumber)}
             </p>
             <h2 className="text-base font-bold tracking-tight">
