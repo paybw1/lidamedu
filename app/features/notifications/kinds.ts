@@ -1,6 +1,5 @@
 // 알림 kind 분류 SSOT — 서버(queries.server)와 화면(인박스 필터 탭)이 공유.
 // *.server.ts 가 아니어야 컴포넌트에서 import 가능 (값은 enum 문자열 목록뿐 — 서버 비밀 없음).
-
 import type { Database } from "database.types";
 
 export type NotificationKind =
@@ -25,6 +24,9 @@ export const STAFF_KINDS: NotificationKind[] = [
   // 공지 발행 알림 — '강사·운영자' 대상 공지는 staff 가 유일한 수신자다.
   //   여기 빠지면 배지·인박스가 STAFF_KINDS 로 걸러 안 보여준다.
   "announcement",
+  // feat-8-031 — 강사 월 정산 확정·지급 알림(수신자는 해당 강사 본인).
+  "settlement_confirmed",
+  "settlement_paid",
 ];
 
 // 학생용 kinds.

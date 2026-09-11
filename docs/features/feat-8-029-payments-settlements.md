@@ -34,4 +34,4 @@
 ## 남은 것 / 정책 메모
 - 결제 상태 값: `pending/completed/failed/refunded`(전액 환불만 존재 — 부분 환불 도입 시 refund_amount_krw 비례 차감 로직은 이미 대응).
 - 번들 상품 × 과목 규칙: 정률은 결제 **전액** 기준(번들 배분율 조정은 plan 대상 규칙이 우선하므로 그걸로 통제).
-- 정산서 내보내기(CSV)·강사 본인 열람 화면은 후속.
+- 정산서 내보내기(CSV) 완료. **강사 본인 열람 화면·정산 원천 확장(강의 주문)·수수료/세금은 feat-8-031 에서 구현** — `docs/features/feat-8-031-instructor-settlement-status.md`. 이 문서의 「정산 규칙」은 payments 단일 원천·gross 기준이던 시점 기준이므로, 현재 동작은 feat-8-031 문서를 본다.

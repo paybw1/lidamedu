@@ -2,7 +2,7 @@
 // 규칙 = 강사 × 대상(상품 > 과목 > 전체) × 정률(%)/정액(원). 값 수정 대신 "새 규칙 + 기존 비활성"
 // (정산 항목이 규칙을 참조하므로 지급 근거 보존).
 
-import { PercentIcon } from "lucide-react";
+import { PercentIcon, ReceiptTextIcon } from "lucide-react";
 import { Form, useActionData } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
@@ -21,6 +21,14 @@ import {
   listInstructorOptions,
   listShareRules,
 } from "~/features/subscriptions/settlements-admin.server";
+import {
+  TAX_TYPE_LABEL,
+  bpToPercentText,
+} from "~/features/subscriptions/settlement-engine";
+import {
+  getSettlementParams,
+  listTaxProfiles,
+} from "~/features/subscriptions/settlement-params.server";
 import { listSubscriptionPlans } from "~/features/subscriptions/queries.server";
 import { LAW_SUBJECTS, LAW_SUBJECT_SLUGS } from "~/features/subjects/lib/subjects";
 
@@ -33,12 +41,14 @@ export const meta: Route.MetaFunction = () => [
 export async function loader({ request }: Route.LoaderArgs) {
   const { client } = await requireManager(request);
 
-  const [rules, instructors, plans] = await Promise.all([
+  const [rules, instructors, plans, params, taxProfiles] = await Promise.all([
     listShareRules(),
     listInstructorOptions(),
     listSubscriptionPlans(client),
+    getSettlementParams(),
+    listTaxProfiles(),
   ]);
-  return { rules, instructors, plans };
+  return { rules, instructors, plans, feeRateBp: params.feeRateBp, taxProfiles };
 }
 
 function subjectName(slug: string): string {
@@ -46,7 +56,7 @@ function subjectName(slug: string): string {
 }
 
 export default function AdminShareRules({ loaderData }: Route.ComponentProps) {
-  const { rules, instructors, plans } = loaderData;
+  const { rules, instructors, plans, feeRateBp, taxProfiles } = loaderData;
   const actionData = useActionData<{ error?: string }>();
   const today = new Date(Date.now() + 9 * 60 * 60 * 1000)
     .toISOString()
@@ -153,6 +163,106 @@ export default function AdminShareRules({ loaderData }: Route.ComponentProps) {
           </Button>
         </div>
       </Form>
+
+      {/* 정산 파라미터 — 수수료율(전체)·강사별 세금 유형. 정산 생성 때 정산서에 스냅샷으로 복사된다. */}
+      <div className="border-border bg-card mb-5 rounded-xl border p-4 shadow-sm">
+        <h2 className="mb-1 inline-flex items-center gap-1.5 text-sm font-bold">
+          <ReceiptTextIcon className="text-link size-4" /> 정산 파라미터
+        </h2>
+        <p className="text-muted-foreground mb-3 text-xs">
+          매출 = 결제 − 환불 − 수수료, 정산금액 = 매출 × 정산비율, 정산 지급액 =
+          정산금액 − 세금액. 확정된 정산서는 확정 당시 값을 그대로 보존합니다.
+        </p>
+        <div className="grid gap-3 lg:grid-cols-2">
+          <Form
+            method="post"
+            action="/api/admin/share-rule"
+            className="border-border/60 flex items-end gap-2 rounded-lg border p-3"
+          >
+            <input type="hidden" name="intent" value="set_fee_rate" />
+            <Field
+              label="결제 수수료율 (%)"
+              htmlFor="feeRatePercent"
+              hint={
+                feeRateBp > 0
+                  ? `현재 ${bpToPercentText(feeRateBp)}`
+                  : "미설정 — 수수료 0원으로 계산됩니다"
+              }
+            >
+              <Input
+                id="feeRatePercent"
+                name="feeRatePercent"
+                type="number"
+                step="0.01"
+                min={0}
+                max={100}
+                defaultValue={(feeRateBp / 100).toFixed(2)}
+                className="h-9 w-32"
+              />
+            </Field>
+            <Button type="submit" size="sm" variant="outline">
+              저장
+            </Button>
+          </Form>
+
+          <Form
+            method="post"
+            action="/api/admin/share-rule"
+            className="border-border/60 grid grid-cols-2 gap-2 rounded-lg border p-3 lg:grid-cols-4"
+          >
+            <input type="hidden" name="intent" value="set_tax_profile" />
+            <Field label="강사" required htmlFor="taxInstructorId">
+              <AdminSelect id="taxInstructorId" name="instructorId" required>
+                <option value="">선택</option>
+                {instructors.map((i) => (
+                  <option key={i.profileId} value={i.profileId}>
+                    {i.name ?? i.profileId.slice(0, 8)}
+                  </option>
+                ))}
+              </AdminSelect>
+            </Field>
+            <Field label="세금 유형" required htmlFor="taxType">
+              <AdminSelect id="taxType" name="taxType" defaultValue="withholding">
+                <option value="withholding">개인(원천징수)</option>
+                <option value="invoice">사업자(세금계산서)</option>
+                <option value="none">없음</option>
+              </AdminSelect>
+            </Field>
+            <Field label="세율 (%)" htmlFor="taxRatePercent" hint="개인 기본 3.3">
+              <Input
+                id="taxRatePercent"
+                name="taxRatePercent"
+                type="number"
+                step="0.01"
+                min={0}
+                max={100}
+                defaultValue="3.3"
+                className="h-9"
+              />
+            </Field>
+            <div className="flex items-end">
+              <Button type="submit" size="sm" variant="outline">
+                저장
+              </Button>
+            </div>
+          </Form>
+        </div>
+        {taxProfiles.length > 0 ? (
+          <p className="text-muted-foreground mt-2 text-xs">
+            등록된 세금 유형:{" "}
+            {taxProfiles
+              .map(
+                (t) =>
+                  `${t.instructorName ?? t.instructorId.slice(0, 8)} ${TAX_TYPE_LABEL[t.taxType]} ${bpToPercentText(t.taxRateBp)}`,
+              )
+              .join(" · ")}
+          </p>
+        ) : (
+          <p className="text-muted-foreground mt-2 text-xs">
+            세금 유형 미등록 강사는 개인(원천징수) 3.3% 로 계산됩니다.
+          </p>
+        )}
+      </div>
 
       {/* 규칙 목록 */}
       {rules.length === 0 ? (

@@ -6,31 +6,34 @@
 //   "학생 강의 클릭 = lidamedu.com" 정책과 동일 소스. 오픈 시 이 게이트만 제거하면 된다.
 import type { Route } from "./+types/lecture.layout";
 
-import { BellIcon, SearchIcon } from "lucide-react";
+import { BellIcon, SearchIcon, WalletIcon } from "lucide-react";
+import { useState } from "react";
 import { Link, Outlet, data, redirect, useLocation } from "react-router";
+
+import { BugReportWidget } from "~/features/bug-reports/components/bug-report-widget";
+import { getStaffRole } from "~/features/laws/queries.server";
+import { CartClearOnPurchase } from "~/features/lms/components/cart-clear-on-purchase";
+import { CartLink } from "~/features/lms/components/cart-link";
+import { getUnreadCount } from "~/features/notifications/queries.server";
+import { SettlementDialog } from "~/features/subscriptions/components/settlement-dialog";
 
 import {
   CommandPalette,
   openCommandPalette,
 } from "../components/command-palette";
-import { BugReportWidget } from "~/features/bug-reports/components/bug-report-widget";
-
 import Footer from "../components/footer";
 import { LectureNav, LectureNavMobile } from "../components/lecture-nav";
 import { LectureSubNav } from "../components/lecture-sub-nav";
+import { UserMenu } from "../components/navigation-bar";
+import { PlatformSwitch } from "../components/platform-switch";
+import { Button } from "../components/ui/button";
+import { DropdownMenuItem } from "../components/ui/dropdown-menu";
 import {
   EXTERNAL_LECTURE_URL,
   LECTURE_GUIDE_LINKS,
   LECTURE_MYPAGE_LINKS,
 } from "../lib/platforms";
-import { PlatformSwitch } from "../components/platform-switch";
-import { CartClearOnPurchase } from "~/features/lms/components/cart-clear-on-purchase";
-import { CartLink } from "~/features/lms/components/cart-link";
-import { UserMenu } from "../components/navigation-bar";
-import { Button } from "../components/ui/button";
 import makeServerClient from "../lib/supa-client.server";
-import { getUnreadCount } from "~/features/notifications/queries.server";
-import { getStaffRole } from "~/features/laws/queries.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const [client, headers] = makeServerClient(request);
@@ -50,18 +53,23 @@ export async function loader({ request }: Route.LoaderArgs) {
       user: {
         name: (user.user_metadata.name as string) || "학습자",
         email: user.email,
-        avatarUrl: (user.user_metadata.avatar_url as string | undefined) ?? null,
+        avatarUrl:
+          (user.user_metadata.avatar_url as string | undefined) ?? null,
       },
       inboxUnread: unread,
       inboxHref: role ? "/admin/inbox" : "/inbox",
       isStaff: role !== null,
+      // 「정산현황」은 강사·원장 본인에게만 보이는 메뉴 — 역할을 화면까지 내려보낸다.
+      role,
     },
     { headers },
   );
 }
 
 export default function LectureLayout({ loaderData }: Route.ComponentProps) {
-  const { user, inboxUnread, inboxHref, isStaff } = loaderData;
+  const { user, inboxUnread, inboxHref, isStaff, role } = loaderData;
+  // 정산현황 팝업 — 드롭다운은 항목을 고르면 닫히므로 열림 상태를 레이아웃이 들고 있는다.
+  const [settlementOpen, setSettlementOpen] = useState(false);
   // 홈(히어로 캐러셀)에서는 헤더 하단 구분선을 없애 히어로가 상단바에 붙어 보이게.
   //   다른 강의 페이지에선 nav/본문 구분선 유지.
   const pathname = useLocation().pathname;
@@ -123,6 +131,19 @@ export default function LectureLayout({ loaderData }: Route.ComponentProps) {
                   name={user.name}
                   email={user.email}
                   avatarUrl={user.avatarUrl}
+                  extraItems={
+                    role ? (
+                      <DropdownMenuItem
+                        onSelect={(e) => {
+                          e.preventDefault();
+                          setSettlementOpen(true);
+                        }}
+                      >
+                        <WalletIcon className="size-4" />
+                        정산현황
+                      </DropdownMenuItem>
+                    ) : null
+                  }
                 />
               </>
             ) : (
@@ -141,6 +162,12 @@ export default function LectureLayout({ loaderData }: Route.ComponentProps) {
         {user ? <LectureSubNav links={LECTURE_MYPAGE_LINKS} /> : null}
       </header>
 
+      {role ? (
+        <SettlementDialog
+          open={settlementOpen}
+          onOpenChange={setSettlementOpen}
+        />
+      ) : null}
       <CartClearOnPurchase />
       {user ? <CommandPalette /> : null}
       {/* 오류 신고 — 종전에는 학습 플랫폼(navigation.layout)에만 있어 강의 플랫폼에서

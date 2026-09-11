@@ -7,11 +7,8 @@ import {
   SearchIcon,
   UserIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Link } from "react-router";
-
-import { openCommandPalette } from "./command-palette";
-import { PlatformSwitch } from "./platform-switch";
 
 import {
   NavigationMenu,
@@ -38,6 +35,8 @@ import {
 } from "~/core/lib/subject-groups";
 import { cn } from "~/core/lib/utils";
 
+import { openCommandPalette } from "./command-palette";
+import { PlatformSwitch } from "./platform-switch";
 import ThemeSwitcher from "./theme-switcher";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
@@ -81,11 +80,14 @@ export function UserMenu({
   name,
   email,
   avatarUrl,
+  extraItems,
 }: {
   hideName?: boolean;
   name: string;
   email?: string;
   avatarUrl?: string | null;
+  /** 표면별 추가 메뉴 — 강의 플랫폼의 「정산현황」처럼 특정 레이아웃에서만 붙는 항목. */
+  extraItems?: ReactNode;
 }) {
   return (
     <DropdownMenu>
@@ -113,6 +115,7 @@ export function UserMenu({
           <span className="truncate text-xs">{email}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        {extraItems}
         <DropdownMenuItem asChild>
           <SheetClose asChild>
             <Link to="/account/edit" viewTransition>
@@ -536,7 +539,6 @@ export function NavigationBar({
                   />
                 ),
               )}
-
             </NavigationMenuList>
           </NavigationMenu>
         </div>

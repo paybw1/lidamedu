@@ -6,6 +6,10 @@ import { z } from "zod";
 import { roleAtLeast } from "~/core/lib/roles";
 import makeServerClient from "~/core/lib/supa-client.server";
 import {
+  setPgFeeRate,
+  upsertTaxProfile,
+} from "~/features/subscriptions/settlement-params.server";
+import {
   createShareRule,
   setShareRuleActive,
 } from "~/features/subscriptions/settlements-admin.server";
@@ -29,6 +33,21 @@ const toggleSchema = z.object({
   ruleId: z.string().uuid(),
   isActive: z.enum(["true", "false"]),
 });
+
+// feat-8-031 — 정산 파라미터. 퍼센트로 입력받아 bp(1% = 100bp)로 저장한다(정수 보존).
+const feeRateSchema = z.object({
+  intent: z.literal("set_fee_rate"),
+  feeRatePercent: z.coerce.number().min(0).max(100),
+});
+
+const taxProfileSchema = z.object({
+  intent: z.literal("set_tax_profile"),
+  instructorId: z.string().uuid(),
+  taxType: z.enum(["withholding", "invoice", "none"]),
+  taxRatePercent: z.coerce.number().min(0).max(100),
+});
+
+const toBp = (percent: number): number => Math.round(percent * 100);
 
 export async function action({ request }: Route.ActionArgs) {
   const [client] = makeServerClient(request);
@@ -79,6 +98,32 @@ export async function action({ request }: Route.ActionArgs) {
       parsed.data.ruleId,
       parsed.data.isActive === "true",
     );
+    if (!res.ok) return data({ error: res.error }, { status: 400 });
+    return redirect("/admin/settlements/rules");
+  }
+
+  if (intent === "set_fee_rate") {
+    const parsed = feeRateSchema.safeParse(form);
+    if (!parsed.success)
+      return data({ error: "수수료율은 0~100% 범위로 입력해 주세요." }, { status: 400 });
+    const res = await setPgFeeRate(toBp(parsed.data.feeRatePercent), user.id);
+    if (!res.ok) return data({ error: res.error }, { status: 400 });
+    return redirect("/admin/settlements/rules");
+  }
+
+  if (intent === "set_tax_profile") {
+    const parsed = taxProfileSchema.safeParse(form);
+    if (!parsed.success)
+      return data({ error: "세금 유형·세율을 확인해 주세요." }, { status: 400 });
+    const v = parsed.data;
+    const res = await upsertTaxProfile({
+      instructorId: v.instructorId,
+      taxType: v.taxType,
+      // 사업자(세금계산서)·없음은 원천징수가 없다 — 입력값과 무관하게 0.
+      taxRateBp: v.taxType === "withholding" ? toBp(v.taxRatePercent) : 0,
+      memo: null,
+      actorId: user.id,
+    });
     if (!res.ok) return data({ error: res.error }, { status: 400 });
     return redirect("/admin/settlements/rules");
   }

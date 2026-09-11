@@ -198,7 +198,7 @@ export async function markOrderPaidAndFulfill(orderId: string): Promise<void> {
   if (order.status !== "paid") {
     const { error } = await adminClient
       .from("orders")
-      .update({ status: "paid" })
+      .update({ status: "paid", paid_at: new Date().toISOString() })
       .eq("order_id", orderId)
       .in("status", ["attempted", "pending_payment", "pending_deposit"]);
     if (error) {
@@ -433,9 +433,22 @@ export async function markOrderRefundedAndRevoke(
     .in("status", ["paid", "partially_refunded", "pending_deposit", "pending_payment"]);
   const { data: items } = await adminClient
     .from("order_items")
-    .select("order_item_id")
+    .select("order_item_id, unit_price_krw, quantity, refunded_at")
     .eq("order_id", orderId);
+  // ★항목에도 환불을 남긴다(feat-8-031) — 종전에는 주문 상태만 바꿔 order_items 기준으로 집계하는
+  //   강사 정산·도서 정산에서 전체 환불이 통째로 안 보였다(부분 환불 refundOrderItem 만 기록).
+  const refundedAt = new Date().toISOString();
   for (const item of items ?? []) {
+    if (!item.refunded_at) {
+      await adminClient
+        .from("order_items")
+        .update({
+          refunded_at: refundedAt,
+          refund_amount_krw: item.unit_price_krw * item.quantity,
+          refund_reason: reason,
+        })
+        .eq("order_item_id", item.order_item_id);
+    }
     await revokeItemFulfillment(item.order_item_id, reason);
   }
 }

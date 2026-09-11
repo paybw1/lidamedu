@@ -332,6 +332,15 @@ export default [
     route("/lecture/payments", "features/lms/screens/lecture-payments.tsx"),
     route("/lecture/coupons", "features/lms/screens/lecture-coupons.tsx"),
     route("/lecture/points", "features/lms/screens/lecture-points.tsx"),
+    // feat-8-031 — 강사 본인 정산현황(강사 이상). 상단 계정 팝업과 같은 패널의 전체 화면.
+    route(
+      "/lecture/settlements",
+      "features/subscriptions/screens/lecture-settlements.tsx",
+    ),
+    route(
+      "/api/lecture/settlement",
+      "features/subscriptions/api/lecture-settlement.tsx",
+    ),
     // feat-6-011 — 고객센터 문의(강의 플랫폼 소속). 접근통제는 RLS 가 DB 에서 강제.
     route("/lecture/support", "features/cs-inquiries/screens/support-list.tsx"),
     route(

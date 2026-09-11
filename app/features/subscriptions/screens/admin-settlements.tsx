@@ -10,6 +10,7 @@ import { csvResponse } from "~/core/lib/csv.server";
 import { requireManager } from "~/core/lib/admin-guard.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Chip, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
+import { bpToPercentText } from "~/features/subscriptions/settlement-engine";
 import {
   listSettlements,
   type SettlementStatus,
@@ -51,7 +52,14 @@ export async function loader({ request }: Route.LoaderArgs) {
       "기간시작",
       "기간종료",
       "상태",
-      "정산액(원)",
+      "결제(원)",
+      "환불(원)",
+      "수수료(원)",
+      "매출(원)",
+      "정산금액(원)",
+      "세율",
+      "세금액(원)",
+      "정산 지급액(원)",
       "항목수",
       "확정일",
       "지급일",
@@ -61,7 +69,14 @@ export async function loader({ request }: Route.LoaderArgs) {
       s.periodStart,
       s.periodEnd,
       statusLabel[s.status],
+      s.grossKrw,
+      s.refundKrw,
+      s.feeKrw,
+      s.netSalesKrw,
       s.totalShareKrw,
+      bpToPercentText(s.taxRateBp),
+      s.taxKrw,
+      s.payoutKrw,
       s.itemCount,
       s.confirmedAt ?? "",
       s.paidAt ?? "",
@@ -92,6 +107,7 @@ export default function AdminSettlements({ loaderData }: Route.ComponentProps) {
     return `?${p.toString()}`;
   })();
   const totalKrw = settlements.reduce((a, s) => a + s.totalShareKrw, 0);
+  const payoutTotalKrw = settlements.reduce((a, s) => a + s.payoutKrw, 0);
 
   return (
     <AdminShell
@@ -155,19 +171,26 @@ export default function AdminSettlements({ loaderData }: Route.ComponentProps) {
         </div>
       ) : (
         <IndexTable
-          minWidth={820}
+          minWidth={1120}
           headers={[
             { label: "정산 월", width: "7rem" },
             { label: "강사" },
-            { label: "항목", align: "right", width: "5rem" },
-            { label: "정산액", align: "right", width: "9rem" },
+            { label: "항목", align: "right", width: "4rem" },
+            { label: "결제", align: "right", width: "8rem" },
+            { label: "환불", align: "right", width: "7rem" },
+            { label: "수수료", align: "right", width: "7rem" },
+            { label: "매출", align: "right", width: "8rem" },
+            { label: "정산금액", align: "right", width: "8rem" },
+            { label: "세금액", align: "right", width: "7rem" },
+            { label: "지급액", align: "right", width: "8rem" },
             { label: "상태", align: "center", width: "6rem" },
-            { label: "확정/지급", width: "12rem" },
+            { label: "확정/지급", width: "11rem" },
             { label: "", align: "right", width: "10rem" },
           ]}
           footer={
             <div className="border-border/60 text-muted-foreground border-t px-3 py-2 text-[11px] font-medium tabular-nums">
-              {settlements.length}건 · 합계 {fmtKrw(totalKrw)}
+              {settlements.length}건 · 정산금액 합계 {fmtKrw(totalKrw)} · 지급액
+              합계 {fmtKrw(payoutTotalKrw)}
             </div>
           }
         >
@@ -187,8 +210,28 @@ export default function AdminSettlements({ loaderData }: Route.ComponentProps) {
                 <TD align="right" mono soft>
                   {s.itemCount}
                 </TD>
+                <TD align="right" mono soft>
+                  {fmtKrw(s.grossKrw)}
+                </TD>
+                <TD align="right" mono soft>
+                  {s.refundKrw === 0 ? "—" : `−${fmtKrw(s.refundKrw)}`}
+                </TD>
+                <TD align="right" mono soft>
+                  {s.feeKrw === 0 ? "—" : `−${fmtKrw(s.feeKrw)}`}
+                </TD>
+                <TD align="right" mono soft>
+                  {fmtKrw(s.netSalesKrw)}
+                </TD>
                 <TD align="right" mono>
                   {fmtKrw(s.totalShareKrw)}
+                </TD>
+                <TD align="right" mono soft>
+                  {s.taxKrw === 0 ? "—" : `−${fmtKrw(s.taxKrw)}`}
+                </TD>
+                <TD align="right" mono>
+                  <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+                    {fmtKrw(s.payoutKrw)}
+                  </span>
                 </TD>
                 <TD align="center">
                   <Chip tone={m.tone}>{m.label}</Chip>

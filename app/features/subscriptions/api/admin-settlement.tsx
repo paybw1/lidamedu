@@ -45,13 +45,23 @@ export async function action({ request }: Route.ActionArgs) {
       return data({ error: "month 형식(YYYY-MM)을 확인해 주세요." }, { status: 400 });
     const res = await generateSettlements(parsed.data.month, user.id);
     if (!res.ok) return data({ error: res.error ?? "생성 실패" }, { status: 400 });
+    // 안내는 세 갈래 — 만든 것 / 확정이라 건드리지 않은 것 / 담당 강의는 있는데 배분 규칙이 없는 것.
+    const parts: string[] = [];
+    if (res.created.length > 0) parts.push(`${res.created.length}명 정산 생성/재생성`);
+    if (res.skippedConfirmed.length > 0)
+      parts.push(`확정·지급 상태라 그대로 둠: ${res.skippedConfirmed.join(", ")}`);
+    if (res.missingRule.length > 0)
+      parts.push(
+        `배분 규칙이 없어 정산되지 않은 강사: ${res.missingRule
+          .map((m) => `${m.instructorName}(${m.count}건)`)
+          .join(", ")}`,
+      );
+    if (res.feeRateBp === 0)
+      parts.push("결제 수수료율 미설정 — 수수료 0원으로 계산했습니다");
     const msg =
-      res.created.length === 0
+      parts.length === 0
         ? "생성된 정산이 없습니다 (적용 규칙에 해당하는 결제 없음)."
-        : `${res.created.length}명 정산 생성/재생성` +
-          (res.skippedConfirmed.length
-            ? ` · 확정/지급 상태라 건너뜀: ${res.skippedConfirmed.join(", ")}`
-            : "");
+        : parts.join(" · ");
     return redirect(
       `/admin/settlements?month=${parsed.data.month}&msg=${encodeURIComponent(msg)}`,
     );

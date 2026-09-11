@@ -7527,11 +7527,14 @@ export type Database = {
         Row: {
           base_amount_krw: number
           created_at: string
+          fee_krw: number
           item_id: string
           kind: string
           note: string | null
-          payment_id: string
+          order_item_id: string | null
+          payment_id: string | null
           rule_id: string | null
+          settle_base_krw: number
           settlement_id: string
           share_amount_krw: number
           share_kind: string
@@ -7540,11 +7543,14 @@ export type Database = {
         Insert: {
           base_amount_krw: number
           created_at?: string
+          fee_krw?: number
           item_id?: string
           kind?: string
           note?: string | null
-          payment_id: string
+          order_item_id?: string | null
+          payment_id?: string | null
           rule_id?: string | null
+          settle_base_krw?: number
           settlement_id: string
           share_amount_krw: number
           share_kind: string
@@ -7553,17 +7559,27 @@ export type Database = {
         Update: {
           base_amount_krw?: number
           created_at?: string
+          fee_krw?: number
           item_id?: string
           kind?: string
           note?: string | null
-          payment_id?: string
+          order_item_id?: string | null
+          payment_id?: string | null
           rule_id?: string | null
+          settle_base_krw?: number
           settlement_id?: string
           share_amount_krw?: number
           share_kind?: string
           share_value?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "instructor_settlement_items_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
+            referencedColumns: ["order_item_id"]
+          },
           {
             foreignKeyName: "instructor_settlement_items_payment_id_fkey"
             columns: ["payment_id"]
@@ -7587,19 +7603,84 @@ export type Database = {
           },
         ]
       }
+      instructor_settlement_profiles: {
+        Row: {
+          instructor_id: string
+          memo: string | null
+          tax_rate_bp: number
+          tax_type: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          instructor_id: string
+          memo?: string | null
+          tax_rate_bp?: number
+          tax_type?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          instructor_id?: string
+          memo?: string | null
+          tax_rate_bp?: number
+          tax_type?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instructor_settlement_profiles_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "instructor_settlement_profiles_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: true
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "instructor_settlement_profiles_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "instructor_settlement_profiles_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       instructor_settlements: {
         Row: {
           confirmed_at: string | null
           confirmed_by: string | null
           created_at: string
           created_by: string | null
+          fee_krw: number
+          fee_rate_bp: number
+          gross_krw: number
           instructor_id: string
           memo: string | null
+          net_sales_krw: number
           paid_at: string | null
+          payout_krw: number
           period_end: string
           period_start: string
+          refund_krw: number
           settlement_id: string
           status: string
+          tax_krw: number
+          tax_rate_bp: number
+          tax_type: string
           total_share_krw: number
         }
         Insert: {
@@ -7607,13 +7688,22 @@ export type Database = {
           confirmed_by?: string | null
           created_at?: string
           created_by?: string | null
+          fee_krw?: number
+          fee_rate_bp?: number
+          gross_krw?: number
           instructor_id: string
           memo?: string | null
+          net_sales_krw?: number
           paid_at?: string | null
+          payout_krw?: number
           period_end: string
           period_start: string
+          refund_krw?: number
           settlement_id?: string
           status?: string
+          tax_krw?: number
+          tax_rate_bp?: number
+          tax_type?: string
           total_share_krw?: number
         }
         Update: {
@@ -7621,13 +7711,22 @@ export type Database = {
           confirmed_by?: string | null
           created_at?: string
           created_by?: string | null
+          fee_krw?: number
+          fee_rate_bp?: number
+          gross_krw?: number
           instructor_id?: string
           memo?: string | null
+          net_sales_krw?: number
           paid_at?: string | null
+          payout_krw?: number
           period_end?: string
           period_start?: string
+          refund_krw?: number
           settlement_id?: string
           status?: string
+          tax_krw?: number
+          tax_rate_bp?: number
+          tax_type?: string
           total_share_krw?: number
         }
         Relationships: [
@@ -9614,6 +9713,7 @@ export type Database = {
           created_at: string
           discount_id: string | null
           order_id: string
+          paid_at: string | null
           payment_method: string
           shipping_fee_krw: number
           status: string
@@ -9627,6 +9727,7 @@ export type Database = {
           created_at?: string
           discount_id?: string | null
           order_id?: string
+          paid_at?: string | null
           payment_method?: string
           shipping_fee_krw?: number
           status?: string
@@ -9640,6 +9741,7 @@ export type Database = {
           created_at?: string
           discount_id?: string | null
           order_id?: string
+          paid_at?: string | null
           payment_method?: string
           shipping_fee_krw?: number
           status?: string
@@ -12532,6 +12634,42 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "science_sections"
             referencedColumns: ["section_id"]
+          },
+        ]
+      }
+      settlement_settings: {
+        Row: {
+          id: number
+          pg_fee_rate_bp: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: number
+          pg_fee_rate_bp?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: number
+          pg_fee_rate_bp?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "settlement_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "settlement_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -16819,6 +16957,8 @@ export type Database = {
         | "coupon_granted"
         | "study_plan_updated_by_staff"
         | "dohae_abuse"
+        | "settlement_confirmed"
+        | "settlement_paid"
       student_note_visibility: "staff_only" | "share_with_student"
       subjective_kind: "case_based" | "theory" | "mixed"
       subscription_status: "pending" | "active" | "expired" | "cancelled"
@@ -17120,6 +17260,8 @@ export const Constants = {
         "coupon_granted",
         "study_plan_updated_by_staff",
         "dohae_abuse",
+        "settlement_confirmed",
+        "settlement_paid",
       ],
       student_note_visibility: ["staff_only", "share_with_student"],
       subjective_kind: ["case_based", "theory", "mixed"],
