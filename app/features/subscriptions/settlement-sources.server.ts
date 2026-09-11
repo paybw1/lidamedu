@@ -13,9 +13,14 @@
 //   · 환불액도 같은 비율로 축소해 전액 환불이 결제액을 정확히 상쇄하게 한다
 //     (order_items.refund_amount_krw 는 할인 전 금액으로 기록된다).
 //   · 월 귀속: 결제는 orders.paid_at(무통장은 입금 확인 시각) / payments.created_at, 환불은 refunded_at.
-import type { EngineRule, SourceSale } from "./settlement-engine";
-
 import adminClient from "~/core/lib/supa-admin-client.server";
+
+import {
+  type EngineRule,
+  type SourceSale,
+  allocateDiscount,
+  scaleRefund,
+} from "./settlement-engine";
 
 /** 강사 정산 대상 주문 항목 유형 — 도서는 도서정산 소관이라 제외. */
 const SETTLED_ITEM_TYPES = ["plan", "course_extension"];
@@ -120,22 +125,8 @@ async function netLineMap(orderIds: string[]): Promise<Map<string, number>> {
   for (const rows of byOrder.values()) {
     // 정렬 고정 — 잔액 흡수 항목이 실행마다 바뀌면 재생성 결과가 흔들린다.
     rows.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-    const discount = Math.max(0, rows[0]?.discount ?? 0);
-    const sum = rows.reduce((s, r) => s + r.gross, 0);
-    if (discount <= 0 || sum <= 0) {
-      for (const r of rows) net.set(r.id, r.gross);
-      continue;
-    }
-    const capped = Math.min(discount, sum);
-    let allocated = 0;
-    rows.forEach((r, i) => {
-      const cut =
-        i === rows.length - 1
-          ? capped - allocated
-          : Math.round((capped * r.gross) / sum);
-      allocated += cut;
-      net.set(r.id, Math.max(0, r.gross - cut));
-    });
+    const allocated = allocateDiscount(rows, rows[0]?.discount ?? 0);
+    for (const [id, value] of allocated) net.set(id, value);
   }
   return net;
 }
@@ -144,12 +135,7 @@ function orderItemToSale(r: OrderItemRow, netKrw: number): SourceSale {
   const gross = (r.unit_price_krw ?? 0) * (r.quantity ?? 1);
   const rawRefund = r.refunded_at ? (r.refund_amount_krw ?? gross) : 0;
   // 환불도 할인 적용 후 금액 기준으로 축소 — 전액 환불이 결제액을 정확히 상쇄한다.
-  const refundKrw =
-    rawRefund <= 0
-      ? 0
-      : gross > 0
-        ? Math.round((rawRefund * netKrw) / gross)
-        : 0;
+  const refundKrw = scaleRefund(rawRefund, netKrw, gross);
   return {
     sourceKind: "order_item",
     sourceId: r.order_item_id,

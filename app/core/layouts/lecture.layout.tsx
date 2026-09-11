@@ -134,9 +134,11 @@ export default function LectureLayout({ loaderData }: Route.ComponentProps) {
                   extraItems={
                     role ? (
                       <DropdownMenuItem
-                        onSelect={(e) => {
-                          e.preventDefault();
-                          setSettlementOpen(true);
+                        // ★preventDefault 로 드롭다운을 열어둔 채 Dialog 를 띄우면, 닫은 뒤
+                        //   body 에 pointer-events:none 가 남아 화면 전체가 죽는다(E2E 재현).
+                        //   드롭다운을 정상 종료시키고 그 다음 tick 에 팝업을 연다.
+                        onSelect={() => {
+                          setTimeout(() => setSettlementOpen(true), 0);
                         }}
                       >
                         <WalletIcon className="size-4" />

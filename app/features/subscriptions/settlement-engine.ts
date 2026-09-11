@@ -135,6 +135,45 @@ export function kstDate(iso: string): string {
     .slice(0, 10);
 }
 
+/**
+ * 주문 쿠폰할인을 항목별로 안분한다 — 정가 비율, 마지막 항목이 반올림 잔액을 흡수.
+ * 반환값 합 = Σgross − min(discount, Σgross) 가 항상 정확히 맞는다(잔액 흡수 때문).
+ * rows 는 호출부에서 **결정적 순서**로 정렬해 넘긴다(실행마다 흡수 항목이 바뀌면 재생성이 흔들린다).
+ */
+export function allocateDiscount(
+  rows: { id: string; gross: number }[],
+  discount: number,
+): Map<string, number> {
+  const net = new Map<string, number>();
+  const sum = rows.reduce((s, r) => s + r.gross, 0);
+  const capped = Math.min(Math.max(0, discount), Math.max(0, sum));
+  if (capped <= 0 || sum <= 0) {
+    for (const r of rows) net.set(r.id, r.gross);
+    return net;
+  }
+  let allocated = 0;
+  rows.forEach((r, i) => {
+    const cut =
+      i === rows.length - 1
+        ? capped - allocated
+        : Math.round((capped * r.gross) / sum);
+    allocated += cut;
+    net.set(r.id, r.gross - cut);
+  });
+  return net;
+}
+
+/** 할인 적용 후 금액 기준으로 환불액을 축소 — 전액 환불이 결제액을 정확히 상쇄하게 한다. */
+export function scaleRefund(
+  rawRefundKrw: number,
+  netKrw: number,
+  grossKrw: number,
+): number {
+  if (rawRefundKrw <= 0) return 0;
+  if (grossKrw <= 0) return 0;
+  return Math.round((rawRefundKrw * netKrw) / grossKrw);
+}
+
 /** 규칙 구체성 — plan(3) > subject(2) > all(1), 적용 시작일이 결제일보다 뒤면 0. */
 function specificity(
   r: EngineRule,

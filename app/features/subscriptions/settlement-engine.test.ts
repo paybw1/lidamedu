@@ -9,8 +9,10 @@ import {
   type EngineInput,
   type EngineRule,
   type SourceSale,
+  allocateDiscount,
   computeSettlement,
   ratioLabelOf,
+  scaleRefund,
   settledKey,
   sourceKey,
   totalsOf,
@@ -288,6 +290,77 @@ describe("강의 담당 강사 안분", () => {
     );
     expect(byInstructor.get(KIM)![0].baseAmountKrw).toBe(100_000);
     expect(byInstructor.get(LEE)![0].baseAmountKrw).toBe(100_000);
+  });
+});
+
+describe("주문 쿠폰할인 안분", () => {
+  const rows = [
+    { id: "a", gross: 30_000 },
+    { id: "b", gross: 45_000 },
+    { id: "c", gross: 25_000 },
+  ];
+
+  it("나누어떨어지지 않아도 합이 정확히 (정가합 − 할인)", () => {
+    const net = allocateDiscount(rows, 10_000);
+    const sum = [...net.values()].reduce((a, b) => a + b, 0);
+    expect(sum).toBe(100_000 - 10_000);
+    expect(net.get("a")).toBe(27_000); // 30,000 − round(10,000×0.30)
+    expect(net.get("b")).toBe(40_500);
+    expect(net.get("c")).toBe(22_500);
+  });
+
+  it("반올림 잔액은 마지막 항목이 흡수한다", () => {
+    const odd = [
+      { id: "a", gross: 10_000 },
+      { id: "b", gross: 10_000 },
+      { id: "c", gross: 10_000 },
+    ];
+    const net = allocateDiscount(odd, 1_000);
+    expect([...net.values()].reduce((a, b) => a + b, 0)).toBe(29_000);
+    expect(net.get("a")).toBe(9_667); // round(1000/3)=333
+    expect(net.get("b")).toBe(9_667);
+    expect(net.get("c")).toBe(9_666); // 잔액 흡수
+  });
+
+  it("할인 0·음수·정가합 초과를 안전하게 다룬다", () => {
+    expect([...allocateDiscount(rows, 0).values()]).toEqual([
+      30_000, 45_000, 25_000,
+    ]);
+    expect([...allocateDiscount(rows, -500).values()]).toEqual([
+      30_000, 45_000, 25_000,
+    ]);
+    const all = allocateDiscount(rows, 999_999);
+    expect([...all.values()].reduce((a, b) => a + b, 0)).toBe(0);
+    expect([...all.values()].every((v) => v >= 0)).toBe(true);
+  });
+
+  it("할인된 항목의 전액 환불은 할인 후 금액과 정확히 같다", () => {
+    const net = allocateDiscount(rows, 10_000);
+    // order_items.refund_amount_krw 는 할인 전 금액(45,000)으로 기록된다.
+    expect(scaleRefund(45_000, net.get("b")!, 45_000)).toBe(40_500);
+    expect(scaleRefund(0, net.get("b")!, 45_000)).toBe(0);
+  });
+
+  it("할인된 항목의 전액 환불이 결제액을 정확히 상쇄한다", () => {
+    const netB = allocateDiscount(rows, 10_000).get("b")!;
+    const discounted = sale({
+      sourceKind: "order_item",
+      sourceId: "item-b",
+      grossKrw: netB,
+      refundedAt: "2026-08-20T01:00:00.000Z",
+      refundKrw: scaleRefund(45_000, netB, 45_000),
+    });
+    const { byInstructor } = computeSettlement(
+      input({ sales: [discounted], refunds: [discounted], feeRateBp: 330 }),
+    );
+    const t = totalsOf(byInstructor.get(KIM)!, 330, {
+      taxType: "withholding",
+      taxRateBp: 330,
+    });
+    expect(t.grossKrw).toBe(40_500);
+    expect(t.refundKrw).toBe(40_500);
+    expect(t.netSalesKrw).toBe(0);
+    expect(t.payoutKrw).toBe(0);
   });
 });
 
