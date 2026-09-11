@@ -45,7 +45,9 @@ const changeHtml = changes
 const total = allTexts().length - 1 - BRANCHES.length * 2; // 제목·번호·갈래이름 제외 (DROPPED 는 남아 있어 교재 수 그대로)
 const cards = BRANCHES.map((b) => `
       <section class="card">
-        <h2><span class="num">${b.no}</span><span class="bn">${esc(b.name)}</span></h2>
+        <h2><span class="num">${b.no}</span><span class="bn">${esc(b.name)}</span>${
+          b.range ? `<span class="rng">(${esc(b.range)})</span>` : ""
+        }</h2>
         <ul class="lv root">${b.items.map((i) => render(i, 0)).join("")}</ul>
       </section>`).join("");
 
@@ -112,6 +114,11 @@ const html = `<title>${TITLE} — 정리비교표 재작화</title>
     background: var(--primary); color: var(--primary-fg);
     font-size: 11px; font-weight: 800; display: grid; place-items: center;
     font-variant-numeric: tabular-nums;
+  }
+  /* 갈래 이름 옆 법 장 범위(원장 지시 2026-09-11) — 이름보다 한 단계 낮게, 줄바꿈 금지. */
+  .rng {
+    font-size: 12px; font-weight: 500; color: var(--muted); letter-spacing: 0;
+    white-space: nowrap; margin-left: -2px;
   }
 
   ul.lv { margin: 0; padding: 0; list-style: none; }
@@ -181,7 +188,8 @@ const html = `<title>${TITLE} — 정리비교표 재작화</title>
     <b>교재와 다른 점</b> — 교재는 가운데 제목을 두고 갈래가 사방으로 뻗는 마인드맵이지만,
     화면에서는 그 배치를 그대로 두면 좁은 폭에서 읽을 수 없어 갈래마다 한 장으로 세웠습니다.
     상자 끝의 <b>(法 …)</b> 는 괄호를 벗기고 오른쪽 칩으로 옮겨 조문 번호가 세로로 맞게 했습니다.
-    나머지 글자는 교재 그대로입니다.
+    갈래 이름 옆의 <b>(제n장)</b> 은 그 갈래가 특허법의 몇 장에 해당하는지 원장 지시(2026-09-11)로
+    덧붙인 것이라 교재에는 없습니다. 나머지 글자는 교재 그대로입니다.
   </p>
 
   <p class="foot">
