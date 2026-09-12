@@ -1,0 +1,247 @@
+/* ============================================================
+   리담 해설 디자인 토큰
+   출처: 법전·판결문 조판 관습 + 2026-09 해설 실측 분포
+   ============================================================ */
+
+/* ── 서체 ──────────────────────────────────────────────────
+   본문 명조 / UI 고딕. 판결문·법전이 명조이고, 읽는 것과
+   조작하는 것을 서체로 가릅니다.
+
+   @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;500;600&display=swap');
+   Pretendard: https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css
+   ────────────────────────────────────────────────────────── */
+
+:root {
+  --font-body: 'Noto Serif KR', 'Apple SD Gothic Neo', serif;
+  --font-ui: 'Pretendard', -apple-system, system-ui, sans-serif;
+
+  /* ── 지질 ──
+     크림 아님. 찬 흰색. 종이 흉내는 이 제품에 불필요합니다. */
+  --paper:        #FCFCFD;
+  --paper-sunk:   #F3F4F7;   /* 인용 레일 바탕 */
+  --rule:         #E3E5EA;
+  --rule-strong:  #C6C9D1;
+
+  /* ── 먹 ── */
+  --ink:          #22242A;   /* 본문 */
+  --ink-2:        #4A4E58;   /* 부차 서술 */
+  --ink-3:        #757A85;   /* 라벨·메타 */
+
+  /* ── 감색: 조문 ── */
+  --statute:      #1F3A5F;
+  --statute-weak: #5A7396;
+  --statute-bg:   #ECF0F6;
+
+  /* ── 주색: 판례 ──
+     인주에서. 테라코타(#D97757) 계열을 피해 더 깊게. */
+  --precedent:      #8E2B26;
+  --precedent-weak: #B06A66;
+  --precedent-bg:   #F7EDEC;
+
+  /* ── 검증 상태 ──
+     감사에서 나온 요구사항. 「두 공개 DB에 없음」과
+     「실재하지 않음」은 다릅니다. 판결문 원문에만 있는
+     옛 판례를 「출처 없음」으로 보여주면 안 됩니다. */
+  --verify-confirmed: var(--precedent);  /* 확정: DB 또는 외부 소스 확인 */
+  --verify-pending:   #8A6A1F;           /* 미확정: 조회 불가 (심리불속행·미공간) */
+  --verify-none:      var(--ink-3);       /* 미검증: 아직 안 봄 */
+
+  /* ── 함정 ──
+     별색을 주지 않습니다. 12.5%만 보유하고, 그중 다수가
+     오답 선지 분석의 재진술입니다. 먹색 + 좌측 괘선으로만. */
+  --pitfall-rule: var(--rule-strong);
+
+  /* ── 자연과학 ──
+     인용이 0%인 과목. 레일 자체가 렌더링되지 않으므로
+     별도 강조색이 없습니다. 먹색만으로 성립해야 합니다. */
+
+  /* ── 자 ──
+     본문 17px · 행간 1.85 → 기준선 31.45px.
+     명조 한글 장문 기준이고, 고딕이면 1.7로 줄입니다. */
+  --t-xs:    0.8125rem;  /* 13 · 메타, 칩 보조 */
+  --t-sm:    0.9375rem;  /* 15 · 칩, 라벨 */
+  --t-base:  1.0625rem;  /* 17 · 본문 */
+  --t-md:    1.1875rem;  /* 19 · 정답 블록 */
+  --t-lg:    1.4375rem;  /* 23 · 문제 표제 */
+
+  --lh-body:  1.85;      /* 명조 장문 */
+  --lh-ui:    1.45;
+  --lh-rail:  1.6;
+
+  --ls-tight: -0.01em;   /* 한글 고딕 UI */
+  --ls-none:  0;
+
+  /* ── 단 ──
+     한글 전각 기준. 80자 규칙은 라틴 기준이라 그대로 쓰면
+     너무 넓습니다. 34em 은 목업에서 확인한 값입니다.
+     인용을 각주로 내리면서 본문이 전체 폭을 씁니다. */
+  --measure: 34em;
+
+  /* ── 여백 ── 기준선 31px의 약수/배수 */
+  --sp-1:  0.25rem;   /*  4 */
+  --sp-2:  0.5rem;    /*  8 */
+  --sp-3:  0.75rem;   /* 12 */
+  --sp-4:  1rem;      /* 16 */
+  --sp-5:  1.5rem;    /* 24 */
+  --sp-6:  1.9375rem; /* 31 · 1 기준선 */
+  --sp-7:  2.875rem;  /* 46 */
+  --sp-8:  3.875rem;  /* 62 · 2 기준선 */
+
+  /* ── 형태 ──
+     칩은 각지게, 컨테이너는 거의 각지게.
+     모든 요소에 같은 반경을 주면 위계가 사라집니다. */
+  --r-chip: 2px;
+  --r-card: 3px;
+  --r-none: 0;
+
+  /* ── 실측 상수 ──
+     2026-09 노출 해설 1,622건. 수치를 바꾸려면 재측정하세요. */
+  /* 접기 임계는 과목별입니다. 단일 값으로는 성립하지 않습니다.
+     상표 p95=1,371 은 민법 p95=467 의 3배고, 800 으로 접으면
+     상표는 두 문단에서 끊겨 논리가 보이지 않습니다. */
+  --fold-short: 800;    /* 민법 p99=537 · 자연과학 p99=664 */
+  --fold-long: 1200;    /* 특허 · 상표 · 디자인 */
+
+  --thin-threshold: 100;   /* 자 미만 = 부실 표시 (75건 · 4.6%) */
+  --empty-threshold: 20;   /* 자 미만 = 빈 상태 (40건) */
+  --paras-expected: 3;     /* 문단 p95=3 */
+
+  /* 칩 상한 없음. 각주는 가로로 흘러 조문 6개 · 판례 5개가
+     접기 없이 들어갑니다. 우측 레일에서만 필요했던 제약입니다. */
+}
+
+/* ── 다크 ──
+   야간 학습이 많은 제품이라 선택이 아니라 필수입니다.
+   감색·주색을 그대로 쓰면 어두운 바탕에서 죽습니다. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper:        #14151A;
+    --paper-sunk:   #1C1E24;
+    --rule:         #2A2D35;
+    --rule-strong:  #3D414B;
+
+    --ink:          #E6E7EA;
+    --ink-2:        #B0B4BD;
+    --ink-3:        #7E838E;
+
+    --statute:      #8FB0DC;
+    --statute-weak: #5F7CA3;
+    --statute-bg:   #1A2330;
+
+    --precedent:      #DF9A94;
+    --precedent-weak: #A3706C;
+    --precedent-bg:   #2A1D1C;
+
+    --verify-pending: #C9A55A;
+  }
+}
+
+/* ── Tailwind v4 ──
+   @theme 는 단일 소스여야 합니다. CASE_MARKS 사본이
+   어긋난 것과 같은 문제가 토큰에서도 생깁니다. */
+@theme inline {
+  --font-body: var(--font-body);
+  --font-ui: var(--font-ui);
+
+  --color-paper: var(--paper);
+  --color-paper-sunk: var(--paper-sunk);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+
+  --color-statute: var(--statute);
+  --color-statute-weak: var(--statute-weak);
+  --color-statute-bg: var(--statute-bg);
+
+  --color-precedent: var(--precedent);
+  --color-precedent-weak: var(--precedent-weak);
+  --color-precedent-bg: var(--precedent-bg);
+
+  --color-verify-confirmed: var(--verify-confirmed);
+  --color-verify-pending: var(--verify-pending);
+  --color-verify-none: var(--verify-none);
+
+  --text-xs: var(--t-xs);
+  --text-sm: var(--t-sm);
+  --text-base: var(--t-base);
+  --text-md: var(--t-md);
+  --text-lg: var(--t-lg);
+
+  --radius-chip: var(--r-chip);
+  --radius-card: var(--r-card);
+}
+
+/* ── 기본 조판 ── */
+.explanation-body {
+  font-family: var(--font-body);
+  font-size: var(--t-base);
+  line-height: var(--lh-body);
+  color: var(--ink);
+  max-width: var(--measure);
+  word-break: keep-all;        /* 한글 어절 단위 줄바꿈 */
+  overflow-wrap: break-word;
+  text-spacing-trim: trim-start;
+}
+
+.explanation-body p + p {
+  margin-top: var(--sp-5);
+}
+
+/* 사건번호·조문번호는 숫자 폭이 고정돼야 세로로 정렬됩니다 */
+.citation-no {
+  font-family: var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--ls-none);
+}
+
+/* ── 본문 인용 표시 ──
+   조문은 실선, 판례는 점선. 색이 빠져도 구분됩니다.
+   흑백 인쇄와 색각 이상 양쪽에서 성립합니다.
+
+   구분이 형태에도 의미가 있습니다. 조문은 확정된 근거고
+   판례는 검증 상태가 붙는 근거입니다.
+
+   어깨번호안은 폐기했습니다. 명조 본문에 고딕 숫자가 올라가
+   행간이 흔들리고, 「제450조 제2항³」이 「제2항3」으로 읽힙니다.
+   바탕색안도 폐기했습니다. 조문 6개면 문장이 칩으로 덮이고
+   각주 칩과 형태가 같아 위계가 사라집니다. */
+.cite-statute {
+  color: var(--statute);
+  border-bottom: 1px solid var(--statute);
+  text-decoration: none;
+}
+
+.cite-precedent {
+  color: var(--precedent);
+  border-bottom: 1px dotted var(--precedent);
+  text-decoration: none;
+}
+
+/* 각주 칩과 양방향 연동. 본문 참조에 머물면 해당 칩이,
+   칩에 머물면 해당 본문 참조가 강조됩니다.
+   검증 상태는 본문에 표시하지 않습니다 — 점선을 이미
+   조문·판례 구분에 썼고, 읽는 중에는 필요하지 않습니다. */
+.cite-statute[data-linked='true'],
+.cite-precedent[data-linked='true'],
+.footnote-chip[data-linked='true'] {
+  background: var(--paper-sunk);
+  outline: 1px solid var(--rule-strong);
+  outline-offset: 1px;
+}
+
+.cite-statute:focus-visible,
+.cite-precedent:focus-visible,
+.footnote-chip:focus-visible {
+  outline: 2px solid var(--statute);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

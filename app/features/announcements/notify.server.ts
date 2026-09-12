@@ -63,9 +63,24 @@ function hrefFor(scope: AnnouncementPlatformScope): string {
 }
 
 function preview(bodyHtml: string | null, bodyMd: string): string {
-  const raw = bodyHtml ? bodyHtml.replace(/<[^>]*>/g, " ") : bodyMd;
+  const raw = bodyHtml ? bodyHtml.replace(/<[^>]*>/g, " ") : stripMarkdown(bodyMd);
   const text = raw.replace(/\s+/g, " ").trim();
   return text.length > PREVIEW_LEN ? `${text.slice(0, PREVIEW_LEN)}…` : text;
+}
+
+/**
+ * 알림 카드 한 줄에 쓸 평문. 마크다운 기호를 걷어낸다.
+ * ★이미지형 공지가 문제였다 — 본문이 `![제목](https://…png)` 로 시작해 알림에 URL 이
+ *   그대로 찍혔다(2026-09-12). 이미지는 통째로 빼고, 링크는 글자만 남긴다.
+ */
+function stripMarkdown(md: string): string {
+  return md
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ") // 이미지 — 통째로 제거
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1") // 링크 — 글자만
+    .replace(/^\s{0,3}#{1,6}\s+/gm, "") // 제목 기호
+    .replace(/^\s{0,3}>\s?/gm, "") // 인용
+    .replace(/^\s{0,3}[-*+]\s+/gm, "") // 목록
+    .replace(/\*\*|__|\*|`/g, ""); // 굵게·기울임·코드
 }
 
 /**
