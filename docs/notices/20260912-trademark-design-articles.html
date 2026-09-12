@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+<style>
+  :root {
+    --navy: #2d5ba8;
+    --navy-deep: #1e3c6e;
+    --ink: #23272f;
+    --muted: #6b7686;
+    --line: #e4e8ef;
+    --card: #ffffff;
+    --wash: #f4f6fa;
+    --amber: #9a6b12;
+    --amber-bg: #fdf6e7;
+    --amber-line: #efdcae;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 1080px;
+    font-family: "Pretendard Variable", Pretendard, "Malgun Gothic", sans-serif;
+    color: var(--ink);
+    background: var(--wash);
+    -webkit-font-smoothing: antialiased;
+  }
+  .card { background: var(--card); }
+
+  /* ── 머리 ─────────────────────────────────────────── */
+  header {
+    background: linear-gradient(135deg, var(--navy-deep) 0%, var(--navy) 100%);
+    color: #fff;
+    padding: 52px 64px 46px;
+  }
+  .eyebrow {
+    font-size: 21px; font-weight: 700; letter-spacing: .16em;
+    opacity: .78; margin-bottom: 20px;
+  }
+  h1 { font-size: 62px; line-height: 1.22; letter-spacing: -.035em; font-weight: 800; }
+  h1 .light { font-weight: 500; opacity: .92; }
+  .who {
+    margin-top: 26px; display: inline-block;
+    border: 1.5px solid rgba(255,255,255,.42); border-radius: 999px;
+    padding: 10px 20px; font-size: 22px; font-weight: 600; letter-spacing: -.01em;
+  }
+
+  /* ── 본문 ─────────────────────────────────────────── */
+  main { padding: 48px 64px 40px; }
+  section + section { margin-top: 36px; }
+  .head { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .dot {
+    width: 34px; height: 34px; border-radius: 50%; flex: none;
+    display: grid; place-items: center; font-size: 19px; font-weight: 800; color: #fff;
+  }
+  .dot.on { background: var(--navy); }
+  .dot.wait { background: var(--amber); font-size: 22px; line-height: 1; padding-bottom: 6px; }
+  .head h2 { font-size: 30px; font-weight: 800; letter-spacing: -.02em; }
+
+  ul { list-style: none; display: flex; flex-direction: column; gap: 13px; }
+  li { display: flex; gap: 13px; font-size: 25px; line-height: 1.5; letter-spacing: -.015em; }
+  li .mark { color: var(--navy); font-weight: 800; flex: none; }
+  li b { font-weight: 700; }
+
+  .wait-box {
+    background: var(--amber-bg); border: 1.5px solid var(--amber-line);
+    border-radius: 16px; padding: 26px 30px;
+  }
+  .wait-list {
+    display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px;
+  }
+  .chip {
+    border: 1.5px dashed var(--amber-line); background: #fff; color: var(--amber);
+    border-radius: 999px; padding: 9px 20px; font-size: 24px; font-weight: 700;
+    letter-spacing: -.015em;
+  }
+  .wait-box p { font-size: 25px; line-height: 1.55; letter-spacing: -.015em; color: #6a4c10; }
+  .wait-box p b { font-weight: 800; color: var(--amber); }
+
+  /* ── 꼬리 ─────────────────────────────────────────── */
+  footer {
+    border-top: 1.5px solid var(--line); background: var(--wash);
+    padding: 32px 64px 40px;
+  }
+  footer p { font-size: 22px; line-height: 1.6; color: var(--muted); letter-spacing: -.01em; }
+  footer p + p { margin-top: 10px; }
+  footer b { color: var(--ink); font-weight: 700; }
+  .brand {
+    margin-top: 24px; font-size: 20px; font-weight: 700; color: var(--navy);
+    letter-spacing: -.01em;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <header>
+      <p class="eyebrow">학습 플랫폼 공지</p>
+      <h1>상표법 · 디자인보호법<br /><span class="light">조문을 열었습니다</span></h1>
+      <p class="who">종합반 · 해당 과목 수강권 보유자</p>
+    </header>
+
+    <main>
+      <section>
+        <div class="head">
+          <span class="dot on">✓</span>
+          <h2>지금 되는 것</h2>
+        </div>
+        <ul>
+          <li><span class="mark">·</span><span>조문 본문 읽기와 <b>개정 이력</b> 확인</span></li>
+          <li><span class="mark">·</span><span><b>빈칸 학습</b> — 조문을 가리고 채워 넣으며 외우기</span></li>
+          <li><span class="mark">·</span><span>하이라이트 · 포스트잇 · 메모 · 즐겨찾기</span></li>
+          <li><span class="mark">·</span><span><b>체계도</b>(단원 지도)로 공부 범위 잡기</span></li>
+        </ul>
+      </section>
+
+      <section>
+        <div class="head">
+          <span class="dot wait">…</span>
+          <h2>준비 중인 것</h2>
+        </div>
+        <div class="wait-box">
+          <div class="wait-list">
+            <span class="chip">판례</span>
+            <span class="chip">기출문제(객관식)</span>
+            <span class="chip">정오문제</span>
+          </div>
+          <p>
+            지금 내용을 다듬고 있습니다.<br />
+            검수가 끝나는 대로 <b>곧 순차적으로 올립니다.</b>
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        그때까지 해당 책갈피는 <b>「추후 공개 예정」</b>으로 표시되고 눌리지 않습니다.<br />
+        빠진 것이 아니라 준비 중이라는 뜻입니다.
+      </p>
+      <p>
+        먼저 조문부터 익혀 두시면 판례와 문제가 올라올 때 같은 화면에서 바로 이어 보실 수 있습니다.<br />
+        지금 남기신 하이라이트와 메모는 <b>그대로 유지</b>됩니다.
+      </p>
+      <p class="brand">리담변리사학원</p>
+    </footer>
+  </div>
+</body>
+</html>
