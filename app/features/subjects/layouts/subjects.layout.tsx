@@ -19,6 +19,9 @@ import {
   STAFF_OPEN_PREPARING_SUBJECTS,
   STUDENT_DISABLED_SUBJECTS,
   isSubjectLocked,
+  openAxesFor,
+  partialOpenTabs,
+  subjectEntitled,
   subjectLockedHint,
 } from "~/core/lib/nav-groups";
 import makeServerClient from "~/core/lib/supa-client.server";
@@ -54,6 +57,7 @@ export async function loader({ request }: Route.LoaderArgs) {
         subjectAccess: [] as "all" | string[],
         isStaff: false,
         staffPreparing: "all" as "all" | string[],
+        openAxes: null as ReadonlyArray<string> | null,
       },
       { headers },
     );
@@ -90,7 +94,23 @@ export async function loader({ request }: Route.LoaderArgs) {
       const cohortOpen =
         access.grade === "cohort" &&
         COHORT_OPEN_PREPARING_SUBJECTS.includes(subjectSlug);
-      if (!cohortOpen) throw redirect("/dashboard");
+      // 부분 공개 과목(상표·디자인, 조문만) — 종합반·구매자만 통과(원장 지시 2026-09-12).
+      const partialOpen =
+        partialOpenTabs(subjectSlug) !== null &&
+        subjectEntitled(subjectSlug, access.subjects);
+      if (!cohortOpen && !partialOpen) throw redirect("/dashboard");
+      // ★통과시켜도 닫힌 축의 **경로**는 막는다. 칩만 감추면 검색 결과·딥링크로
+      //   판례 뷰어·문제 뷰어에 그대로 들어간다.
+      if (partialOpen && !cohortOpen) {
+        const CLOSED_SEGMENTS = ["cases", "problems", "quiz", "ox"];
+        const tab = new URL(request.url).searchParams.get("tab");
+        if (
+          (seg[2] && CLOSED_SEGMENTS.includes(seg[2])) ||
+          (!seg[2] && tab && tab !== "articles")
+        ) {
+          throw redirect(`/subjects/${subjectSlug}`);
+        }
+      }
     }
     if (!access.features.includes("area_subjects")) {
       throw redirect("/pricing?locked=area_subjects");
@@ -106,11 +126,22 @@ export async function loader({ request }: Route.LoaderArgs) {
       );
     }
   }
-  return data({ subjectAccess: access.subjects, isStaff, staffPreparing }, { headers });
+  return data(
+    {
+      subjectAccess: access.subjects,
+      isStaff,
+      staffPreparing,
+      // 부분 공개 과목에서 열린 축(그 외 null) — 축 칩이 닫힌 축을 비활성으로 그린다.
+      openAxes: subjectSlug
+        ? openAxesFor(subjectSlug, isStaff, access.subjects)
+        : null,
+    },
+    { headers },
+  );
 }
 
 export default function SubjectsLayout({ loaderData }: Route.ComponentProps) {
-  const { subjectAccess, isStaff, staffPreparing } = loaderData;
+  const { subjectAccess, isStaff, staffPreparing, openAxes } = loaderData;
   const location = useLocation();
   const matches = useMatches();
 
@@ -197,6 +228,11 @@ export default function SubjectsLayout({ loaderData }: Route.ComponentProps) {
                 active={activeAxis}
                 counts={axisData.axisCounts}
                 showSubjective={isStaff}
+                closedAxes={
+                  openAxes
+                    ? SUBJECT_TAB_VALUES.filter((t) => !openAxes.includes(t))
+                    : undefined
+                }
               />
             ) : undefined
           }

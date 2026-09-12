@@ -85,6 +85,7 @@ import {
   listThreadsForTarget,
 } from "~/features/qna/queries.server";
 import { getCaseIdsByPlacement } from "~/features/cases/queries.server";
+import { getSubjectAxisAccess } from "~/features/subjects/lib/partial-open.server";
 import { getRelatedCasesByArticle } from "~/features/relations/queries.server";
 import { ArticleTree } from "~/features/subjects/components/article-tree";
 import { DigestPopup } from "~/features/subjects/components/digest-popup";
@@ -365,7 +366,11 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   // 체계도에서 문제로 진입할 수 있게 서브트리 핀 문제 목록을 함께 내려준다.
   const nodeProblemSeq = await getSystematicNodeProblemSequence(client, nodeId);
 
-  // 도해특허법 — 이 노드 서브트리에 배치된 유닛. ★staff 전용(RLS 로 학생은 항상 빈 배열).
+  // 도해특허법 — 이 노드 서브트리에 배치된 유닛.
+  // ★노출은 RLS 가 정한다(2026-08-23 학생 공개) — dohae_units·dohae_unit_nodes 의 읽기가
+  //   auth.uid() IS NOT NULL 이라 **학생도 빈 배열이 아니다**. 여기서 걸러지지 않는다.
+  //   staff 전용으로 남은 것은 낱말 빈칸용 dohae_blank_terms 뿐이고, 표 칸 가리기(S7)는
+  //   UI 상태만 쓰는 모드라 학생도 쓴다(2026-09-11 공개).
   const dohaeUnits = await listDohaeUnitsForNodes(client, subtreeNodeIds);
 
   // 정리비교표(교재 부록) — **이 노드가 속한 대분류**의 자료. 자료는 장(章) 단위라
@@ -387,13 +392,29 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const systematicDigests = await getSystematicDigests(client, lawCode);
   const digestRootNodeId = rootNodeId;
 
+  // 부분 공개 과목(상표·디자인 = 조문만) — 체계도 화면은 판례·문제도 함께 싣는다.
+  //   ★조문만 연다는 결정(원장 2026-09-12)을 지키려면 여기서 **데이터를 비워야** 한다.
+  //     화면에서 감추기만 하면 SSR 응답에 그대로 실려 나간다.
+  const axisAccess = await getSubjectAxisAccess(client, user.id, lawCode);
+  const emptyByArticle = <T,>(v: Record<string, T[]>, hide: boolean) =>
+    hide ? ({} as Record<string, T[]>) : v;
+
   return {
     dohaeUnits,
     systematicDigests,
     digestRootNodeId,
     subject: LAW_SUBJECTS[lawCode],
-    axisCounts,
-    nodeProblems: nodeProblemSeq?.problems ?? [],
+    axisCounts: axisAccess.openAxes
+      ? {
+          ...axisCounts,
+          cases: axisAccess.hideCases ? 0 : axisCounts.cases,
+          problems: axisAccess.hideProblems ? 0 : axisCounts.problems,
+          subjective: axisAccess.hideSubjective ? 0 : axisCounts.subjective,
+        }
+      : axisCounts,
+    nodeProblems: axisAccess.hideProblems
+      ? []
+      : (nodeProblemSeq?.problems ?? []),
     // feat-4-A-130b — 빈칸 V2(단일 contenteditable) 기본. ?blankv1=1 이면 구 모델 롤백.
     blankV2: new URL(request.url).searchParams.get("blankv1") !== "1",
     lawId: law.lawId,
@@ -412,10 +433,19 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     blankOwners,
     blankTiersEnabled,
     tierCompletionsBySet,
-    oxQuestionsByArticle,
+    oxQuestionsByArticle: emptyByArticle(
+      oxQuestionsByArticle,
+      axisAccess.hideProblems,
+    ),
     oxAnnotationsByRef,
-    relatedCasesByArticle: relatedCasesByArticleScoped,
-    problemsByArticle,
+    relatedCasesByArticle: emptyByArticle(
+      relatedCasesByArticleScoped,
+      axisAccess.hideCases,
+    ),
+    problemsByArticle: emptyByArticle(
+      problemsByArticle,
+      axisAccess.hideProblems,
+    ),
     progressByArticle,
     selectedBlankOwner: ownerParam,
     commentsByArticle,

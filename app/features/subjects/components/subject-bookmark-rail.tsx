@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router";
 
+import { PARTIAL_OPEN_HINT } from "~/core/lib/nav-groups";
 import { cn } from "~/core/lib/utils";
 
 import {
@@ -169,6 +170,7 @@ export function SubjectAxisChips({
   counts,
   className,
   showSubjective = false,
+  closedAxes,
 }: {
   subjectSlug: string;
   active: SubjectTab;
@@ -176,6 +178,8 @@ export function SubjectAxisChips({
   className?: string;
   /** 주관식 축 노출 — 고도화 전 staff 전용이라 호출부가 staff 여부로 넘긴다. */
   showSubjective?: boolean;
+  /** 부분 공개 과목에서 아직 닫힌 축(원장 지시 2026-09-12). 링크 대신 비활성 칩. */
+  closedAxes?: ReadonlyArray<string>;
 }) {
   return (
     <nav
@@ -189,6 +193,28 @@ export function SubjectAxisChips({
           const isActive = axis.value === active;
           const count = counts?.[axis.value];
           const Icon = axis.icon;
+          // 아직 열리지 않은 축 — 누를 수 없는 칩으로 남겨 '있지만 나중'임을 보여 준다.
+          //   서버가 경로도 막으므로 이건 표시일 뿐이다(subjects.layout).
+          if (closedAxes?.includes(axis.value)) {
+            return (
+              <span
+                key={axis.value}
+                title={PARTIAL_OPEN_HINT}
+                aria-disabled
+                className={cn(
+                  "border-border bg-card text-muted-foreground inline-flex h-[30px] cursor-not-allowed items-center rounded-full border border-dashed px-2 text-[12.5px] font-semibold opacity-55",
+                )}
+              >
+                <Icon className="size-3.5 shrink-0" />
+                <span className="ml-1.5 whitespace-nowrap">
+                  {axis.label}
+                  <span className="ml-1 text-[10.5px] font-bold opacity-80">
+                    {PARTIAL_OPEN_HINT}
+                  </span>
+                </span>
+              </span>
+            );
+          }
           return (
             <Link
               key={axis.value}

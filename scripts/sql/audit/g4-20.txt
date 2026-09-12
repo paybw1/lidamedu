@@ -1,0 +1,24 @@
+# cases 단독 · DB 미수록 · blind=N · singleton 20종
+# 재현: node scripts/run-prod-sql.mjs scripts/sql/audit/g4-cases-only-20.sql
+# 모집단 72종 · 정렬키 md5(case_no) 상위 20
+
+80다780	다	hits=1	live=1
+80다1043	다	hits=1	live=1
+2016다276467	다	hits=1	live=1
+2000다44928	다	hits=1	live=1
+2017다211146	다	hits=1	live=1
+2007다44194	다	hits=1	live=1
+2008다53812	다	hits=1	live=1
+2016다260707	다	hits=1	live=1
+2007다5069	다	hits=1	live=1
+98두2768	두	hits=1	live=1
+2012다84417	다	hits=1	live=1
+2007다25865	다	hits=1	live=1
+2007다76733	다	hits=1	live=1
+96누5636	누	hits=1	live=1
+2004도5034	도	hits=1	live=1
+2020다238639	다	hits=1	live=1
+98다54434	다	hits=1	live=1
+94누4820	누	hits=1	live=1
+2008두167	두	hits=1	live=1
+2009다4343	다	hits=1	live=1

@@ -30,6 +30,8 @@ import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Separator } from "~/core/components/ui/separator";
 import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { PARTIAL_OPEN_HINT } from "~/core/lib/nav-groups";
+import { getSubjectAxisAccess } from "~/features/subjects/lib/partial-open.server";
 import { cn } from "~/core/lib/utils";
 import { GuideHelpButton } from "~/features/guide/components/guide-help-button";
 import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
@@ -346,9 +348,23 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   //   장 게이트를 쓰면 같은 조문이 화면에 따라 잠금 상태가 달라져(186 중 잠김 등) 혼란.
   //   장 게이트 로직(getChapterTierGate)은 tiers.server 에 보존 — 재도입 시 재배선만.
 
+  // 부분 공개 과목(상표·디자인 = 조문만) — 판례·객관식은 수정 중이라 **내려보내지 않는다**.
+  //   ★칩만 감추면 SSR 응답에 그대로 실려 나가고 딥링크로 패널도 열린다(원장 지시 2026-09-12).
+  const axisAccess = await getSubjectAxisAccess(client, user.id, lawCode);
+  const maskedAxisCounts = axisAccess.openAxes
+    ? {
+        ...axisCounts,
+        cases: axisAccess.hideCases ? 0 : axisCounts.cases,
+        problems: axisAccess.hideProblems ? 0 : axisCounts.problems,
+        subjective: axisAccess.hideSubjective ? 0 : axisCounts.subjective,
+      }
+    : axisCounts;
+
   return {
     subject: LAW_SUBJECTS[lawCode],
-    axisCounts,
+    axisCounts: maskedAxisCounts,
+    /** 부분 공개 과목인가 — 닫힌 축 자리에 「추후 공개 예정」 칩을 세운다. */
+    partialOpen: axisAccess.openAxes !== null,
     lawId: law.lawId,
     article,
     body: parseArticleBody(article.bodyJson),
@@ -373,8 +389,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     filterScopeParams: filterScope ? { imp: filterImp, bm: filterBm } : null,
     articles,
     systematicNodes,
-    relatedCases,
-    relatedProblems,
+    relatedCases: axisAccess.hideCases ? [] : relatedCases,
+    relatedProblems: axisAccess.hideProblems ? [] : relatedProblems,
     bookmark,
     memos,
     highlights,
@@ -389,7 +405,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     isAdmin: staffRole === "admin",
     currentUserId: user.id,
     revisions,
-    oxQuestions,
+    oxQuestions: axisAccess.hideProblems ? [] : oxQuestions,
     oxAnnotationsByRef,
     articleComments,
     lectureResources,
@@ -419,6 +435,7 @@ function ArticleViewerInner({
     subject,
     lawId,
     axisCounts,
+    partialOpen,
     article,
     body,
     atDate,
@@ -1010,6 +1027,18 @@ function ArticleViewerInner({
                       <CheckSquareIcon className="size-3" /> 정오문제{" "}
                       <span className="tabular-nums">{oxQuestions.length}</span>
                     </button>
+                  ) : null}
+                  {/* 부분 공개 과목(상표·디자인) — 기출문제(객관식)·정오문제는 수정 중이다.
+                      자리를 없애지 않고 「추후 공개 예정」으로 남겨 무엇이 올지 보여 준다. */}
+                  {partialOpen ? (
+                    <span
+                      title={PARTIAL_OPEN_HINT}
+                      aria-disabled
+                      className="border-border text-muted-foreground bg-background inline-flex cursor-not-allowed items-center gap-1 rounded-full border border-dashed px-2.5 py-1 text-xs font-medium opacity-60"
+                    >
+                      <ListChecksIcon className="size-3" /> 기출문제 · 정오문제{" "}
+                      <span className="font-semibold">{PARTIAL_OPEN_HINT}</span>
+                    </span>
                   ) : null}
                   {blankAvailable ? (
                     <button

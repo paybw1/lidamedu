@@ -16,6 +16,10 @@ import {
   TabsList,
   TabsTrigger,
 } from "~/core/components/ui/tabs";
+import {
+  PARTIAL_OPEN_BADGE,
+  PARTIAL_OPEN_HINT,
+} from "~/core/lib/nav-groups";
 import { cn } from "~/core/lib/utils";
 import type { ArticleAnnotationCounts } from "~/features/annotations/queries.server";
 import type { CaseListItem } from "~/features/cases/queries.server";
@@ -82,6 +86,8 @@ interface SubjectHubProps {
   axisCounts?: Record<SubjectTab, number>;
   // 주관식 탭 게이트 — 고도화 전까지 staff 전용(학생은 레일에서 비활성).
   isStaff?: boolean;
+  /** 부분 공개 과목(상표·디자인 = 조문만)에서 아직 닫힌 축. 그 외 null. */
+  closedAxes?: ReadonlyArray<SubjectTab> | null;
   // 주관식 문항별 3단계 훈련 진행·AI 채점 여부 — 주관식 탭 학습 현황용.
   subjectiveAttemptStatus?: Record<
     string,
@@ -133,6 +139,7 @@ function SubjectHubInner({
   problemNodeFilter,
   axisCounts,
   isStaff = false,
+  closedAxes = null,
   subjectiveAttemptStatus,
   subjectiveNodeStats,
   subjectiveNodeLeaves,
@@ -201,6 +208,16 @@ function SubjectHubInner({
   return (
     <div className="mx-auto w-full max-w-screen-2xl px-5 py-6 md:px-10 md:py-8">
       <SubjectHeader subject={subject} />
+      {/* 부분 공개 과목(상표·디자인) — 지금은 조문만 열려 있음을 첫 화면에서 밝힌다. */}
+      {closedAxes && closedAxes.length > 0 ? (
+        <p className="border-border bg-muted/40 text-muted-foreground mt-3 rounded-lg border border-dashed px-3 py-2 text-xs">
+          <strong className="text-foreground font-semibold">
+            {PARTIAL_OPEN_BADGE}
+          </strong>{" "}
+          — 판례·기출문제(객관식)·주관식은 내용을 다듬는 중이라 {PARTIAL_OPEN_HINT}
+          입니다.
+        </p>
+      ) : null}
 
       {/* 세로 책갈피 내비게이션 — 조문·판례·문제 3축을 좌측 패널 바깥에 부착.
           활성 탭은 네이비로 좌측 트리 패널에 맞물린다. */}
@@ -221,7 +238,16 @@ function SubjectHubInner({
               label={axis.label}
               count={axisCounts?.[axis.value]}
               // 주관식은 고도화 전까지 staff 전용 — 학생에겐 비활성(회색·클릭 불가).
-              disabled={axis.value === "subjective" && !subjectiveEnabled}
+              // 부분 공개 과목(상표·디자인)의 닫힌 축도 같은 방식으로 비활성.
+              disabled={
+                (axis.value === "subjective" && !subjectiveEnabled) ||
+                (closedAxes?.includes(axis.value) ?? false)
+              }
+              disabledHint={
+                closedAxes?.includes(axis.value)
+                  ? PARTIAL_OPEN_HINT
+                  : undefined
+              }
             />
           ))}
         </TabsList>
@@ -321,17 +347,20 @@ function BookmarkTab({
   label,
   count,
   disabled = false,
+  disabledHint,
 }: {
   value: SubjectTab;
   label: string;
   count?: number;
   disabled?: boolean;
+  /** 비활성 사유 — 주관식은 「준비 중」, 부분 공개 과목은 「추후 공개 예정」. */
+  disabledHint?: string;
 }) {
   return (
     <TabsTrigger
       value={value}
       disabled={disabled}
-      title={disabled ? "준비 중" : undefined}
+      title={disabled ? (disabledHint ?? "준비 중") : undefined}
       className={cn(
         // 비활성(주관식 학생) — 회색·클릭 불가. 잠금 흐림 대신 완전 비활성 패턴.
         disabled && "cursor-not-allowed opacity-40 hover:translate-x-0",

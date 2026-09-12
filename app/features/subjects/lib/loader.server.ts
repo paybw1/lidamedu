@@ -4,6 +4,7 @@ import type { Database } from "database.types";
 import { type LawSubjectSlug, type SubjectTab, subjectHasDigestAxis } from "./subjects";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { getSubjectAxisAccess } from "~/features/subjects/lib/partial-open.server";
 import {
   type ArticleAnnotationCounts,
   getUserArticleAnnotationCounts,
@@ -146,6 +147,8 @@ export interface CaseTreeCounts {
 
 export interface SubjectHubData {
   law: LawHeader | null;
+  /** 부분 공개 과목(상표·디자인 = 조문만)에서 아직 닫힌 축. 그 외 null. */
+  closedAxes: ReadonlyArray<"cases" | "problems" | "subjective"> | null;
   articles: ArticleNode[];
   systematicNodes: SystematicNode[];
   // 조문 탭 "정리" 화면 — 체계도 대분류에 붙는 교재 정리비교표.
@@ -723,6 +726,7 @@ export async function loadSubjectHub(
     await authPromise.catch(() => {});
     return {
       law: null,
+      closedAxes: null,
       articles: [],
       systematicNodes: [],
       systematicDigests: [],
@@ -1119,6 +1123,14 @@ export async function loadSubjectHub(
       )
     : {};
 
+  // 부분 공개 과목(상표·디자인 = 조문만) — 허브가 판례·문제 목록을 통째로 싣는다.
+  //   ★목록을 비우지 않으면 탭을 감춰도 SSR 응답으로 다 나간다(원장 지시 2026-09-12).
+  const axisAccess = await getSubjectAxisAccess(
+    client,
+    user?.id ?? null,
+    lawCode,
+  );
+
   return {
     law,
     articles,
@@ -1126,16 +1138,24 @@ export async function loadSubjectHub(
     systematicDigests,
     systematicNodeProblemStats,
     problemNodeFilter,
-    cases,
-    casesTotal,
+    /** 부분 공개 과목에서 아직 닫힌 축. 허브가 그 책갈피를 비활성으로 그린다. */
+    closedAxes: axisAccess.openAxes
+      ? (["cases", "problems", "subjective"] as const).filter(
+          (a) => !axisAccess.openAxes!.includes(a),
+        )
+      : null,
+    cases: axisAccess.hideCases ? [] : cases,
+    casesTotal: axisAccess.hideCases ? 0 : casesTotal,
     diagramCaseIds,
     caseFilters,
     caseTreeCounts,
     // 주관식 목록은 "모범답안" 배지 하나에 존재 여부만 쓰는데도 본문 전체가 응답에
     // 실려 나갔다. staff 가 아니면 걷어낸다(answer-visibility) — 배지도 함께 사라진다.
-    problems: displayedProblems.map((p) =>
-      redactSubjectiveAnswer(p, staffRole !== null),
-    ),
+    problems: axisAccess.hideProblems
+      ? []
+      : displayedProblems.map((p) =>
+          redactSubjectiveAnswer(p, staffRole !== null),
+        ),
     recentRevisionDate,
     progress,
     bookmarkLevels,
@@ -1143,9 +1163,9 @@ export async function loadSubjectHub(
     caseQuery,
     axisCounts: {
       articles: totalArticleCount,
-      cases: totalCaseCount,
-      problems: totalProblemCount,
-      subjective: totalSubjectiveCount,
+      cases: axisAccess.hideCases ? 0 : totalCaseCount,
+      problems: axisAccess.hideProblems ? 0 : totalProblemCount,
+      subjective: axisAccess.hideSubjective ? 0 : totalSubjectiveCount,
     },
     isStaff: staffRole !== null,
     subjectiveAttemptStatus,

@@ -240,8 +240,10 @@ export const LOCKED_DIM_CLASS =
 // 비활성 사유 툴팁(제거된 aria-label 대체). pointer-events-none 라 부모에 걸어 힌트 유지.
 export const LOCKED_HINT = "구독 시 이용 가능";
 
-// 콘텐츠 고도화 전 학생 비활성 과목 — 등급·구매 여부와 무관하게 학생에게 잠금(staff 만 접근).
-//   현재 학생 노출 허용 = 특허법·자연과학뿐. 나머지는 준비되는 대로 여기서 제거.
+// 콘텐츠 고도화 전 학생 비활성 과목 — 기본은 학생 전면 잠금(staff 만 접근).
+//   ★예외 두 갈래가 있다 — COHORT_OPEN_PREPARING_SUBJECTS(종합반 전체 개방)와
+//     PARTIAL_OPEN_SUBJECT_TABS(축 일부만 개방). 상표·디자인은 후자로 조문만 열려 있다.
+//   준비가 끝나면 여기서 제거한다.
 export const STUDENT_DISABLED_SUBJECTS: ReadonlyArray<string> = [
   "trademark",
   "design",
@@ -261,6 +263,55 @@ export const STAFF_OPEN_PREPARING_SUBJECTS: ReadonlyArray<string> = [
 export const COHORT_OPEN_PREPARING_SUBJECTS: ReadonlyArray<string> = ["civil"];
 export const PREPARING_HINT = "준비 중";
 export const COHORT_ONLY_HINT = "종합반 전용";
+
+// 준비 중 과목 가운데 **일부 축만** 연 과목(원장 지시 2026-09-12).
+//   상표·디자인은 조문만 공개한다 — 판례·객관식·주관식은 콘텐츠 수정 중이라 계속 잠근다.
+//   ★대상은 종합반 + **그 과목을 구매한** 구독자. 체험(특허만)·무료회원은 자동 제외된다.
+//   ★서버 권위는 subjects.layout(경로 세그먼트 차단) + 각 뷰어 loader(데이터 비우기).
+//     여기 값은 그 판정과 UI 힌트가 함께 쓰는 SSOT 다.
+export const PARTIAL_OPEN_SUBJECT_TABS: Readonly<
+  Record<string, ReadonlyArray<string>>
+> = {
+  trademark: ["articles"],
+  design: ["articles"],
+};
+/** 부분 공개 과목에서 아직 닫힌 축에 붙이는 문구. */
+export const PARTIAL_OPEN_HINT = "추후 공개 예정";
+/** 과목 카드에 붙이는 배지. */
+export const PARTIAL_OPEN_BADGE = "조문만 공개";
+
+/** 이 과목이 부분 공개 대상인가(권한과 무관한 순수 조회). */
+export function partialOpenTabs(slug: string): ReadonlyArray<string> | null {
+  return PARTIAL_OPEN_SUBJECT_TABS[slug] ?? null;
+}
+
+/**
+ * 그 과목을 볼 자격이 있는가 — 종합반(subjects='all') 또는 그 과목 구매자.
+ * ★미산정(undefined)은 자격 없음으로 본다. 게이트는 닫힌 쪽이 안전하다.
+ */
+export function subjectEntitled(
+  slug: string,
+  subjects: "all" | string[] | undefined,
+): boolean {
+  if (subjects === undefined) return false;
+  return subjects === "all" || subjects.includes(slug);
+}
+
+/**
+ * 부분 공개 과목에서 이 사용자에게 열린 축. 제한이 없으면 null.
+ *   staff·부분 공개 아님 → null(제한 없음)
+ *   자격 있음 → 열린 축 목록   /   자격 없음 → [] (과목 자체가 잠김)
+ */
+export function openAxesFor(
+  slug: string,
+  isStaff: boolean,
+  subjects: "all" | string[] | undefined,
+): ReadonlyArray<string> | null {
+  if (isStaff) return null;
+  const tabs = partialOpenTabs(slug);
+  if (!tabs) return null;
+  return subjectEntitled(slug, subjects) ? tabs : [];
+}
 
 // 학생에게 잠긴 준비 중 과목 목록 — 등급별(staff=없음, 종합반=개방 과목 제외).
 //   SRS 큐 제외 등 "목록에서 숨김" 소비처 공용.
@@ -299,6 +350,9 @@ export function isSubjectLocked(
       subjects === "all"
     )
       return false;
+    // 부분 공개 과목(상표·디자인) — 종합반·구매자에게는 조문 축이 열려 있으므로
+    // 과목 자체를 잠그지 않는다. 닫힌 축은 축 칩이 따로 비활성화한다.
+    if (partialOpenTabs(slug) && subjectEntitled(slug, subjects)) return false;
     return true;
   }
   if (subjects === undefined || subjects === "all") return false;
@@ -311,9 +365,11 @@ export function isSubjectLocked(
 export function subjectLockedHint(slug: string, isStaff = false): string {
   if (STUDENT_DISABLED_SUBJECTS.includes(slug)) {
     if (isStaff) return "담당 과목 아님";
-    return COHORT_OPEN_PREPARING_SUBJECTS.includes(slug)
-      ? COHORT_ONLY_HINT
-      : PREPARING_HINT;
+    if (COHORT_OPEN_PREPARING_SUBJECTS.includes(slug)) return COHORT_ONLY_HINT;
+    // 부분 공개 과목은 상품이 판매 중이다(subj_trademark·subj_design·bundle_ip).
+    // 잠겨 보이는 학생 = 미구매자이므로 '준비 중' 이 아니라 구독 안내를 준다.
+    if (partialOpenTabs(slug)) return LOCKED_HINT;
+    return PREPARING_HINT;
   }
   return LOCKED_HINT;
 }
