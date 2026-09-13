@@ -311,6 +311,10 @@ const publishSchema = z.object({
   afterText: z.string().max(MAX_FIELD_TEXT).default(""),
   reason: z.string().max(2000).default(""),
   regrade: z.boolean().default(false),
+  // 고쳐진 글이 실린 **교재 쪽**. 매핑의 page_no 는 「유닛이 시작하는 쪽」이라
+  // 여러 쪽에 걸친 유닛에서 어긋난다(도해 7건이 1~10쪽 밀렸다, 원장 지적 2026-09-13).
+  // 발행하는 사람이 그 쪽을 보고 있으므로 여기서 받는다.
+  pageNo: z.number().int().min(1).max(9999).nullable().default(null),
 });
 
 export async function action({ request }: Route.ActionArgs) {
@@ -418,6 +422,8 @@ export async function action({ request }: Route.ActionArgs) {
         before_text: text.beforeText,
         after_text: text.afterText,
         regrade_requested: p.regrade,
+        // 시트·제목이 이 값을 먼저 쓴다(sheet-data.server.ts 의 payloadPage).
+        ...(p.pageNo != null ? { page_no: p.pageNo } : null),
       },
       p_errata_reason: p.reason || "",
     });

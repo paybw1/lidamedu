@@ -52,6 +52,7 @@ export function ErrataPublishModal({
   const [afterText, setAfterText] = useState("");
   const [reason, setReason] = useState("");
   const [regrade, setRegrade] = useState(false);
+  const [pageNo, setPageNo] = useState<string>("");
   const [prefilled, setPrefilled] = useState(false);
 
   // 모달 열림 → 원장 데이터 로드
@@ -79,6 +80,9 @@ export function ErrataPublishModal({
     setBeforeText(before.join("\n"));
     setAfterText(after.join("\n"));
     setTitle(d.contentLabel ?? "");
+    // 기본값 = 매핑된 쪽(유닛이 시작하는 쪽). 고침이 뒷쪽에 있으면 사람이 고친다.
+    const mapped = d.locations?.find((l) => l.pageNo != null)?.pageNo ?? null;
+    setPageNo(mapped != null ? String(mapped) : "");
     if (d.regradeSuggested) setRegrade(true);
     setPrefilled(true);
   }, [d, prefilled]);
@@ -120,9 +124,18 @@ export function ErrataPublishModal({
         afterText,
         reason,
         regrade,
+        pageNo: pageNo.trim() ? Number(pageNo) : null,
       },
       { method: "post", action: "/api/errata/publish", encType: "application/json" },
     );
+  };
+
+  /** 쪽을 고치면 제목 끝의 「(p.N)」도 함께 따라간다. 없는 제목은 건드리지 않는다. */
+  const changePage = (v: string) => {
+    setPageNo(v);
+    const n = Number(v);
+    if (!v.trim() || !Number.isFinite(n)) return;
+    setTitle((t) => (/\(p\.\d+\)\s*$/.test(t) ? t.replace(/\(p\.\d+\)\s*$/, `(p.${n})`) : t));
   };
 
   const cancel = () => {
@@ -217,6 +230,27 @@ export function ErrataPublishModal({
                   ⚠ 매핑 없음 — 위치 표기 없이 발행됩니다 (매핑이 생기면 자동으로 붙습니다)
                 </p>
               )}
+            </div>
+
+            {/* 교재 쪽 — ★위 「대상 위치」의 쪽은 **유닛이 시작하는 쪽**이다.
+                유닛이 여러 쪽에 걸치면 고침이 실린 쪽과 다르다(도해 7건이 1~10쪽
+                어긋나 원장이 두 번 지적, 2026-09-13). 발행하는 사람이 교재를 보고
+                있으므로 여기서 확인받는다. 비우면 대상 위치의 쪽이 쓰인다. */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-muted-foreground w-12 shrink-0 text-xs">교재 쪽</span>
+              <Input
+                type="number"
+                min={1}
+                max={9999}
+                value={pageNo}
+                onChange={(e) => changePage(e.target.value)}
+                className="h-8 w-24"
+                placeholder="예 74"
+              />
+              <span className="text-muted-foreground text-xs">
+                고침이 <b>실제로 실린</b> 쪽을 적습니다 — 기본값은 항목이 시작하는 쪽이라
+                여러 쪽에 걸친 항목에서는 다를 수 있습니다.
+              </span>
             </div>
 
             {/* 변경 전/후 — 프리필 후 편집 가능 (§4.1).
