@@ -118,6 +118,13 @@ const isShaded = (fillId) => {
   return f !== "" && f !== "none" && f !== "#ffffff";
 };
 
+// ★<hp:ctrl> 안의 <hp:indexmark><hp:firstKey> 는 **책 뒤 찾아보기를 만들기 위한 표시**라
+//   지면에 찍히지 않는다. 본문으로 긁으면 「포괄위임포괄위임등록」처럼 낱말이 겹치거나
+//   「…행위규제)노하우」처럼 엉뚱한 말이 붙는다(도해 제20판 111곳, 2026-09-13 원장 지적).
+//   hp:ctrl 아래로는 내려가지 않는다.
+// hp:ctrl 전체가 아니라 색인 표시만 건너뛴다 — 각주 등 다른 control 내용은 살린다.
+const INDEX_TAGS = new Set(["hp:indexmark"]);
+
 const SHAPE_TAGS = new Set([
   "hp:rect", "hp:line", "hp:polygon", "hp:curve", "hp:connectLine",
   "hp:container", "hp:ellipse", "hp:arc",
@@ -285,6 +292,8 @@ function cellStyle(tcNode) {
     if (tag === "hp:p") {
       let text = "";
       (function t(x) {
+        // ★색인 표시(hp:ctrl > hp:indexmark > hp:firstKey)는 지면에 안 찍힌다 — 아래 INDEX_TAGS 주석 참조.
+        if (INDEX_TAGS.has(tagOf(x))) return;
         if (tagOf(x) === "hp:t") {
           for (const c of childrenOf(x)) if (typeof c["#text"] === "string") text += c["#text"];
         }

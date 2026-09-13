@@ -81,15 +81,27 @@ function buildCharPrMap() {
   return map;
 }
 
+// ★<hp:ctrl> 안의 <hp:indexmark><hp:firstKey> 는 **책 뒤 찾아보기를 만들기 위한 표시**라
+//   지면에 찍히지 않는다. 본문으로 긁으면 「포괄위임포괄위임등록」처럼 낱말이 겹치거나
+//   「…행위규제)노하우」처럼 엉뚱한 말이 붙는다(도해 제20판 111곳, 2026-09-13 원장 지적).
+//   hp:ctrl 아래로는 내려가지 않는다.
+// hp:ctrl 전체를 건너뛰면 각주 등 다른 control 내용까지 잃는다 — indexmark 만 뺀다.
+const SKIP_SUBTREE = new Set(["hp:indexmark"]);
+
 function walk(nodes, visit) {
   if (Array.isArray(nodes)) {
     for (const n of nodes) walk(n, visit);
     return;
   }
   if (typeof nodes !== "object" || nodes === null) return;
+  for (const key of Object.keys(nodes)) {
+    if (key === ":@" || key.startsWith("@_")) continue;
+    if (SKIP_SUBTREE.has(key)) return; // 색인 표시 — 통째로 건너뛴다
+  }
   visit(nodes);
   for (const key of Object.keys(nodes)) {
     if (key === ":@" || key.startsWith("@_")) continue;
+    if (SKIP_SUBTREE.has(key)) continue;
     walk(nodes[key], visit);
   }
 }
