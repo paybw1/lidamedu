@@ -1,0 +1,52 @@
+[
+  {
+    "problem_id": "096defb7-5603-4e96-9670-bba5c204c716",
+    "display_no": 7689,
+    "explanation_md": "사안의 사실관계 및 甲 출원의 등록금지적 효력을 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/670d29dbddb8a76e5715e0d70d88489f.jpg)\n\n따라서 옳지 않은 것은 ㈐㈒이다."
+  },
+  {
+    "problem_id": "32c6bfe1-8281-4217-a3e8-93bfe405d8aa",
+    "display_no": 7604,
+    "explanation_md": "사안의 사실관계 및 甲 출원의 등록금지적 효력을 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/f225f782d583e877de6803b8f3a11e68.jpg)\n\n보정이 있더라도 제29조제3항의 확대된 선출원의 지위는 최초 명세서 도면에 기재된 발명에 인정된다. 이와는 달리 제36조 선출원의 지위는 보정후의 청구범위에 기재된 발명에 인정된다. 출원공개에서 공개되는 발명은 최초 명세서 도면에 기재된 발명이다.\n따라서 옳은 지문은 없다."
+  },
+  {
+    "problem_id": "5114a301-4406-4302-b9fc-748f178c9805",
+    "display_no": 7613,
+    "explanation_md": "권리능력자 중 권리적격자가 출원인이 될 수 있다. 자연인, 법인 중 내국인의 경우 재내외자를 불문하고 권리능력이 있으나, 외국인의 경우 우리나라 산업발전에 이바지할 개연성이 높은 재내자의 경우에는 권리능력을 인정하지만, 개연성이 상대적으로 낮은 재외자의 경우에는 원칙적으로 권리능력을 인정하지 않는다. 다만, 재외자라 하더라도\nⅰ) 그 자가 속하는 국가에서 대한민국 국민에 대하여 그 국민과 동일한 조건으로 특허권 또는 특허에 관한 권리의 향유를 인정하는 경우,\nⅱ) 대한민국이 그 외국인에 대하여 특허권 또는 특허에 관한 권리의 향유를 인정하는 경우에는 그 자가 속하는 국가에서 대한민국 국민에 대하여 그 국민과 동일한 조건으로 특허권 또는 특허에 관한 권리의 향유를 인정하는 경우,\nⅲ) 조약 또는 이에 준하는 것(이하 \"조약\"이라 한다)에 따라 특허권 또는 특허에 관한 권리가 인정되는 경우에 한해서는 예외적으로 권리능력이 인정된다(法 25).\n여기서, 「조약에 따라 특허권 또는 특허에 관한 권리가 인정되는 경우」란 ⅰ) 조약 당사국 국민 또는 ⅱ) 당사국 국민이 아닌 자로서 당사국에 주소 또는 영업소가 있는 준당사국 국민(무국적자는 준당사국 국민에 준해서 취급함) 등을 의미한다. 사안에서 ③의 경우와 같이 단순히 체류하고 있는 경우는 준당사국 국민이라고 할 수 없기 때문에 권리능력이 인정되지 않는다."
+  },
+  {
+    "problem_id": "5ddeaf18-4221-4af7-a657-fa979006510d",
+    "display_no": 7720,
+    "explanation_md": "따라서 ④의 경우 발명 B는 프랑스에의 출원일을 기준으로 우선권이 인정된다.\n그러나, ⑤에서 발명 A의 경우 프랑스에 이어 우리나라에서 중복으로 우선권이 주장되고 있으므로 최선성이 없으므로 우리나라에서는 우선권이 인정되지 않고 현실의 출원일을 기준으로 판단한다. 물론 프랑스에서는 발명 A에 대해 우선권이 인정될 것이다. 이를 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/7328b2334f055a60a1c0463f3dc07078.jpg)"
+  },
+  {
+    "problem_id": "6e0b39f0-2cb3-4195-991f-05f5c087a6c2",
+    "display_no": 7497,
+    "explanation_md": "발명2"
+  },
+  {
+    "problem_id": "8b48accc-9f80-4f26-842e-2b8afaf90275",
+    "display_no": 7800,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "ab0e5736-181e-411f-b50a-92084f11ace4",
+    "display_no": 8080,
+    "explanation_md": "따라서 틀린 것은 ㈏㈓ 이다."
+  },
+  {
+    "problem_id": "abc98a1f-1dfd-484a-a5b9-eb21b4c16715",
+    "display_no": 7574,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "b3d714d6-889d-4eb8-8583-5fd20f829fb9",
+    "display_no": 7626,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "c07abb2a-54fa-44e8-beec-dcc43f3b3763",
+    "display_no": 7529,
+    "explanation_md": null
+  }
+]

@@ -1,0 +1,2767 @@
+[
+  {
+    "problem_id": "6261c80f-295b-4c65-8336-4c51af8a2287",
+    "display_no": 7976,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "901ad859-6115-4b75-af2c-8978832ca9e1",
+    "display_no": 7977,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "49580aa2-2de9-4ba9-9897-1a19f75c5722",
+    "display_no": 7677,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "93006af4-8b4f-4f93-8103-01555be20e8c",
+    "display_no": 7682,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "120df961-42d7-4a23-b3f0-d2d45522e18d",
+    "display_no": 7697,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "909a60e4-ac14-4422-aec4-f1fbc81f72dd",
+    "display_no": 7844,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "ad8cb57f-9a40-4511-8910-0aa9c108e44e",
+    "display_no": 7855,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "7fd241a4-9aba-47cc-9b39-206e9bdcc918",
+    "display_no": 7898,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "9ee45b9a-60ba-49eb-a57e-12599d472424",
+    "display_no": 7865,
+    "explanation_md": "특허법 제126조의2 참조.\n벌칙225-232"
+  },
+  {
+    "problem_id": "6b22749b-2053-4117-b718-a73b9e498288",
+    "display_no": 7818,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "9ad4a667-7ab2-4aa0-8337-877d9795b482",
+    "display_no": 7832,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "dd4995f9-a96f-482e-8d5c-f66ad75e34c5",
+    "display_no": 7869,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "59b8e5ee-36d1-40c9-9943-44ae94939694",
+    "display_no": 7809,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "8eff8175-7133-4db7-bea3-eb91a52713d2",
+    "display_no": 7851,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "2c350632-7dba-49ba-8127-3565244ac419",
+    "display_no": 7804,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "37ab687d-c009-41a4-a31b-2dfc0d5c8c93",
+    "display_no": 7860,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "bf1a385f-07ab-4645-adbb-4b1da65589e6",
+    "display_no": 7841,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "3296144a-3f6a-4f78-97e4-087acee4375e",
+    "display_no": 7899,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "e2a1b303-12e8-4cfc-88d6-fc4a38929ee3",
+    "display_no": 7861,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "5dc00b1d-5fa7-4901-a045-c46b48580c04",
+    "display_no": 7814,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "37ae6115-adcd-4db7-a152-b9f66b76c2cc",
+    "display_no": 7819,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "17ae4f29-7cd7-4851-847c-72b3c8374eab",
+    "display_no": 7824,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "a6fd4682-3e29-43b3-9ce2-9c8a70f478b5",
+    "display_no": 7870,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "19c47ef8-50ea-4e5f-ab79-c21374cccb6b",
+    "display_no": 7805,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "99df7435-39ef-4ef6-9b03-9ba55ea956f8",
+    "display_no": 7810,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "c95feccd-bad3-4aa3-888e-b9b7c4e59f80",
+    "display_no": 7842,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "92b9676e-b24d-4e2e-b54e-6ba0f618a29a",
+    "display_no": 7900,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "000866ed-1620-406b-9c19-63ec8511f3af",
+    "display_no": 7913,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "9bb7ffb2-12b0-432b-882a-469cb489132c",
+    "display_no": 7909,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "316dcff3-a3da-4ba6-958b-b97742d23d8c",
+    "display_no": 7862,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "5534aefd-5929-48dc-8098-48ee88c0ab78",
+    "display_no": 7815,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "2bd22362-9018-465d-965f-267a903160a9",
+    "display_no": 7825,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "7ea93be5-8a2c-49b8-80e9-2fc87237c743",
+    "display_no": 7843,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "97acbd7c-6272-4bbd-b5ed-a4ba3e2b64c0",
+    "display_no": 7834,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "6326832b-b1fe-4ea4-a311-03b7be51993a",
+    "display_no": 7848,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "56f20484-a2b7-4058-8666-0fba04e37835",
+    "display_no": 7820,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "25097832-8922-449a-947a-d1d4172e417e",
+    "display_no": 7871,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "8e6b2270-71cc-4d56-a1a2-3437d76ab559",
+    "display_no": 8006,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "a12d1440-8dda-41c0-b6b6-bc10477c2de4",
+    "display_no": 7845,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "24c1550d-b6df-496b-952b-6736f0702392",
+    "display_no": 7897,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "4c41a877-241d-4cd5-8c1e-1e95839e1753",
+    "display_no": 7859,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "dd519be7-b66b-4cfe-ad7c-e3225a728416",
+    "display_no": 7864,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "f729c48f-6b88-40b7-9423-ae15296d2b0a",
+    "display_no": 7850,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "fb7c1887-d438-4d4f-8674-93cd931ab68e",
+    "display_no": 7892,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "4c065630-b518-4b33-a2ec-3d5ab33c9a34",
+    "display_no": 7906,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "f36a1443-8005-435e-92b6-73c51df7ae6a",
+    "display_no": 7910,
+    "explanation_md": "소멸사유에 해당하지 않은 것은 ㈏㈑㈒ 이다."
+  },
+  {
+    "problem_id": "5e0d759b-7aba-4c3a-81d3-b941d87aeda9",
+    "display_no": 7999,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "5716c253-e981-4834-b9e4-3d8ac09feb06",
+    "display_no": 7931,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "f457a2b8-e97a-40d5-a1d1-80dbb9ed74fe",
+    "display_no": 7854,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "641c73dd-f419-4982-8357-d3bca98a908a",
+    "display_no": 7872,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "ece10b76-f577-443e-9fb9-b03e9ab1dbcb",
+    "display_no": 7877,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "55d0b4bb-a3ad-4b70-ac50-8f1bb24816fe",
+    "display_no": 7930,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "37aa2f8e-e609-42de-9145-fe05c0145559",
+    "display_no": 7853,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "f3fe2218-23bf-4574-bc3b-e827d439ef88",
+    "display_no": 7876,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "4a75aa45-90e9-4fc7-834e-a6bf7a9b0827",
+    "display_no": 7867,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "cdf2e6d9-3611-48e6-bf87-ff15edbe8cda",
+    "display_no": 7889,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "9f1b52f1-4bb8-4d00-a0cc-b555cd302f33",
+    "display_no": 7926,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "228dc379-7bac-4a26-9175-281e9fe0b2d1",
+    "display_no": 7963,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "7ab510a4-1cdc-4ee6-8223-e85f2adcc319",
+    "display_no": 7896,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "846ca783-d570-4d94-be22-726ff06b07ea",
+    "display_no": 7947,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "8e1bf39e-5f00-4c64-a9cf-ea59e25d682d",
+    "display_no": 7863,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "b63f7616-4876-4ce8-8e3b-94b1917fdb9f",
+    "display_no": 7884,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "70e9a842-4eb3-45e0-8ef9-7769fc8a33e3",
+    "display_no": 7874,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "3b223374-8d99-4790-881b-1688613e7486",
+    "display_no": 7879,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "8b48b3bd-1d4e-4ebc-b548-db6b01fedd54",
+    "display_no": 7946,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "f26dae2d-984e-425b-b7b4-99fc6a56ce19",
+    "display_no": 7929,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "5e37a6b9-d53a-4f0a-a27f-111a09d17d20",
+    "display_no": 7894,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "9c8ffbb3-b766-4b5f-bf4d-efb6774f6c0e",
+    "display_no": 7903,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "189ceade-bdb9-4197-b97c-8f74924f3884",
+    "display_no": 8000,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "d4d4c0f3-0b47-43d1-9228-80739412cac5",
+    "display_no": 7965,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "41bf89f0-312c-44bf-b608-2336696ad674",
+    "display_no": 7974,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "f0df155b-7a99-4d59-9050-f7815ee6b905",
+    "display_no": 8040,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "dd418309-6edf-4e9a-a5a8-7eddf89cdaf5",
+    "display_no": 7988,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "05a09b63-855c-4cf5-86fa-345b570c74f5",
+    "display_no": 7948,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "c35c84f8-0f43-49f9-9c67-3f0054468bc0",
+    "display_no": 8014,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "76d37e2e-633e-4303-9820-abd9432f4afd",
+    "display_no": 8009,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "b9965979-363d-4a11-89f7-7303f77320bc",
+    "display_no": 7641,
+    "explanation_md": "사안의 사실관계를 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/a05b4e7caf60130d2100642cf2f348ce.jpg)\n\n따라서 틀린 것은 ㈎㈏㈐이다."
+  },
+  {
+    "problem_id": "04daba75-12bf-4c15-82a4-9446e7a61412",
+    "display_no": 7668,
+    "explanation_md": "사안의 사실관계를 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/54c290a476db20376cda8a43758d1314.jpg)"
+  },
+  {
+    "problem_id": "52ab0edf-f4cb-448b-880c-a2d66e84326b",
+    "display_no": 7998,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "c077e431-bd87-4374-bd43-a47ddf170fe3",
+    "display_no": 7673,
+    "explanation_md": "사안의 사실관계를 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/d0ea27f2257cbc8aa28380e9d5108e27.jpg)\n\n따라서 옳은 것은 ㈏㈒이다."
+  },
+  {
+    "problem_id": "3234dd94-d782-4d6c-8130-be3e65ceb3b7",
+    "display_no": 7725,
+    "explanation_md": "사안의 사실관계를 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/c6b7aa743f03952db74de9d19fe4490e.jpg)"
+  },
+  {
+    "problem_id": "21c7040d-3e4d-44e3-a071-64aa6e586801",
+    "display_no": 8055,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "2ae1109d-c1ee-41ee-8503-78172e7bf30d",
+    "display_no": 8048,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "2b047f22-9a9d-4aca-9074-037fe036eb96",
+    "display_no": 8017,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "2dc83889-de63-470d-b757-82d2b48e7918",
+    "display_no": 8057,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "593ee7c6-3a00-4586-abb3-2d574a4829bb",
+    "display_no": 7790,
+    "explanation_md": "사안의 사실관계를 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/134457e3c6e30346fe8239901a918279.jpg)\n\n따라서 옳은 것은 하나도 없다."
+  },
+  {
+    "problem_id": "94741c8d-b2c3-486f-8c58-3b9cb24428a6",
+    "display_no": 8010,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "c5391e69-3a08-48fc-a118-0098a038ea01",
+    "display_no": 8013,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "586aae1c-7e0a-4ec5-af62-86075e223f4f",
+    "display_no": 7590,
+    "explanation_md": "사안의 사실관계를 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/d786a85b13fa29a8ad45f4ffd8248da8.jpg)"
+  },
+  {
+    "problem_id": "ab0e5736-181e-411f-b50a-92084f11ace4",
+    "display_no": 8080,
+    "explanation_md": "따라서 틀린 것은 ㈏㈓ 이다."
+  },
+  {
+    "problem_id": "f509f9aa-9ee0-474a-9d3f-4451f561b2b5",
+    "display_no": 8066,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "24484219-97aa-4c2c-bdb8-a93e44954aa1",
+    "display_no": 8024,
+    "explanation_md": "정답은 ㈎, ㈏, ㈑ 3개이다."
+  },
+  {
+    "problem_id": "0bafac2b-9752-405f-9715-2241b44f3765",
+    "display_no": 8063,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "708aae7a-af22-4fdc-9bb7-e8a1273c4be2",
+    "display_no": 8031,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "71bd669e-766d-466e-ae77-b17430316065",
+    "display_no": 8059,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "87a15f90-2a2f-4b85-9978-cc0b6d8640bc",
+    "display_no": 8076,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "bc2cdeee-41da-405f-85d3-ba5f98fca0d5",
+    "display_no": 8037,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "c1c6e571-c60e-468f-b316-75fe57ac8463",
+    "display_no": 8053,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "6029cd1e-0d35-40ae-a3f2-553435b88101",
+    "display_no": 7699,
+    "explanation_md": "사안의 사실관계를 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/f6789dbbaeb5cbf8bcdb8c0445fc0eb8.jpg)"
+  },
+  {
+    "problem_id": "32c6bfe1-8281-4217-a3e8-93bfe405d8aa",
+    "display_no": 7604,
+    "explanation_md": "사안의 사실관계 및 甲 출원의 등록금지적 효력을 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/f225f782d583e877de6803b8f3a11e68.jpg)\n\n보정이 있더라도 제29조제3항의 확대된 선출원의 지위는 최초 명세서 도면에 기재된 발명에 인정된다. 이와는 달리 제36조 선출원의 지위는 보정후의 청구범위에 기재된 발명에 인정된다. 출원공개에서 공개되는 발명은 최초 명세서 도면에 기재된 발명이다.\n따라서 옳은 지문은 없다."
+  },
+  {
+    "problem_id": "38cdc24b-1814-4e06-aa79-6e2811278dc3",
+    "display_no": 7895,
+    "explanation_md": "사안의 사실관계를 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/b28854e3a1c8e6b45435638b711d3a16.jpg)"
+  },
+  {
+    "problem_id": "ddc32fcd-1a1a-45f2-83f2-91e3a4c54f74",
+    "display_no": 8050,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "ac948bb9-dcb7-4255-adba-64dcb912587d",
+    "display_no": 7936,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "e6e84c4a-ee84-41ab-bed3-5388b2084231",
+    "display_no": 7695,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "5ddeaf18-4221-4af7-a657-fa979006510d",
+    "display_no": 7720,
+    "explanation_md": "따라서 ④의 경우 발명 B는 프랑스에의 출원일을 기준으로 우선권이 인정된다.\n그러나, ⑤에서 발명 A의 경우 프랑스에 이어 우리나라에서 중복으로 우선권이 주장되고 있으므로 최선성이 없으므로 우리나라에서는 우선권이 인정되지 않고 현실의 출원일을 기준으로 판단한다. 물론 프랑스에서는 발명 A에 대해 우선권이 인정될 것이다. 이를 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/7328b2334f055a60a1c0463f3dc07078.jpg)"
+  },
+  {
+    "problem_id": "771e1e4d-9bc8-4390-9361-192459169515",
+    "display_no": 7672,
+    "explanation_md": "사안의 사실관계를 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/f67770057766ad4ef8e79f692324a2e0.jpg)"
+  },
+  {
+    "problem_id": "41864f7a-c6cf-4099-b90f-0bae910d47f5",
+    "display_no": 9523,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "e3e1c370-0864-41d0-a5da-23dbe023d079",
+    "display_no": 7741,
+    "explanation_md": "사안의 사실관계를 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/7b1f57c3e811fb61fb475e9247b9e2c6.jpg)"
+  },
+  {
+    "problem_id": "7d332c69-70fe-4fa2-9a54-9981f7b1c831",
+    "display_no": 7727,
+    "explanation_md": "사안의 사실관계를 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/415b5bf889491fa011dc74e97f244a05.jpg)"
+  },
+  {
+    "problem_id": "6f340a80-902e-4a4e-af05-6e6ba9d0c452",
+    "display_no": 7771,
+    "explanation_md": "사안의 사실관계를 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/8bd39a2b111221cc42ecbc825a096db0.jpg)"
+  },
+  {
+    "problem_id": "e41fc66d-0b86-4165-9d55-5cccf786778f",
+    "display_no": 7547,
+    "explanation_md": "사안의 사실관계를 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/6784d09bc294d3ef3fc30e3347913230.jpg)"
+  },
+  {
+    "problem_id": "5b99207f-8c6e-4192-a503-7ca2d2c86743",
+    "display_no": 7823,
+    "explanation_md": "사안의 사실관계 및 법률관계를 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/2ad9a1a69bf7c53d5ed46f55bfd7f697.jpg)"
+  },
+  {
+    "problem_id": "b69ef954-cdbd-4f00-a446-ffcc98cf1d5b",
+    "display_no": 7846,
+    "explanation_md": "![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/3430570e0316ea9e60a2cf66c133dc92.jpg)"
+  },
+  {
+    "problem_id": "b1b2af17-f519-4b50-a0e0-9f3f4e013b99",
+    "display_no": 7737,
+    "explanation_md": "사안의 사실관계 및 X 출원의 등록금지적 효력을 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/a405cbc9ff3f431f8c11e5b0d7975350.jpg)"
+  },
+  {
+    "problem_id": "eecca332-3ddc-4a00-bf32-8cbda7a0013b",
+    "display_no": 8073,
+    "explanation_md": "사안의 사실관계 및 Y 출원의 등록금지적 효력을 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/b8b0d4c9805acad5bfa4235314fb7274.jpg)"
+  },
+  {
+    "problem_id": "096defb7-5603-4e96-9670-bba5c204c716",
+    "display_no": 7689,
+    "explanation_md": "사안의 사실관계 및 甲 출원의 등록금지적 효력을 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/670d29dbddb8a76e5715e0d70d88489f.jpg)\n\n따라서 옳지 않은 것은 ㈐㈒이다."
+  },
+  {
+    "problem_id": "43beb349-8dd3-4161-8850-17ac201e580e",
+    "display_no": 8011,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "55c2484c-4ce0-45f0-b343-a1d870035fd0",
+    "display_no": 8008,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "c07abb2a-54fa-44e8-beec-dcc43f3b3763",
+    "display_no": 7529,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "40a9c23a-d11f-4aad-9917-9253e010caef",
+    "display_no": 7578,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "abc98a1f-1dfd-484a-a5b9-eb21b4c16715",
+    "display_no": 7574,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "b3d714d6-889d-4eb8-8583-5fd20f829fb9",
+    "display_no": 7626,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "a39c125a-9a69-475b-b194-d62debd4c4d5",
+    "display_no": 7665,
+    "explanation_md": "사안의 사실관계를 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/e01f0332d52df5e7e7c0b573e5423d61.jpg)"
+  },
+  {
+    "problem_id": "3506c0c5-9ad8-40bf-a785-7ad4d181783d",
+    "display_no": 8036,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "51ac883c-6ac7-4ea5-b648-31fd573a4a6d",
+    "display_no": 7500,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "68488e6e-61f1-437d-8dbe-612cd9e636fa",
+    "display_no": 7530,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "87a5ad35-f08b-4418-8a0f-35d6444fcb4e",
+    "display_no": 7616,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "d89596d7-dfe1-4c4c-baa5-ea1bba499a00",
+    "display_no": 7509,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "3f3d6f62-f8e1-4087-a0b3-f646b518b238",
+    "display_no": 7520,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "cdee41bb-76b3-4cf1-aef3-9bcb1744daa0",
+    "display_no": 7512,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "f1aa2728-38de-43a8-b23f-fcc89054d536",
+    "display_no": 7575,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "636e7739-f1ff-483b-90e8-782f7ef76ab9",
+    "display_no": 7605,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "813c4e16-86aa-4a9c-a316-59b5e74cfbe2",
+    "display_no": 7553,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "f45f0c60-9036-4f3e-ae31-20bc90be8ac3",
+    "display_no": 7839,
+    "explanation_md": "사안의 사실관계를 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/ab0b1637393e3a9a32414978ff1bc487.jpg)"
+  },
+  {
+    "problem_id": "3f1f51fe-24d6-4bcc-94c6-3bbf51cbeb3c",
+    "display_no": 7562,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "493ef9d7-0f90-4d60-ad21-9f832582a78c",
+    "display_no": 7571,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "509f0bfd-3b48-4f66-bf61-7209fb41802d",
+    "display_no": 7610,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "fe2ea740-e231-4279-b30a-e555be375125",
+    "display_no": 7543,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "f7683646-24e1-4ed4-9092-ab7bdd92ec0e",
+    "display_no": 7881,
+    "explanation_md": "사안의 사실관계를 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/e588b62151ffd8a102d374d621fc05e5.jpg)"
+  },
+  {
+    "problem_id": "71d8d281-0f82-4e01-888c-0f7894d599ed",
+    "display_no": 7858,
+    "explanation_md": "물건 A의 제법특허권자가 할 수 없는 행위는 ㈒ 1개이다."
+  },
+  {
+    "problem_id": "70aa8e00-15b0-4d71-87b0-d360fc9023ba",
+    "display_no": 7957,
+    "explanation_md": "따라서 옳지 않은 것은 ㈎㈒ 이다."
+  },
+  {
+    "problem_id": "8bdae66d-af31-426e-b023-c3e54e5240cf",
+    "display_no": 7801,
+    "explanation_md": "사안의 사실관계 및 X 출원의 등록금지적 효력을 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/e1d114f9fd7b3de3042252151d3a90d2.jpg)\n\n따라서 옳은 것은 ㈐㈒이다."
+  },
+  {
+    "problem_id": "2a3768b6-1027-4681-80f3-a9d3a096e192",
+    "display_no": 7674,
+    "explanation_md": "사안의 사실관계를 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/58c39b11f4ebba3a52f14bd6afecac96.jpg)"
+  },
+  {
+    "problem_id": "0ff0c987-43fd-4612-98b9-4fa3cabc9d36",
+    "display_no": 7923,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "b6bc01a9-a160-453c-bc37-e8f3ce13499a",
+    "display_no": 8075,
+    "explanation_md": "사안의 사실관계 및 甲 출원의 등록금지적 효력을 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/de91b76d57ddf269d6047e228ed82f9d.jpg)"
+  },
+  {
+    "problem_id": "65da997a-98ce-46fb-8594-b5cb6af5b4fe",
+    "display_no": 7970,
+    "explanation_md": "사안의 사실관계를 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/aaa89f16567670209cf06b230871b906.jpg)"
+  },
+  {
+    "problem_id": "effe693e-73ba-43ee-a608-8f0e4adf425c",
+    "display_no": 7812,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "b426529c-c324-4e49-877c-c8d931e4cca4",
+    "display_no": 7498,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "c1716263-ce77-45f6-8505-95dc9f00ba49",
+    "display_no": 7499,
+    "explanation_md": "따라서 발명의 성립성이 인정된다고 볼 수 있는 것은 ㈑㈔㈗ 이다."
+  },
+  {
+    "problem_id": "9c9b6305-7721-48a9-ab2a-fd8a97c3d5cd",
+    "display_no": 7501,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "6e0b39f0-2cb3-4195-991f-05f5c087a6c2",
+    "display_no": 7497,
+    "explanation_md": "발명2"
+  },
+  {
+    "problem_id": "2b23cd53-9c2a-4a00-8c6b-04a28baa5e16",
+    "display_no": 7502,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "26bdea58-f548-4712-9923-e4426440a777",
+    "display_no": 7503,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "1815e883-82ff-45ec-88c2-18e977c1e006",
+    "display_no": 7504,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "c5381170-b34c-41c7-b593-c34243a66e89",
+    "display_no": 7506,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "fa47b43c-a0d4-4821-8c3a-1dba980092b7",
+    "display_no": 7507,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "f0e9f11c-6eda-436e-ac88-985dd436e43b",
+    "display_no": 7508,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "d2094ffa-b7a7-4f43-b913-7cf8514e26ea",
+    "display_no": 7510,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "334d687c-bd4b-4e82-a021-e7c5578e9500",
+    "display_no": 7511,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "843ce4ba-5619-445e-a21d-0b4167b8ab52",
+    "display_no": 7514,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "b1570f5a-c1fd-471e-8087-62e021fb043d",
+    "display_no": 7515,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "b8bfc529-5f77-4305-9d8e-c175cc6589e4",
+    "display_no": 7516,
+    "explanation_md": "따라서 옳은 것은 ㈐㈑이다."
+  },
+  {
+    "problem_id": "70b500b9-7aca-4b82-81a1-24c8b009b617",
+    "display_no": 7517,
+    "explanation_md": "법인 아닌 사단 또는 재단은 특허법 제4조에 의하여 권리능력을 전제로 하지 않는 절차를 밟을 수 있다.\n따라서 절차를 밟을 수 있는 것은 ㈎㈐㈓㈔㈕이다."
+  },
+  {
+    "problem_id": "4bac0885-5ba0-4bcf-90ba-cd3262fefdfc",
+    "display_no": 7554,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "fe033be7-249d-40ae-b4c1-aa2ef862b0a2",
+    "display_no": 7518,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "bf40bf32-ad8d-4c52-a55c-c50670f7ab1e",
+    "display_no": 7519,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "709809b0-2da3-4021-952f-2be2e107ab95",
+    "display_no": 7521,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "4cc58ce4-f6d3-4deb-976e-32bccdcf5c18",
+    "display_no": 7522,
+    "explanation_md": "따라서 옳은 것은 ㈐㈓이다."
+  },
+  {
+    "problem_id": "2f0f9655-47ce-468b-8f98-80405af38d14",
+    "display_no": 7523,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "81509829-ffef-471c-af62-cde9689be7fb",
+    "display_no": 7524,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "edc9783b-6d64-49ea-9076-ab46cb48d92a",
+    "display_no": 7525,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "d463f9a8-9992-48b3-9dd8-84a9e83a36c1",
+    "display_no": 7526,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "3341653e-e407-407e-9a69-ffa12948b4b5",
+    "display_no": 7527,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "fee9d05e-4858-484d-9533-4848a900a5f7",
+    "display_no": 7528,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "237222d2-9b10-42ce-8530-9db9a5fc0c22",
+    "display_no": 7532,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "17e32288-4f74-49de-9c51-95893ed1ea56",
+    "display_no": 7533,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "2a839101-e145-42e1-b350-98c0cd63e10c",
+    "display_no": 7534,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "9786561a-64f3-46e6-bebd-63a32f79ef5a",
+    "display_no": 7535,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "e24a2015-3c89-498a-bddb-ddad3ed4d8e9",
+    "display_no": 7538,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "693b3241-256d-4152-8b5c-032db011d856",
+    "display_no": 7539,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "3d959dfb-7d93-41fd-a1ee-d25e40530584",
+    "display_no": 7540,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "83c0e06e-89a1-442f-8d43-425fa64a7d25",
+    "display_no": 7541,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "8cecb886-7e1e-4cbc-9e22-9e1743be37e1",
+    "display_no": 7542,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "51387b2d-5c20-4358-8e0d-c11c7babbc59",
+    "display_no": 7544,
+    "explanation_md": "따라서 절차보정명령의 대상에 해당하지 않는 것은 ㈏㈐㈑㈒㈕㈖ 6개이다."
+  },
+  {
+    "problem_id": "83f772df-0994-41c8-bd7d-ae028c1dde99",
+    "display_no": 7545,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "3b301cb1-5d5f-4632-80b6-4cd656e919d2",
+    "display_no": 7548,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "0b9f34fd-146e-4e6c-bebf-a813a9ba195e",
+    "display_no": 7549,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "7d3d5709-55fc-4136-871d-a4e47eeb9db1",
+    "display_no": 7550,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "0b12fcdf-ad2c-482f-9d55-93facda1429f",
+    "display_no": 7551,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "ee818001-2bd9-4e52-8f8d-41130dd19f54",
+    "display_no": 7552,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "b60a4c74-7c84-4321-8dba-52a01a3469fd",
+    "display_no": 7555,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "a378400a-662e-4412-ac5a-e905ed2d998a",
+    "display_no": 7556,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "692639f2-2637-4ad3-abc2-2a3cedb37974",
+    "display_no": 7557,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "b6da2bfa-c84a-4c9f-b588-7e937540d88d",
+    "display_no": 7558,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "69087b2d-66eb-495a-bdef-3f0837e1c905",
+    "display_no": 7559,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "846de38b-bdc2-410c-8b40-679900ed746f",
+    "display_no": 7560,
+    "explanation_md": "따라서 옳은 것은 ㈎㈓이다."
+  },
+  {
+    "problem_id": "7df5c694-d847-4f94-b724-6b7f57ed853e",
+    "display_no": 7561,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "c9be0563-3c09-453d-9033-64cf4016e23b",
+    "display_no": 7563,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "b572e120-51b9-48b9-8a57-83128a7a875a",
+    "display_no": 7564,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "d7589e9d-3b03-4896-9c2b-5b208e0397a8",
+    "display_no": 7565,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "5114a301-4406-4302-b9fc-748f178c9805",
+    "display_no": 7613,
+    "explanation_md": "권리능력자 중 권리적격자가 출원인이 될 수 있다. 자연인, 법인 중 내국인의 경우 재내외자를 불문하고 권리능력이 있으나, 외국인의 경우 우리나라 산업발전에 이바지할 개연성이 높은 재내자의 경우에는 권리능력을 인정하지만, 개연성이 상대적으로 낮은 재외자의 경우에는 원칙적으로 권리능력을 인정하지 않는다. 다만, 재외자라 하더라도\nⅰ) 그 자가 속하는 국가에서 대한민국 국민에 대하여 그 국민과 동일한 조건으로 특허권 또는 특허에 관한 권리의 향유를 인정하는 경우,\nⅱ) 대한민국이 그 외국인에 대하여 특허권 또는 특허에 관한 권리의 향유를 인정하는 경우에는 그 자가 속하는 국가에서 대한민국 국민에 대하여 그 국민과 동일한 조건으로 특허권 또는 특허에 관한 권리의 향유를 인정하는 경우,\nⅲ) 조약 또는 이에 준하는 것(이하 \"조약\"이라 한다)에 따라 특허권 또는 특허에 관한 권리가 인정되는 경우에 한해서는 예외적으로 권리능력이 인정된다(法 25).\n여기서, 「조약에 따라 특허권 또는 특허에 관한 권리가 인정되는 경우」란 ⅰ) 조약 당사국 국민 또는 ⅱ) 당사국 국민이 아닌 자로서 당사국에 주소 또는 영업소가 있는 준당사국 국민(무국적자는 준당사국 국민에 준해서 취급함) 등을 의미한다. 사안에서 ③의 경우와 같이 단순히 체류하고 있는 경우는 준당사국 국민이라고 할 수 없기 때문에 권리능력이 인정되지 않는다."
+  },
+  {
+    "problem_id": "826bf7fb-2c35-4da2-bfca-8c3e31a3ce27",
+    "display_no": 7566,
+    "explanation_md": "특허법 시행령 제18조 참조."
+  },
+  {
+    "problem_id": "d91d63b0-03c3-4567-8d0b-43fe6023f695",
+    "display_no": 7567,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "64a72590-5567-4185-8f4d-04f3053d9e2c",
+    "display_no": 7569,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "f2d18bc6-da3a-4547-946c-52131e858a30",
+    "display_no": 7570,
+    "explanation_md": "특허법 제224조의4 참조."
+  },
+  {
+    "problem_id": "8545b5a5-0ca0-452a-8e4a-c561ec9f8b0d",
+    "display_no": 7572,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "1e258d3b-cf00-4bb1-b574-ad77d6f9fe7c",
+    "display_no": 7573,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "48d2c552-e28e-414f-b3d1-3d410a153772",
+    "display_no": 7576,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "9be8b267-8990-4ca6-b4c8-2b1cd6b6e87a",
+    "display_no": 7577,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "83a6abbd-88b1-4c97-a66c-c51d2a075670",
+    "display_no": 7579,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "a1fbf63e-b8b8-4d75-b7a1-4c5415c8bec4",
+    "display_no": 7580,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "e2581abc-8bde-4b5e-b377-83075f671d4f",
+    "display_no": 7581,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "ce71f77e-11e2-4c19-9171-631f182d99cd",
+    "display_no": 7582,
+    "explanation_md": "따라서 옳지 않은 것은 ㈏㈑㈒㈓이다."
+  },
+  {
+    "problem_id": "9d0b0e76-64fb-495f-836e-824f14ba8413",
+    "display_no": 7583,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "26cc6cd7-7141-4f4b-bc71-872b54bf78f8",
+    "display_no": 7584,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "716437ae-b7fe-4375-8557-1bb524b6304b",
+    "display_no": 7585,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "e4cb9762-4e28-4953-8f37-4e8f62f96388",
+    "display_no": 7586,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "5f7d4507-9c21-429b-adb4-d0fa97cfd432",
+    "display_no": 7588,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "7c7080a1-653a-4c91-b064-f2d1b0ecd54d",
+    "display_no": 7589,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "09923bce-6c7f-4dab-a4c5-d268a7dc83c5",
+    "display_no": 7591,
+    "explanation_md": "따라서 옳은 것은 ㈎㈑㈓이다."
+  },
+  {
+    "problem_id": "95a38db6-a7b4-466f-95f2-fc93a42487d3",
+    "display_no": 7592,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "faef1250-126e-45bc-a9d3-d8f9c8c16958",
+    "display_no": 7593,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "607ac2a5-75d3-477b-b0d6-4e3c23f69f9e",
+    "display_no": 7594,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "2b46b641-01e7-4ee9-86bb-f8d696c9c0a3",
+    "display_no": 7595,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "5a4bab52-9ac9-4bd6-9d7e-a17fbc43742f",
+    "display_no": 7597,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "7308549f-d686-46dc-820a-353b243b575b",
+    "display_no": 7629,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "58714982-e8ec-4df8-be60-1f89baea91c2",
+    "display_no": 7598,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "46bd87fd-2821-4542-8c5d-955f6f9521b0",
+    "display_no": 7599,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "71f6efeb-f7b2-4a2d-8530-cb00d0b7fa0a",
+    "display_no": 7600,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "d3945174-1056-4f4a-b361-8fa0e90f5be9",
+    "display_no": 7601,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "a8c04c2e-1683-4e76-8054-fcb4272f34af",
+    "display_no": 7602,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "365e029a-3072-4627-b91f-76b771037bf8",
+    "display_no": 7607,
+    "explanation_md": "(지식재산처, 「특허ㆍ실용신안 심사기준」, 3603-3606면)."
+  },
+  {
+    "problem_id": "8c035ca3-ec0a-4a29-8e26-0de06c319225",
+    "display_no": 7608,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "912f04cf-4e75-4e49-804b-02b081427377",
+    "display_no": 7609,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "30235e43-4d75-47ef-924f-c6646f0b0dc1",
+    "display_no": 7611,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "218449d8-80ff-445d-bd7d-4b5b35d51735",
+    "display_no": 7612,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "f02e0fe7-e49e-4af0-933f-5e428ce827d7",
+    "display_no": 7614,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "54990fca-a17e-494c-a22f-a1760fca8239",
+    "display_no": 7615,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "e15e0377-037a-4e18-bd93-ae2267db01b2",
+    "display_no": 7617,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "6eaa2d88-ec23-494d-abbe-b7c42a1bfe64",
+    "display_no": 7618,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "b26149d1-f547-4e03-902b-7bad075715fc",
+    "display_no": 7619,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "a71a9e21-f620-4361-8cc1-c81078670995",
+    "display_no": 7620,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "6c7b7966-44be-493f-a91d-29b139856d40",
+    "display_no": 7621,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "4d63aca8-a760-465d-9d67-c42db3db4909",
+    "display_no": 7622,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "715d45f2-2f61-4fa3-8953-90accd6b1c48",
+    "display_no": 7623,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "dc7fa9d8-42c2-4f33-91a6-22e4a8e9bb1a",
+    "display_no": 7624,
+    "explanation_md": "사안의 사실관계를 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/79c37179a6275315e5313c4edbec0dd8.jpg)"
+  },
+  {
+    "problem_id": "00fa0ad9-3074-4154-abaa-6e513354035a",
+    "display_no": 7625,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "019ac854-c808-4acc-9e57-999d1a2b2233",
+    "display_no": 7627,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "a6cc405a-b63b-4b84-ab86-183090c052ce",
+    "display_no": 7628,
+    "explanation_md": "옳은 것은 ㈎㈒㈓이다."
+  },
+  {
+    "problem_id": "277f7fa7-ea14-4443-b877-d800c615436e",
+    "display_no": 7630,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "172e2e76-2015-49c3-b5be-289849488614",
+    "display_no": 7632,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "a12290ca-8bd2-4501-b101-a64f72f57e87",
+    "display_no": 7633,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "cd1c8696-2467-4e32-9e79-f2443c120457",
+    "display_no": 7634,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "497f13bf-ce75-41bc-b250-5d7a19b44a8e",
+    "display_no": 7635,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "6b03900f-ae7b-4ad0-b4b4-edfca13bfb09",
+    "display_no": 7636,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "b3fda933-4330-426b-a225-2f8cec32b2b3",
+    "display_no": 7637,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "1da346d0-d5a8-4926-a115-3c7882508a6f",
+    "display_no": 7638,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "429f7f5b-2fc4-4e9c-a2f7-5298ba88cf37",
+    "display_no": 7639,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "ff94d15f-9d94-4e7f-b9aa-2a4bff08efca",
+    "display_no": 7640,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "38dfc432-7dbf-4dc4-a62c-dae581728848",
+    "display_no": 7642,
+    "explanation_md": "따라서 절차보정사유에 해당하는 것은 ㈏㈒㈓㈔㈖ 5개이다."
+  },
+  {
+    "problem_id": "b4abf57a-438d-4b7f-9b85-57d9be45a0b7",
+    "display_no": 7643,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "885d3cd1-2677-4465-bd2e-c73dfd4ee5ff",
+    "display_no": 7644,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "779374cc-a5cd-4082-98ad-43cc4da7c494",
+    "display_no": 7645,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "c4c1b2bc-602f-4cf3-a96a-f098c7b108d6",
+    "display_no": 7646,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "49c0cca1-c8fd-4b31-902a-4c3a0869d2a2",
+    "display_no": 7784,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "ad8dbb53-b809-4be9-9a86-b34c7907d829",
+    "display_no": 7647,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "617de844-f6e4-4cf4-b063-fb124a08a861",
+    "display_no": 7648,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "050988c1-75af-485e-a7ce-7b9e641fd600",
+    "display_no": 7649,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "252250b6-3377-4bb0-8979-c44baf4982c7",
+    "display_no": 7650,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "4abf9d2d-f843-40db-8b2a-cfd8b696a931",
+    "display_no": 7651,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "c7457134-d6e2-4a2d-b532-fc1c928f85d2",
+    "display_no": 7652,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "0a0b87fa-09ad-4a28-922f-cbc81cea7dee",
+    "display_no": 7653,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "4fb09a34-df8f-4cbd-a83d-00d8361879fb",
+    "display_no": 7654,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "9faea917-31ea-443d-a1e7-555f39b31195",
+    "display_no": 7655,
+    "explanation_md": "따라서 옳은 것은 ㈎㈏㈐이다."
+  },
+  {
+    "problem_id": "41e150a3-c90f-4dff-98a9-0f7ad3fc8f5b",
+    "display_no": 7656,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "eadcfb4f-8d44-4852-bf48-5336a2027a11",
+    "display_no": 7658,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "1d96de3b-d214-4067-b6e5-a2e99601c95c",
+    "display_no": 7659,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "89c00865-b579-4b34-a228-72f4949454df",
+    "display_no": 7660,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "91a4fd4e-3103-4373-928a-33c3e077e3c1",
+    "display_no": 7661,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "64f35f13-1824-437e-b1c4-261f556c0f13",
+    "display_no": 7662,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "0c5df978-dd96-4dfa-8281-40ee36af5c75",
+    "display_no": 7663,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "9a917bfb-0f6b-427c-92e2-8cbbee45b904",
+    "display_no": 7664,
+    "explanation_md": "발명의 단일성이 만족되기 위해서는 청구항에 기재된 발명들이 원칙적으로 시행령 제6조에서 정하는 규정을 만족시켜야 하며, 각 청구항에 기재된 발명간에 동일하거나 상응하는 ｢특별한 기술적인 특징｣을 가져야 한다.\n따라서 ㈐㈑㈒는 단일성을 만족시키지 않는다."
+  },
+  {
+    "problem_id": "ab539115-bc7d-49ac-a1cf-d86b22ccd48b",
+    "display_no": 7676,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "22e5faaf-ef3d-4d28-a04f-9f85d4a60a1a",
+    "display_no": 7678,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "24f533f0-c583-469c-9950-4edd705f588e",
+    "display_no": 7666,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "258f7783-0f12-4a4b-b1b7-6e5a97aaed40",
+    "display_no": 7667,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "45877d6b-d423-44f4-aee0-0cd4607805dc",
+    "display_no": 7671,
+    "explanation_md": "02 ③④"
+  },
+  {
+    "problem_id": "468491e7-a29a-436d-bddb-293f1b1b687d",
+    "display_no": 7669,
+    "explanation_md": "사안의 사실관계를 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/54ef0bc173fe4d6f4e1931d0ba501aec.jpg)"
+  },
+  {
+    "problem_id": "663a6733-6b72-48ea-b6b8-51d1c36255e3",
+    "display_no": 7670,
+    "explanation_md": "사안의 사실관계를 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/406889247d6c9d0a864e93f913622536.jpg)"
+  },
+  {
+    "problem_id": "d148e60d-927c-401f-aabc-80ce8c5d16c7",
+    "display_no": 7675,
+    "explanation_md": "사안의 사실관계를 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/c469038b847877971bd5bcedf88f2f05.jpg)"
+  },
+  {
+    "problem_id": "c9970d7f-9704-46fa-95ad-58aa9b635598",
+    "display_no": 7679,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "b8602e6d-f3bd-40b8-b6b7-a180ac5cac48",
+    "display_no": 7681,
+    "explanation_md": "따라서 부적법한 것은 ㈏㈑㈒ 3개이다."
+  },
+  {
+    "problem_id": "18bf7e0d-b51d-49f2-9040-3d542ac7aed4",
+    "display_no": 7683,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "f9725065-7794-4396-aa4b-8b06e2ad5143",
+    "display_no": 7684,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "0bc4643f-ba94-4a7c-aca3-267f6b0c7b5e",
+    "display_no": 7685,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "b0a003c9-bd28-4f0a-994c-7e9761b9f32f",
+    "display_no": 7686,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "81242900-23b3-47fa-ab9b-3b5d1bfb8c7d",
+    "display_no": 7687,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "7d8befde-b707-46e3-a003-89f5260f8523",
+    "display_no": 7688,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "5a1905f2-aab5-495b-b62d-8ebacb21a959",
+    "display_no": 7690,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "35153d6e-7670-4419-9dac-ec3eba2e1e16",
+    "display_no": 7691,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "8b48accc-9f80-4f26-842e-2b8afaf90275",
+    "display_no": 7800,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "8cc3dcda-dbba-495c-9a9f-d6ffa9079734",
+    "display_no": 7692,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "221a9ca4-6f5f-428a-8003-2a51c56c5edb",
+    "display_no": 7693,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "f35f492d-09df-4ff3-9925-da3375ef8e74",
+    "display_no": 7694,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "b9186e54-b7ef-45de-8447-8445c5214a0c",
+    "display_no": 7696,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "395dd744-f119-424a-8ca4-c2ba63af4890",
+    "display_no": 7765,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "5380f5b4-df94-4476-b0f6-9be37e602f07",
+    "display_no": 7766,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "3cb8a320-9bd4-40c0-96d1-070810598a97",
+    "display_no": 7700,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "c8e332c9-bc01-4e13-962a-87eece459bad",
+    "display_no": 7701,
+    "explanation_md": "사안의 사실관계를 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/9fc44a458167fcebffe4d3ee97ee85a4.jpg)"
+  },
+  {
+    "problem_id": "cf88dd9a-0e0d-49db-a936-926e883b49ab",
+    "display_no": 7702,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "6874e6a3-4907-4acc-851c-2b226e5e4fa1",
+    "display_no": 7703,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "ee7d3b70-dfc1-421d-9fb3-433d40453337",
+    "display_no": 7704,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "afb2816c-184f-474e-9238-f83d9fa185fb",
+    "display_no": 7705,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "8f10f71c-9010-43d0-b898-87e9b627f907",
+    "display_no": 7706,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "bbdf79aa-4b86-450f-b714-745789c6fd68",
+    "display_no": 7708,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "0f502267-f44a-475d-b182-1f2a084766b4",
+    "display_no": 7709,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "05d8d869-4705-4b73-a0a0-d15bbb8915d7",
+    "display_no": 7710,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "7bad5950-d781-4f1f-a4ef-74e2355c85a6",
+    "display_no": 7711,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "9f7aed4f-dc24-4a98-b805-7fb9b71c51c3",
+    "display_no": 7712,
+    "explanation_md": "따라서 옳은 것은 ㈐㈑이다."
+  },
+  {
+    "problem_id": "cbf8b4db-d255-43fc-9edd-89bad76689fb",
+    "display_no": 7713,
+    "explanation_md": "본 사안과 같이 최초거절결정등본의 송달이 아닌 경우 변경출원을 할 수 없다. 따라서 옳은 것은 ㈏㈐㈑이다."
+  },
+  {
+    "problem_id": "c41f49c6-601f-4e62-a0c4-1208fecfef6d",
+    "display_no": 7714,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "f75c3709-7d3f-48f4-8cee-613f76e035c6",
+    "display_no": 7715,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "569a2f9a-1962-43f0-91a8-fea98903be68",
+    "display_no": 7716,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "8f073353-d3d4-4dd9-961c-cd276a3eeee5",
+    "display_no": 7717,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "2b87553c-8adb-44aa-af07-156fc77e942f",
+    "display_no": 7718,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "c0e8dbde-7565-4974-8636-a1aa59aa48eb",
+    "display_no": 7719,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "2f2f1977-e399-4797-8bc9-2a2fb9943409",
+    "display_no": 7721,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "75a30273-b9a7-4281-af74-000f1d2deb00",
+    "display_no": 7722,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "c7cc0fcb-346b-434b-8da2-c146aa5f90e3",
+    "display_no": 7723,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "4ac540e9-a014-4cd2-b66e-4055346d7285",
+    "display_no": 7724,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "a246b9ac-31b9-4b02-abfa-be279a3dc491",
+    "display_no": 7726,
+    "explanation_md": "사안의 사실관계 및 Y, Z 출원의 등록금지적 효력을 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/fa85501b76ddd44966b71be13c41daff.jpg)"
+  },
+  {
+    "problem_id": "bf935c4a-1862-4f75-8dc2-f7cbe8d726ae",
+    "display_no": 7767,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "3e0bb0da-ae28-48bb-9687-cb1001e5ff7c",
+    "display_no": 7941,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "5d43ee8b-4ebd-45e2-b272-f393a31a3cbc",
+    "display_no": 7728,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "2b524495-43a5-484a-85a9-205ec0e9417f",
+    "display_no": 7729,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "5878253f-a387-4ead-a8c8-9fe6364f5686",
+    "display_no": 7730,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "a187326f-a9ca-4203-9e6f-1f3176bba225",
+    "display_no": 7731,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "77c37466-53f5-4b74-8c2e-fac062e7818c",
+    "display_no": 7732,
+    "explanation_md": "따라서 선출원의 출원시로 소급효가 인정되지 않는 것은 ㈎㈓㈔㈕㈖ 5개이다."
+  },
+  {
+    "problem_id": "c1596575-9478-4499-b6ce-79735bb04e4d",
+    "display_no": 7733,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "a366095b-23b4-4771-829a-2d0d12c03fe1",
+    "display_no": 7734,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "fd3a1235-a959-4ddb-86f4-a191269c94e2",
+    "display_no": 7735,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "5a20c2aa-3740-4e4a-8fcc-5ea07b2139b8",
+    "display_no": 7736,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "d817c843-a5f5-4bdd-9f7b-67c850032077",
+    "display_no": 7739,
+    "explanation_md": "사안의 사실관계 및 乙 출원의 등록금지적 효력을 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/bb46548d76a319f7743c3f4726205ffe.jpg)"
+  },
+  {
+    "problem_id": "9efd21c2-e7bf-4535-b36b-d65a4e2d0c0e",
+    "display_no": 7742,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "5a075df5-868c-4a0b-a051-d20e4411690a",
+    "display_no": 7743,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "ff3a19e2-ec4c-4f52-8941-ac5e722a0127",
+    "display_no": 7744,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "a6ecd8d5-7f62-445f-91fa-8f034c6d2f38",
+    "display_no": 7745,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "15cdaa75-cfcb-49d2-bf72-a0bee88ba81e",
+    "display_no": 7746,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "436f76e3-7764-4b62-a5ee-3ef81fe80839",
+    "display_no": 7747,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "aaaf1175-233c-4ed2-8caa-11ad189d9b8c",
+    "display_no": 7748,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "00440545-acf7-4a2e-820e-ef9773a88826",
+    "display_no": 7749,
+    "explanation_md": "틀린 것은 ㈐㈒㈓이다."
+  },
+  {
+    "problem_id": "f0b39ec7-98c7-4c6d-977a-6d05b809491b",
+    "display_no": 7750,
+    "explanation_md": "옳지 않은 것은 ㈎㈑㈒이다."
+  },
+  {
+    "problem_id": "00bc00c7-184d-40d0-8b07-c46bc3d8db89",
+    "display_no": 7751,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "74330835-fc9b-48b6-a6f9-7a8a002478a5",
+    "display_no": 7752,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "6949bef0-b1e1-4931-b51a-242795eab0bc",
+    "display_no": 7753,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "d9440e3a-95a0-4368-8ac4-8f87a78feb58",
+    "display_no": 7754,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "9ba619f4-1520-45c1-91e3-2009f1986c2e",
+    "display_no": 7755,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "9470e0fb-3d61-4a23-ba50-180664b3bdf6",
+    "display_no": 7756,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "ffd576f0-c7f5-4609-893b-6573fedb0db6",
+    "display_no": 7757,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "2315ca07-46dc-48bd-9a5b-86a774199029",
+    "display_no": 7759,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "92fa3501-e330-4df5-8cca-5764bda09f11",
+    "display_no": 7760,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "ee8af110-e488-463d-a768-a618f38ee82f",
+    "display_no": 7761,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "e906e56c-d96a-45f6-86d1-34f199063d2e",
+    "display_no": 7762,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "59a41171-fdf8-4453-8ea0-a3ac0a429e94",
+    "display_no": 7763,
+    "explanation_md": "틀린 것은 ㈏㈒ 2개이다."
+  },
+  {
+    "problem_id": "9cc4c1c6-e0aa-443e-9e3d-863c00302716",
+    "display_no": 7764,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "1a539459-e9ec-4f3d-abc3-62d524801a7d",
+    "display_no": 7768,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "f0e94673-ffc7-49ce-9cab-266e1464f642",
+    "display_no": 7769,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "1838d1ba-7d45-4a41-a2dc-737190ac2ead",
+    "display_no": 7770,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "b667d282-cf91-48c2-a683-de81e3979882",
+    "display_no": 7772,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "bb66ece5-074d-4ab7-8153-d269c3d0fc6d",
+    "display_no": 7773,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "f179a593-7ee1-4596-86b3-da9c39597199",
+    "display_no": 7774,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "b7c78356-15c1-4d68-a84d-51fe033b367f",
+    "display_no": 7775,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "88144d6c-399f-4cf0-a02b-cdab6871b1e0",
+    "display_no": 7776,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "da096c49-e1d4-4f25-8c23-1dfd6bf32fb9",
+    "display_no": 7777,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "f02dfbd4-062e-473e-a2b1-4b6bae7a3fbd",
+    "display_no": 7778,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "6f2a866a-0958-4941-a0b7-a01ea371c4fa",
+    "display_no": 7779,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "e3f1736c-c729-4966-96b9-71b1f4270252",
+    "display_no": 7781,
+    "explanation_md": "나머지는 취하간주되며, ④의 경우 포기한 것으로 본다."
+  },
+  {
+    "problem_id": "757d6ae7-6600-4259-88be-e46c26894b85",
+    "display_no": 7782,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "1427bb0e-78ea-4c64-a796-41d15b37e3bd",
+    "display_no": 7783,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "56f5e4d1-36cf-4be0-920a-bb53a70318a4",
+    "display_no": 8026,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "ee78763b-d83d-4813-a4fb-ff110dc5b00c",
+    "display_no": 7785,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "72f1d9f9-2730-4272-8642-fc906896df3d",
+    "display_no": 7786,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "23e855c1-4424-40f5-a05d-4897b7d645bc",
+    "display_no": 7787,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "345643dd-f48c-4bcb-b7a0-dba012c1fb97",
+    "display_no": 7788,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "53c0c10c-c91c-4c30-ae69-31eb2ad2fc6c",
+    "display_no": 7789,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "2b746e37-2b16-484d-90bc-0814abbb6b76",
+    "display_no": 7791,
+    "explanation_md": "틀린 것은 ㈎㈏㈑㈒㈓㈔㈕ 7개이다."
+  },
+  {
+    "problem_id": "36ce4127-55ea-4c73-9215-9310b70f1ee5",
+    "display_no": 7792,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "a8e3c51e-dd6c-4d4b-8eef-f09724a33c85",
+    "display_no": 7793,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "a29f1350-b419-46c2-a55a-0dfbe9d41e44",
+    "display_no": 7795,
+    "explanation_md": "특허료 등의 징수규칙 제7조 참조."
+  },
+  {
+    "problem_id": "4b5f5f1a-ade3-4e98-9e31-7ca561fc2cb9",
+    "display_no": 7796,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "ab573cdc-1c36-4526-9397-1fb5b05b5af0",
+    "display_no": 7797,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "e8e20c8d-d617-45d7-b519-0bc37c37817d",
+    "display_no": 7798,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "0ec2df47-e4ef-4385-9c43-e599e7642023",
+    "display_no": 7799,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "6f6fa8f6-8f6d-4b3b-a6b6-fd71da59d2f6",
+    "display_no": 7802,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "b20e64a7-6d0f-4c55-a325-de201b00c83e",
+    "display_no": 7803,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "2928b9e5-a4a8-46ce-b636-0b330f66b30c",
+    "display_no": 7807,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "e1cbfe9c-776c-49ee-a309-7d441848cb59",
+    "display_no": 7808,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "902d4fd4-a9c3-4518-a654-28a5aaa22ea4",
+    "display_no": 7811,
+    "explanation_md": "특허법 제92조의2제4항 참조.\n따라서 틀린 것은 ㈒㈓ 2개이다."
+  },
+  {
+    "problem_id": "414ebdc4-a683-4864-8798-d46e17e04a25",
+    "display_no": 7816,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "53efc6c6-e4a5-4b14-96a3-b3f38de7cc54",
+    "display_no": 7817,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "569f019f-cbde-4b26-a71c-479c01d903d6",
+    "display_no": 7821,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "f51f676b-f760-43eb-9243-d9d1ee10d2aa",
+    "display_no": 7822,
+    "explanation_md": "사안의 사실관계를 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/835a9d37e238961f33f9827461b9c80c.jpg)"
+  },
+  {
+    "problem_id": "a4dc3790-7a76-4662-92ad-c83d908ac808",
+    "display_no": 7826,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "2425f82d-d8b3-4d73-a95e-05d3a2277553",
+    "display_no": 7827,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "984dc42c-be2c-45c1-89b6-1a9168a7e0f5",
+    "display_no": 7828,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "404b58aa-6a3b-438e-b329-8107b92916dc",
+    "display_no": 7829,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "719bb17d-3f0d-4f17-af94-3c0d26efd452",
+    "display_no": 7830,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "5103a54a-afe0-4648-a7d0-a503b5de221e",
+    "display_no": 7831,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "6c1b8f7a-30a0-4c56-9c3f-5ce18250c02b",
+    "display_no": 7942,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "e96f69fa-cb92-4ca3-89c4-54ef8d5025a1",
+    "display_no": 7833,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "fbda7dbe-25ec-48ff-bc16-106c1907857d",
+    "display_no": 7835,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "94540a92-87b5-4e11-94ff-56b598766309",
+    "display_no": 7836,
+    "explanation_md": "틀린 것은 ㈐㈑㈒이다."
+  },
+  {
+    "problem_id": "541f21a2-e55a-47b8-83bc-84c30f8b30fd",
+    "display_no": 7837,
+    "explanation_md": "특허권의 침해의 성립이 인정되기 위해서는 ⅰ) 특허권이 유효하게 존속중 일 것, ⅱ) 특허발명의 보호범위에 속하는 확인대상발명을 실시할 것 ⅲ) 정당한 권원이 존재하지 않을 것, ⅳ) 업으로서의 실시일 것이 요구된다."
+  },
+  {
+    "problem_id": "116ce2da-98ae-48bf-9ebd-487b2813c338",
+    "display_no": 7838,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "2a5d42c7-0316-470b-bf9f-f2aec583d055",
+    "display_no": 7840,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "e444d351-bc53-458b-89ed-0dff75f6c963",
+    "display_no": 7847,
+    "explanation_md": "사안의 사실관계인 반제품 사건을 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/126caddf546e524a79a55bb4b43fa62e.jpg)"
+  },
+  {
+    "problem_id": "34cd2e53-c20a-4c8e-8cdb-a0492bed7312",
+    "display_no": 7849,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "075ee935-76b5-4c6e-bc37-34beb94daaa0",
+    "display_no": 7852,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "ae7b4064-6d6d-4abc-9311-dc51638fa864",
+    "display_no": 7856,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "01ceff0f-c717-4bc9-8eed-c2d7d3f399e7",
+    "display_no": 7866,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "66e98e2a-46bc-42b4-b217-ff79f47878e5",
+    "display_no": 7873,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "2ae8f660-da52-4ffc-a283-532b8400a93a",
+    "display_no": 7875,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "9bf6a7e7-33dc-4b6e-bfa3-272fa86123aa",
+    "display_no": 7878,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "33e80152-8842-42f9-b4d4-1d2445cd7cbe",
+    "display_no": 7907,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "b65df89e-a782-4104-99a9-7458060e142d",
+    "display_no": 7908,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "5fdeb47a-6e03-4edc-bbce-40c91d1b0a69",
+    "display_no": 7943,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "fbaee372-0d6e-4f88-8a3c-6376e57e0ac7",
+    "display_no": 7883,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "282ca0f3-e591-4f95-94d6-888e2c3bd811",
+    "display_no": 7885,
+    "explanation_md": "선사용권은 산업발전에의 기여라는 특허제도의 목적에 비추어 기존의 사업 및 사업설비를 보호함으로써 경제적 손실을 방지하고 특허권자와의 형평을 도모하는데 그 취지가 있다. 특히 현행 특허법은 특허권의 발생에 대해 출원에 의한 등록주의를 따르는 바, 이를 보완하여 실질적인 선발명자 내지 선실시자를 보호하기 위함이다."
+  },
+  {
+    "problem_id": "ec93abde-62c6-40d9-847d-7518e40dde54",
+    "display_no": 7886,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "6dc25195-afc5-45c3-b71e-9cffb0188b6c",
+    "display_no": 7890,
+    "explanation_md": "특허법 제105조 참조."
+  },
+  {
+    "problem_id": "f9a02f63-6ecf-42cf-af72-df4e4a5ba994",
+    "display_no": 7891,
+    "explanation_md": "사안의 사실관계를 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/a37c3b191b4772c075f8c916a7009c7c.jpg)"
+  },
+  {
+    "problem_id": "2c17374d-8bff-4dbd-a79f-859a39d7321b",
+    "display_no": 7893,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "b83e02f9-54d5-4f1b-a148-f2fd397f2194",
+    "display_no": 7902,
+    "explanation_md": "옳은 것은 ㈏㈐㈒ 3개이다."
+  },
+  {
+    "problem_id": "05ee4c24-80a6-4d97-9228-da8f2f10ec22",
+    "display_no": 7904,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "57efe618-66b0-472a-a75b-6c760a46ac03",
+    "display_no": 7912,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "b8615c45-bc87-4ef5-a72d-a0967ab9d416",
+    "display_no": 7914,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "89bc425d-36ed-4118-9d1e-0cd1b222d1eb",
+    "display_no": 7915,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "38d7b782-e6b9-4fa7-8734-eb446a794947",
+    "display_no": 7916,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "beeada10-c74c-412d-b4b2-5519514d3521",
+    "display_no": 7917,
+    "explanation_md": "따라서 틀린 것은 ㈎㈒㈓㈔ 이다."
+  },
+  {
+    "problem_id": "9e2788fa-a94b-44f0-869a-4d367b50245a",
+    "display_no": 7918,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "5eb9653d-6644-44af-9d31-9bfa7c54a518",
+    "display_no": 7919,
+    "explanation_md": "따라서 대상이 아닌 것은 ㈏,㈓ 이다."
+  },
+  {
+    "problem_id": "24b9932e-df53-4ca5-b552-724ddf66a35c",
+    "display_no": 7920,
+    "explanation_md": "따라서 옳은 것은 ㈎㈑ 2개이다."
+  },
+  {
+    "problem_id": "102b59ff-1279-4462-a704-acbb3b5b10bc",
+    "display_no": 7921,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "d83027d5-eb55-4ef9-a36c-0e7816a18d0a",
+    "display_no": 7922,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "b2e08ba1-1dab-4608-acc0-2b75f5895c7b",
+    "display_no": 7924,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "e1d5f108-9a0f-48e9-9243-c897f2d8dc79",
+    "display_no": 7925,
+    "explanation_md": "㈎㈏㈐가 옳은 지문이다."
+  },
+  {
+    "problem_id": "9dfabb45-5123-4820-8473-2a2e1ed72ce0",
+    "display_no": 7927,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "04ffa2f2-7ac4-4048-b0da-649edba0bd94",
+    "display_no": 7928,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "fd5b4690-b1d6-4bef-907e-8044f86cf41c",
+    "display_no": 7932,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "10afcf57-a151-46b8-9113-ab30a1e2afd1",
+    "display_no": 7933,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "9d3e1d52-c058-423a-bedd-5c7b735f38c6",
+    "display_no": 7934,
+    "explanation_md": "옳은 것은 ㈐㈒ 이다."
+  },
+  {
+    "problem_id": "0a89da95-ae32-4b46-86f7-aabf519c3663",
+    "display_no": 7935,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "13114c49-a1a6-4b9b-8851-d8fc0e813f2a",
+    "display_no": 7937,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "9e006906-4e10-47af-b994-c86bff1d32a1",
+    "display_no": 7938,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "b2ad9710-3a15-453d-8db4-73db912f731b",
+    "display_no": 7939,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "e92ba394-863d-4d0d-b9ff-d1489fd806a3",
+    "display_no": 7940,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "f3898290-319b-484c-bbb2-0036cae16d70",
+    "display_no": 7944,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "bf1a9f86-da81-4976-ba51-07b5ca53dcea",
+    "display_no": 7949,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "b1e325b5-8b67-4d54-98ba-40bcc0658cce",
+    "display_no": 7950,
+    "explanation_md": "대가가 심결에 기재되는 경우는 성질상 특허심판 중 특허법 제138조에 의한 통상실시권허락심판에 한한다(法 162①Ⅳ). 그 외의 심판은 대가가 아닌 심판비용의 부담을 심결에서 행한다."
+  },
+  {
+    "problem_id": "7fa61c44-9dfd-4e1a-bd94-964d1a7604ef",
+    "display_no": 7951,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "6a5233a5-a107-4fd3-a83b-58fc6b1a6346",
+    "display_no": 7952,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "629b5513-aeda-45f5-bfe4-a8e343124723",
+    "display_no": 7953,
+    "explanation_md": "따라서 옳은 것은 ㈐이다."
+  },
+  {
+    "problem_id": "b3f7e27f-5a82-4526-8e86-91137af30b6f",
+    "display_no": 7954,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "aa1c1a9e-d53b-42ff-8439-3ae3db0f8795",
+    "display_no": 7955,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "1b0d7245-a6b2-4913-bcea-f6e68860a9b7",
+    "display_no": 7956,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "50abefeb-72d0-4c15-93dc-73305ecdd1f9",
+    "display_no": 7958,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "e6433b5d-1ac4-4e3b-9463-a8bb79f80881",
+    "display_no": 7959,
+    "explanation_md": "따라서 틀린 것은 ㈎㈏㈐ 이다."
+  },
+  {
+    "problem_id": "8db8a391-29bd-4d4c-9550-bab0aa25921b",
+    "display_no": 7960,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "f2b50855-e826-49f2-a369-30507c572300",
+    "display_no": 7961,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "b3beed6b-4277-4908-a817-2faa06dcfbdf",
+    "display_no": 7962,
+    "explanation_md": "특허무효심판133"
+  },
+  {
+    "problem_id": "b0338aba-7224-45e9-bae3-2cb3079840cf",
+    "display_no": 7966,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "8bc3d66e-e105-445d-bd58-dee13d896405",
+    "display_no": 7967,
+    "explanation_md": "모두 틀린 지문이다."
+  },
+  {
+    "problem_id": "e8821774-9492-4050-9e7b-c8179e507ce8",
+    "display_no": 7968,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "50d6259c-41c8-4de8-a798-ed7afab842bc",
+    "display_no": 7969,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "baf1ee7b-58c1-41bf-9869-08ba13484f3a",
+    "display_no": 8023,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "a67fb1ef-bcb1-4d71-ae13-ce960b8229b1",
+    "display_no": 7971,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "b02083b6-d49b-47ec-9fda-4db2eb044f27",
+    "display_no": 7972,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "711905fe-fcc0-4911-a280-55bf1d6dc0cd",
+    "display_no": 7973,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "03894fa7-1ee5-4629-884b-2d54d033d83a",
+    "display_no": 7975,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "990455dd-71a9-44ce-9ead-b05b728d1c10",
+    "display_no": 7978,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "5c6317dc-2a4d-41a2-bc41-f9bc4d851efa",
+    "display_no": 7979,
+    "explanation_md": "틀린 것은 ㈐㈑㈒ 이다."
+  },
+  {
+    "problem_id": "1bd206a5-90f4-4729-9924-1794d6932360",
+    "display_no": 7980,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "5aacb7ed-0c74-4663-9b1b-735c64332b7c",
+    "display_no": 7981,
+    "explanation_md": "옳은 지문은 ㈎㈐㈒㈓ 이다."
+  },
+  {
+    "problem_id": "9ef195d9-64cd-4cb1-bc27-217a16dc3eec",
+    "display_no": 7982,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "c705a6f5-f27a-46b7-95a7-6c2e7171bcfa",
+    "display_no": 7983,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "377d7784-153c-4dfb-9b75-fd0be246c664",
+    "display_no": 7984,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "82ebcde4-19af-404a-866c-0fccb8689c82",
+    "display_no": 7985,
+    "explanation_md": "옳은 것은 ㈐ 이다."
+  },
+  {
+    "problem_id": "55367314-470d-4975-a99a-cf7043efd7c5",
+    "display_no": 7986,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "7e465a9d-4a0c-4087-bebc-dd81123b175b",
+    "display_no": 7987,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "b89ca0dc-3eb6-41a1-b89e-a3f65e953ddd",
+    "display_no": 7989,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "4c351549-7d92-4ba7-a06a-c9914289591d",
+    "display_no": 7990,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "d956f729-69a6-4025-b88c-0e6e49c3afb7",
+    "display_no": 8025,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "fbae9e4a-6610-4490-ba22-967681c8170b",
+    "display_no": 7991,
+    "explanation_md": "정정무효심판137"
+  },
+  {
+    "problem_id": "0be0434e-63d9-42d1-8671-2251e512616e",
+    "display_no": 7992,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "498a2ea8-8aee-47c8-a535-1844e2de8d5c",
+    "display_no": 7993,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "244a399f-30b1-43dd-a25c-029c8e8a1613",
+    "display_no": 7994,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "07d048c9-9df3-4632-8c18-675176ce6b4c",
+    "display_no": 7995,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "6e0ef983-32a6-4822-842b-3e0347e404bf",
+    "display_no": 7996,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "4659a6af-ad25-4f0c-8752-79b16ea93b26",
+    "display_no": 7997,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "08765035-f75e-43a2-bcbc-6b9179c27553",
+    "display_no": 8001,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "00d09c91-ad30-45dc-8af1-1bf6409a3f04",
+    "display_no": 8069,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "01d05cb0-210b-468e-ab28-a41fa1b68945",
+    "display_no": 8007,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "0d2ce8dd-8c90-4c7c-b310-b9e8ab5d84df",
+    "display_no": 8070,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "0ed5dae7-6289-443f-aadf-f6b825a44923",
+    "display_no": 8072,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "0ed9012b-5b75-449b-87a7-023c97393938",
+    "display_no": 8027,
+    "explanation_md": "따라서 틀린 것은 ㈏㈑이다."
+  },
+  {
+    "problem_id": "104ba922-e83a-4e0f-843d-2a812f605891",
+    "display_no": 8004,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "134489c1-5fe9-450d-9647-e44d1cf6903a",
+    "display_no": 8042,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "1aadafd1-cc1d-4a8c-98fe-b4842eaf0cf6",
+    "display_no": 8079,
+    "explanation_md": "사안의 사실관계를 그림으로 표현하면 다음과 같다.\n\n![](https://mcgdoplovrjgklbxmozi.supabase.co/storage/v1/object/public/problem-explanations/f9f10f31d607b14f36a64f5d5d0b5c6f.jpg)\n\n따라서 옳은 것은 ㈏, ㈐ 2개이다."
+  },
+  {
+    "problem_id": "20d894f5-a8a6-4c5c-9a23-769fc0b6b106",
+    "display_no": 8058,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "24260b90-83f1-4a49-a14a-9d3de8dc06ee",
+    "display_no": 8002,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "24d91d3a-23d6-48aa-872b-586d7ce7feab",
+    "display_no": 8043,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "2779cbfc-71c4-4d5f-9ef8-6bbdb4293693",
+    "display_no": 8082,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "29a915eb-d119-4ad6-aadd-71ae12763754",
+    "display_no": 8081,
+    "explanation_md": "따라서 국내서면제출기간내로 번역문을 제출해야 하는 것은 아니다. 옳은 것은 ㈎㈐ 이다."
+  },
+  {
+    "problem_id": "29cfbc84-ab42-47dc-abb7-82c82710789d",
+    "display_no": 8074,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "2c8cdbf9-bdde-427b-ac62-69cab600526c",
+    "display_no": 8047,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "31d06c64-3c5d-4793-899c-b527e7d22297",
+    "display_no": 8077,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "392f3bba-4493-4429-b3bf-19494251fd02",
+    "display_no": 8065,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "3b9377f4-5588-4297-810c-0999e4c9717d",
+    "display_no": 9522,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "5149951d-c970-4e77-8ba4-ae71d80c8987",
+    "display_no": 8061,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "5155c894-5d93-4ef4-a9c9-5761286623fc",
+    "display_no": 8054,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "5181f229-1077-4ceb-9daa-ecf31107462c",
+    "display_no": 8033,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "535814bf-0c7a-4fa5-a2fe-2d5e1203ecfa",
+    "display_no": 8041,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "53acd2b7-6c7d-4a44-b006-4b9f27633c78",
+    "display_no": 8056,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "543ad1a7-cdcb-40db-bb1e-3fec7c21f27a",
+    "display_no": 8029,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "5b2d13a3-66df-4a4f-a335-d061f3d92b6b",
+    "display_no": 9524,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "630d6830-454c-4b6e-8732-5c1e2259bb71",
+    "display_no": 8068,
+    "explanation_md": "특허법 제206조제1항에 의하면 기준일까지는 특허관리인에 의하지 아니하고 절차를 밟을 수 있다고 규정하고 있다.\n따라서 가능한 것은 ㈎㈏㈑㈒㈓㈖ 이다."
+  },
+  {
+    "problem_id": "6501f50f-ef8a-466f-8995-3e98b55dc770",
+    "display_no": 8046,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "6a0931ec-7eac-4a88-81de-4d96e9d52be3",
+    "display_no": 8049,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "71f2625d-9a35-4c60-bb27-ce609aab85eb",
+    "display_no": 8044,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "74b23188-8d5c-44e4-b5ed-28d7fd6a4ccb",
+    "display_no": 8030,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "78413304-8c16-45d4-bbd3-33dff435fb86",
+    "display_no": 8078,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "7aa46d86-570b-473c-81d0-ad757f214406",
+    "display_no": 8019,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "7ebb8b90-342e-4ced-86cf-b2ac8e0e45ae",
+    "display_no": 8028,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "854e413f-c8ad-4e38-b712-4ce8722ba225",
+    "display_no": 8052,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "8bf2aea5-2ef9-4611-8ae4-2568f3d333af",
+    "display_no": 8064,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "8e054cde-f050-4ae4-9303-d6a61620cfdb",
+    "display_no": 8084,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "905efdba-36c3-4110-b309-4139237d6176",
+    "display_no": 8021,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "908f90eb-b8e5-4b82-95d8-e6e8e9325ea9",
+    "display_no": 8034,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "93318135-a5a4-4929-8804-fbb5335e7f2b",
+    "display_no": 8035,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "98297313-960e-402b-ba87-c43c06da3f4d",
+    "display_no": 8060,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "996ea267-9f5a-40ca-93bd-c9fd72ea8bcb",
+    "display_no": 8016,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "9caeab96-b6b7-43e7-96c0-fcab169e52b6",
+    "display_no": 8020,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "a1f08f45-7bd4-4aa9-95ea-85550a46c77f",
+    "display_no": 8062,
+    "explanation_md": "따라서 옳은 것은 ㈎㈏㈐㈑㈒ 이다."
+  },
+  {
+    "problem_id": "a1fc9a82-5724-479e-b5bf-f3c64af4a1bd",
+    "display_no": 8022,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "a459cd52-ca6c-4cd9-bfe3-f06aed8f3087",
+    "display_no": 8045,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "b307712d-c6f3-4eac-a213-0eb3631cbd9a",
+    "display_no": 8018,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "c5ac3619-3a24-4b6f-b157-5922ac613878",
+    "display_no": 8051,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "cb9258f1-9f9f-46a5-b75e-a67cd151c3ec",
+    "display_no": 8067,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "d82ff695-f18d-4e8c-900f-6bc5436e6363",
+    "display_no": 8015,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "eb929406-72fc-474a-b59b-84931d71ec73",
+    "display_no": 8071,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "f2454273-43e5-44c6-93bb-78dc3cb86c78",
+    "display_no": 9525,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "fc1c7f98-5da8-485d-91db-0da3b408301b",
+    "display_no": 8032,
+    "explanation_md": null
+  },
+  {
+    "problem_id": "fe2296a8-0c04-484d-b8c0-44fb9b758d5e",
+    "display_no": 8005,
+    "explanation_md": null
+  }
+]
