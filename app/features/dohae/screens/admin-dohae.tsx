@@ -114,7 +114,7 @@ export default function AdminDohae({ loaderData }: Route.ComponentProps) {
                       {u.title}
                     </span>
                     <span className="text-muted-foreground shrink-0 text-[11px] tabular-nums">
-                      {u.pdfPage ? `p.${u.pdfPage}` : ""}
+                      {u.pdfPage ? `PDF p.${u.pdfPage}` : ""}
                     </span>
                     <BookOpenIcon className="text-muted-foreground size-3.5 shrink-0" />
                   </button>

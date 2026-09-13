@@ -159,7 +159,7 @@ export default function AdminDohaeEdit({
       cluster="laws"
       role={role}
       title={`도해 편집 — ${dohaeUnitLabel(unit)} ${unit.title}`}
-      desc={`제${unit.chapterNo}장 ${unit.chapterTitle}${unit.pdfPage ? ` · 원본 p.${unit.pdfPage}` : ""} — 텍스트만 수정합니다. 표 구조·열 너비·서식은 원본 그대로 유지됩니다.`}
+      desc={`제${unit.chapterNo}장 ${unit.chapterTitle}${unit.pdfPage ? ` · 원본 PDF p.${unit.pdfPage}` : ""} — 텍스트만 수정합니다. 표 구조·열 너비·서식은 원본 그대로 유지됩니다.`}
     >
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <Button asChild variant="outline" size="sm" className="h-8">

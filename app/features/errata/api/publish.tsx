@@ -95,6 +95,32 @@ function dohaeFieldDiffs(before: unknown, after: unknown): PublishFieldDiff[] {
   ];
 }
 
+/**
+ * 교재에 **인쇄된** 쪽번호. 추록 제목·시트가 함께 쓰는 단일 출처다.
+ *
+ * ★도해는 dohae_units.pdf_page(=PDF 물리 쪽)를 쪽번호로 쓰면 안 된다.
+ *   앞표지·목차 장수만큼 어긋난다(제20판 34쪽). 그래서 여기서만 가져온다.
+ *   콘텐츠가 여러 판본에 걸리면 가장 최근 판(edition_seq 내림차순)을 쓴다.
+ */
+async function bookPageOf(
+  client: ReturnType<typeof makeServerClient>[0],
+  contentType: string,
+  contentId: string,
+): Promise<number | null> {
+  const { data } = await client
+    .from("publication_content_map")
+    .select("page_no, publication_editions!inner(edition_seq)")
+    .eq("content_type", contentType)
+    .eq("content_id", contentId)
+    .order("edition_seq", {
+      referencedTable: "publication_editions",
+      ascending: false,
+    })
+    .limit(1)
+    .maybeSingle();
+  return data?.page_no ?? null;
+}
+
 async function contentLabelOf(
   client: ReturnType<typeof makeServerClient>[0],
   contentType: string,
@@ -113,13 +139,18 @@ async function contentLabelOf(
   if (contentType === "dohae") {
     const { data: u } = await client
       .from("dohae_units")
-      .select("kind, unit_no, ref_no, title, chapter_no, pdf_page")
+      .select("kind, unit_no, ref_no, title, chapter_no")
       .eq("unit_id", contentId)
       .maybeSingle();
     if (!u) return "도해";
     const no =
       u.kind === "topic" ? String(u.unit_no ?? "") : `참고 ${u.ref_no ?? ""}`;
-    return `도해특허법 ${no} ${u.title}${u.pdf_page ? ` (p.${u.pdf_page})` : ""}`;
+    // ★쪽번호는 publication_content_map.page_no(=교재에 인쇄된 쪽) 에서만 가져온다.
+    //   dohae_units.pdf_page 는 이름 그대로 **PDF 물리 쪽**이라 앞표지·목차만큼
+    //   어긋난다(제20판 기준 34쪽). 이걸 그대로 찍어 추록 7건이 전부 밀렸다
+    //   (원장 지적 2026-09-13). 크롭(crop-diagrams)은 계속 pdf_page 를 쓴다.
+    const page = await bookPageOf(client, "dohae", contentId);
+    return `도해특허법 ${no} ${u.title}${page ? ` (p.${page})` : ""}`;
   }
   if (contentType === "precedent") {
     const { data: c } = await client

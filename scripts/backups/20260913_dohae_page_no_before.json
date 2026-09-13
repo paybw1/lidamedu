@@ -1,0 +1,653 @@
+[
+  {
+    "map_id": "e6e9df77-3fea-4fe3-9564-1c9a835112a6",
+    "unit": "목적(法 1)",
+    "pdf_page": 36,
+    "page_no_before": 36,
+    "page_no_after": 2
+  },
+  {
+    "map_id": "04df3fe6-1da2-4ce0-9fb7-fd431b4362f8",
+    "unit": "정의(法 2)",
+    "pdf_page": 38,
+    "page_no_before": 38,
+    "page_no_after": 4
+  },
+  {
+    "map_id": "335f2fde-e3b1-4b60-9da4-c3198393fefa",
+    "unit": "1.1 성립성이 문제되는 발명",
+    "pdf_page": 42,
+    "page_no_before": 42,
+    "page_no_after": 8
+  },
+  {
+    "map_id": "994365f4-e0bd-4182-96f8-0fe76064a15e",
+    "unit": "1.2 발명의 분류",
+    "pdf_page": 47,
+    "page_no_before": 47,
+    "page_no_after": 13
+  },
+  {
+    "map_id": "c459e73e-9c35-41bc-9de1-22daf6395de0",
+    "unit": "행위능력(法 3~5①)",
+    "pdf_page": 50,
+    "page_no_before": 50,
+    "page_no_after": 16
+  },
+  {
+    "map_id": "8bd79d23-e2c8-46ae-8fc4-2d3c3ae99951",
+    "unit": "대리인(法 3②, 5②~10, 12)",
+    "pdf_page": 52,
+    "page_no_before": 52,
+    "page_no_after": 18
+  },
+  {
+    "map_id": "501c0124-9b7c-498e-984c-e15edb51d101",
+    "unit": "복수당사자의 대표(法 11)",
+    "pdf_page": 57,
+    "page_no_before": 57,
+    "page_no_after": 23
+  },
+  {
+    "map_id": "90540363-abdd-499c-90de-72914812f554",
+    "unit": "재외자의 재판관할(法 13)",
+    "pdf_page": 59,
+    "page_no_before": 59,
+    "page_no_after": 25
+  },
+  {
+    "map_id": "e33412d3-d92e-43e8-a6f7-bd2a0d7911b7",
+    "unit": "기일과 기간(法 14, 15)",
+    "pdf_page": 60,
+    "page_no_before": 60,
+    "page_no_after": 26
+  },
+  {
+    "map_id": "6219f498-bfd8-45a8-a7e1-cad008caad42",
+    "unit": "특허에 관한 절차 일반(法 16, 28-28의5)",
+    "pdf_page": 63,
+    "page_no_before": 63,
+    "page_no_after": 29
+  },
+  {
+    "map_id": "ed17f0a8-f26d-4ccf-8084-556e87e21834",
+    "unit": "1.3 절차의 불수리(서류의 반려)",
+    "pdf_page": 68,
+    "page_no_before": 68,
+    "page_no_after": 34
+  },
+  {
+    "map_id": "5bed4fe6-1853-4012-8706-2591afb28402",
+    "unit": "추후보완(法 17 및 67의3)",
+    "pdf_page": 69,
+    "page_no_before": 69,
+    "page_no_after": 35
+  },
+  {
+    "map_id": "b7b99fbb-f7e0-4315-a7be-7d3a041f8cf7",
+    "unit": "절차의 효력 승계 및 절차의 속행(法 18, 19)",
+    "pdf_page": 70,
+    "page_no_before": 70,
+    "page_no_after": 36
+  },
+  {
+    "map_id": "72db1dd5-5b8b-48c4-822e-9c0c70293756",
+    "unit": "절차의 정지(法 20~24, 78, 164)",
+    "pdf_page": 71,
+    "page_no_before": 71,
+    "page_no_after": 37
+  },
+  {
+    "map_id": "1ff4bea0-71c7-432f-aad2-72d994012437",
+    "unit": "조약의 효력",
+    "pdf_page": 74,
+    "page_no_before": 74,
+    "page_no_after": 40
+  },
+  {
+    "map_id": "05b35fe7-923f-492c-82b4-c64a63cbf824",
+    "unit": "보칙(法 215~224의5)",
+    "pdf_page": 76,
+    "page_no_before": 76,
+    "page_no_after": 42
+  },
+  {
+    "map_id": "f5a8f891-3581-441e-9256-f3455a8c3148",
+    "unit": "2.1 거절이유, 정보제공사유, 특허무효사유 및 특허취소사유의 비교",
+    "pdf_page": 84,
+    "page_no_before": 84,
+    "page_no_after": 50
+  },
+  {
+    "map_id": "27ad2193-9aeb-4b8d-91c3-aec835a75e1a",
+    "unit": "협의의 특허요건(法 29)",
+    "pdf_page": 85,
+    "page_no_before": 85,
+    "page_no_after": 51
+  },
+  {
+    "map_id": "71342696-8000-44d9-903a-fd0318464510",
+    "unit": "선출원주의(法 36)",
+    "pdf_page": 92,
+    "page_no_before": 92,
+    "page_no_after": 58
+  },
+  {
+    "map_id": "12fd240e-53e1-46e4-8be9-ba1ca8f8c758",
+    "unit": "2.2 제29조(협의의 특허요건)과 제36조(선출원주의) 판단",
+    "pdf_page": 96,
+    "page_no_before": 96,
+    "page_no_after": 62
+  },
+  {
+    "map_id": "aa8a8c05-d3d1-46d8-983d-98d0f7a76b49",
+    "unit": "불특허발명(法 32)",
+    "pdf_page": 100,
+    "page_no_before": 100,
+    "page_no_after": 66
+  },
+  {
+    "map_id": "29712c4e-ea84-4b0d-a531-43e38f7d2031",
+    "unit": "국방상 필요한 발명(法 41, 106)",
+    "pdf_page": 102,
+    "page_no_before": 102,
+    "page_no_after": 68
+  },
+  {
+    "map_id": "29605f32-56f5-49e7-a9da-fa8920ef59e5",
+    "unit": "출원인이 될 수 있는 자(法 25, 33, 44)",
+    "pdf_page": 105,
+    "page_no_before": 105,
+    "page_no_after": 71
+  },
+  {
+    "map_id": "e2dc6db7-5517-4783-abff-f8bc4993f5b9",
+    "unit": "특허를 받을 수 있는 권리(法 37, 38)",
+    "pdf_page": 107,
+    "page_no_before": 107,
+    "page_no_after": 73
+  },
+  {
+    "map_id": "4d0f548e-3353-415c-b41e-d71318fe48cf",
+    "unit": "직무발명(발진법 2, 10~19, 58)",
+    "pdf_page": 111,
+    "page_no_before": 111,
+    "page_no_after": 77
+  },
+  {
+    "map_id": "3309f963-f294-407e-8f31-52c2a438570b",
+    "unit": "특허출원(法 42~42의3, 43)",
+    "pdf_page": 119,
+    "page_no_before": 119,
+    "page_no_after": 85
+  },
+  {
+    "map_id": "0211e55a-dba5-4b04-9b67-ce08af3d6c04",
+    "unit": "2.3 청구항의 작성형태",
+    "pdf_page": 134,
+    "page_no_before": 134,
+    "page_no_after": 100
+  },
+  {
+    "map_id": "95ed5d6c-d7d5-4a7d-b3dc-205387643c4e",
+    "unit": "2.4 연결부의 해석",
+    "pdf_page": 135,
+    "page_no_before": 135,
+    "page_no_after": 101
+  },
+  {
+    "map_id": "906d35cd-a51b-42af-a36b-860746aa05fe",
+    "unit": "하나의 특허출원의 범위(法 45)",
+    "pdf_page": 136,
+    "page_no_before": 136,
+    "page_no_after": 102
+  },
+  {
+    "map_id": "0b5e083f-7833-446d-ad97-89b3213fdb85",
+    "unit": "공지 등이 되지 아니한 발명으로 보는 경우(法 30)",
+    "pdf_page": 142,
+    "page_no_before": 142,
+    "page_no_after": 108
+  },
+  {
+    "map_id": "b4338d86-20ba-4ca6-9ec0-9b71f6bd121b",
+    "unit": "정당한 권리자의 보호(法 34, 35, 99의2)",
+    "pdf_page": 145,
+    "page_no_before": 145,
+    "page_no_after": 111
+  },
+  {
+    "map_id": "fe66a734-a701-4f86-a884-e2e9e3638dcb",
+    "unit": "보정(法 46, 47, 51)",
+    "pdf_page": 149,
+    "page_no_before": 149,
+    "page_no_after": 115
+  },
+  {
+    "map_id": "94bfaaf2-5499-40d2-852e-fd1e8f5ba25b",
+    "unit": "분할출원(法 52)",
+    "pdf_page": 158,
+    "page_no_before": 158,
+    "page_no_after": 124
+  },
+  {
+    "map_id": "09cba31f-d331-47f0-8133-17aea268dee1",
+    "unit": "분리출원(法 52의2)",
+    "pdf_page": 162,
+    "page_no_before": 162,
+    "page_no_after": 128
+  },
+  {
+    "map_id": "2616b39e-bb32-4d60-a0d0-6cf0aebaeb7d",
+    "unit": "변경출원(法 53)",
+    "pdf_page": 164,
+    "page_no_before": 164,
+    "page_no_after": 130
+  },
+  {
+    "map_id": "17b181c2-6071-49bb-84fc-992839ad00ba",
+    "unit": "조약우선권주장출원(法 54)",
+    "pdf_page": 168,
+    "page_no_before": 168,
+    "page_no_after": 134
+  },
+  {
+    "map_id": "697e8e52-0cb6-41b2-9ebb-b17e895aefbb",
+    "unit": "국내우선권주장출원(法 55, 56)",
+    "pdf_page": 171,
+    "page_no_before": 171,
+    "page_no_after": 137
+  },
+  {
+    "map_id": "e3a59f21-c20a-41f5-b915-09ec17b9225d",
+    "unit": "3.1 분할ㆍ분리ㆍ변경ㆍ조약우선권주장ㆍ국내우선권주장출원의 적법성",
+    "pdf_page": 177,
+    "page_no_before": 177,
+    "page_no_after": 143
+  },
+  {
+    "map_id": "912ccd8a-2aef-4f28-a422-daa06a8d1c3d",
+    "unit": "3.2 발명의 동일성 및 판단대상의 비교",
+    "pdf_page": 178,
+    "page_no_before": 178,
+    "page_no_after": 144
+  },
+  {
+    "map_id": "9a342fef-fea3-4117-9370-28a7549756cb",
+    "unit": "심사관 및 전문기관(法 57~58의2, 68)",
+    "pdf_page": 182,
+    "page_no_before": 182,
+    "page_no_after": 148
+  },
+  {
+    "map_id": "f1765e31-fed1-4be1-b54a-484cff13fc56",
+    "unit": "심사청구제도(法 59, 60, 67의3)",
+    "pdf_page": 183,
+    "page_no_before": 183,
+    "page_no_after": 149
+  },
+  {
+    "map_id": "81d92cdb-9b2b-4f7d-9407-14bca967b399",
+    "unit": "우선심사제도(法 61)",
+    "pdf_page": 187,
+    "page_no_before": 187,
+    "page_no_after": 153
+  },
+  {
+    "map_id": "1790ecd7-f291-488e-8611-ca0ebcc9bcf2",
+    "unit": "심사의 진행",
+    "pdf_page": 189,
+    "page_no_before": 189,
+    "page_no_after": 155
+  },
+  {
+    "map_id": "8c67af1d-73ee-49a8-b3c8-41216a93d61c",
+    "unit": "출원의 취하 및 포기",
+    "pdf_page": 190,
+    "page_no_before": 190,
+    "page_no_after": 156
+  },
+  {
+    "map_id": "48bc97dd-d6a3-41b1-90d2-6897b28fff8b",
+    "unit": "특허여부결정(法 62, 63, 63의3, 66~67의3)",
+    "pdf_page": 191,
+    "page_no_before": 191,
+    "page_no_after": 157
+  },
+  {
+    "map_id": "0bfb26ac-2050-4683-b92f-1532e523a076",
+    "unit": "정보제공제도(法 63의2)",
+    "pdf_page": 199,
+    "page_no_before": 199,
+    "page_no_after": 165
+  },
+  {
+    "map_id": "600644a8-1430-46a7-aae3-c48002a7371e",
+    "unit": "출원공개제도(法 64, 65)",
+    "pdf_page": 201,
+    "page_no_before": 201,
+    "page_no_after": 167
+  },
+  {
+    "map_id": "80d10cca-6cab-438c-8759-0b7737214453",
+    "unit": "특허료 납부 등(法 79~86)",
+    "pdf_page": 206,
+    "page_no_before": 206,
+    "page_no_after": 172
+  },
+  {
+    "map_id": "a1f5a0c2-0c44-4651-ae97-fdd05261eb7d",
+    "unit": "설정등록 및 등록공고(法 87)",
+    "pdf_page": 215,
+    "page_no_before": 215,
+    "page_no_after": 181
+  },
+  {
+    "map_id": "24f72e28-e208-4c0d-aa80-19e2dbad5c82",
+    "unit": "존속기간과 존속기간연장등록제도(法 88~93, 95)",
+    "pdf_page": 218,
+    "page_no_before": 218,
+    "page_no_after": 184
+  },
+  {
+    "map_id": "427d886b-0a48-419e-b22a-b48281342f0e",
+    "unit": "효력의 의의, 제한 및 확장(法 94~96, 127)",
+    "pdf_page": 226,
+    "page_no_before": 226,
+    "page_no_after": 192
+  },
+  {
+    "map_id": "9e5c3adb-7407-422a-b4da-fba8d74685be",
+    "unit": "특허발명의 보호범위(法 97)",
+    "pdf_page": 231,
+    "page_no_before": 231,
+    "page_no_after": 197
+  },
+  {
+    "map_id": "10b84c09-3c0a-47e2-8e52-16ce9feac323",
+    "unit": "이용 및 저촉 발명(法 98)",
+    "pdf_page": 235,
+    "page_no_before": 235,
+    "page_no_after": 201
+  },
+  {
+    "map_id": "a9514799-6d03-4283-bc47-b1c8133325c0",
+    "unit": "특허권의 침해(法 97, 98, 126~132, 225, 230, 231)",
+    "pdf_page": 239,
+    "page_no_before": 239,
+    "page_no_after": 205
+  },
+  {
+    "map_id": "ebd461ff-ea3f-4d86-be79-6c2514e36c21",
+    "unit": "5.1 특허요건 판단과 침해 성립요건 판단의 구별",
+    "pdf_page": 250,
+    "page_no_before": 250,
+    "page_no_after": 216
+  },
+  {
+    "map_id": "e0b688c1-0d05-4421-8918-b64995d09e34",
+    "unit": "벌칙(法 225~232)",
+    "pdf_page": 252,
+    "page_no_before": 252,
+    "page_no_after": 218
+  },
+  {
+    "map_id": "2d584c95-d042-4ee7-9d51-2f238c3c184e",
+    "unit": "특허권의 이전 및 공유(法 99, 99의2)",
+    "pdf_page": 255,
+    "page_no_before": 255,
+    "page_no_after": 221
+  },
+  {
+    "map_id": "19bba5ac-d9a2-4691-907c-1dbe85bdd1e9",
+    "unit": "실시권 일반(法 100~102, 118)",
+    "pdf_page": 258,
+    "page_no_before": 258,
+    "page_no_after": 224
+  },
+  {
+    "map_id": "faf922d4-0835-4dee-a332-76dc3c8ddd3d",
+    "unit": "법정실시권(法 81의3⑤, 103~105, 122, 182, 183, 발진법 10)",
+    "pdf_page": 261,
+    "page_no_before": 261,
+    "page_no_after": 227
+  },
+  {
+    "map_id": "b21dfcd8-844e-48d1-92a8-b33f44df5a70",
+    "unit": "강제실시권(法 106의2~115, 138)",
+    "pdf_page": 267,
+    "page_no_before": 267,
+    "page_no_after": 233
+  },
+  {
+    "map_id": "7ebd12ff-3664-4778-ae1c-a4ba9a6af1f8",
+    "unit": "특허권상 질권(法 121~123)",
+    "pdf_page": 275,
+    "page_no_before": 275,
+    "page_no_after": 241
+  },
+  {
+    "map_id": "9f59a7ec-5bf3-4a8e-9ea0-786931ef9bbd",
+    "unit": "특허권의 소멸(法 119, 120, 124)",
+    "pdf_page": 278,
+    "page_no_before": 278,
+    "page_no_after": 244
+  },
+  {
+    "map_id": "8c96ed2d-c3c7-440c-bff2-25dacf15e663",
+    "unit": "실시보고 및 집행권원(法 125, 125의2)",
+    "pdf_page": 280,
+    "page_no_before": 280,
+    "page_no_after": 246
+  },
+  {
+    "map_id": "2ec9e355-9f9c-45e9-b0b8-a4a34ac790d7",
+    "unit": "6.1 심판의 분류",
+    "pdf_page": 282,
+    "page_no_before": 282,
+    "page_no_after": 248
+  },
+  {
+    "map_id": "fb5e1edd-536a-4add-ad20-f6a8e789f8b7",
+    "unit": "특허심판원(法 132의16, 143~153의2)",
+    "pdf_page": 283,
+    "page_no_before": 283,
+    "page_no_after": 249
+  },
+  {
+    "map_id": "061cc4f6-612d-44a3-b448-48702a3e1698",
+    "unit": "심판의 당사자(청구인, 피청구인)(法 139)",
+    "pdf_page": 286,
+    "page_no_before": 286,
+    "page_no_after": 252
+  },
+  {
+    "map_id": "0bf941fa-c2bd-44ff-9a54-15e1ed274bfe",
+    "unit": "심판의 참가인(法 155, 156)",
+    "pdf_page": 288,
+    "page_no_before": 288,
+    "page_no_after": 254
+  },
+  {
+    "map_id": "27a3d61c-bd13-44a8-9437-897546013e10",
+    "unit": "국선대리인, 전문심리위원 및 참고인(法 139의2, 154의2, 154의3)",
+    "pdf_page": 290,
+    "page_no_before": 290,
+    "page_no_after": 256
+  },
+  {
+    "map_id": "f824714e-7f78-4cbb-9e2c-e7e501d9f637",
+    "unit": "심판의 청구(法 140, 140의2)",
+    "pdf_page": 292,
+    "page_no_before": 292,
+    "page_no_after": 258
+  },
+  {
+    "map_id": "1b1703cd-da2a-4fae-956b-59ddb36a8188",
+    "unit": "방식심리와 적법성심리(法 141, 142)",
+    "pdf_page": 294,
+    "page_no_before": 294,
+    "page_no_after": 260
+  },
+  {
+    "map_id": "8905a3dc-653c-4daa-8f05-168a00f3e020",
+    "unit": "본안심리(法 154, 157~160)",
+    "pdf_page": 297,
+    "page_no_before": 297,
+    "page_no_after": 263
+  },
+  {
+    "map_id": "a1796c45-d9a5-48d3-96b7-73085e21c952",
+    "unit": "심판청구의 취하(法 161)",
+    "pdf_page": 301,
+    "page_no_before": 301,
+    "page_no_after": 267
+  },
+  {
+    "map_id": "bf26910a-6ec2-4990-8f6a-baaa0885d70d",
+    "unit": "심결(法 162, 163)",
+    "pdf_page": 303,
+    "page_no_before": 303,
+    "page_no_after": 269
+  },
+  {
+    "map_id": "142f62cf-be6c-4a2c-860c-6576ffdcf5e5",
+    "unit": "조정위원회 회부, 심판비용 및 집행권원(法 164의2, 165, 166)",
+    "pdf_page": 307,
+    "page_no_before": 307,
+    "page_no_after": 273
+  },
+  {
+    "map_id": "011f26e8-a16f-4bc8-8db2-2329705b5d93",
+    "unit": "거절결정불복심판(法 132의17, 170~172, 176)",
+    "pdf_page": 309,
+    "page_no_before": 309,
+    "page_no_after": 275
+  },
+  {
+    "map_id": "d6bf76ee-e2f3-4806-862d-9736fa248663",
+    "unit": "특허무효심판(法 133)",
+    "pdf_page": 311,
+    "page_no_before": 311,
+    "page_no_after": 277
+  },
+  {
+    "map_id": "7102b9a4-6549-4319-a4c2-ae153ea8b526",
+    "unit": "존속기간연장등록무효심판(法 134)",
+    "pdf_page": 314,
+    "page_no_before": 314,
+    "page_no_after": 280
+  },
+  {
+    "map_id": "959c7263-baa0-4fd2-9a12-0d63199bd940",
+    "unit": "권리범위확인심판(法 135)",
+    "pdf_page": 316,
+    "page_no_before": 316,
+    "page_no_after": 282
+  },
+  {
+    "map_id": "9b9d0d90-0558-4101-a98c-887b00882bf2",
+    "unit": "정정심판(法 136)",
+    "pdf_page": 321,
+    "page_no_before": 321,
+    "page_no_after": 287
+  },
+  {
+    "map_id": "02a3e815-819a-4241-b021-93270947ef45",
+    "unit": "정정무효심판(法 137)",
+    "pdf_page": 326,
+    "page_no_before": 326,
+    "page_no_after": 292
+  },
+  {
+    "map_id": "b9f99b96-848f-490c-8aff-e56baca6aa7e",
+    "unit": "통상실시권허락심판(法 138)",
+    "pdf_page": 328,
+    "page_no_before": 328,
+    "page_no_after": 294
+  },
+  {
+    "map_id": "f9f22e87-98cc-4e08-920b-e74b02f83a2f",
+    "unit": "6.2 심판각론의 비교",
+    "pdf_page": 330,
+    "page_no_before": 330,
+    "page_no_after": 296
+  },
+  {
+    "map_id": "7278073e-c220-4021-a852-abd99d877246",
+    "unit": "특허취소신청(法 132의2~132의15)",
+    "pdf_page": 332,
+    "page_no_before": 332,
+    "page_no_after": 298
+  },
+  {
+    "map_id": "5bad2b8e-a66e-4212-a28d-4270d80a9a78",
+    "unit": "정정청구(法 132의3, 133의2, 137③④)",
+    "pdf_page": 342,
+    "page_no_before": 342,
+    "page_no_after": 308
+  },
+  {
+    "map_id": "91fe104b-41f5-48eb-a59a-ef20f95e5049",
+    "unit": "재심(法 178~185)",
+    "pdf_page": 347,
+    "page_no_before": 347,
+    "page_no_after": 313
+  },
+  {
+    "map_id": "f918c376-3cb3-43d5-a03c-9e6163b7e513",
+    "unit": "심결취소소송(협의의 특허소송)(法 186~189)",
+    "pdf_page": 354,
+    "page_no_before": 354,
+    "page_no_after": 320
+  },
+  {
+    "map_id": "195d410a-00e2-4c1c-affd-dd16440da7dd",
+    "unit": "보상금 또는 대가에 대한 불복의 소(法 190, 191)",
+    "pdf_page": 361,
+    "page_no_before": 361,
+    "page_no_after": 327
+  },
+  {
+    "map_id": "ddd61108-f539-4690-922a-b5d5b77634c7",
+    "unit": "변리사의 보수와 소송비용(法 191의2)",
+    "pdf_page": 362,
+    "page_no_before": 362,
+    "page_no_after": 328
+  },
+  {
+    "map_id": "855b4a3e-21a1-48e0-8220-0037c3307d48",
+    "unit": "국제출원절차(法 192~198)",
+    "pdf_page": 365,
+    "page_no_before": 365,
+    "page_no_after": 331
+  },
+  {
+    "map_id": "74ab5812-dae0-4f16-b219-76b173f32d87",
+    "unit": "국제조사 및 국제예비심사(法 198의2)",
+    "pdf_page": 373,
+    "page_no_before": 373,
+    "page_no_after": 339
+  },
+  {
+    "map_id": "72864a40-5f43-4ceb-8963-8d97ac79b141",
+    "unit": "국제특허출원에 관한 특례(法 199~214)",
+    "pdf_page": 379,
+    "page_no_before": 379,
+    "page_no_after": 345
+  },
+  {
+    "map_id": "a75b0f66-c402-4b05-89a8-9e147b6fd74d",
+    "unit": "실용신안법의 보호대상",
+    "pdf_page": 400,
+    "page_no_before": 400,
+    "page_no_after": 366
+  },
+  {
+    "map_id": "7805fda0-8eee-40e5-a124-c8eac96a46ec",
+    "unit": "특허법과 실용신안법의 비교",
+    "pdf_page": 401,
+    "page_no_before": 401,
+    "page_no_after": 367
+  }
+]
