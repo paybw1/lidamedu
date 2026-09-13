@@ -84,7 +84,11 @@ export function SettlementDialog({
   }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[88vh] w-[96vw] flex-col gap-0 p-0 sm:max-w-3xl lg:max-w-4xl">
+      <DialogContent
+        resizable
+        resizeKey="settlement"
+        className="flex max-h-[88vh] w-[96vw] flex-col gap-0 p-0 sm:max-w-3xl lg:max-w-4xl"
+      >
         <DialogHeader className="px-4 pt-4 pb-2">
           <DialogTitle className="flex items-center gap-1.5 text-base">
             <WalletIcon className="size-4" /> {TITLE}

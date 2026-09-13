@@ -81,7 +81,11 @@ function ProblemPreviewChip({
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
         {/* 헤더(제목·X)·하단 버튼 고정, 본문만 스크롤 — ref-preview-badge 와 동일 골격 */}
-        <DialogContent className="flex max-h-[80vh] max-w-2xl flex-col overflow-hidden">
+        <DialogContent
+          resizable
+          resizeKey="exam-year"
+          className="flex max-h-[80vh] max-w-2xl flex-col overflow-hidden"
+        >
           <DialogHeader>
             <DialogTitle className="pr-6 text-base leading-snug">
               {d?.heading ?? label}

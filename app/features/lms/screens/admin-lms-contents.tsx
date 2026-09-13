@@ -673,7 +673,11 @@ function ContentEditorSheet({
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-md">
+      <SheetContent
+        resizable
+        resizeKey="lms-content-edit"
+        className="w-full overflow-y-auto sm:max-w-md"
+      >
         <SheetHeader>
           <SheetTitle>{c ? "콘텐츠 수정" : "콘텐츠 등록"}</SheetTitle>
         </SheetHeader>

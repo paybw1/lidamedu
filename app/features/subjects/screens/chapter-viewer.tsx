@@ -518,6 +518,8 @@ function Inner({
               </SheetTrigger>
               <SheetContent
                 side="left"
+                resizable
+                resizeKey="chapter-toc"
                 className="w-[320px] overflow-y-auto p-0 sm:max-w-[360px]"
               >
                 <SheetHeader>

@@ -265,7 +265,11 @@ export default function BookDetail({ loaderData }: Route.ComponentProps) {
                   {book.previewPages.length}p)
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+              <DialogContent
+                resizable
+                resizeKey="book-detail"
+                className="max-h-[85vh] overflow-y-auto sm:max-w-2xl"
+              >
                 <DialogHeader>
                   <DialogTitle>{book.title} 미리보기</DialogTitle>
                 </DialogHeader>

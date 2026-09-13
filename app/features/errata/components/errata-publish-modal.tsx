@@ -145,7 +145,11 @@ export function ErrataPublishModal({
 
   return (
     <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(o) : cancel())}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+      <DialogContent
+        resizable
+        resizeKey="errata-publish"
+        className="max-h-[90vh] max-w-2xl overflow-y-auto"
+      >
         <DialogHeader>
           <DialogTitle>추록·정오표 발행</DialogTitle>
           <DialogDescription>

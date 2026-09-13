@@ -225,7 +225,11 @@ function BugRow({ report }: { report: BugReportRow }) {
           ))}
         </div>
         <Dialog open={noteOpen} onOpenChange={setNoteOpen}>
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent
+            resizable
+            resizeKey="bug-report-note"
+            className="sm:max-w-lg"
+          >
             <DialogHeader>
               <DialogTitle>완료 처리 및 신고자 알림</DialogTitle>
               <DialogDescription>

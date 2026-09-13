@@ -135,7 +135,12 @@ export function GuideHelpButton({
         </button>
       </span>
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-md">
+        <SheetContent
+          side="right"
+          resizable
+          resizeKey="guide-help"
+          className="w-full overflow-y-auto sm:max-w-md"
+        >
           <SheetHeader>
             <SheetTitle className="inline-flex items-center gap-1.5 text-base">
               <HelpCircleIcon className="text-link size-4" /> 이 화면 사용법
