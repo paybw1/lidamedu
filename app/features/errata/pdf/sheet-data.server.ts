@@ -59,6 +59,20 @@ function payloadText(
   return typeof v === "string" ? v : "";
 }
 
+/**
+ * 고쳐진 글이 실린 **교재 쪽**. 없으면 publication_content_map 의 쪽으로 떨어진다.
+ *
+ * ★map 의 page_no 는 「유닛이 시작하는 쪽」이다. 유닛은 여러 쪽에 걸치므로
+ *   추록이 가리켜야 할 쪽과 다르다 — 도해 7건이 1~10쪽씩 어긋나 있었다
+ *   (원장 지적 2026-09-13: 「정의(法 2)는 p.4 가 아니라 p.7」).
+ *   그래서 개정별 쪽을 errata_payload.page_no 에 담고 그것을 먼저 쓴다.
+ */
+function payloadPage(payload: unknown): number | null {
+  if (payload == null || typeof payload !== "object") return null;
+  const v = (payload as Record<string, unknown>).page_no;
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
 /** source_ref.choice_no → 지문 번호. 문자열/숫자 모두 허용, 범위 밖은 null. */
 /** source_ref.marker → 보기 마커. 보기 박스 편집분에만 있다. */
 function boxMarkerOf(sourceRef: unknown): string | null {
@@ -178,7 +192,7 @@ export async function buildErrataSheetData(
       reason: r.errata_reason,
       effectiveDate: r.effective_date,
       publishedAt: r.published_at ?? "",
-      pageNo: r.page_no,
+      pageNo: payloadPage(r.errata_payload) ?? r.page_no,
       lineHint: r.line_hint,
       tocPath: r.toc_path,
       sortKey: r.sort_key,
