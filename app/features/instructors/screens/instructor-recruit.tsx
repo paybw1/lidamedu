@@ -3,18 +3,21 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 
+import type { Route } from "./+types/instructor-recruit";
+
+import { pageMeta } from "~/core/lib/seo";
+
 import { InstructorStyle } from "../components/instructor-theme";
 
-export function meta() {
-  return [
-    { title: "강사 모집 | 리담변리사학원" },
+export const meta: Route.MetaFunction = (a) =>
+  pageMeta(
     {
-      name: "description",
-      content:
+      title: "강사 모집",
+      description:
         "리담변리사학원 전문 강사진을 모집합니다. 모집 과목·우대사항·서류전형·제출 서류 안내.",
     },
-  ];
-}
+    a,
+  );
 
 const SUBJECTS = [
   "민법",

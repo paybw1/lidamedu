@@ -7,15 +7,19 @@ import { LandingStyle } from "../components/landing-style";
 import { getExamInfo, listExamNotices } from "../queries.server";
 
 import type { Route } from "./+types/exam-info";
+import { pageMeta } from "~/core/lib/seo";
 
-export const meta: Route.MetaFunction = () => [
-  { title: "시험정보 | 리담변리사학원" },
-  {
-    name: "description",
-    content:
-      "변리사 시험 일정·과목·시험시간·합격 기준·영어 대체시험·연도별 통계·공부법 안내. 2026년 제63회 기준.",
-  },
-];
+// ★"2026년 제63회 기준" 문구를 뺐다 — 본문은 운영자가 편집(exam_info)하는데 이 설명만
+//   코드에 박혀 있어 본문을 갱신해도 검색 결과에는 낡은 연도가 남는다(feat-11-012 P1).
+export const meta: Route.MetaFunction = (a) =>
+  pageMeta(
+    {
+      title: "시험정보",
+      description:
+        "변리사 시험 일정·과목·시험시간·합격 기준·영어 대체시험·연도별 통계·공부법 안내.",
+    },
+    a,
+  );
 
 export async function loader({ request }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);

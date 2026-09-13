@@ -1,5 +1,6 @@
 // 도서몰 카탈로그(강의 플랫폼) — 썸네일 그리드 + 검색·정렬 + 장바구니 담기. feat-11 B1.
 import type { Route } from "./+types/bookstore-catalog";
+import { pageMeta } from "~/core/lib/seo";
 
 import {
   BookOpenIcon,
@@ -31,9 +32,15 @@ import {
 import { useCart } from "~/features/lms/lib/cart";
 import { isLmsSubjectCode } from "~/features/lms/lib/subject-options";
 
-export function meta() {
-  return [{ title: "도서 | 리담변리사학원" }];
-}
+export const meta: Route.MetaFunction = (a) =>
+  pageMeta(
+    {
+      title: "도서구입",
+      description:
+        "리담변리사학원 교재 — 과목별 교재를 살펴보고 구입합니다.",
+    },
+    a,
+  );
 
 const SORTS: Array<{ value: BookSort; label: string }> = [
   { value: "recommended", label: "기본 진열순" },

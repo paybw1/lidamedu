@@ -18,8 +18,13 @@ const ALLOWED_COUNTRIES = ["KR"] as const;
 // 차단하면 구글·네이버 검색 색인과 카카오톡 링크 미리보기가 전부 소실된다.
 // UA 는 위조 가능하지만 이 게이트는 접근 마찰용이지 보안 경계가 아니다 —
 // 실제 보호는 인증 + 접근 승인 게이트(requireAccessApproval)가 담당.
+// ★google-inspectiontool 은 Search Console 의 "URL 검사" 가 쓰는 UA 다. 빠져 있으면
+//   해외 데이터센터에서 오는 그 요청이 403 이 되어 **색인 요청·실시간 테스트가 전부 실패**한다
+//   (검색 노출을 최우선에 놓는 P1 에서 이게 막히면 확인할 방법이 없다).
+// ★UA 는 위조 가능하다 — 이 게이트는 접근 마찰용이지 보안 경계가 아니다(위 주석 참조).
+//   예외를 넓힌 만큼 해외 차단의 실효는 준다.
 const CRAWLER_UA =
-  /googlebot|bingbot|yeti|naverbot|daum|kakaotalk-scrap|facebookexternalhit|twitterbot/i;
+  /googlebot|google-inspectiontool|googleother|adsbot-google|bingbot|yeti|naverbot|daum|kakaotalk-scrap|facebookexternalhit|twitterbot|applebot/i;
 
 export function requireAllowedCountry(request: Request): void {
   if (process.env.GEO_GATE === "off") return; // 긴급 해제 스위치

@@ -47,7 +47,9 @@ export default function AdminFaqs({ loaderData }: Route.ComponentProps) {
             등록된 FAQ가 없습니다.
           </p>
         ) : (
-          <div className="overflow-hidden rounded-lg border">
+          // ★overflow-hidden 이라 넘친 오른쪽(공개·편집·삭제 버튼)에 닿을 수 없었다.
+          //   다른 운영 표가 쓰는 가로 스크롤 래퍼로 맞춘다(feat-11-012 P2).
+          <div className="overflow-x-auto rounded-lg border">
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-muted-foreground text-xs">
                 <tr>

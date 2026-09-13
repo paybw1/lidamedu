@@ -10,6 +10,13 @@ import {
   type ReactNode,
 } from "react";
 
+import { useSwipe } from "~/core/hooks/use-swipe";
+
+// 좌우 화살표가 차지하는 여백. 좁은 화면에서는 조금 줄인다.
+const GUTTER_NARROW = 44;
+const GUTTER_WIDE = 56;
+const NARROW_WIDTH = 520;
+
 // 페이지형 레일 계산 훅 — 카드 고정폭·간격 기준으로 perPage·offset 산출.
 function usePagedRail(count: number, cardWidth: number, gap: number) {
   const stride = cardWidth + gap;
@@ -20,7 +27,8 @@ function usePagedRail(count: number, cardWidth: number, gap: number) {
   const measure = useCallback(() => {
     const el = wrapRef.current;
     if (!el) return;
-    const gutter = el.clientWidth < 520 ? 44 : 56; // 화살표 여백
+    const gutter =
+      el.clientWidth < NARROW_WIDTH ? GUTTER_NARROW : GUTTER_WIDE;
     const avail = el.clientWidth - gutter * 2;
     const fit = Math.max(1, Math.floor((avail + gap) / stride));
     setPerPage(Math.min(fit, Math.max(1, count)));
@@ -70,8 +78,11 @@ export function Rail({
     cardWidth,
     gap,
   );
+  // ★손가락으로 넘기기 — 종전에는 터치 처리가 0건이라 겹쳐 뜬 화살표를 정확히 눌러야만
+  //   넘어갔다(강사 8명을 보려면 화살표를 7번 탭).
+  const swipe = useSwipe({ onPrev: () => go(-1), onNext: () => go(1) });
   return (
-    <div className="irailwrap" ref={wrapRef}>
+    <div className="irailwrap" ref={wrapRef} {...swipe}>
       <button
         type="button"
         className="irail-nav prev"

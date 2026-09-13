@@ -43,7 +43,8 @@ export type PlaybackDenyReason =
   | "no_video"
   | "multiplier_exhausted" // (폐지) 시간 제한 — 잔존 호환용
   | "play_limit_exhausted" // 회차별 재생 횟수 소진
-  | "device_not_registered"; // M3
+  | "device_not_registered" // M3
+  | "session_superseded"; // 다른 기기에서 더 새 로그인 — 단일 세션(feat-11-012 P0)
 
 export type PlaybackJudgement =
   | {
@@ -248,4 +249,6 @@ export const PLAYBACK_DENY_MESSAGE: Record<PlaybackDenyReason, string> = {
   multiplier_exhausted: "시청 가능 시간을 모두 사용했습니다.",
   play_limit_exhausted: "이 회차의 재생 가능 횟수를 모두 사용했습니다.",
   device_not_registered: "등록되지 않은 기기입니다. 기기 관리에서 등록해 주세요.",
+  session_superseded:
+    "다른 기기에서 로그인되어 이 기기에서는 재생할 수 없습니다. 다시 로그인해 주세요.",
 };

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 
+import { useSwipe } from "~/core/hooks/use-swipe";
+
 import {
   ddayFrom,
   fitBannerFrame,
@@ -196,6 +198,15 @@ export function HeroCarousel({
     };
   }, [start, stop]);
 
+  // ★손가락으로 넘기기 + 자동 넘김 정지. 종전에는 멈추는 조건이 마우스 올림뿐이라
+  //   **터치 기기에서는 멈출 방법이 아예 없었다** — 읽는 도중 6초마다 배너가 바뀌고,
+  //   그 순간 버튼을 누르면 엉뚱한 배너로 갔다. 손가락이 닿으면 자동 넘김을 멈춘다.
+  const swipe = useSwipe({
+    onPrev: () => go(idx - 1),
+    onNext: () => go(idx + 1),
+    onTouchStart: stop,
+  });
+
   if (n === 0) return null;
 
   return (
@@ -203,6 +214,7 @@ export function HeroCarousel({
       className="hero-carousel"
       aria-roledescription="carousel"
       aria-label="메인 배너"
+      {...swipe}
       onMouseEnter={stop}
       onMouseLeave={start}
       onFocusCapture={stop}

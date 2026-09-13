@@ -9,10 +9,19 @@ import { newsKindChipClass, newsKindLabel } from "../labels";
 import { getNews } from "../queries.server";
 
 import type { Route } from "./+types/news-detail";
+import { excerpt, pageMeta } from "~/core/lib/seo";
 
-export function meta({ data: d }: Route.MetaArgs) {
-  return [{ title: `${d?.news.title ?? "리담소식"} | 리담변리사학원` }];
-}
+export const meta: Route.MetaFunction = (a) => {
+  const n = a.data?.news;
+  return pageMeta(
+    {
+      title: n?.title ?? "리담소식",
+      description:
+        excerpt(n?.body_md) || "리담변리사학원 소식입니다.",
+    },
+    a,
+  );
+};
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);

@@ -14,6 +14,7 @@
  */
 
 import type { Route } from "./+types/policy";
+import { pageMeta } from "~/core/lib/seo";
 
 import { bundleMDX } from "mdx-bundler";
 import { getMDXComponent } from "mdx-bundler/client";
@@ -54,7 +55,8 @@ import { Button } from "~/core/components/ui/button";
  * @param data - Data returned from the loader function containing MDX frontmatter
  * @returns Array of metadata objects for the page
  */
-export const meta: Route.MetaFunction = ({ data }) => {
+export const meta: Route.MetaFunction = (args) => {
+  const { data } = args;
   // Handle case where the policy document doesn't exist (404)
   if (!data) {
     return [
@@ -65,15 +67,13 @@ export const meta: Route.MetaFunction = ({ data }) => {
   }
   
   // For valid policy documents, use frontmatter for metadata
-  return [
+  return pageMeta(
     {
-      title: `${data.frontmatter.title} | 리담변리사학원`,
+      title: data.frontmatter.title,
+      description: data.frontmatter.description,
     },
-    {
-      name: "description",
-      content: data.frontmatter.description,
-    },
-  ];
+    args,
+  );
 };
 
 /**

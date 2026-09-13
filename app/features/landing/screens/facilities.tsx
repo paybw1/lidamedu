@@ -6,15 +6,17 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import { LandingStyle } from "../components/landing-style";
 
 import type { Route } from "./+types/facilities";
+import { pageMeta } from "~/core/lib/seo";
 
-export const meta: Route.MetaFunction = () => [
-  { title: "학원시설 | 리담변리사학원" },
-  {
-    name: "description",
-    content:
-      "리담변리사학원의 강의실·자습 공간과 편의시설을 소개합니다. 집중을 위한 학습 환경.",
-  },
-];
+export const meta: Route.MetaFunction = (a) =>
+  pageMeta(
+    {
+      title: "학원시설",
+      description:
+        "리담변리사학원의 강의실·자습 공간과 편의시설을 소개합니다. 집중을 위한 학습 환경.",
+    },
+    a,
+  );
 
 const BUCKET = "facility-photos";
 

@@ -1,15 +1,17 @@
 // 학원 소개(인사말) — 공개 페이지. 푸터 "소개" 링크 대상.
 // 본문은 리담지식재산교육원 공식 인사말(원문 그대로).
 import type { Route } from "./+types/about";
+import { pageMeta } from "~/core/lib/seo";
 
-export const meta: Route.MetaFunction = () => [
-  { title: "소개 | 리담변리사학원" },
-  {
-    name: "description",
-    content:
-      "변리사의 꿈을 함께 합니다 — 리담지식재산교육원 인사말. 첫 시작부터 합격의 순간까지 함께합니다.",
-  },
-];
+export const meta: Route.MetaFunction = (a) =>
+  pageMeta(
+    {
+      title: "소개",
+      description:
+        "변리사의 꿈을 함께 합니다 — 리담지식재산교육원 인사말. 첫 시작부터 합격의 순간까지 함께합니다.",
+    },
+    a,
+  );
 
 // 인사말 본문 — 단락 단위. 원문 줄바꿈을 단락 내 줄로 보존.
 const GREETING: string[][] = [

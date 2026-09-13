@@ -214,6 +214,10 @@ export function LandingStyle() {
 
 /* news */
 .llx .newswrap{display:grid;grid-template-columns:1.3fr .7fr;gap:26px;align-items:start}
+/* ★그리드 자식의 기본 min-width:auto 때문에 칸이 내용 아래로 못 줄어, 폰(400px)에서 칸이
+   455px 로 늘어나 문서 전체가 가로로 밀렸다(feat-11-012 P2 실측). 소식 제목이 말줄임이라
+   눈으로는 안 보이고 페이지가 옆으로 흔들리는 증상으로만 나타난다. */
+.llx .newswrap>*{min-width:0}
 .llx .newslist{display:flex;flex-direction:column}
 .llx .nrow{display:flex;align-items:center;gap:14px;padding:15px 6px;border-top:1px solid var(--line)}
 .llx .nrow:first-child{border-top:0}

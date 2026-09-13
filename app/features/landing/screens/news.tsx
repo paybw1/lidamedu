@@ -8,10 +8,17 @@ import { newsKindChipClass, newsKindLabel } from "../labels";
 import { listNews } from "../queries.server";
 
 import type { Route } from "./+types/news";
+import { pageMeta } from "~/core/lib/seo";
 
-export function meta() {
-  return [{ title: "리담소식 | 리담변리사학원" }];
-}
+export const meta: Route.MetaFunction = (a) =>
+  pageMeta(
+    {
+      title: "리담소식",
+      description:
+        "리담변리사학원 공지와 소식 — 개강·시험 일정 안내, 학원 소식을 전합니다.",
+    },
+    a,
+  );
 
 export async function loader({ request }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);

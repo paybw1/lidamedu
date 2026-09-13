@@ -66,7 +66,7 @@ export function PlatformSwitch({
               className={cls(false)}
             >
               <Icon className="size-2.5" />
-              {p.label}
+              <span className="hidden sm:inline">{p.label}</span>
             </a>
           );
         }
@@ -79,7 +79,7 @@ export function PlatformSwitch({
             className={cls(isActive)}
           >
             <Icon className="size-2.5" />
-            {p.label}
+            <span className="hidden sm:inline">{p.label}</span>
           </Link>
         );
       })}

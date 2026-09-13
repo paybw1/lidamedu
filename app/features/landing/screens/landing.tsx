@@ -58,17 +58,17 @@ import {
 } from "../queries.server";
 
 import type { Route } from "./+types/landing";
+import { pageMeta } from "~/core/lib/seo";
 
-export function meta() {
-  return [
-    { title: "리담변리사학원 — 변리사 시험, 합격까지 함께" },
+export const meta: Route.MetaFunction = (a) =>
+  pageMeta(
     {
-      name: "description",
-      content:
+      title: "리담변리사학원 — 변리사 시험, 합격까지 함께",
+      description:
         "전임 강사진의 현장강의와 조문·판례·문제 통합 학습으로 변리사 시험 합격까지 함께합니다. 현장강의 일정·수강신청·합격 수기.",
     },
-  ];
-}
+    a,
+  );
 
 /** 모듈이 하나도 없을 때 쓰는 예전 고정 순서(안전망). */
 const FALLBACK_ORDER: Array<MainPageModuleRow["kind"]> = [

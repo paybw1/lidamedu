@@ -11,17 +11,17 @@ import { InstructorStyle } from "../components/instructor-theme";
 import { listInstructors, type InstructorCard } from "../queries.server";
 
 import type { Route } from "./+types/instructors-index";
+import { pageMeta } from "~/core/lib/seo";
 
-export function meta() {
-  return [
-    { title: "강사진 | 리담변리사학원" },
+export const meta: Route.MetaFunction = (a) =>
+  pageMeta(
     {
-      name: "description",
-      content:
+      title: "강사진",
+      description:
         "조문·판례·문제를 한 체계로 엮어 온 리담변리사학원 전임 강사진을 소개합니다.",
     },
-  ];
-}
+    a,
+  );
 
 export async function loader({ request }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);

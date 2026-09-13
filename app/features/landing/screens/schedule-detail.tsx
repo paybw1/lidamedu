@@ -15,10 +15,20 @@ import {
 import { getSchedule } from "../queries.server";
 
 import type { Route } from "./+types/schedule-detail";
+import { excerpt, pageMeta } from "~/core/lib/seo";
 
-export function meta({ data: d }: Route.MetaArgs) {
-  return [{ title: `${d?.schedule?.title ?? "현장강의"} | 리담변리사학원` }];
-}
+export const meta: Route.MetaFunction = (a) => {
+  const s = a.data?.schedule;
+  return pageMeta(
+    {
+      title: s?.title ?? "현장강의",
+      description:
+        excerpt(s?.intro_md) ||
+        `${s?.title ?? "현장강의"} — 개강일·요일·시간과 남은 자리를 확인하고 신청합니다.`,
+    },
+    a,
+  );
+};
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);

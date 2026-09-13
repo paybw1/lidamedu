@@ -31,12 +31,20 @@ import {
 import { PRODUCT_KIND_LABEL } from "~/features/subscriptions/labels";
 
 import type { Route } from "./+types/lecture-product-detail";
+import { excerpt, pageMeta } from "~/core/lib/seo";
 
-export function meta({ data: d }: Route.MetaArgs) {
-  return [
-    { title: `${d?.product?.name ?? "수강신청"} | 리담변리사학원` },
-  ];
-}
+export const meta: Route.MetaFunction = (a) => {
+  const p = a.data?.product;
+  return pageMeta(
+    {
+      title: p?.name ?? "수강신청",
+      description:
+        excerpt(p?.description) ||
+        `${p?.name ?? "리담변리사학원 강의"} — 수강기간·가격·포함 강의를 확인하고 신청합니다.`,
+    },
+    a,
+  );
+};
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);
@@ -90,7 +98,9 @@ export default function LectureProductDetail({
   return (
     // PC 최대폭 1230px · 가운데 정렬 · 모바일은 100% 반응형(원장 요청 2026-08-20).
     // 하단 sticky 구매 바도 같은 폭이라 본문과 좌우가 맞는다.
-    <div className="mx-auto w-full max-w-[1230px] px-4 pt-8 pb-28 md:px-6">
+    // ★폰에서 구매바가 두 줄이 되면 높이가 약 65px → 110px 로 는다 — 본문 아래 여백도
+    //   함께 올리지 않으면 마지막 수강평이 바에 가린다.
+    <div className="mx-auto w-full max-w-[1230px] px-4 pt-8 pb-36 md:px-6 md:pb-28">
       <Link
         to="/lecture/catalog"
         className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm font-medium"
@@ -302,8 +312,11 @@ export default function LectureProductDetail({
 
       {/* 하단 sticky 구매 바 */}
       <div className="bg-background/95 fixed inset-x-0 bottom-0 z-40 border-t backdrop-blur">
-        <div className="mx-auto flex w-full max-w-[1230px] items-center justify-between gap-4 px-4 py-3 md:px-6">
-          <div className="flex items-baseline gap-2 min-w-0">
+        {/* ★겹침의 원인은 본문 여백이 아니라 **바 내부**였다 — 가격 블록은 min-w-0 이라 줄고
+            버튼 두 개는 shrink-0 이라 안 줄어, 좁은 화면에서 숫자가 버튼 밑으로 깔렸다.
+            폰에서는 가격 줄과 버튼 줄을 나눈다(feat-11-012 P2). */}
+        <div className="mx-auto flex w-full max-w-[1230px] flex-col items-stretch gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 md:px-6">
+          <div className="flex items-baseline gap-2">
             <span className="text-muted-foreground text-xs font-semibold">
               수강료
             </span>

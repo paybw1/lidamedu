@@ -23,10 +23,17 @@ import {
 } from "~/features/lms/queries.server";
 
 import type { Route } from "./+types/lecture-catalog";
+import { pageMeta } from "~/core/lib/seo";
 
-export function meta() {
-  return [{ title: "수강신청 | 리담변리사학원" }];
-}
+export const meta: Route.MetaFunction = (a) =>
+  pageMeta(
+    {
+      title: "수강신청",
+      description:
+        "리담변리사학원 강의 수강신청 — 과목별 강의와 기간권을 한 곳에서 보고 신청합니다.",
+    },
+    a,
+  );
 
 export async function loader({ request }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);

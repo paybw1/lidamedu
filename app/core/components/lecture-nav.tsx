@@ -1,8 +1,13 @@
 // 강의 플랫폼 상단 네비 — 평면 링크 + "마이페이지" hover 드롭다운(학습 플랫폼 flyout 과 동일 UX).
-// 데스크톱=드롭다운, 모바일=자식 노드 평탄화(가로 스크롤).
+// 데스크톱=드롭다운, 모바일=**최상위 항목만** 가로 탭(feat-11-012 P2).
+//   ★종전에는 모바일에서 자식을 제자리에 펼쳐 칩이 20개(강사·원장 22개)가 됐다. 그 순서가
+//     「리담안내 7개」로 시작해 수강신청이 8번째·도서구입이 9번째로 밀렸고, 400px 화면에서는
+//     약 506px 지점이라 **구매 진입점이 첫 화면 밖**이었다. 게다가 리담안내·마이페이지 화면에서는
+//     바로 아래 LectureSubNav 가 같은 자식들을 한 줄 더 그려 중복이었다.
+//     자식 도달은 LectureSubNav 가 이미 맡고 있다 — 여기서는 펼치지 않는다.
 import { ChevronDownIcon } from "lucide-react";
 import { useEffect, useState } from "react";
-import { NavLink, useLocation } from "react-router";
+import { Link, NavLink, useLocation } from "react-router";
 
 import {
   LECTURE_NAV_LINKS,
@@ -121,39 +126,37 @@ export function LectureNav({ isStaff }: { isStaff: boolean }) {
   );
 }
 
-// 모바일 — 자식 노드 평탄화(가로 스크롤). 상단 바 아래 별도 행.
+const chipCls = (active: boolean) =>
+  cn(
+    "rounded-md px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors",
+    active ? "bg-accent text-foreground" : "text-foreground",
+  );
+
+// 모바일 — 최상위 항목만(가로 탭). 상단 바 아래 별도 행.
 export function LectureNavMobile({ isStaff }: { isStaff: boolean }) {
+  const { pathname } = useLocation();
   return (
     <nav className="flex items-center gap-1 overflow-x-auto border-t border-black/[0.04] px-4 py-1.5 md:hidden dark:border-white/[0.04]">
-      {navLinksFor(isStaff)
-        .flatMap((l) =>
-          l.children ? l.children.slice() : [{ label: l.label, to: l.to! }],
-        )
-        .map((c) => (
-          <NavLink
-            key={c.to}
-            to={c.to}
-            end={c.to === "/lecture"}
-            className={({ isActive }) =>
-              cn(
-                "rounded-md px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors",
-                isActive ? "bg-accent text-foreground" : "text-foreground",
-              )
-            }
+      {navLinksFor(isStaff).map((l) => {
+        // ★활성 판정은 드롭다운과 **같은 규칙**(childMatchesPath)을 쓴다. 새로 짜면
+        //   "/about" vs "/about/instructors", "/lecture" vs "/lecture/*" 예외가 깨진다.
+        const to = l.to ?? l.children![0].to;
+        const active = l.children
+          ? l.children.some((c) => childMatchesPath(c.to, pathname))
+          : childMatchesPath(to, pathname);
+        return (
+          <Link
+            key={l.label}
+            to={to}
+            aria-current={active ? "page" : undefined}
+            className={chipCls(active)}
           >
-            {c.label}
-          </NavLink>
-        ))}
+            {l.label}
+          </Link>
+        );
+      })}
       {isStaff ? (
-        <NavLink
-          to="/admin"
-          className={({ isActive }) =>
-            cn(
-              "rounded-md px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors",
-              isActive ? "bg-accent text-foreground" : "text-foreground",
-            )
-          }
-        >
+        <NavLink to="/admin" className={({ isActive }) => chipCls(isActive)}>
           운영관리
         </NavLink>
       ) : null}

@@ -39,10 +39,21 @@ import {
 import { BookCover } from "./bookstore-catalog";
 
 import type { Route } from "./+types/book-detail";
+import { pageMeta } from "~/core/lib/seo";
 
-export function meta({ data: d }: Route.MetaArgs) {
-  return [{ title: `${d?.book?.title ?? "도서"} | 리담변리사학원` }];
-}
+export const meta: Route.MetaFunction = (a) => {
+  const b = a.data?.book;
+  const by = [b?.author, b?.publisher].filter(Boolean).join(" · ");
+  return pageMeta(
+    {
+      title: b?.title ?? "도서",
+      description: b
+        ? `${b.title}${by ? ` — ${by}` : ""}. 리담변리사학원 교재 구입.`
+        : "리담변리사학원 교재 구입.",
+    },
+    a,
+  );
+};
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);

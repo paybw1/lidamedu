@@ -11,11 +11,20 @@ import {
 } from "../queries.server";
 
 import type { Route } from "./+types/instructor-detail";
+import { pageMeta } from "~/core/lib/seo";
 
-export function meta({ data: d }: Route.MetaArgs) {
-  const n = d?.instructor?.name;
-  return [{ title: n ? `${n} 강사 | 리담변리사학원` : "강사소개 | 리담변리사학원" }];
-}
+export const meta: Route.MetaFunction = (a) => {
+  const i = a.data?.instructor;
+  return pageMeta(
+    {
+      title: i?.name ? `${i.name} 강사` : "강사소개",
+      description:
+        i?.headline ||
+        `리담변리사학원 ${i?.name ?? ""} 강사 소개 — 담당 과목과 강의를 확인합니다.`,
+    },
+    a,
+  );
+};
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);

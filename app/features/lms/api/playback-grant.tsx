@@ -5,6 +5,7 @@
 import { data } from "react-router";
 import { z } from "zod";
 
+import { isSessionSuperseded } from "~/core/lib/single-session.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import {
   PLAYBACK_DENY_MESSAGE,
@@ -23,6 +24,19 @@ export async function action({ request }: Route.ActionArgs) {
   const {
     data: { user },
   } = await client.auth.getUser();
+
+  // ★단일 세션 — 이 라우트는 resource route 라 부모 loader(레이아웃 게이트)를 타지 않는다.
+  //   여기서 직접 보지 않으면 한 계정이 두 기기에서 동시에 재생할 수 있다(feat-11-012 P0-3).
+  if (user && (await isSessionSuperseded(client, user, request))) {
+    return data(
+      {
+        ok: false as const,
+        reason: "session_superseded" as const,
+        message: PLAYBACK_DENY_MESSAGE.session_superseded,
+      },
+      { status: 401 },
+    );
+  }
 
   const fd = await request.formData();
   const parsed = schema.safeParse({ lessonId: fd.get("lessonId") });

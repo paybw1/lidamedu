@@ -19,7 +19,10 @@ export type HeartbeatResult =
         | "grant_not_found"
         | "grant_window_closed"
         | "not_owner"
-        | "invalid_interval";
+        | "invalid_interval"
+        // 다른 기기에서 더 새 로그인 — 단일 세션(feat-11-012 P0).
+        // ★이 사유는 라우트가 낸다(reportWatchInterval 진입 전 차단).
+        | "session_superseded";
     };
 
 /** 시청 구간 보고 — 검증 → watch_events + (차감 대상이면) watch_ledger debit + 이어보기 upsert. */

@@ -3,16 +3,18 @@
 import { KakaoRoughMap } from "~/features/home/components/kakao-rough-map";
 
 import type { Route } from "./+types/location";
+import { pageMeta } from "~/core/lib/seo";
 
 const ADDRESS = "서울특별시 서초구 서초대로 131 로고스빌딩 2층";
 
-export const meta: Route.MetaFunction = () => [
-  { title: "찾아오시는 길 | 리담변리사학원" },
-  {
-    name: "description",
-    content: `리담변리사학원 오시는 길 — ${ADDRESS}. 7호선 내방역 8번 출구 도보 4분.`,
-  },
-];
+export const meta: Route.MetaFunction = (a) =>
+  pageMeta(
+    {
+      title: "찾아오시는 길",
+      description: `리담변리사학원 오시는 길 — ${ADDRESS}. 7호선 내방역 8번 출구 도보 4분.`,
+    },
+    a,
+  );
 
 export default function Location() {
   return (

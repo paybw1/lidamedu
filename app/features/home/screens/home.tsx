@@ -1,4 +1,5 @@
 import type { Route } from "./+types/home";
+import { pageMeta } from "~/core/lib/seo";
 
 import i18next from "~/core/lib/i18next.server";
 import makeServerClient from "~/core/lib/supa-client.server";
@@ -31,25 +32,18 @@ import { TrialCalloutSection } from "~/features/home/components/trial-callout-se
 import { WeaknessEngineSection } from "~/features/home/components/weakness-engine-section";
 import { Band } from "~/features/home/lib/landing";
 
-export const meta: Route.MetaFunction = ({ data }) => [
-  {
-    title:
-      data?.title ??
-      "리담변리사학원 — 변리사 시험, 이곳에서 합격까지 함께해요",
-  },
-  {
-    name: "description",
-    content:
-      data?.subtitle ??
-      "조문·판례·문제·논문이 끊김 없이 이어지는 변리사 학습 플랫폼. 정오문제 약점 진단과 복습 설계로 부족한 단원을 한눈에 잡아 줍니다.",
-  },
-  { property: "og:title", content: "리담변리사학원 — 변리사 학습 플랫폼" },
-  {
-    property: "og:description",
-    content: "약점 진단·복습 설계 + 조문·판례·문제 통합 흐름",
-  },
-  { property: "og:type", content: "website" },
-];
+// ★제목·설명은 번역 리소스(t("home.title"))를 쓰지 않는다 — 그 값은 화면 안 문구용이라
+//   "리담변리사학원" 한 낱말이고, 검색 결과 제목으로는 무엇을 하는 곳인지 알 수 없다.
+//   화면 본문은 loader 의 title/subtitle 을 그대로 쓴다(여기만 다른 문장).
+export const meta: Route.MetaFunction = (a) =>
+  pageMeta(
+    {
+      title: "리담변리사학원 — 변리사 시험, 이곳에서 합격까지 함께해요",
+      description:
+        "조문·판례·문제·논문이 끊김 없이 이어지는 변리사 학습 플랫폼. 정오문제 약점 진단과 복습 설계로 부족한 단원을 한눈에 잡아 줍니다.",
+    },
+    a,
+  );
 
 export async function loader({ request }: Route.LoaderArgs) {
   const t = await i18next.getFixedT(request);

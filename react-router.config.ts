@@ -15,7 +15,10 @@ export default {
     return [
       "/legal/terms-of-service",
       "/legal/privacy-policy",
-      "/sitemap.xml",
+      // ★/sitemap.xml 은 프리렌더하지 않는다 — DB(강의·도서·소식)에서 만들기 때문에
+      //   빌드 시점에 고정되면 새 강의·소식이 다음 배포 전까지 색인되지 않는다.
+      //   대신 화면 쪽에서 CDN 캐시(s-maxage)를 붙여 매 요청 DB 왕복을 막는다.
+      //   robots.txt 는 상수만 쓰므로 프리렌더 유지.
       "/robots.txt",
     ];
   },

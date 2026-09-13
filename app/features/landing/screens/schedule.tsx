@@ -21,10 +21,17 @@ import {
 import { listSchedules } from "../queries.server";
 
 import type { Route } from "./+types/schedule";
+import { pageMeta } from "~/core/lib/seo";
 
-export function meta() {
-  return [{ title: "현장강의 일정 | 리담변리사학원" }];
-}
+export const meta: Route.MetaFunction = (a) =>
+  pageMeta(
+    {
+      title: "현장강의 일정",
+      description:
+        "리담변리사학원 현장강의 개강 일정 — 과목·요일·시간과 남은 자리를 달력으로 확인하고 신청합니다.",
+    },
+    a,
+  );
 
 export async function loader({ request }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);

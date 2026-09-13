@@ -25,6 +25,78 @@ export const PLATFORM_ORDER: PlatformId[] = ["lecture", "study"];
 //   전부 이 운영 사이트로 보낸다 — 스위처(platform-switch)와 lecture.layout 게이트가 공유.
 export const EXTERNAL_LECTURE_URL = "https://lidamedu.com";
 
+/**
+ * 정본(canonical) 주소 — 검색엔진에 "이 화면의 진짜 주소는 여기"라고 알리는 값.
+ * 사이트맵 · robots · 각 화면의 canonical·og:url 이 **전부 이 한 곳**을 본다.
+ *
+ * ★환경변수가 아니라 상수다 — meta 는 화면 전환 중에도 실행돼 process.env 를 못 읽는다.
+ * ★끝에 슬래시를 붙이지 않는다. 붙으면 "//경로" 가 된다 — 2026-09-13 운영 사이트맵 7건과
+ *   robots 의 Sitemap 줄이 정확히 그 상태였다(환경변수 SITE_URL 끝 슬래시 + 문자열 연결).
+ * ★D4(주소 단일화)가 확정되면 **이 한 줄만** 바꾼다. 지금 값은 결정이 아니라 현재 운영
+ *   중인 호스트를 그대로 적은 것이다(apex 는 www 로 넘어가고 www 가 200).
+ */
+export const CANONICAL_ORIGIN = "https://www.lidamipedu.com";
+
+// ── 오픈 게이트 (feat-11-012 P0) ─────────────────────────────────────────────
+// 종전에는 lecture.layout loader 안에 "로그인 안 했으면 튕김 / staff 아니면 튕김" 두 줄로
+// 박혀 있었다. 그 두 줄이 **우연히** 학생 게이트 4종(단일 세션·승인·동의·필수정보)까지
+// 가려 주고 있었다 — /lecture/* 는 최상위 레이아웃이라 private.layout 을 전혀 타지 않는다
+// (routes.ts 의 lecture.layout 은 navigation.layout 과 형제다). 그래서 오픈은 "그 두 줄을
+// 지우는 일"이 아니다. 게이트를 단계로 바꾸고, 그 뒤에 설 게이트를 먼저 세워 둔다.
+//
+//   closed — 강사·원장만(현재). 그 외는 어떤 딥링크로 들어와도 운영 사이트로.
+//   public — 공개 화면은 누구나(비로그인 포함). 구매·마이페이지·강의실은 여전히 staff 만.
+//   open   — 전원 개방. 로그인이 필요한 화면은 각자 판단한다.
+//
+// ★D3(게이트 범위)가 정해지면 **이 상수 하나만** 바꾼다.
+export type LectureGateStage = "closed" | "public" | "open";
+export const LECTURE_GATE_STAGE: LectureGateStage = "closed";
+
+/**
+ * 로그인 없이 열리는 강의 플랫폼 경로(단일 소스).
+ *
+ * ★이 목록 하나를 세 곳이 함께 읽는다 — 게이트(어디까지 여는가) · 사이트맵(무엇을 색인시키는가)
+ *   · robots(무엇을 막는가). 세 곳이 갈라지면 "검색에는 떴는데 눌러 보니 로그인 벽"이 난다.
+ *
+ * 자식 경로는 접두로 함께 열린다(/lecture/news → /lecture/news/:id).
+ * ★"/lecture" 정확일치는 **내 강의실**이라 이 목록에 없다 — 접두 매칭이 삼키지 않도록,
+ *   항목은 반드시 "/lecture/xxx" 처럼 한 단계 더 내려간 경로로 적는다.
+ * ★"/about" 은 자식(강사소개·강사 상세·강사 모집)이 전부 공개라 한 줄로 덮는다.
+ */
+export const PUBLIC_LECTURE_PATHS: ReadonlyArray<string> = [
+  "/lecture/home",
+  "/lecture/catalog",
+  "/lecture/books",
+  "/lecture/schedule",
+  "/lecture/news",
+  "/lecture/exam-info",
+  "/lecture/facilities",
+  "/about",
+  "/location",
+];
+
+export function isPublicLecturePath(pathname: string): boolean {
+  return PUBLIC_LECTURE_PATHS.some(
+    (p) => pathname === p || pathname.startsWith(p + "/"),
+  );
+}
+
+/**
+ * 강의 플랫폼 진입 허용 판정 — 게이트의 단일 판정부(순수 함수).
+ * loader 는 이 결과만 보고 통과·리다이렉트를 정한다.
+ */
+export function lectureEntryAllowed(input: {
+  stage: LectureGateStage;
+  isStaff: boolean;
+  isPublicPath: boolean;
+}): boolean {
+  if (input.isStaff) return true; // 강사·원장은 단계와 무관하게 통과
+  if (input.stage === "open") return true;
+  if (input.stage === "public") return input.isPublicPath;
+  return false; // closed
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 // 강의 플랫폼 소속 경로 판별. ★"/lectures/:itemId"(학습 플랫폼의 콘텐츠 연결 영상)와
 // "/lecture-note"(구 강의노트)는 세그먼트가 달라 매칭되지 않는다 — 정확히 "/lecture" 및
 // 그 자식만 강의 플랫폼.
@@ -75,7 +147,7 @@ export type LectureNavItem = {
   to?: string;
   children?: ReadonlyArray<{ label: string; to: string }>;
 };
-// 리담안내 하위 6개 — 상단 드롭다운과 /about 섹션 sticky 서브내비가 공유(단일 소스).
+// 리담안내 하위 7개 — 상단 드롭다운과 /about 섹션 sticky 서브내비가 공유(단일 소스).
 export const LECTURE_GUIDE_LINKS: ReadonlyArray<{ label: string; to: string }> =
   [
     { label: "인사말", to: "/about" },
@@ -131,20 +203,27 @@ export const LECTURE_COMMUNITY_LINKS: ReadonlyArray<{
   { label: "강사 모집", to: "/about/instructors/recruit" },
 ];
 
+// ★children 이 있는 항목에도 to 를 둔다 — 폰에서는 자식을 펼치지 않고 **최상위 6개만**
+//   칩으로 그리기 때문에(feat-11-012 P2), 부모를 눌렀을 때 갈 곳이 필요하다.
+//   데스크톱 LectureNav 는 children 이 있으면 드롭다운으로 분기하므로 이 to 를 무시한다 —
+//   PC 동작은 그대로다.
 export const LECTURE_NAV_LINKS: ReadonlyArray<LectureNavItem> = [
   {
     label: "리담안내",
+    to: "/about",
     children: LECTURE_GUIDE_LINKS,
   },
   { label: "수강신청", to: "/lecture/catalog" },
   { label: "도서구입", to: "/lecture/books" },
   {
     label: "커뮤니티",
+    to: "/community/free",
     children: LECTURE_COMMUNITY_LINKS,
   },
   { label: "고객센터", to: "/lecture/support" },
   {
     label: "마이페이지",
+    to: "/lecture",
     children: LECTURE_MYPAGE_LINKS,
   },
 ];

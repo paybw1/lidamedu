@@ -5,6 +5,7 @@
 import { data } from "react-router";
 import { z } from "zod";
 
+import { isSessionSuperseded } from "~/core/lib/single-session.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { reportWatchInterval } from "~/features/lms/watch.server";
 
@@ -26,6 +27,15 @@ export async function action({ request }: Route.ActionArgs) {
   const {
     data: { user },
   } = await client.auth.getUser();
+
+  // ★단일 세션 — resource route 는 부모 loader 를 타지 않는다(feat-11-012 P0-3).
+  //   보고를 받아 주면 밀려난 기기의 시청이 그대로 차감·진도로 기록된다.
+  if (user && (await isSessionSuperseded(client, user, request))) {
+    return data(
+      { ok: false as const, reason: "session_superseded" as const },
+      { status: 401 },
+    );
+  }
 
   const fd = await request.formData();
   const parsed = schema.safeParse({

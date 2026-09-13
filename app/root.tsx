@@ -169,9 +169,12 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
   //   다크를 유지한다(원장 지시).
   const isLecture = isLightOnlySurface(pathname);
 
+  // ★문서 언어는 "ko" 고정 — 한국어 단일 서비스(CLAUDE.md)인데 종전에는 locale 쿠키가
+  //   없으면 fallbackLng("en")로 떨어졌다. 즉 **쿠키 없이 오는 크롤러는 이 사이트를 영어
+  //   페이지로 색인한다**(feat-11-012 P1). i18next 자체는 위 useChangeLanguage 가 관리한다.
   return (
     <html
-      lang={data?.locale ?? "en"}
+      lang="ko"
       className={cn(isLecture ? "light" : (theme ?? ""), "h-full")}
       dir={i18n.dir()}
     >
