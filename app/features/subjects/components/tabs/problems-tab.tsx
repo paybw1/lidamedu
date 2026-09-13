@@ -607,74 +607,80 @@ export function ProblemsTab({
               ) : null}
             </div>
           ) : (
-            <Table className="table-fixed">
+            <Table className="table-fixed [&_td]:px-1.5 [&_th]:px-1.5">
               <TableHeader>
                 <TableRow className="bg-muted/50 hover:bg-muted/50">
+                  {/* ★칸 폭 = 내용 폭 + 셀 여백(px-1.5 → 좌우 12px). 본문이 가장 길므로
+                      메타 칸은 내용 폭까지만 잡고 나머지를 본문에 넘긴다(원장 지시 2026-09-13).
+                      TableHead 는 whitespace-nowrap 이라 폭이 모자라면 줄바꿈이 아니라
+                      옆 칸을 침범한다 — 「단원/종합」이 w-20 에서 이미 넘치고 있었다. */}
                   <SortableHead
                     label="★"
                     sortKey="importance"
                     applied={appliedFilters}
                     searchParams={searchParams}
                     align="center"
-                    className="w-10 text-center md:w-12"
+                    className="w-10 text-center md:w-10"
                   />
                   <SortableHead
                     label="전체"
                     sortKey="overall"
                     applied={appliedFilters}
                     searchParams={searchParams}
-                    className="w-12 md:w-16"
+                    className="w-12 md:w-[3.25rem]"
                   />
                   <SortableHead
                     label="No."
                     sortKey="number"
                     applied={appliedFilters}
                     searchParams={searchParams}
-                    className="w-12 md:w-16"
+                    className="w-12 md:w-12"
                   />
                   <SortableHead
                     label="출처"
                     sortKey="origin"
                     applied={appliedFilters}
                     searchParams={searchParams}
-                    className="hidden w-20 md:table-cell"
+                    className="hidden w-[4.5rem] md:table-cell"
                   />
                   <SortableHead
                     label="유형"
                     sortKey="format"
                     applied={appliedFilters}
                     searchParams={searchParams}
-                    className="hidden w-20 md:table-cell"
+                    className="hidden w-[4.5rem] md:table-cell"
                   />
                   <SortableHead
                     label="극성"
                     sortKey="polarity"
                     applied={appliedFilters}
                     searchParams={searchParams}
-                    className="hidden w-20 md:table-cell"
+                    className="hidden w-[3.25rem] md:table-cell"
                   />
                   <SortableHead
                     label="단원/종합"
                     sortKey="scope"
                     applied={appliedFilters}
                     searchParams={searchParams}
-                    className="hidden w-20 md:table-cell"
+                    className="hidden w-[5.5rem] md:table-cell"
                   />
                   <SortableHead
                     label="연도/회차"
                     sortKey="year"
                     applied={appliedFilters}
                     searchParams={searchParams}
-                    className="hidden w-24 md:table-cell"
+                    className="hidden w-[5.25rem] md:table-cell"
                   />
                   <SortableHead
                     label="난이도"
                     sortKey="accuracy"
                     applied={appliedFilters}
                     searchParams={searchParams}
-                    className="hidden w-28 md:table-cell"
+                    className="hidden w-[7rem] md:table-cell"
                   />
-                  <TableHead className="text-muted-foreground/70 text-[11px] font-bold tracking-[0.04em] uppercase">
+                  {/* 본문 — table-fixed 의 나머지를 전부 받는다. 메타 칸을 내용 폭까지만
+                      잡아 둔 것은 이 칸을 넓히기 위해서다(원장 지시 2026-09-13). */}
+                  <TableHead className="text-muted-foreground/70 w-auto text-[11px] font-bold tracking-[0.04em] uppercase">
                     본문
                   </TableHead>
                 </TableRow>
@@ -962,21 +968,27 @@ function ProblemRow({
   );
 }
 
-// 검색 쿼리가 있으면 매칭 위치 ±40자 컨텍스트 + <mark> 강조. 없으면 첫 80자 truncate.
+// 목록 본문 발췌 길이. 본문 칸이 표의 나머지를 전부 받으므로 이 값이 곧 표시량이다.
+// ★80/±40 이었다 — 칸만 넓히고 발췌가 짧으면 빈자리만 생긴다(원장 지시 2026-09-13).
+const SNIPPET_LEN = 120;
+const SNIPPET_CTX = 55;
+
+// 검색 쿼리가 있으면 매칭 위치 ±SNIPPET_CTX 자 컨텍스트 + <mark> 강조.
+// 없으면 첫 SNIPPET_LEN 자 truncate.
 function renderBodySnippet(
   body: string,
   query: string | null,
 ): React.ReactNode {
   if (!query || query.trim().length === 0) {
-    return body.length > 80 ? `${body.slice(0, 80)}…` : body;
+    return body.length > SNIPPET_LEN ? `${body.slice(0, SNIPPET_LEN)}…` : body;
   }
   const q = query.trim();
   const idx = body.toLowerCase().indexOf(q.toLowerCase());
   if (idx < 0) {
-    return body.length > 80 ? `${body.slice(0, 80)}…` : body;
+    return body.length > SNIPPET_LEN ? `${body.slice(0, SNIPPET_LEN)}…` : body;
   }
-  const start = Math.max(0, idx - 40);
-  const end = Math.min(body.length, idx + q.length + 40);
+  const start = Math.max(0, idx - SNIPPET_CTX);
+  const end = Math.min(body.length, idx + q.length + SNIPPET_CTX);
   const before = (start > 0 ? "…" : "") + body.slice(start, idx);
   const match = body.slice(idx, idx + q.length);
   const after =
