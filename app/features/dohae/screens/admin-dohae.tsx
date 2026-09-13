@@ -15,6 +15,7 @@ import { AdminShell } from "~/features/admin/components/admin-shell";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { DohaePopup } from "~/features/dohae/components/dohae-popup";
 import { dohaeUnitLabel, type DohaeUnitSummary } from "~/features/dohae/labels";
+import { bookPagesForDohaeUnits } from "~/features/dohae/queries.server";
 
 export const meta: Route.MetaFunction = () => [
   { title: "도해특허법 | 리담변리사학원" },
@@ -42,6 +43,11 @@ export async function loader({ request }: Route.LoaderArgs) {
     .order("pdf_page", { nullsFirst: false });
   if (error) throw error;
 
+  // ★교재 쪽은 pdf_page 가 아니라 publication_content_map.page_no 다(34쪽 차이).
+  const bookPages = await bookPagesForDohaeUnits(
+    client,
+    (rows ?? []).map((u) => u.unit_id),
+  );
   const units = (rows ?? []).map((u) => ({
     unitId: u.unit_id,
     unitKey: u.unit_key,
@@ -52,13 +58,16 @@ export async function loader({ request }: Route.LoaderArgs) {
     unitNo: u.unit_no,
     refNo: u.ref_no,
     pdfPage: u.pdf_page,
+    bookPage: bookPages.get(u.unit_id) ?? null,
   }));
   return { role, units };
 }
 
 export default function AdminDohae({ loaderData }: Route.ComponentProps) {
   const { role, units } = loaderData;
-  const [active, setActive] = useState<(DohaeUnitSummary & { pdfPage: number | null }) | null>(
+  const [active, setActive] = useState<
+    (DohaeUnitSummary & { pdfPage: number | null; bookPage: number | null }) | null
+  >(
     null,
   );
 
@@ -113,8 +122,15 @@ export default function AdminDohae({ loaderData }: Route.ComponentProps) {
                     <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
                       {u.title}
                     </span>
+                    {/* 교재 쪽을 앞에 — 원장이 책에서 찾을 때 쓰는 번호다.
+                        PDF 쪽은 도식 크롭용이라 뒤에 흐리게 붙인다. */}
                     <span className="text-muted-foreground shrink-0 text-[11px] tabular-nums">
-                      {u.pdfPage ? `PDF p.${u.pdfPage}` : ""}
+                      {u.bookPage ? `p.${u.bookPage}` : ""}
+                      {u.pdfPage ? (
+                        <span className="text-muted-foreground/60 ml-1.5">
+                          PDF {u.pdfPage}
+                        </span>
+                      ) : null}
                     </span>
                     <BookOpenIcon className="text-muted-foreground size-3.5 shrink-0" />
                   </button>

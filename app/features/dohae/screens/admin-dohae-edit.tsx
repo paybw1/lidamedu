@@ -25,7 +25,11 @@ import { getStaffRole } from "~/features/laws/queries.server";
 
 import { dohaeUnitLabel, type DohaeBlock } from "../labels";
 import { applyTextEdits, collectTextNodes } from "../lib/dohae-edit";
-import { listDohaeRevisions, type DohaeRevision } from "../queries.server";
+import {
+  bookPagesForDohaeUnits,
+  listDohaeRevisions,
+  type DohaeRevision,
+} from "../queries.server";
 
 export const meta: Route.MetaFunction = () => [
   { title: "도해 유닛 편집 | 리담변리사학원" },
@@ -73,6 +77,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       unitNo: row.unit_no,
       refNo: row.ref_no,
       pdfPage: row.pdf_page,
+      // ★교재 쪽 — pdf_page 와 34쪽 어긋난다. 출처는 publication_content_map.
+      bookPage: (await bookPagesForDohaeUnits(client, [row.unit_id])).get(row.unit_id) ?? null,
     },
     nodes: collectTextNodes(blocks),
   };
@@ -159,7 +165,7 @@ export default function AdminDohaeEdit({
       cluster="laws"
       role={role}
       title={`도해 편집 — ${dohaeUnitLabel(unit)} ${unit.title}`}
-      desc={`제${unit.chapterNo}장 ${unit.chapterTitle}${unit.pdfPage ? ` · 원본 PDF p.${unit.pdfPage}` : ""} — 텍스트만 수정합니다. 표 구조·열 너비·서식은 원본 그대로 유지됩니다.`}
+      desc={`제${unit.chapterNo}장 ${unit.chapterTitle}${unit.bookPage ? ` · 교재 p.${unit.bookPage}` : ""}${unit.pdfPage ? ` (원본 PDF p.${unit.pdfPage})` : ""} — 텍스트만 수정합니다. 표 구조·열 너비·서식은 원본 그대로 유지됩니다.`}
     >
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <Button asChild variant="outline" size="sm" className="h-8">

@@ -24,6 +24,41 @@ type UnitJoinRow = {
   } | null;
 };
 
+/**
+ * 도해 유닛 → **교재에 인쇄된** 쪽번호.
+ *
+ * ★dohae_units.pdf_page 는 이름 그대로 PDF 물리 쪽이다 — 앞표지·목차 장수만큼
+ *   어긋난다(제20판 34쪽). 교재 쪽을 보여줘야 하는 자리에서는 절대 쓰지 말 것.
+ *   교재 쪽의 단일 출처는 publication_content_map.page_no 다(2026-09-13 정정).
+ * ★한 유닛이 여러 판본에 걸리면 가장 최근 판(edition_seq 큰 쪽)을 쓴다.
+ * ★publication_content_map RLS 는 staff 전용이라 학생 화면에서는 빈 Map 이 돌아온다.
+ *   호출부는 「없으면 안 보여준다」로 다루면 된다.
+ */
+export async function bookPagesForDohaeUnits(
+  client: SupabaseClient<Database>,
+  unitIds: string[],
+): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  if (unitIds.length === 0) return out;
+  const seq = new Map<string, number>();
+  for (let i = 0; i < unitIds.length; i += 150) {
+    const { data, error } = await client
+      .from("publication_content_map")
+      .select("content_id, page_no, publication_editions!inner(edition_seq)")
+      .eq("content_type", "dohae")
+      .in("content_id", unitIds.slice(i, i + 150));
+    if (error) throw error;
+    for (const r of data ?? []) {
+      if (r.page_no == null) continue;
+      const s = Number(r.publication_editions?.edition_seq ?? 0);
+      if (out.has(r.content_id) && (seq.get(r.content_id) ?? 0) >= s) continue;
+      out.set(r.content_id, r.page_no);
+      seq.set(r.content_id, s);
+    }
+  }
+  return out;
+}
+
 function toSummaries(rows: UnitJoinRow[]): DohaeUnitSummary[] {
   const byId = new Map<string, DohaeUnitSummary>();
   for (const r of rows) {
