@@ -3,6 +3,7 @@ import { XIcon } from "lucide-react";
 import * as React from "react";
 
 import { cn } from "~/core/lib/utils";
+import { ResizeGrip, useResizable } from "./resizable-overlay";
 
 function Dialog({
   ...props
@@ -47,13 +48,24 @@ function DialogOverlay({
 function DialogContent({
   className,
   children,
+  style,
+  resizable = false,
+  resizeKey,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content>) {
+}: React.ComponentProps<typeof DialogPrimitive.Content> & {
+  /** 오른쪽 아래 모서리에 크기 손잡이를 단다. 내용이 많은 팝업에만 켠다. */
+  resizable?: boolean;
+  /** 이 이름으로 크기를 기억한다. 없으면 이번에 연 동안만 유지된다. */
+  resizeKey?: string;
+}) {
+  const rs = useResizable({ enabled: resizable, axis: "both", storageKey: resizeKey });
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
+        ref={rs.setNode}
+        style={rs.style ? { ...style, ...rs.style } : style}
         className={cn(
           "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 sm:max-w-lg",
           className,
@@ -61,6 +73,17 @@ function DialogContent({
         {...props}
       >
         {children}
+        {resizable ? (
+          <ResizeGrip
+            axis="both"
+            side="corner"
+            onPointerDown={rs.begin}
+            onPointerMove={rs.move}
+            onPointerUp={rs.end}
+            onDoubleClick={rs.reset}
+            onKeyDown={rs.onKeyDown}
+          />
+        ) : null}
         <DialogPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4">
           <XIcon />
           <span className="sr-only">Close</span>

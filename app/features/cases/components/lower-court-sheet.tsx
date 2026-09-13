@@ -64,6 +64,8 @@ export function LowerCourtSheet({
       </SheetTrigger>
       <SheetContent
         side="right"
+        resizable
+        resizeKey="lower-court"
         className="w-full overflow-y-auto p-0 sm:max-w-[720px]"
       >
         <SheetHeader className="border-border bg-background sticky top-0 z-10 border-b px-4 py-3">

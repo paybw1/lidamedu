@@ -230,7 +230,11 @@ export function CaseDiagramSheet({
     return (
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>{trigger}</DialogTrigger>
-        <DialogContent className="max-h-[88vh] w-[min(96vw,900px)] max-w-none overflow-y-auto p-0 sm:max-w-none">
+        <DialogContent
+          resizable
+          resizeKey="case-diagram"
+          className="max-h-[88vh] w-[min(96vw,900px)] max-w-none overflow-y-auto p-0 sm:max-w-none"
+        >
           <DialogHeader className="border-border bg-background sticky top-0 z-10 border-b px-4 py-3">
             <DialogTitle asChild>{title}</DialogTitle>
             <HeaderHint />
@@ -246,6 +250,8 @@ export function CaseDiagramSheet({
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent
         side="right"
+        resizable
+        resizeKey="case-diagram-sheet"
         className="w-full overflow-y-auto p-0 sm:max-w-[620px]"
       >
         <SheetHeader className="border-border bg-background sticky top-0 z-10 border-b px-4 py-3">

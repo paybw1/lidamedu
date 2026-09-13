@@ -3,6 +3,7 @@ import { XIcon } from "lucide-react";
 import * as React from "react";
 
 import { cn } from "~/core/lib/utils";
+import { ResizeGrip, useResizable } from "./resizable-overlay";
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />;
@@ -46,15 +47,30 @@ function SheetContent({
   className,
   children,
   side = "right",
+  style,
+  resizable = false,
+  resizeKey,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left";
+  /** 안쪽 변에 크기 손잡이를 단다. 내용이 많은 시트에만 켠다. */
+  resizable?: boolean;
+  /** 이 이름으로 크기를 기억한다. */
+  resizeKey?: string;
 }) {
+  // 좌우 시트는 너비만, 상하 시트는 높이만 — 붙어 있는 변은 못 움직인다.
+  const axis = side === "left" || side === "right" ? "x" : "y";
+  // 손잡이는 **안쪽** 변에 — 우측 시트면 왼쪽 변, 하단 시트면 위쪽 변.
+  const gripSide =
+    side === "right" ? "left" : side === "left" ? "right" : side === "bottom" ? "top" : "bottom";
+  const rs = useResizable({ enabled: resizable, axis, storageKey: resizeKey });
   return (
     <SheetPortal>
       <SheetOverlay />
       <SheetPrimitive.Content
         data-slot="sheet-content"
+        ref={rs.setNode}
+        style={rs.style ? { ...style, ...rs.style } : style}
         className={cn(
           "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out fixed z-50 flex flex-col gap-4 shadow-lg transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500",
           side === "right" &&
@@ -70,6 +86,17 @@ function SheetContent({
         {...props}
       >
         {children}
+        {resizable ? (
+          <ResizeGrip
+            axis={axis}
+            side={gripSide}
+            onPointerDown={rs.begin}
+            onPointerMove={rs.move}
+            onPointerUp={rs.end}
+            onDoubleClick={rs.reset}
+            onKeyDown={rs.onKeyDown}
+          />
+        ) : null}
         <SheetPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
           <XIcon className="size-4" />
           <span className="sr-only">Close</span>

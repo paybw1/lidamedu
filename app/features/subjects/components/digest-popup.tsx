@@ -82,7 +82,11 @@ export function DigestPopup({
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* ★높이는 **반드시 고정**(h-)이다. max-h- 로 두면 팝업 높이가 내용을 따라가는데,
           내용 크기는 화면 높이(vh)를 보고 정하므로 서로 물려 오그라든다. */}
-      <DialogContent className="flex h-[94vh] w-[98vw] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
+      <DialogContent
+        resizable
+        resizeKey="digest"
+        className="flex h-[94vh] w-[98vw] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-none"
+      >
         <DigestPopupBody
           groups={groups}
           startIndex={startIndex}

@@ -1153,6 +1153,8 @@ export function DohaePopup({
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent
           side="right"
+          resizable
+          resizeKey="dohae-unit-sheet"
           className="flex w-[94vw] gap-0 overflow-hidden p-0 sm:max-w-3xl lg:max-w-4xl"
           onInteractOutside={keepOpenOnToolbar}
         >
@@ -1164,6 +1166,8 @@ export function DohaePopup({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        resizable
+        resizeKey="dohae-unit"
         className="flex max-h-[88vh] w-[96vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl lg:max-w-5xl"
         onInteractOutside={keepOpenOnToolbar}
       >

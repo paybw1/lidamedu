@@ -126,7 +126,11 @@ export function CaseBadge({
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
         {/* 헤더(사건번호·X)·하단 버튼 고정, 본문만 스크롤 */}
-        <DialogContent className="flex max-h-[80vh] max-w-2xl flex-col overflow-hidden">
+        <DialogContent
+          resizable
+          resizeKey="answer-case"
+          className="flex max-h-[80vh] max-w-2xl flex-col overflow-hidden"
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-1.5 pr-6 text-base leading-snug">
               {isMain ? (
