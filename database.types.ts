@@ -9715,6 +9715,7 @@ export type Database = {
           order_id: string
           paid_at: string | null
           payment_method: string
+          shipping_address: Json | null
           shipping_fee_krw: number
           status: string
           total_krw: number
@@ -9729,6 +9730,7 @@ export type Database = {
           order_id?: string
           paid_at?: string | null
           payment_method?: string
+          shipping_address?: Json | null
           shipping_fee_krw?: number
           status?: string
           total_krw: number
@@ -9743,6 +9745,7 @@ export type Database = {
           order_id?: string
           paid_at?: string | null
           payment_method?: string
+          shipping_address?: Json | null
           shipping_fee_krw?: number
           status?: string
           total_krw?: number

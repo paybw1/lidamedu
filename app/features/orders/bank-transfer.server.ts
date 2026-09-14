@@ -3,14 +3,49 @@
 // 기한 초과 미입금 = 주문 cancelled (관리자 화면 lazy + cron 이중 안전망).
 
 import adminClient from "~/core/lib/supa-admin-client.server";
+import type { CartOrderItem } from "~/features/orders/orders.server";
 import {
+  createCartOrder,
   createSinglePlanOrder,
   markOrderPaidAndFulfill,
 } from "~/features/orders/orders.server";
+import type { ShippingAddress } from "~/features/orders/lib/shipping-address";
 
-const DEPOSIT_WINDOW_HOURS = 72;
+export const DEPOSIT_WINDOW_HOURS = 72;
 
-/** 무통장 주문 신청 — 학생 API·관리자 대리 생성 공용. */
+/**
+ * 이미 만들어진 주문에 **입금 대기**를 붙인다 — bank_transfers 행 + pending_deposit 전이.
+ *
+ * ★두 신청 경로(단일 플랜 / 장바구니)에서 **똑같은** 두 쓰기다. DRY 게이트 통과 —
+ *   같은 의미(입금 대기 붙이기) · 같은 소유자(무통장 도메인) · 같은 변경 축(기한·컬럼).
+ *   반면 **주문을 만드는 일**은 축이 다르므로(항목 해석·쿠폰·배송비) 합치지 않는다.
+ */
+async function attachDeposit(input: {
+  orderId: string;
+  amountKrw: number;
+  depositorName: string;
+}): Promise<string> {
+  const expiresAt = new Date(
+    Date.now() + DEPOSIT_WINDOW_HOURS * 3600_000,
+  ).toISOString();
+  const [{ error: btErr }, { error: oErr }] = await Promise.all([
+    adminClient.from("bank_transfers").insert({
+      order_id: input.orderId,
+      depositor_name: input.depositorName,
+      expected_amount_krw: input.amountKrw,
+      expires_at: expiresAt,
+    }),
+    adminClient
+      .from("orders")
+      .update({ status: "pending_deposit" })
+      .eq("order_id", input.orderId),
+  ]);
+  if (btErr) throw btErr;
+  if (oErr) throw oErr;
+  return expiresAt;
+}
+
+/** 무통장 주문 신청(단일 플랜) — 기존 플랜 단건 체크아웃·관리자 대리 생성 공용. */
 export async function createBankTransferOrder(input: {
   userId: string;
   planId: string;
@@ -27,22 +62,49 @@ export async function createBankTransferOrder(input: {
     discountId: input.discountId ?? null,
     paymentMethod: "bank_transfer",
   });
-  const expiresAt = new Date(Date.now() + DEPOSIT_WINDOW_HOURS * 3600_000).toISOString();
-  const [{ error: btErr }, { error: oErr }] = await Promise.all([
-    adminClient.from("bank_transfers").insert({
-      order_id: order.orderId,
-      depositor_name: input.depositorName,
-      expected_amount_krw: input.amountKrw,
-      expires_at: expiresAt,
-    }),
-    adminClient
-      .from("orders")
-      .update({ status: "pending_deposit" })
-      .eq("order_id", order.orderId),
-  ]);
-  if (btErr) throw btErr;
-  if (oErr) throw oErr;
+  const expiresAt = await attachDeposit({
+    orderId: order.orderId,
+    amountKrw: input.amountKrw,
+    depositorName: input.depositorName,
+  });
   return { orderId: order.orderId, expiresAt };
+}
+
+/**
+ * 무통장 주문 신청(장바구니) — 강의·도서 혼합 (feat-11-012 P5-e).
+ *
+ * ★종이책이 무통장으로 팔리려면 이 경로가 있어야 한다. 종전에는 무통장이 **단일 플랜
+ *   전용**이라(createSinglePlanOrder) 장바구니로 담는 도서는 무통장을 쓸 수 없었다.
+ * ★지급 쪽은 손댈 것이 없다 — markOrderPaidAndFulfill 이 이미 혼합 장바구니를
+ *   처리하고(plan→수강권, book→배송), grantSubscriptionForBankOrder 는 plan 항목만
+ *   훑으므로 도서만 든 주문에서 저절로 no-op 이다.
+ */
+export async function createBankTransferCartOrder(input: {
+  userId: string;
+  items: CartOrderItem[];
+  shippingFeeKrw?: number;
+  couponId?: string | null;
+  couponDiscountKrw?: number;
+  shippingAddress?: ShippingAddress | null;
+  depositorName: string;
+}): Promise<{ orderId: string; amountKrw: number; expiresAt: string }> {
+  const order = await createCartOrder({
+    userId: input.userId,
+    items: input.items,
+    shippingFeeKrw: input.shippingFeeKrw,
+    couponId: input.couponId ?? null,
+    couponDiscountKrw: input.couponDiscountKrw,
+    paymentMethod: "bank_transfer",
+    shippingAddress: input.shippingAddress ?? null,
+  });
+  const expiresAt = await attachDeposit({
+    orderId: order.orderId,
+    // ★기대 입금액은 **주문 총액**이다(배송비·쿠폰 반영 뒤). 상품가로 적으면
+    //   배송비가 붙은 만큼 입금액이 달라 운영에서 매번 손으로 맞춰야 한다.
+    amountKrw: order.totalKrw,
+    depositorName: input.depositorName,
+  });
+  return { orderId: order.orderId, amountKrw: order.totalKrw, expiresAt };
 }
 
 /** 관리자 입금 확인 — deposited_at 기록 후 주문 paid 전이 + 지급. */

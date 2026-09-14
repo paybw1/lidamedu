@@ -16,7 +16,9 @@ import { Badge } from "~/core/components/ui/badge";
 import { AsyncActionButton } from "~/core/components/async-action-button";
 import { Button } from "~/core/components/ui/button";
 import makeServerClient from "~/core/lib/supa-client.server";
-import { startCartCheckout } from "~/features/lms/lib/cart-checkout";
+import { useState } from "react";
+
+import { CheckoutSheet } from "~/features/orders/components/checkout-sheet";
 import { useCart } from "~/features/lms/lib/cart";
 import {
   LECTURE_CATEGORY_LABEL,
@@ -81,15 +83,11 @@ export default function LectureProductDetail({
   const inCart = has(`plan:${product.code}`);
   const failPath = `/lecture/catalog/${product.code}`;
 
-  // ★await 로 받아야 버튼이 "진행 중"을 유지한다 — 결제창이 뜨기까지 몇 초 걸리는데
-  //   그동안 화면이 그대로여서 두 번 누르면 주문이 두 건 생겼다(feat-11-012 P5).
+  // ★시트를 먼저 연다(결제수단 선택). 결제창을 여는 일은 시트가 맡는다.
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const buyNow = async () => {
     if (!tossClientKey) return;
-    await startCartCheckout(
-      [{ kind: "plan", code: product.code }],
-      tossClientKey,
-      failPath,
-    );
+    setCheckoutOpen(true);
   };
 
   const sections = DETAIL_SECTIONS.filter((sec) => product.detailSections[sec.key]);
@@ -396,6 +394,13 @@ export default function LectureProductDetail({
                 >
                   수강신청
                 </AsyncActionButton>
+                <CheckoutSheet
+                  open={checkoutOpen}
+                  onOpenChange={setCheckoutOpen}
+                  items={[{ kind: "plan", code: product.code }]}
+                  tossClientKey={tossClientKey}
+                  failPath={failPath}
+                />
               </>
             )}
           </div>

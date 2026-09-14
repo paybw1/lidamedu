@@ -507,6 +507,51 @@ SPEC 의 M5 는 「lidamedu 구매자 수강권 이관 **· 병행 운영**」�
 - 100% 할인 쿠폰(결제 금액 0원)은 여전히 결제 버튼이 눌리지 않는다. **무료 지급 경로가 따로 없어** 화면만으로는 못 닫는다 — 별도 과제.
 - 쿠폰 두 계통 안내 불일치(주문·배송 화면이 A계통 코드를 보여주며 장바구니에 넣으라고 안내)는 **쿠폰함 화면 개편**과 함께 볼 일이라 이번에 손대지 않았다(통합은 feat-11-011 D10 에서 이미 기각).
 
+#### P5 구현 — 2차 설계 (2026-09-14, 원장 「d1. 종이책 포함, d2. 무통장 입금 추가」)
+
+D1·D2 가 **둘 다 기본안의 반대로** 확정됐다. 그래서 5d·5e 가 함께 풀리고, 둘은 **같은 한 순간**에 만난다 — 「결제 버튼을 누른 직후, 돈이 움직이기 전」. 배송지도 입금자명도 그 자리에서 받는다. 그래서 화면을 둘로 나누지 않고 **결제 시트 하나**로 짓는다.
+
+**왜 시트 하나인가 (분리안을 버린 이유)**
+종이책 경로는 둘이다 — 장바구니 결제와 도서 상세의 **바로구매**. 배송지 입력을 장바구니 화면에만 놓으면 바로구매가 주소 없이 빠져나간다. 반대로 바로구매를 장바구니로 우회시키면 「바로」가 아니게 된다. 두 경로가 **공통으로 부르는 함수**(`startCartCheckout`)가 이미 있으므로, 그 앞에 서는 시트를 공용 부품으로 만들면 경로가 몇 개든 새는 곳이 없다.
+
+**★DDL 이 필요하다 — 피할 수 없다**
+`shipments.address`(jsonb) 칸은 있지만 **주문 시점에는 shipment 이 아직 없다**(이행 때 생긴다). 주소는 결제 시점에 확정돼야 하고 `orders` 에는 담을 칸이 없다. 그래서 `orders.shipping_address jsonb` 를 추가한다. 이행 시 `fulfillBookShipment` 가 그 값을 `shipments.address` 로 복사하면, 운영 배송 화면은 **이미 기대하고 있던 자리에서** 주소를 읽는다.
+
+| | 내용 |
+|---|---|
+| 적용 | `scripts/run-prod-sql.mjs` (★MCP supabase 툴 금지 — 메모 `db-production-target`) |
+| 마이그레이션 | `scripts/sql/20260914_orders_shipping_address.sql` + `_rollback.sql` 짝 |
+| 이후 | `npm run db:typegen` |
+| 모양 | `{name, phone, postcode, address1, address2, memo}` — ★`profiles` 에는 우편번호·상세주소가 **없다**. 그러므로 시트는 「확인만」이 아니라 **묻는다**. |
+
+**5d — 배송지**
+
+1. `cart-resolve.server.ts` 가 `book_type` 을 읽어 `needsShipping` 을 판정한다(운영 확인: 값은 `pdf`/`physical` 둘뿐). PDF 전용 장바구니는 주소를 **묻지 않는다** — 이행 쪽(`fulfillBookShipment`)이 이미 PDF 를 건너뛰므로 판정 축이 같다.
+2. 견적 API(`/api/lecture/cart/quote`)가 `needsShipping` 과 **로그인 사용자의 기본 배송지**(`profiles.name/phone_e164/address`)를 함께 내려준다. 이 API 는 이미 「화면이 결제 전에 알아야 하는 것」의 단일 출처다.
+3. 결제 시트가 그 값을 채워 보여주고 고친 값을 `create-cart-order` 로 보낸다. 검증은 **서버 zod 한 곳**(Layer 2 §5).
+4. 이행 때 `orders.shipping_address` → `shipments.address` 복사. 운영 배송 화면에 주소 표시 + 수정.
+
+**5e — 무통장**
+
+★`createBankTransferOrder` 는 **단일 플랜 전용**이다(`createSinglePlanOrder` 를 부른다). 종이책은 장바구니 경로라 그대로는 못 쓴다. 다만 `createCartOrder` 는 이미 `paymentMethod: "bank_transfer"` 를 받고, `markOrderPaidAndFulfill` 은 **혼합 장바구니를 이미 처리**하며(plan→수강권, book→배송), `grantSubscriptionForBankOrder` 는 plan 항목만 훑으므로 **도서만 든 주문에서 자연히 no-op** 이다. 즉 막힌 곳은 주문 생성 한 지점뿐이다.
+
+- `bank_transfers` 행 생성 + `pending_deposit` 전이를 **작은 공용 함수로 뽑고**, 단일 플랜용과 장바구니용이 각자 주문을 만든 뒤 그것을 부른다. (DRY 게이트: 같은 의미·같은 소유자·같은 변경 축 — 셋 다 true 인 것은 「입금 대기 붙이기」 뿐이다. 주문 생성은 축이 다르므로 합치지 않는다.)
+- **진입점은 늘리지 않는다.** `/api/payments/create-cart-order` 에 `method=toss|bank_transfer` 를 받는다. 항목 재해석·쿠폰·재고 검증이 **한 벌**이어야 「화면엔 되는데 결제는 거절」이 안 생긴다(D6 와 같은 이유).
+- 계좌번호는 **하드코딩하지 않는다.** `app_settings` 에 `bank_account = {bank, number, holder}` 를 넣고(운영 확인: 계좌 설정 키는 **현재 하나도 없다**), 배송 관리 화면 옆에 입력칸을 둔다. 입금 안내 화면과 시트가 같은 값을 읽는다.
+- 「입금 대기」 안내 화면: `/lecture/orders/:orderId/deposit` — 계좌·입금자명·금액·기한(72시간). 주문 내역에서도 들어갈 수 있게 한다. ★`pending_deposit` 는 학생 숨김 목록(`HIDDEN_FROM_STUDENT`)에 없으므로 주문 내역에 이미 뜬다.
+
+**★리허설의 진짜 막힌 곳 (이번에 드러남)**
+
+리허설이 무통장으로 가능한 이유는 「카드 정보를 넣지 않아도 된다」인데, **입금 확인은 관리자 화면 버튼**이다. 나는 학생 로그인도 관리자 로그인도 브라우저에서 할 수 없다(운영 제약). 그래서 두 지점을 이렇게 넘는다:
+
+| 지점 | 방법 |
+|---|---|
+| 학생 로그인 | `auth.admin.createUser` 로 리허설 계정 생성 → 프로그램 로그인. ★**auth.users 는 삭제할 수 없다**(메모 `e2e-deleteuser-noop`) — 이 계정은 **운영에 영구히 남는다.** 원장께 먼저 알린다. |
+| 입금 확인 | 관리자 버튼이 부르는 **그 함수**(`confirmBankTransfer`)를 스크립트에서 그대로 호출. UI 로그인을 우회하는 것이지 로직을 우회하는 게 아니다. |
+
+나머지(주문·수강권·재생·진도)는 전부 시험 데이터 테이블이라 오픈 전 초기화 대상이다.
+
+
 
 ---
 

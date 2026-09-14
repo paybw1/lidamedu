@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { PackageIcon } from "lucide-react";
-import { redirect, useFetcher } from "react-router";
+import { Link, redirect, useFetcher } from "react-router";
 import { toast } from "sonner";
 
 import { Badge } from "~/core/components/ui/badge";
@@ -192,6 +192,16 @@ export default function MyOrders({ loaderData }: Route.ComponentProps) {
                 <Badge variant={o.status === "paid" ? "default" : "secondary"}>
                   {orderStatusLabel(o.status)}
                 </Badge>
+                {o.status === "pending_deposit" ? (
+                  // ★입금 대기 주문에는 **들어갈 문**이 있어야 한다. 계좌를 다시 볼 데가
+                  //   없으면 학생은 신청해 놓고 입금을 못 한다.
+                  <Link
+                    to={`/lecture/orders/${o.orderId}/deposit`}
+                    className="text-primary text-[12px] font-medium hover:underline"
+                  >
+                    입금 안내 보기
+                  </Link>
+                ) : null}
                 <span className="text-muted-foreground ml-auto text-[12px] tabular-nums">
                   {new Date(o.createdAt).toLocaleDateString("ko-KR")}
                 </span>

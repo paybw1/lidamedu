@@ -23,7 +23,7 @@ import {
 } from "~/core/components/ui/dialog";
 import makeServerClient from "~/core/lib/supa-client.server";
 import adminClient from "~/core/lib/supa-admin-client.server";
-import { startCartCheckout } from "~/features/lms/lib/cart-checkout";
+import { CheckoutSheet } from "~/features/orders/components/checkout-sheet";
 import { useCart } from "~/features/lms/lib/cart";
 import { RestockAlertButton } from "~/features/bookstore/components/restock-alert-button";
 import { WishlistHeart } from "~/features/bookstore/components/wishlist-heart";
@@ -139,13 +139,12 @@ export default function BookDetail({ loaderData }: Route.ComponentProps) {
   const inCart = has(`book:${book.bookId}`);
   const isPdf = book.bookType === "pdf";
 
+  // ★바로구매도 장바구니와 **같은 시트**를 지난다. 여기만 시트를 건너뛰면 종이책이
+  //   배송지 없이 팔린다(이 화면이 종이책의 주된 구매 경로다).
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const buyNow = async () => {
     if (!tossClientKey) return;
-    await startCartCheckout(
-      [{ kind: "book", bookId: book.bookId, quantity: qty }],
-      tossClientKey,
-      `/lecture/books/${book.bookId}`,
-    );
+    setCheckoutOpen(true);
   };
 
   return (
@@ -308,6 +307,13 @@ export default function BookDetail({ loaderData }: Route.ComponentProps) {
                 >
                   바로 구매
                 </AsyncActionButton>
+                <CheckoutSheet
+                  open={checkoutOpen}
+                  onOpenChange={setCheckoutOpen}
+                  items={[{ kind: "book", bookId: book.bookId, quantity: qty }]}
+                  tossClientKey={tossClientKey}
+                  failPath={`/lecture/books/${book.bookId}`}
+                />
               </>
             )}
           </div>

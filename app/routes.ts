@@ -326,6 +326,11 @@ export default [
     route("/lecture/wishlist", "features/bookstore/screens/wishlist.tsx"),
     // 주문·배송 — 구 /me/orders 이관(아래 redirect 유지).
     route("/lecture/orders", "features/orders/screens/my-orders.tsx"),
+    // 무통장 입금 안내 — 계좌·입금자명·금액·기한 (feat-11-012 P5-e).
+    route(
+      "/lecture/orders/:orderId/deposit",
+      "features/orders/screens/deposit-guide.tsx",
+    ),
     // feat-8-029 P3 — 학생 환불요청 접수.
     route("/api/refund-request", "features/orders/api/refund-request.tsx"),
     // feat-12 마이페이지 하위 — 증명서·결제내역·쿠폰·포인트(오픈 예정).

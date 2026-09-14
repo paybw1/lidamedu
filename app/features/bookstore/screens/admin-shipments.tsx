@@ -7,7 +7,9 @@ import { toast } from "sonner";
 
 import { Button } from "~/core/components/ui/button";
 import {
+  BANK_ACCOUNT_KEY,
   FREE_SHIPPING_THRESHOLD_KEY,
+  getBankAccount,
   getFreeShippingThresholdKrw,
   setAppSetting,
 } from "~/core/lib/app-settings.server";
@@ -21,6 +23,10 @@ import { hasDutyAccess } from "~/features/admin/lib/duties.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 
 import { orderItemLabel } from "~/features/orders/lib/order-item-label";
+import {
+  formatShippingAddress,
+  toShippingAddress,
+} from "~/features/orders/lib/shipping-address";
 
 import type { Route } from "./+types/admin-shipments";
 
@@ -57,13 +63,16 @@ async function requireManager(request: Request) {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { client, role } = await requireManager(request);
-  const freeShippingThreshold = await getFreeShippingThresholdKrw(client);
+  const [freeShippingThreshold, bankAccount] = await Promise.all([
+    getFreeShippingThresholdKrw(client),
+    getBankAccount(client),
+  ]);
   const url = new URL(request.url);
   const status = url.searchParams.get("status") ?? "";
   let q = adminClient
     .from("shipments")
     .select(
-      "shipment_id, order_item_id, status, courier, tracking_no, created_at, item:order_items!shipments_order_item_id_fkey(quantity, title_snapshot, book:books!order_items_book_fk(title), order:orders!order_items_order_id_fkey(order_id, user:profiles!orders_user_id_fkey(name, member_no)))",
+      "shipment_id, order_item_id, status, courier, tracking_no, address, created_at, item:order_items!shipments_order_item_id_fkey(quantity, title_snapshot, book:books!order_items_book_fk(title), order:orders!order_items_order_id_fkey(order_id, shipping_address, user:profiles!orders_user_id_fkey(name, member_no)))",
     )
     .order("created_at", { ascending: false })
     .limit(200);
@@ -74,6 +83,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     role,
     status,
     freeShippingThreshold,
+    bankAccount,
     rows: (rows ?? []).map((s) => {
       const item = s.item as {
         quantity: number;
@@ -81,10 +91,17 @@ export async function loader({ request }: Route.LoaderArgs) {
         book: { title: string } | null;
         order: {
           order_id: string;
+          shipping_address: unknown;
           user: { name: string | null; member_no: number | null } | null;
         } | null;
       } | null;
+      // ★배송지는 shipment 에 복사된 값을 먼저 본다. 없으면 주문의 값으로 떨어진다 —
+      //   이 기능 이전에 만들어진 배송 건은 shipments.address 가 비어 있기 때문이다.
+      const addr =
+        toShippingAddress(s.address) ??
+        toShippingAddress(item?.order?.shipping_address);
       return {
+        address: addr ? formatShippingAddress(addr) : null,
         shipmentId: s.shipment_id,
         status: s.status,
         courier: s.courier,
@@ -121,6 +138,18 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ ok: true as const });
   }
 
+  if (fd.get("intent") === "set_bank_account") {
+    const bank = String(fd.get("bank") ?? "").trim();
+    const number = String(fd.get("number") ?? "").trim();
+    const holder = String(fd.get("holder") ?? "").trim();
+    // ★셋 중 하나라도 비면 **통째로 지운다.** 반쪽으로 저장하면 getBankAccount 가
+    //   null 을 주는데 화면에는 남아 있어, 「넣었는데 학생에게 안 보인다」가 된다.
+    const value = bank && number && holder ? { bank, number, holder } : null;
+    const res = await setAppSetting(client, BANK_ACCOUNT_KEY, value, user.id);
+    if (!res.ok) return data({ error: res.error }, { status: 400 });
+    return data({ ok: true as const });
+  }
+
   const shipmentId = String(fd.get("shipmentId") ?? "");
   const status = String(fd.get("status") ?? "");
   const courier = String(fd.get("courier") ?? "").trim() || null;
@@ -135,7 +164,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function AdminShipments({ loaderData }: Route.ComponentProps) {
-  const { rows, status, role, freeShippingThreshold } = loaderData;
+  const { rows, status, role, freeShippingThreshold, bankAccount } = loaderData;
   return (
     <AdminShell
       cluster="lms"
@@ -149,6 +178,7 @@ export default function AdminShipments({ loaderData }: Route.ComponentProps) {
       }
     >
       <FreeShippingSetting threshold={freeShippingThreshold} />
+      <BankAccountSetting account={bankAccount} />
       <Form method="get" className="mb-3 flex items-center gap-2">
         <select name="status" defaultValue={status} className="border-input bg-background h-9 rounded-lg border px-2 text-sm">
           <option value="">전체 상태</option>
@@ -169,6 +199,7 @@ export default function AdminShipments({ loaderData }: Route.ComponentProps) {
             { label: "주문", width: "6rem" },
             { label: "회원" },
             { label: "도서" },
+            { label: "받는 곳" },
             { label: "상태", width: "6rem" },
             { label: "택배사·송장", width: "20rem" },
             { label: "생성", align: "right", width: "6.5rem" },
@@ -223,6 +254,64 @@ function FreeShippingSetting({ threshold }: { threshold: number }) {
   );
 }
 
+/** 무통장 계좌 설정 (feat-11-012 P5-e). 학생 결제 시트·입금 안내가 같은 값을 읽는다. */
+function BankAccountSetting({
+  account,
+}: {
+  account: { bank: string; number: string; holder: string } | null;
+}) {
+  const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  useEffect(() => {
+    if (fetcher.state !== "idle" || !fetcher.data) return;
+    if (fetcher.data.error) toast.error(fetcher.data.error);
+    else if (fetcher.data.ok) toast.success("입금 계좌를 저장했습니다.");
+  }, [fetcher.state, fetcher.data]);
+  return (
+    <fetcher.Form
+      method="post"
+      className="border-border bg-muted/20 mb-3 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2.5 text-sm"
+    >
+      <input type="hidden" name="intent" value="set_bank_account" />
+      <span className="font-semibold">무통장 입금 계좌</span>
+      <span className="text-muted-foreground text-xs">
+        셋을 모두 채워야 학생 결제 화면에 「무통장 입금」이 나옵니다
+      </span>
+      <Input
+        name="bank"
+        defaultValue={account?.bank ?? ""}
+        placeholder="은행"
+        className="h-8 w-24"
+      />
+      <Input
+        name="number"
+        defaultValue={account?.number ?? ""}
+        placeholder="계좌번호"
+        className="h-8 w-48 font-mono"
+      />
+      <Input
+        name="holder"
+        defaultValue={account?.holder ?? ""}
+        placeholder="예금주"
+        className="h-8 w-28"
+      />
+      <Button
+        type="submit"
+        size="sm"
+        variant="outline"
+        className="h-8"
+        disabled={fetcher.state !== "idle"}
+      >
+        저장
+      </Button>
+      {account ? (
+        <Chip tone="emerald">무통장 사용 중</Chip>
+      ) : (
+        <Chip tone="outline">미설정 — 카드만 노출</Chip>
+      )}
+    </fetcher.Form>
+  );
+}
+
 function ShipmentRow({
   row,
 }: {
@@ -234,6 +323,7 @@ function ShipmentRow({
     createdAt: string;
     bookTitle: string;
     quantity: number;
+    address: string | null;
     orderNo: string;
     userName: string;
     memberNo: number | null;
@@ -257,6 +347,12 @@ function ShipmentRow({
       <TD soft>
         {row.bookTitle}
         {row.quantity > 1 ? ` ×${row.quantity}` : ""}
+      </TD>
+      <TD soft>
+        {row.address ?? (
+          // ★빈칸으로 두지 않는다. 「없음」이 보여야 운영자가 학생에게 물을 수 있다.
+          <span className="text-amber-600 dark:text-amber-400">배송지 없음</span>
+        )}
       </TD>
       <TD>
         <Chip tone={STATUS_TONE[row.status] ?? "amber"}>{STATUS_LABEL[row.status] ?? row.status}</Chip>

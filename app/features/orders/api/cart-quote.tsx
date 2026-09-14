@@ -12,12 +12,14 @@
 import { data } from "react-router";
 import { z } from "zod";
 
+import { getBankAccount } from "~/core/lib/app-settings.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { resolveCartCoupon } from "~/features/coupons/redeem.server";
 import {
   type RawCartItem,
   resolveCartItems,
 } from "~/features/orders/cart-resolve.server";
+import { toDomesticPhone } from "~/features/orders/lib/shipping-address";
 
 import type { Route } from "./+types/cart-quote";
 
@@ -91,9 +93,39 @@ export async function action({ request }: Route.ActionArgs) {
     resolved.subtotalKrw + resolved.shippingFeeKrw - couponDiscountKrw,
   );
 
+  // ── 결제 시트가 필요로 하는 것 (feat-11-012 P5-d·P5-e) ────────────────────
+  // ★같은 왕복에 실어 보낸다. 따로 부르면 「견적은 왔는데 배송지 기본값이 아직」 같은
+  //   반쪽 상태가 생기고, 시트가 두 응답을 기다리느라 늦게 뜬다.
+  //   이 API 는 이미 「화면이 결제 전에 알아야 하는 것」의 단일 출처다.
+  let shippingDefaults: {
+    name: string;
+    phone: string;
+    address1: string;
+  } | null = null;
+  if (user && resolved.needsShipping) {
+    // ★타 사용자가 아니라 **본인** 행이므로 요청 클라이언트(RLS)로 읽는다.
+    const { data: me } = await client
+      .from("profiles")
+      .select("name, phone_e164, address")
+      .eq("profile_id", user.id)
+      .maybeSingle();
+    shippingDefaults = {
+      name: me?.name ?? "",
+      // ★E.164(+82…) 그대로 내려보내면 시트가 제 검사에 걸린다 — 국내 표기로 돌린다.
+      phone: toDomesticPhone(me?.phone_e164),
+      address1: me?.address ?? "",
+    };
+  }
+
+  // 무통장 계좌 — 미설정이면 null 이고, 그때 시트는 무통장을 **내밀지 않는다.**
+  const bankAccount = await getBankAccount(client);
+
   return data({
     ok: true as const,
     lines: resolved.quoteLines,
+    needsShipping: resolved.needsShipping,
+    shippingDefaults,
+    bankAccount,
     subtotalKrw: resolved.subtotalKrw,
     shippingFeeKrw: resolved.shippingFeeKrw,
     freeShippingThresholdKrw: resolved.freeShippingThresholdKrw,

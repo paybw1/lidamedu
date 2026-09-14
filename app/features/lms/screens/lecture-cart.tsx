@@ -22,7 +22,7 @@ import { AsyncActionButton } from "~/core/components/async-action-button";
 import { Button } from "~/core/components/ui/button";
 import { Input } from "~/core/components/ui/input";
 import makeServerClient from "~/core/lib/supa-client.server";
-import { startCartCheckout } from "~/features/lms/lib/cart-checkout";
+import { CheckoutSheet } from "~/features/orders/components/checkout-sheet";
 import { cartItemKey, useCart } from "~/features/lms/lib/cart";
 import { listBundles } from "~/features/bookstore/queries.server";
 import { listSellableLectureProducts } from "~/features/lms/queries.server";
@@ -238,12 +238,14 @@ export default function LectureCart({ loaderData }: Route.ComponentProps) {
     setCouponInput("");
   };
 
+  // ★결제 버튼은 이제 **바로 결제창을 열지 않는다.** 결제수단(카드·무통장)과 배송지를
+  //   받는 시트를 먼저 연다 — 실물 교재가 든 장바구니는 주소 없이 나가면 안 된다.
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const checkoutItems = buildPayload();
+  const couponForCheckout = q?.couponName ? (appliedCode ?? undefined) : undefined;
   const onCheckout = async () => {
-    if (!tossClientKey) return;
-    const payload = buildPayload();
-    if (payload.length === 0) return;
-    const code = q?.couponName ? (appliedCode ?? undefined) : undefined;
-    await startCartCheckout(payload, tossClientKey, "/lecture/cart", code);
+    if (!tossClientKey || checkoutItems.length === 0) return;
+    setCheckoutOpen(true);
   };
 
   return (
@@ -492,6 +494,14 @@ export default function LectureCart({ loaderData }: Route.ComponentProps) {
               </Button>
             )}
           </div>
+          <CheckoutSheet
+            open={checkoutOpen}
+            onOpenChange={setCheckoutOpen}
+            items={checkoutItems}
+            tossClientKey={tossClientKey}
+            failPath="/lecture/cart"
+            couponCode={couponForCheckout}
+          />
         </>
       )}
     </div>

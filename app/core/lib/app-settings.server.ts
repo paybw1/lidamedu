@@ -18,6 +18,11 @@ export const FREE_SHIPPING_THRESHOLD_KEY = "free_shipping_threshold_krw";
 // 수강 후기 작성 보상 포인트(대상당 1회). 미설정 시 기본값(REVIEW_REWARD_POINTS_DEFAULT).
 export const REVIEW_REWARD_POINTS_KEY = "review_reward_points";
 
+// 무통장 입금 계좌 — feat-11-012 P5-e (원장 결정 D2 = 무통장 추가).
+// ★계좌번호를 코드에 박지 않는다. 은행·계좌·예금주가 바뀌는 것은 **운영 사건**이지
+//   배포 사건이 아니다. 박아 두면 계좌가 바뀔 때 학생이 틀린 곳으로 입금한다.
+export const BANK_ACCOUNT_KEY = "bank_account";
+
 // 강의 랜딩 히어로 단(tier) 사이 간격(px)·배경색. feat-12 배너.
 //   gapTop = 히어로(1단) 위, gap12 = 1↔2단, gap23 = 2↔3단 (경계별 독립 설정).
 export const LANDING_TIER_GAP_TOP_PX_KEY = "landing_tier_gap_top_px"; // 히어로 위
@@ -83,6 +88,32 @@ export async function getFreeShippingThresholdKrw(
 
 // 후기 보상 기본 포인트 — app_settings 미설정 시 사용(운영관리에서 조정 가능).
 export const REVIEW_REWARD_POINTS_DEFAULT = 2000;
+
+/** 무통장 입금 계좌. 미설정이면 null — 화면은 그때 무통장을 **내밀지 않는다.** */
+export interface BankAccount {
+  bank: string;
+  number: string;
+  holder: string;
+}
+
+/**
+ * 무통장 계좌 설정. 세 값이 모두 차 있을 때만 유효로 본다.
+ * ★반쪽(은행만 넣고 계좌번호 미입력)을 유효로 치면 학생에게 입금할 곳 없는 안내가 나간다
+ *   — 「반쪽 열림 금지」(Layer 2 §6).
+ */
+export async function getBankAccount(
+  client: SupabaseClient<Database>,
+): Promise<BankAccount | null> {
+  const raw = await getAppSetting(client, BANK_ACCOUNT_KEY);
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const o = raw as Record<string, unknown>;
+  const pick = (k: string) => (typeof o[k] === "string" ? (o[k] as string).trim() : "");
+  const bank = pick("bank");
+  const number = pick("number");
+  const holder = pick("holder");
+  if (!bank || !number || !holder) return null;
+  return { bank, number, holder };
+}
 
 /** 수강 후기 작성 보상 포인트. 미설정·비정상값은 기본값(2000). */
 export async function getReviewRewardPoints(

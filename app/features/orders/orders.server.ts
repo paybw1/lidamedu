@@ -8,6 +8,10 @@ import {
   logEnrollmentAdminAction,
 } from "~/features/lms/queries.server";
 import { awardPoints } from "~/features/points/points.server";
+import {
+  type ShippingAddress,
+  toShippingAddress,
+} from "~/features/orders/lib/shipping-address";
 
 // ── 결제시도 만료 ───────────────────────────────────────────────────────────
 
@@ -120,6 +124,12 @@ export async function createCartOrder(input: {
   couponId?: string | null; // feat-13 쿠폰 적용(결제 완료 시 사용 기록)
   couponDiscountKrw?: number; // 쿠폰 할인액(총액에서 차감)
   paymentMethod?: "toss" | "bank_transfer" | "free" | "manual";
+  /**
+   * 주문 시점 배송지 스냅샷 (feat-11-012 P5-d). 실물 도서가 든 주문에만.
+   * ★shipments.address 가 아니라 **주문에** 싣는 이유: shipment 는 결제가 끝난 뒤
+   *   이행 단계에서 생기는데, 주소는 결제 전에 확정돼야 한다. 이행 때 옮겨 적는다.
+   */
+  shippingAddress?: ShippingAddress | null;
 }): Promise<{ orderId: string; totalKrw: number }> {
   const qtyOf = (it: CartOrderItem) => (it.itemType === "book" ? it.quantity : 1);
   const shipping = input.shippingFeeKrw ?? 0;
@@ -136,6 +146,8 @@ export async function createCartOrder(input: {
       coupon_id: input.couponId ?? null,
       coupon_discount_krw: discount,
       payment_method: input.paymentMethod ?? "toss",
+      // ★JSON 컬럼이라 그대로 넣는다. 없으면 null(강의만 산 주문·PDF 도서).
+      shipping_address: input.shippingAddress ?? null,
     })
     .select("order_id")
     .single();
@@ -190,7 +202,9 @@ export async function createCartOrder(input: {
 export async function markOrderPaidAndFulfill(orderId: string): Promise<void> {
   const { data: order } = await adminClient
     .from("orders")
-    .select("order_id, user_id, status, discount_id, coupon_id, coupon_discount_krw")
+    .select(
+      "order_id, user_id, status, discount_id, coupon_id, coupon_discount_krw, shipping_address",
+    )
     .eq("order_id", orderId)
     .maybeSingle();
   if (!order) return;
@@ -261,6 +275,10 @@ export async function markOrderPaidAndFulfill(orderId: string): Promise<void> {
         orderItemId: item.order_item_id,
         bookId: item.book_id,
         quantity: item.quantity,
+        // ★주문에 받아 둔 배송지를 shipment 로 옮겨 적는다. 운영 배송 화면은 이미
+        //   shipments.address 를 보고 있으므로, 이 한 줄이 없으면 주소를 물어 놓고도
+        //   송장을 뽑을 때 빈칸이 된다(종전 상태가 정확히 그랬다 — 칸만 있고 쓰는 곳 0곳).
+        address: toShippingAddress(order.shipping_address),
       });
     }
   }
@@ -293,6 +311,7 @@ async function fulfillBookShipment(input: {
   orderItemId: string;
   bookId: string;
   quantity: number;
+  address: ShippingAddress | null;
 }): Promise<void> {
   const { data: bk } = await adminClient
     .from("books")
@@ -303,6 +322,7 @@ async function fulfillBookShipment(input: {
   const { error } = await adminClient.from("shipments").insert({
     order_item_id: input.orderItemId,
     status: "preparing",
+    address: input.address,
   });
   if (error) {
     if (error.code === "23505") return; // 이미 지급(멱등)

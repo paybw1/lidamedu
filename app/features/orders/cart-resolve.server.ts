@@ -46,6 +46,13 @@ export type ResolvedCart =
       freeShippingThresholdKrw: number;
       /** 무료배송까지 남은 금액(0 = 이미 무료이거나 임계 미적용). */
       freeShippingRemainKrw: number;
+      /**
+       * 배송지를 받아야 하는가 — 실물 도서(book_type = physical)가 한 권이라도 있으면 true.
+       * ★판정 축을 이행 쪽과 맞춘다: fulfillBookShipment 도 book_type 으로 PDF 를 건너뛴다.
+       *   여기서 다른 축(배송비 유무 등)을 쓰면 「주소를 물었는데 배송이 안 생긴다」 또는
+       *   그 반대가 난다.
+       */
+      needsShipping: boolean;
     }
   | { ok: false; error: string; status: number };
 
@@ -76,6 +83,7 @@ export async function resolveCartItems(
   const quoteLines: CartQuoteLine[] = [];
   let shippingFeeKrw = 0;
   let bookGoodsKrw = 0; // 도서(단품·세트) 결제금액 합 — 무료배송 임계 판정 기준.
+  let needsShipping = false; // 실물 도서가 하나라도 있는가(배송지 수집 여부).
 
   for (const it of rawItems) {
     if (it.kind === "plan") {
@@ -104,7 +112,7 @@ export async function resolveCartItems(
       const { data: book } = await client
         .from("books")
         .select(
-          "book_id, title, price_krw, sale_status, shipping_fee_type, shipping_fee_krw, per_person_limit, track_stock",
+          "book_id, title, price_krw, sale_status, shipping_fee_type, shipping_fee_krw, per_person_limit, track_stock, book_type",
         )
         .eq("book_id", it.bookId)
         .is("deleted_at", null)
@@ -140,6 +148,7 @@ export async function resolveCartItems(
             status: 400,
           };
       }
+      if (book.book_type !== "pdf") needsShipping = true;
       if (book.shipping_fee_type === "prepaid")
         shippingFeeKrw += book.shipping_fee_krw ?? 0;
       bookGoodsKrw += book.price_krw * it.quantity;
@@ -173,7 +182,7 @@ export async function resolveCartItems(
       const { data: members } = await client
         .from("book_bundle_items")
         .select(
-          "book_id, books(title, price_krw, sale_status, deleted_at, track_stock)",
+          "book_id, books(title, price_krw, sale_status, deleted_at, track_stock, book_type)",
         )
         .eq("bundle_id", it.bundleId);
       const valid = (members ?? []).filter((m) => {
@@ -188,7 +197,13 @@ export async function resolveCartItems(
         return { ok: false, error: "세트 구성 도서가 없습니다", status: 400 };
       // ★세트 구성 도서도 품절 서버 재검증(track_stock 도서는 1개 이상 필요).
       for (const m of valid) {
-        const b = m.books as { title: string; track_stock: boolean };
+        const b = m.books as {
+          title: string;
+          track_stock: boolean;
+          book_type: string | null;
+        };
+        // 세트 안에 실물이 한 권이라도 있으면 그 세트는 배송지가 필요하다.
+        if (b.book_type !== "pdf") needsShipping = true;
         if (b.track_stock && (await bookStock(m.book_id)) < 1)
           return {
             ok: false,
@@ -257,5 +272,6 @@ export async function resolveCartItems(
     subtotalKrw,
     freeShippingThresholdKrw,
     freeShippingRemainKrw,
+    needsShipping,
   };
 }
