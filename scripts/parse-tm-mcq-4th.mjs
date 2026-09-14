@@ -106,6 +106,86 @@ function splitPerChoice(text, choiceCount) {
   return out;
 }
 
+/**
+ * 판면 머리글·주제 표제 판정.
+ *
+ * ★이 줄들이 해설 끝에 딸려 붙는다(실측 37문항). 그냥 두면 해설 본문에 「특수한 표장」
+ *   같은 글자가 박히고, 떼어 내면 **그게 곧 다음 주제의 이름**이다 — 제4판이 주제별로
+ *   재편한 판이라 이 표제가 배치의 권위다.
+ */
+function isHeaderLine(t) {
+  const s = t.trim();
+  if (!s) return true;
+  if (/리담상표법|객관식\s*문제집|주·제·별/.test(s)) return true; // 판면 러닝 헤더
+  if (/^\[IMG:[^\]]+\]$/.test(s)) return true;
+  if (/^제\s*\d+\s*[편장절]/.test(s)) return true;
+  // 주제 표제 — 짧고 표·판정마커·정답이 없다
+  return s.length <= 45 && !/[|[\]]/.test(s) && !/정\s*답/.test(s);
+}
+
+/** 판면 러닝 헤더(주제명이 아닌 것). */
+function isRunningOnly(t) {
+  const s = t.trim();
+  return (
+    !s ||
+    /리담상표법|객관식\s*문제집|주·제·별/.test(s) ||
+    /^\[IMG:[^\]]+\]$/.test(s) ||
+    /^\s*·\s*$/.test(s)
+  );
+}
+
+/**
+ * 해설 끝에 붙은 머리글을 떼어 낸다.
+ *
+ * ★해설 본문을 잘라 먹지 않도록 **정답·판정마커·표가 나온 마지막 줄 이후**만 본다.
+ */
+function stripTrailingHeaders(rawLines) {
+  // ★러닝 헤더·편/장/절 표제는 해설 **중간**에도 끼어든다(뒤에 정리표가 더 붙는 경우).
+  //   이 셋은 해설 본문일 수 없으므로 위치와 무관하게 걷어낸다.
+  const strong = (s) =>
+    /리담상표법|객관식\s*문제집|주·제·별/.test(s) ||
+    /^\[IMG:[^\]]+\]$/.test(s.trim()) ||
+    /^제\s*\d+\s*[편장절]/.test(s.trim());
+  const pulled = [];
+  // ★편 표제는 `제2편   등록요건` 과 **맨 이름만 적힌 `등록요건`** 두 줄로 찍힌다.
+  //   앞줄에서 이름을 거둬 두고 같은 이름의 맨줄도 함께 걷어낸다.
+  //   ★「제4편」과 「이익제도」가 **줄을 나눠** 찍히기도 한다 — 같은 줄만 보면 이름을 못 거둔다.
+  const bareNames = new Set();
+  rawLines.forEach((l, i) => {
+    const t = l.trim();
+    const same = /^제\s*\d+\s*[편장절]\s+(.+?)\s*\d*$/.exec(t);
+    if (same) bareNames.add(same[1].trim());
+    if (/^제\s*\d+\s*[편장절]\s*$/.test(t)) {
+      const next = rawLines.slice(i + 1).find((x) => x.trim());
+      if (next) bareNames.add(next.trim());
+    }
+  });
+  const lines = rawLines.filter((l) => {
+    if (strong(l) || bareNames.has(l.trim())) {
+      pulled.push(l.trim());
+      return false;
+    }
+    return true;
+  });
+
+  let last = -1;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const s = lines[i];
+    if (/정\s*답/.test(s) || /\[\s*[○Оo×xX✕✖△]\s*\]/.test(s) || /^\|/.test(s.trim())) {
+      last = i;
+      break;
+    }
+  }
+  const body = lines.slice(0, last + 1);
+  const tail = lines.slice(last + 1).filter((l) => l.trim());
+  const headers = [];
+  for (const l of tail) {
+    if (isHeaderLine(l)) headers.push(l.trim());
+    else body.push(l); // 머리글이 아니면 해설로 되돌린다
+  }
+  return { body, headers: [...pulled, ...headers] };
+}
+
 /** 발문 극성 — 「옳지 않은/틀린/아닌」이면 negative. */
 function inferPolarity(stem) {
   return /옳지\s*않은|틀린|잘못된|아닌\s*것|아니한\s*것|않는\s*것/.test(stem)
@@ -177,12 +257,16 @@ function parse(paragraphs) {
       else choices[choices.length - 1].text += "\n" + t;
     }
 
-    const explanationRaw = explanationParas.join("\n");
+    // ★해설 끝의 머리글을 떼어 낸다 — 떼어 낸 표제는 **다음 문제부터의 주제**다.
+    const { body, headers } = stripTrailingHeaders(explanationParas);
+    const explanationRaw = body.join("\n");
+    const topicMarkers = headers.filter((h) => !isRunningOnly(h));
     const ans = extractAnswer(explanationRaw);
     const perChoice = splitPerChoice(explanationRaw, Math.max(choices.length, 5));
 
     problems.push({
       no,
+      topicMarkersAfter: topicMarkers,
       year: year <= 90 ? 2000 + year : 1900 + year,
       stem,
       polarity: inferPolarity(stem),
@@ -197,6 +281,20 @@ function parse(paragraphs) {
       answerNone: ans.none,
       paraIndex: para,
     });
+  }
+
+  // ★주제를 앞에서 뒤로 이어 붙인다 — 어떤 문제의 해설 뒤에 나온 표제는 **그 다음 문제부터**의
+  //   주제다. 같은 표제가 러닝 헤더로 두 번 찍히므로 중복은 접는다.
+  let topic = null;
+  let chapter = null;
+  for (const p of problems) {
+    p.topic = topic;
+    p.chapter = chapter;
+    for (const h of p.topicMarkersAfter) {
+      if (/^제\s*\d+\s*[편장절]/.test(h)) chapter = h;
+      else topic = h;
+    }
+    if (p.topicMarkersAfter.some((h) => /^제\s*\d+\s*[편장절]/.test(h))) topic = null;
   }
   return problems;
 }
