@@ -341,6 +341,14 @@ describe("주문 쿠폰할인 안분", () => {
     expect(scaleRefund(0, net.get("b")!, 45_000)).toBe(0);
   });
 
+  it("★환불액을 할인 후 금액으로 기록하면 두 번 깎인다 — 기록 평면이 정가여야 하는 이유", () => {
+    const netB = allocateDiscount(rows, 10_000).get("b")!; // 40,500
+    // 잘못된 기록(할인 후 40,500) → 40,500 × 40,500/45,000 = 36,450.
+    // 환불이 결제액(40,500)을 4,050 만큼 못 상쇄하고, 그 차액이 강사에게 과다 지급된다.
+    expect(scaleRefund(netB, netB, 45_000)).toBe(36_450);
+    expect(scaleRefund(netB, netB, 45_000)).toBeLessThan(netB);
+  });
+
   it("할인된 항목의 전액 환불이 결제액을 정확히 상쇄한다", () => {
     const netB = allocateDiscount(rows, 10_000).get("b")!;
     const discounted = sale({

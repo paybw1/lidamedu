@@ -770,9 +770,18 @@ export async function refundOrderItem(input: {
     .from("order_items")
     .update({
       refunded_at: new Date().toISOString(),
-      // ★포인트 반환분을 더하지 않는다 — 정산 3파일이 이 값을 **PG 환불액**으로 읽고
-      //   scaleRefund 를 건다. 포인트는 point_transactions 원장에만 남는다.
-      refund_amount_krw: refundKrw,
+      // ★★이 칸은 **할인 전(정가) 평면**이다. PG 로 실제 환급한 금액(refundKrw)이 아니다.
+      //   읽는 쪽 셋이 전부 정가 평면을 전제한다 —
+      //     · settlement-sources: scaleRefund(이 값, 할인후, 정가) 로 **직접 축소**한다.
+      //       할인 후 금액을 넣으면 한 번 더 깎여(net²/gross) 환불이 매출을 못 상쇄하고
+      //       강사 정산이 과다 지급된다.
+      //     · sales-stats / book-settlements-admin: 정가 대비 환불로 집계한다
+      //       (도서정산 정가 기준은 원장 결정 2026-09-12).
+      //   전체 환불 경로(markOrderRefundedAndRevoke)도 같은 평면으로 기록한다 —
+      //   두 경로가 다른 평면을 쓰면 같은 칸이 주문마다 다른 뜻이 된다.
+      //   포인트 반환분도 더하지 않는다(포인트는 학원 판촉비 — 강사 정산 매출에 들어간 적이 없다).
+      //   실제 환급액은 payments.refund_amount_krw 와 point_transactions 원장이 갖는다.
+      refund_amount_krw: item.unit_price_krw * item.quantity,
       refund_reason: input.reason,
     })
     .eq("order_item_id", input.orderItemId);
