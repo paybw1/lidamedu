@@ -349,6 +349,8 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "구독 통계", to: "/admin/subscriptions/stats", minRole: "manager" },
       // feat-11-004 4a — 항목 단위 주문·부분 환불.
       { label: "주문 관리 (항목·환불)", to: "/admin/orders", duty: "lms_orders_admin" },
+      // feat-11-013 P6 — 관리자 환불 접수·처리.
+      { label: "환불 관리", to: "/admin/refunds", duty: "lms_orders_admin" },
       { label: "강사 배분 기준", to: "/admin/settlements/rules", minRole: "manager" },
       { label: "강사 정산", to: "/admin/settlements", minRole: "manager" },
       // feat-8-029 P6 — 도서 배분 기준 + 도서 정산(계산·지급).
@@ -579,7 +581,7 @@ const COMMERCE_GROUP_DEFS: {
     id: "c-orders",
     label: "주문·결제관리",
     Icon: BanknoteIcon,
-    paths: ["/admin/orders", "/admin/payments"],
+    paths: ["/admin/orders", "/admin/payments", "/admin/refunds"],
   },
   {
     id: "c-books",

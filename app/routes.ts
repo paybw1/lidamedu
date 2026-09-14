@@ -931,6 +931,16 @@ export default [
       route("/admin/lms/devices", "features/lms/screens/admin-lms-devices.tsx"),
       // feat-11-004 4a — 주문 관리(항목 부분 환불) + 4b 무통장.
       route("/admin/orders", "features/orders/screens/admin-orders.tsx"),
+      // feat-11-013 P6 — 환불관리(접수·검토·취소결과 입력·확정).
+      route("/admin/refunds", "features/refunds/screens/admin-refunds.tsx"),
+      route(
+        "/admin/refunds/new",
+        "features/refunds/screens/admin-refund-new.tsx",
+      ),
+      route(
+        "/admin/refunds/:refundId",
+        "features/refunds/screens/admin-refund-detail.tsx",
+      ),
       route(
         "/api/orders/bank-transfer",
         "features/orders/api/bank-transfer.tsx",

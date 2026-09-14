@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { ReceiptTextIcon } from "lucide-react";
-import { Form, data, useFetcher } from "react-router";
+import { Form, Link, data, useFetcher } from "react-router";
 import { toast } from "sonner";
 
 import { Button } from "~/core/components/ui/button";
@@ -707,9 +707,20 @@ function OrderRow({
       <TD soft>{METHOD_LABEL[row.paymentMethod] ?? row.paymentMethod}</TD>
       <TD align="right" mono>₩{row.totalKrw.toLocaleString("ko-KR")}</TD>
       <TD>
-        <Chip tone={ORDER_STATUS_TONE[row.status] ?? "neutral"}>
-          {ORDER_STATUS_LABEL[row.status] ?? row.status}
-        </Chip>
+        <div className="flex flex-col items-start gap-1">
+          <Chip tone={ORDER_STATUS_TONE[row.status] ?? "neutral"}>
+            {ORDER_STATUS_LABEL[row.status] ?? row.status}
+          </Chip>
+          {/* feat-11-013 P6 — 환불관리 접수. ★여기서는 돈이 움직이지 않는다(요청서 §2). */}
+          {refundable ? (
+            <Link
+              to={`/admin/refunds/new?orderId=${row.orderId}`}
+              className="border-border text-link h-5 rounded border px-1.5 text-[10px] font-medium hover:underline"
+            >
+              환불신청
+            </Link>
+          ) : null}
+        </div>
       </TD>
       <TD align="right" mono soft>
         <span title={row.createdAt}>{row.createdAt.slice(0, 10)}</span>
