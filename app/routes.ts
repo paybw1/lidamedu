@@ -1409,7 +1409,8 @@ export default [
         "/api/payments/toss/billing-confirm",
         "features/subscriptions/api/billing-confirm.tsx",
       ),
-      // feat-8-028 — 구독 해지/환불(본인). 3일 이내 전액환불+종료 / 이후 정기해지.
+      // feat-8-028 — 구독 해지(본인). ★3일 이내는 전액환불 대상이라 거부되고 고객센터로
+      //   안내된다(feat-11-013 D10). 3일 경과 후 정기해지만 셀프 처리.
       route(
         "/api/subscriptions/cancel",
         "features/subscriptions/api/cancel-subscription.tsx",

@@ -11,7 +11,6 @@ import adminClient from "~/core/lib/supa-admin-client.server";
 import { createUserNotifications } from "~/features/notifications/queries.server";
 import {
   markOrderPaidAndFulfill,
-  markOrderRefundedAndRevoke,
 } from "~/features/orders/orders.server";
 import {
   incrementDiscountUse,
@@ -990,13 +989,20 @@ export async function confirmPayment(
   return { ok: true, subscription: res.subscription };
 }
 
-// feat-8-028 — 해지·환불 정책:
-//  · 결제 후 3일 이내 해지 → 전액 환불 + 정기구독 즉시 취소(접근 종료).
+// 해지·환불 정책 (feat-8-028 → feat-11-013 D10 으로 개정, 2026-09-15):
+//  · 결제 후 3일 이내 → **전액 환불 대상.** 권리는 그대로지만 **학생이 직접 실행하지 않는다** —
+//    고객센터로 신청하면 회사가 확인해 환불하고, **환불이 완료되는 때에 구독이 종료**된다.
+//    (환불정책 제3조 1항·제5조 1항)
 //  · 3일 경과 후 해지 → 그 달분 환불 없음. 정기구독만 해지(다음 갱신 청구 없음),
-//    남은 기간(만료일)까지 이용.
+//    남은 기간(만료일)까지 이용. ★환불이 아니므로 **셀프 해지 그대로**다.
 export const REFUND_WINDOW_DAYS = 3;
 
-/** 결제 후 3일 이내인가 — 전액 환불 가능 판정(순수, UI/서버 공용). */
+/**
+ * 결제 후 3일 이내인가 — **전액 환불 대상 판정**(순수, UI/서버 공용).
+ *
+ * ★이름이 「환불 가능」이지만 이제 뜻은 「환불 **대상**」이다. true 면 학생이 직접 해지할 수
+ *   없고 고객센터로 안내된다(그대로 해지시키면 환불 권리를 잃는다).
+ */
 export function isRefundable(status: string, createdAtIso: string): boolean {
   if (status !== "completed") return false;
   const created = new Date(createdAtIso).getTime();
@@ -1004,13 +1010,13 @@ export function isRefundable(status: string, createdAtIso: string): boolean {
 }
 
 // 본인 구독 해지 — 소유권·상태 검증 후 3일 정책 분기. ★서버 권위(클라 신뢰 안 함).
-//  refunded=true  → 3일 이내: Toss 전액 취소 + 구독 즉시 종료.
-//  refunded=false → 3일 경과: 환불 없음, auto_renew off + cancelled_at(잔여기간 이용).
+//  3일 이내  → **거부**. 전액 환불 대상이라 고객센터 신청으로 보낸다(feat-11-013 D10).
+//  3일 경과  → 환불 없음, auto_renew off + cancelled_at(잔여기간 이용). 셀프 처리 그대로.
 export async function cancelSubscription(input: {
   userId: string;
   subscriptionId: string;
 }): Promise<
-  | { ok: true; refunded: boolean; accessUntil: string | null }
+  | { ok: true; accessUntil: string | null }
   | { ok: false; error: string }
 > {
   const admin = adminClient as SupabaseClient<Database>;
@@ -1045,68 +1051,20 @@ export async function cancelSubscription(input: {
     pay = data ?? null;
   }
 
-  // 3일 이내 — 전액 환불 + 즉시 종료.
+  // ★★feat-11-013 D10 — 3일 이내 전액환불은 **학생이 직접 실행하지 않는다.**
+  //   환불정책 개정(2026-09-15, 제3조 1항·제5조 1항): 권리는 그대로이고 **실행 주체**만 바뀐다 —
+  //   「신청 → 회사가 결제·이용 내역 확인 → 환불 → 환불 완료 시 구독 종료」.
+  //   신청은 고객센터로 받고, 관리자가 /admin/refunds 에 등록해 처리한다.
+  //
+  // ★여기서 그냥 통과시켜 auto_renew 만 끄면 **학생이 전액환불 권리를 잃은 채 해지된다.**
+  //   그래서 끄지 않고 막는다 — 서버가 권위다(화면이 낡았거나 직접 POST 해도 같다).
+  //   3일이 지난 뒤의 정기결제 해지는 **환불이 아니므로** 아래에서 그대로 셀프 처리된다.
   if (pay && isRefundable(pay.status, pay.created_at)) {
-    if (!pay.toss_payment_key)
-      return { ok: false, error: "결제 키가 없어 환불할 수 없습니다" };
-    const secret = process.env.TOSS_SECRET_KEY;
-    if (!secret) return { ok: false, error: "TOSS_SECRET_KEY 환경변수 미설정" };
-    const basic = Buffer.from(`${secret}:`).toString("base64");
-    const reason = "고객 해지 요청(결제 후 3일 이내 전액 환불)";
-    try {
-      const res = await fetch(
-        `https://api.tosspayments.com/v1/payments/${pay.toss_payment_key}/cancel`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Basic ${basic}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ cancelReason: reason }),
-        },
-      );
-      const payload = (await res.json()) as Record<string, unknown>;
-      if (!res.ok) {
-        const msg =
-          typeof payload?.message === "string"
-            ? payload.message
-            : `Toss 환불 실패 (HTTP ${res.status})`;
-        return { ok: false, error: msg };
-      }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      return { ok: false, error: `Toss 환불 API 호출 실패: ${msg}` };
-    }
-    await admin
-      .from("payments")
-      .update({
-        status: "refunded",
-        refunded_at: nowIso,
-        refund_amount_krw: pay.amount_krw,
-        refund_reason: reason,
-      })
-      .eq("payment_id", pay.payment_id);
-    await admin
-      .from("user_subscriptions")
-      .update({
-        status: "cancelled",
-        cancelled_at: nowIso,
-        auto_renew: false,
-        updated_at: nowIso,
-      })
-      .eq("subscription_id", sub.subscription_id);
-    // feat-11-004 4a — 연결 주문 환불 전이(+지급물 회수).
-    {
-      const { data: payOrder } = await admin
-        .from("payments")
-        .select("order_id")
-        .eq("payment_id", pay.payment_id)
-        .maybeSingle();
-      if (payOrder?.order_id) {
-        await markOrderRefundedAndRevoke(payOrder.order_id, reason);
-      }
-    }
-    return { ok: true, refunded: true, accessUntil: null };
+    return {
+      ok: false,
+      error:
+        "결제 후 3일 이내에는 전액 환불 대상입니다. 고객센터로 해지·환불을 신청해 주시면 확인 후 처리해 드립니다.",
+    };
   }
 
   // 3일 경과 — 환불 없음. 정기결제만 해지(다음 갱신 청구 없음), 남은 기간 이용.
@@ -1114,7 +1072,7 @@ export async function cancelSubscription(input: {
     .from("user_subscriptions")
     .update({ auto_renew: false, cancelled_at: nowIso, updated_at: nowIso })
     .eq("subscription_id", sub.subscription_id);
-  return { ok: true, refunded: false, accessUntil: sub.expires_at };
+  return { ok: true, accessUntil: sub.expires_at };
 }
 
 // ─── 자동결제(빌링) — feat-8-028 Stage 5 ───

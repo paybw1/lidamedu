@@ -4,9 +4,11 @@
 
 import adminClient from "~/core/lib/supa-admin-client.server";
 
-/** 해지 의미(queries.server cancelSubscription):
- *  - 환불 해지(3일 내): status='cancelled' + cancelled_at, 즉시 종료.
- *  - 갱신 중지(3일 후): auto_renew=false + cancelled_at, status는 active 유지(잔여기간 이용).
+/** 해지 의미:
+ *  - 환불 해지: status='cancelled' + cancelled_at, 즉시 종료.
+ *    ★feat-11-013 D10 이후 이 갈래는 **학생 셀프가 아니라 관리자 환불**로만 생긴다
+ *    (refundPaymentAdmin → cancelLinkedSubscription). 3일 내 셀프 환불해지는 없어졌다.
+ *  - 갱신 중지(cancelSubscription): auto_renew=false + cancelled_at, status는 active 유지(잔여기간 이용).
  *  갱신 대상(chargeDueRenewals): status=active · auto_renew=true · cancelled_at IS NULL. */
 
 export interface SubscriptionSnapshot {

@@ -95,7 +95,7 @@ async function logEvent(
   }
 }
 
-/** 연결된 활성 구독 취소(전액 환불 시). cancelSubscription 의 환불 분기와 동일 형태. */
+/** 연결된 활성 구독 취소(전액 환불 시). refund-admin.server 의 구독 회수와 같은 형태. */
 async function cancelLinkedSubscription(
   admin: SupabaseClient<Database>,
   paymentId: string,
@@ -277,7 +277,8 @@ export async function syncPaymentFromToss(
         })
         .eq("payment_id", payRow.payment_id);
       // ★학습 구독 해지는 그대로 둔다 — 강의 플랫폼 주문에는 user_subscriptions 가 없어
-      //   no-op 이고, 학습 플랫폼은 학생 셀프 해지(경로 ②)가 여기로 들어온다.
+      //   no-op 이고, 학습 플랫폼은 **관리자 환불**(refund-admin.server)이 여기로 들어온다.
+      //   학생 셀프 환불해지는 feat-11-013 D10 으로 없어졌다.
       const revoked = await cancelLinkedSubscription(admin, payRow.payment_id);
 
       // ★★열린 환불건이 있으면 **웹훅은 비켜선다**(feat-11-013 P6-b).

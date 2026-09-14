@@ -302,9 +302,10 @@ export default function Pricing({ loaderData }: Route.ComponentProps) {
               q="환불은 어떻게 되나요?"
               a={
                 <>
-                  결제 후 3일 이내에는 전액 환불됩니다. 3일이 지나면 해지 시
-                  다음 갱신 청구만 중단되고 남은 기간은 그대로 이용할 수
-                  있습니다.{" "}
+                  결제 후 3일 이내에 고객센터로 해지를 신청하시면 전액
+                  환불해 드리며, 환불이 완료되는 때에 구독이 종료됩니다.
+                  3일이 지나면 «내 구독»에서 직접 해지할 수 있고, 다음 갱신
+                  청구만 중단되며 남은 기간은 그대로 이용할 수 있습니다.{" "}
                   <Link
                     to="/legal/refund-policy"
                     target="_blank"
@@ -317,7 +318,7 @@ export default function Pricing({ loaderData }: Route.ComponentProps) {
             />
             <FaqCard
               q="자동결제는 언제든 해지할 수 있나요?"
-              a="네. «내 구독»에서 언제든 해지할 수 있고, 해지하면 다음 갱신부터 청구되지 않습니다. 이미 결제한 기간은 만료일까지 이용됩니다."
+              a="결제 후 3일이 지나면 «내 구독»에서 직접 해지할 수 있고, 해지하면 다음 갱신부터 청구되지 않습니다(이미 결제한 기간은 만료일까지 이용). 결제 후 3일 이내에는 전액 환불 대상이라 고객센터로 해지·환불을 신청해 주시면 확인 후 처리해 드립니다."
             />
             <FaqCard
               q="종합반은 어떻게 등록하나요?"
@@ -754,8 +755,8 @@ function SubscribeButton({
         <p className="text-muted-foreground rounded-md bg-muted/60 px-2 py-1.5 text-[10px] leading-relaxed">
           매월 결제일에 <strong>위 표시 금액(할인 적용가)</strong>이 등록하신
           카드로 <strong>자동 청구</strong>되며, 해지 전까지 매월 갱신됩니다.
-          «내 구독»에서 언제든 해지할 수 있고, 결제 후 3일 이내에는 전액
-          환불됩니다.{" "}
+          결제 후 3일 이내에는 고객센터로 신청하시면 <strong>전액 환불</strong>
+          되고, 3일이 지난 뒤에는 «내 구독»에서 정기결제를 해지할 수 있습니다.{" "}
           <Link to="/legal/refund-policy" className="underline" target="_blank">
             환불 규정
           </Link>

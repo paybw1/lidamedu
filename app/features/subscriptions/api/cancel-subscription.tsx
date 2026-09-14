@@ -1,5 +1,6 @@
-// 구독 해지/환불 — 본인 구독. 결제 후 3일 이내 전액 환불+즉시 종료,
-// 3일 경과 시 정기결제 해지(잔여기간 이용·다음 갱신 청구 없음). feat-8-028.
+// 구독 해지 — 본인 구독. ★결제 후 3일 이내는 **전액 환불 대상**이라 여기서 처리하지 않고
+// 거부한다(고객센터 신청 → 관리자 환불관리, feat-11-013 D10).
+// 3일 경과 시에만 정기결제 해지(잔여기간 이용·다음 갱신 청구 없음). feat-8-028.
 // 서버 권위: cancelSubscription 이 소유권·상태·기간을 모두 재검증한다.
 
 import { redirect } from "react-router";
@@ -42,10 +43,9 @@ export async function action({ request }: Route.ActionArgs) {
       `/me/subscription?cancelError=${encodeURIComponent(res.error).slice(0, 200)}`,
     );
   }
-  // refunded=1(전액 환불+종료) / cancelled=1(정기결제 해지, 잔여기간 이용)
-  throw redirect(
-    `/me/subscription?${res.refunded ? "refunded=1" : "cancelled=1"}`,
-  );
+  // ★셀프 해지는 이제 **정기결제 해지 한 갈래**뿐이다(feat-11-013 D10).
+  //   3일 이내 전액환불은 고객센터 신청 → 관리자 환불관리로 처리하므로 여기 오지 않는다.
+  throw redirect("/me/subscription?cancelled=1");
 }
 
 // GET(브라우저 직접 접근) — loader 부재 시 React Router 500. POST 전용 안내(405).
