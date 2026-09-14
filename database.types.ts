@@ -12580,6 +12580,87 @@ export type Database = {
         }
         Relationships: []
       }
+      refund_items: {
+        Row: {
+          base_krw: number | null
+          calc_basis: Json | null
+          coupon_restored: boolean
+          created_at: string
+          deduction_reason: string | null
+          final_krw: number | null
+          is_open: boolean
+          order_item_id: string
+          other_deduction_krw: number | null
+          point_return_krw: number | null
+          point_revoke_krw: number | null
+          quantity: number
+          refund_id: string
+          refund_item_id: string
+          return_tracking_no: string | null
+          returned_at: string | null
+          shipping_deduction_krw: number | null
+          updated_at: string
+          used_deduction_krw: number | null
+        }
+        Insert: {
+          base_krw?: number | null
+          calc_basis?: Json | null
+          coupon_restored?: boolean
+          created_at?: string
+          deduction_reason?: string | null
+          final_krw?: number | null
+          is_open?: boolean
+          order_item_id: string
+          other_deduction_krw?: number | null
+          point_return_krw?: number | null
+          point_revoke_krw?: number | null
+          quantity?: number
+          refund_id: string
+          refund_item_id?: string
+          return_tracking_no?: string | null
+          returned_at?: string | null
+          shipping_deduction_krw?: number | null
+          updated_at?: string
+          used_deduction_krw?: number | null
+        }
+        Update: {
+          base_krw?: number | null
+          calc_basis?: Json | null
+          coupon_restored?: boolean
+          created_at?: string
+          deduction_reason?: string | null
+          final_krw?: number | null
+          is_open?: boolean
+          order_item_id?: string
+          other_deduction_krw?: number | null
+          point_return_krw?: number | null
+          point_revoke_krw?: number | null
+          quantity?: number
+          refund_id?: string
+          refund_item_id?: string
+          return_tracking_no?: string | null
+          returned_at?: string | null
+          shipping_deduction_krw?: number | null
+          updated_at?: string
+          used_deduction_krw?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refund_items_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
+            referencedColumns: ["order_item_id"]
+          },
+          {
+            foreignKeyName: "refund_items_refund_id_fkey"
+            columns: ["refund_id"]
+            isOneToOne: false
+            referencedRelation: "refunds"
+            referencedColumns: ["refund_id"]
+          },
+        ]
+      }
       refund_requests: {
         Row: {
           created_at: string
@@ -12648,6 +12729,212 @@ export type Database = {
           },
           {
             foreignKeyName: "refund_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      refund_status_logs: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          from_status: string | null
+          log_id: string
+          memo: string | null
+          refund_id: string
+          to_status: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          from_status?: string | null
+          log_id?: string
+          memo?: string | null
+          refund_id: string
+          to_status: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          from_status?: string | null
+          log_id?: string
+          memo?: string | null
+          refund_id?: string
+          to_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refund_status_logs_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "refund_status_logs_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "refund_status_logs_refund_id_fkey"
+            columns: ["refund_id"]
+            isOneToOne: false
+            referencedRelation: "refunds"
+            referencedColumns: ["refund_id"]
+          },
+        ]
+      }
+      refunds: {
+        Row: {
+          admin_memo: string | null
+          assignee_id: string | null
+          attachments: Json
+          closed_at: string | null
+          consult_note: string | null
+          created_at: string
+          email_sent_at: string | null
+          intake_at: string
+          intake_by: string | null
+          intake_channel: string | null
+          order_id: string
+          original_paid_krw: number | null
+          pg_cancel_kind: string | null
+          pg_cancel_krw: number | null
+          pg_cancelled_at: string | null
+          pg_evidence: Json
+          pg_operator: string | null
+          pg_transaction_no: string | null
+          prior_refunded_krw: number | null
+          refund_id: string
+          refund_method: string | null
+          request_reason: string | null
+          sms_sent_at: string | null
+          status: string
+          this_refund_krw: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_memo?: string | null
+          assignee_id?: string | null
+          attachments?: Json
+          closed_at?: string | null
+          consult_note?: string | null
+          created_at?: string
+          email_sent_at?: string | null
+          intake_at?: string
+          intake_by?: string | null
+          intake_channel?: string | null
+          order_id: string
+          original_paid_krw?: number | null
+          pg_cancel_kind?: string | null
+          pg_cancel_krw?: number | null
+          pg_cancelled_at?: string | null
+          pg_evidence?: Json
+          pg_operator?: string | null
+          pg_transaction_no?: string | null
+          prior_refunded_krw?: number | null
+          refund_id?: string
+          refund_method?: string | null
+          request_reason?: string | null
+          sms_sent_at?: string | null
+          status?: string
+          this_refund_krw?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_memo?: string | null
+          assignee_id?: string | null
+          attachments?: Json
+          closed_at?: string | null
+          consult_note?: string | null
+          created_at?: string
+          email_sent_at?: string | null
+          intake_at?: string
+          intake_by?: string | null
+          intake_channel?: string | null
+          order_id?: string
+          original_paid_krw?: number | null
+          pg_cancel_kind?: string | null
+          pg_cancel_krw?: number | null
+          pg_cancelled_at?: string | null
+          pg_evidence?: Json
+          pg_operator?: string | null
+          pg_transaction_no?: string | null
+          prior_refunded_krw?: number | null
+          refund_id?: string
+          refund_method?: string | null
+          request_reason?: string | null
+          sms_sent_at?: string | null
+          status?: string
+          this_refund_krw?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refunds_assignee_id_fkey"
+            columns: ["assignee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "refunds_assignee_id_fkey"
+            columns: ["assignee_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "refunds_intake_by_fkey"
+            columns: ["intake_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "refunds_intake_by_fkey"
+            columns: ["intake_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "refunds_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "refunds_pg_operator_fkey"
+            columns: ["pg_operator"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "refunds_pg_operator_fkey"
+            columns: ["pg_operator"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "refunds_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "refunds_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "public_profiles"
