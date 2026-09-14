@@ -166,7 +166,7 @@ export default function ScheduleDetail({ loaderData }: Route.ComponentProps) {
         planCode={plan?.code ?? null}
         buyable={plan?.buyable ?? false}
         tossClientKey={tossClientKey}
-        failPath={`/lecture/schedule/${s.schedule_id}?failed=1`}
+        failPath={`/lecture/schedule/${s.schedule_id}`}
       />
     </div>
   );

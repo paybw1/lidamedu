@@ -1,15 +1,11 @@
 // feat-13 쿠폰 발급 + 체크아웃 적용 — 서버 권위 검증·계산·사용 기록.
 // coupons 는 RLS staff 전용이라 학생 흐름은 전부 adminClient 로 읽는다(본인 스코프 검증 포함).
+import { kstToday } from "~/core/lib/kst";
 import adminClient from "~/core/lib/supa-admin-client.server";
 
 import { type CartLineForCoupon, couponScopeTokens } from "./labels";
 
 export type { CartLineForCoupon } from "./labels";
-
-// KST(UTC+9) 기준 오늘 yyyy-mm-dd — 유효기간(date 컬럼) 비교용.
-function kstToday(): string {
-  return new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
-}
 
 export type ResolveCouponOk = {
   ok: true;

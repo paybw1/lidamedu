@@ -16,6 +16,20 @@ export type RawCartItem =
   | { kind: "book"; bookId: string; quantity: number }
   | { kind: "bundle"; bundleId: string };
 
+/**
+ * 화면이 **그대로 그릴** 견적 줄 — 원 항목 단위(세트는 분해하지 않는다).
+ * ★items 는 지급용이라 세트가 구성 도서로 쪼개져 있어 화면의 삭제·수량 버튼과 키가 맞지 않는다.
+ */
+export interface CartQuoteLine {
+  /** 화면 장바구니 항목 키(cartItemKey 와 같은 규칙). */
+  key: string;
+  kind: "plan" | "book" | "bundle";
+  name: string;
+  unitPriceKrw: number;
+  quantity: number;
+  lineTotalKrw: number;
+}
+
 export type ResolvedCart =
   | {
       ok: true;
@@ -23,6 +37,15 @@ export type ResolvedCart =
       couponLines: CartLineForCoupon[]; // 쿠폰 범위 매칭용(원 항목 단위)
       names: string[];
       shippingFeeKrw: number;
+      // ── 아래는 화면 표시용 (feat-11-012 P5-b) ──────────────────────────
+      // ★종전에는 화면이 자기 방식으로 금액을 더했고 **배송비를 몰랐다** — 버튼에 적힌
+      //   금액과 실제 청구액이 달랐다. 계산은 서버가 하고 화면은 그리기만 한다.
+      quoteLines: CartQuoteLine[];
+      subtotalKrw: number;
+      /** 무료배송 임계(0 = 미적용). */
+      freeShippingThresholdKrw: number;
+      /** 무료배송까지 남은 금액(0 = 이미 무료이거나 임계 미적용). */
+      freeShippingRemainKrw: number;
     }
   | { ok: false; error: string; status: number };
 
@@ -39,12 +62,18 @@ async function bookStock(bookId: string): Promise<number> {
 
 export async function resolveCartItems(
   client: SupabaseClient<Database>,
-  userId: string,
+  /**
+   * 구매자. 견적(비로그인 열람)에서는 null 이 올 수 있다 —
+   * ★1인당 구매한도는 "누가 샀는지"를 알아야 세므로 그때만 건너뛴다.
+   *   결제 개시(create-cart-order)는 로그인 강제라 항상 값이 있다(권위 불변).
+   */
+  userId: string | null,
   rawItems: RawCartItem[],
 ): Promise<ResolvedCart> {
   const items: CartOrderItem[] = [];
   const couponLines: CartLineForCoupon[] = [];
   const names: string[] = [];
+  const quoteLines: CartQuoteLine[] = [];
   let shippingFeeKrw = 0;
   let bookGoodsKrw = 0; // 도서(단품·세트) 결제금액 합 — 무료배송 임계 판정 기준.
 
@@ -63,6 +92,14 @@ export async function resolveCartItems(
       items.push({ itemType: "plan", planId: plan.planId, unitPriceKrw: plan.priceKrw });
       couponLines.push({ kind: "course", amountKrw: plan.priceKrw });
       names.push(plan.name);
+      quoteLines.push({
+        key: `plan:${it.code}`,
+        kind: "plan",
+        name: plan.name,
+        unitPriceKrw: plan.priceKrw,
+        quantity: 1,
+        lineTotalKrw: plan.priceKrw,
+      });
     } else if (it.kind === "book") {
       const { data: book } = await client
         .from("books")
@@ -88,7 +125,7 @@ export async function resolveCartItems(
             status: 400,
           };
       }
-      if (book.per_person_limit != null) {
+      if (book.per_person_limit != null && userId) {
         const { data: prior } = await adminClient
           .from("order_items")
           .select("quantity, orders!inner(user_id, status)")
@@ -114,6 +151,14 @@ export async function resolveCartItems(
       });
       couponLines.push({ kind: "book", amountKrw: book.price_krw * it.quantity });
       names.push(`${book.title}${it.quantity > 1 ? ` x${it.quantity}` : ""}`);
+      quoteLines.push({
+        key: `book:${book.book_id}`,
+        kind: "book",
+        name: book.title,
+        unitPriceKrw: book.price_krw,
+        quantity: it.quantity,
+        lineTotalKrw: book.price_krw * it.quantity,
+      });
     } else {
       const { data: bundle } = await client
         .from("book_bundles")
@@ -174,14 +219,43 @@ export async function resolveCartItems(
       couponLines.push({ kind: "bundle", amountKrw: bundle.price_krw });
       bookGoodsKrw += bundle.price_krw;
       names.push(`[세트] ${bundle.title}`);
+      quoteLines.push({
+        key: `bundle:${bundle.bundle_id}`,
+        kind: "bundle",
+        name: `[세트] ${bundle.title}`,
+        unitPriceKrw: bundle.price_krw,
+        quantity: 1,
+        lineTotalKrw: bundle.price_krw,
+      });
     }
   }
 
   // 도서 무료배송 임계 — 도서 결제금액 합이 임계 이상이면 배송비 면제.
+  // ★임계·남은 금액도 화면에 내려보낸다. 종전에는 서버만 알고 있어 "얼마 더 담으면 무료"인지
+  //   알 수 없었고, 도서 상세는 "배송비는 결제 단계에서 안내됩니다"라고 약속하는데 그 안내가
+  //   나오는 화면이 없었다(feat-11-012 P5-b).
+  let freeShippingThresholdKrw = 0;
   if (shippingFeeKrw > 0) {
-    const threshold = await getFreeShippingThresholdKrw(client);
-    if (threshold > 0 && bookGoodsKrw >= threshold) shippingFeeKrw = 0;
+    freeShippingThresholdKrw = await getFreeShippingThresholdKrw(client);
+    if (freeShippingThresholdKrw > 0 && bookGoodsKrw >= freeShippingThresholdKrw) {
+      shippingFeeKrw = 0;
+    }
   }
+  const freeShippingRemainKrw =
+    shippingFeeKrw > 0 && freeShippingThresholdKrw > 0
+      ? Math.max(0, freeShippingThresholdKrw - bookGoodsKrw)
+      : 0;
+  const subtotalKrw = quoteLines.reduce((s, l) => s + l.lineTotalKrw, 0);
 
-  return { ok: true, items, couponLines, names, shippingFeeKrw };
+  return {
+    ok: true,
+    items,
+    couponLines,
+    names,
+    shippingFeeKrw,
+    quoteLines,
+    subtotalKrw,
+    freeShippingThresholdKrw,
+    freeShippingRemainKrw,
+  };
 }

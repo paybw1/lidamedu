@@ -800,6 +800,37 @@ export async function upsertPaidSubscription(
   };
 }
 
+/** 이 결제가 어느 플랫폼 것인가. */
+export type PaymentSurface = "lecture" | "subscription";
+
+/**
+ * 결제 표면 판별 — **복귀 주소가 여기서 갈린다** (feat-11-012 P5).
+ *
+ * ★종전에는 실패하면 주문 종류와 무관하게 /me/subscription 으로 보냈다. 강의·도서를 사던
+ *   사람이 학습 플랫폼 구독 화면에 떨어져, 무엇이 잘못됐는지도 어디로 돌아가야 하는지도
+ *   알 수 없었다.
+ * ★판별식: plan_id 가 없으면 카트 주문(강의·도서), 있으면 상품 종류로 가른다.
+ *   order_id 는 판별값이 못 된다 — 구독 결제도 1건짜리 주문을 만들기 때문이다
+ *   (feat-11-004 4a "이중 경로 금지").
+ * ★confirmPayment 안에서 계산하지 않는 이유: 그 함수의 실패 반환 지점이 9곳이라,
+ *   전부에 값을 실으려면 결제 경로를 크게 건드려야 한다. 여기서 한 번 더 조회한다
+ *   (결제 콜백은 드문 경로라 왕복 한 번이 문제가 되지 않는다).
+ */
+export async function getPaymentSurface(
+  tossOrderId: string,
+): Promise<PaymentSurface> {
+  const admin = adminClient as SupabaseClient<Database>;
+  const { data } = await admin
+    .from("payments")
+    .select("plan_id, subscription_plans(product_kind)")
+    .eq("toss_order_id", tossOrderId)
+    .maybeSingle();
+  if (!data) return "subscription";
+  if (!data.plan_id) return "lecture";
+  const kind = data.subscription_plans?.product_kind;
+  return kind === "course" || kind === "tpass" ? "lecture" : "subscription";
+}
+
 // 토스 confirm API 호출 후 payment + subscription row 갱신.
 //   가상계좌(WAITING_FOR_DEPOSIT)는 승인만 된 상태 — 구독을 활성화하지 않고
 //   pending 으로 두며, 입금 완료는 웹훅(/api/payments/toss/webhook)이 반영한다.

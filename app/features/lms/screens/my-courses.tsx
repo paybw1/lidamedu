@@ -18,6 +18,7 @@ import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { paymentFailPath } from "~/features/orders/lib/payment-return";
 import { cn } from "~/core/lib/utils";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import { resetDevice } from "~/features/lms/devices.server";
@@ -497,7 +498,7 @@ function CourseCard({
         orderId: json.orderId,
         orderName: json.orderName ?? "수강기간 연장",
         successUrl: `${window.location.origin}/api/payments/toss/confirm`,
-        failUrl: `${window.location.origin}/lecture?extFailed=1`,
+        failUrl: `${window.location.origin}${paymentFailPath("/lecture")}`,
       });
     } catch (e) {
       // 결제창 취소는 조용히 — 사용자가 직접 닫은 것이다.

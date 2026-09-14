@@ -13,6 +13,7 @@ import {
 import { Link, data } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
+import { AsyncActionButton } from "~/core/components/async-action-button";
 import { Button } from "~/core/components/ui/button";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { startCartCheckout } from "~/features/lms/lib/cart-checkout";
@@ -78,11 +79,13 @@ export default function LectureProductDetail({
   const { addPlan, addBook, has } = useCart();
   const isTpass = product.productKind === "tpass";
   const inCart = has(`plan:${product.code}`);
-  const failPath = `/lecture/catalog/${product.code}?failed=1`;
+  const failPath = `/lecture/catalog/${product.code}`;
 
-  const buyNow = () => {
+  // ★await 로 받아야 버튼이 "진행 중"을 유지한다 — 결제창이 뜨기까지 몇 초 걸리는데
+  //   그동안 화면이 그대로여서 두 번 누르면 주문이 두 건 생겼다(feat-11-012 P5).
+  const buyNow = async () => {
     if (!tossClientKey) return;
-    void startCartCheckout(
+    await startCartCheckout(
       [{ kind: "plan", code: product.code }],
       tossClientKey,
       failPath,
@@ -385,9 +388,14 @@ export default function LectureProductDetail({
                     <ShoppingCartIcon className="size-4" /> 장바구니
                   </Button>
                 )}
-                <Button size="lg" disabled={!tossClientKey} onClick={buyNow}>
+                <AsyncActionButton
+                  size="lg"
+                  disabled={!tossClientKey}
+                  onRun={buyNow}
+                  pendingLabel="결제 준비 중…"
+                >
                   수강신청
-                </Button>
+                </AsyncActionButton>
               </>
             )}
           </div>

@@ -15,7 +15,7 @@ import { Link, Outlet, data, redirect, useLocation } from "react-router";
 
 import { BugReportWidget } from "~/features/bug-reports/components/bug-report-widget";
 import { getStaffRole } from "~/features/laws/queries.server";
-import { CartClearOnPurchase } from "~/features/lms/components/cart-clear-on-purchase";
+import { PaymentResultNotice } from "~/features/orders/components/payment-result-notice";
 import { CartLink } from "~/features/lms/components/cart-link";
 import { getUnreadCount } from "~/features/notifications/queries.server";
 import { useSettlementMenu } from "~/features/subscriptions/components/use-settlement-menu";
@@ -194,7 +194,7 @@ export default function LectureLayout({ loaderData }: Route.ComponentProps) {
       </header>
 
       {settlement.dialog}
-      <CartClearOnPurchase />
+      <PaymentResultNotice />
       {user ? <CommandPalette /> : null}
       {/* 오류 신고 — 종전에는 학습 플랫폼(navigation.layout)에만 있어 강의 플랫폼에서
           문제를 발견해도 신고할 방법이 없었다. 같은 위젯·같은 엔드포인트를 쓴다. */}

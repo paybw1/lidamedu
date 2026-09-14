@@ -6,6 +6,7 @@
 //   awardPoints({ policyKey: "signup", userId, refId: userId })
 // 켜져 있는지·얼마인지·중복인지는 전부 여기서 판단한다.
 
+import { kstToday } from "~/core/lib/kst";
 import adminClient from "~/core/lib/supa-admin-client.server";
 
 export type PointPolicyKey =
@@ -40,11 +41,8 @@ export type AwardResult =
   | { ok: true; awarded: number; balance: number }
   | { ok: false; skipped: "inactive" | "duplicate" | "daily_cap" | "zero" | "error"; error?: string };
 
-const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
-/** KST 달력일 — 하루 한도는 서버 시간이 아니라 한국 날짜로 센다. */
-function kstDate(d = new Date()): string {
-  return new Date(d.getTime() + KST_OFFSET_MS).toISOString().slice(0, 10);
-}
+/** KST 달력일 — 하루 한도는 서버 시간이 아니라 한국 날짜로 센다(core/lib/kst.ts 단일 소스). */
+const kstDate = (d = new Date()): string => kstToday(d);
 
 export async function listPointPolicies(): Promise<PointPolicy[]> {
   const { data, error } = await adminClient
@@ -68,12 +66,32 @@ export async function listPointPolicies(): Promise<PointPolicy[]> {
   }));
 }
 
+/** 한 번에 가져오는 행 수 — PostgREST 응답 상한 안쪽으로 잡는다. */
+const BALANCE_PAGE = 1000;
+
+/**
+ * 포인트 잔액 = 전체 거래의 합.
+ *
+ * ★종전에는 상한 없이 select 해 **PostgREST 기본 행 상한에 조용히 걸렸고**, 화면 쪽은
+ *   아예 최근 200건만 더하고 있었다. 거래가 그보다 많은 회원은 잔액 카드 숫자가 틀리고,
+ *   그 틀린 값으로 「포인트 부족」 판정까지 했다(교환 버튼이 죽거나 그 반대).
+ * ★끝까지 페이지를 넘겨 더한다. ★range 페이징에는 **유일 정렬키**가 필요하다 —
+ *   created_at 으로 정렬하면 같은 시각 행에서 새거나 겹친다(txn_id 로 정렬한다).
+ */
 export async function getPointBalance(userId: string): Promise<number> {
-  const { data } = await adminClient
-    .from("point_transactions")
-    .select("delta")
-    .eq("user_id", userId);
-  return (data ?? []).reduce((s, t) => s + t.delta, 0);
+  let sum = 0;
+  for (let from = 0; ; from += BALANCE_PAGE) {
+    const { data, error } = await adminClient
+      .from("point_transactions")
+      .select("delta")
+      .eq("user_id", userId)
+      .order("txn_id", { ascending: true })
+      .range(from, from + BALANCE_PAGE - 1);
+    if (error || !data) break;
+    sum += data.reduce((s, t) => s + t.delta, 0);
+    if (data.length < BALANCE_PAGE) break;
+  }
+  return sum;
 }
 
 /**

@@ -1,7 +1,13 @@
 // 강의 플랫폼 장바구니 — localStorage 카트(강의·도서) 표시 + 다건 결제.
 // 결제: /api/payments/create-cart-order(서버 가격 재검증) → 토스 → confirm 이 전 항목 지급.
-// feat-13 — 쿠폰 코드 입력·서버 미리보기(preview-cart-coupon) → 할인 표시 후 결제에 반영.
-import { useState } from "react";
+//
+// ★금액의 권위는 **서버**다 (feat-11-012 P5-b). 화면은 /api/lecture/cart/quote 가 준 숫자를
+//   그리기만 한다. 종전에는 화면이 자기 방식으로 더했고 **배송비를 몰라** 버튼에 적힌 금액과
+//   실제 청구액이 달랐다. 견적은 결제와 **같은 함수**(resolveCartItems)를 쓰므로
+//   "화면엔 되는데 결제는 거절"이 구조적으로 생기지 않는다.
+// ★쿠폰도 화면 상태가 아니라 **견적 요청의 입력**이다 — 항목을 지우거나 수량을 바꾸면
+//   견적을 다시 받으므로 "할인액만 남아 있다가 결제에서 거절"이 따로 손대지 않아도 닫힌다.
+import { useEffect, useState } from "react";
 
 import {
   MinusIcon,
@@ -12,6 +18,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router";
 
+import { AsyncActionButton } from "~/core/components/async-action-button";
 import { Button } from "~/core/components/ui/button";
 import { Input } from "~/core/components/ui/input";
 import makeServerClient from "~/core/lib/supa-client.server";
@@ -57,19 +64,48 @@ interface Line {
   lineTotal: number;
   isBook: boolean;
   bookId?: string;
+  /**
+   * 더 이상 팔지 않는 항목. ★종전에는 이런 항목을 **말없이 건너뛰어**, 헤더 배지는 2인데
+   * 화면은 비어 있는 일이 실제로 났다. 지우기 전까지는 자리에 남겨 둔다.
+   */
+  unavailable?: boolean;
 }
 
-type CouponState =
-  | { status: "none" }
-  | { status: "applied"; code: string; name: string; discount: number }
-  | { status: "error"; message: string };
+/** /api/lecture/cart/quote 응답. */
+type Quote =
+  | {
+      ok: true;
+      subtotalKrw: number;
+      shippingFeeKrw: number;
+      freeShippingThresholdKrw: number;
+      freeShippingRemainKrw: number;
+      couponName: string | null;
+      couponDiscountKrw: number;
+      couponError: string | null;
+      payableKrw: number;
+    }
+  | { ok: false; error: string };
+
+/** 더 이상 팔지 않는 항목의 자리 — 금액 0으로 두고 표시만 한다. */
+function unavailableLine(key: string, name: string): Line {
+  return {
+    key,
+    name,
+    unitPrice: 0,
+    quantity: 1,
+    lineTotal: 0,
+    isBook: false,
+    unavailable: true,
+  };
+}
 
 export default function LectureCart({ loaderData }: Route.ComponentProps) {
   const { products, books, bundles, isAuthed, tossClientKey } = loaderData;
   const { items, remove, setBookQty, clear, addBook } = useCart();
   const [couponInput, setCouponInput] = useState("");
-  const [coupon, setCoupon] = useState<CouponState>({ status: "none" });
-  const [checking, setChecking] = useState(false);
+  /** 적용을 시도한 쿠폰 코드 — 할인액은 서버 견적이 준다(화면이 들고 있지 않는다). */
+  const [appliedCode, setAppliedCode] = useState<string | null>(null);
+  const [quote, setQuote] = useState<Quote | null>(null);
 
   const planByCode = new Map(products.map((p) => [p.code, p]));
   const bookById = new Map(books.map((b) => [b.book_id, b]));
@@ -79,7 +115,10 @@ export default function LectureCart({ loaderData }: Route.ComponentProps) {
   for (const it of items) {
     if (it.kind === "plan") {
       const p = planByCode.get(it.code);
-      if (!p) continue; // 판매 종료/미확인 상품은 표시 제외
+      if (!p) {
+        lines.push(unavailableLine(cartItemKey(it), "판매 종료된 강의"));
+        continue;
+      }
       lines.push({
         key: cartItemKey(it),
         name: p.name,
@@ -90,7 +129,10 @@ export default function LectureCart({ loaderData }: Route.ComponentProps) {
       });
     } else if (it.kind === "bundle") {
       const bn = bundleById.get(it.bundleId);
-      if (!bn) continue;
+      if (!bn) {
+        lines.push(unavailableLine(cartItemKey(it), "판매 종료된 세트"));
+        continue;
+      }
       lines.push({
         key: cartItemKey(it),
         name: `[세트] ${bn.title}`,
@@ -101,7 +143,10 @@ export default function LectureCart({ loaderData }: Route.ComponentProps) {
       });
     } else {
       const b = bookById.get(it.bookId);
-      if (!b) continue;
+      if (!b) {
+        lines.push(unavailableLine(cartItemKey(it), "판매 종료된 도서"));
+        continue;
+      }
       lines.push({
         key: cartItemKey(it),
         name: b.title,
@@ -136,10 +181,8 @@ export default function LectureCart({ loaderData }: Route.ComponentProps) {
     }
   }
 
-  const total = lines.reduce((s, l) => s + l.lineTotal, 0);
-  const discount =
-    coupon.status === "applied" ? Math.min(coupon.discount, total) : 0;
-  const payable = Math.max(0, total - discount);
+  const hasUnavailable = lines.some((l) => l.unavailable);
+  const q = quote?.ok ? quote : null;
 
   const buildPayload = () =>
     items
@@ -158,52 +201,49 @@ export default function LectureCart({ loaderData }: Route.ComponentProps) {
       )
       .filter((x): x is NonNullable<typeof x> => x !== null);
 
-  const applyCoupon = async () => {
-    const code = couponInput.trim();
-    if (!code || checking) return;
-    setChecking(true);
-    try {
-      const fd = new FormData();
-      fd.append("items", JSON.stringify(buildPayload()));
-      fd.append("code", code);
-      const res = await fetch("/api/coupons/preview-cart", {
-        method: "POST",
-        body: fd,
-      });
-      const json = (await res.json()) as {
-        ok?: boolean;
-        name?: string;
-        discountKrw?: number;
-        error?: string;
-      };
-      if (json.ok) {
-        setCoupon({
-          status: "applied",
-          code,
-          name: json.name ?? "쿠폰",
-          discount: json.discountKrw ?? 0,
-        });
-      } else {
-        setCoupon({ status: "error", message: json.error ?? "쿠폰을 적용할 수 없습니다." });
-      }
-    } catch {
-      setCoupon({ status: "error", message: "쿠폰 확인 중 오류가 발생했습니다." });
-    } finally {
-      setChecking(false);
+  // 항목·쿠폰이 바뀌면 견적을 다시 받는다. 문자열을 의존성으로 써서 같은 내용이면 다시 안 부른다.
+  const payloadJson = JSON.stringify(buildPayload());
+  useEffect(() => {
+    const payload: unknown[] = JSON.parse(payloadJson);
+    if (payload.length === 0) {
+      setQuote(null);
+      return;
     }
-  };
+    // ★응답 역전 방지 — 수량 +/- 를 연타하면 늦게 온 옛 응답이 금액을 덮을 수 있다.
+    let alive = true;
+    setQuote(null);
+    const fd = new FormData();
+    fd.append("items", payloadJson);
+    if (appliedCode) fd.append("code", appliedCode);
+    fetch("/api/lecture/cart/quote", { method: "POST", body: fd })
+      .then((r) => r.json() as Promise<Quote>)
+      .then((j) => {
+        if (alive) setQuote(j);
+      })
+      .catch(() => {
+        if (alive) {
+          setQuote({
+            ok: false,
+            error: "금액을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+          });
+        }
+      });
+    return () => {
+      alive = false;
+    };
+  }, [payloadJson, appliedCode]);
 
   const clearCoupon = () => {
-    setCoupon({ status: "none" });
+    setAppliedCode(null);
     setCouponInput("");
   };
 
-  const onCheckout = () => {
+  const onCheckout = async () => {
     if (!tossClientKey) return;
     const payload = buildPayload();
     if (payload.length === 0) return;
-    const code = coupon.status === "applied" ? coupon.code : undefined;
-    void startCartCheckout(payload, tossClientKey, "/lecture/cart?failed=1", code);
+    const code = q?.couponName ? (appliedCode ?? undefined) : undefined;
+    await startCartCheckout(payload, tossClientKey, "/lecture/cart", code);
   };
 
   return (
@@ -257,10 +297,16 @@ export default function LectureCart({ loaderData }: Route.ComponentProps) {
               <li key={l.key} className="flex items-center gap-3 px-4 py-3">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{l.name}</p>
-                  <p className="text-muted-foreground text-xs tabular-nums">
-                    {l.unitPrice.toLocaleString("ko-KR")}원
-                    {l.isBook ? ` · ${l.quantity}권` : ""}
-                  </p>
+                  {l.unavailable ? (
+                    <p className="text-destructive text-xs">
+                      지금은 판매하지 않습니다 — 지워 주세요
+                    </p>
+                  ) : (
+                    <p className="text-muted-foreground text-xs tabular-nums">
+                      {l.unitPrice.toLocaleString("ko-KR")}원
+                      {l.isBook ? ` · ${l.quantity}권` : ""}
+                    </p>
+                  )}
                 </div>
                 {l.isBook && l.bookId ? (
                   <div className="flex items-center gap-1">
@@ -315,18 +361,18 @@ export default function LectureCart({ loaderData }: Route.ComponentProps) {
             </button>
           </div>
 
-          {/* 쿠폰 */}
+          {/* 쿠폰 — 할인액은 화면이 들고 있지 않는다. 코드만 견적에 넘긴다. */}
           {isAuthed ? (
             <div className="mt-5 rounded-xl border p-4">
               <p className="flex items-center gap-1.5 text-sm font-semibold">
                 <TicketPercentIcon className="size-4" /> 쿠폰
               </p>
-              {coupon.status === "applied" ? (
+              {q?.couponName ? (
                 <div className="mt-2 flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{coupon.name}</p>
+                    <p className="truncate text-sm font-medium">{q.couponName}</p>
                     <p className="text-primary text-xs font-semibold tabular-nums">
-                      -{coupon.discount.toLocaleString("ko-KR")}원 적용됨
+                      -{q.couponDiscountKrw.toLocaleString("ko-KR")}원 적용됨
                     </p>
                   </div>
                   <button
@@ -348,7 +394,7 @@ export default function LectureCart({ loaderData }: Route.ComponentProps) {
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
-                          void applyCoupon();
+                          setAppliedCode(couponInput.trim() || null);
                         }
                       }}
                     />
@@ -356,15 +402,15 @@ export default function LectureCart({ loaderData }: Route.ComponentProps) {
                       type="button"
                       variant="outline"
                       className="h-9 shrink-0"
-                      disabled={!couponInput.trim() || checking}
-                      onClick={() => void applyCoupon()}
+                      disabled={!couponInput.trim() || quote === null}
+                      onClick={() => setAppliedCode(couponInput.trim() || null)}
                     >
-                      {checking ? "확인 중…" : "적용"}
+                      {quote === null && appliedCode ? "확인 중…" : "적용"}
                     </Button>
                   </div>
-                  {coupon.status === "error" ? (
+                  {q?.couponError ? (
                     <p className="text-destructive mt-1.5 text-xs">
-                      {coupon.message}
+                      {q.couponError}
                     </p>
                   ) : null}
                 </>
@@ -372,40 +418,74 @@ export default function LectureCart({ loaderData }: Route.ComponentProps) {
             </div>
           ) : null}
 
-          {/* 합계 */}
+          {/* 합계 — 전부 서버 견적 값. 화면은 더하지 않는다. */}
+          {quote && !quote.ok ? (
+            <p className="text-destructive mt-5 rounded-xl border border-dashed px-4 py-3 text-sm">
+              {quote.error}
+            </p>
+          ) : null}
           <div className="mt-5 space-y-1.5 text-right">
-            <div className="flex items-center justify-end gap-3 text-sm">
-              <span className="text-muted-foreground">상품 금액</span>
-              <span className="w-28 tabular-nums">
-                {total.toLocaleString("ko-KR")}원
-              </span>
-            </div>
-            {discount > 0 ? (
-              <div className="text-primary flex items-center justify-end gap-3 text-sm">
-                <span>쿠폰 할인</span>
-                <span className="w-28 tabular-nums">
-                  -{discount.toLocaleString("ko-KR")}원
-                </span>
-              </div>
-            ) : null}
-            <div className="flex items-center justify-end gap-3 pt-1">
-              <span className="text-muted-foreground text-xs">결제 금액</span>
-              <span className="w-28 text-xl font-bold tabular-nums">
-                {payable.toLocaleString("ko-KR")}원
-              </span>
-            </div>
+            {q === null ? (
+              <p className="text-muted-foreground text-sm">금액을 계산하고 있습니다…</p>
+            ) : (
+              <>
+                <div className="flex items-center justify-end gap-3 text-sm">
+                  <span className="text-muted-foreground">상품 금액</span>
+                  <span className="w-28 tabular-nums">
+                    {q.subtotalKrw.toLocaleString("ko-KR")}원
+                  </span>
+                </div>
+                {q.couponDiscountKrw > 0 ? (
+                  <div className="text-primary flex items-center justify-end gap-3 text-sm">
+                    <span>쿠폰 할인</span>
+                    <span className="w-28 tabular-nums">
+                      -{q.couponDiscountKrw.toLocaleString("ko-KR")}원
+                    </span>
+                  </div>
+                ) : null}
+                {/* ★배송비 — 종전에는 이 줄 자체가 없어서 버튼 금액과 청구액이 달랐다. */}
+                <div className="flex items-center justify-end gap-3 text-sm">
+                  <span className="text-muted-foreground">배송비</span>
+                  <span className="w-28 tabular-nums">
+                    {q.shippingFeeKrw > 0
+                      ? `${q.shippingFeeKrw.toLocaleString("ko-KR")}원`
+                      : "무료"}
+                  </span>
+                </div>
+                {q.freeShippingRemainKrw > 0 ? (
+                  <p className="text-muted-foreground text-xs">
+                    {q.freeShippingRemainKrw.toLocaleString("ko-KR")}원 더 담으면 무료배송
+                  </p>
+                ) : null}
+                <div className="flex items-center justify-end gap-3 pt-1">
+                  <span className="text-muted-foreground text-xs">결제 금액</span>
+                  <span className="w-28 text-xl font-bold tabular-nums">
+                    {q.payableKrw.toLocaleString("ko-KR")}원
+                  </span>
+                </div>
+              </>
+            )}
           </div>
+
+          {hasUnavailable ? (
+            <p className="text-muted-foreground mt-3 text-xs">
+              판매가 끝난 항목은 결제되지 않습니다. 목록에서 지워 주세요.
+            </p>
+          ) : null}
 
           <div className="mt-4">
             {isAuthed ? (
-              <Button
+              <AsyncActionButton
                 className="w-full"
                 size="lg"
-                disabled={!tossClientKey || payable <= 0}
-                onClick={onCheckout}
+                disabled={!tossClientKey || q === null || q.payableKrw <= 0}
+                onRun={onCheckout}
+                pendingLabel="결제 준비 중…"
               >
-                {payable.toLocaleString("ko-KR")}원 결제하기
-              </Button>
+                {q === null
+                  ? "금액 계산 중…"
+                  : `${q.payableKrw.toLocaleString("ko-KR")}원 결제하기`}
+              </AsyncActionButton>
             ) : (
               <Button asChild className="w-full" size="lg">
                 <Link to="/login">로그인 후 결제</Link>

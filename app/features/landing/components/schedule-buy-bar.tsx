@@ -4,6 +4,7 @@
 import { ShoppingCartIcon } from "lucide-react";
 import { Link } from "react-router";
 
+import { AsyncActionButton } from "~/core/components/async-action-button";
 import { Button } from "~/core/components/ui/button";
 import { startCartCheckout } from "~/features/lms/lib/cart-checkout";
 import { useCart } from "~/features/lms/lib/cart";
@@ -22,9 +23,13 @@ export function ScheduleBuyBar({
   const { addPlan, has } = useCart();
   const inCart = planCode ? has(`plan:${planCode}`) : false;
 
-  const buyNow = () => {
+  const buyNow = async () => {
     if (!planCode || !tossClientKey) return;
-    void startCartCheckout([{ kind: "plan", code: planCode }], tossClientKey, failPath);
+    await startCartCheckout(
+      [{ kind: "plan", code: planCode }],
+      tossClientKey,
+      failPath,
+    );
   };
 
   return (
@@ -48,9 +53,14 @@ export function ScheduleBuyBar({
                   <ShoppingCartIcon className="size-4" /> 장바구니
                 </Button>
               )}
-              <Button size="lg" disabled={!tossClientKey} onClick={buyNow}>
+              <AsyncActionButton
+                size="lg"
+                disabled={!tossClientKey}
+                onRun={buyNow}
+                pendingLabel="결제 준비 중…"
+              >
                 수강신청
-              </Button>
+              </AsyncActionButton>
             </>
           ) : (
             <Button asChild size="lg">

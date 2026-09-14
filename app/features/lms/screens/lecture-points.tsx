@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { Button } from "~/core/components/ui/button";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { getPointBalance } from "~/features/points/points.server";
 import adminClient from "~/core/lib/supa-admin-client.server";
 
 import type { Route } from "./+types/lecture-points";
@@ -30,7 +31,9 @@ export async function loader({ request }: Route.LoaderArgs) {
     .order("created_at", { ascending: false })
     .limit(200);
   const rows = txns ?? [];
-  const balance = rows.reduce((s, t) => s + t.delta, 0);
+  // ★잔액은 **내역과 분리**한다. 종전에는 최근 200건만 더해 거래가 많은 회원의 잔액이
+  //   틀렸다(내역은 상한을 그대로 두고, 잔액만 전량 합으로 받는다).
+  const balance = await getPointBalance(user.id);
 
   // 교환 가능한 쿠폰 — coupons 는 staff 전용 RLS 라 요청 클라이언트로 못 읽는다.
   // 목록 표시만 adminClient 로 하고, 실제 교환은 RPC 가 서버에서 다시 검증한다.

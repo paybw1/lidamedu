@@ -12,6 +12,7 @@ import { PriceTag } from "~/features/lms/components/price-tag";
 import { Link, data } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
+import { AsyncActionButton } from "~/core/components/async-action-button";
 import { Button } from "~/core/components/ui/button";
 import {
   Dialog,
@@ -138,12 +139,12 @@ export default function BookDetail({ loaderData }: Route.ComponentProps) {
   const inCart = has(`book:${book.bookId}`);
   const isPdf = book.bookType === "pdf";
 
-  const buyNow = () => {
+  const buyNow = async () => {
     if (!tossClientKey) return;
-    void startCartCheckout(
+    await startCartCheckout(
       [{ kind: "book", bookId: book.bookId, quantity: qty }],
       tossClientKey,
-      `/lecture/books/${book.bookId}?failed=1`,
+      `/lecture/books/${book.bookId}`,
     );
   };
 
@@ -300,9 +301,13 @@ export default function BookDetail({ loaderData }: Route.ComponentProps) {
                     장바구니 담기
                   </Button>
                 )}
-                <Button disabled={!tossClientKey} onClick={buyNow}>
+                <AsyncActionButton
+                  disabled={!tossClientKey}
+                  onRun={buyNow}
+                  pendingLabel="결제 준비 중…"
+                >
                   바로 구매
-                </Button>
+                </AsyncActionButton>
               </>
             )}
           </div>

@@ -6,6 +6,7 @@ import { redirect } from "react-router";
 import { Badge } from "~/core/components/ui/badge";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { kstToday } from "~/core/lib/kst";
 
 import { MyPagePlaceholder } from "../components/mypage-placeholder";
 
@@ -52,7 +53,9 @@ export async function loader({ request }: Route.LoaderArgs) {
       });
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  // ★종전에는 세계표준시 날짜로 판정해, 매일 KST 00~09시에는 어제 만료된 쿠폰이
+  //   「사용 가능」으로 남아 있다가 결제에서 거절됐다(검증은 한국 날짜를 쓴다).
+  const today = kstToday();
   const nowIso = new Date().toISOString();
   type Coupon = {
     id: string;

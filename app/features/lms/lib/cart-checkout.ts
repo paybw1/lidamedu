@@ -5,11 +5,14 @@ import {
   isTossUserCancel,
 } from "~/features/subscriptions/lib/cancel-pending-checkout.client";
 
-import type { CartItem } from "./cart";
+import { paymentFailPath } from "~/features/orders/lib/payment-return";
+
+import { markCheckoutPending, type CartItem } from "./cart";
 
 export async function startCartCheckout(
   items: CartItem[],
   tossClientKey: string,
+  /** 실패 시 돌아올 **경로만** 넘긴다 — 파라미터는 payment-return.ts 가 붙인다. */
   failPath: string,
   couponCode?: string,
 ): Promise<void> {
@@ -32,6 +35,8 @@ export async function startCartCheckout(
     alert(`결제 준비에 실패했습니다: ${json.error ?? "알 수 없는 오류"}`);
     return;
   }
+  // ★결제한 항목만 복귀 시 지우기 위한 표식(장바구니를 통째로 비우지 않는다).
+  markCheckoutPending(items);
   try {
     const { loadTossPayments } = await import("@tosspayments/tosspayments-sdk");
     const tossPayments = await loadTossPayments(tossClientKey);
@@ -42,7 +47,7 @@ export async function startCartCheckout(
       orderId: json.orderId,
       orderName: json.orderName ?? "리담 강의",
       successUrl: `${window.location.origin}/api/payments/toss/confirm`,
-      failUrl: `${window.location.origin}${failPath}`,
+      failUrl: `${window.location.origin}${paymentFailPath(failPath)}`,
     });
   } catch (e) {
     // 결제창 취소·오류 — 남은 pending 결제 정리 후 취소는 조용히.
