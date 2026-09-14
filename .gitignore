@@ -302,3 +302,7 @@ source/특허법/리담특허법 강의노트(제10판).pdf
 
 # 정리비교표 팝업 실측 산출물(scripts/digest/probe-popup.mjs)
 scripts/digest/.probe-*
+
+# ★상표법 객관식 문제집(제4판) — 교재 원본. 저장소는 공개라 두지 않는다.
+#   (상표법 판례 제16판 PDF 와 같은 취급 — 297행)
+/source/상표법/리담상표법 객관식(제4판)/
