@@ -164,7 +164,13 @@ export async function createCartOrder(input: {
   const shipping = input.shippingFeeKrw ?? 0;
   const discount = Math.max(0, input.couponDiscountKrw ?? 0);
   const subtotal = input.items.reduce((s, it) => s + it.unitPriceKrw * qtyOf(it), 0);
-  const totalKrw = Math.max(0, subtotal + shipping - discount);
+  // ★★포인트는 **총액에서도** 빠져야 한다(feat-11-013 D15). 아래 배분(allocateOrderDiscounts)
+  //   만 포인트를 받고 총액을 그대로 두면, order-snapshot 이 못 박은 불변식
+  //   「Σ paidKrw + 배송비 = 주문 총액」이 깨진다. 그 결과 payments.amount_krw 와 토스
+  //   청구액이 둘 다 **제값**이 되어 학생이 전액을 결제하고 포인트까지 잃는다.
+  //   ★인자가 선택적이라 typecheck 도 테스트도 이걸 잡지 못한다 — 여기서 막는다.
+  const pointUse = Math.max(0, input.pointAmountKrw ?? 0);
+  const totalKrw = Math.max(0, subtotal + shipping - discount - pointUse);
   const { data: order, error } = await adminClient
     .from("orders")
     .insert({
@@ -174,6 +180,8 @@ export async function createCartOrder(input: {
       shipping_fee_krw: shipping,
       coupon_id: input.couponId ?? null,
       coupon_discount_krw: discount,
+      // 환불 경로(refundOrderItem)가 읽는 권위값.
+      point_amount_krw: pointUse,
       payment_method: input.paymentMethod ?? "toss",
       // ★JSON 컬럼이라 그대로 넣는다. 없으면 null(강의만 산 주문·PDF 도서).
       shipping_address: input.shippingAddress ?? null,
@@ -234,7 +242,7 @@ export async function createCartOrder(input: {
       grossKrw: it.unitPriceKrw * qtyOf(it),
     })),
     couponDiscountKrw: discount,
-    pointAmountKrw: input.pointAmountKrw ?? 0,
+    pointAmountKrw: pointUse,
   });
 
   const rows = input.items.map((it) => {

@@ -9798,6 +9798,7 @@ export type Database = {
           order_id: string
           paid_at: string | null
           payment_method: string
+          point_amount_krw: number
           shipping_address: Json | null
           shipping_fee_krw: number
           status: string
@@ -9813,6 +9814,7 @@ export type Database = {
           order_id?: string
           paid_at?: string | null
           payment_method?: string
+          point_amount_krw?: number
           shipping_address?: Json | null
           shipping_fee_krw?: number
           status?: string
@@ -9828,6 +9830,7 @@ export type Database = {
           order_id?: string
           paid_at?: string | null
           payment_method?: string
+          point_amount_krw?: number
           shipping_address?: Json | null
           shipping_fee_krw?: number
           status?: string
@@ -16752,6 +16755,18 @@ export type Database = {
         }[]
       }
       promote_effective_revisions: { Args: never; Returns: string[] }
+      refund_points_for_order_item: {
+        Args: { p_order_item_id: string; p_reason?: string }
+        Returns: Json
+      }
+      release_orphaned_point_reservations: {
+        Args: { p_limit?: number }
+        Returns: Json
+      }
+      release_points_for_order: {
+        Args: { p_order_id: string; p_reason?: string }
+        Returns: Json
+      }
       release_session: { Args: never; Returns: undefined }
       scan_exam_case_links: { Args: never; Returns: number }
       search_articles_ranked: {
@@ -16825,6 +16840,7 @@ export type Database = {
       soft_delete_paper: { Args: { p_id: string }; Returns: undefined }
       soft_delete_qna_message: { Args: { p_id: string }; Returns: undefined }
       soft_delete_qna_thread: { Args: { p_id: string }; Returns: undefined }
+      spend_points_for_order: { Args: { p_order_id: string }; Returns: Json }
       srs_record_review: {
         Args: {
           p_elapsed_ms?: number
