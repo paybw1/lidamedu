@@ -9,6 +9,11 @@ import {
 } from "~/features/lms/queries.server";
 import { awardPoints } from "~/features/points/points.server";
 import {
+  allocateOrderDiscounts,
+  itemPaidAmountKrw,
+  refundCalcTypeOf,
+} from "~/features/orders/lib/order-snapshot";
+import {
   type ShippingAddress,
   toShippingAddress,
 } from "~/features/orders/lib/shipping-address";
@@ -84,11 +89,20 @@ export async function createSinglePlanOrder(input: {
     .single();
   if (error) throw error;
   // ★이름은 주문 시점에 굳힌다 — 상품명이 바뀌어도 과거 영수증은 그때 산 이름이어야 한다.
-  const { data: plan } = await adminClient
-    .from("subscription_plans")
-    .select("name")
-    .eq("plan_id", input.planId)
-    .maybeSingle();
+  //   정상가·수강기간·예정 회차도 함께 굳힌다(feat-11-013 P1, 요청서 §11-1).
+  const [{ data: plan }, { data: policy }, { data: links }] = await Promise.all([
+    adminClient
+      .from("subscription_plans")
+      .select("name, list_price_krw, planned_sessions")
+      .eq("plan_id", input.planId)
+      .maybeSingle(),
+    adminClient
+      .from("plan_policies")
+      .select("duration_days")
+      .eq("plan_id", input.planId)
+      .maybeSingle(),
+    adminClient.from("plan_courses").select("course_id").eq("plan_id", input.planId),
+  ]);
   const { data: item, error: itemErr } = await adminClient
     .from("order_items")
     .insert({
@@ -98,6 +112,19 @@ export async function createSinglePlanOrder(input: {
       subject_code: input.subjectCode ?? null,
       unit_price_krw: input.amountKrw,
       title_snapshot: plan?.name ?? null,
+      // ★단건 주문에는 주문 단위 쿠폰이 없다(할인은 discount_id 로 이미 금액에 반영됐다).
+      //   그래서 배분할 것이 없고 실결제액 = 금액이다.
+      paid_amount_krw: input.amountKrw,
+      coupon_alloc_krw: 0,
+      point_alloc_krw: 0,
+      list_price_snapshot_krw: plan?.list_price_krw ?? input.amountKrw,
+      duration_days_snapshot: policy?.duration_days ?? null,
+      planned_sessions_snapshot: plan?.planned_sessions ?? null,
+      refund_calc_type: refundCalcTypeOf({
+        hasCustomPolicy: false,
+        courseCount: (links ?? []).length,
+        plannedSessions: plan?.planned_sessions ?? null,
+      }),
     })
     .select("order_item_id")
     .single();
@@ -123,6 +150,8 @@ export async function createCartOrder(input: {
   shippingFeeKrw?: number; // 선불 배송료 합계(주문 총액 가산)
   couponId?: string | null; // feat-13 쿠폰 적용(결제 완료 시 사용 기록)
   couponDiscountKrw?: number; // 쿠폰 할인액(총액에서 차감)
+  /** 포인트 결제 사용액(feat-11-013 D15). 포인트 결제가 열리기 전에는 0. */
+  pointAmountKrw?: number;
   paymentMethod?: "toss" | "bank_transfer" | "free" | "manual";
   /**
    * 주문 시점 배송지 스냅샷 (feat-11-012 P5-d). 실물 도서가 든 주문에만.
@@ -152,42 +181,100 @@ export async function createCartOrder(input: {
     .select("order_id")
     .single();
   if (error) throw error;
-  // ★표시명은 주문 시점에 굳힌다(P2). 이름 조회는 한 번에 모아서 한다.
+  // ★표시명·정상가·수강기간·예정 회차를 주문 시점에 굳힌다(P2 + feat-11-013 P1).
+  //   요청서 §11-1: 「환불 계산은 결제 당시 저장된 값을 기준으로 한다」 — 나중에 상품을
+  //   고쳐도 과거 주문의 환불 기준은 움직이면 안 된다.
   const planIds = input.items.flatMap((it) => (it.itemType === "plan" ? [it.planId] : []));
   const bookIds = input.items.flatMap((it) => (it.itemType === "book" ? [it.bookId] : []));
   const nameOf = new Map<string, string>();
+  const listPriceOf = new Map<string, number | null>();
+  const plannedSessionsOf = new Map<string, number | null>();
+  const durationDaysOf = new Map<string, number | null>();
+  const courseCountOf = new Map<string, number>();
   if (planIds.length) {
-    const { data } = await adminClient
-      .from("subscription_plans")
-      .select("plan_id, name")
-      .in("plan_id", planIds);
-    for (const p of data ?? []) nameOf.set(p.plan_id, p.name);
+    const [{ data: plans }, { data: policies }, { data: links }] = await Promise.all([
+      adminClient
+        .from("subscription_plans")
+        .select("plan_id, name, list_price_krw, planned_sessions")
+        .in("plan_id", planIds),
+      adminClient
+        .from("plan_policies")
+        .select("plan_id, duration_days")
+        .in("plan_id", planIds),
+      adminClient.from("plan_courses").select("plan_id, course_id").in("plan_id", planIds),
+    ]);
+    for (const p of plans ?? []) {
+      nameOf.set(p.plan_id, p.name);
+      listPriceOf.set(p.plan_id, p.list_price_krw);
+      plannedSessionsOf.set(p.plan_id, p.planned_sessions);
+    }
+    for (const p of policies ?? []) durationDaysOf.set(p.plan_id, p.duration_days);
+    for (const l of links ?? [])
+      courseCountOf.set(l.plan_id, (courseCountOf.get(l.plan_id) ?? 0) + 1);
   }
   if (bookIds.length) {
-    const { data } = await adminClient.from("books").select("book_id, title").in("book_id", bookIds);
-    for (const b of data ?? []) nameOf.set(b.book_id, b.title);
+    const { data } = await adminClient
+      .from("books")
+      .select("book_id, title, price_krw")
+      .in("book_id", bookIds);
+    for (const b of data ?? []) {
+      nameOf.set(b.book_id, b.title);
+      // ★세트 구성 도서는 unit_price_krw 가 이미 안분된 할인가라 역산이 불가능하다.
+      //   정상가는 도서의 제 가격을 따로 박아 둔다(요청서 11-9).
+      listPriceOf.set(b.book_id, b.price_krw);
+    }
   }
 
-  const rows = input.items.map((it) =>
-    it.itemType === "plan"
+  // 쿠폰·포인트를 항목별로 배분한다 — 정산이 쓰는 규칙과 같은 함수(요청서 11-10).
+  const keyOf = (it: CartOrderItem) =>
+    it.itemType === "plan" ? `plan:${it.planId}` : `book:${it.bookId}`;
+  const alloc = allocateOrderDiscounts({
+    items: input.items.map((it) => ({
+      id: keyOf(it),
+      grossKrw: it.unitPriceKrw * qtyOf(it),
+    })),
+    couponDiscountKrw: discount,
+    pointAmountKrw: input.pointAmountKrw ?? 0,
+  });
+
+  const rows = input.items.map((it) => {
+    const a = alloc.get(keyOf(it));
+    const common = {
+      order_id: order.order_id,
+      unit_price_krw: it.unitPriceKrw,
+      paid_amount_krw: a?.paidKrw ?? it.unitPriceKrw * qtyOf(it),
+      coupon_alloc_krw: a?.couponKrw ?? 0,
+      point_alloc_krw: a?.pointKrw ?? 0,
+    };
+    return it.itemType === "plan"
       ? {
-          order_id: order.order_id,
+          ...common,
           item_type: "plan" as const,
           plan_id: it.planId,
           subject_code: it.subjectCode ?? null,
-          unit_price_krw: it.unitPriceKrw,
           quantity: 1,
           title_snapshot: nameOf.get(it.planId) ?? null,
+          list_price_snapshot_krw: listPriceOf.get(it.planId) ?? it.unitPriceKrw,
+          duration_days_snapshot: durationDaysOf.get(it.planId) ?? null,
+          planned_sessions_snapshot: plannedSessionsOf.get(it.planId) ?? null,
+          refund_calc_type: refundCalcTypeOf({
+            // 상품별 별도 환불규정은 아직 입력 수단이 없다(P2 이후) — 지금은 항상 false.
+            hasCustomPolicy: false,
+            courseCount: courseCountOf.get(it.planId) ?? 0,
+            plannedSessions: plannedSessionsOf.get(it.planId) ?? null,
+          }),
         }
       : {
-          order_id: order.order_id,
+          ...common,
           item_type: "book" as const,
           book_id: it.bookId,
-          unit_price_krw: it.unitPriceKrw,
           quantity: it.quantity,
           title_snapshot: nameOf.get(it.bookId) ?? null,
-        },
-  );
+          list_price_snapshot_krw: listPriceOf.get(it.bookId) ?? it.unitPriceKrw,
+          // ★도서는 수강분 공제가 아니라 반품 규정을 탄다 — 계산유형을 두지 않는다.
+          refund_calc_type: null,
+        };
+  });
   const { error: itemErr } = await adminClient.from("order_items").insert(rows);
   if (itemErr) throw itemErr;
   return { orderId: order.order_id, totalKrw };
@@ -389,9 +476,11 @@ async function fulfillCourseEnrollments(input: {
       .select("enrollment_id, expires_at")
       .eq("user_id", input.userId)
       .eq("course_id", link.course_id)
-      // ★★enrollments 에는 deleted_at 이 없다. 이 필터가 PostgREST 오류를 내서
-      //   existing 이 늘 null 이었고, 재구매 때 만료일 연장 대신 **수강권이 하나 더**
-      //   생겼다(2026-09-02 발견 — 아직 중복 사례는 없어 데이터 정정은 불필요).
+      // ★한때 여기에 `.is("deleted_at", null)` 이 있었다. enrollments 에는 그 칸이 없어
+      //   PostgREST 오류가 났고 existing 이 늘 null 이 되어, 재구매 때 만료일 연장 대신
+      //   **수강권이 하나 더** 생겼다(2026-09-02 발견). 필터는 제거됐고 지금은 정상 동작한다.
+      //   ★운영 실측(2026-09-14): 이 경로로 생긴 중복은 0건이다. 남아 있던 중복 1건은
+      //   **관리자 수동 지급**이 원인이었다(그쪽에 가드를 넣었다 — admin-lms-enrollments).
       .order("expires_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -548,20 +637,44 @@ export async function refundOrderItem(input: {
 }): Promise<{ ok: true; refundedKrw: number } | { ok: false; error: string }> {
   const { data: item } = await adminClient
     .from("order_items")
-    .select("order_item_id, order_id, unit_price_krw, quantity, refunded_at")
+    .select(
+      "order_item_id, order_id, unit_price_krw, quantity, refunded_at, paid_amount_krw",
+    )
     .eq("order_item_id", input.orderItemId)
     .maybeSingle();
   if (!item) return { ok: false, error: "주문 항목을 찾을 수 없습니다." };
   if (item.refunded_at) return { ok: false, error: "이미 환불된 항목입니다." };
   const { data: order } = await adminClient
     .from("orders")
-    .select("order_id, status, payment_method")
+    .select("order_id, status, payment_method, coupon_discount_krw")
     .eq("order_id", item.order_id)
     .maybeSingle();
   if (!order || !["paid", "partially_refunded"].includes(order.status)) {
     return { ok: false, error: "결제 완료 상태의 주문만 환불할 수 있습니다." };
   }
-  const refundKrw = item.unit_price_krw * item.quantity;
+
+  // ★★환불액은 **실제 결제 귀속액**이어야 한다 (feat-11-013 P0-1).
+  //   종전에는 `unit_price_krw × quantity`(= 할인 **전** 금액)를 그대로 토스 cancelAmount
+  //   로 보냈다. 쿠폰이 붙은 주문에서 ①단건이면 취소가능잔액을 넘어 **토스가 거절**하고
+  //   ②다건이면 앞 항목이 **실제 돈을 과환불**했다.
+  //   스냅샷(paid_amount_krw)이 있으면 그것을 쓰고, 그 칸이 생기기 전 주문은 정산과 같은
+  //   규칙으로 그 자리에서 배분한다.
+  const { data: siblingRows } = await adminClient
+    .from("order_items")
+    .select("order_item_id, unit_price_krw, quantity")
+    .eq("order_id", item.order_id);
+  const refundKrw = itemPaidAmountKrw({
+    paidAmountSnapshotKrw: item.paid_amount_krw,
+    grossKrw: item.unit_price_krw * item.quantity,
+    siblings: (siblingRows ?? []).map((r) => ({
+      id: r.order_item_id,
+      grossKrw: r.unit_price_krw * (r.quantity ?? 1),
+    })),
+    id: item.order_item_id,
+    couponDiscountKrw: order.coupon_discount_krw ?? 0,
+    // 포인트 결제는 아직 열려 있지 않다(D15) — 열리면 주문에서 읽어 넣는다.
+    pointAmountKrw: 0,
+  });
 
   // 토스 결제 주문이면 부분취소 API — 무통장/수동은 장부 기록만(정산 외 이체).
   if (order.payment_method === "toss" && refundKrw > 0) {

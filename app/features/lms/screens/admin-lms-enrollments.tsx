@@ -213,6 +213,29 @@ export async function action({ request }: Route.ActionArgs) {
         .maybeSingle();
       multiplier = policy?.multiplier ?? null;
     }
+    // ★같은 강의의 살아 있는 수강권이 이미 있으면 **새로 만들지 않는다.**
+    //   종전에는 기존 수강권을 보지 않고 무조건 insert 해서, 주문으로 받은 수강권이 있는
+    //   학생에게 수동 지급하면 **수강권이 두 개**가 됐다(2026-09-14 운영 실측 1건).
+    //   두 개가 되면 재생 허용량(배수)이 두 벌로 잡히고 만료일도 둘로 갈린다.
+    //   연장이 목적이라면 아래 [연장] 또는 [기간 지정] 을 쓰면 된다.
+    const { data: dup } = await adminClient
+      .from("enrollments")
+      .select("enrollment_id, expires_at")
+      .eq("user_id", profile.profile_id)
+      .eq("course_id", parsed.data.courseId)
+      .neq("status", "revoked")
+      .order("expires_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (dup) {
+      return data(
+        {
+          error: `이미 이 강의의 수강권이 있습니다(만료 ${dup.expires_at.slice(0, 10)}). 새로 지급하는 대신 [연장] 또는 [기간 지정] 을 써 주세요.`,
+        },
+        { status: 409 },
+      );
+    }
+
     const baseDuration = await getCourseTotalDuration(parsed.data.courseId);
     const expiresAt = new Date(
       Date.now() + parsed.data.durationDays * 24 * 60 * 60 * 1000,

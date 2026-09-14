@@ -822,7 +822,14 @@ export interface LectureProduct {
   /** 정상가(원). 판매가보다 클 때만 취소선·할인율로 표시한다. null=할인 표시 없음. */
   listPriceKrw: number | null;
   productKind: "course" | "tpass";
+  /**
+   * 수강 기간(일). 권위는 plan_policies.duration_days — 실제 수강권을 만드는 값이다.
+   * ★고정 종료일 상품은 0 — 「N일」이 의미가 없다. 그 상품은 durationDays 대신
+   *   fixedEndDate 를 표시해야 한다(0 만 보고 기간 줄을 통째로 빼면 안 된다).
+   */
   durationDays: number;
+  /** 고정 종료일(YYYY-MM-DD). null=기간제(durationDays 를 쓴다). */
+  fixedEndDate: string | null;
   category: LectureCategory | null;
   // feat-11-008 P3 — 카탈로그 탭 SSOT 는 course_categories 테이블(categoryId 기준).
   // 구 enum(category)은 매출 통계 등 레거시 축 호환용으로 병존.
@@ -922,6 +929,20 @@ export async function listSellableLectureProducts(
   }
 
   const planIds = planRows.map((p) => p.plan_id);
+
+  // ★★학생에게 보이는 「N일 수강」은 **실제 수강권을 만드는 값**이어야 한다
+  //   (feat-11-013 P0-3). 종전에는 표시가 subscription_plans.duration_days(폼 「이용 기간」,
+  //   기본 30)를 읽고, 만료일 계산은 plan_policies.duration_days(폼 「수강기간」, 기본 180)를
+  //   읽었다. 두 값을 맞춰 주는 코드가 없어 **화면에 「30일」이라 적혀 있어도 180일
+  //   수강권이 나갈 수 있었다.** 권위는 plan_policies 다 — 그것이 실제로 쓰이는 값이다.
+  const { data: policyRows } = await client
+    .from("plan_policies")
+    .select("plan_id, duration_days, fixed_end_date")
+    .in("plan_id", planIds);
+  const policyByPlan = new Map(
+    (policyRows ?? []).map((r) => [r.plan_id, r] as const),
+  );
+
   const { data: links } = await client
     .from("plan_courses")
     .select("plan_id, course_id")
@@ -1127,7 +1148,12 @@ export async function listSellableLectureProducts(
     priceKrw: p.price_krw,
     listPriceKrw: p.list_price_krw,
     productKind: p.product_kind as "course" | "tpass",
-    durationDays: p.duration_days,
+    // ★권위는 plan_policies — 정책 행이 없으면 이행 쪽 기본값(180)과 같은 값을 쓴다.
+    //   고정 종료일 상품은 「N일」이 의미가 없으므로 0 으로 내려 화면이 숨기게 한다.
+    durationDays: policyByPlan.get(p.plan_id)?.fixed_end_date
+      ? 0
+      : (policyByPlan.get(p.plan_id)?.duration_days ?? p.duration_days ?? 180),
+    fixedEndDate: policyByPlan.get(p.plan_id)?.fixed_end_date ?? null,
     category: toLectureCategory(p.lecture_category),
     categoryId: p.category_id,
     categoryName: p.category_id ? (catNameById.get(p.category_id) ?? null) : null,

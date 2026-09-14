@@ -127,9 +127,16 @@ export default function LectureProductDetail({
               {product.categoryName}
             </Badge>
           ) : null}
+          {/* ★수강 기간 — 기간제는 「N일」, 고정 종료일 상품은 「YYYY-MM-DD 까지」.
+              durationDays 0(=고정 종료일)만 보고 줄을 빼면 학생이 언제까지 듣는지
+              알 수 없게 된다(feat-11-013 P0-3). */}
           {product.durationDays > 0 ? (
             <span className="text-muted-foreground text-[11px]">
               {product.durationDays}일 수강
+            </span>
+          ) : product.fixedEndDate ? (
+            <span className="text-muted-foreground text-[11px]">
+              {product.fixedEndDate} 까지 수강
             </span>
           ) : null}
         </div>

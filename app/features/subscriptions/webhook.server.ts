@@ -283,7 +283,15 @@ export async function syncPaymentFromToss(
     }
 
     case "PARTIAL_CANCELED": {
-      // 부분 취소 — 환불액만 기록, 결제·구독은 유지(정산 환불차감이 집계).
+      // 부분 취소 — 환불액 기록 + **항목 반영 여부 대조**(feat-11-013 P0-2).
+      //
+      // ★토스는 **금액만** 알려 준다. 어느 주문항목이 취소됐는지는 알 수 없으므로
+      //   여기서 수강권을 자동 회수하면 **추측으로 학생 것을 뺏는 일**이 된다.
+      //   그래서 회수는 하지 않되, **조용히 어긋나게 두지도 않는다.**
+      // ★종전에는 payments 만 갱신하고 끝이라, 관리자가 토스 상점관리자에서 부분취소하면
+      //   **돈은 돌려줬는데 수강권이 살아 있고 정산에도 안 잡히는** 상태가 말없이 남았다.
+      //   요청서(260914)가 바로 그 운영을 기본으로 삼으므로 신호가 반드시 필요하다.
+      // ★항목 단위 정식 정합은 환불관리 모델(feat-11-013 P6)에서 닫는다.
       const { amount, reason, lastAt } = sumCancels(payment);
       await admin
         .from("payments")
@@ -294,9 +302,49 @@ export async function syncPaymentFromToss(
           toss_response: payment as never,
         })
         .eq("payment_id", payRow.payment_id);
+
+      let unmatched = 0;
+      if (payRow.order_id && (amount ?? 0) > 0) {
+        const { data: items } = await admin
+          .from("order_items")
+          .select("refund_amount_krw")
+          .eq("order_id", payRow.order_id)
+          .not("refunded_at", "is", null);
+        const itemRefunded = (items ?? []).reduce(
+          (sum, r) => sum + (r.refund_amount_krw ?? 0),
+          0,
+        );
+        unmatched = Math.max(0, (amount ?? 0) - itemRefunded);
+        if (unmatched > 0) {
+          // ★회원 기준 CS 원장에 남긴다 — 운영자가 「이 학생의 무엇을 회수해야 하는지」를
+          //   찾아갈 수 있어야 한다.
+          console.error(
+            `[webhook] 부분취소 ${amount}원 중 ${unmatched}원이 주문항목에 반영되지 않았습니다 (order ${payRow.order_id}). 환불관리에서 대상 항목을 지정해야 합니다.`,
+          );
+          try {
+            const { data: ord } = await admin
+              .from("orders")
+              .select("user_id")
+              .eq("order_id", payRow.order_id)
+              .maybeSingle();
+            if (ord) {
+              await admin.from("cs_actions").insert({
+                user_id: ord.user_id,
+                actor_id: null,
+                kind: "refund_assist",
+                ref_table: "payments",
+                ref_id: payRow.payment_id,
+                note: `★토스 부분취소 ${amount}원 중 ${unmatched}원이 주문항목에 미반영. 수강권·재고 회수가 필요한지 확인해 주세요.`,
+              });
+            }
+          } catch (e) {
+            console.error("[webhook] 부분취소 미반영 기록 실패:", e);
+          }
+        }
+      }
       result = {
         outcome: "processed",
-        detail: `부분 취소 기록 (${amount ?? "?"}원)`,
+        detail: `부분 취소 기록 (${amount ?? "?"}원)${unmatched > 0 ? ` — ★${unmatched}원 항목 미반영` : ""}`,
       };
       break;
     }

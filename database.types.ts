@@ -8946,6 +8946,65 @@ export type Database = {
         }
         Relationships: []
       }
+      material_access_logs: {
+        Row: {
+          accessed_at: string
+          action: string
+          enrollment_id: string | null
+          lesson_id: string | null
+          log_id: number
+          material_id: string
+          user_id: string
+        }
+        Insert: {
+          accessed_at?: string
+          action: string
+          enrollment_id?: string | null
+          lesson_id?: string | null
+          log_id?: number
+          material_id: string
+          user_id: string
+        }
+        Update: {
+          accessed_at?: string
+          action?: string
+          enrollment_id?: string | null
+          lesson_id?: string | null
+          log_id?: number
+          material_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_access_logs_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["enrollment_id"]
+          },
+          {
+            foreignKeyName: "material_access_logs_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "v_enrollment_watch_balance"
+            referencedColumns: ["enrollment_id"]
+          },
+          {
+            foreignKeyName: "material_access_logs_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "course_lessons"
+            referencedColumns: ["lesson_id"]
+          },
+          {
+            foreignKeyName: "material_access_logs_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "lesson_materials"
+            referencedColumns: ["material_id"]
+          },
+        ]
+      }
       mcq_exam_attempts: {
         Row: {
           attempt_id: string
@@ -9608,14 +9667,22 @@ export type Database = {
       order_items: {
         Row: {
           book_id: string | null
+          coupon_alloc_krw: number
           created_at: string
+          duration_days_snapshot: number | null
           enrollment_id: string | null
           item_type: string
+          list_price_snapshot_krw: number | null
           order_id: string
           order_item_id: string
+          paid_amount_krw: number | null
           plan_id: string | null
+          planned_sessions_snapshot: number | null
+          point_alloc_krw: number
           quantity: number
           refund_amount_krw: number | null
+          refund_calc_type: string | null
+          refund_policy_snapshot: Json | null
           refund_reason: string | null
           refunded_at: string | null
           subject_code: string | null
@@ -9624,14 +9691,22 @@ export type Database = {
         }
         Insert: {
           book_id?: string | null
+          coupon_alloc_krw?: number
           created_at?: string
+          duration_days_snapshot?: number | null
           enrollment_id?: string | null
           item_type: string
+          list_price_snapshot_krw?: number | null
           order_id: string
           order_item_id?: string
+          paid_amount_krw?: number | null
           plan_id?: string | null
+          planned_sessions_snapshot?: number | null
+          point_alloc_krw?: number
           quantity?: number
           refund_amount_krw?: number | null
+          refund_calc_type?: string | null
+          refund_policy_snapshot?: Json | null
           refund_reason?: string | null
           refunded_at?: string | null
           subject_code?: string | null
@@ -9640,14 +9715,22 @@ export type Database = {
         }
         Update: {
           book_id?: string | null
+          coupon_alloc_krw?: number
           created_at?: string
+          duration_days_snapshot?: number | null
           enrollment_id?: string | null
           item_type?: string
+          list_price_snapshot_krw?: number | null
           order_id?: string
           order_item_id?: string
+          paid_amount_krw?: number | null
           plan_id?: string | null
+          planned_sessions_snapshot?: number | null
+          point_alloc_krw?: number
           quantity?: number
           refund_amount_krw?: number | null
+          refund_calc_type?: string | null
+          refund_policy_snapshot?: Json | null
           refund_reason?: string | null
           refunded_at?: string | null
           subject_code?: string | null
@@ -13965,6 +14048,7 @@ export type Database = {
           list_price_krw: number | null
           name: string
           plan_id: string
+          planned_sessions: number | null
           price_krw: number
           product_kind: string
           sale_status: string
@@ -13988,6 +14072,7 @@ export type Database = {
           list_price_krw?: number | null
           name: string
           plan_id?: string
+          planned_sessions?: number | null
           price_krw: number
           product_kind?: string
           sale_status?: string
@@ -14011,6 +14096,7 @@ export type Database = {
           list_price_krw?: number | null
           name?: string
           plan_id?: string
+          planned_sessions?: number | null
           price_krw?: number
           product_kind?: string
           sale_status?: string
