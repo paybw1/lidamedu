@@ -176,6 +176,17 @@ export function checkRefundTransition(
     }
   }
 
+  // ★★PG 에서 **돈이 이미 나간** 건은 반려·철회로 닫을 수 없다.
+  //   닫아 버리면 토스는 환불했는데 항목은 미환불, 수강권은 살아 있고 정산에도 안 잡힌 채
+  //   종결된다 — 아무도 모르는 학원 손해다. 확정으로 끝내거나 처리오류로 남겨 둔다.
+  if ((to === "rejected" || to === "withdrawn") && (ctx.pg?.cancelKrw ?? 0) > 0) {
+    return {
+      ok: false,
+      error:
+        "이미 PG 취소가 이루어진 건은 반려·철회할 수 없습니다. 확정으로 종결하거나 처리오류로 두세요.",
+    };
+  }
+
   const prior = ctx.priorRefundedKrw ?? 0;
   const original = ctx.originalPaidKrw;
 

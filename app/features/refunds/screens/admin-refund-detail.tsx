@@ -19,6 +19,7 @@ import {
   REFUND_TRANSITIONS,
   type RefundStatus,
   checkRefundTransition,
+  hasCompletePgRecord,
   isMoneyMovedStatus,
   remainingRefundableKrw,
   resolveDoneStatus,
@@ -116,6 +117,33 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
 
   if (intent === "commit") {
+    // ★★RPC 를 부르기 **전에** 값싼 선검사를 한다.
+    //   `commitRefund` 는 지급물 회수를 먼저 하고 RPC 를 나중에 부른다(그 순서가 옳다).
+    //   그런데 RPC 가 거부하는 가장 흔한 경우 — 금액 불일치·취소정보 미입력 — 는 **첫 클릭**에
+    //   일어난다. 그대로 두면 수강권만 회수되고 환불은 안 된 상태가 남고, 관리자가 그 건을
+    //   철회하면 **학생은 수강권을 잃고 돈도 못 받는다.** RPC 는 경합을 위해 다시 검사한다.
+    const itemsSum = detail.items.reduce((s, i) => s + (i.finalKrw ?? 0), 0);
+    const pre =
+      detail.status !== "pg_done"
+        ? "PG 취소완료 상태에서만 환불을 확정할 수 있습니다."
+        : !hasCompletePgRecord({
+              cancelKrw: detail.pgCancelKrw,
+              cancelledAt: detail.pgCancelledAt,
+              transactionNo: detail.pgTransactionNo,
+              operatorId: detail.pgOperatorName,
+            })
+          ? "취소금액·취소일시·거래번호·처리담당자를 모두 입력해야 환불완료로 처리할 수 있습니다."
+          : detail.thisRefundKrw == null || detail.thisRefundKrw <= 0
+            ? "환불금액이 확정되지 않았습니다."
+            : detail.items.some((i) => i.finalKrw == null)
+              ? "상품별 환불금액이 입력되지 않은 항목이 있습니다."
+              : itemsSum !== detail.thisRefundKrw
+                ? `상품별 환불금액 합계 ${itemsSum.toLocaleString("ko-KR")}원이 확정 환불금액 ${detail.thisRefundKrw.toLocaleString("ko-KR")}원과 다릅니다.`
+                : detail.pgCancelKrw !== detail.thisRefundKrw
+                  ? `확정 환불금액 ${detail.thisRefundKrw.toLocaleString("ko-KR")}원과 실제 취소금액 ${(detail.pgCancelKrw ?? 0).toLocaleString("ko-KR")}원이 다릅니다.`
+                  : null;
+    if (pre) return data({ error: pre }, { status: 400 });
+
     const res = await commitRefund({
       refundId,
       actorId: user.id,

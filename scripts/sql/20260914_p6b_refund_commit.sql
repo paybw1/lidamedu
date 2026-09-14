@@ -84,6 +84,8 @@ declare
   v_partialqty integer := 0;
   v_count      integer := 0;
   v_foreign    integer := 0;
+  v_overpaid   integer := 0;
+  v_live_prior integer := 0;
   v_point_back integer := 0;
   v_revoked    integer := 0;
   v_shortfall  integer := 0;
@@ -138,8 +140,11 @@ begin
          count(*) filter (where ri.final_krw is null),
          count(*) filter (where ri.quantity < oi.quantity),
          count(*) filter (where oi.order_id <> v_order_id),
+         -- ★항목별 상한 — 그 항목에 실제로 결제된 금액을 넘겨 돌려줄 수는 없다.
+         count(*) filter (
+           where ri.final_krw > coalesce(oi.paid_amount_krw, oi.unit_price_krw * oi.quantity)),
          coalesce(sum(ri.final_krw), 0)
-    into v_count, v_missing, v_partialqty, v_foreign, v_items_sum
+    into v_count, v_missing, v_partialqty, v_foreign, v_overpaid, v_items_sum
     from public.refund_items ri
     join public.order_items oi using (order_item_id)
    where ri.refund_id = p_refund_id;
@@ -160,6 +165,10 @@ begin
     return jsonb_build_object('ok', false,
       'error', '수량 일부 환불은 아직 지원하지 않습니다. 해당 상품은 전량으로 처리해 주세요.');
   end if;
+  if v_overpaid > 0 then
+    return jsonb_build_object('ok', false,
+      'error', '상품별 환불금액이 그 상품의 실제 결제금액을 넘습니다.');
+  end if;
   if v_items_sum <> v_r.this_refund_krw then
     return jsonb_build_object('ok', false, 'error',
       format('상품별 환불금액 합계 %s원이 확정 환불금액 %s원과 다릅니다.',
@@ -169,7 +178,16 @@ begin
 
   -- 요청서 §10 — 최초 결제금액을 초과하는 누적 환불 차단(DB 제약이 이미 막지만,
   -- 여기서 **말이 되는 문장**으로 먼저 돌려준다).
-  v_remaining := coalesce(v_r.original_paid_krw, 0) - coalesce(v_r.prior_refunded_krw, 0);
+  -- ★`prior_refunded_krw` 는 **접수 시점 스냅샷**이라 여기서 믿으면 안 된다. 같은 주문에
+  --   서로 다른 항목으로 환불건 둘을 동시에 열 수 있고(설계상 허용), 그러면 둘 다 prior=0 을
+  --   들고 있다 — 각자 전액까지 청구해 **상한이 뚫린다.** 확정 시점에 **다시 센다.**
+  --   스냅샷 칸은 접수 당시를 보여 주는 감사 기록으로 남긴다.
+  select coalesce(sum(this_refund_krw), 0) into v_live_prior
+    from public.refunds
+   where order_id = v_order_id
+     and status in ('partial_done', 'full_done')
+     and refund_id <> p_refund_id;
+  v_remaining := coalesce(v_r.original_paid_krw, 0) - v_live_prior;
   if v_r.original_paid_krw is not null and v_r.this_refund_krw > v_remaining then
     return jsonb_build_object('ok', false, 'error',
       format('남은 환불 가능금액은 %s원입니다.', to_char(v_remaining, 'FM999,999,999')));
@@ -236,7 +254,7 @@ begin
   -- 전액 환불이고 관리자가 복원을 선택했을 때만 무른다.
   if v_r.coupon_restored
      and v_r.original_paid_krw is not null
-     and coalesce(v_r.prior_refunded_krw, 0) + v_r.this_refund_krw = v_r.original_paid_krw then
+     and v_live_prior + v_r.this_refund_krw = v_r.original_paid_krw then
     update public.coupon_redemptions
        set revoked_at = now(), revoke_reason = '환불 — ' || v_reason
      where order_id = v_order_id and revoked_at is null;
@@ -256,7 +274,7 @@ begin
   -- ★전체/부분은 고르는 값이 아니라 금액에서 나온다(TS 상태기계와 같은 규칙).
   v_target := case
     when v_r.original_paid_krw is not null
-     and coalesce(v_r.prior_refunded_krw, 0) + v_r.this_refund_krw = v_r.original_paid_krw
+     and v_live_prior + v_r.this_refund_krw = v_r.original_paid_krw
     then 'full_done' else 'partial_done' end;
   update public.refunds set status = v_target where refund_id = p_refund_id;
 
@@ -298,8 +316,10 @@ set search_path to ''
 as $fn$
 declare
   v_from text;
+  v_pg   integer;
 begin
-  select status into v_from from public.refunds where refund_id = p_refund_id for update;
+  select status, coalesce(pg_cancel_krw, 0) into v_from, v_pg
+    from public.refunds where refund_id = p_refund_id for update;
   if not found then
     return jsonb_build_object('ok', false, 'error', '환불건을 찾을 수 없습니다.');
   end if;
@@ -312,6 +332,14 @@ begin
   --   PG 취소완료로 되돌리고 closed_at 을 풀어, 같은 주문항목이 **다시 환불 가능**해졌다
   --   (예행 05 에서 실제로 잡혔다). 되돌리기는 원장이 사유를 달고 하는 일이지
   --   네트워크 재시도가 할 일이 아니다.
+  -- ★★PG 에서 **돈이 이미 나간** 건은 반려·철회로 닫을 수 없다.
+  --   닫아 버리면 토스는 환불했는데 항목은 미환불, 수강권은 살아 있고 정산에도 안 잡힌 채
+  --   종결된다 — 아무도 모르는 학원 손해다. 확정으로 끝내거나 처리오류로 남겨 둔다.
+  if p_status in ('rejected','withdrawn') and v_pg > 0 then
+    return jsonb_build_object('ok', false, 'pgAlreadyCancelled', true,
+      'error', '이미 PG 취소가 이루어진 건은 반려·철회할 수 없습니다. 확정으로 종결하거나 처리오류로 두세요.');
+  end if;
+
   if v_from in ('partial_done','full_done','rejected','withdrawn') and not p_allow_reopen then
     return jsonb_build_object('ok', false, 'reopenBlocked', true, 'status', v_from,
       'error', '이미 종결된 환불건입니다. 되돌리려면 원장 권한과 수정사유가 필요합니다.');

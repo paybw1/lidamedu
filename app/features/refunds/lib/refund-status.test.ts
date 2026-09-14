@@ -179,6 +179,32 @@ describe("전체/부분은 고르는 값이 아니라 금액에서 나온다", (
   });
 });
 
+describe("★PG 취소 후 반려·철회 차단", () => {
+  it("돈이 나간 뒤에는 어느 상태에서도 반려·철회로 닫히지 않는다", () => {
+    const afterPg = ctx({ pg: { ...PG_OK, cancelKrw: 45_000 } });
+    for (const from of REFUND_STATUSES) {
+      if (from === "rejected" || from === "withdrawn") continue;
+      expect(checkRefundTransition(from, "rejected", afterPg).ok).toBe(false);
+      expect(checkRefundTransition(from, "withdrawn", afterPg).ok).toBe(false);
+    }
+  });
+
+  it("전이표가 허용하는 자리에서는 **PG 취소 때문에** 막혔다고 말한다", () => {
+    const afterPg = ctx({ pg: { ...PG_OK, cancelKrw: 45_000 } });
+    // reviewing·amount_fixed·error 에서는 표가 반려·철회를 허용한다 — 그래서 새 가드가 잡는다.
+    for (const from of ["reviewing", "amount_fixed", "error"] as const) {
+      const r = checkRefundTransition(from, "rejected", afterPg);
+      expect(r.ok === false && r.error).toContain("PG 취소가 이루어진");
+    }
+  });
+
+  it("PG 취소 전에는 반려·철회가 열려 있다", () => {
+    const beforePg = ctx({ pg: null });
+    expect(checkRefundTransition("reviewing", "rejected", beforePg)).toEqual({ ok: true });
+    expect(checkRefundTransition("received", "withdrawn", beforePg)).toEqual({ ok: true });
+  });
+});
+
 describe("종결 되돌리기 — 요청서 §10", () => {
   it("★돈이 나간 건은 원장 권한과 사유가 있어야 되돌릴 수 있다", () => {
     const plain = checkRefundTransition("full_done", "reviewing", ctx());

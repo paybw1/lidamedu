@@ -411,10 +411,41 @@ export async function saveRefundAmounts(input: {
     return { ok: false, error: "종결된 환불건의 금액은 수정할 수 없습니다." };
   }
 
+  // ★항목별 상한 — 그 항목에 실제로 결제된 금액을 넘겨 돌려줄 수 없다.
+  //   확정 RPC 도 같은 검사를 하지만, 저장 단계에서 막아 주지 않으면 관리자가 토스에서
+  //   취소까지 한 뒤에야 「합계가 안 맞는다」는 말을 듣는다.
+  const { data: caps } = await adminClient
+    .from("refund_items")
+    .select(
+      "refund_item_id, order_items!inner(paid_amount_krw, unit_price_krw, quantity, title_snapshot)",
+    )
+    .eq("refund_id", input.refundId);
+  const capById = new Map<string, { cap: number; label: string }>();
+  for (const c of caps ?? []) {
+    const oi = c.order_items as unknown as {
+      paid_amount_krw: number | null;
+      unit_price_krw: number | null;
+      quantity: number | null;
+      title_snapshot: string | null;
+    } | null;
+    if (!oi) continue;
+    capById.set(c.refund_item_id, {
+      cap: oi.paid_amount_krw ?? (oi.unit_price_krw ?? 0) * (oi.quantity ?? 1),
+      label: oi.title_snapshot ?? "상품",
+    });
+  }
+
   let total = 0;
   for (const a of input.amounts) {
     if (!Number.isFinite(a.finalKrw) || a.finalKrw < 0) {
       return { ok: false, error: "환불금액은 0원 이상이어야 합니다." };
+    }
+    const cap = capById.get(a.refundItemId);
+    if (cap && Math.round(a.finalKrw) > cap.cap) {
+      return {
+        ok: false,
+        error: `「${cap.label}」의 환불금액이 실제 결제금액 ${cap.cap.toLocaleString("ko-KR")}원을 넘습니다.`,
+      };
     }
     total += Math.round(a.finalKrw);
   }
