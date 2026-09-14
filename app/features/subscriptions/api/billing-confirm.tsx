@@ -17,8 +17,9 @@ import type { Route } from "./+types/billing-confirm";
 // 라우트: /api/payments/toss/billing-confirm
 
 function fail(msg: string): never {
+  // ★자른 뒤에 인코딩한다 — 인코딩 후에 자르면 한글 1자(%XX%XX%XX) 중간이 끊겨 URL 이 깨진다.
   throw redirect(
-    `/me/subscription?failed=1&msg=${encodeURIComponent(msg).slice(0, 200)}`,
+    `/me/subscription?failed=1&msg=${encodeURIComponent(msg.slice(0, 200))}`,
   );
 }
 

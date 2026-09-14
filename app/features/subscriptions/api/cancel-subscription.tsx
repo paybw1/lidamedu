@@ -39,8 +39,10 @@ export async function action({ request }: Route.ActionArgs) {
     subscriptionId: parsed.data.subscriptionId,
   });
   if (!res.ok) {
+    // ★자른 뒤에 인코딩한다. 반대로 하면 한글 1자(%XX%XX%XX) 중간이 잘려 URL 이 깨진다
+    //   — 3일 이내 거부 안내(61자)가 인코딩 438자라 실제로 걸렸다.
     throw redirect(
-      `/me/subscription?cancelError=${encodeURIComponent(res.error).slice(0, 200)}`,
+      `/me/subscription?cancelError=${encodeURIComponent(res.error.slice(0, 200))}`,
     );
   }
   // ★셀프 해지는 이제 **정기결제 해지 한 갈래**뿐이다(feat-11-013 D10).
