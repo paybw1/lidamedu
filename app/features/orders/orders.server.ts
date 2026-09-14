@@ -729,41 +729,30 @@ export async function refundOrderItem(input: {
     pointAmountKrw: order.point_amount_krw ?? 0,
   });
 
-  // 토스 결제 주문이면 부분취소 API — 무통장/수동은 장부 기록만(정산 외 이체).
-  if (order.payment_method === "toss" && refundKrw > 0) {
+  // ★★feat-11-013 D9 — **토스 부분취소를 자동 호출하지 않는다**(요청서 §5).
+  //   요청서의 운영은 「관리자가 환불금액을 최종 확인한 다음 토스 상점관리자에 직접 접속하여
+  //   전체취소 또는 부분취소를 처리」다. 여기서 자동으로 돈을 보내면 「확인 → 취소 → 결과 입력」
+  //   순서가 통째로 무너지고, 취소증빙·거래번호를 남길 자리도 없다.
+  //   ★무통장·수동은 원래 토스를 부르지 않는 **장부 기록**이라 그대로 둔다 — 그 경로까지
+  //   막으면 계좌로 이체한 건을 기록할 곳이 없어진다.
+  if (order.payment_method === "toss") {
+    return {
+      ok: false,
+      error:
+        "토스 주문은 환불관리에서 처리합니다. 주문관리에서 [환불신청]으로 접수한 뒤, 토스 상점관리자에서 직접 취소하고 취소정보를 입력해 주세요.",
+    };
+  }
+  // 무통장·수동의 장부 기록 — payments 누적 환불액만 갱신한다.
+  if (refundKrw > 0) {
     const { data: payment } = await adminClient
       .from("payments")
       .select("payment_id, toss_payment_key, status")
       .eq("order_id", order.order_id)
       .eq("status", "completed")
       .maybeSingle();
-    if (!payment?.toss_payment_key) {
-      return { ok: false, error: "연결된 토스 결제를 찾을 수 없습니다." };
+    if (!payment) {
+      return { ok: false, error: "연결된 결제를 찾을 수 없습니다." };
     }
-    const secret = process.env.TOSS_SECRET_KEY;
-    if (!secret) return { ok: false, error: "TOSS_SECRET_KEY 미설정" };
-    const basic = Buffer.from(`${secret}:`).toString("base64");
-    try {
-      const res = await fetch(
-        `https://api.tosspayments.com/v1/payments/${payment.toss_payment_key}/cancel`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Basic ${basic}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ cancelReason: input.reason, cancelAmount: refundKrw }),
-        },
-      );
-      const payload = (await res.json()) as Record<string, unknown>;
-      if (!res.ok) {
-        const msg = typeof payload?.message === "string" ? payload.message : `토스 부분취소 실패 (HTTP ${res.status})`;
-        return { ok: false, error: msg };
-      }
-    } catch (e) {
-      return { ok: false, error: `토스 API 호출 실패: ${e instanceof Error ? e.message : String(e)}` };
-    }
-    // payments 부분환불 누적 기록
     const { data: pay } = await adminClient
       .from("payments")
       .select("refund_amount_krw")

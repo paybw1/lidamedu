@@ -660,6 +660,10 @@ function OrderRow({
     fetcher.submit(fd, { method: "post" });
   };
   const refundable = ["paid", "partially_refunded"].includes(row.status);
+  // ★feat-11-013 D9 — 토스 주문의 「항목 환불」은 없앤다. 토스 취소는 관리자가 상점관리자에서
+  //   직접 하고(요청서 §5), 리담에는 환불관리로 접수한다. 무통장·수동은 원래 토스를 부르지
+  //   않는 장부 기록이라 남겨 둔다 — 계좌로 이체한 건을 적을 곳이 필요하다.
+  const itemRefundable = refundable && row.paymentMethod !== "toss";
   return (
     <TR>
       <TD mono soft>
@@ -690,7 +694,7 @@ function OrderRow({
               ) : null}
               {it.refundedAt ? (
                 <Chip tone="coral">환불됨</Chip>
-              ) : refundable ? (
+              ) : itemRefundable ? (
                 <button
                   type="button"
                   onClick={() => refundItem(it.orderItemId, it.label)}
