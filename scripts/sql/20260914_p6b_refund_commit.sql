@@ -176,7 +176,9 @@ begin
   end if;
 
   -- 이력에 남길 행위자·메모.
-  perform set_config('app.refund_actor', p_actor_id::text, true);
+  -- ★NULL 을 그대로 넘기면 set_config 가 거부한다. 웹훅·스윕처럼 **사람이 없는 호출**이
+  --   실제로 있으므로 빈 문자열로 떨어뜨리고, 트리거가 nullif 로 되돌린다.
+  perform set_config('app.refund_actor', coalesce(p_actor_id::text, ''), true);
   perform set_config('app.refund_memo', coalesce(p_memo, '환불 확정'), true);
   v_reason := coalesce(nullif(btrim(v_r.request_reason), ''), '환불');
 
@@ -284,8 +286,11 @@ comment on function public.commit_refund(uuid, uuid, text) is
 create or replace function public.set_refund_status(
   p_refund_id uuid,
   p_status    text,
-  p_actor_id  uuid,
-  p_memo      text default null
+  -- ★행위자는 없을 수 있다 — 토스 웹훅이 취소정보를 옮겨 적고 상태를 넘길 때는 사람이 없다.
+  p_actor_id  uuid default null,
+  p_memo      text default null,
+  -- ★종결된 건을 되돌리는 것은 **명시적 의사**여야 한다. 아래 가드 참조.
+  p_allow_reopen boolean default false
 ) returns jsonb
 language plpgsql
 security definer
@@ -302,16 +307,29 @@ begin
     return jsonb_build_object('ok', true, 'idempotent', true, 'status', v_from);
   end if;
 
-  perform set_config('app.refund_actor', p_actor_id::text, true);
-  perform set_config('app.refund_memo', p_memo, true);
+  -- ★★종결된 건은 **기본적으로 움직이지 않는다.**
+  --   토스 웹훅은 재전송된다. 이미 환불완료된 건에 재전송이 들어오면 종전 구현은 상태를
+  --   PG 취소완료로 되돌리고 closed_at 을 풀어, 같은 주문항목이 **다시 환불 가능**해졌다
+  --   (예행 05 에서 실제로 잡혔다). 되돌리기는 원장이 사유를 달고 하는 일이지
+  --   네트워크 재시도가 할 일이 아니다.
+  if v_from in ('partial_done','full_done','rejected','withdrawn') and not p_allow_reopen then
+    return jsonb_build_object('ok', false, 'reopenBlocked', true, 'status', v_from,
+      'error', '이미 종결된 환불건입니다. 되돌리려면 원장 권한과 수정사유가 필요합니다.');
+  end if;
+
+  perform set_config('app.refund_actor', coalesce(p_actor_id::text, ''), true);
+  perform set_config('app.refund_memo', coalesce(p_memo, ''), true);
   update public.refunds set status = p_status where refund_id = p_refund_id;
 
   return jsonb_build_object('ok', true, 'from', v_from, 'status', p_status);
 end;
 $fn$;
 
-revoke all on function public.set_refund_status(uuid, text, uuid, text) from public, anon, authenticated;
-grant execute on function public.set_refund_status(uuid, text, uuid, text) to service_role;
+-- 옛 4인자 판을 남겨 두면 PostgREST 가 어느 쪽을 부를지 애매해진다.
+drop function if exists public.set_refund_status(uuid, text, uuid, text);
 
-comment on function public.set_refund_status(uuid, text, uuid, text) is
+revoke all on function public.set_refund_status(uuid, text, uuid, text, boolean) from public, anon, authenticated;
+grant execute on function public.set_refund_status(uuid, text, uuid, text, boolean) to service_role;
+
+comment on function public.set_refund_status(uuid, text, uuid, text, boolean) is
   'feat-11-013 P6-b 환불 상태 전이 + 이력 행위자·메모 기록. 적법성 판정은 TS 상태기계가 한다.';

@@ -35,3 +35,4 @@ end;
 $fn$;
 
 drop function if exists public.set_refund_status(uuid, text, uuid, text);
+drop function if exists public.set_refund_status(uuid, text, uuid, text, boolean);

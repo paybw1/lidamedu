@@ -17104,7 +17104,8 @@ export type Database = {
       }
       set_refund_status: {
         Args: {
-          p_actor_id: string
+          p_actor_id?: string
+          p_allow_reopen?: boolean
           p_memo?: string
           p_refund_id: string
           p_status: string

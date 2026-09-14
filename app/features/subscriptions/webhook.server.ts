@@ -30,6 +30,8 @@ interface TossCancel {
   cancelAmount?: number;
   cancelReason?: string;
   canceledAt?: string;
+  /** 토스가 취소 건마다 붙이는 거래번호 — 환불관리의 「토스 거래번호」(요청서 §6). */
+  transactionKey?: string;
 }
 
 interface TossPayment {
@@ -117,9 +119,11 @@ function sumCancels(payment: TossPayment): {
   amount: number | null;
   reason: string | null;
   lastAt: string | null;
+  txnNo: string | null;
 } {
   const cancels = Array.isArray(payment.cancels) ? payment.cancels : [];
-  if (cancels.length === 0) return { amount: null, reason: null, lastAt: null };
+  if (cancels.length === 0)
+    return { amount: null, reason: null, lastAt: null, txnNo: null };
   let amount = 0;
   for (const c of cancels) amount += c.cancelAmount ?? 0;
   const last = cancels[cancels.length - 1];
@@ -127,6 +131,7 @@ function sumCancels(payment: TossPayment): {
     amount: amount > 0 ? amount : null,
     reason: last?.cancelReason ?? null,
     lastAt: last?.canceledAt ?? null,
+    txnNo: last?.transactionKey ?? payment.paymentKey ?? null,
   };
 }
 
@@ -243,7 +248,7 @@ export async function syncPaymentFromToss(
 
     case "CANCELED": {
       // 전액 취소 — 환불 마킹 + 연결 활성 구독 종료.
-      const { amount, reason, lastAt } = sumCancels(payment);
+      const { amount, reason, lastAt, txnNo } = sumCancels(payment);
       if (payRow.status === "refunded") {
         result = { outcome: "ignored", detail: "이미 refunded" };
         break;
@@ -271,14 +276,39 @@ export async function syncPaymentFromToss(
           toss_response: payment as never,
         })
         .eq("payment_id", payRow.payment_id);
+      // ★학습 구독 해지는 그대로 둔다 — 강의 플랫폼 주문에는 user_subscriptions 가 없어
+      //   no-op 이고, 학습 플랫폼은 학생 셀프 해지(경로 ②)가 여기로 들어온다.
       const revoked = await cancelLinkedSubscription(admin, payRow.payment_id);
-      // feat-11-004 4a — 연결 주문 환불 전이 + enrollments 회수.
+
+      // ★★열린 환불건이 있으면 **웹훅은 비켜선다**(feat-11-013 P6-b).
+      //   요청서 §5 의 운영은 관리자가 토스 상점관리자에서 직접 취소하는 것이라, 관리자가
+      //   리담으로 돌아오기 **전에** 이 웹훅이 도착한다. 여기서 항목을 환불로 찍고 수강권까지
+      //   회수해 버리면, 확정 커밋이 할 일을 다른 행위자가 절반 해 놓은 상태가 된다 —
+      //   그 사이 같은 주문에 두 번째 환불건이 열리면 **접수도 안 된 항목이 이미 환불됨**이다.
+      //   대신 §6 의 네 값 중 셋을 자동으로 채워 주고 PG 취소완료로 넘긴다.
+      let taken = false;
       if (payRow.order_id) {
-        await markOrderRefundedAndRevoke(payRow.order_id, reason ?? "토스 취소 웹훅");
+        const { takeOverPgCancelIfOpenRefund } = await import(
+          "~/features/refunds/refunds.server"
+        );
+        const r = await takeOverPgCancelIfOpenRefund({
+          orderId: payRow.order_id,
+          cancelKrw: amount ?? payRow.amount_krw,
+          cancelledAt: lastAt,
+          transactionNo: txnNo,
+          kind: "full",
+        });
+        taken = r.taken;
+        // feat-11-004 4a — 환불관리가 맡지 않은 취소만 여기서 주문·지급물까지 정리한다.
+        if (!taken) {
+          await markOrderRefundedAndRevoke(payRow.order_id, reason ?? "토스 취소 웹훅");
+        }
       }
       result = {
         outcome: "processed",
-        detail: `전액 취소 → refunded${revoked ? " + 구독 종료" : ""}`,
+        detail: `전액 취소 → refunded${revoked ? " + 구독 종료" : ""}${
+          taken ? " · 환불관리 건에 취소정보 입력(회수는 확정 시)" : ""
+        }`,
       };
       break;
     }
@@ -292,8 +322,8 @@ export async function syncPaymentFromToss(
       // ★종전에는 payments 만 갱신하고 끝이라, 관리자가 토스 상점관리자에서 부분취소하면
       //   **돈은 돌려줬는데 수강권이 살아 있고 정산에도 안 잡히는** 상태가 말없이 남았다.
       //   요청서(260914)가 바로 그 운영을 기본으로 삼으므로 신호가 반드시 필요하다.
-      // ★항목 단위 정식 정합은 환불관리 모델(feat-11-013 P6)에서 닫는다.
-      const { amount, reason, lastAt } = sumCancels(payment);
+      // ★환불관리(P6)에 **열린 건이 있으면 그쪽이 주인**이다 — 취소정보만 옮겨 적고 빠진다.
+      const { amount, reason, lastAt, txnNo } = sumCancels(payment);
       await admin
         .from("payments")
         .update({
@@ -304,8 +334,25 @@ export async function syncPaymentFromToss(
         })
         .eq("payment_id", payRow.payment_id);
 
+      let takenPartial = false;
+      if (payRow.order_id) {
+        const { takeOverPgCancelIfOpenRefund } = await import(
+          "~/features/refunds/refunds.server"
+        );
+        const r = await takeOverPgCancelIfOpenRefund({
+          orderId: payRow.order_id,
+          cancelKrw: amount,
+          cancelledAt: lastAt,
+          transactionNo: txnNo,
+          kind: "partial",
+        });
+        takenPartial = r.taken;
+      }
+
       let unmatched = 0;
-      if (payRow.order_id && (amount ?? 0) > 0) {
+      // ★환불관리가 맡은 건은 「미반영」이 아니다 — 확정 커밋이 항목을 찍는다.
+      //   그때도 경고를 띄우면 정상 운영마다 CS 원장에 잡음이 쌓인다.
+      if (!takenPartial && payRow.order_id && (amount ?? 0) > 0) {
         const { data: items } = await admin
           .from("order_items")
           .select("paid_amount_krw, refund_amount_krw")
