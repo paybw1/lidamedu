@@ -16,6 +16,7 @@ import {
   FORMAT_LABEL,
   ddayFrom,
   remainingSeats,
+  scheduleState,
   type LectureFormat,
 } from "../labels";
 import { listSchedules } from "../queries.server";
@@ -84,6 +85,12 @@ export default function Schedule({ loaderData }: Route.ComponentProps) {
   const cur = ymString(year, month0);
   // 오른쪽 목록: '그 달에 개강'하는 강의 = start_date 가 표시 중인 달에 속함.
   const monthList = all.filter((s) => s.start_date?.slice(0, 7) === cur);
+  // ★이 달에 개강이 없을 때 "가장 이른 다음 개강"을 찾아 안내한다 — 목록이 달로 걸리므로
+  //   개강이 있어도 "없습니다"만 보이고 방문자가 그냥 나간다(feat-11-012 P3).
+  const nextOpening = all
+    .filter((s) => s.start_date && s.start_date >= todayYmd)
+    .map((s) => s.start_date as string)
+    .sort()[0];
   // 형태 필터(전체/현장/실시간/영상) 적용.
   const shown =
     fmt === "all" ? monthList : monthList.filter((s) => s.format === fmt);
@@ -214,6 +221,15 @@ export default function Schedule({ loaderData }: Route.ComponentProps) {
                       ? "강의가"
                       : `${FORMAT_LABEL[fmt as LectureFormat]} 강의가`}{" "}
                     없습니다.
+                    {nextOpening && nextOpening.slice(0, 7) !== cur ? (
+                      <>
+                        {" "}
+                        <Link to={`?ym=${nextOpening.slice(0, 7)}`}>
+                          가장 이른 개강은 {Number(nextOpening.slice(0, 4))}년{" "}
+                          {Number(nextOpening.slice(5, 7))}월입니다 →
+                        </Link>
+                      </>
+                    ) : null}
                   </p>
                 ) : (
                   dateGroups.map((g) => (
@@ -222,9 +238,11 @@ export default function Schedule({ loaderData }: Route.ComponentProps) {
                         {g.date === "미정" ? "개강일 미정" : dateHeading(g.date)}
                       </div>
                       {g.items.map((s) => {
-                        const rem = remainingSeats(s);
-                        const d = ddayFrom(s.start_date, todayISO);
-                        const closed = s.status === "closed" || rem === 0;
+                        // ★판정은 labels.ts 의 scheduleState 하나 — 개강일 경과까지 본다.
+                        const st = scheduleState(s, todayISO);
+                        const rem = st.seatsLeft;
+                        const d = st.dday;
+                        const closed = st.closed;
                         return (
                           <Link
                             to={`/lecture/schedule/${s.schedule_id}`}

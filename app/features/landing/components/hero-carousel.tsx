@@ -5,6 +5,10 @@ import { Link } from "react-router";
 
 import { useSwipe } from "~/core/hooks/use-swipe";
 
+import type { SiteFact } from "../lib/site-intro";
+
+import { Headline, ScheduleHeroCard, TrustStrip } from "./hero-parts";
+
 import {
   ddayFrom,
   fitBannerFrame,
@@ -15,18 +19,6 @@ import {
 } from "../labels";
 
 // headline 안에서 highlight 부분만 금박 강조.
-function Headline({ text, hl }: { text: string; hl: string | null }) {
-  if (!hl || !text.includes(hl)) return <>{text}</>;
-  const i = text.indexOf(hl);
-  return (
-    <>
-      {text.slice(0, i)}
-      <span className="hl">{hl}</span>
-      {text.slice(i + hl.length)}
-    </>
-  );
-}
-
 // 이미지 배너 — 슬라이드 전체를 이미지로. cta_href 있으면 클릭 이동.
 //   maxWidth 지정 시: 가운데 정렬 + 원본 비율(꽉 채우지 않음). 미지정: 전체 폭 cover.
 function BannerImage({
@@ -78,50 +70,14 @@ function RightCard({
   todayISO: string;
 }) {
   if (banner.kind === "schedule") {
-    const top = schedules.slice(0, 3);
-    return (
-      <div className="hcard" aria-label="개강 임박 강의">
-        <div className="hh">
-          <span className="lab">개강 임박</span>
-          <span className="live">
-            <span className="dot" />
-            실시간 접수중
-          </span>
-        </div>
-        {top.length === 0 ? (
-          <p style={{ color: "var(--hero-soft)", fontSize: 13, padding: "8px 4px" }}>
-            예정된 개강 일정이 곧 공개됩니다.
-          </p>
-        ) : (
-          top.map((s) => {
-            const d = ddayFrom(s.start_date, todayISO);
-            return (
-              <div className="hrow" key={s.schedule_id}>
-                <div className="dday">
-                  <b>{d === null ? "예정" : `D-${d}`}</b>
-                  <span>{s.start_date ? s.start_date.slice(5).replace("-", "/") : ""} 개강</span>
-                </div>
-                <div className="mid">
-                  <div className="s">
-                    {s.subject_label} {s.title}
-                  </div>
-                  <div className="m">
-                    {s.instructor_name}
-                    {s.day_label ? ` · ${s.day_label}` : ""}
-                  </div>
-                </div>
-                <div className="seat">잔여 {remainingSeats(s)}석</div>
-              </div>
-            );
-          })
-        )}
-      </div>
-    );
+    return <ScheduleHeroCard schedules={schedules} todayISO={todayISO} />;
   }
   if (banner.kind === "passer") {
     return (
       <div className="promo">
-        <span className="pk">2026 · PASS</span>
+        {/* ★종전에는 "2026 · PASS" 가 코드에 박혀 있어 해가 바뀌면 홈만 틀렸다.
+            promo 배너가 이미 쓰는 eyebrow 필드로 내려 /admin/landing-banners 에서 고친다. */}
+        {banner.eyebrow ? <span className="pk">{banner.eyebrow}</span> : null}
         <div className="pbadges">
           {banner.badges.map((b, i) => (
             <span key={i}>{b}</span>
@@ -160,9 +116,12 @@ export function HeroCarousel({
   banners,
   schedules,
   todayISO,
+  facts,
 }: {
   banners: BannerRow[];
   schedules: ScheduleRow[];
+  /** 첫 화면 지표 — 코드 상수가 아니라 loader 실측값(site-intro.ts buildSiteFacts). */
+  facts: SiteFact[];
   todayISO: string;
 }) {
   const n = banners.length;
@@ -279,28 +238,7 @@ export function HeroCarousel({
                 </h1>
                 {b.sub ? <p className="sub">{b.sub}</p> : null}
                 <Cta banner={b} />
-                {b.kind === "schedule" ? (
-                  <div className="trust">
-                    <div className="t">
-                      <span className="n">
-                        8<span className="u">인</span>
-                      </span>
-                      <span className="l">전 과목 전임 강사</span>
-                    </div>
-                    <div className="t">
-                      <span className="n">
-                        5<span className="u">과목</span>
-                      </span>
-                      <span className="l">1·2차 통합 커리큘럼</span>
-                    </div>
-                    <div className="t">
-                      <span className="n">
-                        3<span className="u">종</span>
-                      </span>
-                      <span className="l">현장·실시간·영상</span>
-                    </div>
-                  </div>
-                ) : null}
+                {b.kind === "schedule" ? <TrustStrip facts={facts} /> : null}
               </div>
               <RightCard banner={b} schedules={schedules} todayISO={todayISO} />
             </div>

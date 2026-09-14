@@ -78,6 +78,14 @@ export function LandingStyle() {
 .llx .dots{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);z-index:4;display:flex;gap:8px}
 .llx .dots button{width:9px;height:9px;padding:0;border-radius:99px;border:0;background:rgba(238,242,251,.34);cursor:pointer;transition:width .25s,background .25s}
 .llx .dots button.on{background:var(--gilt-soft);width:26px}
+/* 소개 밴드 — 배너가 전부 이미지형일 때 "무엇을 파는 곳인지" 한 문장(feat-11-012 P3).
+   배너 디자인은 그대로 두고 그 아래 한 줄을 더한다. */
+.llx .introband{background:var(--lsurface);border-bottom:1px solid var(--line)}
+.llx .introband .in{max-width:1180px;margin:0 auto;padding:24px;display:flex;flex-wrap:wrap;align-items:center;gap:14px 28px}
+.llx .introband h1{font-size:clamp(19px,2.2vw,25px);font-weight:900;letter-spacing:-.03em;line-height:1.3;text-wrap:balance}
+.llx .introband h1 .hl{color:var(--blue-ink)}
+.llx .introband p{font-size:14px;color:var(--soft);line-height:1.65;flex:1;min-width:min(100%,260px)}
+.llx .introband .cta{display:flex;gap:8px;flex-wrap:wrap}
 /* hero right cards */
 .llx .hcard{background:linear-gradient(160deg,rgba(255,255,255,.1),rgba(255,255,255,.03));border:1px solid rgba(238,242,251,.16);border-radius:16px;padding:18px;backdrop-filter:blur(6px);box-shadow:0 30px 60px -30px rgba(0,0,0,.6)}
 .llx .hcard .hh{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}

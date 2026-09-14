@@ -851,6 +851,14 @@ export interface LectureProduct {
   categoryName: string | null;
   courses: LectureProductCourse[];
   books: LectureProductBook[];
+  /**
+   * 담당 강사 — 공개 강사 카드(instructors, 게시분)와 연결된 사람만.
+   * ★profiles 를 조인하지 않는다(본인 행만 읽히는 RLS 라 공개 화면에서 항상 빈다).
+   *   연결이 없으면 빈 배열 — 화면은 「강사 미정」을 찍지 말고 그 줄을 빼야 한다.
+   */
+  instructors: Array<{ name: string; slug: string }>;
+  /** 공개 회차 수 합계. 0이면 화면에서 표시하지 않는다. */
+  lessonCount: number;
   owned: boolean;
   // 수강신청 상세 본문(이미지 또는 HTML) — /lecture/catalog/:code 렌더.
   detailImageUrl: string | null;
@@ -941,28 +949,93 @@ export async function listSellableLectureProducts(
     .in("plan_id", planIds);
   const linkRows = links ?? [];
 
-  // 공개(published) 강의만 제목 해석 — 미공개 에디션은 카탈로그 노출 제외(RLS 가 이미 필터).
+  // 공개(published) 강의만 제목 해석 — 미공개 에디션은 카탈로그 노출 제외.
+  // ★조건을 **명시**한다. RLS 에만 기대면 staff 는 draft 에디션까지 보게 되어
+  //   "운영자는 6회차, 학생은 5회차" 같은 신고가 난다(feat-11-012 P4).
   const courseIds = [...new Set(linkRows.map((l) => l.course_id))];
   const courseTitle = new Map<string, string>();
+  const seriesIdByCourse = new Map<string, string>();
+  const seriesInstructor = new Map<string, string>();
   if (courseIds.length > 0) {
     const { data: courses } = await client
       .from("courses")
       .select("course_id, edition_label, series_id")
-      .in("course_id", courseIds);
+      .in("course_id", courseIds)
+      .eq("status", "published")
+      .is("deleted_at", null);
     const courseRows = courses ?? [];
     const seriesIds = [...new Set(courseRows.map((c) => c.series_id))];
     const seriesTitle = new Map<string, string>();
     if (seriesIds.length > 0) {
       const { data: series } = await client
         .from("course_series")
-        .select("series_id, title")
+        .select("series_id, title, instructor_id")
         .in("series_id", seriesIds);
-      for (const s of series ?? []) seriesTitle.set(s.series_id, s.title);
+      for (const s of series ?? []) {
+        seriesTitle.set(s.series_id, s.title);
+        if (s.instructor_id) seriesInstructor.set(s.series_id, s.instructor_id);
+      }
     }
     for (const c of courseRows) {
       const base = seriesTitle.get(c.series_id) ?? "";
       const label = c.edition_label ? ` ${c.edition_label}` : "";
       courseTitle.set(c.course_id, `${base}${label}`.trim());
+      seriesIdByCourse.set(c.course_id, c.series_id);
+    }
+  }
+
+  // ── 회차 수·강사 (feat-11-012 P4) ─────────────────────────────────────────
+  // 상세 화면이 주는 판단 근거가 배지·강좌명·수강기간·가격뿐이었다. 강사는 DB 에 있는데
+  // 판매 쿼리가 싣지 않았고, 회차 수는 아예 항목이 없었다. 여기 한 곳에 얹으면
+  // 카탈로그·상세·장바구니 3화면이 함께 닫힌다.
+  // ★상품이 늘면 courseIds 를 150개 배치로 끊는다(같은 파일 상단 선례).
+  const lessonCountByCourse = new Map<string, number>();
+  const instructorProfilesByCourse = new Map<string, string[]>();
+  const instructorProfileIds = new Set<string>();
+  if (courseIds.length > 0) {
+    const { data: lessons } = await client
+      .from("course_lessons")
+      .select("lesson_id, course_id")
+      .in("course_id", courseIds)
+      .eq("is_published", true)
+      .is("deleted_at", null);
+    for (const l of lessons ?? []) {
+      lessonCountByCourse.set(
+        l.course_id,
+        (lessonCountByCourse.get(l.course_id) ?? 0) + 1,
+      );
+    }
+
+    const pushProfile = (courseId: string, profileId: string) => {
+      const arr = instructorProfilesByCourse.get(courseId) ?? [];
+      if (!arr.includes(profileId)) arr.push(profileId);
+      instructorProfilesByCourse.set(courseId, arr);
+      instructorProfileIds.add(profileId);
+    };
+    // 강의별 강사(복수 지정) + 시리즈 대표 강사. 두 컬럼 모두 값은 profile_id 다.
+    const { data: ci } = await client
+      .from("course_instructors")
+      .select("course_id, instructor_id")
+      .in("course_id", courseIds);
+    for (const r of ci ?? []) pushProfile(r.course_id, r.instructor_id);
+    for (const [courseId, seriesId] of seriesIdByCourse) {
+      const pid = seriesInstructor.get(seriesId);
+      if (pid) pushProfile(courseId, pid);
+    }
+  }
+  // 공개 강사 카드 — ★profiles 조인 금지(본인 행만 읽히는 RLS 라 공개 loader 에서 항상 null).
+  //   게시(published)·연결(profile_id)된 강사만 이름이 나온다. 매칭 실패는 "미표시"가 정답이다.
+  const instructorByProfile = new Map<string, { name: string; slug: string }>();
+  if (instructorProfileIds.size > 0) {
+    const { data: rows } = await client
+      .from("instructors")
+      .select("profile_id, name, slug")
+      .in("profile_id", [...instructorProfileIds])
+      .is("deleted_at", null);
+    for (const r of rows ?? []) {
+      if (r.profile_id) {
+        instructorByProfile.set(r.profile_id, { name: r.name, slug: r.slug });
+      }
     }
   }
   const coursesByPlan = new Map<string, LectureProductCourse[]>();
@@ -1034,6 +1107,24 @@ export async function listSellableLectureProducts(
     booksByPlan.set(l.plan_id, arr);
   }
 
+  // 상품별 회차 합계·강사 — 표시 대상 강의(courseTitle 에 있는 것)만 센다.
+  const lessonCountByPlan = new Map<string, number>();
+  const instructorsByPlan = new Map<string, Array<{ name: string; slug: string }>>();
+  for (const l of linkRows) {
+    if (!courseTitle.has(l.course_id)) continue; // 미공개 강의는 화면 표시와 같은 기준으로 제외
+    lessonCountByPlan.set(
+      l.plan_id,
+      (lessonCountByPlan.get(l.plan_id) ?? 0) +
+        (lessonCountByCourse.get(l.course_id) ?? 0),
+    );
+    const arr = instructorsByPlan.get(l.plan_id) ?? [];
+    for (const pid of instructorProfilesByCourse.get(l.course_id) ?? []) {
+      const card = instructorByProfile.get(pid);
+      if (card && !arr.some((a) => a.slug === card.slug)) arr.push(card);
+    }
+    instructorsByPlan.set(l.plan_id, arr);
+  }
+
   // 보유 여부 — 활성·미만료 enrollment 의 plan_id.
   const ownedPlanIds = new Set<string>();
   if (userId) {
@@ -1063,6 +1154,8 @@ export async function listSellableLectureProducts(
     categoryName: p.category_id ? (catNameById.get(p.category_id) ?? null) : null,
     courses: coursesByPlan.get(p.plan_id) ?? [],
     books: booksByPlan.get(p.plan_id) ?? [],
+    instructors: instructorsByPlan.get(p.plan_id) ?? [],
+    lessonCount: lessonCountByPlan.get(p.plan_id) ?? 0,
     owned: ownedPlanIds.has(p.plan_id),
     detailImageUrl: p.detail_image_url,
     detailHtml: p.detail_html,

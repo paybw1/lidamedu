@@ -10,6 +10,7 @@ import { ScheduleBuyBar } from "../components/schedule-buy-bar";
 import {
   FORMAT_LABEL,
   ddayFrom,
+  scheduleState,
   type LectureFormat,
 } from "../labels";
 import { getSchedule } from "../queries.server";
@@ -67,16 +68,11 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   };
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  soon: "개강 임박",
-  open: "접수중",
-  waitlist: "대기접수",
-  closed: "마감",
-};
-
 export default function ScheduleDetail({ loaderData }: Route.ComponentProps) {
   const { schedule: s, plan, todayISO, tossClientKey } = loaderData;
-  const d = ddayFrom(s.start_date, todayISO);
+  // ★판정은 labels.ts 의 scheduleState 하나(개강일 경과 포함). 자체 라벨 맵을 두지 않는다.
+  const st = scheduleState(s, todayISO);
+  const d = st.dday;
 
   return (
     <div className="llx">
@@ -94,11 +90,7 @@ export default function ScheduleDetail({ loaderData }: Route.ComponentProps) {
         {/* 헤더: 과목·강좌명·강사 + 결제금액 */}
         <div className="sd-head">
           <div className="sd-top">
-            <span className={`sd-tag ${s.status}`}>
-              {s.status === "soon" && d !== null
-                ? `D-${d} 임박`
-                : STATUS_LABEL[s.status] ?? s.status}
-            </span>
+            <span className={`sd-tag ${st.code}`}>{st.label}</span>
             <span className="sd-subj">◆ {s.subject_label}</span>
           </div>
           <h1 className="sd-title">{s.title}</h1>

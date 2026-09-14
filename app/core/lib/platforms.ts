@@ -63,17 +63,31 @@ export const LECTURE_GATE_STAGE: LectureGateStage = "closed";
  *   항목은 반드시 "/lecture/xxx" 처럼 한 단계 더 내려간 경로로 적는다.
  * ★"/about" 은 자식(강사소개·강사 상세·강사 모집)이 전부 공개라 한 줄로 덮는다.
  */
-export const PUBLIC_LECTURE_PATHS: ReadonlyArray<string> = [
-  "/lecture/home",
-  "/lecture/catalog",
-  "/lecture/books",
-  "/lecture/schedule",
-  "/lecture/news",
-  "/lecture/exam-info",
-  "/lecture/facilities",
-  "/about",
-  "/location",
+export const PUBLIC_LECTURE_ROUTES: ReadonlyArray<{
+  path: string;
+  /** 사이트맵에 실을 것인가. ★열람 가능 ≠ 색인 대상 — 고객센터는 열되 싣지 않는다. */
+  indexable: boolean;
+}> = [
+  { path: "/lecture/home", indexable: true },
+  { path: "/lecture/catalog", indexable: true },
+  { path: "/lecture/books", indexable: true },
+  { path: "/lecture/schedule", indexable: true },
+  { path: "/lecture/news", indexable: true },
+  { path: "/lecture/exam-info", indexable: true },
+  { path: "/lecture/facilities", indexable: true },
+  { path: "/about", indexable: true },
+  { path: "/location", indexable: true },
+  // ★고객센터 — 상단 메뉴에 상시 노출돼 처음 온 사람이 먼저 누르는 자리다. 열람은 열되
+  //   (공개 문의만 RLS 가 내려준다) 검색 색인에는 싣지 않는다(robots 에서도 차단).
+  { path: "/lecture/support", indexable: false },
 ];
+
+export const PUBLIC_LECTURE_PATHS: ReadonlyArray<string> =
+  PUBLIC_LECTURE_ROUTES.map((r) => r.path);
+
+/** 사이트맵에 싣는 공개 경로. */
+export const INDEXABLE_LECTURE_PATHS: ReadonlyArray<string> =
+  PUBLIC_LECTURE_ROUTES.filter((r) => r.indexable).map((r) => r.path);
 
 export function isPublicLecturePath(pathname: string): boolean {
   return PUBLIC_LECTURE_PATHS.some(
@@ -160,6 +174,22 @@ export const LECTURE_GUIDE_LINKS: ReadonlyArray<{ label: string; to: string }> =
   ];
 
 // 마이페이지 하위 — 상단 드롭다운과 마이페이지 화면 sticky 서브내비가 공유(단일 소스).
+/**
+ * 리담안내 하위 링크 — 로그인 여부에 따라 다르다.
+ *
+ * ★"공지사항"(/lecture/announcements)은 **개인 수신함**이다(수신자별 읽음 상태).
+ *   비로그인에게는 보여줄 데이터가 애초에 없어 401 오류 화면이 떴다 — 회사 소개 메뉴에
+ *   섞여 있어 처음 온 사람이 먼저 누르는 자리인데도. 그래서 비로그인에게는 이 항목을
+ *   빼고, 공지는 공개 소식(리담소식 · 분류 필터)이 맡는다.
+ */
+export function lectureGuideLinks(
+  loggedIn: boolean,
+): ReadonlyArray<{ label: string; to: string }> {
+  return loggedIn
+    ? LECTURE_GUIDE_LINKS
+    : LECTURE_GUIDE_LINKS.filter((l) => l.to !== "/lecture/announcements");
+}
+
 export const LECTURE_MYPAGE_LINKS: ReadonlyArray<{
   label: string;
   to: string;

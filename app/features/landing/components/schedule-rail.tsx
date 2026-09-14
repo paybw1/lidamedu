@@ -5,6 +5,7 @@ import { Link } from "react-router";
 import {
   FORMAT_LABEL,
   ddayFrom,
+  scheduleState,
   type LectureFormat,
   type ScheduleRow,
 } from "../labels";
@@ -27,21 +28,16 @@ export function ScheduleRail({
     >
       {schedules.map((s) => {
         const d = ddayFrom(s.start_date, todayISO);
+        // ★판정은 labels.ts 의 scheduleState 하나 — 개강일이 지난 강의가 "접수중"으로
+        //   남지 않게 한다(종전에는 세 화면이 제각각 판정했다).
+        const st = scheduleState(s, todayISO);
         return (
           <Link
             to={`/lecture/schedule/${s.schedule_id}`}
             className="sc"
             key={s.schedule_id}
           >
-            <span className={`tag ${s.status}`}>
-              {s.status === "soon" && d !== null
-                ? `D-${d} 임박`
-                : s.status === "open"
-                  ? "접수중"
-                  : s.status === "waitlist"
-                    ? "대기접수"
-                    : "마감"}
-            </span>
+            <span className={`tag ${st.code}`}>{st.label}</span>
             <span className="subj">◆ {s.subject_label}</span>
             <h3>{s.title}</h3>
             <div className="tutor">{s.instructor_name}</div>

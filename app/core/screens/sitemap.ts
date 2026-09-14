@@ -18,8 +18,8 @@ import path from "node:path";
 
 import {
   CANONICAL_ORIGIN,
+  INDEXABLE_LECTURE_PATHS,
   LECTURE_GATE_STAGE,
-  PUBLIC_LECTURE_PATHS,
 } from "~/core/lib/platforms";
 import { buildSitemapXml, type SitemapEntry } from "~/core/lib/sitemap";
 import makeServerClient from "~/core/lib/supa-client.server";
@@ -58,8 +58,8 @@ async function lectureEntries(request: Request): Promise<SitemapEntry[]> {
   ]);
 
   return [
-    // 공개 화면 목록 — 게이트·robots 와 같은 단일 소스.
-    ...PUBLIC_LECTURE_PATHS.map((p) => ({ path: p })),
+    // 공개 화면 — 게이트와 같은 목록에서, 색인 대상만 고른다(고객센터는 열되 싣지 않는다).
+    ...INDEXABLE_LECTURE_PATHS.map((p) => ({ path: p })),
     ...products.map((p) => ({ path: `/lecture/catalog/${p.code}` })),
     ...books.map((b) => ({ path: `/lecture/books/${b.bookId}` })),
     ...news.map((n) => ({

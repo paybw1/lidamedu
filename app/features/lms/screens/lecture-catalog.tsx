@@ -2,6 +2,7 @@
 // 구매는 단건 결제: /api/payments/create-order(1-item 주문 경유) → 토스 requestPayment.
 // 결제 성공 시 confirm 이 주문 fulfill → enrollments 지급(M4).
 import { CheckIcon, GraduationCapIcon, TicketIcon } from "lucide-react";
+import { PriceTag } from "~/features/lms/components/price-tag";
 import { Link, useSearchParams } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
@@ -10,7 +11,6 @@ import { Card, CardContent } from "~/core/components/ui/card";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
 import { useCart } from "~/features/lms/lib/cart";
-import { getDiscountDisplay } from "~/features/lms/lib/price";
 import { PRODUCT_KIND_LABEL } from "~/features/subscriptions/labels";
 import {
   cancelPendingCheckout,
@@ -299,27 +299,10 @@ function ProductCard({
         {/* feat-11-008 P0 — 수강신청 카드 간소화(260807 요청서): 교재 정보(교재명·가격·담기)는
             카드에서 제거하고 상세페이지에서만 표시. 카드는 강의 비교용 핵심 정보만. */}
         <div className="mt-2 flex items-center justify-between border-t pt-3">
-          <span className="flex items-baseline gap-1.5">
-            {(() => {
-              const d = getDiscountDisplay(product.priceKrw, product.listPriceKrw);
-              return d.listPriceKrw != null ? (
-                <>
-                  <span className="text-muted-foreground text-xs line-through tabular-nums">
-                    {d.listPriceKrw.toLocaleString("ko-KR")}
-                  </span>
-                  <span className="text-xs font-semibold text-rose-600 dark:text-rose-400">
-                    {d.percentOff}%
-                  </span>
-                </>
-              ) : null;
-            })()}
-            <span className="text-lg font-bold tabular-nums">
-              {product.priceKrw.toLocaleString("ko-KR")}
-              <span className="text-muted-foreground ml-0.5 text-xs font-normal">
-                원
-              </span>
-            </span>
-          </span>
+          <PriceTag
+            priceKrw={product.priceKrw}
+            listPriceKrw={product.listPriceKrw}
+          />
           {product.owned ? (
             <Button asChild size="sm" variant="outline">
               <Link to="/lecture">수강 중</Link>

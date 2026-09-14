@@ -145,3 +145,52 @@ export function ddayFrom(startDate: string | null, todayISO: string): number | n
   const d = Math.round((start - today) / 86400000);
   return d < 0 ? null : d;
 }
+
+// ── 현장강의 마감 판정 (feat-11-012 P3) ────────────────────────────────────
+// ★종전에는 세 화면이 제각각 판정했고 **셋 다 start_date 를 보지 않았다** — 이미 개강한
+//   강의가 "접수중 · 잔여 12"로 남아 신청 가능한 듯 보였다(D-day 배지만 조용히 사라진다).
+//   판정을 여기 하나로 모으고 개강일 경과를 넣는다.
+//
+// 우선순위: 운영자가 건 마감 > 개강일 경과 > 대기접수 > 잔여석 0 > 임박 > 접수중
+//   ★"대기접수"는 자리가 없어도 접수를 받는 상태이므로 잔여석 0 보다 앞에 둔다.
+//   ★중도 합류를 허용하는 반은 운영자가 상태를 waitlist 로 두면 계속 노출된다.
+export interface ScheduleState {
+  code: ScheduleStatus;
+  /** 화면에 그대로 쓰는 라벨(임박은 "D-3 임박"). */
+  label: string;
+  closed: boolean;
+  /** 개강까지 남은 날. 개강일이 지났거나 미정이면 null. */
+  dday: number | null;
+  seatsLeft: number;
+  /** 개강일이 지났는가(미정이면 false). */
+  started: boolean;
+}
+
+export function scheduleState(
+  row: {
+    status: string;
+    start_date: string | null;
+    capacity: number;
+    enrolled: number;
+  },
+  todayISO: string,
+): ScheduleState {
+  const dday = ddayFrom(row.start_date, todayISO);
+  const seatsLeft = remainingSeats(row);
+  const started = !!row.start_date && dday === null;
+
+  let code: ScheduleStatus;
+  if (row.status === "closed") code = "closed";
+  else if (started) code = "closed";
+  else if (row.status === "waitlist") code = "waitlist";
+  else if (seatsLeft === 0) code = "closed";
+  else if (row.status === "soon") code = "soon";
+  else code = "open";
+
+  const label =
+    code === "soon" && dday !== null
+      ? `D-${dday} 임박`
+      : (STATUS_LABEL[code] ?? STATUS_LABEL.open);
+
+  return { code, label, closed: code === "closed", dday, seatsLeft, started };
+}

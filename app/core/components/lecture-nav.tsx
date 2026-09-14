@@ -13,17 +13,29 @@ import {
   LECTURE_NAV_LINKS,
   type LectureNavItem,
   childMatchesPath,
+  lectureGuideLinks,
   lectureMypageLinks,
 } from "~/core/lib/platforms";
 import { cn } from "~/core/lib/utils";
 
-/** 마이페이지 자식은 역할에 따라 달라진다(강사·원장에게만 정산현황). */
-function navLinksFor(isStaff: boolean): ReadonlyArray<LectureNavItem> {
-  return LECTURE_NAV_LINKS.map((l) =>
-    l.label === "마이페이지" && l.children
-      ? { ...l, children: lectureMypageLinks(isStaff) }
-      : l,
-  );
+/**
+ * 자식 목록은 보는 사람에 따라 달라진다.
+ *   마이페이지 — 강사·원장에게만 정산현황.
+ *   리담안내   — 비로그인에게는 개인 수신함(공지사항)을 내리지 않는다.
+ */
+function navLinksFor(
+  isStaff: boolean,
+  loggedIn: boolean,
+): ReadonlyArray<LectureNavItem> {
+  return LECTURE_NAV_LINKS.map((l) => {
+    if (l.label === "마이페이지" && l.children) {
+      return { ...l, children: lectureMypageLinks(isStaff) };
+    }
+    if (l.label === "리담안내" && l.children) {
+      return { ...l, children: lectureGuideLinks(loggedIn) };
+    }
+    return l;
+  });
 }
 
 const itemCls = (active: boolean) =>
@@ -101,10 +113,16 @@ function Dropdown({ item }: { item: LectureNavItem }) {
 }
 
 // 데스크톱 — 평면 링크 + 마이페이지 드롭다운.
-export function LectureNav({ isStaff }: { isStaff: boolean }) {
+export function LectureNav({
+  isStaff,
+  loggedIn,
+}: {
+  isStaff: boolean;
+  loggedIn: boolean;
+}) {
   return (
     <nav className="hidden h-full items-center gap-1 md:flex">
-      {navLinksFor(isStaff).map((l) =>
+      {navLinksFor(isStaff, loggedIn).map((l) =>
         l.children ? (
           <Dropdown key={l.label} item={l} />
         ) : (
@@ -133,11 +151,17 @@ const chipCls = (active: boolean) =>
   );
 
 // 모바일 — 최상위 항목만(가로 탭). 상단 바 아래 별도 행.
-export function LectureNavMobile({ isStaff }: { isStaff: boolean }) {
+export function LectureNavMobile({
+  isStaff,
+  loggedIn,
+}: {
+  isStaff: boolean;
+  loggedIn: boolean;
+}) {
   const { pathname } = useLocation();
   return (
     <nav className="flex items-center gap-1 overflow-x-auto border-t border-black/[0.04] px-4 py-1.5 md:hidden dark:border-white/[0.04]">
-      {navLinksFor(isStaff).map((l) => {
+      {navLinksFor(isStaff, loggedIn).map((l) => {
         // ★활성 판정은 드롭다운과 **같은 규칙**(childMatchesPath)을 쓴다. 새로 짜면
         //   "/about" vs "/about/instructors", "/lecture" vs "/lecture/*" 예외가 깨진다.
         const to = l.to ?? l.children![0].to;

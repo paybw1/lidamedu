@@ -8,6 +8,7 @@ import {
   PlusIcon,
 } from "lucide-react";
 import { useState } from "react";
+import { PriceTag } from "~/features/lms/components/price-tag";
 import { Link, data } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
@@ -107,6 +108,9 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   };
 }
 
+/** 재고·1인당 한도가 둘 다 없을 때의 화면상 상한(서버가 다시 검증한다). */
+const MAX_QTY_FALLBACK = 99;
+
 export default function BookDetail({ loaderData }: Route.ComponentProps) {
   const {
     book,
@@ -122,6 +126,15 @@ export default function BookDetail({ loaderData }: Route.ComponentProps) {
   } = loaderData;
   const { addBook, has } = useCart();
   const [qty, setQty] = useState(1);
+  // ★수량의 권위는 서버(cart-resolve)다 — 화면은 미리 알려 주고 막기만 한다.
+  //   종전에는 상한이 없어 재고 3권짜리에 10을 넣고 결제를 눌러야 경고창으로 막혔다.
+  const maxQty = Math.max(
+    1,
+    Math.min(
+      book.stock ?? MAX_QTY_FALLBACK,
+      book.perPersonLimit ?? MAX_QTY_FALLBACK,
+    ),
+  );
   const inCart = has(`book:${book.bookId}`);
   const isPdf = book.bookType === "pdf";
 
@@ -175,16 +188,36 @@ export default function BookDetail({ loaderData }: Route.ComponentProps) {
               className="border"
             />
           </div>
+          {/* ★운영자가 채워 넣은 항목들이 화면에 하나도 나오지 않았다 — 저장도 되고
+              조회도 되는데 이 화면이 쓰지 않았다(feat-11-012 P4).
+              ※운영 DB 에 short_intro·author_bio·preview_url·event_phrase 값이 현재
+                0건이다. 코드를 고쳐도 값이 없으면 화면은 그대로다("반영했는데 안 보인다"로
+                오인하지 말 것) — 출간일 14건·정가 16건만 값이 있다. */}
+          {book.eventPhrase ? (
+            <p className="mt-2 inline-flex rounded-md bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
+              {book.eventPhrase}
+            </p>
+          ) : null}
+          {book.shortIntro ? (
+            <p className="mt-2 text-sm leading-relaxed">{book.shortIntro}</p>
+          ) : null}
           <dl className="text-muted-foreground mt-2 space-y-0.5 text-sm">
             {book.author ? <div>저자 {book.author}</div> : null}
             {book.publisher ? <div>출판사 {book.publisher}</div> : null}
+            {book.publishedOn ? (
+              <div>출간일 {book.publishedOn.slice(0, 10).replace(/-/g, ".")}</div>
+            ) : null}
             {book.isbn ? <div>ISBN {book.isbn}</div> : null}
           </dl>
 
-          <div className="mt-4 flex items-center gap-2">
-            <span className="text-2xl font-bold tabular-nums">
-              {book.priceKrw.toLocaleString("ko-KR")}원
-            </span>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {/* ★정가(listPriceKrw)는 loader 가 내려주는데 이 화면이 한 번도 참조하지 않았다 —
+                목록에는 취소선이 보이고 상세로 들어오면 사라졌다(feat-11-012 P4). */}
+            <PriceTag
+              size="lg"
+              priceKrw={book.priceKrw}
+              listPriceKrw={book.listPriceKrw}
+            />
             {book.soldOut ? (
               <Badge variant="secondary">품절</Badge>
             ) : book.stock !== null && book.stock <= 5 ? (
@@ -217,11 +250,17 @@ export default function BookDetail({ loaderData }: Route.ComponentProps) {
                   variant="outline"
                   size="icon"
                   className="size-8"
-                  onClick={() => setQty((n) => n + 1)}
+                  onClick={() => setQty((n) => Math.min(maxQty, n + 1))}
+                  disabled={qty >= maxQty}
                 >
                   <PlusIcon className="size-4" />
                 </Button>
               </div>
+              {maxQty < MAX_QTY_FALLBACK ? (
+                <span className="text-muted-foreground text-xs">
+                  최대 {maxQty}권
+                </span>
+              ) : null}
             </div>
           ) : null}
 
@@ -352,8 +391,9 @@ export default function BookDetail({ loaderData }: Route.ComponentProps) {
                 <span className="text-sm tabular-nums">
                   {c.priceKrw.toLocaleString("ko-KR")}원
                 </span>
+                {/* ★3개가 나열돼도 전부 목록으로 갔다. code 는 이미 내려와 있다(한 줄). */}
                 <Button asChild size="sm" variant="outline">
-                  <Link to="/lecture/catalog">보러가기</Link>
+                  <Link to={`/lecture/catalog/${c.code}`}>보러가기</Link>
                 </Button>
               </li>
             ))}

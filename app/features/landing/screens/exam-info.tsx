@@ -2,6 +2,7 @@
 //   콘텐츠는 exam_info.data(JSONB) 에서 로드, 행 없으면 기본값 폴백(변리사시험로드맵 반영).
 //   운영자는 /admin/exam-info 에서 직접 편집. 디자인은 랜딩·리담소식과 동일한 .llx 스코프.
 import makeServerClient from "~/core/lib/supa-client.server";
+import { MarkdownView } from "~/features/problems/components/markdown-view";
 
 import { LandingStyle } from "../components/landing-style";
 import { getExamInfo, listExamNotices } from "../queries.server";
@@ -382,7 +383,14 @@ export default function ExamInfo({ loaderData }: Route.ComponentProps) {
                       {n.published_at.slice(0, 10).replace(/-/g, ".")}
                     </span>
                   </div>
-                  {n.body_md ? <p className="ei-nbody">{n.body_md}</p> : null}
+                  {/* ★운영자 편집 폼은 "마크다운 지원"이라고 안내하는데 공개 화면은 원문을
+                      그대로 찍어 **·목록 기호가 글자로 보였다. 같은 시스템의
+                      리담소식 상세가 쓰는 부품을 그대로 쓴다(운영자 작성물이라 trusted). */}
+                  {n.body_md ? (
+                    <div className="ei-nbody">
+                      <MarkdownView text={n.body_md} trusted />
+                    </div>
+                  ) : null}
                   {n.files.length ? (
                     <div className="ei-files">
                       {n.files.map((f) => (
@@ -458,7 +466,7 @@ function ExamStyle() {
 .llx .ei-nhead{display:flex;align-items:baseline;justify-content:space-between;gap:14px}
 .llx .ei-nt{font-size:15px;font-weight:800;color:var(--ink);line-height:1.4}
 .llx .ei-nd{font-size:12.5px;color:var(--faint);white-space:nowrap;flex-shrink:0}
-.llx .ei-nbody{font-size:13px;color:var(--soft);line-height:1.7;margin-top:8px;white-space:pre-wrap}
+.llx .ei-nbody{font-size:13px;color:var(--soft);line-height:1.7;margin-top:8px}
 .llx .ei-files{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .llx .ei-file{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:var(--blue-ink);background:var(--blue-wash);border:1px solid var(--line);border-radius:8px;padding:7px 12px;transition:transform .14s,border-color .14s}
 .llx .ei-file:hover{transform:translateY(-1px);border-color:var(--blue)}

@@ -245,6 +245,11 @@ export async function listBundles(client: Client): Promise<BundleCard[]> {
 }
 
 export interface BookDetail extends BookCard {
+  /**
+   * 1인당 구매 한도. null = 무제한.
+   * ★수량의 **권위는 서버**(cart-resolve)다 — 화면은 미리 알려 주고 clamp 만 한다.
+   */
+  perPersonLimit: number | null;
   description: string | null;
   isbn: string | null;
   bookType: string;
@@ -273,7 +278,7 @@ export async function getBookDetail(
   const { data: b, error } = await client
     .from("books")
     .select(
-      "book_id, title, author, publisher, price_krw, list_price_krw, cover_path, cover_file_path, label_text, label_color, subject_code, description, isbn, book_type, short_intro, author_bio, toc, published_on, preview_url, event_phrase, course_only, sale_status, track_stock",
+      "book_id, title, author, publisher, price_krw, list_price_krw, cover_path, cover_file_path, label_text, label_color, subject_code, description, isbn, book_type, short_intro, author_bio, toc, published_on, preview_url, event_phrase, course_only, sale_status, track_stock, per_person_limit",
     )
     .eq("book_id", bookId)
     .is("deleted_at", null)
@@ -322,6 +327,7 @@ export async function getBookDetail(
   }
 
   return {
+    perPersonLimit: b.per_person_limit ?? null,
     bookId: b.book_id,
     title: b.title,
     author: b.author,

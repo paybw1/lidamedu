@@ -2,6 +2,7 @@
 //   카탈로그 카드 클릭 → 이 화면. 본문 = 운영자 입력 이미지 또는 HTML(히어로 배너와 동일 방식),
 //   없으면 소개·포함 강의·교재 기본 정보로 폴백. 하단 sticky 담기/수강신청.
 import { RichHtml } from "~/features/lms/components/rich-html";
+import { PriceTag } from "~/features/lms/components/price-tag";
 import {
   ArrowLeftIcon,
   CheckIcon,
@@ -21,7 +22,6 @@ import {
 } from "~/features/lms/lib/lecture-category";
 import { ReviewsSection } from "~/features/lms/components/reviews-section";
 import { DETAIL_SECTIONS } from "~/features/lms/lib/detail-sections";
-import { getDiscountDisplay } from "~/features/lms/lib/price";
 import { listSellableLectureProducts } from "~/features/lms/queries.server";
 import {
   getMyReview,
@@ -76,7 +76,6 @@ export default function LectureProductDetail({
   const { product, isAuthed, tossClientKey, reviews, summary, myReview, canWrite } =
     loaderData;
   const { addPlan, addBook, has } = useCart();
-  const discount = getDiscountDisplay(product.priceKrw, product.listPriceKrw);
   const isTpass = product.productKind === "tpass";
   const inCart = has(`plan:${product.code}`);
   const failPath = `/lecture/catalog/${product.code}?failed=1`;
@@ -119,9 +118,12 @@ export default function LectureProductDetail({
             )}
             {PRODUCT_KIND_LABEL[product.productKind]}
           </Badge>
-          {product.category ? (
+          {/* ★카드는 categoryName(course_categories), 상세만 낡은 lecture_category 를 봤다.
+              feat-11-008 D2 에서 쓰기 중단된 축이라 값이 없는 상품은 카드엔 배지가 뜨고
+              상세엔 안 떴다. 카드와 같은 소스로 맞춘다(feat-11-012 P4). */}
+          {product.categoryName ? (
             <Badge variant="outline" className="text-[11px]">
-              {LECTURE_CATEGORY_LABEL[product.category]}
+              {product.categoryName}
             </Badge>
           ) : null}
           {product.durationDays > 0 ? (
@@ -137,24 +139,65 @@ export default function LectureProductDetail({
           <span className="text-muted-foreground text-xs font-semibold">
             수강료
           </span>
-          {discount.listPriceKrw != null ? (
-            <>
-              <span className="text-muted-foreground text-sm line-through tabular-nums">
-                {discount.listPriceKrw.toLocaleString("ko-KR")}원
-              </span>
-              <span className="text-sm font-semibold text-rose-600 dark:text-rose-400">
-                {discount.percentOff}% 할인
-              </span>
-            </>
-          ) : null}
-          <span className="text-2xl font-bold tabular-nums">
-            {product.priceKrw.toLocaleString("ko-KR")}
-            <span className="text-muted-foreground ml-0.5 text-sm font-normal">
-              원
-            </span>
-          </span>
+          <PriceTag
+            size="lg"
+            priceKrw={product.priceKrw}
+            listPriceKrw={product.listPriceKrw}
+          />
         </div>
       </div>
+
+      {/* 구매 판단에 필요한 것 — 강사 · 회차 · 포함 강의 (feat-11-012 P4).
+          ★본문 유무 분기 **밖**에 둔다. 종전에는 포함 강의가 "본문 없음" 분기 안에 있어,
+            운영자가 소개를 한 칸이라도 채우면 통째로 사라졌다 —
+            **본문을 잘 꾸민 상품일수록 이 정보가 안 보였다.**
+          ★값이 없으면 그 줄만 뺀다("0회차"·"강사 미정"을 찍지 않는다). */}
+      {product.instructors.length > 0 ||
+      product.lessonCount > 0 ||
+      product.courses.length > 0 ? (
+        <section className="bg-card/50 mt-5 flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:flex-wrap sm:gap-x-10">
+          {product.instructors.length > 0 ? (
+            <div>
+              <span className="text-muted-foreground text-[11px] font-semibold">
+                강사
+              </span>
+              <div className="mt-0.5 flex flex-wrap gap-x-2 text-sm font-medium">
+                {product.instructors.map((i) => (
+                  <Link
+                    key={i.slug}
+                    to={`/about/instructors/${i.slug}`}
+                    className="hover:underline"
+                  >
+                    {i.name}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {product.lessonCount > 0 ? (
+            <div>
+              <span className="text-muted-foreground text-[11px] font-semibold">
+                회차
+              </span>
+              <div className="mt-0.5 text-sm font-medium tabular-nums">
+                {product.lessonCount}회차
+              </div>
+            </div>
+          ) : null}
+          {product.courses.length > 0 ? (
+            <div className="min-w-0 flex-1">
+              <span className="text-muted-foreground text-[11px] font-semibold">
+                포함 강의
+              </span>
+              <ul className="mt-0.5 space-y-0.5 text-sm">
+                {product.courses.map((c) => (
+                  <li key={c.courseId}>{c.title}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       {/* 본문 — feat-11-008 P5: 섹션(9영역) 우선, 없으면 기존 이미지/HTML 폴백 */}
       {sections.length > 0 ? (
@@ -197,17 +240,8 @@ export default function LectureProductDetail({
               </p>
             </section>
           ) : null}
-          {product.courses.length > 0 ? (
-            <section>
-              <h2 className="mb-2 text-base font-bold">포함 강의</h2>
-              <ul className="text-muted-foreground space-y-1 text-sm">
-                {product.courses.map((c) => (
-                  <li key={c.courseId}>· {c.title}</li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
-          {!product.description && product.courses.length === 0 ? (
+          {/* 포함 강의는 위 구매정보 블록으로 올라갔다 — 본문 유무와 무관하게 보여야 한다. */}
+          {!product.description ? (
             <p className="text-muted-foreground rounded-lg border border-dashed px-5 py-10 text-center text-sm">
               상세 소개가 곧 준비됩니다.
             </p>
@@ -320,14 +354,10 @@ export default function LectureProductDetail({
             <span className="text-muted-foreground text-xs font-semibold">
               수강료
             </span>
-            {discount.listPriceKrw != null ? (
-              <span className="text-muted-foreground text-xs line-through tabular-nums">
-                {discount.listPriceKrw.toLocaleString("ko-KR")}
-              </span>
-            ) : null}
-            <span className="text-lg font-bold tabular-nums">
-              {product.priceKrw.toLocaleString("ko-KR")}원
-            </span>
+            <PriceTag
+              priceKrw={product.priceKrw}
+              listPriceKrw={product.listPriceKrw}
+            />
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {product.owned ? (

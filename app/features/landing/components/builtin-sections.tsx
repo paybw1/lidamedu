@@ -9,6 +9,10 @@ import type { ComponentProps } from "react";
 
 import { Link } from "react-router";
 
+import { excerpt } from "~/core/lib/seo";
+
+import { SITE_LOCATION } from "../lib/site-intro";
+
 import { EXAM_ROUND_LABEL } from "~/features/exam-results/labels";
 import { REVIEWS_ENABLED } from "~/features/lms/reviews-config";
 
@@ -30,7 +34,18 @@ export function BuiltinVideo({
 }
 
 // ── 리담소식 ────────────────────────────────────────────────────────────
-export function BuiltinNews({ news }: { news: NewsRow[] }) {
+export function BuiltinNews({
+  news,
+  event,
+}: {
+  news: NewsRow[];
+  /**
+   * 「진행중 이벤트」 카드에 쓸 소식(kind="event") 한 건. null 이면 카드를 그리지 않는다.
+   * ★종전에는 "특허법 무료체험 15일" 이 코드에 박혀 **이벤트 유무와 무관하게 항상** 떴다.
+   *   이제 운영 주체가 /admin/lecture-news 로 명확해진다.
+   */
+  event: NewsRow | null;
+}) {
   return (
     <section className="band" id="news">
       <div className="wrap">
@@ -66,20 +81,18 @@ export function BuiltinNews({ news }: { news: NewsRow[] }) {
               </p>
             ) : null}
           </Reveal>
-          <Reveal className="eventcard">
-            <div className="in">
-              <span className="k">진행중 이벤트</span>
-              <h3>
-                특허법 무료체험
-                <br />
-                15일, 지금 시작
-              </h3>
-              <p>가입만 해도 특허법 강의와 통합 학습 자료를 15일간 무료로.</p>
-              <Link className="btn gilt" to="/join">
-                무료로 시작 →
-              </Link>
-            </div>
-          </Reveal>
+          {event ? (
+            <Reveal className="eventcard">
+              <div className="in">
+                <span className="k">진행중 이벤트</span>
+                <h3>{event.title}</h3>
+                {event.body_md ? <p>{excerpt(event.body_md, 80)}</p> : null}
+                <Link className="btn gilt" to={`/lecture/news/${event.news_id}`}>
+                  자세히 보기 →
+                </Link>
+              </div>
+            </Reveal>
+          ) : null}
         </div>
       </div>
     </section>
@@ -465,11 +478,11 @@ export function BuiltinFinal() {
         <Reveal className="loc">
           <div className="li">
             <span className="k">주소</span>
-            <span className="v">서울 서초구 서초대로 131 로고스빌딩 2층</span>
+            <span className="v">{SITE_LOCATION.address}</span>
           </div>
           <div className="li">
             <span className="k">지하철</span>
-            <span className="v">7호선 내방역 8번 출구 도보 4분</span>
+            <span className="v">{SITE_LOCATION.transit}</span>
           </div>
           <div className="li">
             <span className="k">문의</span>

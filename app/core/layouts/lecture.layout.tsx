@@ -34,9 +34,9 @@ import {
   EXTERNAL_LECTURE_URL,
   LECTURE_COMMUNITY_LINKS,
   LECTURE_GATE_STAGE,
-  LECTURE_GUIDE_LINKS,
   isPublicLecturePath,
   lectureEntryAllowed,
+  lectureGuideLinks,
   lectureMypageLinks,
 } from "../lib/platforms";
 import { requireAccessApproval } from "../lib/require-approval.server";
@@ -133,7 +133,7 @@ export default function LectureLayout({ loaderData }: Route.ComponentProps) {
           <PlatformSwitch isStaff={isStaff} />
 
           {/* 강의 플랫폼 네비 — 데스크톱(마이페이지 드롭다운) */}
-          <LectureNav isStaff={isStaff} />
+          <LectureNav isStaff={isStaff} loggedIn={!!user} />
 
           <div className="ml-auto flex items-center gap-2">
             <CartLink />
@@ -182,10 +182,10 @@ export default function LectureLayout({ loaderData }: Route.ComponentProps) {
         </div>
 
         {/* 모바일 강의 네비 — 상단 바 아래 가로 스크롤 탭(자식 노드 평탄화) */}
-        <LectureNavMobile isStaff={isStaff} />
+        <LectureNavMobile isStaff={isStaff} loggedIn={!!user} />
 
         {/* 리담안내/마이페이지 화면에서만 — 하위 sticky 서브내비(헤더에 포함돼 함께 고정) */}
-        <LectureSubNav links={LECTURE_GUIDE_LINKS} />
+        <LectureSubNav links={lectureGuideLinks(!!user)} />
         {/* ★커뮤니티 자식 중 「강사 모집」(/about/instructors/recruit)만 강의 레이아웃 소속이다.
             폰 탭줄에서 자식을 펼치지 않게 되면서 그 화면의 형제 링크 줄이 사라지므로 여기서 준다.
             나머지 3개(/community/*)는 학습 플랫폼 소속이라 이 레이아웃이 마운트되지 않는다. */}

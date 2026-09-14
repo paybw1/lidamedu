@@ -3,12 +3,15 @@
 // ★이 두 함수는 "누가 무엇을 볼 수 있는가"를 정하는 보안 경계다. 특히
 //   isPublicLecturePath 가 한 글자 더 먹으면 로그인 뒤에 있어야 할 화면이 공개된다
 //   ("/lecture" 정확일치 = 내 강의실, "/lecture/cart" = 장바구니).
-// ★같은 목록을 사이트맵·robots 도 읽으므로, 여기서 공개로 판정되는 것은 곧 색인 대상이다.
+// ★같은 목록을 게이트·사이트맵·robots 가 함께 읽는다. 단 **열람 ≠ 색인** — 고객센터는
+//   열되 사이트맵에는 싣지 않는다(INDEXABLE_LECTURE_PATHS).
 
 import { describe, expect, it } from "vitest";
 
 import {
+  INDEXABLE_LECTURE_PATHS,
   LECTURE_GATE_STAGE,
+  PUBLIC_LECTURE_PATHS,
   isPublicLecturePath,
   lectureEntryAllowed,
 } from "./platforms";
@@ -55,13 +58,26 @@ describe("isPublicLecturePath", () => {
       "/lecture/points",
       "/lecture/wishlist",
       "/lecture/settlements",
-      "/lecture/support",
-      "/lecture/support/new",
-      "/lecture/announcements",
+      "/lecture/announcements", // 개인 수신함 — 로그인 전용
       "/lecture/room/abc",
       "/lecture/watch/abc",
     ]) {
       expect(isPublicLecturePath(p), p).toBe(false);
+    }
+  });
+
+  it("★고객센터는 열람은 열되(공개) 색인 대상은 아니다", () => {
+    // 상단 메뉴에 상시 노출돼 처음 온 사람이 먼저 누르는 자리 — 401 오류 화면이면 안 된다.
+    // 다만 사용자 작성 문의라 검색 결과에 실을 이유가 없다(robots 에서도 차단).
+    expect(isPublicLecturePath("/lecture/support")).toBe(true);
+    expect(isPublicLecturePath("/lecture/support/new")).toBe(true);
+    expect(INDEXABLE_LECTURE_PATHS).not.toContain("/lecture/support");
+    expect(PUBLIC_LECTURE_PATHS).toContain("/lecture/support");
+  });
+
+  it("색인 목록은 공개 목록의 부분집합이다", () => {
+    for (const p of INDEXABLE_LECTURE_PATHS) {
+      expect(PUBLIC_LECTURE_PATHS, p).toContain(p);
     }
   });
 

@@ -66,7 +66,7 @@ type CouponState =
 
 export default function LectureCart({ loaderData }: Route.ComponentProps) {
   const { products, books, bundles, isAuthed, tossClientKey } = loaderData;
-  const { items, remove, setBookQty, clear } = useCart();
+  const { items, remove, setBookQty, clear, addBook } = useCart();
   const [couponInput, setCouponInput] = useState("");
   const [coupon, setCoupon] = useState<CouponState>({ status: "none" });
   const [checking, setChecking] = useState(false);
@@ -113,6 +113,29 @@ export default function LectureCart({ loaderData }: Route.ComponentProps) {
       });
     }
   }
+  // ★필수 교재 미담김 경고 (feat-11-012 P4 — 최소안).
+  //   배지로 필수/선택을 보여주면서도 수강신청 버튼은 강의만 결제했다. 경고도 동반 담기도
+  //   없어서, 목록 카드에서 바로 산 사람은 필수 교재가 있다는 사실조차 못 봤다.
+  //   ★서버 강제(동반 결제)는 **원장 결정** — 그리고 카탈로그 카드의 「바로 구매」가 아직
+  //     결제 검증 함수를 우회하므로(뮤테이션 경로 동결) 그 경로를 통일한 뒤에야 실효가 있다.
+  //   필요한 값(product.books[].requirement)은 이미 실려 있어 추가 쿼리가 없다.
+  const bookIdsInCart = new Set(
+    items.filter((i) => i.kind === "book").map((i) => i.bookId),
+  );
+  const missingRequired: Array<{ bookId: string; title: string }> = [];
+  for (const it of items) {
+    if (it.kind !== "plan") continue;
+    const p = planByCode.get(it.code);
+    if (!p) continue;
+    for (const b of p.books) {
+      if (b.requirement !== "required") continue;
+      if (b.soldOut) continue; // 품절 교재를 담으라고 권하지 않는다
+      if (bookIdsInCart.has(b.bookId)) continue;
+      if (missingRequired.some((m) => m.bookId === b.bookId)) continue;
+      missingRequired.push({ bookId: b.bookId, title: b.title });
+    }
+  }
+
   const total = lines.reduce((s, l) => s + l.lineTotal, 0);
   const discount =
     coupon.status === "applied" ? Math.min(coupon.discount, total) : 0;
@@ -199,6 +222,36 @@ export default function LectureCart({ loaderData }: Route.ComponentProps) {
         </div>
       ) : (
         <>
+          {missingRequired.length > 0 ? (
+            <div className="border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200 mt-6 rounded-xl border px-4 py-3">
+              <p className="text-sm font-semibold">
+                담긴 강의의 필수 교재 {missingRequired.length}권이 장바구니에 없습니다
+              </p>
+              <ul className="mt-2 space-y-1.5">
+                {missingRequired.map((m) => (
+                  <li
+                    key={m.bookId}
+                    className="flex items-center justify-between gap-3"
+                  >
+                    <Link
+                      to={`/lecture/books/${m.bookId}`}
+                      className="min-w-0 flex-1 truncate text-sm hover:underline"
+                    >
+                      {m.title}
+                    </Link>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => addBook(m.bookId)}
+                    >
+                      담기
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <ul className="mt-6 divide-y rounded-xl border">
             {lines.map((l) => (
               <li key={l.key} className="flex items-center gap-3 px-4 py-3">

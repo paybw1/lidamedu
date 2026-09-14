@@ -1,6 +1,6 @@
 // feat-6-011 고객센터 — 학생 문의 목록(/support). 내 문의 + 공개 문의(FAQ). RLS 가시성.
 import { LockIcon, MessageCircleQuestionIcon, PlusIcon } from "lucide-react";
-import { Link, data } from "react-router";
+import { Link } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
@@ -25,11 +25,15 @@ export async function loader({ request }: Route.LoaderArgs) {
   const {
     data: { user },
   } = await client.auth.getUser();
-  if (!user) throw data(null, { status: 401 });
+  // ★비로그인도 연다(feat-11-012 P3) — 상단 메뉴에 상시 노출돼 처음 온 사람이 먼저 누르는
+  //   자리인데 종전에는 401 오류 화면이었다. 랜딩의 진입점 3곳(FAQ 하단·최종 CTA·오시는 길)이
+  //   전부 여기로 온다. 접근통제는 RLS 가 강제한다 — 비공개 문의는 애초에 내려오지 않는다.
   const rows = await listInquiries(client);
-  const mine = rows.filter((r) => r.authorId === user.id);
-  const others = rows.filter((r) => r.authorId !== user.id); // 공개 문의(비공개는 RLS 로 이미 제외)
-  return { mine, others };
+  const mine = user ? rows.filter((r) => r.authorId === user.id) : [];
+  const others = user
+    ? rows.filter((r) => r.authorId !== user.id)
+    : rows; // 비로그인에게는 RLS 가 걸러 준 공개 문의만 남는다
+  return { mine, others, isAuthed: !!user };
 }
 
 const STATUS_VARIANT: Record<CsStatus, "default" | "secondary" | "outline"> = {
@@ -77,7 +81,7 @@ function InquiryRow({ it, mine }: { it: CsInquiryRow; mine: boolean }) {
 }
 
 export default function SupportList({ loaderData }: Route.ComponentProps) {
-  const { mine, others } = loaderData;
+  const { mine, others, isAuthed } = loaderData;
   return (
     <CohortBoardShell
       title="고객센터"
@@ -85,13 +89,15 @@ export default function SupportList({ loaderData }: Route.ComponentProps) {
       width="narrow"
       headerRight={
         <Button asChild size="sm">
-          <Link to="/lecture/support/new">
-            <PlusIcon className="size-4" /> 문의하기
+          <Link to={isAuthed ? "/lecture/support/new" : "/login"}>
+            <PlusIcon className="size-4" />{" "}
+            {isAuthed ? "문의하기" : "로그인하고 문의하기"}
           </Link>
         </Button>
       }
     >
       {/* 자주 묻는 질문(FAQ)은 랜딩(/lecture/home) 하단으로 이동. 여기서는 문의만. */}
+      {isAuthed ? (
       <section className="mb-6">
         <h2 className="mb-2 text-sm font-bold">내 문의</h2>
         {mine.length === 0 ? (
@@ -107,6 +113,7 @@ export default function SupportList({ loaderData }: Route.ComponentProps) {
           </ul>
         )}
       </section>
+      ) : null}
 
       {others.length > 0 ? (
         <section>

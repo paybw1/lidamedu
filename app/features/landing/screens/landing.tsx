@@ -39,9 +39,11 @@ import {
   YoutubeModule,
 } from "../components/custom-modules";
 import { HeroCarousel } from "../components/hero-carousel";
+import { HeroIntro, hasTextHero } from "../components/hero-intro";
 import { KakaoFloat } from "../components/kakao-float";
 import { LandingStyle } from "../components/landing-style";
 import { buildLectureVideosPublic } from "../lib/lecture-videos.server";
+import { SITE_INTRO, buildSiteFacts } from "../lib/site-intro";
 import {
   DEVICE_CLASS,
   heroBannerConfigSchema,
@@ -60,13 +62,10 @@ import {
 import type { Route } from "./+types/landing";
 import { pageMeta } from "~/core/lib/seo";
 
+// ★제목·설명은 화면과 **같은 곳**에서 읽는다 — 검색 결과와 첫 화면이 다른 말을 하지 않게.
 export const meta: Route.MetaFunction = (a) =>
   pageMeta(
-    {
-      title: "리담변리사학원 — 변리사 시험, 합격까지 함께",
-      description:
-        "전임 강사진의 현장강의와 조문·판례·문제 통합 학습으로 변리사 시험 합격까지 함께합니다. 현장강의 일정·수강신청·합격 수기.",
-    },
+    { title: SITE_INTRO.metaTitle, description: SITE_INTRO.description },
     a,
   );
 
@@ -157,6 +156,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     plans,
     tierGap,
     todayISO,
+    // 첫 화면 지표 — 강사 수는 이미 조회한 목록의 행 수다(새 쿼리 없음).
+    facts: buildSiteFacts({ instructorCount: instructors.length }),
   };
 }
 
@@ -175,6 +176,7 @@ export default function Landing({ loaderData }: Route.ComponentProps) {
     plans,
     tierGap,
     todayISO,
+    facts,
   } = loaderData;
   // tier 1=메인 히어로 캐러셀, 2·3=히어로 아래 추가 단.
   const bannersByTier = (tier: number) =>
@@ -193,12 +195,37 @@ export default function Landing({ loaderData }: Route.ComponentProps) {
           ? heroBannerConfigSchema.parse(config).tier
           : seq + 1;
         if (tier === 1) {
+          const tier1 = bannersByTier(1);
+          // ★배너가 0건이면 캐러셀이 null 을 돌려줘 페이지에 h1 이 하나도 남지 않는다.
+          //   그 자리에 소개 히어로를 세운다.
+          if (tier1.length === 0) {
+            return (
+              <HeroIntro
+                facts={facts}
+                schedules={schedules}
+                todayISO={todayISO}
+              />
+            );
+          }
+          // ★실측: 운영 배너가 전부 이미지형이라 h1 이 0개였다. 배너는 그대로 두고
+          //   그 아래 소개 밴드 한 줄을 더한다(텍스트 배너가 있으면 더하지 않는다).
           return (
-            <HeroCarousel
-              banners={bannersByTier(1)}
-              schedules={schedules}
-              todayISO={todayISO}
-            />
+            <>
+              <HeroCarousel
+                banners={tier1}
+                schedules={schedules}
+                todayISO={todayISO}
+                facts={facts}
+              />
+              {hasTextHero(tier1) ? null : (
+                <HeroIntro
+                  variant="band"
+                  facts={facts}
+                  schedules={schedules}
+                  todayISO={todayISO}
+                />
+              )}
+            </>
           );
         }
         return (
@@ -223,7 +250,12 @@ export default function Landing({ loaderData }: Route.ComponentProps) {
       case "builtin_video":
         return <BuiltinVideo videos={videos} />;
       case "builtin_news":
-        return <BuiltinNews news={news.slice(0, 5)} />;
+        return (
+          <BuiltinNews
+            news={news.slice(0, 5)}
+            event={news.find((n) => n.kind === "event") ?? null}
+          />
+        );
       case "builtin_schedule":
         return <BuiltinSchedule schedules={schedules} todayISO={todayISO} />;
       case "builtin_curriculum":

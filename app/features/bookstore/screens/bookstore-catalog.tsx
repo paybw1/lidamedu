@@ -1,5 +1,6 @@
 // 도서몰 카탈로그(강의 플랫폼) — 썸네일 그리드 + 검색·정렬 + 장바구니 담기. feat-11 B1.
 import type { Route } from "./+types/bookstore-catalog";
+import { PriceTag } from "~/features/lms/components/price-tag";
 import { pageMeta } from "~/core/lib/seo";
 
 import {
@@ -391,16 +392,11 @@ export function BookGridCard({
           </p>
         ) : null}
         <div className="mt-2 flex items-center justify-between gap-1">
-          <span className="flex items-baseline gap-1">
-            {book.listPriceKrw && book.listPriceKrw > book.priceKrw ? (
-              <span className="text-muted-foreground text-[11px] line-through">
-                {book.listPriceKrw.toLocaleString("ko-KR")}
-              </span>
-            ) : null}
-            <span className="text-sm font-bold tabular-nums">
-              {book.priceKrw.toLocaleString("ko-KR")}원
-            </span>
-          </span>
+          <PriceTag
+            size="sm"
+            priceKrw={book.priceKrw}
+            listPriceKrw={book.listPriceKrw}
+          />
           {book.soldOut ? (
             <Badge variant="secondary" className="text-[10px]">
               품절
