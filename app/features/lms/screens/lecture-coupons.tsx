@@ -8,7 +8,7 @@ import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { kstToday } from "~/core/lib/kst";
 
-import { MyPagePlaceholder } from "../components/mypage-placeholder";
+import { EmptyState } from "../components/empty-state";
 
 import type { Route } from "./+types/lecture-coupons";
 
@@ -149,15 +149,6 @@ const STATUS_BADGE: Record<string, { label: string; variant: "default" | "second
 
 export default function LectureCoupons({ loaderData }: Route.ComponentProps) {
   const { coupons } = loaderData;
-  if (coupons.length === 0) {
-    return (
-      <MyPagePlaceholder
-        title="쿠폰 관리"
-        desc="보유한 쿠폰이 없습니다. 쿠폰은 가입·첫 구매 시 자동 발급되거나, 결제 화면에서 쿠폰 코드를 입력해 적용할 수 있습니다."
-        icon={<TicketPercentIcon className="size-6" />}
-      />
-    );
-  }
   const usable = coupons.filter((c) => c.status === "available").length;
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-8 md:px-6 md:py-10">
@@ -171,6 +162,17 @@ export default function LectureCoupons({ loaderData }: Route.ComponentProps) {
         </p>
       </header>
 
+      {coupons.length === 0 ? (
+        <EmptyState
+          icon={<TicketPercentIcon className="size-6" />}
+          title="보유한 쿠폰이 없습니다"
+          description="쿠폰은 가입·첫 구매 시 자동 발급되거나, 포인트로 교환해 받을 수 있습니다."
+          actions={[
+            { label: "포인트로 교환하기", to: "/lecture/points" },
+            { label: "수강신청", to: "/lecture/catalog" },
+          ]}
+        />
+      ) : (
       <ul className="flex flex-col gap-3">
         {coupons.map((c) => {
           const badge = STATUS_BADGE[c.status];
@@ -204,6 +206,7 @@ export default function LectureCoupons({ loaderData }: Route.ComponentProps) {
           );
         })}
       </ul>
+      )}
     </div>
   );
 }

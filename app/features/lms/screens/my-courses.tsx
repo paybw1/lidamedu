@@ -28,8 +28,11 @@ import {
   getCourseExtensionDefaults,
   getReviewRewardPoints,
 } from "~/core/lib/app-settings.server";
+import { EmptyState } from "~/features/lms/components/empty-state";
+import { enrollmentStatusLabel } from "~/features/lms/lib/enrollment-status";
 import { resolveExtensionContexts } from "~/features/lms/extension.server";
 import { EXTENSION_DEFAULTS_FALLBACK } from "~/features/lms/lib/extension-policy";
+import { resumeOverduePauses } from "~/features/lms/pause.server";
 import { getMyPlanReviews } from "~/features/lms/reviews.server";
 import {
   REVIEWS_ENABLED,
@@ -43,19 +46,22 @@ export const meta: Route.MetaFunction = () => [
   { title: "내 강의 | 리담변리사학원" },
 ];
 
-const STATUS_LABEL: Record<string, string> = {
-  active: "수강중",
-  paused: "일시정지",
-  expired: "만료",
-  revoked: "종료",
-};
-
 export async function loader({ request }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);
   const {
     data: { user },
   } = await client.auth.getUser();
   if (!user) throw redirect("/login");
+
+  // ★조회 시점 자동 재개 — 정지 종료일이 지났으면 내 강의실을 여는 그 자리에서 푼다
+  //   (feat-11-012 P6-b). 종전에는 종료일이 저장돼 있는데도 보는 코드가 없어, 학생이
+  //   고객센터에 연락해 운영자가 손으로 풀어 줄 때까지 재생이 막혔다.
+  //   무통장 기한 만료의 선례대로 cron(매일)과 이중이며 멱등하다. 실패해도 화면은 그린다.
+  try {
+    await resumeOverduePauses();
+  } catch {
+    // 무시 — 재개가 안 됐다고 내 강의실이 안 열리면 안 된다.
+  }
 
   const { data: enrollments } = await client
     .from("enrollments")
@@ -361,11 +367,15 @@ export default function MyCourses({ loaderData }: Route.ComponentProps) {
       </h1>
 
       {courses.length === 0 ? (
-        <Card>
-          <CardContent className="text-muted-foreground py-12 text-center text-sm">
-            보유한 강의 수강권이 없습니다.
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<ClapperboardIcon className="size-6" />}
+          title="아직 수강 중인 강의가 없습니다"
+          description="수강신청한 강의가 이곳에 모입니다. 먼저 어떤 강의가 열려 있는지 둘러보세요."
+          actions={[
+            { label: "강의 둘러보기", to: "/lecture/catalog" },
+            { label: "강의 일정 보기", to: "/lecture/home" },
+          ]}
+        />
       ) : (
         courses.map((c) => (
           <CourseCard
@@ -377,7 +387,9 @@ export default function MyCourses({ loaderData }: Route.ComponentProps) {
         ))
       )}
 
-      <Card>
+      {/* ★재생이 「기기 초과」로 막혔을 때 안내가 이 카드를 가리킨다(/lecture#devices) —
+          lib/lock-notice.ts. 앵커를 지우면 안내가 화면 맨 위로 떨어진다. */}
+      <Card id="devices" className="scroll-mt-24">
         <CardHeader className="pb-2">
           <h2 className="flex items-center gap-1.5 text-[15px] font-bold">
             <MonitorSmartphoneIcon className="size-4" /> 등록 기기
@@ -538,7 +550,7 @@ function CourseCard({
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-[15px] font-bold">{course.label}</h2>
           <Badge variant={course.status === "active" ? "default" : "secondary"}>
-            {STATUS_LABEL[course.status] ?? course.status}
+            {enrollmentStatusLabel(course.status)}
           </Badge>
           {completed ? <Badge variant="outline">완강</Badge> : null}
         </div>

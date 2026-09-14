@@ -6,7 +6,9 @@ import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import makeServerClient from "~/core/lib/supa-client.server";
 
-import { MyPagePlaceholder } from "../components/mypage-placeholder";
+import { enrollmentStatusLabel } from "../lib/enrollment-status";
+
+import { EmptyState } from "../components/empty-state";
 
 import type { Route } from "./+types/lecture-certificates";
 
@@ -56,15 +58,6 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export default function LectureCertificates({ loaderData }: Route.ComponentProps) {
   const { items } = loaderData;
-  if (items.length === 0) {
-    return (
-      <MyPagePlaceholder
-        title="증명서 발급"
-        desc="발급 가능한 수강 내역이 없습니다. 강의 수강 시 이곳에서 수강증명서를 발급하실 수 있습니다. 영수증이 필요하시면 결제내역 조회를 이용해 주세요."
-        icon={<FileBadgeIcon className="size-6" />}
-      />
-    );
-  }
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-8 md:px-6 md:py-10">
       <header className="mb-6">
@@ -77,6 +70,17 @@ export default function LectureCertificates({ loaderData }: Route.ComponentProps
         </p>
       </header>
 
+      {items.length === 0 ? (
+        <EmptyState
+          icon={<FileBadgeIcon className="size-6" />}
+          title="아직 발급할 수강증명서가 없습니다"
+          description="강의를 수강하면 이곳에서 수강증명서를 발급(인쇄)할 수 있습니다. 결제 영수증은 결제내역 조회에서 확인하세요."
+          actions={[
+            { label: "수강신청", to: "/lecture/catalog" },
+            { label: "결제내역 조회", to: "/lecture/payments" },
+          ]}
+        />
+      ) : (
       <ul className="flex flex-col gap-3">
         {items.map((it) => (
           <li
@@ -90,7 +94,7 @@ export default function LectureCertificates({ loaderData }: Route.ComponentProps
               </p>
             </div>
             <Badge variant="outline" className="text-[11px]">
-              {it.status === "active" ? "수강중" : it.status}
+              {enrollmentStatusLabel(it.status)}
             </Badge>
             <Button asChild size="sm" variant="outline" className="rounded-full">
               <Link to={`/lecture/certificates/${it.id}/print`}>
@@ -100,6 +104,7 @@ export default function LectureCertificates({ loaderData }: Route.ComponentProps
           </li>
         ))}
       </ul>
+      )}
     </div>
   );
 }

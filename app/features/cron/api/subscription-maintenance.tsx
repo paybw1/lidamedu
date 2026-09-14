@@ -4,11 +4,15 @@
 //       ★단, dunning 유예 중(grace_until 미래)인 구독은 제외 — 재시도·접근을 위해
 //       active 를 유지해야 한다(feat-8-030). 유예까지 지나면 그때 expired.
 //  #3 — 1시간 넘게 미완료(pending)인 결제를 failed 로 마킹(결제 중단 고아 정리).
+//  #5 — 종료일이 지난 수강권 일시정지를 자동 재개(feat-11-012 P6-b). #4 와 같은 취지 —
+//       화면을 아무도 열지 않아도 상태가 현실과 어긋나 있지 않게 한다. 학생·운영자 화면의
+//       조회 시점 처리와 이중이며 멱등하다.
 // 외부 cron 일별 호출. CRON_SECRET 인증. adminClient(RLS 우회).
 
 import { data } from "react-router";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
+import { resumeOverduePauses } from "~/features/lms/pause.server";
 
 import type { Route } from "./+types/subscription-maintenance";
 
@@ -56,11 +60,20 @@ async function run(request: Request) {
     .select("payment_id");
   if (payErr) return data({ error: payErr.message }, { status: 500 });
 
+  // #5 — 종료일 지난 일시정지 자동 재개. 실패해도 위 정리 결과는 돌려준다.
+  let resumedPauses = 0;
+  try {
+    resumedPauses = await resumeOverduePauses();
+  } catch (e) {
+    console.error("[cron] 일시정지 자동 재개 실패:", e);
+  }
+
   return data({
     ok: true,
     summary: {
       expiredSubscriptions: expired?.length ?? 0,
       failedStalePayments: failedPayments?.length ?? 0,
+      resumedPauses,
     },
   });
 }

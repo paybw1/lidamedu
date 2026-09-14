@@ -33,6 +33,7 @@ import {
   type WatchBalance,
 } from "~/features/lms/queries.server";
 import { EXTENSION_DEFAULTS_FALLBACK } from "~/features/lms/lib/extension-policy";
+import { resumeEnrollment, resumeOverduePauses } from "~/features/lms/pause.server";
 import { insertLedgerAdjustment, resetWatchUsage } from "~/features/lms/watch.server";
 import { getPlanPolicies } from "~/features/subscriptions/queries.server";
 
@@ -58,6 +59,14 @@ async function requireManager(request: Request) {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { role } = await requireManager(request);
+  // ★조회 시점 자동 재개 — 종료일이 지난 일시정지를 목록을 여는 김에 푼다(cron 과 이중).
+  //   무통장 입금 기한 만료(expireOverdueBankTransfers)의 선례를 그대로 따른다.
+  //   실패해도 목록은 그린다.
+  try {
+    await resumeOverduePauses();
+  } catch {
+    // 무시 — 재개가 안 됐다고 수강권 목록이 안 열리면 안 된다.
+  }
   const url = new URL(request.url);
   const query = (url.searchParams.get("q") ?? "").trim().slice(0, 60);
   const [rowsRaw, coursesRes, plansRes] = await Promise.all([
@@ -420,35 +429,18 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   if (intent === "resume") {
+    // ★자동 재개(종료일 경과)와 **같은 함수**를 쓴다 — 쓰기가 두 군데로 갈리면
+    //   한쪽만 고쳐져 어긋난다(feat-11-012 P6-b).
     const enrollmentId = String(fd.get("enrollmentId") ?? "");
     if (!enrollmentId) return data({ error: "잘못된 요청" }, { status: 400 });
-    const { error } = await adminClient
-      .from("enrollments")
-      .update({ status: "active" })
-      .eq("enrollment_id", enrollmentId)
-      .eq("status", "paused");
-    if (error) return data({ error: error.message }, { status: 400 });
-    // 최근 미재개 pause 에 재개 시각 기록
-    const { data: lastPause } = await adminClient
-      .from("enrollment_pauses")
-      .select("pause_id")
-      .eq("enrollment_id", enrollmentId)
-      .is("resumed_at", null)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (lastPause) {
-      await adminClient
-        .from("enrollment_pauses")
-        .update({ resumed_at: new Date().toISOString() })
-        .eq("pause_id", lastPause.pause_id);
-    }
-    await logEnrollmentAdminAction({
+    const ok = await resumeEnrollment({
       enrollmentId,
       actorId: user.id,
-      action: "resume",
       reason: "일시정지 재개 (관리자)",
     });
+    if (!ok) {
+      return data({ error: "일시정지 상태가 아닙니다." }, { status: 400 });
+    }
     return data({ ok: true as const });
   }
 

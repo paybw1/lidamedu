@@ -177,7 +177,8 @@ export interface CourseDetail {
     sortOrder: number;
     isPreview: boolean;
     isPublished: boolean;
-    maxPlays: number;
+    // ★회차 단위 재생 횟수(course_lessons.max_plays)는 필드에서 뺐다 — 쓰기 경로가 0개고
+    //   판정 권위도 강의 단위(courses.max_plays)다(feat-11-008 P6 · feat-11-012 P6-a).
     staffMemo: string | null;
     activeVideo: {
       videoId: string;
@@ -219,7 +220,7 @@ export async function getCourseDetail(
   }));
   const { data: lessons, error: lErr } = await client
     .from("course_lessons")
-    .select("lesson_id, lesson_no, title, sort_order, is_preview, is_published, max_plays")
+    .select("lesson_id, lesson_no, title, sort_order, is_preview, is_published")
     .eq("course_id", courseId)
     .is("deleted_at", null)
     .order("sort_order")
@@ -270,7 +271,6 @@ export async function getCourseDetail(
         sortOrder: l.sort_order,
         isPreview: l.is_preview,
         isPublished: l.is_published,
-        maxPlays: l.max_plays ?? 2,
         staffMemo: memoByLesson.get(l.lesson_id) ?? null,
         activeVideo: active
           ? {
@@ -737,27 +737,6 @@ export async function getWatchBalances(
         usedSeconds: r.used_seconds ?? 0,
         remainingSeconds: r.remaining_seconds,
       });
-    }
-  }
-  return out;
-}
-
-/** (user, lesson) 별 사용한 재생 횟수 — counts_as_play grant 집계. 회차별 잔여 표시·판정용. */
-export async function getPlaysUsedByLesson(
-  userId: string,
-  lessonIds: string[],
-): Promise<Map<string, number>> {
-  const out = new Map<string, number>();
-  if (lessonIds.length === 0) return out;
-  for (let i = 0; i < lessonIds.length; i += 150) {
-    const { data } = await adminClient
-      .from("playback_grants")
-      .select("lesson_id")
-      .eq("user_id", userId)
-      .eq("counts_as_play", true)
-      .in("lesson_id", lessonIds.slice(i, i + 150));
-    for (const g of data ?? []) {
-      out.set(g.lesson_id, (out.get(g.lesson_id) ?? 0) + 1);
     }
   }
   return out;

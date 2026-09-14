@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { Button } from "~/core/components/ui/button";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { EmptyState } from "~/features/lms/components/empty-state";
 import { getPointBalance } from "~/features/points/points.server";
 import adminClient from "~/core/lib/supa-admin-client.server";
 
@@ -214,11 +215,14 @@ export default function LecturePoints({ loaderData }: Route.ComponentProps) {
 
       <h2 className="mb-2 text-base font-bold">적립·사용 내역</h2>
       {txns.length === 0 ? (
-        <div className="border-border text-muted-foreground rounded-xl border border-dashed py-12 text-center text-sm">
-          적립·사용 내역이 없습니다.
-          <br />
-          강의 수강·이벤트 참여 시 포인트가 적립됩니다.
-        </div>
+        <EmptyState
+          title="아직 적립·사용 내역이 없습니다"
+          description="강의를 수강하거나 수강 후기를 남기면 포인트가 쌓입니다."
+          actions={[
+            { label: "수강신청", to: "/lecture/catalog" },
+            { label: "내 강의", to: "/lecture" },
+          ]}
+        />
       ) : (
         <ul className="divide-border border-border bg-card divide-y rounded-xl border">
           {txns.map((t) => (

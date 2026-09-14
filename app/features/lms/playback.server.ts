@@ -24,27 +24,18 @@ import {
   ensureDeviceForPlayback,
 } from "~/features/lms/devices.server";
 import { buildKollusWebTokenUrl } from "~/features/lms/lib/kollus-token.server";
-import {
-  getLessonUsageForLesson,
-  getRemainingSeconds,
-} from "~/features/lms/watch.server";
+import type { PlaybackDenyReason } from "~/features/lms/lib/lock-notice";
+import { getPlayLimitForLesson } from "~/features/lms/play-limit.server";
+import { getRemainingSeconds } from "~/features/lms/watch.server";
 
 const GRANT_TTL_MINUTES = 10;
 // 재생 URL(JWT expt) 유효기간 — 긴 강의도 끊기지 않게 구간 보고 창(6h)에 맞춘다.
 const PLAY_TOKEN_TTL_SECONDS = 6 * 3600;
 
-export type PlaybackDenyReason =
-  | "login_required"
-  | "no_enrollment"
-  | "expired"
-  | "paused"
-  | "lesson_blocked"
-  | "not_published"
-  | "no_video"
-  | "multiplier_exhausted" // (폐지) 시간 제한 — 잔존 호환용
-  | "play_limit_exhausted" // 회차별 재생 횟수 소진
-  | "device_not_registered" // M3
-  | "session_superseded"; // 다른 기기에서 더 새 로그인 — 단일 세션(feat-11-012 P0)
+// 사유 타입·문구는 **서버 밖**(lib/lock-notice.ts)에 있다 — 강의실 목록과 재생 화면이
+// 같은 말을 해야 하는데, 화면이 서버 모듈을 import 하면 build 가 깨진다(feat-11-012 P6-b).
+export type { PlaybackDenyReason } from "~/features/lms/lib/lock-notice";
+export { PLAYBACK_DENY_MESSAGE } from "~/features/lms/lib/lock-notice";
 
 export type PlaybackJudgement =
   | {
@@ -71,7 +62,9 @@ export async function requestPlaybackGrant(
   // 1) 회차·영상 확인 (adminClient — drm 필드는 학생 RLS 로 안 보임)
   const { data: lesson } = await adminClient
     .from("course_lessons")
-    .select("lesson_id, course_id, is_preview, is_published, deleted_at, max_plays")
+    // ★course_lessons.max_plays 는 빼 뒀다 — 판정 권위는 courses.max_plays 다(feat-11-008 P6).
+    //   회차 쪽 컬럼은 쓰기 경로가 0개인 죽은 컬럼이라 select 에 남겨 두면 오해를 부른다.
+    .select("lesson_id, course_id, is_preview, is_published, deleted_at")
     .eq("lesson_id", input.lessonId)
     .maybeSingle();
   if (!lesson || lesson.deleted_at || !lesson.is_published) {
@@ -143,21 +136,18 @@ export async function requestPlaybackGrant(
     //   차감은 횟수가 아니라 **실제 학습시간 비례** — 회차 허용량 = max_plays × 강의 길이(초).
     //   누적 학습시간(watch_ledger)이 허용량 이상이면 차단. 길이 미확인 회차는 fail-open.
     //   ★소비량은 watch_ledger 기준 — 관리자 '사용량 초기화'(reset 행)가 그대로 반영된다.
+    //   ★판정은 play-limit.server 하나로 모았다(feat-11-012 P6-a) — 강의실 목록·하트비트
+    //   차감 가드·관리자 CS 조회가 같은 함수를 읽는다. grant 는 이력으로만 남긴다.
     {
-      const { data: course } = await adminClient
-        .from("courses")
-        .select("max_plays")
-        .eq("course_id", lesson.course_id)
-        .maybeSingle();
-      const maxPlays = course?.max_plays ?? null; // null = 무제한
-      const durationSeconds = video.duration_seconds ?? 0;
-      if (maxPlays != null && durationSeconds > 0) {
-        const used = await getLessonUsageForLesson(enrollmentId, input.lessonId);
-        if (used >= maxPlays * durationSeconds) {
-          return { ok: false, reason: "play_limit_exhausted" };
-        }
+      const limit = await getPlayLimitForLesson({
+        enrollmentId,
+        courseId: lesson.course_id,
+        lessonId: input.lessonId,
+        durationSeconds: video.duration_seconds ?? 0,
+      });
+      if (limit.exhausted) {
+        return { ok: false, reason: "play_limit_exhausted" };
       }
-      // grant 는 이력으로만 남긴다(횟수 차감 판정에는 더 이상 쓰지 않음).
     }
     // (배수/시간 제한 폐지 — ENFORCE_MULTIPLIER=false)
     if (ENFORCE_MULTIPLIER) {
@@ -237,18 +227,3 @@ export async function requestPlaybackGrant(
     durationSeconds: video.duration_seconds,
   };
 }
-
-export const PLAYBACK_DENY_MESSAGE: Record<PlaybackDenyReason, string> = {
-  login_required: "로그인 후 시청할 수 있습니다.",
-  no_enrollment: "수강권이 없습니다. 수강 신청 후 이용해 주세요.",
-  expired: "수강 기간이 만료되었습니다.",
-  paused: "수강권이 일시정지 상태입니다. 재개 후 시청할 수 있습니다.",
-  lesson_blocked: "이 회차는 재생이 제한되어 있습니다. 문의해 주세요.",
-  not_published: "준비 중인 강의입니다.",
-  no_video: "영상이 아직 등록되지 않았습니다.",
-  multiplier_exhausted: "시청 가능 시간을 모두 사용했습니다.",
-  play_limit_exhausted: "이 회차의 재생 가능 횟수를 모두 사용했습니다.",
-  device_not_registered: "등록되지 않은 기기입니다. 기기 관리에서 등록해 주세요.",
-  session_superseded:
-    "다른 기기에서 로그인되어 이 기기에서는 재생할 수 없습니다. 다시 로그인해 주세요.",
-};

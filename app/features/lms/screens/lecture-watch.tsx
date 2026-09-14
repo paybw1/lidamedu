@@ -18,19 +18,21 @@ import {
 import { Link, data } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
+import { duration as fmtDuration } from "~/core/lib/format";
 import { cn } from "~/core/lib/utils";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
+import {
+  type PlaybackDenyReason,
+  lockNotice,
+} from "~/features/lms/lib/lock-notice";
 import {
   PLAYER_SIZES,
   PLAYER_SIZE_LABEL,
   type PlayerSize,
   usePlayerSize,
 } from "~/features/lms/lib/use-player-size";
-import {
-  PLAYBACK_DENY_MESSAGE,
-  requestPlaybackGrant,
-} from "~/features/lms/playback.server";
+import { requestPlaybackGrant } from "~/features/lms/playback.server";
 import {
   getLessonProgressForUser,
   getResumePosition,
@@ -124,12 +126,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   };
 
   if (!judgement.ok) {
-    return {
-      ok: false as const,
-      reason: judgement.reason,
-      message: PLAYBACK_DENY_MESSAGE[judgement.reason],
-      ...base,
-    };
+    return { ok: false as const, reason: judgement.reason, ...base };
   }
 
   const resumeSeconds =
@@ -155,14 +152,22 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 function useApproxWatchHeartbeat(opts: {
   grantId: string | null;
   durationSeconds: number;
+  startSeconds: number;
   enabled: boolean;
 }) {
-  const { grantId, durationSeconds, enabled } = opts;
+  const { grantId, durationSeconds, startSeconds, enabled } = opts;
   const posRef = useRef(0);
   const seqRef = useRef(0);
   useEffect(() => {
     if (!enabled || !grantId || durationSeconds <= 0) return;
-    posRef.current = 0;
+    // ★feat-11-012 P6-a — **커서 시드.** 종전에는 화면에 들어올 때마다 0 에서 다시 셌다.
+    //   이미 본 구간을 매번 처음부터 덮어 보고하니, 진도(구간 union 병합)는 같은 자리만
+    //   거듭 채워 앞부분에 갇혔다 — 운영 실측: 한 회차에서 원시 513초를 보고했는데 누적
+    //   진도는 73초에 멈춰 있었다. 마지막 위치에서 시작하면 그 중복이 사라진다.
+    // ★끝까지 본 회차는 0 에서 시작한다 — 안 그러면 posRef 가 곧바로 길이에 닿아 아래
+    //   가드에 걸려 **다시 볼 때 한 번도 보고되지 않는다**(진도·차감이 통째로 멈춘다).
+    posRef.current =
+      startSeconds > 0 && startSeconds < durationSeconds ? startSeconds : 0;
     seqRef.current = 0;
     let last = Date.now();
     let stopped = false;
@@ -198,18 +203,7 @@ function useApproxWatchHeartbeat(opts: {
       stopped = true;
       window.clearInterval(id);
     };
-  }, [grantId, durationSeconds, enabled]);
-}
-
-function fmtClock(sec: number): string {
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
-function fmtDuration(sec: number): string {
-  if (sec <= 0) return "";
-  const m = Math.round(sec / 60);
-  return `${m}분`;
+  }, [grantId, durationSeconds, startSeconds, enabled]);
 }
 
 type WatchLesson = {
@@ -226,6 +220,7 @@ export default function LectureWatch({ loaderData }: Route.ComponentProps) {
   useApproxWatchHeartbeat({
     grantId: loaderData.ok ? loaderData.grantId : null,
     durationSeconds: loaderData.ok ? loaderData.durationSeconds : 0,
+    startSeconds: loaderData.ok ? loaderData.resumeSeconds : 0,
     enabled: loaderData.ok && Boolean(loaderData.playbackUrl),
   });
   const { size, setSize, isFullscreen, toggleFullscreen, playerRef } =
@@ -409,7 +404,7 @@ export default function LectureWatch({ loaderData }: Route.ComponentProps) {
               <PlayerPlaceholder />
             )
           ) : (
-            <DenyView reason={loaderData.reason} message={loaderData.message} />
+            <DenyView reason={loaderData.reason} />
           )}
 
           {/* 회차 헤더 */}
@@ -421,14 +416,12 @@ export default function LectureWatch({ loaderData }: Route.ComponentProps) {
               <span className="text-primary tabular-nums">{lessonNo}강</span>{" "}
               {lessonTitle}
             </h1>
+            {/* ★「이어보기 7:05」는 뺐다(feat-11-012 P6-a) — 크로스오리진 iframe 이라
+                플레이어에 시작 위치를 넣을 통로가 없다. 위치는 표시하면서 거기서
+                시작해 주지는 못하니, 지킬 수 없는 약속이었다. */}
             <div className="text-muted-foreground mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
               {curDuration > 0 ? (
                 <span className="tabular-nums">{fmtDuration(curDuration)}</span>
-              ) : null}
-              {loaderData.ok && loaderData.resumeSeconds > 0 ? (
-                <span className="text-primary font-medium tabular-nums">
-                  이어보기 {fmtClock(loaderData.resumeSeconds)}
-                </span>
               ) : null}
             </div>
           </div>
@@ -646,26 +639,22 @@ function PlayerPlaceholder() {
   );
 }
 
-function DenyView({ reason, message }: { reason: string; message: string }) {
-  const cta =
-    reason === "login_required" ? (
-      <Button asChild size="sm">
-        <Link to="/login">로그인</Link>
-      </Button>
-    ) : reason === "no_enrollment" ? (
-      <Button asChild size="sm">
-        <Link to="/lecture/catalog">수강신청</Link>
-      </Button>
-    ) : (
-      <Button asChild size="sm" variant="outline">
-        <Link to="/lecture">내 강의실</Link>
-      </Button>
-    );
+// ★사유별 문구와 버튼은 lib/lock-notice.ts 한 곳에서 온다 — 강의실 목록도 같은 말을 한다.
+function DenyView({ reason }: { reason: PlaybackDenyReason }) {
+  const notice = lockNotice(reason);
   return (
     <div className="bg-muted/40 flex aspect-video w-full flex-col items-center justify-center rounded-xl border px-6 text-center">
       <LockIcon className="text-muted-foreground/60 size-9" />
-      <p className="mt-3 text-sm font-semibold">{message}</p>
-      <div className="mt-4">{cta}</div>
+      <p className="mt-3 max-w-sm text-sm font-semibold text-balance">
+        {notice.message}
+      </p>
+      {notice.action ? (
+        <div className="mt-4">
+          <Button asChild size="sm">
+            <Link to={notice.action.to}>{notice.action.label}</Link>
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

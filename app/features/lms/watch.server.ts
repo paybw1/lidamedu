@@ -3,7 +3,14 @@
 // ★append-only 규약: watch_events/watch_ledger 에 UPDATE/DELETE 경로를 만들지 않는다.
 
 import adminClient from "~/core/lib/supa-admin-client.server";
+import {
+  getLessonUsageSeconds,
+  getPlayLimitForLesson,
+} from "~/features/lms/play-limit.server";
 import { awardPoints } from "~/features/points/points.server";
+
+// ★사용량 집계·허용량 판정은 play-limit.server 가 소유한다 — 재생 판정(playback.server)과
+//   이 기록 모듈이 **서로를 부르지 않게** 하려고 잎 모듈로 떼어 냈다(순환 참조 방지).
 
 // 하트비트 주기 15~30초 × 배속 상한 2배 + 여유 — 1회 보고 길이 상한(§4.3).
 const MAX_REPORT_SECONDS = 120;
@@ -12,7 +19,13 @@ const MAX_REPORT_SECONDS = 120;
 const GRANT_REPORT_WINDOW_HOURS = 6;
 
 export type HeartbeatResult =
-  | { ok: true; duplicated: boolean; remainingSeconds: number | null }
+  | {
+      ok: true;
+      duplicated: boolean;
+      remainingSeconds: number | null;
+      /** 이 보고가 실제로 원장에서 차감됐는가. false = 소진 상태라 이벤트만 남겼다. */
+      debited: boolean;
+    }
   | {
       ok: false;
       reason:
@@ -24,6 +37,35 @@ export type HeartbeatResult =
         // ★이 사유는 라우트가 낸다(reportWatchInterval 진입 전 차단).
         | "session_superseded";
     };
+
+/**
+ * 이 회차의 재생 허용량이 이미 소진됐는가 — **차감 직전** 가드 (feat-11-012 P6-a).
+ *
+ * ★고치기 전: 하트비트는 허용량을 아예 보지 않았다. 재생 시작만 막고 진행 중인 재생은
+ *   방치한 셈이라, 소진된 뒤에도 grant 보고 창(6시간) 내내 차감이 이어져 원장 잔액이
+ *   허용량을 한참 넘겨 내려갔다. 재생 시작 판정과 **같은 함수**를 여기서도 통과시킨다.
+ * ★막는 것은 **차감뿐**이다 — watch_events 는 그대로 남기고, 이어보기 위치·진도·완강
+ *   포인트도 그대로 간다. 이미 본 것을 없던 일로 만들지는 않는다.
+ */
+async function isLessonExhausted(
+  grant: { enrollment_id: string | null; lesson_id: string },
+  durationSeconds: number,
+): Promise<boolean> {
+  if (!grant.enrollment_id) return false;
+  const { data: lessonRow } = await adminClient
+    .from("course_lessons")
+    .select("course_id")
+    .eq("lesson_id", grant.lesson_id)
+    .maybeSingle();
+  if (!lessonRow) return false; // 회차를 못 찾으면 막지 않는다(fail-open — 종전과 같다)
+  const limit = await getPlayLimitForLesson({
+    enrollmentId: grant.enrollment_id,
+    courseId: lessonRow.course_id,
+    lessonId: grant.lesson_id,
+    durationSeconds,
+  });
+  return limit.exhausted;
+}
 
 /** 시청 구간 보고 — 검증 → watch_events + (차감 대상이면) watch_ledger debit + 이어보기 upsert. */
 export async function reportWatchInterval(input: {
@@ -85,6 +127,7 @@ export async function reportWatchInterval(input: {
       return {
         ok: true,
         duplicated: true,
+        debited: false,
         remainingSeconds: await getRemainingSeconds(grant.enrollment_id),
       };
     }
@@ -92,7 +135,9 @@ export async function reportWatchInterval(input: {
   }
 
   // 차감 — 맛보기·무료(enrollment_id null)는 예외(§4.3-4). 이벤트는 남고 원장만 스킵.
-  if (grant.enrollment_id) {
+  // ★소진이면 차감만 건너뛴다(isLessonExhausted — feat-11-012 P6-a).
+  let debited = false;
+  if (grant.enrollment_id && !(await isLessonExhausted(grant, duration))) {
     const { error: ledgerErr } = await adminClient.from("watch_ledger").insert({
       enrollment_id: grant.enrollment_id,
       lesson_id: grant.lesson_id,
@@ -106,6 +151,7 @@ export async function reportWatchInterval(input: {
       console.error("[lms/watch] ledger debit failed:", ledgerErr.message);
       throw ledgerErr;
     }
+    debited = true;
   }
 
   // 이어보기 upsert (맛보기 포함 — 로그인 사용자만)
@@ -144,6 +190,7 @@ export async function reportWatchInterval(input: {
   return {
     ok: true,
     duplicated: false,
+    debited,
     remainingSeconds: await getRemainingSeconds(grant.enrollment_id),
   };
 }
@@ -488,32 +535,3 @@ export async function getUserWatchHistory(
   return out;
 }
 
-/** 회차별 재생 사용 초 — feat-11-008 P6 시간 비례 재생 제한 판정·관리자 CS 조회 공용.
- *  집계 대상은 **watch_ledger**(설계 SSOT D7·P6b) — 하트비트 debit 에 관리자 조정(credit)·
- *  초기화(reset)가 함께 반영되므로, 초기화하면 제한이 실제로 풀린다.
- *  합계는 DB(RPC)에서 계산한다 — 클라이언트 행 상한으로 인한 과소집계가 없다.
- *  진도율(getLessonProgressForUser)의 union 병합과는 목적이 다르다(그쪽은 중복 제외). */
-export async function getLessonUsageSeconds(
-  enrollmentId: string,
-  lessonIds: string[],
-): Promise<Map<string, number>> {
-  const out = new Map<string, number>();
-  if (lessonIds.length === 0) return out;
-  for (let i = 0; i < lessonIds.length; i += 150) {
-    const { data, error } = await adminClient.rpc("lms_lesson_usage_seconds", {
-      p_enrollment_id: enrollmentId,
-      p_lesson_ids: lessonIds.slice(i, i + 150),
-    });
-    if (error) throw error;
-    for (const r of data ?? []) out.set(r.lesson_id, r.seconds);
-  }
-  return out;
-}
-
-/** 회차 하나의 재생 사용 초. */
-export async function getLessonUsageForLesson(
-  enrollmentId: string,
-  lessonId: string,
-): Promise<number> {
-  return (await getLessonUsageSeconds(enrollmentId, [lessonId])).get(lessonId) ?? 0;
-}

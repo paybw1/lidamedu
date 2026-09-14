@@ -8,6 +8,11 @@ import { toast } from "sonner";
 import { Badge } from "~/core/components/ui/badge";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { EmptyState } from "~/features/lms/components/empty-state";
+import {
+  HIDDEN_FROM_STUDENT_FILTER,
+  orderStatusLabel,
+} from "~/features/orders/lib/order-status";
 import { getMyRefundRequestMap } from "~/features/orders/refund-requests.server";
 
 import type { Route } from "./+types/my-orders";
@@ -17,16 +22,8 @@ export const meta: Route.MetaFunction = () => [
   { title: "내 주문·배송 | 리담변리사학원" },
 ];
 
-const ORDER_STATUS_LABEL: Record<string, string> = {
-  pending_payment: "결제 대기",
-  pending_deposit: "입금 대기",
-  paid: "결제 완료",
-  partially_refunded: "부분 환불",
-  refunded: "환불 완료",
-  cancelled: "취소",
-  failed: "실패",
-  draft: "임시",
-};
+// ★표기는 SSOT 를 쓴다(feat-11-012 P6-c) — 지역 표는 서버가 쓰는 attempted·expired 를
+//   담지 못해 원시 영문이 학생에게 나갔다.
 const SHIP_STATUS_LABEL: Record<string, string> = {
   preparing: "배송 준비중",
   shipped: "발송됨",
@@ -45,6 +42,9 @@ export async function loader({ request }: Route.LoaderArgs) {
     .from("orders")
     .select("order_id, status, total_krw, payment_method, created_at")
     .eq("user_id", user.id)
+    // ★feat-11-011 D3 — 결제창까지만 갔다 끝난 건은 학생에게 「주문」이 아니다.
+    //   종전에는 **거르지 않아** 장바구니(draft)·결제시도(attempted)까지 내역에 보였다.
+    .not("status", "in", HIDDEN_FROM_STUDENT_FILTER)
     .order("created_at", { ascending: false })
     .limit(50);
   const orderIds = (orders ?? []).map((o) => o.order_id);
@@ -173,11 +173,15 @@ export default function MyOrders({ loaderData }: Route.ComponentProps) {
         </Card>
       ) : null}
       {orders.length === 0 ? (
-        <Card>
-          <CardContent className="text-muted-foreground py-12 text-center text-sm">
-            주문 내역이 없습니다.
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<PackageIcon className="size-6" />}
+          title="아직 주문 내역이 없습니다"
+          description="강의를 수강신청하거나 도서를 구매하면 이곳에서 주문과 배송 상태를 확인할 수 있습니다."
+          actions={[
+            { label: "강의 둘러보기", to: "/lecture/catalog" },
+            { label: "도서 둘러보기", to: "/lecture/books" },
+          ]}
+        />
       ) : (
         orders.map((o) => (
           <Card key={o.orderId}>
@@ -185,7 +189,7 @@ export default function MyOrders({ loaderData }: Route.ComponentProps) {
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-muted-foreground font-mono text-[12px]">{o.orderNo}</span>
                 <Badge variant={o.status === "paid" ? "default" : "secondary"}>
-                  {ORDER_STATUS_LABEL[o.status] ?? o.status}
+                  {orderStatusLabel(o.status)}
                 </Badge>
                 <span className="text-muted-foreground ml-auto text-[12px] tabular-nums">
                   {new Date(o.createdAt).toLocaleDateString("ko-KR")}
