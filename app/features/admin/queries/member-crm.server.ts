@@ -313,6 +313,7 @@ export interface MemberCoupons {
     code: string;
     discountKrw: number;
     redeemedAt: string;
+    revokedAt: string | null;
   }>;
 }
 
@@ -336,7 +337,7 @@ export async function listMemberCoupons(
       .order("granted_at", { ascending: false }),
     adminClient
       .from("coupon_redemptions")
-      .select("redeemed_at, discount_krw, coupons(name, code)")
+      .select("redeemed_at, revoked_at, discount_krw, coupons(name, code)")
       .eq("user_id", profileId)
       .order("redeemed_at", { ascending: false }),
   ]);
@@ -384,6 +385,8 @@ export async function listMemberCoupons(
       code: c?.code ?? "",
       discountKrw: r.discount_krw,
       redeemedAt: r.redeemed_at,
+      // ★환불로 무른 사용 — 「사용함」으로만 보이면 원장이 쓴 것으로 오독한다(P6-b).
+      revokedAt: r.revoked_at,
     };
   });
 

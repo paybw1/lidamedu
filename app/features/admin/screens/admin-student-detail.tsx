@@ -1765,9 +1765,10 @@ function MemberCouponsTab({ coupons }: { coupons: MemberCoupons }) {
                   </span>
                   <span className="flex shrink-0 items-center gap-2">
                     <span className="text-muted-foreground text-xs tabular-nums">
-                      사용 {fmtDt(r.redeemedAt)}
+                      {r.revokedAt ? "무름 " : "사용 "}
+                      {fmtDt(r.revokedAt ?? r.redeemedAt)}
                     </span>
-                    <CouponChip status="used" />
+                    <CouponChip status={r.revokedAt ? "available" : "used"} />
                   </span>
                 </li>
               ))}

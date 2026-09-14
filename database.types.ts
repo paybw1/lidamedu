@@ -4763,6 +4763,8 @@ export type Database = {
           order_id: string | null
           redeemed_at: string
           redemption_id: string
+          revoke_reason: string | null
+          revoked_at: string | null
           user_id: string
         }
         Insert: {
@@ -4771,6 +4773,8 @@ export type Database = {
           order_id?: string | null
           redeemed_at?: string
           redemption_id?: string
+          revoke_reason?: string | null
+          revoked_at?: string | null
           user_id: string
         }
         Update: {
@@ -4779,6 +4783,8 @@ export type Database = {
           order_id?: string | null
           redeemed_at?: string
           redemption_id?: string
+          revoke_reason?: string | null
+          revoked_at?: string | null
           user_id?: string
         }
         Relationships: [
@@ -12584,7 +12590,6 @@ export type Database = {
         Row: {
           base_krw: number | null
           calc_basis: Json | null
-          coupon_restored: boolean
           created_at: string
           deduction_reason: string | null
           final_krw: number | null
@@ -12605,7 +12610,6 @@ export type Database = {
         Insert: {
           base_krw?: number | null
           calc_basis?: Json | null
-          coupon_restored?: boolean
           created_at?: string
           deduction_reason?: string | null
           final_krw?: number | null
@@ -12626,7 +12630,6 @@ export type Database = {
         Update: {
           base_krw?: number | null
           calc_basis?: Json | null
-          coupon_restored?: boolean
           created_at?: string
           deduction_reason?: string | null
           final_krw?: number | null
@@ -12795,6 +12798,7 @@ export type Database = {
           attachments: Json
           closed_at: string | null
           consult_note: string | null
+          coupon_restored: boolean
           created_at: string
           email_sent_at: string | null
           intake_at: string
@@ -12824,6 +12828,7 @@ export type Database = {
           attachments?: Json
           closed_at?: string | null
           consult_note?: string | null
+          coupon_restored?: boolean
           created_at?: string
           email_sent_at?: string | null
           intake_at?: string
@@ -12853,6 +12858,7 @@ export type Database = {
           attachments?: Json
           closed_at?: string | null
           consult_note?: string | null
+          coupon_restored?: boolean
           created_at?: string
           email_sent_at?: string | null
           intake_at?: string
@@ -16718,6 +16724,10 @@ export type Database = {
         Args: { p_device: string; p_sid: string }
         Returns: undefined
       }
+      commit_refund: {
+        Args: { p_actor_id: string; p_memo?: string; p_refund_id: string }
+        Returns: Json
+      }
       community_increment_view: {
         Args: { p_post_id: string }
         Returns: undefined
@@ -17091,6 +17101,15 @@ export type Database = {
       set_qna_ai_feedback: {
         Args: { p_feedback: number; p_message_id: string }
         Returns: undefined
+      }
+      set_refund_status: {
+        Args: {
+          p_actor_id: string
+          p_memo?: string
+          p_refund_id: string
+          p_status: string
+        }
+        Returns: Json
       }
       soft_delete_book_update: { Args: { p_id: string }; Returns: undefined }
       soft_delete_cohort_board: {

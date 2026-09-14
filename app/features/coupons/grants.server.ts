@@ -141,6 +141,7 @@ export async function listCouponGrants(couponId: string): Promise<CouponGrantRow
       .from("coupon_redemptions")
       .select("user_id, redeemed_at")
       .eq("coupon_id", couponId)
+      .is("revoked_at", null)
       .in("user_id", userIds),
   ]);
   const nameById = new Map((profs ?? []).map((p) => [p.profile_id, p.name]));

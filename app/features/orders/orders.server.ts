@@ -653,6 +653,31 @@ async function revokeItemFulfillment(orderItemId: string, reason: string): Promi
   }
 }
 
+/**
+ * 환불건의 대상 항목 전부에 대해 지급물을 회수한다 (feat-11-013 P6-b).
+ *
+ * ★`commitRefund` 가 **RPC 보다 먼저** 부른다. 여기가 실패하면 돈은 아직 안 움직인 상태라
+ *   관리자가 그대로 다시 누르면 된다(회수는 전부 멱등 — 수강권은 상태 필터, 재고는 이동
+ *   존재 검사, 배송은 상태 필터가 지킨다).
+ */
+export async function revokeFulfillmentForRefund(
+  refundId: string,
+): Promise<{ ok: true; revoked: number } | { ok: false; error: string }> {
+  const { data: rows, error } = await adminClient
+    .from("refund_items")
+    .select("order_item_id, refunds!inner(request_reason)")
+    .eq("refund_id", refundId);
+  if (error) return { ok: false, error: error.message };
+  if (!rows?.length) return { ok: false, error: "환불 대상 상품이 없습니다." };
+
+  const reason = (rows[0].refunds as { request_reason: string | null } | null)?.request_reason;
+  const label = `환불 — ${reason?.trim() || "관리자 환불"}`;
+  for (const row of rows) {
+    await revokeItemFulfillment(row.order_item_id, label);
+  }
+  return { ok: true, revoked: rows.length };
+}
+
 // ── 부분 환불 (항목 단위, ★★★★) ────────────────────────────────────────────
 
 /** 관리자 항목 부분 환불 — 토스 부분취소 → item 환불 기록 → 해당 항목 지급물 회수. */

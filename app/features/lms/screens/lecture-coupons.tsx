@@ -102,6 +102,8 @@ export async function loader({ request }: Route.LoaderArgs) {
         .from("coupon_redemptions")
         .select("coupon_id")
         .eq("user_id", user.id)
+        // ★환불로 무른 사용은 「사용함」으로 보이면 안 된다 — 다시 쓸 수 있는 쿠폰이다(P6-b).
+        .is("revoked_at", null)
         .in("coupon_id", couponIds),
     ]);
     const defMap = new Map((defs ?? []).map((d) => [d.coupon_id, d]));

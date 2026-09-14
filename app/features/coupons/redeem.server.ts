@@ -69,12 +69,15 @@ export async function resolveCartCoupon(input: {
       return { ok: false, error: "발급받은 쿠폰의 사용 기간이 지났습니다." };
   }
 
-  // 1인 1회
+  // 1인 1회 — ★환불로 무른 사용(revoked_at)은 세지 않는다(feat-11-013 P6-b).
+  //   무른 행을 지우지 않고 남기는 모델이라, 여기서 걸러 주지 않으면 환불받은 학생이
+  //   쿠폰을 영영 다시 못 쓴다.
   const { data: mine } = await adminClient
     .from("coupon_redemptions")
     .select("redemption_id")
     .eq("coupon_id", c.coupon_id)
     .eq("user_id", input.userId)
+    .is("revoked_at", null)
     .maybeSingle();
   if (mine) return { ok: false, error: "이미 사용한 쿠폰입니다." };
 
@@ -83,7 +86,8 @@ export async function resolveCartCoupon(input: {
     const { count } = await adminClient
       .from("coupon_redemptions")
       .select("redemption_id", { count: "exact", head: true })
-      .eq("coupon_id", c.coupon_id);
+      .eq("coupon_id", c.coupon_id)
+      .is("revoked_at", null);
     if ((count ?? 0) >= c.issue_count)
       return { ok: false, error: "쿠폰이 모두 소진되었습니다." };
   }
