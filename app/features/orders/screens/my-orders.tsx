@@ -1,14 +1,11 @@
 // /lecture/orders — 내 주문·배송 조회 (feat-11-004 4c, 구 /me/orders). RLS self-read.
 
-import { useEffect } from "react";
 import { PackageIcon } from "lucide-react";
-import { Link, redirect, useFetcher } from "react-router";
-import { toast } from "sonner";
+import { Link, redirect } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import makeServerClient from "~/core/lib/supa-client.server";
-import { usePromptValue } from "~/core/hooks/use-confirm";
 import { EmptyState } from "~/features/lms/components/empty-state";
 import {
   HIDDEN_FROM_STUDENT_FILTER,
@@ -214,6 +211,17 @@ export default function MyOrders({ loaderData }: Route.ComponentProps) {
               <p className="text-right text-[13px] font-semibold tabular-nums">
                 합계 ₩{o.totalKrw.toLocaleString("ko-KR")}
               </p>
+              {/* feat-11-013 D10 — 신청 버튼을 없앤 자리에 **어디로 가야 하는지**를 남긴다.
+                  버튼만 지우면 학생은 환불을 어떻게 요청하는지 알 길이 없다. */}
+              {["paid", "partially_refunded"].includes(o.status) ? (
+                <p className="text-muted-foreground text-[12px]">
+                  환불 문의는{" "}
+                  <Link to="/lecture/support/new" className="text-link hover:underline">
+                    고객센터
+                  </Link>
+                  로 접수해 주세요. 상담 후 담당자가 처리해 드립니다.
+                </p>
+              ) : null}
             </CardContent>
           </Card>
         ))
@@ -240,37 +248,12 @@ type OrderItem = {
 };
 
 function OrderItemRow({ item: it, orderStatus }: { item: OrderItem; orderStatus: string }) {
-  const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
-  useEffect(() => {
-    if (fetcher.state !== "idle" || !fetcher.data) return;
-    if (fetcher.data.error) toast.error(fetcher.data.error);
-    else if (fetcher.data.ok) toast.success("환불 요청이 접수되었습니다. 검토 후 처리됩니다.");
-  }, [fetcher.state, fetcher.data]);
-
-  const canRequest =
-    !it.refundedAt &&
-    it.refundStatus == null &&
-    ["paid", "partially_refunded"].includes(orderStatus);
-
-  // ★돈이 오가는 자리다. 기본 prompt() 는 출처가 안 보이는 회색 상자라 여기 쓸 것이 아니고,
-  //   빈 사유를 받아 놓고 서버에서야 막았다(feat-11-012 P7).
-  const askValue = usePromptValue();
-  const requestRefund = async () => {
-    const reason = await askValue({
-      title: "환불을 신청할까요?",
-      description: `「${it.label}」 항목의 환불을 신청합니다. 사유를 남겨 주시면 운영자가 확인 후 처리합니다.`,
-      inputLabel: "환불 사유",
-      multiline: true,
-      placeholder: "예: 중복 결제했습니다",
-      confirmLabel: "환불 신청",
-    });
-    if (reason == null) return;
-    const fd = new FormData();
-    fd.set("orderItemId", it.orderItemId);
-    fd.set("reason", reason);
-    fetcher.submit(fd, { method: "post", action: "/api/refund-request" });
-  };
-
+  // ★feat-11-013 D10 — **학생이 직접 환불을 신청하는 버튼은 제공하지 않는다**(요청서 PART B §1).
+  //   환불 문의는 전화·카카오톡·게시판·방문 등 고객센터로 접수하고, 상담 내용을 확인한
+  //   관리자가 관리자페이지에서 환불신청을 등록한다. 여기에는 **결과만** 보인다 —
+  //   환불 상태·환불금액·처리일·환불된 상품.
+  //   ★이전에 신청해 둔 건(`refundStatus`)의 상태 표시는 남긴다. 신청은 못 하게 하면서
+  //   이미 넣은 요청이 어떻게 됐는지도 안 보이면, 학생은 자기 건이 사라진 줄 안다.
   return (
     <div className="border-border/60 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-[13px]">
       <span className={it.refundedAt ? "text-muted-foreground line-through" : "font-medium"}>
@@ -297,16 +280,6 @@ function OrderItemRow({ item: it, orderStatus }: { item: OrderItem; orderStatus:
           ₩{(it.unitPriceKrw * it.quantity).toLocaleString("ko-KR")}
         </span>
       )}
-      {canRequest ? (
-        <button
-          type="button"
-          onClick={requestRefund}
-          disabled={fetcher.state !== "idle"}
-          className="border-border h-6 rounded border px-2 text-[11px] font-medium text-rose-600 hover:bg-rose-500/10 disabled:opacity-50 dark:text-rose-400"
-        >
-          환불 요청
-        </button>
-      ) : null}
     </div>
   );
 }
