@@ -308,11 +308,17 @@ export async function syncPaymentFromToss(
       if (payRow.order_id && (amount ?? 0) > 0) {
         const { data: items } = await admin
           .from("order_items")
-          .select("refund_amount_krw")
+          .select("paid_amount_krw, refund_amount_krw")
           .eq("order_id", payRow.order_id)
           .not("refunded_at", "is", null);
+        // ★평면을 맞춘다 — 토스가 알려 주는 취소액은 **실제 환급액**(할인·포인트 차감 후)인데
+        //   order_items.refund_amount_krw 는 **정가**다(정산이 그 평면을 읽는다, P6-0).
+        //   정가와 순액을 빼면 언제나 음수라 max(0, …) 에 먹혀 **경고가 영영 안 뜬다** —
+        //   하필 할인·포인트 주문에서만 죽는, 가장 필요한 자리에서 죽는 침묵이다.
+        //   그래서 결제 귀속액(P1 스냅샷)으로 비교한다. 스냅샷 이전 주문은 할인이 없어
+        //   정가 == 결제액이므로 refund_amount_krw 로 떨어져도 값이 같다.
         const itemRefunded = (items ?? []).reduce(
-          (sum, r) => sum + (r.refund_amount_krw ?? 0),
+          (sum, r) => sum + (r.paid_amount_krw ?? r.refund_amount_krw ?? 0),
           0,
         );
         unmatched = Math.max(0, (amount ?? 0) - itemRefunded);
