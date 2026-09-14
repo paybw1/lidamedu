@@ -25,6 +25,14 @@ export interface CheckoutOptions {
   /** 실물 도서가 있을 때만 — 주문 시점 배송지. */
   shipping?: ShippingAddress | null;
   couponCode?: string;
+  /**
+   * 포인트 사용액(원). 1P=1원 (feat-11-013 D15).
+   *
+   * ★서버가 다시 검증한다 — 화면의 검사는 친절함이고 권위가 아니다(이 파일 머리 주석).
+   * ★무통장은 v1 에서 포인트를 못 쓴다. 시트가 안 보내고 서버도 거절한다 — 되돌릴 훅이
+   *   없어 예약한 포인트가 72시간 넘게 묶이거나 영영 사라지기 때문이다.
+   */
+  pointAmountKrw?: number;
 }
 
 export async function startCartCheckout(
@@ -42,6 +50,10 @@ export async function startCartCheckout(
   if (options.couponCode) fd.append("couponCode", options.couponCode);
   if (options.depositorName) fd.append("depositorName", options.depositorName);
   if (options.shipping) fd.append("shipping", JSON.stringify(options.shipping));
+  // ★무통장이면 값이 있어도 보내지 않는다 — 숨기기만 하면 시트 상태가 남아 딸려 나간다.
+  if (method === "toss" && (options.pointAmountKrw ?? 0) > 0) {
+    fd.append("pointAmountKrw", String(options.pointAmountKrw));
+  }
   const res = await fetch("/api/payments/create-cart-order", {
     method: "POST",
     body: fd,

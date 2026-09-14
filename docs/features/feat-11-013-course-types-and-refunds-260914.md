@@ -301,6 +301,33 @@ refund_status_logs 이력 — 변경일시·담당자·전/후 상태·메모 (�
 - 항목의 `point_alloc_krw`(P1 스냅샷 — 이미 채워진다)만큼 **먼저 포인트로 반환**한 뒤,
 - 남은 `paid_amount_krw` 를 토스 취소한다.
 
+#### D15-f. 2026-09-14 구현 완료 — 무엇이 어디에
+
+| 자리 | 한 일 |
+|---|---|
+| `points/lib/point-spend.ts` | 규칙 SSOT(1P=1원·100P 단위·보유 1,000P·상한 = 결제금액−1,000). 화면도 이걸 부른다 — 순수 모듈이라 build 가 안 깨진다. 테스트 15건 |
+| `points/points-order.server.ts` | 해제·환불반환·**자가치유** 세 유틸. 전부 adminClient 전용 |
+| `cart-quote.tsx` | `pointBalance`·`pointMaxUsableKrw` 를 견적에 실어 보냄(비로그인 null) |
+| `create-cart-order.tsx` | 검증→거절(조용히 안 깎음) · **무통장 거부** · 주문 뒤 예약 RPC · 실패 시 **그 자리에서 주문 취소** |
+| `createCartOrder` | 총액에서 포인트 차감 + `point_amount_krw` 저장 |
+| `checkout-sheet.tsx` | 입력·적용·최대 버튼, 금액 행·버튼 라벨·토스 금액 **셋이 같은 수** |
+| 해제 4경로 | 결제창 닫기 / 웹훅 ABORTED·EXPIRED / 30분 스윕 / **크론 자가치유** |
+| 환불 | `refundOrderItem`(항목) + `markOrderRefundedAndRevoke`(주문 전체, 미환불 항목만) |
+
+★**구현하며 바로잡은 것** — `cancelPendingCheckout` 의 `orderIds` 는 payments 에서 뽑은
+목록이라 orders update 의 status 필터에 걸러진 것까지 들어 있었다. `.select()` 없이 그
+목록으로 반환을 돌리면 **이미 결제된 주문의 포인트까지 되살아난다**(돈은 받고 포인트도
+돌려주는 상태). 실제 전이분만 받아 쓰도록 고쳤다. 웹훅 쪽도 같은 이유로 `.select()` 를 걸었다.
+
+★**원장 확인 필요(지금은 무해)** — `awardPoints("payment_complete")` 가 `total_krw` 를
+적립 기준으로 쓴다. 총액이 포인트 차감 **후** 금액이 되었으므로, 이 정책을 켜면
+**포인트로 낸 몫은 적립되지 않는다.** 아무도 고르지 않은 정책 변화다. 현재
+`is_active=false`(중지)라 당장 영향은 없다 — 켜기 전에 정할 것.
+
+★**아직 안 한 것** — 단건 결제 경로(`/api/payments/create-order` → `createSinglePlanOrder`)는
+포인트를 받지 않는다. 장바구니·바로구매 4경로만 열렸다. 구독 요금제 화면에서 포인트가
+안 보이는 것은 **의도**이며, 열려면 별도 작업이다.
+
 #### D15-e. 이미 갖춰져 있어 **만들지 않는 것**
 
 - `point_transactions.order_id` → `orders(order_id)` FK **있다**(이 용도로 만들어져 있었다)

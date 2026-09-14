@@ -7,6 +7,10 @@ import {
   getCourseTotalDuration,
   logEnrollmentAdminAction,
 } from "~/features/lms/queries.server";
+import {
+  refundPointsForOrderItem,
+  releasePointsForOrders,
+} from "~/features/points/points-order.server";
 import { awardPoints } from "~/features/points/points.server";
 import {
   allocateOrderDiscounts,
@@ -60,7 +64,16 @@ export async function expireStaleCheckoutOrders(): Promise<number> {
     .in("order_id", expirable)
     .in("status", ["attempted", "pending_payment"])
     .select("order_id");
-  return (updated ?? []).length;
+
+  // ★만료된 주문에 잠겨 있던 포인트를 푼다(feat-11-013 D15-b). `.select()` 로 **실제로
+  //   전이된 것**만 받아 쓴다 — expirable 을 그대로 쓰면 필터에 걸러진 주문까지 푼다.
+  // ★여기서 실패해도 영구 유실은 아니다. 상태를 보고 뒤늦게 줍는 자가치유
+  //   (releaseOrphanedPointReservations)가 크론에서 따로 돈다.
+  const expiredIds = (updated ?? []).map((o) => o.order_id);
+  if (expiredIds.length) {
+    await releasePointsForOrders(expiredIds, "결제시간 만료 — 포인트 반환");
+  }
+  return expiredIds.length;
 }
 
 // ── 생성 ────────────────────────────────────────────────────────────────────
@@ -565,6 +578,11 @@ export async function markOrderRefundedAndRevoke(
           refund_reason: reason,
         })
         .eq("order_item_id", item.order_item_id);
+      // ★포인트도 **아직 환불되지 않은 항목만** 돌려준다(feat-11-013 D15-d).
+      //   「부분환불 후 전체환불」이 실제로 가능한데, 그때 주문 전액(point_amount_krw)을
+      //   되돌리면 앞서 반환한 몫이 **두 번** 나간다. 항목 단위로 도는 이 자리가
+      //   그래서 옳다(멱등은 DB 의 (kind, ref_type, ref_id) 유니크가 지킨다).
+      await refundPointsForOrderItem(item.order_item_id, `환불 — ${reason}`);
     }
     await revokeItemFulfillment(item.order_item_id, reason);
   }
@@ -646,7 +664,7 @@ export async function refundOrderItem(input: {
   const { data: item } = await adminClient
     .from("order_items")
     .select(
-      "order_item_id, order_id, unit_price_krw, quantity, refunded_at, paid_amount_krw",
+      "order_item_id, order_id, unit_price_krw, quantity, refunded_at, paid_amount_krw, point_alloc_krw",
     )
     .eq("order_item_id", input.orderItemId)
     .maybeSingle();
@@ -654,7 +672,7 @@ export async function refundOrderItem(input: {
   if (item.refunded_at) return { ok: false, error: "이미 환불된 항목입니다." };
   const { data: order } = await adminClient
     .from("orders")
-    .select("order_id, status, payment_method, coupon_discount_krw")
+    .select("order_id, status, payment_method, coupon_discount_krw, point_amount_krw")
     .eq("order_id", item.order_id)
     .maybeSingle();
   if (!order || !["paid", "partially_refunded"].includes(order.status)) {
@@ -680,8 +698,10 @@ export async function refundOrderItem(input: {
     })),
     id: item.order_item_id,
     couponDiscountKrw: order.coupon_discount_krw ?? 0,
-    // 포인트 결제는 아직 열려 있지 않다(D15) — 열리면 주문에서 읽어 넣는다.
-    pointAmountKrw: 0,
+    // ★스냅샷이 없는 **옛 주문**을 즉석 배분할 때만 쓰인다(order-snapshot.ts 가 스냅샷이
+    //   있으면 즉시 반환한다). 그래도 0 으로 두면 포인트로 산 옛 주문의 환불액이 부풀어
+    //   토스 취소가능잔액을 넘는다.
+    pointAmountKrw: order.point_amount_krw ?? 0,
   });
 
   // 토스 결제 주문이면 부분취소 API — 무통장/수동은 장부 기록만(정산 외 이체).
@@ -734,11 +754,24 @@ export async function refundOrderItem(input: {
       .eq("payment_id", payment.payment_id);
   }
 
+  // ★포인트 반환 — feat-11-013 D15-d.
+  //   ★refundKrw 에서 포인트를 **또 빼지 않는다.** paid_amount_krw 는 이미
+  //   `gross − coupon − point` 라, 여기서 다시 빼면 학생이 포인트분만큼 두 번 깎인다.
+  //   돌려줄 것은 이 항목에 배분된 point_alloc_krw 이고, 그건 토스 취소액과 **별개**다.
+  //   ★순서가 중요하다 — 토스가 성공한 **뒤**에 돌려준다. 앞에 두면 토스가 실패로
+  //   return 했을 때 포인트만 돌아가고 항목은 미환불로 남는다(멱등은 DB 가 지킨다).
+  const pointRefundedKrw = await refundPointsForOrderItem(
+    input.orderItemId,
+    `환불 — ${input.reason}`,
+  );
+
   // 항목 환불 기록 + 지급물 회수
   await adminClient
     .from("order_items")
     .update({
       refunded_at: new Date().toISOString(),
+      // ★포인트 반환분을 더하지 않는다 — 정산 3파일이 이 값을 **PG 환불액**으로 읽고
+      //   scaleRefund 를 건다. 포인트는 point_transactions 원장에만 남는다.
       refund_amount_krw: refundKrw,
       refund_reason: input.reason,
     })

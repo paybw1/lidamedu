@@ -13,6 +13,7 @@ import { randomUUID } from "node:crypto";
 import { data } from "react-router";
 import { z } from "zod";
 
+import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { resolveCartCoupon } from "~/features/coupons/redeem.server";
 import {
@@ -22,6 +23,8 @@ import {
 import { createBankTransferCartOrder } from "~/features/orders/bank-transfer.server";
 import { shippingAddressSchema } from "~/features/orders/lib/shipping-address";
 import { createCartOrder } from "~/features/orders/orders.server";
+import { checkPointUse } from "~/features/points/lib/point-spend";
+import { getPointBalance } from "~/features/points/points.server";
 import { createPendingCartPayment } from "~/features/subscriptions/queries.server";
 
 import type { Route } from "./+types/create-cart-order";
@@ -125,11 +128,34 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ error: "결제 금액이 0원입니다" }, { status: 400 });
 
   // ── 결제수단 ──────────────────────────────────────────────────────────────
+  // ★포인트보다 **먼저** 읽는다 — v1 은 토스 전용이라 결제수단을 모른 채 포인트를 받으면
+  //   무통장 주문이 포인트를 예약한 뒤 되돌릴 길 없이 묶인다(무통장에는 종료 훅이 없다).
   const rawMethod = String(fd.get("method") ?? "toss");
   if (!(PAYMENT_METHODS as readonly string[]).includes(rawMethod)) {
     return data({ error: "결제수단을 확인해 주세요." }, { status: 400 });
   }
   const method = rawMethod as PaymentMethod;
+
+  // ── 포인트 사용액 검증 (feat-11-013 D15) ──────────────────────────────────
+  // ★쿠폰은 클라가 **코드**만 보내고 서버가 할인액을 계산하지만, 포인트는 클라가 **금액**을
+  //   고른다. 그래서 재계산이 아니라 검증·거절이다. 여기의 잔액 비교는 UX 용이고,
+  //   최종 권위는 아래 RPC(사용자 단위 잠금 안에서 잔액을 다시 센다)다.
+  // ★조용히 깎지 않는다 — 학생이 본 금액과 청구액이 달라지면 그건 돈 문제로 번진다.
+  const rawPoint = fd.get("pointAmountKrw");
+  let pointUse = 0;
+  if (rawPoint != null && String(rawPoint).trim() !== "") {
+    if (method !== "toss") {
+      return data(
+        { error: "무통장 입금은 포인트를 사용할 수 없습니다." },
+        { status: 400 },
+      );
+    }
+    const requested = Number(String(rawPoint).trim());
+    const balance = await getPointBalance(user.id);
+    const check = checkPointUse({ requestedKrw: requested, balance, payableKrw });
+    if (!check.ok) return data({ error: check.error }, { status: 400 });
+    pointUse = check.amountKrw;
+  }
 
   if (method === "bank_transfer") {
     const depositorName = String(fd.get("depositorName") ?? "").trim();
@@ -176,8 +202,36 @@ export async function action({ request }: Route.ActionArgs) {
     shippingFeeKrw: resolved.shippingFeeKrw,
     couponId,
     couponDiscountKrw,
+    pointAmountKrw: pointUse,
     shippingAddress,
   });
+
+  // ── 포인트 예약 (feat-11-013 D15-b) ───────────────────────────────────────
+  // ★토스는 confirm 에서 **돈을 가져간다.** 그 순간 잔액이 모자라면 되돌릴 방법이 없으므로
+  //   결제창을 띄우기 **전**에 잠근다. 주문이 먼저 있어야 한다(point_transactions.order_id FK).
+  // ★**요청 클라이언트**로 부른다 — RPC 가 SECURITY DEFINER 안에서 auth.uid() 로 본인을
+  //   판정하므로 adminClient 로 부르면 「로그인이 필요합니다」로 죽는다.
+  if (pointUse > 0) {
+    const { data: spend, error: spendErr } = await client.rpc("spend_points_for_order", {
+      p_order_id: order.orderId,
+    });
+    const okSpend =
+      !spendErr && spend && typeof spend === "object" && (spend as { ok?: boolean }).ok;
+    if (!okSpend) {
+      // ★그 자리에서 주문을 접는다. 30분 스윕에 맡기면 그 사이 화면·정산이 **포인트만큼
+      //   깎인 총액**을 진짜 주문으로 본다.
+      await adminClient
+        .from("orders")
+        .update({ status: "cancelled" })
+        .eq("order_id", order.orderId);
+      const msg =
+        (spend as { error?: string } | null)?.error ??
+        spendErr?.message ??
+        "포인트 사용에 실패했습니다.";
+      return data({ error: msg }, { status: 400 });
+    }
+  }
+
   const tossOrderId = `lidam-${randomUUID()}`;
   const res = await createPendingCartPayment({
     userId: user.id,

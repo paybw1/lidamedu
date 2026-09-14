@@ -17,6 +17,7 @@ import {
   incrementDiscountUse,
   listActiveDiscounts,
 } from "~/features/subscriptions/discounts.server";
+import { releasePointsForOrders } from "~/features/points/points-order.server";
 import { getMembershipAccess } from "~/features/subscriptions/membership.server";
 import {
   type DetailSections,
@@ -654,11 +655,16 @@ export async function cancelPendingCheckout(input: {
     .in("payment_id", paymentIds);
   if (orderIds.length > 0) {
     // 이미 결제·입금대기(pending_deposit)로 넘어간 주문은 건드리지 않는다.
-    await admin
+    // ★★.select() 가 **필수**다 — orderIds 는 payments 에서 뽑은 목록이라 위 status 필터에
+    //   걸러진 것까지 들어 있다. 그 목록으로 포인트를 되돌리면 **돈은 받고 포인트도
+    //   돌려주는** 상태가 된다. 실제로 취소로 넘어간 주문만 받아 쓴다.
+    const { data: moved } = await admin
       .from("orders")
       .update({ status: "cancelled" })
       .in("order_id", orderIds)
-      .in("status", ["draft", "attempted", "pending_payment"]);
+      .in("status", ["draft", "attempted", "pending_payment"])
+      .select("order_id");
+    await releasePointsForOrders((moved ?? []).map((o) => o.order_id), "결제 취소 — 포인트 반환");
   }
   return { cancelled: pend.length };
 }

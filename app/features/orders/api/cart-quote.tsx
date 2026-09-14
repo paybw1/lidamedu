@@ -20,6 +20,8 @@ import {
   resolveCartItems,
 } from "~/features/orders/cart-resolve.server";
 import { toDomesticPhone } from "~/features/orders/lib/shipping-address";
+import { maxUsablePoints } from "~/features/points/lib/point-spend";
+import { getPointBalance } from "~/features/points/points.server";
 
 import type { Route } from "./+types/cart-quote";
 
@@ -120,6 +122,17 @@ export async function action({ request }: Route.ActionArgs) {
   // 무통장 계좌 — 미설정이면 null 이고, 그때 시트는 무통장을 **내밀지 않는다.**
   const bankAccount = await getBankAccount(client);
 
+  // ── 포인트 (feat-11-013 D15) ──────────────────────────────────────────────
+  // ★잔액을 **화면에서 더하지 않는다.** 예전에 최근 200건만 더해 잔액이 틀렸고, 그 틀린
+  //   값으로 「포인트 부족」 판정까지 했다(points.server.ts 주석). 권위는 getPointBalance.
+  // ★상한도 여기서 낸다 — 견적과 결제가 **같은 순수 함수**를 써야 「화면엔 되는데 결제는
+  //   거절」이 안 난다(이 파일 머리의 resolveCartItems 공유와 같은 이유).
+  // ★비로그인은 null — 0 으로 내리면 「포인트 부족」이 떠서, 로그인만 하면 쓸 수 있는
+  //   학생에게 거짓말을 한다(현장강의 바는 비로그인도 시트를 연다).
+  const pointBalance = user ? await getPointBalance(user.id) : null;
+  const pointMaxUsableKrw =
+    pointBalance == null ? 0 : maxUsablePoints({ balance: pointBalance, payableKrw });
+
   return data({
     ok: true as const,
     lines: resolved.quoteLines,
@@ -134,6 +147,10 @@ export async function action({ request }: Route.ActionArgs) {
     couponDiscountKrw,
     couponError,
     payableKrw,
+    /** 보유 포인트. null = 비로그인(시트는 포인트 칸을 아예 그리지 않는다). */
+    pointBalance,
+    /** 이 주문에 쓸 수 있는 최대 포인트(원). 화면과 결제가 같은 함수로 낸 값이다. */
+    pointMaxUsableKrw,
   });
 }
 

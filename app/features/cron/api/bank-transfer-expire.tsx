@@ -6,6 +6,7 @@ import { data } from "react-router";
 
 import { expireOverdueBankTransfers } from "~/features/orders/bank-transfer.server";
 import { expireStaleCheckoutOrders } from "~/features/orders/orders.server";
+import { releaseOrphanedPointReservations } from "~/features/points/points-order.server";
 
 import type { Route } from "./+types/bank-transfer-expire";
 
@@ -22,7 +23,11 @@ async function run(request: Request) {
   if (!checkAuth(request)) return data({ error: "Forbidden" }, { status: 403 });
   const cancelled = await expireOverdueBankTransfers();
   const expired = await expireStaleCheckoutOrders();
-  return data({ ok: true, cancelled, expired });
+  // ★자가치유 — 전이 훅이 하나도 안 불렸어도 상태를 보고 뒤늦게 줍는다(D15-b).
+  //   훅은 「상태 전이」와 「포인트 반환」이 트랜잭션이 아닌 두 번의 쓰기라, 그 사이에
+  //   함수가 죽으면 주문은 이미 만료라 다음 스윕이 다시 집지 않는다. 이것이 마지막 그물이다.
+  const points = await releaseOrphanedPointReservations();
+  return data({ ok: true, cancelled, expired, pointsReleased: points });
 }
 
 export async function loader({ request }: Route.LoaderArgs) {

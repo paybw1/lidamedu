@@ -33,6 +33,7 @@ import {
 import { won } from "~/core/lib/format";
 import { cn } from "~/core/lib/utils";
 import type { CartItem } from "~/features/lms/lib/cart";
+import { POINT_UNIT, checkPointUse } from "~/features/points/lib/point-spend";
 import { startCartCheckout } from "~/features/lms/lib/cart-checkout";
 import {
   EMPTY_SHIPPING_ADDRESS,
@@ -57,6 +58,10 @@ type Quote =
       shippingFeeKrw: number;
       couponDiscountKrw: number;
       payableKrw: number;
+      /** 보유 포인트. null = 비로그인 → 포인트 칸을 아예 그리지 않는다. */
+      pointBalance: number | null;
+      /** 이 주문에 쓸 수 있는 최대 포인트(원). 서버가 낸 값이다. */
+      pointMaxUsableKrw: number;
     }
   | { ok: false; error: string };
 
@@ -83,6 +88,10 @@ export function CheckoutSheet({
   const [method, setMethod] = useState<"toss" | "bank_transfer">("toss");
   const [addr, setAddr] = useState<ShippingAddress>(EMPTY_SHIPPING_ADDRESS);
   const [depositor, setDepositor] = useState("");
+  // ★입력 문자열과 적용값을 나눠 든다(장바구니 쿠폰과 같은 짜임) — 입력 중인 값이
+  //   곧 결제액이 되면 타이핑 도중의 숫자로 금액이 흔들린다.
+  const [pointInput, setPointInput] = useState("");
+  const [pointApplied, setPointApplied] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
 
@@ -94,6 +103,11 @@ export function CheckoutSheet({
     let alive = true;
     setQuote(null);
     setErrors({});
+    // ★열 때 포인트 입력을 반드시 리셋한다. method·addr·depositor 는 닫았다 열어도
+    //   살아남으므로, 안 지우면 5만원짜리에 넣은 금액이 1만원짜리 주문에 남아
+    //   상한을 넘긴 채 제출된다.
+    setPointInput("");
+    setPointApplied(0);
     const fd = new FormData();
     fd.append("items", itemsJson);
     if (couponCode) fd.append("code", couponCode);
@@ -138,6 +152,33 @@ export function CheckoutSheet({
   const canBank = Boolean(bank);
   const effectiveMethod = canBank ? method : "toss";
 
+  // ── 포인트 (feat-11-013 D15) ────────────────────────────────────────────
+  // ★로그인한 사람에게, 쓸 수 있는 금액이 있고, **토스 결제일 때만** 보인다.
+  //   무통장은 되돌릴 훅이 없어 v1 에서 막는다.
+  const canUsePoints =
+    q != null && q.pointBalance != null && q.pointMaxUsableKrw > 0 && effectiveMethod === "toss";
+  // ★무통장으로 바꾸면 적용액을 **0 으로 본다.** 숨기기만 하면 상태가 남아 딸려 나간다.
+  const pointUse = canUsePoints ? pointApplied : 0;
+  const payableAfterPoints = q ? Math.max(0, q.payableKrw - pointUse) : 0;
+
+  const applyPoint = () => {
+    if (!q || q.pointBalance == null) return;
+    const raw = pointInput.replace(/[^0-9]/g, "");
+    if (!raw) { setPointApplied(0); setErrors((e) => ({ ...e, point: "" })); return; }
+    const check = checkPointUse({
+      requestedKrw: Number(raw),
+      balance: q.pointBalance,
+      payableKrw: q.payableKrw,
+    });
+    if (!check.ok) {
+      setPointApplied(0);
+      setErrors((e) => ({ ...e, point: check.error }));
+      return;
+    }
+    setPointApplied(check.amountKrw);
+    setErrors((e) => ({ ...e, point: "" }));
+  };
+
   const set = (k: keyof ShippingAddress) => (v: string) =>
     setAddr((a) => ({ ...a, [k]: v }));
 
@@ -168,6 +209,8 @@ export function CheckoutSheet({
         depositorName: depositor.trim() || undefined,
         shipping,
         couponCode,
+        // ★effectiveMethod 가 토스가 아니면 pointUse 가 이미 0 이다(위 참조).
+        pointAmountKrw: pointUse,
       });
     } finally {
       setBusy(false);
@@ -304,6 +347,51 @@ export function CheckoutSheet({
                 </section>
               ) : null}
 
+              {/* ── 포인트 (feat-11-013 D15) ──────────────────────────── */}
+              {canUsePoints ? (
+                <section className="space-y-2 border-t pt-4">
+                  <div className="flex items-baseline justify-between">
+                    <Label className="text-xs font-semibold">포인트 사용</Label>
+                    <span className="text-muted-foreground text-[11px]">
+                      보유 {q.pointBalance?.toLocaleString("ko-KR")} P
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      inputMode="numeric"
+                      placeholder={`${POINT_UNIT}P 단위`}
+                      value={pointInput}
+                      onChange={(e) => setPointInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); applyPoint(); } }}
+                      className="h-9"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-9 shrink-0"
+                      onClick={applyPoint}
+                    >
+                      적용
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="h-9 shrink-0"
+                      onClick={() => { setPointInput(String(q.pointMaxUsableKrw)); setPointApplied(q.pointMaxUsableKrw); setErrors((e) => ({ ...e, point: "" })); }}
+                    >
+                      최대
+                    </Button>
+                  </div>
+                  {errors.point ? (
+                    <p className="text-destructive text-xs">{errors.point}</p>
+                  ) : (
+                    <p className="text-muted-foreground text-xs">
+                      이 주문에는 최대 {q.pointMaxUsableKrw.toLocaleString("ko-KR")}P 까지 쓸 수 있습니다.
+                    </p>
+                  )}
+                </section>
+              ) : null}
+
               {/* ── 금액 ─────────────────────────────────────────────── */}
               <section className="space-y-1.5 border-t pt-4 text-sm">
                 <Row label="상품 금액" value={won(q.subtotalKrw)} />
@@ -313,7 +401,11 @@ export function CheckoutSheet({
                 {q.couponDiscountKrw > 0 ? (
                   <Row label="쿠폰 할인" value={"- " + won(q.couponDiscountKrw)} />
                 ) : null}
-                <Row label="결제 금액" value={won(q.payableKrw)} strong />
+                {pointUse > 0 ? (
+                  <Row label="포인트 사용" value={"- " + won(pointUse)} />
+                ) : null}
+                {/* ★이 값과 버튼 라벨과 토스에 넘어가는 금액이 **같은 수**여야 한다. */}
+                <Row label="결제 금액" value={won(payableAfterPoints)} strong />
               </section>
             </div>
           )}
@@ -331,7 +423,7 @@ export function CheckoutSheet({
             ) : effectiveMethod === "bank_transfer" ? (
               "입금 정보 받기"
             ) : (
-              (q ? won(q.payableKrw) + " " : "") + "결제하기"
+              (q ? won(payableAfterPoints) + " " : "") + "결제하기"
             )}
           </Button>
         </SheetFooter>

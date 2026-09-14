@@ -16,6 +16,7 @@ import {
   markOrderPaidAndFulfill,
   markOrderRefundedAndRevoke,
 } from "~/features/orders/orders.server";
+import { releasePointsForOrders } from "~/features/points/points-order.server";
 import { incrementDiscountUse } from "~/features/subscriptions/discounts.server";
 import { upsertPaidSubscription } from "~/features/subscriptions/queries.server";
 
@@ -365,6 +366,23 @@ export async function syncPaymentFromToss(
           toss_response: payment as never,
         })
         .eq("payment_id", payRow.payment_id);
+      // ★결제가 죽었으니 주문도 접고 포인트 예약을 푼다(feat-11-013 D15-b).
+      //   ★넘기는 것은 **우리 order_id**(payRow.order_id)다 — 웹훅의 orderId 는
+      //   토스 쪽 `lidam-<uuid>` 라 그걸 넘기면 아무것도 못 찾는다.
+      //   ★`.select()` 로 실제 전이분만 받아 쓴다. 이미 결제된 주문에 반환을 걸면
+      //   돈은 받고 포인트도 돌려주는 상태가 된다(RPC 의 status 가드가 2차 방어).
+      if (payRow.order_id) {
+        const { data: moved } = await admin
+          .from("orders")
+          .update({ status: "cancelled" })
+          .eq("order_id", payRow.order_id)
+          .in("status", ["draft", "attempted", "pending_payment"])
+          .select("order_id");
+        await releasePointsForOrders(
+          (moved ?? []).map((o) => o.order_id),
+          tossStatus === "EXPIRED" ? "입금 기한 만료 — 포인트 반환" : "결제 실패 — 포인트 반환",
+        );
+      }
       result = { outcome: "processed", detail: `${tossStatus} → failed` };
       break;
     }
