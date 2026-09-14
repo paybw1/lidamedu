@@ -45,6 +45,9 @@ async function fetchUserAttemptTotals(
       .from("user_problem_attempts")
       .select("problem_id, is_correct")
       .eq("user_id", userId)
+      // ★유일 정렬키 — 없으면 페이지를 넘길 때 시도 기록이 새거나 겹쳐
+      //   약점 판정(시도/정답 집계)이 조용히 틀어진다.
+      .order("attempt_id", { ascending: true })
       .range(from, from + 999);
     if (!data?.length) break;
     for (const r of data) {

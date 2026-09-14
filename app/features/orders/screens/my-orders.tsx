@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Badge } from "~/core/components/ui/badge";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { usePromptValue } from "~/core/hooks/use-confirm";
 import { EmptyState } from "~/features/lms/components/empty-state";
 import {
   HIDDEN_FROM_STUDENT_FILTER,
@@ -241,12 +242,22 @@ function OrderItemRow({ item: it, orderStatus }: { item: OrderItem; orderStatus:
     it.refundStatus == null &&
     ["paid", "partially_refunded"].includes(orderStatus);
 
-  const requestRefund = () => {
-    const reason = prompt(`'${it.label}' 항목 환불 사유를 입력해 주세요:`);
-    if (!reason?.trim()) return;
+  // ★돈이 오가는 자리다. 기본 prompt() 는 출처가 안 보이는 회색 상자라 여기 쓸 것이 아니고,
+  //   빈 사유를 받아 놓고 서버에서야 막았다(feat-11-012 P7).
+  const askValue = usePromptValue();
+  const requestRefund = async () => {
+    const reason = await askValue({
+      title: "환불을 신청할까요?",
+      description: `「${it.label}」 항목의 환불을 신청합니다. 사유를 남겨 주시면 운영자가 확인 후 처리합니다.`,
+      inputLabel: "환불 사유",
+      multiline: true,
+      placeholder: "예: 중복 결제했습니다",
+      confirmLabel: "환불 신청",
+    });
+    if (reason == null) return;
     const fd = new FormData();
     fd.set("orderItemId", it.orderItemId);
-    fd.set("reason", reason.trim());
+    fd.set("reason", reason);
     fetcher.submit(fd, { method: "post", action: "/api/refund-request" });
   };
 

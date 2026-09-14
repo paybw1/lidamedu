@@ -299,7 +299,11 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
       {!isSidebar ? <Footer /> : null}
       <Suspense fallback={null}>
         <Await resolve={userPromise}>
-          {({ data: { user } }) => (user ? <BugReportWidget /> : null)}
+          {/* ★학습 플랫폼은 폰에서 하단 탭바가 있어 버튼이 그 안에 들어간다 — 숨긴다.
+              강의 플랫폼에는 하단 고정 요소가 없어 숨기지 않는다(lecture.layout). */}
+          {({ data: { user } }) =>
+            user ? <BugReportWidget hideOnPhone /> : null
+          }
         </Await>
       </Suspense>
       {/* 전역 검색(⌘K) 팔레트 — 상단바 검색 아이콘(로그인 시 노출)의 대상. navigation.layout

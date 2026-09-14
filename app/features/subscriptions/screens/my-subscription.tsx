@@ -11,6 +11,7 @@ import { Form, Link, redirect } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
+import { useConfirmSubmit } from "~/core/hooks/use-confirm";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import {
   Table,
@@ -119,6 +120,7 @@ const subjectLabel = (slug: string) =>
     : (LAW_SUBJECTS[slug as keyof typeof LAW_SUBJECTS]?.name ?? slug);
 
 export default function MySubscription({ loaderData }: Route.ComponentProps) {
+  const guardSubmit = useConfirmSubmit();
   const {
     active,
     payments,
@@ -287,12 +289,16 @@ export default function MySubscription({ loaderData }: Route.ComponentProps) {
                   <Form
                     method="post"
                     action="/api/subscriptions/cancel"
-                    onSubmit={(e) => {
-                      const msg = refundEligible
-                        ? "결제 후 3일 이내입니다. 전액 환불되고 구독이 즉시 종료됩니다. 해지하시겠습니까?"
-                        : "결제 후 3일이 지나 이 달분은 환불되지 않습니다. 정기결제만 해지되어 남은 기간까지 이용하고 다음 갱신은 청구되지 않습니다. 해지하시겠습니까?";
-                      if (!window.confirm(msg)) e.preventDefault();
-                    }}
+                    // ★동기 분기 폼 — 제출을 한 번 막고 확인되면 원래 제출을 다시 쏜다.
+                    //   제출 방식을 고정하지 않으므로 일반 Form 그대로 동작한다(feat-11-012 P7).
+                    onSubmit={guardSubmit({
+                      title: "정기결제를 해지할까요?",
+                      description: refundEligible
+                        ? "결제 후 3일 이내라 전액 환불되고 구독이 즉시 종료됩니다."
+                        : "결제 후 3일이 지나 이 달분은 환불되지 않습니다. 정기결제만 해지되며, 남은 기간까지는 그대로 이용하고 다음 갱신부터 청구되지 않습니다.",
+                      confirmLabel: refundEligible ? "해지하고 환불" : "정기결제 해지",
+                      tone: "danger",
+                    })}
                   >
                     <input type="hidden" name="intent" value="cancel" />
                     <input

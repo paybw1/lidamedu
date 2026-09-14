@@ -50,8 +50,14 @@ function youtubeEmbed(input: string): string | null {
   return `<div style="position:relative;padding-top:56.25%;margin:1rem 0"><iframe src="https://www.youtube.com/embed/${m[1]}" style="position:absolute;inset:0;width:100%;height:100%;border:0" allowfullscreen loading="lazy"></iframe></div>`;
 }
 
+// ★머리행 배경을 **고정 회색(#f6f6f6)으로 굳히지 않는다.** 굳히면 어두운 배경에서
+//   글자색만 밝아져 흰 바탕에 흰 글씨가 된다. CSS 변수는 인라인 스타일에서도 해석되므로
+//   테마를 따라간다(이미 저장된 표는 app.css 의 다크 보정이 받는다).
+const TH_STYLE =
+  "border:1px solid #ddd;padding:8px;background:var(--muted);color:var(--foreground)";
+const TD_STYLE = "border:1px solid #ddd;padding:8px";
 const SAMPLE_TABLE =
-  '<table style="border-collapse:collapse;width:100%;margin:1rem 0"><thead><tr><th style="border:1px solid #ddd;padding:8px;background:#f6f6f6">구분</th><th style="border:1px solid #ddd;padding:8px;background:#f6f6f6">내용</th></tr></thead><tbody><tr><td style="border:1px solid #ddd;padding:8px">　</td><td style="border:1px solid #ddd;padding:8px">　</td></tr></tbody></table>';
+  `<table style="border-collapse:collapse;width:100%;margin:1rem 0"><thead><tr><th style="${TH_STYLE}">구분</th><th style="${TH_STYLE}">내용</th></tr></thead><tbody><tr><td style="${TD_STYLE}">　</td><td style="${TD_STYLE}">　</td></tr></tbody></table>`;
 
 export function HtmlEditor({
   name,

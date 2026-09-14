@@ -2,12 +2,20 @@
 // feat-11-011 — 포인트의 사용처는 결제 차감이 아니라 **쿠폰 교환**이다(요청서).
 import { useEffect } from "react";
 import { CoinsIcon, TicketIcon } from "lucide-react";
-import { data, redirect, useFetcher } from "react-router";
+import { data, redirect, useFetcher, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { z } from "zod";
 
 import { Button } from "~/core/components/ui/button";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { Pager } from "~/core/components/pager";
+import {
+  PAGE_SIZE,
+  pageUrlMaker,
+  parsePage,
+  rangeOf,
+  totalPagesOf,
+} from "~/core/lib/paging";
 import { EmptyState } from "~/features/lms/components/empty-state";
 import { getPointBalance } from "~/features/points/points.server";
 import adminClient from "~/core/lib/supa-admin-client.server";
@@ -25,13 +33,19 @@ export async function loader({ request }: Route.LoaderArgs) {
   } = await client.auth.getUser();
   if (!user) throw redirect("/login");
 
-  const { data: txns } = await client
+  // ★종전에는 최근 200건에서 **말없이 잘렸다.** 그 위의 내역은 볼 방법이 아예 없었다.
+  const page = parsePage(request);
+  const [from, to] = rangeOf(page);
+  const { data: txns, count } = await client
     .from("point_transactions")
-    .select("txn_id, delta, reason, created_at")
+    .select("txn_id, delta, reason, created_at", { count: "exact" })
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
-    .limit(200);
+    // ★유일 정렬키 — 같은 시각 거래(일괄 적립 등)에서 페이지가 새거나 겹치는 것을 막는다.
+    .order("txn_id", { ascending: false })
+    .range(from, to);
   const rows = txns ?? [];
+  const totalTxns = count ?? 0;
   // ★잔액은 **내역과 분리**한다. 종전에는 최근 200건만 더해 거래가 많은 회원의 잔액이
   //   틀렸다(내역은 상한을 그대로 두고, 잔액만 전량 합으로 받는다).
   const balance = await getPointBalance(user.id);
@@ -95,7 +109,14 @@ export async function loader({ request }: Route.LoaderArgs) {
     })
     .filter((o) => o.active);
 
-  return { balance, txns: rows, offers };
+  return {
+    balance,
+    txns: rows,
+    offers,
+    page,
+    totalPages: totalPagesOf(totalTxns, PAGE_SIZE),
+    totalTxns,
+  };
 }
 
 const exchangeSchema = z.object({ offerId: z.string().uuid() });
@@ -191,7 +212,9 @@ function CouponExchange({
 }
 
 export default function LecturePoints({ loaderData }: Route.ComponentProps) {
-  const { balance, txns, offers } = loaderData;
+  const { balance, txns, offers, page, totalPages, totalTxns } = loaderData;
+  const [sp] = useSearchParams();
+  const makeUrl = pageUrlMaker(sp.toString());
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-8 md:px-6 md:py-10">
       <header className="mb-5">
@@ -213,7 +236,14 @@ export default function LecturePoints({ loaderData }: Route.ComponentProps) {
 
       <CouponExchange offers={offers} balance={balance} />
 
-      <h2 className="mb-2 text-base font-bold">적립·사용 내역</h2>
+      <h2 className="mb-2 text-base font-bold">
+        적립·사용 내역
+        {totalTxns > 0 ? (
+          <span className="text-muted-foreground ml-2 text-sm font-normal tabular-nums">
+            {totalTxns.toLocaleString("ko-KR")}건
+          </span>
+        ) : null}
+      </h2>
       {txns.length === 0 ? (
         <EmptyState
           title="아직 적립·사용 내역이 없습니다"
@@ -245,6 +275,7 @@ export default function LecturePoints({ loaderData }: Route.ComponentProps) {
           ))}
         </ul>
       )}
+      <Pager page={page} totalPages={totalPages} makeUrl={makeUrl} />
     </div>
   );
 }

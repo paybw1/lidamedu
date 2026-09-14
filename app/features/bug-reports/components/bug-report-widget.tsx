@@ -14,8 +14,14 @@ import {
   DialogTitle,
 } from "~/core/components/ui/dialog";
 import { Textarea } from "~/core/components/ui/textarea";
+import { cn } from "~/core/lib/utils";
 
-export function BugReportWidget() {
+export function BugReportWidget({
+  /** 폰에서 숨길지 — 하단 탭바가 있는 표면(학습 플랫폼)만 true. 기본은 숨기지 않는다. */
+  hideOnPhone = false,
+}: {
+  hideOnPhone?: boolean;
+} = {}) {
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   // ★uncontrolled(ref) — textarea 를 controlled(value+setState) 로 두면 키 입력마다 위젯이
@@ -64,8 +70,14 @@ export function BugReportWidget() {
         type="button"
         onClick={() => setOpen(true)}
         size="sm"
-        // 모바일에선 하단 탭바와 겹쳐 숨김 — 데스크톱(md+)에서만 노출.
-        className="fixed right-4 bottom-4 z-50 hidden gap-1.5 rounded-full shadow-lg md:inline-flex print:hidden"
+        // ★폰에서 숨길지는 **표면마다 다르다.**
+        //   학습 플랫폼: 하단 탭바(student-bottombar)가 있어 버튼 자리가 그 안에 들어간다 → 숨긴다.
+        //   강의 플랫폼: 하단 고정 요소가 없다 → 숨길 이유가 없다(종전에는 여기서도 숨겨져,
+        //   폰으로 보던 사람은 오류를 신고할 방법이 아예 없었다).
+        className={cn(
+          "fixed right-4 bottom-4 z-50 gap-1.5 rounded-full shadow-lg print:hidden",
+          hideOnPhone ? "hidden md:inline-flex" : "inline-flex",
+        )}
       >
         <BugIcon className="size-4" /> 오류 신고
       </Button>

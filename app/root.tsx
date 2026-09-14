@@ -40,6 +40,7 @@ import {
 } from "remix-themes";
 import { Toaster } from "sonner";
 
+import { ConfirmDialogHost } from "./core/components/confirm-dialog";
 import { Dialog } from "./core/components/ui/dialog";
 import { Sheet } from "./core/components/ui/sheet";
 import { GEO_BLOCKED_CODE } from "./core/lib/geo-gate";
@@ -190,7 +191,9 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
         )}
       </head>
       <body className="h-full">
-        {children}
+        {/* ★확인 창 호스트 — 트리 전체가 useConfirm() 을 쓸 수 있게 여기 한 번만 둔다
+            (feat-11-012 P7). 두 플랫폼이 같은 창을 쓴다. */}
+        <ConfirmDialogHost>{children}</ConfirmDialogHost>
         <Toaster richColors position="top-center" />
         <ScrollRestoration />
         <Scripts />

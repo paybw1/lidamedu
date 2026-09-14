@@ -157,6 +157,10 @@ export default function BookstoreCatalog({ loaderData }: Route.ComponentProps) {
         <select
           name="sort"
           defaultValue={sort}
+          aria-label="정렬"
+          // ★고르는 즉시 적용한다. 종전에는 옆의 「검색」 버튼을 눌러야 ?sort= 가 붙어서,
+          //   드롭다운만 바꾼 사람에게는 정렬이 아예 없는 것처럼 보였다.
+          onChange={(e) => e.currentTarget.form?.requestSubmit()}
           className="border-input bg-background h-9 rounded-md border px-2 text-sm"
         >
           {SORTS.map((s) => (

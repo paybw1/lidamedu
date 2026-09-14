@@ -4,6 +4,7 @@
 import { CheckIcon, GraduationCapIcon, TicketIcon } from "lucide-react";
 import { PriceTag } from "~/features/lms/components/price-tag";
 import { Link, useSearchParams } from "react-router";
+import { toast } from "sonner";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
@@ -72,7 +73,8 @@ async function startLectureCheckout(
     error?: string;
   };
   if (!json.ok || !json.orderId) {
-    alert(`결제 준비에 실패했습니다: ${json.error ?? "알 수 없는 오류"}`);
+    // ★서버가 만든 사유가 그대로 온다(재고 부족·판매 종료·한도 초과 등) — 지우지 말 것.
+    toast.error(json.error ?? "결제를 준비하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     return;
   }
   const amount = typeof json.amount === "number" ? json.amount : product.priceKrw;
@@ -92,7 +94,7 @@ async function startLectureCheckout(
     // 결제창 취소·오류 — 남은 pending 결제 정리 후 취소는 조용히.
     cancelPendingCheckout(json.orderId);
     if (!isTossUserCancel(e)) {
-      alert(
+      toast.error(
         `결제 중 오류가 발생했습니다: ${e instanceof Error ? e.message : String(e)}`,
       );
     }

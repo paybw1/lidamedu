@@ -118,7 +118,11 @@ async function listLatestCases(
     data: rows,
     error,
     count,
-  } = await q.order("decided_at", { ascending: false }).range(from, to);
+    // ★선고일만으로 정렬하면 같은 날 판례가 수십 건이라 페이지를 넘길 때 새거나 겹친다.
+  } = await q
+    .order("decided_at", { ascending: false })
+    .order("case_id", { ascending: false })
+    .range(from, to);
   if (error) throw error;
   const items: CaseListItem[] = (rows ?? []).map((r) => {
     const problems = examProblemsByCase.get(r.case_id) ?? [];

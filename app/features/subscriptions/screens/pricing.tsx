@@ -805,7 +805,8 @@ async function startSubscriptionCheckout(
     error?: string;
   };
   if (!json.ok || !json.orderId) {
-    alert(`결제 준비에 실패했습니다: ${json.error ?? "알 수 없는 오류"}`);
+    // ★서버가 만든 사유가 그대로 온다(재고 부족·판매 종료·한도 초과 등) — 지우지 말 것.
+    toast.error(json.error ?? "결제를 준비하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     return;
   }
   // 서버가 계산한 할인 후 금액으로 결제(정가 아님 — confirm 금액 검증과 정합).
@@ -826,7 +827,7 @@ async function startSubscriptionCheckout(
     // 결제창 취소·오류 — 남은 pending 결제를 정리해 즉시 재시도 가능하게. 취소는 조용히.
     cancelPendingCheckout(json.orderId);
     if (!isTossUserCancel(e)) {
-      alert(`결제 중 오류가 발생했습니다: ${e instanceof Error ? e.message : String(e)}`);
+      toast.error(`결제 중 오류가 발생했습니다: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 }
@@ -840,7 +841,7 @@ async function startBillingCheckout(
   couponCode?: string | null,
 ): Promise<void> {
   if (!userId) {
-    alert("로그인이 필요합니다.");
+    toast.error("로그인이 필요합니다.");
     return;
   }
   try {
@@ -855,6 +856,6 @@ async function startBillingCheckout(
       failUrl: `${window.location.origin}/me/subscription?failed=1`,
     });
   } catch (e) {
-    alert(`자동결제 중 오류가 발생했습니다: ${e instanceof Error ? e.message : String(e)}`);
+    toast.error(`자동결제 중 오류가 발생했습니다: ${e instanceof Error ? e.message : String(e)}`);
   }
 }

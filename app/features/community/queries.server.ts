@@ -166,6 +166,8 @@ export async function listPosts(
   const { data, error, count } = await q
     .order("is_pinned", { ascending: false })
     .order("created_at", { ascending: false })
+    // ★유일 정렬키 — 없으면 같은 시각 글에서 페이지를 넘길 때 새거나 겹친다.
+    .order("post_id", { ascending: false })
     .range(from, to);
   if (error) throw error;
   const rows = (data as unknown as RawPostRow[] | null) ?? [];

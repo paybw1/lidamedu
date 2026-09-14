@@ -28,6 +28,7 @@ import {
   getCourseExtensionDefaults,
   getReviewRewardPoints,
 } from "~/core/lib/app-settings.server";
+import { useConfirm, usePromptValue } from "~/core/hooks/use-confirm";
 import { EmptyState } from "~/features/lms/components/empty-state";
 import { enrollmentStatusLabel } from "~/features/lms/lib/enrollment-status";
 import { resolveExtensionContexts } from "~/features/lms/extension.server";
@@ -462,6 +463,7 @@ function CourseCard({
 }) {
   const navigate = useNavigate();
   const { addPlan } = useCart();
+  const askValue = usePromptValue();
   const fetcher = useFetcher<{ ok?: boolean; error?: string; paused?: number }>();
   useEffect(() => {
     if (fetcher.state !== "idle" || !fetcher.data) return;
@@ -521,15 +523,23 @@ function CourseCard({
     }
   };
 
-  const requestPause = () => {
+  // ★기본 prompt() 는 **검증을 못 했다** — 범위를 벗어난 일수나 글자를 쳐도 그대로 받아
+  //   서버에서야 거절됐다. 이제 창이 닫히기 전에 범위를 본다(feat-11-012 P7).
+  const requestPause = async () => {
     if (!course.pause) return;
-    const days = Math.trunc(
-      Number(
-        prompt(
-          `일시정지 일수 (${course.pause.minDays}~${course.pause.maxDays}일, 남은 ${course.pause.remainingDays}일·${course.pause.remainingCount}회):`,
-        ) ?? 0,
-      ),
-    );
+    const { minDays, maxDays, remainingDays, remainingCount } = course.pause;
+    const answer = await askValue({
+      title: "수강을 얼마나 멈출까요?",
+      description: `${minDays}~${maxDays}일 사이로 신청할 수 있습니다. 남은 한도는 ${remainingDays}일 · ${remainingCount}회입니다. 정지한 만큼 수강 기간이 뒤로 밀립니다.`,
+      inputLabel: "일시정지 일수",
+      inputType: "number",
+      min: minDays,
+      max: Math.min(maxDays, remainingDays),
+      placeholder: String(minDays),
+      confirmLabel: "신청",
+    });
+    if (answer == null) return;
+    const days = Math.trunc(Number(answer));
     if (!days || days <= 0) return;
     const fd = new FormData();
     fd.set("intent", "pause_request");
@@ -859,8 +869,16 @@ function DeviceRow({
     else if (fetcher.data.deviceReset) toast.success("기기를 초기화했습니다. 새 기기는 재생 시 등록됩니다.");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetcher.state, fetcher.data]);
-  const reset = () => {
-    if (!confirm("이 기기를 등록 해제할까요? 기기 변경은 월 1회 가능합니다.")) return;
+  const confirm = useConfirm();
+  const reset = async () => {
+    const ok = await confirm({
+      title: "이 기기의 등록을 해제할까요?",
+      description:
+        "해제하면 이 기기에서는 다시 로그인해 재생해야 합니다. 기기 변경은 월 1회만 가능하니, 지금 쓰지 않는 기기인지 확인해 주세요.",
+      confirmLabel: "해제",
+      tone: "danger",
+    });
+    if (!ok) return;
     const fd = new FormData();
     fd.set("intent", "device_reset");
     fd.set("deviceId", device.deviceId);

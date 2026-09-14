@@ -113,6 +113,8 @@ export async function listBookUpdates(
   const { data, error, count } = await q
     .order("published_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
+    // ★유일 정렬키 — 없으면 같은 시각 글에서 페이지를 넘길 때 새거나 겹친다.
+    .order("update_id", { ascending: false })
     .range(from, to);
   if (error) throw error;
   return {

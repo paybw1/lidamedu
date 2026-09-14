@@ -524,6 +524,8 @@ export async function getCaseCountsByArticle(
       .is("articles.deleted_at", null)
       .is("cases.deleted_at", null)
       .eq("cases.list_visible", true)
+      // ★유일 정렬키 — 같은 파일의 다른 조회는 붙어 있는데 이 함수만 빠져 있었다.
+      .order("link_id", { ascending: true })
       .range(from, from + PAGE - 1);
     if (error) throw error;
     if (!data || data.length === 0) break;

@@ -582,6 +582,17 @@ body {
 .lecture-detail-html table {
   max-width: 100%;
 }
+/* ★편집기로 만든 표의 머리행이 어두운 배경에서 안 보이던 것 (feat-11-012 P7).
+   편집기가 th 에 background:#f6f6f6 을 **인라인으로 굳혀** 저장한다. 다크에서는 글자색만
+   토큰을 따라 밝아지고 배경은 그대로라 흰 바탕에 흰 글씨가 됐다.
+   ★인라인 선언은 일반 규칙으로 못 이기지만 author !important 는 이긴다.
+   ★배경이 아니라 **글자색**을 강제한다 — 배경을 토큰으로 덮으면 브랜드 색 머리행이 뭉개진다.
+   ★값이 아니라 style 속성 **유무**로 잡는다 — 비주얼 편집 저장분은 rgb(246,246,246) 로
+   직렬화돼 있어 값 매칭 셀렉터로는 절반만 걸린다.
+   신규 삽입분은 애초에 var(--muted)/var(--foreground) 로 들어가므로 이 규칙이 필요 없다. */
+.dark .lecture-detail-html th[style] {
+  color: #1f2937 !important;
+}
 .lecture-detail-html h2 {
   font-size: 1.25rem;
   font-weight: 700;

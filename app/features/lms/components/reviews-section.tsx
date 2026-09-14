@@ -6,6 +6,7 @@ import { useFetcher } from "react-router";
 import { toast } from "sonner";
 
 import { Button } from "~/core/components/ui/button";
+import { useConfirm, usePromptValue } from "~/core/hooks/use-confirm";
 import { cn } from "~/core/lib/utils";
 import { REVIEWS_ENABLED } from "~/features/lms/reviews-config";
 import type {
@@ -53,6 +54,8 @@ export function ReviewsSection({
   title = "수강평",
 }: ReviewsSectionProps) {
   const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  const confirm = useConfirm();
+  const askValue = usePromptValue();
   const [writing, setWriting] = useState(false);
   const [rating, setRating] = useState(myReview?.rating ?? 5);
   useEffect(() => {
@@ -67,18 +70,33 @@ export function ReviewsSection({
   // 수강 후기 기능 숨김 스위치(일단 비노출) — 모든 훅 호출 뒤에서 조건부 return.
   if (!REVIEWS_ENABLED) return null;
 
-  const report = (reviewId: string) => {
+  const report = async (reviewId: string) => {
     if (!isLoggedIn) return toast.error("로그인이 필요합니다.");
-    const reason = window.prompt("신고 사유(선택)를 입력하세요");
-    if (reason === null) return;
+    const reason = await askValue({
+      title: "이 후기를 신고할까요?",
+      description:
+        "운영자가 확인 후 조치합니다. 어떤 점이 문제인지 적어 주시면 판단에 도움이 됩니다.",
+      inputLabel: "신고 사유",
+      multiline: true,
+      placeholder: "예: 강의와 관계없는 내용입니다",
+      confirmLabel: "신고",
+    });
+    if (reason == null) return;
     const fd = new FormData();
     fd.set("intent", "report");
     fd.set("reviewId", reviewId);
     fd.set("reason", reason);
     fetcher.submit(fd, { method: "post", action: "/api/lms/review" });
   };
-  const del = () => {
-    if (!myReview || !window.confirm("내 후기를 삭제할까요?")) return;
+  const del = async () => {
+    if (!myReview) return;
+    const ok = await confirm({
+      title: "내 후기를 삭제할까요?",
+      description: "삭제하면 되돌릴 수 없습니다. 다시 쓰려면 처음부터 작성해야 합니다.",
+      confirmLabel: "삭제",
+      tone: "danger",
+    });
+    if (!ok) return;
     const fd = new FormData();
     fd.set("intent", "delete");
     fd.set("reviewId", myReview.reviewId);
