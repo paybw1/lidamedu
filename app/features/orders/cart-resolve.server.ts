@@ -97,6 +97,20 @@ export async function resolveCartItems(
         };
       if (plan.priceKrw <= 0)
         return { ok: false, error: "유료 상품만 결제할 수 있습니다", status: 400 };
+      // ★구성이 빈 강의 상품은 팔지 않는다 — 지급(fulfillCourseEnrollments)이 plan_courses
+      //   를 훑어 수강권을 주므로, 연결된 강의가 0개면 **돈만 받고 아무것도 주지 않는다.**
+      //   2026-09-14 리허설에서 실제로 걸렸다: 판매 중인 강의 상품 2개 중 1개(45만원)가
+      //   plan_courses 0건이었다. 판매 상태와 구성은 따로 관리되므로 결제 직전에 본다.
+      const { count: courseCount } = await adminClient
+        .from("plan_courses")
+        .select("plan_id", { count: "exact", head: true })
+        .eq("plan_id", plan.planId);
+      if ((courseCount ?? 0) === 0)
+        return {
+          ok: false,
+          error: `《${plan.name}》 은 아직 수강 구성이 등록되지 않았습니다. 고객센터로 문의해 주세요.`,
+          status: 409,
+        };
       items.push({ itemType: "plan", planId: plan.planId, unitPriceKrw: plan.priceKrw });
       couponLines.push({ kind: "course", amountKrw: plan.priceKrw });
       names.push(plan.name);
