@@ -21,7 +21,9 @@ import "dotenv/config";
 import { readFileSync } from "node:fs";
 
 const LAW_CODE = "trademark";
-const DOC_LABEL = "리담상표법 객관식 문제집 (제4판)";
+// ★제4판은 문제와 해설이 **한 권**이다(종전은 문제편/해설편 2권 = source_doc 2행).
+//   kind enum 은 problem|answer 뿐이라 problem 으로 둔다.
+const DOC_LABEL = "리담상표법 객관식 문제집 제4판 — 문제+해설";
 const DOC_FILE = "[완0914+내지] 리담상표법 객관식 문제집 (제4판).hwpx";
 
 const [, , parsedPath] = process.argv;
@@ -216,12 +218,25 @@ if (!apply) {
 }
 
 // ── 5. 적재 ───────────────────────────────────────────────────────────────────
-const { data: doc, error: docErr } = await db
-  .from("problem_source_docs")
-  .upsert({ label: DOC_LABEL, file_name: DOC_FILE, kind: "workbook", edition: "제4판" }, { onConflict: "label" })
-  .select("source_doc_id")
-  .single();
-if (docErr) throw docErr;
+// ★label 에 유니크 제약이 없어 upsert 를 못 쓴다 — 조회 후 없으면 넣는다.
+let doc;
+{
+  const { data: found } = await db
+    .from("problem_source_docs")
+    .select("source_doc_id")
+    .eq("label", DOC_LABEL)
+    .maybeSingle();
+  if (found) doc = found;
+  else {
+    const { data: made, error } = await db
+      .from("problem_source_docs")
+      .insert({ label: DOC_LABEL, file_name: DOC_FILE, kind: "problem", edition: "제4판" })
+      .select("source_doc_id")
+      .single();
+    if (error) throw error;
+    doc = made;
+  }
+}
 console.log("source_doc:", doc.source_doc_id);
 
 const idMap = new Map(); // old problem_id → new problem_id
