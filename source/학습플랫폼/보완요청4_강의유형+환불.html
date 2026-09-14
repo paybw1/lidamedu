@@ -1,0 +1,970 @@
+<div style="max-width: 1180px; margin: 0 auto; padding: 36px 16px 72px; font-family: Pretendard,'Noto Sans KR',Arial,sans-serif; color: #172033; line-height: 1.72; word-break: keep-all; background: #f5f7fb;">
+<div style="padding: 50px 42px; border-radius: 30px; background: linear-gradient(135deg,#17233f 0%,#284dcc 58%,#6d8cff 100%); color: #fff; margin-bottom: 26px;">
+<div style="font-size: 42px; font-weight: 900; line-height: 1.18; letter-spacing: -1.7px; margin: 16px 0 10px;">강의상품 등록&middot;과정유형<br />및 환불관리 통합 개발요청서</div>
+<div style="max-width: 920px; font-size: 16px; color: #e9edff;">① 강의상품 등록 시 과정 유형 선택 및 유형별 수강정책 자동화, ② 관리자 중심 환불접수&middot;검토&middot;토스 수동취소&middot;후속처리 기능을 하나의 요청서로 통합합니다.</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 28px;">
+<div style="flex: 1 1 360px; background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; padding: 22px;">
+<div style="font-size: 13px; color: #657086; margin-bottom: 6px;">요청 ①</div>
+<div style="font-size: 20px; font-weight: 900; color: #315efb;">강의상품 등록 &middot; 과정유형 선택</div>
+<div style="margin-top: 8px; color: #3f4b61; font-size: 14px;">6개 과정 유형 중 하나를 먼저 선택하고, 유형별 필요한 입력항목&middot;기간&middot;배수&middot;정원&middot;패키지 구성이 자동으로 달라지도록 구현합니다.</div>
+</div>
+<div style="flex: 1 1 360px; background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; padding: 22px;">
+<div style="font-size: 13px; color: #657086; margin-bottom: 6px;">요청 ②</div>
+<div style="font-size: 20px; font-weight: 900; color: #315efb;">환불관리 &middot; 관리자 수동 PG 처리</div>
+<div style="margin-top: 8px; color: #3f4b61; font-size: 14px;">수강생 직접 환불신청은 제외하고, 관리자가 접수&middot;검토 후 토스 상점관리자에서 직접 취소하고 결과를 기록합니다.</div>
+</div>
+</div>
+<div style="padding: 16px 18px; border-left: 4px solid #315efb; background: #eef3ff; border-radius: 10px; margin: 14px 0 30px; color: #263653;"><strong>통합 요청사항</strong><br />강의 원본&middot;판매상품&middot;주문&middot;수강권&middot;환불 데이터를 서로 구분하되 연결관계는 유지하고, 기존 주문&middot;결제&middot;수강생&middot;진도&middot;영상 데이터가 훼손되지 않도록 해 주세요.</div>
+<div style="margin: 54px 0 22px; padding: 18px 22px; border-radius: 18px; background: #17233f; color: #fff;">
+<div style="font-size: 13px; font-weight: 800; opacity: .75;">PART A</div>
+<div style="font-size: 27px; font-weight: 900; letter-spacing: -.8px; margin-top: 4px;">강의상품 등록 &middot; 과정 유형 선택 기능</div>
+</div>
+<div style="margin-top: 14px; padding: 15px 16px; border-left: 4px solid #315efb; background: #eef3ff; border-radius: 10px; color: #263653;"><strong>핵심 목적</strong><br />상품 유형에 따라 필요한 입력항목&middot;수강권 생성방식&middot;기간 계산&middot;정원&middot;연장&middot;배수 정책이 서로 다르므로, 상품 등록 첫 단계에서 유형을 확정하고 이후 입력화면이 해당 유형에 맞게 자동 구성되도록 합니다.</div>
+<div style="font-size: 28px; font-weight: 900; letter-spacing: -1px; margin: 50px 0 16px; color: #172033;">1. 과정 유형 선택</div>
+<p style="margin: 0 0 16px; color: #3f4b61;">다음 6개 과정 유형 중 <strong>하나를 필수 선택</strong>한 뒤 다음 단계로 이동하도록 해 주세요. 첫 화면에는 과정명뿐 아니라 짧은 설명을 함께 표시해 관리자가 혼동하지 않도록 합니다.</p>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; padding: 24px; margin: 0 0 18px; box-shadow: 0 12px 30px rgba(30,45,80,.05);">
+<div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px;">
+<div style="font-size: 20px; font-weight: 850; color: #23304a;">① 온라인 상시</div>
+<span style="display: inline-block; padding: 6px 10px; border-radius: 999px; background: #fff0f0; color: #d64545; font-size: 12px; font-weight: 800; white-space: nowrap;">필수 유형</span></div>
+<p style="margin: 0 0 10px; color: #3f4b61;">수강생이 결제 또는 수강신청을 완료한 날부터 관리자가 입력한 학습일수만큼 수강하는 온라인 강의입니다.</p>
+<div style="margin-top: 14px; padding: 15px 16px; border-left: 4px solid #d79a00; background: #fff8e8; border-radius: 10px; color: #6f5410;"><strong>운영 예시/특이사항</strong><br />예: 수강기간 365일 / 9월 10일 시작 시 다음 해 9월 9일까지 수강 / 회원마다 시작&middot;종료일이 다를 수 있음</div>
+<div style="font-weight: 800; margin-top: 16px; color: #23304a;">선택 시 필요한 설정</div>
+<ul style="margin: 10px 0 0; padding-left: 22px;">
+<li style="margin: 7px 0; color: #3f4b61;">수강일수</li>
+<li style="margin: 7px 0; color: #3f4b61;">수강 시작 기준</li>
+<li style="margin: 7px 0; color: #3f4b61;">수강배수</li>
+<li style="margin: 7px 0; color: #3f4b61;">일시정지 허용 여부 및 횟수</li>
+<li style="margin: 7px 0; color: #3f4b61;">최대 일시정지 일수</li>
+<li style="margin: 7px 0; color: #3f4b61;">유료 연장 가능 여부</li>
+<li style="margin: 7px 0; color: #3f4b61;">영상 다운로드 허용 여부</li>
+<li style="margin: 7px 0; color: #3f4b61;">배속 제한</li>
+<li style="margin: 7px 0; color: #3f4b61;">기기 등록 제한</li>
+</ul>
+</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; padding: 24px; margin: 0 0 18px; box-shadow: 0 12px 30px rgba(30,45,80,.05);">
+<div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px;">
+<div style="font-size: 20px; font-weight: 850; color: #23304a;">② 온라인 정규</div>
+<span style="display: inline-block; padding: 6px 10px; border-radius: 999px; background: #fff0f0; color: #d64545; font-size: 12px; font-weight: 800; white-space: nowrap;">필수 유형</span></div>
+<p style="margin: 0 0 10px; color: #3f4b61;">모든 수강생이 관리자가 지정한 정해진 학습기간에 맞춰 수강하는 온라인 강의입니다.</p>
+<div style="margin-top: 14px; padding: 15px 16px; border-left: 4px solid #d79a00; background: #fff8e8; border-radius: 10px; color: #6f5410;"><strong>운영 예시/특이사항</strong><br />중간 신청자의 종료일은 「기존 과정 종료일까지 수강」 또는 「신청일부터 별도 설정 일수만큼 수강」 중 선택</div>
+<div style="font-weight: 800; margin-top: 16px; color: #23304a;">선택 시 필요한 설정</div>
+<ul style="margin: 10px 0 0; padding-left: 22px;">
+<li style="margin: 7px 0; color: #3f4b61;">수강 시작일</li>
+<li style="margin: 7px 0; color: #3f4b61;">수강 종료일</li>
+<li style="margin: 7px 0; color: #3f4b61;">판매 시작일&middot;종료일</li>
+<li style="margin: 7px 0; color: #3f4b61;">중간 신청 허용 여부</li>
+<li style="margin: 7px 0; color: #3f4b61;">중간 신청자의 종료일 적용 방식</li>
+<li style="margin: 7px 0; color: #3f4b61;">강의 공개 일정</li>
+<li style="margin: 7px 0; color: #3f4b61;">수강배수</li>
+<li style="margin: 7px 0; color: #3f4b61;">일시정지&middot;연장 허용 여부</li>
+</ul>
+</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; padding: 24px; margin: 0 0 18px; box-shadow: 0 12px 30px rgba(30,45,80,.05);">
+<div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px;">
+<div style="font-size: 20px; font-weight: 850; color: #23304a;">③ 현장 강의</div>
+<span style="display: inline-block; padding: 6px 10px; border-radius: 999px; background: #fff0f0; color: #d64545; font-size: 12px; font-weight: 800; white-space: nowrap;">필수 유형</span></div>
+<p style="margin: 0 0 10px; color: #3f4b61;">학원에서 직접 수강하는 오프라인 강의입니다.</p>
+<div style="margin-top: 14px; padding: 15px 16px; border-left: 4px solid #d79a00; background: #fff8e8; border-radius: 10px; color: #6f5410;"><strong>운영 예시/특이사항</strong><br />온라인 영상 제공을 선택한 경우 영상 연결과 온라인 수강기간을 추가 설정</div>
+<div style="font-weight: 800; margin-top: 16px; color: #23304a;">선택 시 필요한 설정</div>
+<ul style="margin: 10px 0 0; padding-left: 22px;">
+<li style="margin: 7px 0; color: #3f4b61;">개강일&middot;종강일</li>
+<li style="margin: 7px 0; color: #3f4b61;">강의 요일 및 시간</li>
+<li style="margin: 7px 0; color: #3f4b61;">강의실</li>
+<li style="margin: 7px 0; color: #3f4b61;">모집 정원</li>
+<li style="margin: 7px 0; color: #3f4b61;">접수 시작일&middot;마감일</li>
+<li style="margin: 7px 0; color: #3f4b61;">대기신청 허용 여부</li>
+<li style="margin: 7px 0; color: #3f4b61;">현장 수강생 명단</li>
+<li style="margin: 7px 0; color: #3f4b61;">출석 관리 여부</li>
+<li style="margin: 7px 0; color: #3f4b61;">교재 포함 여부</li>
+<li style="margin: 7px 0; color: #3f4b61;">온라인 영상 제공 여부</li>
+</ul>
+</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; padding: 24px; margin: 0 0 18px; box-shadow: 0 12px 30px rgba(30,45,80,.05);">
+<div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px;">
+<div style="font-size: 20px; font-weight: 850; color: #23304a;">④ 온&middot;오프라인 혼합</div>
+<span style="display: inline-block; padding: 6px 10px; border-radius: 999px; background: #fff0f0; color: #d64545; font-size: 12px; font-weight: 800; white-space: nowrap;">필수 유형</span></div>
+<p style="margin: 0 0 10px; color: #3f4b61;">현장 강의와 온라인 강의를 함께 제공하는 과정입니다.</p>
+<div style="margin-top: 14px; padding: 15px 16px; border-left: 4px solid #d79a00; background: #fff8e8; border-radius: 10px; color: #6f5410;"><strong>운영 예시/특이사항</strong><br />현장 수강권과 온라인 수강권이 중복 생성되거나 수강배수가 이중 차감되지 않도록 하나의 신청 건으로 관리</div>
+<div style="font-weight: 800; margin-top: 16px; color: #23304a;">선택 시 필요한 설정</div>
+<ul style="margin: 10px 0 0; padding-left: 22px;">
+<li style="margin: 7px 0; color: #3f4b61;">현장 강의 일정</li>
+<li style="margin: 7px 0; color: #3f4b61;">강의실 및 모집 정원</li>
+<li style="margin: 7px 0; color: #3f4b61;">현장 출석 관리</li>
+<li style="margin: 7px 0; color: #3f4b61;">연결할 온라인 강의</li>
+<li style="margin: 7px 0; color: #3f4b61;">온라인 영상 공개일</li>
+<li style="margin: 7px 0; color: #3f4b61;">온라인 수강 시작일&middot;종료일</li>
+<li style="margin: 7px 0; color: #3f4b61;">수강배수 및 재생 제한</li>
+<li style="margin: 7px 0; color: #3f4b61;">현장 종료 후 복습기간</li>
+<li style="margin: 7px 0; color: #3f4b61;">일시정지&middot;연장 허용 여부</li>
+</ul>
+</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; padding: 24px; margin: 0 0 18px; box-shadow: 0 12px 30px rgba(30,45,80,.05);">
+<div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px;">
+<div style="font-size: 20px; font-weight: 850; color: #23304a;">⑤ 정규 패키지</div>
+<span style="display: inline-block; padding: 6px 10px; border-radius: 999px; background: #fff0f0; color: #d64545; font-size: 12px; font-weight: 800; white-space: nowrap;">필수 유형</span></div>
+<p style="margin: 0 0 10px; color: #3f4b61;">정해진 기간에 운영되는 여러 강의를 하나의 상품으로 묶어 판매하는 과정입니다.</p>
+<div style="margin-top: 14px; padding: 15px 16px; border-left: 4px solid #d79a00; background: #fff8e8; border-radius: 10px; color: #6f5410;"><strong>운영 예시/특이사항</strong><br />중간 구매자의 종료일 적용 방식도 별도로 선택 가능</div>
+<div style="font-weight: 800; margin-top: 16px; color: #23304a;">선택 시 필요한 설정</div>
+<ul style="margin: 10px 0 0; padding-left: 22px;">
+<li style="margin: 7px 0; color: #3f4b61;">패키지 시작일&middot;종료일</li>
+<li style="margin: 7px 0; color: #3f4b61;">판매기간</li>
+<li style="margin: 7px 0; color: #3f4b61;">패키지에 포함할 강의 다중선택</li>
+<li style="margin: 7px 0; color: #3f4b61;">강의별 수강기간</li>
+<li style="margin: 7px 0; color: #3f4b61;">강의별 공개일</li>
+<li style="margin: 7px 0; color: #3f4b61;">패키지 전체 가격</li>
+<li style="margin: 7px 0; color: #3f4b61;">구성 강의별 정상가격</li>
+<li style="margin: 7px 0; color: #3f4b61;">부분 환불 시 강의별 금액 배분 기준</li>
+<li style="margin: 7px 0; color: #3f4b61;">패키지 구매자 일괄 수강권 생성</li>
+</ul>
+</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; padding: 24px; margin: 0 0 18px; box-shadow: 0 12px 30px rgba(30,45,80,.05);">
+<div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px;">
+<div style="font-size: 20px; font-weight: 850; color: #23304a;">⑥ 상시 패키지</div>
+<span style="display: inline-block; padding: 6px 10px; border-radius: 999px; background: #fff0f0; color: #d64545; font-size: 12px; font-weight: 800; white-space: nowrap;">필수 유형</span></div>
+<p style="margin: 0 0 10px; color: #3f4b61;">여러 개의 온라인 강의를 하나로 묶어 판매하고, 수강신청일부터 설정한 일수만큼 수강하는 상품입니다.</p>
+<div style="margin-top: 14px; padding: 15px 16px; border-left: 4px solid #d79a00; background: #fff8e8; border-radius: 10px; color: #6f5410;"><strong>운영 예시/특이사항</strong><br />예: T-PASS / 특허법&middot;상표법&middot;디자인보호법 365일 패키지 / 여러 단과강의를 묶은 상시 판매상품</div>
+<div style="font-weight: 800; margin-top: 16px; color: #23304a;">선택 시 필요한 설정</div>
+<ul style="margin: 10px 0 0; padding-left: 22px;">
+<li style="margin: 7px 0; color: #3f4b61;">패키지 전체 수강일수</li>
+<li style="margin: 7px 0; color: #3f4b61;">포함 강의 다중선택</li>
+<li style="margin: 7px 0; color: #3f4b61;">강의별 수강일수 별도 적용 여부</li>
+<li style="margin: 7px 0; color: #3f4b61;">강의별 수강배수</li>
+<li style="margin: 7px 0; color: #3f4b61;">패키지 전체 가격</li>
+<li style="margin: 7px 0; color: #3f4b61;">구성 강의별 정상가격</li>
+<li style="margin: 7px 0; color: #3f4b61;">일시정지&middot;유료 연장 정책</li>
+<li style="margin: 7px 0; color: #3f4b61;">부분 환불 시 강의별 금액 배분 기준</li>
+<li style="margin: 7px 0; color: #3f4b61;">패키지 구매자 일괄 수강권 생성</li>
+</ul>
+</div>
+<div style="font-size: 28px; font-weight: 900; letter-spacing: -1px; margin: 50px 0 16px; color: #172033;">2. 등록 화면 구성</div>
+<div style="overflow-x: auto; margin: 14px 0 22px;">
+<table style="width: 100%; border-collapse: collapse; min-width: 760px; background: #fff;">
+<tbody>
+<tr>
+<th style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #f7f9fc; color: #445067; font-weight: 800; text-align: left; vertical-align: top;">단계</th>
+<th style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #f7f9fc; color: #445067; font-weight: 800; text-align: left; vertical-align: top;">화면</th>
+<th style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #f7f9fc; color: #445067; font-weight: 800; text-align: left; vertical-align: top;">핵심 내용</th>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">1</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">과정 유형 선택</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">6개 과정 유형 중 1개 필수 선택</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">2</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">기본정보 입력</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">상품명, 카테고리, 강사, 대표이미지, 기본 설명</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">3</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">강의 또는 패키지 구성</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">단과 강의 연결 또는 패키지 구성 강의 다중선택</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">4</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">수강정책 설정</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">기간, 배수, 일시정지, 연장, 현장정원 등 유형별 정책</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">5</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">가격&middot;할인&middot;포인트&middot;쿠폰 설정</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">정상가, 판매가, 할인, 포인트, 쿠폰 사용정책</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">6</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">판매 및 노출 설정</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">판매기간, 공개상태, 노출기간, 정렬순서</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">7</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">등록내용 확인 후 저장</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">최종 검토 및 저장</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div style="margin-top: 14px; padding: 15px 16px; border-left: 4px solid #315efb; background: #eef3ff; border-radius: 10px; color: #263653;">과정 유형은 <strong>라디오 버튼 또는 선택형 카드</strong>로 표시하고, 반드시 하나를 선택해야 다음 단계로 이동할 수 있게 해 주세요.</div>
+<div style="font-size: 28px; font-weight: 900; letter-spacing: -1px; margin: 50px 0 16px; color: #172033;">3. 선택 유형에 따른 입력항목 자동 변경</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; padding: 24px; margin: 0 0 18px; box-shadow: 0 12px 30px rgba(30,45,80,.05);">
+<div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px;">
+<div style="font-size: 20px; font-weight: 850; color: #23304a;">유형별 조건부 입력 UI</div>
+</div>
+<p style="margin: 0 0 10px; color: #3f4b61;">선택한 과정 유형에 필요한 입력항목만 노출해 주세요. 모든 설정을 한 화면에 전부 노출하지 않습니다.</p>
+<ul style="margin: 10px 0 0; padding-left: 22px;">
+<li style="margin: 7px 0; color: #3f4b61;"><strong>온라인 상시:</strong> 강의실&middot;모집정원 입력란 미노출</li>
+<li style="margin: 7px 0; color: #3f4b61;"><strong>온라인 정규:</strong> 시작일&middot;종료일&middot;중간신청 정책 노출</li>
+<li style="margin: 7px 0; color: #3f4b61;"><strong>현장 강의:</strong> 기본적으로 수강배수&middot;영상 재생제한 미노출</li>
+<li style="margin: 7px 0; color: #3f4b61;"><strong>온&middot;오프라인 혼합:</strong> 현장정책 + 온라인정책 동시 노출</li>
+<li style="margin: 7px 0; color: #3f4b61;"><strong>패키지:</strong> 구성 강의 다중선택&middot;강의별 정책&middot;환불 배분 기준 노출</li>
+</ul>
+<div style="margin-top: 14px; padding: 15px 16px; border-left: 4px solid #138a5b; background: #ebf8f2; border-radius: 10px; color: #116541;">관리자가 어떤 값을 입력해야 하는지 혼란스럽지 않도록 <strong>선택한 유형에 필요한 항목만 표시</strong>하는 것이 핵심입니다.</div>
+</div>
+<div style="font-size: 28px; font-weight: 900; letter-spacing: -1px; margin: 50px 0 16px; color: #172033;">4. 강의와 판매상품 구분</div>
+<div style="overflow-x: auto; margin: 14px 0 22px;">
+<table style="width: 100%; border-collapse: collapse; min-width: 760px; background: #fff;">
+<tbody>
+<tr>
+<th style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #f7f9fc; color: #445067; font-weight: 800; text-align: left; vertical-align: top;">구분</th>
+<th style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #f7f9fc; color: #445067; font-weight: 800; text-align: left; vertical-align: top;">역할</th>
+<th style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #f7f9fc; color: #445067; font-weight: 800; text-align: left; vertical-align: top;">처리 원칙</th>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">강의</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">영상&middot;회차&middot;자료의 원본 콘텐츠</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">원본 강의는 판매상품과 별개로 관리</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">판매상품</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">가격&middot;수강기간&middot;판매조건을 가진 실제 판매 단위</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">하나의 강의를 여러 상품에 연결 가능</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">단과상품</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">기존 강의 1개 연결</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">같은 강의를 가격&middot;기간이 다른 여러 상품으로 판매 가능</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">패키지상품</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">기존 강의 여러 개 다중선택</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">구성 강의를 검색 후 일괄 추가</td>
+</tr>
+</tbody>
+</table>
+</div>
+<ul style="margin: 10px 0 0; padding-left: 22px;">
+<li style="margin: 7px 0; color: #3f4b61;">상품을 삭제해도 원본 강의와 영상은 삭제되지 않아야 합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">강의를 수정하면 연결된 판매상품에 미치는 영향을 확인할 수 있어야 합니다.</li>
+<li style="margin: 7px 0; color: #3f4b61;">강의와 판매상품의 ID&middot;데이터 구조는 분리하되 연결관계는 명확하게 유지해 주세요.</li>
+</ul>
+<div style="font-size: 28px; font-weight: 900; letter-spacing: -1px; margin: 50px 0 16px; color: #172033;">5. 과정 유형 변경 제한</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; padding: 24px; margin: 0 0 18px; box-shadow: 0 12px 30px rgba(30,45,80,.05);">
+<div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px;">
+<div style="font-size: 20px; font-weight: 850; color: #23304a;">변경 가능 조건</div>
+</div>
+<ul style="margin: 10px 0 0; padding-left: 22px;">
+<li style="margin: 7px 0; color: #3f4b61;"><strong>임시저장 상태:</strong> 과정 유형 변경 가능</li>
+<li style="margin: 7px 0; color: #3f4b61;"><strong>주문 또는 수강생 발생 후:</strong> 과정 유형 변경 차단</li>
+<li style="margin: 7px 0; color: #3f4b61;"><strong>변경 필요 시:</strong> 기존 상품 판매중지 &rarr; 상품 복사 &rarr; 새 유형으로 신규 등록</li>
+</ul>
+<div style="margin-top: 14px; padding: 15px 16px; border-left: 4px solid #d64545; background: #fff0f0; border-radius: 10px; color: #8a2e2e;">신청내역이 있는 상품은 과정 유형을 변경할 수 없습니다.<br />기존 상품을 판매중지한 후 복사하여 새로운 유형의 상품으로 등록해 주세요.</div>
+</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; padding: 24px; margin: 0 0 18px; box-shadow: 0 12px 30px rgba(30,45,80,.05);">
+<div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px;">
+<div style="font-size: 20px; font-weight: 850; color: #23304a;">상품 복사 시 데이터 복사 기준</div>
+</div>
+<ul style="margin: 10px 0 0; padding-left: 22px;">
+<li style="margin: 7px 0; color: #3f4b61;">기본정보 복사</li>
+<li style="margin: 7px 0; color: #3f4b61;">강의 구성 복사</li>
+<li style="margin: 7px 0; color: #3f4b61;">가격&middot;수강정책은 선택적으로 복사 가능</li>
+<li style="margin: 7px 0; color: #3f4b61;"><strong>주문&middot;수강생&middot;결제내역은 절대 복사하지 않음</strong></li>
+</ul>
+</div>
+<div style="font-size: 28px; font-weight: 900; letter-spacing: -1px; margin: 50px 0 16px; color: #172033;">6. 목록 검색 및 구분 표시</div>
+<div style="overflow-x: auto; margin: 14px 0 22px;">
+<table style="width: 100%; border-collapse: collapse; min-width: 760px; background: #fff;">
+<tbody>
+<tr>
+<th style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #f7f9fc; color: #445067; font-weight: 800; text-align: left; vertical-align: top;">검색/표시 항목</th>
+<th style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #f7f9fc; color: #445067; font-weight: 800; text-align: left; vertical-align: top;">요구사항</th>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">과정 유형</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">온라인 상시 / 온라인 정규 / 현장 / 온&middot;오프 혼합 / 정규 패키지 / 상시 패키지</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">온라인&middot;현장 구분</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">온라인 / 현장 / 혼합</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">단과&middot;패키지 구분</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">단과 / 패키지</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">상시&middot;정규 구분</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">상시 / 정규</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">판매상태</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">판매중 / 판매예정 / 판매종료</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">수강생 수</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">현재 상품의 수강생 수 표시</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">판매금액</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">현재 판매가 표시</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">수강기간 또는 과정기간</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #fff; color: #3f4b61; vertical-align: top;">유형에 맞는 기간 표시</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div style="margin-top: 14px; padding: 15px 16px; border-left: 4px solid #315efb; background: #eef3ff; border-radius: 10px; color: #263653;">각 상품 행에는 과정 유형을 <strong>배지 형태</strong>로 표시하여 목록만 보고도 즉시 구분할 수 있게 해 주세요.</div>
+<div style="font-size: 28px; font-weight: 900; letter-spacing: -1px; margin: 50px 0 16px; color: #172033;">7. 필수 검수 사항</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; padding: 24px;">
+<div style="display: flex; gap: 12px; align-items: flex-start; padding: 11px 0; border-bottom: 1px solid #eef1f5;">
+<div style="flex: none; width: 26px; height: 26px; border-radius: 50%; background: #eef3ff; color: #315efb; font-weight: 900; text-align: center; line-height: 26px; font-size: 13px;">1</div>
+<div style="color: #3f4b61;">과정 유형을 선택하지 않으면 다음 단계로 이동할 수 없음</div>
+</div>
+<div style="display: flex; gap: 12px; align-items: flex-start; padding: 11px 0; border-bottom: 1px solid #eef1f5;">
+<div style="flex: none; width: 26px; height: 26px; border-radius: 50%; background: #eef3ff; color: #315efb; font-weight: 900; text-align: center; line-height: 26px; font-size: 13px;">2</div>
+<div style="color: #3f4b61;">선택한 유형에 맞는 입력항목만 표시됨</div>
+</div>
+<div style="display: flex; gap: 12px; align-items: flex-start; padding: 11px 0; border-bottom: 1px solid #eef1f5;">
+<div style="flex: none; width: 26px; height: 26px; border-radius: 50%; background: #eef3ff; color: #315efb; font-weight: 900; text-align: center; line-height: 26px; font-size: 13px;">3</div>
+<div style="color: #3f4b61;">단과상품은 하나의 강의를 연결할 수 있음</div>
+</div>
+<div style="display: flex; gap: 12px; align-items: flex-start; padding: 11px 0; border-bottom: 1px solid #eef1f5;">
+<div style="flex: none; width: 26px; height: 26px; border-radius: 50%; background: #eef3ff; color: #315efb; font-weight: 900; text-align: center; line-height: 26px; font-size: 13px;">4</div>
+<div style="color: #3f4b61;">패키지상품은 여러 강의를 검색하여 일괄 추가할 수 있음</div>
+</div>
+<div style="display: flex; gap: 12px; align-items: flex-start; padding: 11px 0; border-bottom: 1px solid #eef1f5;">
+<div style="flex: none; width: 26px; height: 26px; border-radius: 50%; background: #eef3ff; color: #315efb; font-weight: 900; text-align: center; line-height: 26px; font-size: 13px;">5</div>
+<div style="color: #3f4b61;">결제 완료 시 선택한 유형에 맞게 수강권이 생성됨</div>
+</div>
+<div style="display: flex; gap: 12px; align-items: flex-start; padding: 11px 0; border-bottom: 1px solid #eef1f5;">
+<div style="flex: none; width: 26px; height: 26px; border-radius: 50%; background: #eef3ff; color: #315efb; font-weight: 900; text-align: center; line-height: 26px; font-size: 13px;">6</div>
+<div style="color: #3f4b61;">현장 정원 초과 신청이 차단됨</div>
+</div>
+<div style="display: flex; gap: 12px; align-items: flex-start; padding: 11px 0; border-bottom: 1px solid #eef1f5;">
+<div style="flex: none; width: 26px; height: 26px; border-radius: 50%; background: #eef3ff; color: #315efb; font-weight: 900; text-align: center; line-height: 26px; font-size: 13px;">7</div>
+<div style="color: #3f4b61;">정규과정의 시작일과 종료일이 정확하게 적용됨</div>
+</div>
+<div style="display: flex; gap: 12px; align-items: flex-start; padding: 11px 0; border-bottom: 1px solid #eef1f5;">
+<div style="flex: none; width: 26px; height: 26px; border-radius: 50%; background: #eef3ff; color: #315efb; font-weight: 900; text-align: center; line-height: 26px; font-size: 13px;">8</div>
+<div style="color: #3f4b61;">상시과정의 수강종료일이 신청일 기준으로 자동 계산됨</div>
+</div>
+<div style="display: flex; gap: 12px; align-items: flex-start; padding: 11px 0; border-bottom: 1px solid #eef1f5;">
+<div style="flex: none; width: 26px; height: 26px; border-radius: 50%; background: #eef3ff; color: #315efb; font-weight: 900; text-align: center; line-height: 26px; font-size: 13px;">9</div>
+<div style="color: #3f4b61;">패키지 구성 강의의 수강권이 누락되거나 중복 생성되지 않음</div>
+</div>
+<div style="display: flex; gap: 12px; align-items: flex-start; padding: 11px 0; border-bottom: 1px solid #eef1f5;">
+<div style="flex: none; width: 26px; height: 26px; border-radius: 50%; background: #eef3ff; color: #315efb; font-weight: 900; text-align: center; line-height: 26px; font-size: 13px;">10</div>
+<div style="color: #3f4b61;">주문이나 수강생이 있는 상품의 과정 유형 변경이 차단됨</div>
+</div>
+<div style="display: flex; gap: 12px; align-items: flex-start; padding: 11px 0; border-bottom: 0;">
+<div style="flex: none; width: 26px; height: 26px; border-radius: 50%; background: #eef3ff; color: #315efb; font-weight: 900; text-align: center; line-height: 26px; font-size: 13px;">11</div>
+<div style="color: #3f4b61;">상품 복사 시 기존 주문&middot;결제&middot;수강생 정보가 복사되지 않음</div>
+</div>
+</div>
+<div style="font-size: 28px; font-weight: 900; letter-spacing: -1px; margin: 50px 0 16px; color: #172033;">8. 최종 등록 흐름</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px;"><span style="display: inline-block; padding: 10px 13px; border: 1px solid #e6eaf1; border-radius: 12px; background: #fff; font-size: 14px; font-weight: 800; color: #344057;">상품 추가</span><span style="display: inline-block; padding: 10px 13px; border: 1px solid #e6eaf1; border-radius: 12px; background: #fff; font-size: 14px; font-weight: 800; color: #344057;">과정 유형 선택</span><span style="display: inline-block; padding: 10px 13px; border: 1px solid #e6eaf1; border-radius: 12px; background: #fff; font-size: 14px; font-weight: 800; color: #344057;">기본정보</span><span style="display: inline-block; padding: 10px 13px; border: 1px solid #e6eaf1; border-radius: 12px; background: #fff; font-size: 14px; font-weight: 800; color: #344057;">강의/패키지 구성</span><span style="display: inline-block; padding: 10px 13px; border: 1px solid #e6eaf1; border-radius: 12px; background: #fff; font-size: 14px; font-weight: 800; color: #344057;">수강정책</span><span style="display: inline-block; padding: 10px 13px; border: 1px solid #e6eaf1; border-radius: 12px; background: #fff; font-size: 14px; font-weight: 800; color: #344057;">가격&middot;쿠폰&middot;포인트</span><span style="display: inline-block; padding: 10px 13px; border: 1px solid #e6eaf1; border-radius: 12px; background: #fff; font-size: 14px; font-weight: 800; color: #344057;">판매&middot;노출</span><span style="display: inline-block; padding: 10px 13px; border: 1px solid #e6eaf1; border-radius: 12px; background: #fff; font-size: 14px; font-weight: 800; color: #344057;">최종확인</span><span style="display: inline-block; padding: 10px 13px; border: 1px solid #e6eaf1; border-radius: 12px; background: #fff; font-size: 14px; font-weight: 800; color: #344057;">저장</span></div>
+<div style="margin-top: 14px; padding: 15px 16px; border-left: 4px solid #138a5b; background: #ebf8f2; border-radius: 10px; color: #116541;"><strong>개발 핵심:</strong> 과정 유형 선택값을 단순 화면 표시용이 아니라 상품의 핵심 속성으로 저장하고, 이후 수강권 생성&middot;기간 계산&middot;정원&middot;패키지 구성&middot;연장&middot;환불 로직이 해당 유형을 기준으로 일관되게 작동하도록 해 주세요.</div>
+<div style="margin: 64px 0 22px; padding: 18px 22px; border-radius: 18px; background: #17233f; color: #fff;">
+<div style="font-size: 13px; font-weight: 800; opacity: .75;">PART B</div>
+<div style="font-size: 27px; font-weight: 900; letter-spacing: -.8px; margin-top: 4px;">환불관리 기능 &middot; 관리자 수동 환불 운영</div>
+</div>
+<div style="padding: 16px 18px; border-left: 4px solid #315efb; background: #eef3ff; border-radius: 10px; margin: 14px 0 24px; color: #263653;"><strong>최종 운영원칙</strong><br />고객센터 접수 &rarr; 관리자 환불신청 등록 &rarr; 환불금액 검토 &rarr; 토스 상점관리자에서 관리자가 직접 취소 &rarr; 취소정보 입력 &rarr; 강의&middot;교재&middot;포인트&middot;쿠폰&middot;정산 후속처리 &rarr; 환불완료</div>
+<div style="font-size: 28px; font-weight: 900; letter-spacing: -1px; margin: 50px 0 16px; color: #172033;">1. 수강생 직접 환불신청 기능 제외</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; padding: 24px; margin-bottom: 18px;">
+<div style="font-size: 20px; font-weight: 850; color: #23304a; margin-bottom: 12px;">수강생 환불신청 버튼 미제공</div>
+<p style="margin: 0 0 12px; color: #3f4b61;">수강생이 마이페이지에서 직접 환불을 신청하는 기능은 개발하지 않습니다. 환불 문의는 전화&middot;카카오톡&middot;게시판&middot;방문 등 고객센터를 통해 접수하고, 상담 내용을 확인한 관리자가 관리자페이지에서 환불신청을 등록합니다.</p>
+<ul style="padding-left: 22px; margin: 10px 0;">
+<li style="margin: 7px 0;">수강생 주문내역에 [환불신청] 버튼 미표시</li>
+<li style="margin: 7px 0;">수강생 결제내역에 [환불신청] 버튼 미표시</li>
+<li style="margin: 7px 0;">환불 완료 후 수강생 결제내역에는 결과만 표시</li>
+</ul>
+<div style="overflow-x: auto;">
+<table style="width: 100%; border-collapse: collapse; min-width: 650px; background: #fff;">
+<tbody>
+<tr>
+<th style="padding: 13px; border: 1px solid #e6eaf1; background: #f7f9fc; text-align: left;">항목</th>
+<th style="padding: 13px; border: 1px solid #e6eaf1; background: #f7f9fc; text-align: left;">표시 내용</th>
+</tr>
+<tr>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">환불 상태</td>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">부분환불 / 전체환불</td>
+</tr>
+<tr>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">환불금액</td>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">실제 환불 완료 금액</td>
+</tr>
+<tr>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">환불처리일</td>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">최종 환불완료 처리일</td>
+</tr>
+<tr>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">환불된 상품</td>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">실제 환불 대상 강의&middot;교재</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div style="font-size: 28px; font-weight: 900; letter-spacing: -1px; margin: 50px 0 16px; color: #172033;">2. 주문관리의 관리자 환불신청</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; padding: 24px; margin-bottom: 18px;">
+<div style="font-size: 20px; font-weight: 850; color: #23304a; margin-bottom: 12px;">결제완료 주문에 [환불신청] 버튼 추가</div>
+<p style="margin: 0 0 12px; color: #3f4b61;">관리자 주문관리에서 결제 완료된 주문마다 [환불신청] 버튼을 제공합니다.</p>
+<ul style="padding-left: 22px; margin: 10px 0;">
+<li style="margin: 7px 0;">주문 전체 환불</li>
+<li style="margin: 7px 0;">강의만 환불</li>
+<li style="margin: 7px 0;">교재만 환불</li>
+<li style="margin: 7px 0;">여러 상품 중 일부 환불</li>
+<li style="margin: 7px 0;">교재 수량 일부 환불</li>
+<li style="margin: 7px 0;">1차 부분환불 후 남은 상품 추가환불</li>
+</ul>
+<div style="padding: 14px 16px; border-left: 4px solid #d79a00; background: #fff8e8; border-radius: 10px; color: #6f5410;">주문에 여러 상품이 포함된 경우 환불할 상품과 수량을 선택할 수 있어야 합니다.</div>
+</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; padding: 24px; margin-bottom: 18px;">
+<div style="font-size: 20px; font-weight: 850; color: #23304a; margin-bottom: 12px;">환불신청 등록 입력항목</div>
+<div style="overflow-x: auto;">
+<table style="width: 100%; border-collapse: collapse; min-width: 720px; background: #fff;">
+<tbody>
+<tr>
+<th style="padding: 13px; border: 1px solid #e6eaf1; background: #f7f9fc; text-align: left;">항목</th>
+<th style="padding: 13px; border: 1px solid #e6eaf1; background: #f7f9fc; text-align: left;">내용</th>
+</tr>
+<tr>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">회원정보</td>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">회원명&middot;회원번호&middot;연락처 등</td>
+</tr>
+<tr>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">주문/결제 정보</td>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">주문번호와 결제번호</td>
+</tr>
+<tr>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">접수일시</td>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">고객센터 접수일시</td>
+</tr>
+<tr>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">접수경로</td>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">전화&middot;카카오톡&middot;게시판&middot;방문&middot;기타</td>
+</tr>
+<tr>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">환불 대상</td>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">환불 요청상품과 수량</td>
+</tr>
+<tr>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">환불 요청사유</td>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">고객의 환불 요청사유</td>
+</tr>
+<tr>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">상담내용</td>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">상담 과정 및 안내 내용</td>
+</tr>
+<tr>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">첨부파일</td>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">대화 캡처&middot;증빙&middot;반품자료 등</td>
+</tr>
+<tr>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">접수 담당자</td>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">환불 문의를 접수한 관리자</td>
+</tr>
+<tr>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">관리자 메모</td>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">내부 참고사항</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div style="padding: 14px 16px; border-left: 4px solid #315efb; background: #eef3ff; border-radius: 10px; color: #263653; margin-top: 14px;">[환불신청 등록]은 실제 환불 실행이 아니라 환불관리 메뉴에 새로운 환불 건을 생성하는 기능입니다.</div>
+<div style="padding: 14px 16px; border-left: 4px solid #d64545; background: #fff0f0; border-radius: 10px; color: #8a2e2e; margin-top: 14px;">이미 접수되었거나 처리 중인 동일 상품&middot;수량은 중복 환불신청할 수 없도록 차단합니다.</div>
+</div>
+<div style="font-size: 28px; font-weight: 900; letter-spacing: -1px; margin: 50px 0 16px; color: #172033;">3. 관리자 환불관리 메뉴</div>
+<div style="overflow-x: auto;">
+<table style="width: 100%; border-collapse: collapse; min-width: 700px; background: #fff;">
+<tbody>
+<tr>
+<th style="padding: 13px; border: 1px solid #e6eaf1; background: #f7f9fc; text-align: left;">상위 메뉴</th>
+<th style="padding: 13px; border: 1px solid #e6eaf1; background: #f7f9fc; text-align: left;">하위 메뉴</th>
+<th style="padding: 13px; border: 1px solid #e6eaf1; background: #f7f9fc; text-align: left;">운영 목적</th>
+</tr>
+<tr>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">주문&middot;결제관리</td>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">주문관리</td>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">주문 조회&middot;상품구성&middot;환불신청 시작</td>
+</tr>
+<tr>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">주문&middot;결제관리</td>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">결제관리</td>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">결제상태&middot;PG 거래정보 조회</td>
+</tr>
+<tr>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">주문&middot;결제관리</td>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">환불관리</td>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">환불 접수&middot;검토&middot;취소결과 입력&middot;후속처리</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div style="padding: 14px 16px; border-left: 4px solid #138a5b; background: #ebf8f2; border-radius: 10px; color: #116541; margin-top: 14px;">신규 환불신청이 등록되면 미처리 건수 배지를 표시합니다. 예: <strong>환불관리 ③</strong></div>
+<div style="font-size: 28px; font-weight: 900; letter-spacing: -1px; margin: 50px 0 16px; color: #172033;">4. 환불 처리순서</div>
+<ol style="padding-left: 24px; background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; padding-top: 18px; padding-bottom: 18px;">
+<li style="margin: 7px 0;">고객센터로 환불 문의 접수</li>
+<li style="margin: 7px 0;">관리자가 주문관리에서 환불신청 등록</li>
+<li style="margin: 7px 0;">환불관리에서 수강&middot;배송&middot;결제정보 확인</li>
+<li style="margin: 7px 0;">공제금액과 최종 환불금액 확정</li>
+<li style="margin: 7px 0;">상태를 [PG 취소대기]로 변경</li>
+<li style="margin: 7px 0;">관리자가 토스 상점관리자에 직접 접속</li>
+<li style="margin: 7px 0;">토스에서 전체취소 또는 부분취소 실행</li>
+<li style="margin: 7px 0;">리담 환불관리 화면에 토스 취소결과 입력</li>
+<li style="margin: 7px 0;">강의&middot;교재&middot;포인트&middot;쿠폰 후속처리</li>
+<li style="margin: 7px 0;">부분환불 또는 전체환불 완료</li>
+</ol>
+<div style="font-size: 28px; font-weight: 900; letter-spacing: -1px; margin: 50px 0 16px; color: #172033;">5. PG 취소는 관리자가 직접 처리</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; padding: 24px;">
+<p style="margin: 0 0 12px; color: #3f4b61;">리담 관리자페이지에서 토스 결제취소 API를 자동 호출하지 않습니다. 관리자가 환불금액을 최종 확인한 다음 토스 상점관리자에 직접 접속하여 전체취소 또는 부분취소를 처리합니다.</p>
+<ul style="padding-left: 22px;">
+<li style="margin: 7px 0;">원결제수단 취소</li>
+<li style="margin: 7px 0;">계좌환불</li>
+<li style="margin: 7px 0;">기타</li>
+</ul>
+<div style="padding: 14px 16px; border-left: 4px solid #d79a00; background: #fff8e8; border-radius: 10px; color: #6f5410;">원결제수단 취소 선택 시: <strong>&ldquo;토스 상점관리자에서 전체취소 또는 부분취소를 먼저 처리한 후 취소정보를 입력해 주세요.&rdquo;</strong></div>
+</div>
+<div style="font-size: 28px; font-weight: 900; letter-spacing: -1px; margin: 50px 0 16px; color: #172033;">6. 토스 취소결과 입력</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; padding: 24px;">
+<ul style="padding-left: 22px;">
+<li style="margin: 7px 0;">토스 취소금액</li>
+<li style="margin: 7px 0;">전체취소 또는 부분취소</li>
+<li style="margin: 7px 0;">토스 취소일시</li>
+<li style="margin: 7px 0;">토스 거래번호 또는 취소번호</li>
+<li style="margin: 7px 0;">취소 처리자</li>
+<li style="margin: 7px 0;">취소증빙 이미지 또는 파일</li>
+<li style="margin: 7px 0;">관리자 메모</li>
+</ul>
+<div style="padding: 14px 16px; border-left: 4px solid #d64545; background: #fff0f0; border-radius: 10px; color: #8a2e2e; margin-top: 14px;"><strong>다음 값이 없으면 환불완료 처리 불가:</strong> 실제 취소금액 / 토스 취소일시 / 토스 거래번호 또는 취소번호 / 처리담당자</div>
+<div style="overflow-x: auto; margin-top: 16px;">
+<table style="width: 100%; border-collapse: collapse; min-width: 700px; background: #fff;">
+<tbody>
+<tr>
+<th style="padding: 13px; border: 1px solid #e6eaf1; background: #f7f9fc; text-align: left;">금액 항목</th>
+<th style="padding: 13px; border: 1px solid #e6eaf1; background: #f7f9fc; text-align: left;">계산 기준</th>
+</tr>
+<tr>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">최초 결제금액</td>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">원주문 실제 결제금액</td>
+</tr>
+<tr>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">기존 누적 환불액</td>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">이전에 완료된 환불 합계</td>
+</tr>
+<tr>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">이번 환불금액</td>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">현재 처리 중인 실제 취소금액</td>
+</tr>
+<tr>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">환불 후 누적 환불액</td>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">기존 누적 환불액 + 이번 환불금액</td>
+</tr>
+<tr>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">남은 환불 가능금액</td>
+<td style="padding: 13px; border: 1px solid #e6eaf1;">최초 결제금액 - 환불 후 누적 환불액</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div style="font-size: 28px; font-weight: 900; letter-spacing: -1px; margin: 50px 0 16px; color: #172033;">7. 환불 상세화면 구성</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; padding: 24px; margin-bottom: 16px;">
+<div style="font-size: 20px; font-weight: 850; margin-bottom: 8px;">전체 주문정보</div>
+<div>회원정보 / 주문번호와 주문명 / 결제금액 / 판매가 / 배송비 / 쿠폰 할인액 / 사용 포인트 / 결제수단 / 결제일시 / 누적 환불액 / 주문상태</div>
+</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; padding: 24px; margin-bottom: 16px;">
+<div style="font-size: 20px; font-weight: 850; margin-bottom: 8px;">정상거래 PG 정보</div>
+<div>PG사 / 결제키 또는 거래번호 / 결제수단 / 카드사 또는 간편결제사 / 승인번호 / 승인일시 / 할부정보</div>
+</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; padding: 24px; margin-bottom: 16px;">
+<div style="font-size: 20px; font-weight: 850; margin-bottom: 8px;">환불 대상상품 정보</div>
+<div>환불 대상상품 / 상품구분 / 수량 / 상품별 실제 결제금액 / 기존 환불금액 / 환불 가능금액 / 강의 진도율과 수강이력 / 교재 배송 및 반품상태</div>
+</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; padding: 24px; margin-bottom: 16px;">
+<div style="font-size: 20px; font-weight: 850; margin-bottom: 8px;">환불금액 계산</div>
+<div>상품별 환불 기준금액 / 강의 수강분 공제액 / 교재 반품비 또는 배송비 / 기타 공제액 / 공제사유 / 포인트 반환 또는 회수액 / 쿠폰 복원 여부 / 최종 환불금액</div>
+</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; padding: 24px;">
+<div style="font-size: 20px; font-weight: 850; margin-bottom: 8px;">환불처리 정보</div>
+<div>전체환불 또는 부분환불 / 환불방법 / 토스 취소정보 / 관리자 메모 / 처리담당자 / 처리상태 / SMS 발송 여부 / 이메일 발송 여부</div>
+</div>
+<div style="font-size: 28px; font-weight: 900; letter-spacing: -1px; margin: 50px 0 16px; color: #172033;">8. 환불 처리상태</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px;"><span style="padding: 8px 11px; border-radius: 999px; background: #fff; border: 1px solid #e6eaf1;">환불접수</span> <span style="padding: 8px 11px; border-radius: 999px; background: #fff; border: 1px solid #e6eaf1;">검토중</span> <span style="padding: 8px 11px; border-radius: 999px; background: #fff; border: 1px solid #e6eaf1;">추가확인 필요</span> <span style="padding: 8px 11px; border-radius: 999px; background: #fff; border: 1px solid #e6eaf1;">반품대기</span> <span style="padding: 8px 11px; border-radius: 999px; background: #fff; border: 1px solid #e6eaf1;">환불금액 확정</span> <span style="padding: 8px 11px; border-radius: 999px; background: #fff; border: 1px solid #e6eaf1;">PG 취소대기</span> <span style="padding: 8px 11px; border-radius: 999px; background: #fff; border: 1px solid #e6eaf1;">PG 취소완료&middot;내부처리대기</span> <span style="padding: 8px 11px; border-radius: 999px; background: #fff; border: 1px solid #e6eaf1;">부분환불완료</span> <span style="padding: 8px 11px; border-radius: 999px; background: #fff; border: 1px solid #e6eaf1;">전체환불완료</span> <span style="padding: 8px 11px; border-radius: 999px; background: #fff; border: 1px solid #e6eaf1;">환불반려</span> <span style="padding: 8px 11px; border-radius: 999px; background: #fff; border: 1px solid #e6eaf1;">환불철회</span> <span style="padding: 8px 11px; border-radius: 999px; background: #fff; border: 1px solid #e6eaf1;">처리오류</span></div>
+<div style="padding: 14px 16px; border-left: 4px solid #315efb; background: #eef3ff; border-radius: 10px; color: #263653; margin-top: 14px;">상태 변경 시마다 변경일시&middot;처리담당자&middot;변경 전 상태&middot;변경 후 상태&middot;관리자 메모를 이력으로 보존합니다.</div>
+<div style="font-size: 28px; font-weight: 900; letter-spacing: -1px; margin: 50px 0 16px; color: #172033;">9. 강의&middot;교재&middot;포인트&middot;쿠폰&middot;정산 후속처리</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; padding: 24px; margin-bottom: 16px;"><strong>강의</strong>
+<ul style="padding-left: 22px;">
+<li>환불한 강의 수강권 회수</li>
+<li>패키지 부분환불 시 선택한 강의만 회수</li>
+<li>환불하지 않은 강의는 유지</li>
+<li>진도율&middot;기존 수강이력은 삭제하지 않고 보존</li>
+</ul>
+</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; padding: 24px; margin-bottom: 16px;"><strong>교재</strong>
+<ul style="padding-left: 22px;">
+<li>출고 전 주문취소</li>
+<li>출고 후 반품상태 관리</li>
+<li>반송 송장번호 입력</li>
+<li>반품완료 확인</li>
+<li>반품 배송비 공제</li>
+</ul>
+</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; padding: 24px; margin-bottom: 16px;"><strong>포인트&middot;쿠폰</strong>
+<ul style="padding-left: 22px;">
+<li>결제에 사용한 포인트 반환</li>
+<li>결제로 적립된 포인트 회수</li>
+<li>회수 포인트 부족 시 관리자 경고</li>
+<li>쿠폰 복원 여부는 정책에 따라 처리</li>
+</ul>
+</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; padding: 24px;"><strong>매출&middot;정산</strong>
+<ul style="padding-left: 22px;">
+<li>실제 토스 취소금액을 매출과 정산에서 차감</li>
+<li>부분환불은 실제 부분취소 금액만 차감</li>
+<li>환불 전후 금액 이력 보존</li>
+</ul>
+</div>
+<div style="font-size: 28px; font-weight: 900; letter-spacing: -1px; margin: 50px 0 16px; color: #172033;">10. 중요 안전장치</div>
+<ul style="background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; padding: 22px 22px 22px 42px;">
+<li style="margin: 8px 0;">동일 상품 중복 환불신청 차단</li>
+<li style="margin: 8px 0;">이미 환불한 금액보다 큰 금액 입력 차단</li>
+<li style="margin: 8px 0;">최초 결제금액을 초과하는 누적 환불 차단</li>
+<li style="margin: 8px 0;">환불완료 상태 변경 전 확인창 표시</li>
+<li style="margin: 8px 0;">토스 취소정보 미입력 시 환불완료 처리 차단</li>
+<li style="margin: 8px 0;">누가 언제 어떤 금액을 환불했는지 로그 저장</li>
+<li style="margin: 8px 0;">환불완료 후 금액 수정 제한</li>
+<li style="margin: 8px 0;">수정 필요 시 원장 권한과 수정사유 필수</li>
+<li style="margin: 8px 0;">부분환불 후 남은 환불 가능금액 자동계산</li>
+<li style="margin: 8px 0;">환불완료 처리 실패 시 강의&middot;포인트 등의 일부만 변경되지 않도록 일괄처리</li>
+</ul>
+<div style="padding: 14px 16px; border-left: 4px solid #d64545; background: #fff0f0; border-radius: 10px; color: #8a2e2e; margin-top: 14px;"><strong>일괄처리 원칙:</strong> 후속처리 중 하나라도 실패하면 일부 데이터만 변경된 상태가 남지 않도록 트랜잭션 또는 복구 가능한 상태관리 방식으로 처리합니다.</div>
+<div style="font-size: 28px; font-weight: 900; letter-spacing: -1px; margin: 50px 0 16px; color: #172033;">11. 온라인강의 환불규정 자동계산</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; padding: 24px; margin-bottom: 18px;">
+<div style="font-size: 20px; font-weight: 850; color: #23304a; margin-bottom: 12px;">[환불규정 자동계산] 영역 추가 <span style="display: inline-block; padding: 6px 10px; border-radius: 999px; background: #fff0f0; color: #d64545; font-size: 12px; font-weight: 800;">★★★ 필수</span></div>
+<p style="margin: 0 0 12px; color: #3f4b61;">환불관리 상세화면에 <strong>[환불규정 자동계산]</strong> 영역을 추가해 주세요. 이 기능은 환불 예정 금액을 계산하고 산출근거를 보여주는 기능이며, 계산하거나 금액을 확정해도 토스 결제취소가 자동 실행되면 안 됩니다.</p>
+<div style="padding: 14px 16px; border-left: 4px solid #d79a00; background: #fff8e8; border-radius: 10px; color: #6f5410;"><strong>중요:</strong> [환불금액 확정]은 PG 취소 버튼이 아닙니다.<br />관리자가 계산결과 확인 &rarr; 환불금액 확정 &rarr; 상태 [PG 취소대기] &rarr; 토스 상점관리자에서 직접 전체/부분취소 &rarr; 실제 취소정보 입력 순서로 처리합니다.</div>
+</div>
+<div style="font-size: 21px; font-weight: 850; letter-spacing: -.4px; margin: 30px 0 12px; color: #23304a;">11-1. 계산에 사용하는 기준값</div>
+<div style="overflow-x: auto; margin: 14px 0 22px;">
+<table style="width: 100%; border-collapse: collapse; min-width: 850px; background: #fff;">
+<tbody>
+<tr>
+<th style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #f7f9fc; color: #445067; text-align: left;">기준값</th>
+<th style="padding: 13px 14px; border: 1px solid #e6eaf1; background: #f7f9fc; color: #445067; text-align: left;">정의 및 저장 기준</th>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1;"><strong>결제기준금액(B)</strong></td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1;">쿠폰&middot;포인트 차감 전 해당 상품의 실제 판매금액</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1;"><strong>정상가(N)</strong></td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1;">할인 전 정상 판매가격</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1;"><strong>쿠폰 사용금액(C)</strong></td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1;">해당 주문상품에 배분된 쿠폰 할인액</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1;"><strong>사용 포인트(Q)</strong></td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1;">해당 주문상품에 배분된 사용 포인트</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1;">실제 PG 결제금액</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1;">해당 상품에 귀속되는 실제 현금/PG 결제액</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1;"><strong>정가 수강기간(D)</strong></td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1;">결제 당시 상품에 적용된 정상 수강기간</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1;"><strong>실제 이용일수(d)</strong></td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1;">수강 시작일부터 고객센터 환불 접수일까지의 실제 이용일수</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1;"><strong>전체 예정 회차(T)</strong></td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1;">결제 당시 사전 고지된 전체 예정 회차</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1;"><strong>수강&middot;자료 이용 회차(t)</strong></td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1;">유료 영상 또는 유료 자료를 이용한 고유 회차 수</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1;">환불 계산유형</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1;">기간제 / 단과 / 단과 묶음 / 상품별 별도 환불규정 등</td>
+</tr>
+<tr>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1;">상품별 별도 환불규정</td>
+<td style="padding: 13px 14px; border: 1px solid #e6eaf1;">결제 당시 상품안내 페이지에 별도로 고지된 환불조건의 스냅샷</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div style="padding: 14px 16px; border-left: 4px solid #d64545; background: #fff0f0; border-radius: 10px; color: #8a2e2e;"><strong>결제 당시 스냅샷 기준:</strong> 환불 계산은 현재 상품정보가 아니라 반드시 <strong>결제 당시 저장된 가격&middot;기간&middot;예정 회차&middot;쿠폰/포인트 배분값&middot;환불규정</strong>을 기준으로 합니다. 이후 상품정보가 수정되어도 과거 주문의 환불 기준은 변경되면 안 됩니다.</div>
+<div style="font-size: 21px; font-weight: 850; letter-spacing: -.4px; margin: 30px 0 12px; color: #23304a;">11-2. 환불규정 적용 우선순위</div>
+<ol style="margin: 8px 0 22px; padding: 18px 18px 18px 42px; background: #fff; border: 1px solid #e6eaf1; border-radius: 18px;">
+<li style="margin: 8px 0;">결제 당시 상품 안내 페이지에 별도로 고지된 환불규정</li>
+<li style="margin: 8px 0;">수강 시작일부터 7일 이내이고 이용이력이 없는 경우 전액환불</li>
+<li style="margin: 8px 0;">정가 수강기간의 1/2 이상 경과 여부</li>
+<li style="margin: 8px 0;">패키지 부분환불 제한 여부</li>
+<li style="margin: 8px 0;">기간제 또는 단과 계산식 적용</li>
+<li style="margin: 8px 0;">쿠폰&middot;포인트 및 기존 누적 환불액 반영</li>
+</ol>
+<div style="padding: 14px 16px; border-left: 4px solid #315efb; background: #eef3ff; border-radius: 10px; color: #263653;">관리자 화면에는 판정 결과를 명확히 표시합니다.<br />예: <strong>전액환불 가능: 수강 시작 후 7일 이내&middot;이용이력 없음 / 환불 불가: 정가 수강기간의 1/2 이상 경과 / 부분환불 불가: 패키지 구성상품 / 단과 계산식 적용 / 상품별 별도 환불규정 적용</strong></div>
+<div style="font-size: 21px; font-weight: 850; letter-spacing: -.4px; margin: 30px 0 12px; color: #23304a;">11-3. 7일 이내 전액환불</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 18px; padding: 22px;">
+<div style="font-weight: 850; margin-bottom: 10px; color: #23304a;">다음 조건을 모두 충족하면 전액환불로 판정</div>
+<ul style="padding-left: 22px; margin: 8px 0;">
+<li style="margin: 7px 0;">수강 시작일부터 7일 이내</li>
+<li style="margin: 7px 0;">유료 영상 재생이력 없음</li>
+<li style="margin: 7px 0;">유료 강의자료 열람이력 없음</li>
+<li style="margin: 7px 0;">유료 강의자료 다운로드이력 없음</li>
+<li style="margin: 7px 0;">유료 강의자료 출력이력 없음</li>
+</ul>
+<div style="margin-top: 14px; padding: 15px 16px; background: #f7f9fc; border: 1px solid #e6eaf1; border-radius: 12px; font-family: Consolas,monospace;">환불 대상금액 = 결제기준금액(B) &minus; 쿠폰 사용금액(C)</div>
+<ul style="padding-left: 22px; margin: 14px 0 0;">
+<li style="margin: 7px 0;">사용 포인트는 포인트로 반환</li>
+<li style="margin: 7px 0;">나머지 금액을 토스 취소 예정금액으로 계산</li>
+<li style="margin: 7px 0;">토스 취소 예정금액은 실제 PG 결제금액을 초과할 수 없음</li>
+<li style="margin: 7px 0;">무료 맛보기 영상과 결제 전 공개된 무료자료 이용이력은 유료 이용이력에서 제외</li>
+</ul>
+</div>
+<div style="font-size: 21px; font-weight: 850; letter-spacing: -.4px; margin: 30px 0 12px; color: #23304a;">11-4. 이용이력 판정</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 18px; padding: 22px;">
+<ul style="padding-left: 22px; margin: 0;">
+<li style="margin: 7px 0;">유료 영상 재생</li>
+<li style="margin: 7px 0;">유료 강의자료 열람</li>
+<li style="margin: 7px 0;">유료 강의자료 다운로드</li>
+<li style="margin: 7px 0;">유료 강의자료 출력</li>
+</ul>
+<div style="padding: 14px 16px; border-left: 4px solid #315efb; background: #eef3ff; border-radius: 10px; color: #263653; margin-top: 14px;">같은 회차에서 영상을 여러 번 재생하거나 자료를 여러 번 이용해도 <strong>이용 회차는 1회차</strong>로 계산합니다. 영상과 자료를 모두 이용한 경우도 같은 회차라면 중복 계산하지 않습니다.</div>
+<div style="padding: 14px 16px; border-left: 4px solid #d79a00; background: #fff8e8; border-radius: 10px; color: #6f5410; margin-top: 14px;">회차에 연결되지 않은 공통 유료 강의자료를 이용한 경우에는 <strong>최소 1회차 이용</strong>으로 계산하고, 관리자 화면에서 해당 자료의 이용이력을 확인할 수 있게 해 주세요.</div>
+</div>
+<div style="font-size: 21px; font-weight: 850; letter-spacing: -.4px; margin: 30px 0 12px; color: #23304a;">11-5. 실제 이용일수</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 18px; padding: 22px;">
+<div style="padding: 15px 16px; background: #f7f9fc; border: 1px solid #e6eaf1; border-radius: 12px; font-family: Consolas,monospace;">실제 이용일수(d) = 고객센터 환불 접수일 &minus; 수강 시작일 + 1일</div>
+<ul style="padding-left: 22px; margin: 14px 0 0;">
+<li style="margin: 7px 0;">수강 시작일 전이면 이용일수는 0일</li>
+<li style="margin: 7px 0;">승인된 일시정지 기간은 이용일수에서 제외</li>
+<li style="margin: 7px 0;">관리자가 늦게 처리해도 환불 접수일 이후 기간은 추가 계산하지 않음</li>
+<li style="margin: 7px 0;">환불접수 등록 시 계산 기준일을 자동 저장</li>
+<li style="margin: 7px 0;">계산 기준일 수정 시 변경사유&middot;처리담당자&middot;변경 전후 값을 기록</li>
+</ul>
+</div>
+<div style="font-size: 21px; font-weight: 850; letter-spacing: -.4px; margin: 30px 0 12px; color: #23304a;">11-6. 기간제 강좌 계산식</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 18px; padding: 22px;">
+<div style="padding: 15px 16px; background: #f7f9fc; border: 1px solid #e6eaf1; border-radius: 12px; font-family: Consolas,monospace; line-height: 1.9;">1일 이용대금 = 정상가(N) &divide; 정가 수강기간(D)<br />이용 공제액 = 1일 이용대금 &times; 실제 이용일수(d)<br />환불 대상금액 = 결제기준금액(B) &minus; 이용 공제액 &minus; 쿠폰 사용금액(C)</div>
+<ul style="padding-left: 22px; margin: 14px 0 0;">
+<li style="margin: 7px 0;">최종 환불금액이 0원 미만이면 0원으로 처리</li>
+<li style="margin: 7px 0;"><strong>실제 이용일수 &times; 2 &ge; 정가 수강기간</strong>이면 금액 계산 대신 [환불 불가] 표시</li>
+</ul>
+</div>
+<div style="font-size: 21px; font-weight: 850; letter-spacing: -.4px; margin: 30px 0 12px; color: #23304a;">11-7. 단과 강좌 계산식</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 18px; padding: 22px;">
+<div style="padding: 15px 16px; background: #f7f9fc; border: 1px solid #e6eaf1; border-radius: 12px; font-family: Consolas,monospace; line-height: 1.9;">이용일수 기준 공제액 = 정상가(N) &divide; 정가 수강기간(D) &times; 실제 이용일수(d)<br />회차 기준 공제액 = 정상가(N) &divide; 전체 예정 회차(T) &times; 수강&middot;자료 이용 회차(t)<br />적용 공제액 = MAX(이용일수 기준 공제액, 회차 기준 공제액)<br />환불 대상금액 = 결제기준금액(B) &minus; 적용 공제액 &minus; 쿠폰 사용금액(C)</div>
+<div style="overflow-x: auto; margin-top: 16px;">
+<table style="width: 100%; border-collapse: collapse; min-width: 680px;">
+<tbody>
+<tr>
+<th style="padding: 12px 13px; border: 1px solid #e6eaf1; background: #f7f9fc; text-align: left;">표시항목</th>
+<th style="padding: 12px 13px; border: 1px solid #e6eaf1; background: #f7f9fc; text-align: left;">예시</th>
+</tr>
+<tr>
+<td style="padding: 12px 13px; border: 1px solid #e6eaf1;">이용일수 기준 공제액</td>
+<td style="padding: 12px 13px; border: 1px solid #e6eaf1;">50,000원</td>
+</tr>
+<tr>
+<td style="padding: 12px 13px; border: 1px solid #e6eaf1;">회차 기준 공제액</td>
+<td style="padding: 12px 13px; border: 1px solid #e6eaf1;">80,000원</td>
+</tr>
+<tr>
+<td style="padding: 12px 13px; border: 1px solid #e6eaf1;"><strong>최종 적용 공제액</strong></td>
+<td style="padding: 12px 13px; border: 1px solid #e6eaf1;"><strong>80,000원</strong></td>
+</tr>
+<tr>
+<td style="padding: 12px 13px; border: 1px solid #e6eaf1;">적용사유</td>
+<td style="padding: 12px 13px; border: 1px solid #e6eaf1;">회차 기준 공제액이 더 큼</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div style="font-size: 21px; font-weight: 850; letter-spacing: -.4px; margin: 30px 0 12px; color: #23304a;">11-8. 미종강 강의</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 18px; padding: 22px;">
+<p style="margin: 0 0 12px; color: #3f4b61;">아직 촬영&middot;업로드가 끝나지 않은 강의는 현재 등록된 회차 수가 아니라 <strong>판매 시 상품 안내에 사전 고지한 전체 예정 회차</strong>를 기준으로 계산합니다.</p>
+<div style="padding: 14px 16px; border-left: 4px solid #315efb; background: #eef3ff; border-radius: 10px; color: #263653;">예: 현재 업로드 10회 / 사전 공지 전체 예정 30회 &rarr; 환불 계산 전체 회차(T) = 30회</div>
+<ul style="padding-left: 22px; margin: 14px 0 0;">
+<li style="margin: 7px 0;">강의상품 등록 시 [전체 예정 회차] 필수 입력</li>
+<li style="margin: 7px 0;">판매 시작 후 전체 예정 회차 변경 시 변경이력&middot;변경사유&middot;처리관리자 저장</li>
+<li style="margin: 7px 0;">기존 주문은 결제 당시 저장된 예정 회차를 계속 사용</li>
+</ul>
+</div>
+<div style="font-size: 21px; font-weight: 850; letter-spacing: -.4px; margin: 30px 0 12px; color: #23304a;">11-9. 패키지&middot;PASS&middot;할인상품</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 18px; padding: 22px;">
+<ul style="padding-left: 22px; margin: 0;">
+<li style="margin: 7px 0;">PASS&middot;기간제&middot;패키지&middot;특별기획 등 할인상품의 이용 공제액은 <strong>할인가가 아닌 할인 전 정상가(N)</strong>를 기준으로 계산</li>
+<li style="margin: 7px 0;">패키지 상품은 구성 강좌 일부만 별도 환불할 수 없음</li>
+</ul>
+<div style="padding: 14px 16px; border-left: 4px solid #d64545; background: #fff0f0; border-radius: 10px; color: #8a2e2e; margin-top: 14px;">패키지 일부만 선택하면 접수 차단:<br /><strong>&ldquo;패키지 상품은 구성강좌의 일부만 별도로 환불할 수 없습니다. 패키지 전체를 선택해 주세요.&rdquo;</strong></div>
+<div style="font-weight: 850; margin-top: 16px;">패키지&middot;PASS 상품의 환불 계산유형</div>
+<ul style="padding-left: 22px; margin: 8px 0 0;">
+<li style="margin: 7px 0;">기간제 계산식</li>
+<li style="margin: 7px 0;">단과 묶음 계산식</li>
+<li style="margin: 7px 0;">상품별 별도 환불규정</li>
+</ul>
+</div>
+<div style="font-size: 21px; font-weight: 850; letter-spacing: -.4px; margin: 30px 0 12px; color: #23304a;">11-10. 쿠폰 처리</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 18px; padding: 22px;">
+<ul style="padding-left: 22px; margin: 0;">
+<li style="margin: 7px 0;">이벤트 쿠폰 사용금액은 환불 대상금액에서 공제</li>
+<li style="margin: 7px 0;"><strong>특정 상품 전용 쿠폰:</strong> 해당 상품에 전액 배분</li>
+<li style="margin: 7px 0;"><strong>주문 전체 쿠폰:</strong> 결제 시 대상 상품 판매금액 비율로 상품별 배분</li>
+<li style="margin: 7px 0;"><strong>원 단위 배분 차액:</strong> 마지막 대상 상품에 반영</li>
+<li style="margin: 7px 0;">기본값은 환불 후 쿠폰 자동 재발급 안 함</li>
+<li style="margin: 7px 0;">쿠폰 정책에서 [환불 시 복원 가능]으로 설정된 쿠폰만 복원</li>
+</ul>
+</div>
+<div style="font-size: 21px; font-weight: 850; letter-spacing: -.4px; margin: 30px 0 12px; color: #23304a;">11-11. 포인트 처리</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 18px; padding: 22px;">
+<div style="padding: 15px 16px; background: #f7f9fc; border: 1px solid #e6eaf1; border-radius: 12px; font-family: Consolas,monospace; line-height: 1.9;">포인트 반환액 = MIN(사용 포인트(Q), 환불 대상금액)<br />토스 취소 예정금액 = 환불 대상금액 &minus; 포인트 반환액</div>
+<ul style="padding-left: 22px; margin: 14px 0 0;">
+<li style="margin: 7px 0;">포인트 반환액 + 토스 취소 예정금액 = 최종 환불금액인지 검증</li>
+<li style="margin: 7px 0;">토스 취소 예정금액은 실제 PG 결제금액을 초과할 수 없음</li>
+<li style="margin: 7px 0;">기존 누적 환불액을 포함해 최초 결제금액 초과 금지</li>
+<li style="margin: 7px 0;">결제로 적립된 포인트는 환불비율에 맞게 회수</li>
+</ul>
+</div>
+<div style="font-size: 21px; font-weight: 850; letter-spacing: -.4px; margin: 30px 0 12px; color: #23304a;">11-12. 재수강&middot;수강연장&middot;기간연장</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 18px; padding: 22px;">
+<p style="margin: 0 0 12px; color: #3f4b61;">재수강&middot;수강연장&middot;기간연장 결제도 원래 강의와 별개의 환불 대상 상품으로 관리하고 동일한 환불 원칙을 적용합니다.</p>
+<ul style="padding-left: 22px; margin: 0;">
+<li style="margin: 7px 0;">연장/재수강 결제금액</li>
+<li style="margin: 7px 0;">정상가</li>
+<li style="margin: 7px 0;">적용기간</li>
+<li style="margin: 7px 0;">이용 시작일</li>
+<li style="margin: 7px 0;">실제 이용일수</li>
+<li style="margin: 7px 0;">쿠폰&middot;포인트 사용내역</li>
+<li style="margin: 7px 0;">환불 계산유형</li>
+</ul>
+<div style="padding: 14px 16px; border-left: 4px solid #d79a00; background: #fff8e8; border-radius: 10px; color: #6f5410; margin-top: 14px;">원래 강의 결제금액과 연장&middot;재수강 결제금액을 서로 섞어서 계산하지 않습니다.</div>
+</div>
+<div style="font-size: 21px; font-weight: 850; letter-spacing: -.4px; margin: 30px 0 12px; color: #23304a;">11-13. 환불 계산 결과 표시</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 18px; padding: 22px;">
+<div style="display: grid; grid-template-columns: repeat(auto-fit,minmax(240px,1fr)); gap: 8px 20px;">
+<div>&bull; 적용된 환불규정</div>
+<div>&bull; 환불 가능 여부</div>
+<div>&bull; 결제기준금액</div>
+<div>&bull; 정상가</div>
+<div>&bull; 실제 이용일수</div>
+<div>&bull; 정가 수강기간</div>
+<div>&bull; 수강기간 경과율</div>
+<div>&bull; 전체 예정 회차</div>
+<div>&bull; 수강&middot;자료 이용 회차</div>
+<div>&bull; 이용일수 기준 공제액</div>
+<div>&bull; 회차 기준 공제액</div>
+<div>&bull; 최종 적용 공제액</div>
+<div>&bull; 쿠폰 공제액</div>
+<div>&bull; 포인트 반환액</div>
+<div>&bull; 기존 누적 환불액</div>
+<div>&bull; 토스 취소 예정금액</div>
+<div>&bull; 최종 환불금액</div>
+<div>&bull; 환불 계산식과 계산 결과</div>
+</div>
+<div style="padding: 14px 16px; border-left: 4px solid #138a5b; background: #ebf8f2; border-radius: 10px; color: #116541; margin-top: 16px;">관리자가 산출근거를 확인하고 <strong>[환불금액 확정]</strong>을 눌러야 상태가 <strong>[PG 취소대기]</strong>로 변경됩니다. 이 버튼은 토스 취소를 자동 실행하지 않습니다.</div>
+</div>
+<div style="font-size: 21px; font-weight: 850; letter-spacing: -.4px; margin: 30px 0 12px; color: #23304a;">11-14. 관리자 금액 조정</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 18px; padding: 22px;">
+<p style="margin: 0 0 12px; color: #3f4b61;">예외 상황에서는 자동 계산값과 다른 금액으로 조정할 수 있도록 하되, 조정 내역을 원장처럼 보존합니다.</p>
+<ul style="padding-left: 22px; margin: 0;">
+<li style="margin: 7px 0;">자동 계산금액</li>
+<li style="margin: 7px 0;">최종 조정금액</li>
+<li style="margin: 7px 0;">증액 또는 감액 금액</li>
+<li style="margin: 7px 0;">조정사유</li>
+<li style="margin: 7px 0;">처리담당자</li>
+<li style="margin: 7px 0;">조정일시</li>
+</ul>
+<div style="padding: 14px 16px; border-left: 4px solid #d64545; background: #fff0f0; border-radius: 10px; color: #8a2e2e; margin-top: 14px;">자동 계산금액보다 <strong>감액</strong>하거나 <strong>환불 불가</strong>로 변경하는 경우에는 최고관리자 권한으로만 확정할 수 있게 해 주세요.</div>
+</div>
+<div style="font-size: 21px; font-weight: 850; letter-spacing: -.4px; margin: 30px 0 12px; color: #23304a;">11-15. 계산 예외 및 반올림</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 18px; padding: 22px;">
+<ul style="padding-left: 22px; margin: 0;">
+<li style="margin: 7px 0;">계산 결과가 0원 미만이면 0원</li>
+<li style="margin: 7px 0;">누적 환불액이 결제금액을 초과하면 처리 차단</li>
+<li style="margin: 7px 0;">나눗셈으로 소수점 발생 시 최종 공제액에서 원 단위 미만 절사</li>
+<li style="margin: 7px 0;">최종 환불금액은 1원 단위 처리</li>
+<li style="margin: 7px 0;">화면 표시값과 DB 저장값이 반드시 일치</li>
+<li style="margin: 7px 0;">환불 계산 확정 후 상품가격&middot;예정 회차가 변경되어도 확정된 계산결과는 변경되지 않음</li>
+</ul>
+</div>
+<div style="font-size: 28px; font-weight: 900; letter-spacing: -1px; margin: 50px 0 16px; color: #172033;">12. 개발 검증 예시</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; padding: 24px; margin-bottom: 18px;">
+<div style="font-size: 20px; font-weight: 850; color: #23304a; margin-bottom: 12px;">예시 A &middot; 기간제 상품</div>
+<div style="overflow-x: auto;">
+<table style="width: 100%; border-collapse: collapse; min-width: 720px;">
+<tbody>
+<tr>
+<th style="padding: 12px; border: 1px solid #e6eaf1; background: #f7f9fc; text-align: left;">항목</th>
+<th style="padding: 12px; border: 1px solid #e6eaf1; background: #f7f9fc; text-align: left;">값</th>
+</tr>
+<tr>
+<td style="padding: 12px; border: 1px solid #e6eaf1;">결제기준금액</td>
+<td style="padding: 12px; border: 1px solid #e6eaf1;">300,000원</td>
+</tr>
+<tr>
+<td style="padding: 12px; border: 1px solid #e6eaf1;">정상가</td>
+<td style="padding: 12px; border: 1px solid #e6eaf1;">600,000원</td>
+</tr>
+<tr>
+<td style="padding: 12px; border: 1px solid #e6eaf1;">정가 수강기간</td>
+<td style="padding: 12px; border: 1px solid #e6eaf1;">100일</td>
+</tr>
+<tr>
+<td style="padding: 12px; border: 1px solid #e6eaf1;">실제 이용일수</td>
+<td style="padding: 12px; border: 1px solid #e6eaf1;">20일</td>
+</tr>
+<tr>
+<td style="padding: 12px; border: 1px solid #e6eaf1;">쿠폰</td>
+<td style="padding: 12px; border: 1px solid #e6eaf1;">30,000원</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div style="margin-top: 14px; padding: 15px 16px; background: #f7f9fc; border: 1px solid #e6eaf1; border-radius: 12px; line-height: 1.9;">1일 이용대금 = 600,000 &divide; 100 = <strong>6,000원</strong><br />이용 공제액 = 6,000 &times; 20 = <strong>120,000원</strong><br />환불금액 = 300,000 &minus; 120,000 &minus; 30,000 = <strong>150,000원</strong></div>
+</div>
+<div style="background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; padding: 24px; margin-bottom: 18px;">
+<div style="font-size: 20px; font-weight: 850; color: #23304a; margin-bottom: 12px;">예시 B &middot; 단과 상품</div>
+<div style="overflow-x: auto;">
+<table style="width: 100%; border-collapse: collapse; min-width: 720px;">
+<tbody>
+<tr>
+<th style="padding: 12px; border: 1px solid #e6eaf1; background: #f7f9fc; text-align: left;">항목</th>
+<th style="padding: 12px; border: 1px solid #e6eaf1; background: #f7f9fc; text-align: left;">값</th>
+</tr>
+<tr>
+<td style="padding: 12px; border: 1px solid #e6eaf1;">결제기준금액</td>
+<td style="padding: 12px; border: 1px solid #e6eaf1;">200,000원</td>
+</tr>
+<tr>
+<td style="padding: 12px; border: 1px solid #e6eaf1;">정상가</td>
+<td style="padding: 12px; border: 1px solid #e6eaf1;">300,000원</td>
+</tr>
+<tr>
+<td style="padding: 12px; border: 1px solid #e6eaf1;">정가 수강기간</td>
+<td style="padding: 12px; border: 1px solid #e6eaf1;">60일</td>
+</tr>
+<tr>
+<td style="padding: 12px; border: 1px solid #e6eaf1;">실제 이용일수</td>
+<td style="padding: 12px; border: 1px solid #e6eaf1;">10일</td>
+</tr>
+<tr>
+<td style="padding: 12px; border: 1px solid #e6eaf1;">전체 예정 회차</td>
+<td style="padding: 12px; border: 1px solid #e6eaf1;">30회</td>
+</tr>
+<tr>
+<td style="padding: 12px; border: 1px solid #e6eaf1;">이용 회차</td>
+<td style="padding: 12px; border: 1px solid #e6eaf1;">8회</td>
+</tr>
+<tr>
+<td style="padding: 12px; border: 1px solid #e6eaf1;">쿠폰</td>
+<td style="padding: 12px; border: 1px solid #e6eaf1;">20,000원</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div style="margin-top: 14px; padding: 15px 16px; background: #f7f9fc; border: 1px solid #e6eaf1; border-radius: 12px; line-height: 1.9;">이용일수 기준 공제액 = 300,000 &divide; 60 &times; 10 = <strong>50,000원</strong><br />회차 기준 공제액 = 300,000 &divide; 30 &times; 8 = <strong>80,000원</strong><br />적용 공제액 = MAX(50,000, 80,000) = <strong>80,000원</strong><br />환불금액 = 200,000 &minus; 80,000 &minus; 20,000 = <strong>100,000원</strong></div>
+</div>
+<div style="padding: 16px 18px; border-left: 4px solid #138a5b; background: #ebf8f2; border-radius: 10px; margin: 14px 0 24px; color: #116541;"><strong>검증 완료 기준</strong><br />위 계산결과를 관리자가 확인하고 [환불금액 확정] &rarr; [PG 취소대기]로 변경한 뒤, 토스 상점관리자에서 관리자가 직접 전체취소 또는 부분취소하고 리담 환불관리 화면에 실제 취소정보를 입력하는 흐름까지 정상 동작해야 합니다.</div>
+<div style="font-size: 28px; font-weight: 900; letter-spacing: -1px; margin: 50px 0 16px; color: #172033;">13. 최종 환불 운영 흐름</div>
+<div style="padding: 18px; background: #fff; border: 1px solid #e6eaf1; border-radius: 20px; line-height: 2;"><strong>고객센터 접수 &rarr; 관리자 환불신청 등록 &rarr; 환불규정 자동계산 &rarr; 관리자 검토&middot;필요 시 금액조정 &rarr; [환불금액 확정] &rarr; [PG 취소대기] &rarr; 토스 상점관리자 직접 전체/부분취소 &rarr; 토스 취소정보 입력 &rarr; 강의&middot;교재&middot;포인트&middot;쿠폰&middot;매출&middot;정산 후속처리 &rarr; 부분환불/전체환불 완료</strong></div>
+<div style="padding: 16px 18px; border-left: 4px solid #138a5b; background: #ebf8f2; border-radius: 10px; margin: 18px 0 0; color: #116541;"><strong>최종 구현 기준</strong><br />관리자페이지는 환불을 자동 실행하는 시스템이 아니라, <strong>결제 당시 정책을 기준으로 환불액을 자동 산출하고 근거를 제시한 뒤, 토스 수동취소 결과와 내부 후속처리를 정확하게 연결&middot;기록하는 운영 시스템</strong>으로 구현해 주세요.</div>
+</div>
