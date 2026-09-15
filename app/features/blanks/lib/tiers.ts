@@ -40,13 +40,25 @@ export function orderMappedBlanks<T extends OrderableBlank>(blanks: T[]): T[] {
 }
 
 // tier 가 활성(=가림)으로 삼는 빈칸 idx 집합.
+//
+// ★★같은 답이 여러 번 나오면 **전부 함께** 가린다. 앞에서 N 개만 끊으면 뒤에 남은 같은 말이
+//   답을 그대로 알려 준다 — 실제 신고(2026-09-15, 특허법 제10조): 「지정된 ▢(이하 "심판장"이라
+//   한다)」처럼 괄호 안 약칭이 노출돼 「힌트가 되어 답이 잘 보인다」. 법령은 약칭 정의
+//   (「이하 "○○"이라 한다」)가 흔해서 특수 사례가 아니라 **구조적인 누출**이다.
+//   그래서 tier 의 절단은 「몇 개를 가리나」가 아니라 「어떤 말을 가리나」로 읽는다.
+//   하 ⊂ 중 ⊂ 상 은 그대로 유지된다(앞에서부터 취하는 순서가 같기 때문).
 export function activeBlankIdxsForTier(
   blanks: OrderableBlank[],
   tier: BlankTier,
 ): Set<number> {
   const ordered = orderMappedBlanks(blanks);
   const take = tierTakeCount(ordered.length, tier);
-  return new Set(ordered.slice(0, take).map((b) => b.idx));
+  const takenAnswers = new Set(
+    ordered.slice(0, take).map((b) => (b.answer ?? "").trim()),
+  );
+  return new Set(
+    ordered.filter((b) => takenAnswers.has((b.answer ?? "").trim())).map((b) => b.idx),
+  );
 }
 
 // 세트의 tier 별 활성 빈칸 수(UI 표시·겹침 판정).

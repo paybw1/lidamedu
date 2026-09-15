@@ -190,6 +190,12 @@ function QuestionBlock({
                       text={b.bodyMd}
                       className="text-[13px] leading-relaxed"
                     />
+                    {answers && b.explanationMd ? (
+                      <MarkdownView
+                        text={b.explanationMd}
+                        className="mt-0.5 text-[11.5px] leading-relaxed text-neutral-600"
+                      />
+                    ) : null}
                   </div>
                 </li>
               ))}
@@ -210,6 +216,14 @@ function QuestionBlock({
                   <span className="shrink-0 text-[13px]">{circled(c.index)}</span>
                   <div className="min-w-0 flex-1 text-[13px] leading-relaxed">
                     <MarkdownView text={c.bodyMd} className="text-[13px] leading-relaxed" />
+                    {/* ★객관식 해설은 대부분 여기 있다 — 교재 해설편이 ①~⑤ 문단을 선지 해설로
+                        넣기 때문이다. 이 블록이 없어 정답·해설지에 OX 해설만 나왔다. */}
+                    {answers && c.explanationMd ? (
+                      <MarkdownView
+                        text={c.explanationMd}
+                        className="mt-0.5 text-[11.5px] leading-relaxed font-normal text-neutral-600"
+                      />
+                    ) : null}
                   </div>
                   {highlight ? <span className="shrink-0 text-[13px]">✓ 정답</span> : null}
                 </li>
@@ -218,7 +232,7 @@ function QuestionBlock({
           </ol>
           {answers && q.mcq.explanationMd ? (
             <div className="mt-2 rounded border border-neutral-200 bg-neutral-50 px-2.5 py-2 text-[12px] leading-relaxed text-neutral-700">
-              <span className="mr-1 font-bold">해설</span>
+              <span className="mr-1 font-bold">종합 해설</span>
               <MarkdownView
                 text={q.mcq.explanationMd}
                 className="text-[12px] leading-relaxed"

@@ -552,8 +552,14 @@ export interface OfflineTestPrintQuestion {
     bodyMd: string;
     year: number | null;
     problemNumber: number | null;
-    boxItems: Array<{ marker: string | null; bodyMd: string }>;
-    choices: Array<{ index: number; bodyMd: string; isCorrect: boolean }>;
+    boxItems: Array<{ marker: string | null; bodyMd: string; explanationMd: string | null }>;
+    choices: Array<{
+      index: number;
+      bodyMd: string;
+      isCorrect: boolean;
+      explanationMd: string | null;
+    }>;
+    /** 문제 단위 종합 해설. ★선지별 해설은 choices[].explanationMd 에 따로 있다. */
     explanationMd: string | null;
   } | null;
   ox: {
@@ -612,7 +618,10 @@ export async function getOfflineTestPrintData(
       ? fetchAllIn(mcqIds, (slice) =>
           client
             .from("problem_choices")
-            .select("problem_id, choice_index, body_md, is_correct")
+            // ★선지 해설을 함께 읽는다. 객관식 해설은 problems.explanation_md 가 아니라
+            //   **선지에 들어 있는 경우가 대부분**이다(교재 해설편이 ①~⑤ 문단을 선지로 넣는다).
+            //   이 칸이 빠져 있어 정답·해설지에 OX 해설만 나왔다(오류신고 2026-09-15).
+            .select("problem_id, choice_index, body_md, is_correct, explanation_md")
             .in("problem_id", slice)
             .order("choice_index"),
         )
@@ -622,7 +631,7 @@ export async function getOfflineTestPrintData(
       ? fetchAllIn(mcqIds, (slice) =>
           client
             .from("problem_box_items")
-            .select("problem_id, marker, body_md, position_index")
+            .select("problem_id, marker, body_md, position_index, explanation_md")
             .in("problem_id", slice)
             .order("position_index"),
         )
@@ -681,20 +690,29 @@ export async function getOfflineTestPrintData(
   const problemById = new Map(problems.map((p) => [p.problem_id, p] as const));
   const choicesByProblem = new Map<
     string,
-    Array<{ index: number; bodyMd: string; isCorrect: boolean }>
+    Array<{ index: number; bodyMd: string; isCorrect: boolean; explanationMd: string | null }>
   >();
   for (const c of choices) {
     const arr = choicesByProblem.get(c.problem_id) ?? [];
-    arr.push({ index: c.choice_index, bodyMd: c.body_md ?? "", isCorrect: c.is_correct });
+    arr.push({
+      index: c.choice_index,
+      bodyMd: c.body_md ?? "",
+      isCorrect: c.is_correct,
+      explanationMd: c.explanation_md ?? null,
+    });
     choicesByProblem.set(c.problem_id, arr);
   }
   const boxesByProblem = new Map<
     string,
-    Array<{ marker: string | null; bodyMd: string }>
+    Array<{ marker: string | null; bodyMd: string; explanationMd: string | null }>
   >();
   for (const b of mcqBoxes) {
     const arr = boxesByProblem.get(b.problem_id) ?? [];
-    arr.push({ marker: b.marker, bodyMd: b.body_md ?? "" });
+    arr.push({
+      marker: b.marker,
+      bodyMd: b.body_md ?? "",
+      explanationMd: b.explanation_md ?? null,
+    });
     boxesByProblem.set(b.problem_id, arr);
   }
   const oxChoiceById = new Map(oxChoices.map((c) => [c.choice_id, c] as const));

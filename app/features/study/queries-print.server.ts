@@ -32,6 +32,8 @@ export interface PrintChoice {
   index: number;
   bodyMd: string;
   isCorrect: boolean;
+  /** ★선지별 해설. 객관식 해설은 대부분 problems 가 아니라 여기 있다. */
+  explanationMd: string | null;
 }
 
 export interface WrongMcqPrintItem {
@@ -99,7 +101,9 @@ export async function getWrongNotePrintData(
         .in("problem_id", ids),
       client
         .from("problem_choices")
-        .select("problem_id, choice_index, body_md, is_correct")
+        // ★선지 해설을 함께 읽는다 — 이 칸이 빠져 있어 오답노트 인쇄에도 OX 해설만 나왔다
+        //   (같은 결함이 오프라인 테스트 정답·해설지에 있었고 2026-09-15 신고로 드러났다).
+        .select("problem_id, choice_index, body_md, is_correct, explanation_md")
         .in("problem_id", ids)
         .order("choice_index", { ascending: true }),
     ]);
@@ -114,6 +118,7 @@ export async function getWrongNotePrintData(
         index: c.choice_index,
         bodyMd: c.body_md ?? "",
         isCorrect: c.is_correct,
+        explanationMd: c.explanation_md ?? null,
       });
       choicesByProblem.set(c.problem_id, arr);
     }

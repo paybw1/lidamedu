@@ -54,6 +54,7 @@ import {
 import { listLectureResources } from "~/features/lectures/queries.server";
 import { CrossUnitBadge } from "~/features/problems/components/cross-unit-badge";
 import { MarkdownView } from "~/features/problems/components/markdown-view";
+import { hasRichText } from "~/features/problems/lib/rich-text";
 import { OxBookmarkToggle } from "~/features/problems/components/ox-bookmark-toggle";
 import { ProblemCodeChip } from "~/features/problems/components/problem-code-chip";
 import {
@@ -148,11 +149,11 @@ const MD_IMAGE_RE = /!\[[^\]]*\]\([^)]*\)|<(img|table|div)\b|\|[\s:]*-{3,}/i;
 const MD_FORMAT_RE =
   /\*\*[^*\n]+\*\*|(?:^|\n)#{1,6}\s+\S|(?:^|\n)\*[^*\n]+\*(?=\n|$)/;
 
-// 지문별·박스항목별 해설도 같은 규칙 — 표(HTML/파이프)·이미지·서식이 있으면 MarkdownView,
-// 없으면 기존 plain span. 원시 HTML 이 코드 문자열 그대로 노출되던 문제의 방지책.
-function hasMarkdownFormat(md: string): boolean {
-  return MD_IMAGE_RE.test(md) || MD_FORMAT_RE.test(md);
-}
+// ★서식 판정의 SSOT 는 `problems/lib/rich-text.ts` 다. 종전에는 같은 규칙이 이 파일과
+//   OX 패널에 **두 벌** 있어서 한쪽만 고치면 다른 쪽에서 또 샜다 — 오류신고 2026-09-10
+//   「해설에 코드가보임」(해설 속 HTML `<table>` 이 글자로 찍혔다)이 그 증상이다.
+//   위 두 정규식은 본문 렌더 분기에서만 남겨 두고, 해설 판정은 전부 이 한 함수를 탄다.
+const hasMarkdownFormat = hasRichText;
 
 // 주관식 본문 — 사실관계와 설문((1)…) 사이에 구분선(hr)을 렌더 시점에 삽입.
 // 원문(body_md)은 무변경. 첫 "(1) " 문단 앞에만 삽입하며, 본문이 (1)로 시작하거나

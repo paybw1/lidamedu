@@ -47,6 +47,29 @@ describe("activeBlankIdxsForTier", () => {
   it("상=전체(단어 폴백 — 구간 빈칸은 S3b)", () => {
     expect(activeBlankIdxsForTier(blanks, 3).size).toBe(6);
   });
+  it("★같은 답은 tier 경계를 넘어도 함께 가린다 — 약칭이 답을 알려주면 안 된다", () => {
+    // 오류신고 2026-09-15(특허법 제10조): 「지정된 ▢(이하 "심판장"이라 한다)」처럼
+    // 뒤에 남은 같은 말이 답을 그대로 알려 주었다. 법령의 약칭 정의는 흔한 형태라
+    // 특수 사례가 아니라 구조적 누출이다.
+    const dup = [
+      mk(0, "지식재산처장", 0, 0),
+      mk(1, "심판장", 0, 27),
+      mk(2, "심판장", 0, 35), // 괄호 안 약칭 — 하 절단선 밖
+      mk(3, "선임", 0, 60),
+    ];
+    const tier1 = activeBlankIdxsForTier(dup, 1); // ⌈4/2⌉ = 앞 2개
+    expect(tier1.has(1)).toBe(true);
+    expect(tier1.has(2)).toBe(true); // ★함께 가려져야 한다
+    expect(tier1.has(3)).toBe(false); // 절단선 밖의 **다른** 답은 그대로 열려 있다
+  });
+
+  it("같은 답 확장이 하 ⊂ 중 ⊂ 상 을 깨지 않는다", () => {
+    const dup = [mk(0, "가", 0, 0), mk(1, "나", 0, 1), mk(2, "가", 0, 2), mk(3, "다", 0, 3)];
+    const t1 = activeBlankIdxsForTier(dup, 1);
+    const t2 = activeBlankIdxsForTier(dup, 2);
+    for (const i of t1) expect(t2.has(i)).toBe(true);
+  });
+
   it("빈칸이 적으면 tier 가 자연 축소", () => {
     const few = [mk(0, "a"), mk(1, "b")];
     expect(activeBlankIdxsForTier(few, 1).size).toBe(1); // ⌈2/2⌉

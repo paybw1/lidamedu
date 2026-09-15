@@ -168,6 +168,14 @@ function McqBlock({
               </span>
               <div className="min-w-0 flex-1">
                 <MarkdownView text={stripMarker(c.bodyMd)} className={MD_TEXT} />
+                {/* ★객관식 해설은 대부분 선지에 있다 — 종합 해설만 그리면 오답노트에
+                    해설이 통째로 비어 보인다(특허·상표·디자인은 종합 해설이 희박하다). */}
+                {c.explanationMd ? (
+                  <MarkdownView
+                    text={c.explanationMd}
+                    className="mt-0.5 text-[11px] leading-relaxed text-neutral-600"
+                  />
+                ) : null}
               </div>
               {c.isCorrect ? (
                 <span className="shrink-0 self-start rounded border border-emerald-500 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
