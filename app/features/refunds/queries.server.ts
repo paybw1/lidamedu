@@ -540,6 +540,42 @@ export async function saveRefundAmounts(input: {
 }
 
 /**
+ * 자동계산 **산출근거**를 항목에 박는다 (요청서 11-13·11-15).
+ *
+ * ★금액(`final_krw`)은 `saveRefundAmounts` 가 쓴다 — 상한·합계 검사를 거기 한 곳에 두기 위해서다.
+ *   이 함수는 그 금액이 **어떻게 나왔는지**만 남긴다.
+ * ★`calc_basis` 에 계산 결과를 통째로 저장하는 이유는 요청서 11-15 의 두 줄 때문이다 —
+ *   「화면 표시값과 DB 저장값이 반드시 일치」, 「확정 후 상품가격·예정 회차가 변경되어도
+ *   확정된 계산결과는 변경되지 않는다」. 화면은 매번 다시 계산해 보여 주지만, **적용한 순간의
+ *   값**은 여기 얼어붙는다.
+ */
+export async function saveRefundCalcBasis(input: {
+  refundId: string;
+  rows: Array<{
+    refundItemId: string;
+    baseKrw: number;
+    usedDeductionKrw: number;
+    pointReturnKrw: number;
+    basis: unknown;
+  }>;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  for (const r of input.rows) {
+    const { error } = await adminClient
+      .from("refund_items")
+      .update({
+        base_krw: r.baseKrw,
+        used_deduction_krw: r.usedDeductionKrw,
+        point_return_krw: r.pointReturnKrw,
+        calc_basis: r.basis as never,
+      })
+      .eq("refund_item_id", r.refundItemId)
+      .eq("refund_id", input.refundId);
+    if (error) return { ok: false, error: error.message };
+  }
+  return { ok: true };
+}
+
+/**
  * 토스(또는 계좌이체) 취소결과 입력 (요청서 §6).
  *
  * ★칸은 넷으로 고정이고 **라벨만** 환불방법에 따라 바뀐다 —

@@ -24,7 +24,16 @@ import {
   remainingRefundableKrw,
   resolveDoneStatus,
 } from "~/features/refunds/lib/refund-status";
-import { getRefundDetail, saveRefundAmounts, savePgCancel } from "~/features/refunds/queries.server";
+import {
+  getRefundDetail,
+  saveRefundAmounts,
+  saveRefundCalcBasis,
+  savePgCancel,
+} from "~/features/refunds/queries.server";
+import {
+  computeRefundForRefund,
+  type RefundItemCalc,
+} from "~/features/refunds/calc.server";
 import { commitRefund, setRefundStatus } from "~/features/refunds/refunds.server";
 
 import type { Route } from "./+types/admin-refund-detail";
@@ -39,9 +48,13 @@ const dt = (s: string | null) => (s ? s.slice(0, 16).replace("T", " ") : "—");
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { role } = await requireRefundStaff(request);
-  const detail = await getRefundDetail(params.refundId ?? "");
+  const refundId = params.refundId ?? "";
+  const detail = await getRefundDetail(refundId);
   if (!detail) throw data("환불건을 찾을 수 없습니다.", { status: 404 });
-  return { detail, role };
+  // ★자동계산은 **볼 때마다 다시 낸다**(요청서 §11 머리말 — 계산은 토스를 부르지 않는다).
+  //   적용을 눌러야 금액·산출근거가 DB 에 박힌다.
+  const calcs = await computeRefundForRefund(refundId);
+  return { detail, role, calcs };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
@@ -74,6 +87,60 @@ export async function action({ request, params }: Route.ActionArgs) {
     });
     if (!res.ok) return data({ error: res.error }, { status: 400 });
     return data({ ok: `환불금액 ${res.total.toLocaleString("ko-KR")}원으로 저장했습니다.` });
+  }
+
+  // 자동계산 결과를 금액칸에 채운다 (요청서 11-13).
+  // ★토스를 부르지 않는다. 금액을 채울 뿐이고, [PG 취소대기]로 넘기는 것은 별개 버튼이다.
+  if (intent === "calc_apply") {
+    const calcs = await computeRefundForRefund(refundId);
+    const byItem = new Map(calcs.map((c) => [c.refundItemId, c]));
+    const applied = calcs.filter((c) => c.result != null);
+    if (applied.length === 0) {
+      return data(
+        { error: "자동계산할 수 있는 항목이 없습니다. 금액을 직접 입력해 주세요." },
+        { status: 400 },
+      );
+    }
+    // ★계산 못 한 항목도 **함께 보내야** 한다. 빠뜨리면 합계가 그 항목만큼 모자란 채로
+    //   저장되고, 확정 RPC 가 「상품별 합계가 확정 환불금액과 다르다」로 막는다.
+    const res = await saveRefundAmounts({
+      refundId,
+      amounts: detail.items.map((i) => {
+        const c = byItem.get(i.refundItemId);
+        return {
+          refundItemId: i.refundItemId,
+          finalKrw: c?.result ? c.result.finalRefundKrw : (i.finalKrw ?? 0),
+          deductionReason: c?.result
+            ? (i.deductionReason?.trim() || c.result.verdictReason)
+            : i.deductionReason,
+        };
+      }),
+      shippingRefundKrw: detail.shippingRefundKrw,
+      couponRestored: detail.couponRestored,
+      refundMethod: detail.refundMethod ?? "original",
+      adminMemo: detail.adminMemo,
+    });
+    if (!res.ok) return data({ error: res.error }, { status: 400 });
+
+    // 산출근거를 함께 얼린다 — 요청서 11-15 「화면 표시값과 DB 저장값이 일치」.
+    const basis = await saveRefundCalcBasis({
+      refundId,
+      rows: applied.map((c) => ({
+        refundItemId: c.refundItemId,
+        baseKrw: c.result!.baseKrw,
+        usedDeductionKrw: c.result!.appliedDeductionKrw,
+        pointReturnKrw: c.result!.pointReturnKrw,
+        basis: { result: c.result, evidence: c.evidence, computedAt: new Date().toISOString() },
+      })),
+    });
+    if (!basis.ok) return data({ error: basis.error }, { status: 400 });
+
+    const skipped = calcs.length - applied.length;
+    return data({
+      ok:
+        `자동계산 ${applied.length}건을 금액에 채웠습니다 — 합계 ${res.total.toLocaleString("ko-KR")}원.` +
+        (skipped > 0 ? ` (계산 불가 ${skipped}건은 직접 입력해 주세요)` : ""),
+    });
   }
 
   if (intent === "pg") {
@@ -169,7 +236,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function AdminRefundDetail({ loaderData, actionData }: Route.ComponentProps) {
-  const { detail, role } = loaderData;
+  const { detail, role, calcs } = loaderData;
   const msg = actionData && "ok" in actionData ? actionData.ok : null;
   const err = actionData && "error" in actionData ? actionData.error : null;
 
@@ -251,6 +318,34 @@ export default function AdminRefundDetail({ loaderData, actionData }: Route.Comp
               <Row label="결제상태" value={o.payment?.status ?? "—"} />
               <Row label="PG 누적 환불액" value={won(o.payment?.refundAmountKrw)} mono />
             </dl>
+          </Card>
+
+          {/* ★환불규정 자동계산 (요청서 §11) — 계산해서 **보여 주기만** 한다.
+              토스를 부르지 않고, [채우기]를 눌러야 아래 금액칸에 들어간다. */}
+          <Card
+            title="환불규정 자동계산"
+            hint="결제 당시 스냅샷·이용이력으로 낸 값입니다. 토스 취소는 실행되지 않습니다 — 산출근거를 확인하고 아래 금액칸에 채운 뒤, 금액을 저장하고 [PG 취소대기]로 넘기세요."
+          >
+            {calcs.length === 0 ? (
+              <p className="text-muted-foreground text-[13px]">계산할 항목이 없습니다.</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {calcs.map((c) => (
+                  <CalcBlock key={c.refundItemId} calc={c} />
+                ))}
+                {calcs.some((c) => c.result != null) && !closed ? (
+                  <Form method="post">
+                    <input type="hidden" name="intent" value="calc_apply" />
+                    <Button type="submit" size="sm" variant="outline">
+                      계산값을 환불금액에 채우기
+                    </Button>
+                    <p className="text-muted-foreground mt-1.5 text-[11px]">
+                      이미 입력한 금액을 덮어씁니다. 채운 뒤 아래에서 조정할 수 있습니다.
+                    </p>
+                  </Form>
+                ) : null}
+              </div>
+            )}
           </Card>
 
           {/* 블록 3·4 — 대상상품 + 환불금액 */}
@@ -591,6 +686,86 @@ function Card({
       {hint ? <p className="text-muted-foreground mb-3 text-[11px]">{hint}</p> : <div className="mb-3" />}
       {children}
     </section>
+  );
+}
+
+/** 한 항목의 자동계산 결과 — 요청서 11-13 표시항목 전부 + 계산식. */
+function CalcBlock({ calc }: { calc: RefundItemCalc }) {
+  const r = calc.result;
+  const e = calc.evidence;
+  const verdictTone =
+    r == null
+      ? "text-muted-foreground"
+      : r.verdict === "blocked"
+        ? "text-destructive"
+        : r.verdict === "full"
+          ? "text-emerald-600 dark:text-emerald-400"
+          : "";
+  return (
+    <div className="border-border/60 rounded-lg border p-3">
+      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+        <span className="text-[13px] font-medium">{calc.label}</span>
+        <span className={`text-[12px] font-semibold ${verdictTone}`}>
+          {r ? r.verdictReason : (calc.blockedReason ?? "계산할 수 없습니다")}
+        </span>
+      </div>
+
+      {r ? (
+        <>
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-[13px] sm:grid-cols-4">
+            <Row label="적용 계산유형" value={r.calcTypeLabel} />
+            <Row label="결제기준금액" value={won(r.baseKrw)} mono />
+            <Row label="정상가" value={won(r.listPriceKrw)} mono />
+            <Row label="쿠폰 공제액" value={won(r.couponKrw)} mono />
+            <Row
+              label="실제 이용일수"
+              value={`${r.usedDays}일${e.pausedDays > 0 ? ` (일시정지 ${e.pausedDays}일 제외)` : ""}`}
+              mono
+            />
+            <Row
+              label="정가 수강기간"
+              value={r.durationDays == null ? "—" : `${r.durationDays}일`}
+              mono
+            />
+            <Row
+              label="수강기간 경과율"
+              value={r.elapsedRatio == null ? "—" : `${Math.round(r.elapsedRatio * 100)}%`}
+              mono
+            />
+            <Row
+              label="전체 예정 회차"
+              value={r.plannedSessions == null ? "미입력" : `${r.plannedSessions}회`}
+              mono
+            />
+            <Row label="이용 회차" value={`${r.usedSessions}회`} mono />
+            <Row label="이용일수 기준 공제액" value={won(r.dayDeductionKrw)} mono />
+            <Row label="회차 기준 공제액" value={won(r.sessionDeductionKrw)} mono />
+            <Row label="최종 적용 공제액" value={won(r.appliedDeductionKrw)} mono />
+            <Row label="포인트 반환액" value={won(r.pointReturnKrw)} mono />
+            <Row label="토스 취소 예정금액" value={won(r.pgCancelPlanKrw)} mono />
+            <Row label="최종 환불금액" value={won(r.finalRefundKrw)} mono />
+          </dl>
+
+          <div className="bg-muted/40 mt-3 rounded-md p-2.5">
+            <p className="text-muted-foreground mb-1 text-[11px] font-semibold">계산식</p>
+            <ul className="flex flex-col gap-0.5 text-[12px] tabular-nums">
+              {r.formula.map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+            </ul>
+          </div>
+        </>
+      ) : null}
+
+      <p className="text-muted-foreground mt-2 text-[11px]">
+        이용 시작 {dt(e.usageStartsAt)} · 계산 기준일 {dt(e.basisAt)} · 영상 {e.watchedLessons}회차
+        · 자료 {e.materialLessons}회차
+        {e.commonMaterialUsed ? " · 공통자료 이용(최소 1회차)" : ""}
+        {e.usageStartFallback
+          ? " · ★이용 시작일을 수강권에서 빌려 왔습니다 — 재구매 건이면 실제보다 길게 잡혔을 수 있습니다"
+          : ""}
+      </p>
+    </div>
   );
 }
 
