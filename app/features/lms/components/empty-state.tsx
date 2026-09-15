@@ -46,7 +46,7 @@ export function EmptyState({
             {icon}
           </div>
         ) : null}
-        <h2 className="text-[15px] font-bold tracking-tight text-balance">
+        <h2 className="text-base font-bold tracking-tight text-balance">
           {title}
         </h2>
         {description ? (

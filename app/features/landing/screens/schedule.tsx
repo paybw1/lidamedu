@@ -295,7 +295,7 @@ function CalendarStyle() {
 .llx .sched-split{display:grid;grid-template-columns:45fr 55fr;gap:22px;align-items:start}
 .llx .cal{background:transparent}
 .llx .cal-nav{display:flex;align-items:center;justify-content:center;gap:18px;height:36px;margin-bottom:16px}
-.llx .cal-title{font-size:22px;font-weight:900;min-width:120px;text-align:center;color:var(--ink)}
+.llx .cal-title{font-size:22px;font-weight:700;min-width:120px;text-align:center;color:var(--ink)}
 .llx .cal-arrow{width:36px;height:36px;border:1px solid var(--line2);border-radius:999px;display:grid;place-items:center;font-size:20px;color:var(--ink);background:var(--lsurface);transition:border-color .15s,background .15s}
 .llx .cal-arrow:hover{border-color:var(--blue);background:var(--blue-wash)}
 /* 한 장의 사각형 박스 안에 얇은 격자로 나뉜 날짜 칸 */
@@ -303,7 +303,7 @@ function CalendarStyle() {
 .llx .cal-grid{display:grid;grid-template-columns:repeat(7,1fr)}
 /* 요일 헤더 = 배경 띠(그 위에 날짜 그리드를 얹는 느낌) */
 .llx .cal-head{background:var(--lground);border-bottom:1px solid var(--line2)}
-.llx .cal-hd{text-align:center;font-size:12px;font-weight:800;letter-spacing:.02em;color:var(--soft);padding:10px 0}
+.llx .cal-hd{text-align:center;font-size:12px;font-weight:700;letter-spacing:.02em;color:var(--soft);padding:10px 0}
 .llx .cal-hd.sun{color:#c0392b}.llx .cal-hd.sat{color:var(--blue-ink)}
 /* 셀 = 정사각 비율(가로폭에 세로 맞춤 → 세로로 길어지지 않음) */
 .llx .cal-cell{position:relative;aspect-ratio:1/1;min-height:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:7px 8px;background:var(--lsurface);transition:background .12s;overflow:hidden}
@@ -311,7 +311,7 @@ function CalendarStyle() {
 .llx .cal-body>.cal-grid:last-child .cal-cell{border-bottom:0}
 .llx .cal-cell.today{background:var(--blue-wash)}
 .llx .cal-cell.out{background:color-mix(in srgb,var(--lground) 55%,transparent)}
-.llx .cal-d{font-size:13px;font-weight:800;color:var(--soft);line-height:1}
+.llx .cal-d{font-size:13px;font-weight:700;color:var(--soft);line-height:1}
 .llx .cal-d.sun{color:#c0392b}.llx .cal-d.sat{color:var(--blue-ink)}
 .llx .cal-cell.out .cal-d{color:var(--faint);font-weight:700}
 .llx .cal-cell.today .cal-d{display:inline-grid;place-items:center;width:22px;height:22px;margin:-2px 0 0 -3px;border-radius:50%;background:var(--blue);color:#fff}
@@ -322,12 +322,12 @@ function CalendarStyle() {
 .llx .cal-bar.off{background:var(--ok)}
 .llx .cal-bar.live{background:var(--blue)}
 .llx .cal-bar.vid{background:var(--gilt)}
-.llx .cal-more{font-size:9.5px;color:var(--faint);font-weight:800;line-height:1;margin-top:1px}
+.llx .cal-more{font-size:9.5px;color:var(--faint);font-weight:700;line-height:1;margin-top:1px}
 /* 우측 패널 = 형태 필터 칩 + 날짜별 카드 */
 /* 우측 패널 시작점을 달력의 요일 헤더 라인과 맞춤(월 네비 높이 36 + 아래 여백 16 = 52). */
 .llx .sched-list{margin-top:52px;background:var(--lsurface);border:1px solid var(--line2);border-radius:16px;box-shadow:var(--lshadow);overflow:hidden;align-self:stretch}
 .llx .chips{display:flex;flex-wrap:wrap;gap:8px;padding:14px 16px;border-bottom:1px solid var(--line)}
-.llx .chip{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:800;color:var(--soft);background:var(--lground);border:1px solid var(--line);border-radius:999px;padding:6px 13px;cursor:pointer;transition:color .12s,border-color .12s,background .12s}
+.llx .chip{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:var(--soft);background:var(--lground);border:1px solid var(--line);border-radius:999px;padding:6px 13px;cursor:pointer;transition:color .12s,border-color .12s,background .12s}
 .llx .chip:hover{border-color:var(--line2)}
 .llx .chip .chip-dot{width:8px;height:8px;border-radius:50%;background:var(--soft)}
 .llx .chip.all .chip-dot{background:var(--blue)}
@@ -342,11 +342,11 @@ function CalendarStyle() {
 .llx .sched-scroll{max-height:640px;overflow-y:auto;padding:6px}
 .llx .sched-empty{padding:40px 18px;text-align:center;color:var(--faint);font-size:13.5px}
 .llx .dgroup{padding:8px 8px 4px}
-.llx .dgroup-h{font-size:13px;font-weight:900;color:var(--blue-ink);padding:6px 8px 10px}
+.llx .dgroup-h{font-size:13px;font-weight:700;color:var(--blue-ink);padding:6px 8px 10px}
 .llx .scard{display:flex;gap:12px;padding:11px;border-radius:12px;transition:background .12s}
 .llx .scard:hover{background:var(--lground)}
 .llx .scard+.scard{margin-top:2px}
-.llx .scard-thumb{flex-shrink:0;width:54px;height:54px;border-radius:10px;display:grid;place-items:center;font-size:15px;font-weight:900;color:#fff;letter-spacing:-.02em}
+.llx .scard-thumb{flex-shrink:0;width:54px;height:54px;border-radius:10px;display:grid;place-items:center;font-size:15px;font-weight:700;color:#fff;letter-spacing:-.02em}
 .llx .scard-thumb.off{background:linear-gradient(140deg,var(--ok),#14663a)}
 .llx .scard-thumb.live{background:linear-gradient(140deg,var(--blue),var(--blue-ink))}
 .llx .scard-thumb.vid{background:linear-gradient(140deg,var(--gilt),var(--gilt-soft))}
@@ -354,11 +354,11 @@ function CalendarStyle() {
 .llx .scard-top{display:flex;align-items:center;gap:7px;min-width:0}
 .llx .scard-dot{flex-shrink:0;width:8px;height:8px;border-radius:50%}
 .llx .scard-dot.off{background:var(--ok)}.llx .scard-dot.live{background:var(--blue)}.llx .scard-dot.vid{background:var(--gilt)}
-.llx .scard-title{font-size:14px;font-weight:800;color:var(--ink);line-height:1.35;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.llx .scard-title{font-size:14px;font-weight:700;color:var(--ink);line-height:1.35;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .llx .scard-meta{font-size:11.5px;font-weight:700;color:var(--gilt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .llx .scard-meta2{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--soft);flex-wrap:wrap}
-.llx .scard-meta2 .dday{font-size:10px;font-weight:900;color:var(--blue-ink);background:var(--blue-wash);padding:1px 6px;border-radius:5px}
-.llx .scard-meta2 .seat{font-size:11.5px;font-weight:800}
+.llx .scard-meta2 .dday{font-size:10px;font-weight:700;color:var(--blue-ink);background:var(--blue-wash);padding:1px 6px;border-radius:5px}
+.llx .scard-meta2 .seat{font-size:11.5px;font-weight:700}
 .llx .scard-meta2 .seat.low{color:var(--hot)}.llx .scard-meta2 .seat.mid{color:var(--warn)}.llx .scard-meta2 .seat.ok{color:var(--ok)}
 @media (max-width:900px){
   .llx .sched-split{grid-template-columns:1fr}

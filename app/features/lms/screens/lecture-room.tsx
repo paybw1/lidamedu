@@ -125,7 +125,7 @@ export default function LectureRoom({ loaderData }: Route.ComponentProps) {
         <Link to="/lecture" className="text-muted-foreground text-[13px] hover:underline">
           ← 내 강의실
         </Link>
-        <h1 className="text-xl font-extrabold tracking-tight">{courseLabel}</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{courseLabel}</h1>
         <p className="text-muted-foreground text-[13px]">
           수강할 회차를 선택하세요.
         </p>
@@ -154,7 +154,7 @@ export default function LectureRoom({ loaderData }: Route.ComponentProps) {
       ) : (
         <Card>
           <CardHeader className="pb-2">
-            <h2 className="text-[15px] font-bold">회차 목록 · 총 {lessons.length}강</h2>
+            <h2 className="text-base font-bold">회차 목록 · 총 {lessons.length}강</h2>
           </CardHeader>
           <CardContent className="p-0">
             <ul className="divide-border/60 divide-y">

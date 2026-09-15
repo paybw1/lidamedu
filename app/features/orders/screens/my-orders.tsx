@@ -137,14 +137,14 @@ export default function MyOrders({ loaderData }: Route.ComponentProps) {
   const { orders, coupons } = loaderData;
   return (
     <div className="mx-auto w-full max-w-3xl space-y-5 px-4 py-8 md:px-6 md:py-10">
-      <h1 className="flex items-center gap-2 text-xl font-extrabold tracking-tight">
+      <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
         <PackageIcon className="size-5" /> 내 주문·배송
       </h1>
 
       {coupons.length > 0 ? (
         <Card>
           <CardHeader className="pb-2">
-            <h2 className="text-[15px] font-bold">내 쿠폰</h2>
+            <h2 className="text-base font-bold">내 쿠폰</h2>
             <p className="text-muted-foreground text-[12px]">
               결제 화면에서 쿠폰 코드를 입력하면 적용됩니다.
             </p>

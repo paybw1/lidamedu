@@ -160,7 +160,7 @@ function FacilityStyle() {
 .llx .fc-hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,29,56,.15) 20%,rgba(14,29,56,.82) 100%)}
 .llx .fc-hero-in{position:relative;z-index:1;width:100%;padding:0 0 44px;color:#fff}
 .llx .fc-hero-in .wrap{max-width:1180px}
-.llx .fc-hero-in h1{font-size:clamp(32px,5vw,56px);font-weight:900;letter-spacing:-.04em;margin:12px 0 10px;text-wrap:balance}
+.llx .fc-hero-in h1{font-size:clamp(32px,5vw,56px);font-weight:800;letter-spacing:-.04em;margin:12px 0 10px;text-wrap:balance}
 .llx .fc-hero-sub{font-size:clamp(15px,1.6vw,18px);color:var(--hero-soft);line-height:1.6;max-width:44ch}
 .llx .fc-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:18px}
 /* space.html 처럼 7/5·5/7 비대칭 폭 — 카드마다 사진 크기가 조금씩 달라 부드러운 리듬. */
@@ -174,8 +174,8 @@ function FacilityStyle() {
 .llx .fc-card:hover img{transform:scale(1.04)}
 .llx .fc-card::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(10,20,40,.9) 100%)}
 .llx .fc-copy{position:absolute;z-index:2;left:22px;right:22px;bottom:22px;color:#fff}
-.llx .fc-no{display:inline-grid;place-items:center;width:38px;height:38px;border-radius:12px;background:rgba(201,164,78,.9);color:#1a1305;font-size:12px;font-weight:900;margin-bottom:12px}
-.llx .fc-copy h3{font-size:22px;font-weight:900;letter-spacing:-.03em;margin:0 0 8px;text-wrap:balance}
+.llx .fc-no{display:inline-grid;place-items:center;width:38px;height:38px;border-radius:12px;background:rgba(201,164,78,.9);color:#1a1305;font-size:12px;font-weight:700;margin-bottom:12px}
+.llx .fc-copy h3{font-size:22px;font-weight:700;letter-spacing:-.03em;margin:0 0 8px;text-wrap:balance}
 .llx .fc-copy p{font-size:13.5px;line-height:1.65;color:rgba(255,255,255,.9);word-break:keep-all;margin:0}
 @media (max-width:640px){
   /* 모바일: 1열로 펼치되 높이만 살짝 교차해 리듬 유지. */

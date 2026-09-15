@@ -363,7 +363,7 @@ export default function MyCourses({ loaderData }: Route.ComponentProps) {
   const { courses, devices, reviewRewardPoints, tossClientKey } = loaderData;
   return (
     <div className="mx-auto w-full max-w-3xl space-y-5 px-4 py-8 md:px-6 md:py-10">
-      <h1 className="flex items-center gap-2 text-xl font-extrabold tracking-tight">
+      <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
         <ClapperboardIcon className="size-5" /> 내 강의
       </h1>
 
@@ -392,7 +392,7 @@ export default function MyCourses({ loaderData }: Route.ComponentProps) {
           lib/lock-notice.ts. 앵커를 지우면 안내가 화면 맨 위로 떨어진다. */}
       <Card id="devices" className="scroll-mt-24">
         <CardHeader className="pb-2">
-          <h2 className="flex items-center gap-1.5 text-[15px] font-bold">
+          <h2 className="flex items-center gap-1.5 text-base font-bold">
             <MonitorSmartphoneIcon className="size-4" /> 등록 기기
           </h2>
           <p className="text-muted-foreground text-[12px]">
@@ -558,7 +558,7 @@ function CourseCard({
     <Card>
       <CardHeader className="pb-2">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-[15px] font-bold">{course.label}</h2>
+          <h2 className="text-base font-bold">{course.label}</h2>
           <Badge variant={course.status === "active" ? "default" : "secondary"}>
             {enrollmentStatusLabel(course.status)}
           </Badge>
