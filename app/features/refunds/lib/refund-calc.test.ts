@@ -162,6 +162,29 @@ describe("반올림 — 최종 공제액에서 한 번만 절사 (요청서 11-1
     expect(r.dayDeductionKrw).toBe(10_000);
   });
 
+  it("★분모(D·T)가 둘 다 없으면 계산한 척하지 않고 manual 로 돌려보낸다", () => {
+    // 종전에는 공제 0 → 전액환불이 나오면서 사유는 「기간제 계산식 적용」이라, 관리자가
+    // 눈치챌 단서가 없었다. 그 손해는 학원이 본다.
+    const r = computeRefund(
+      input({ baseKrw: 300_000, listPriceKrw: 600_000, durationDays: null, plannedSessions: null, usedDays: 40 }),
+    );
+    expect(r.verdict).toBe("manual");
+    expect(r.finalRefundKrw).toBe(0);
+    expect(r.verdictReason).toContain("직접 입력");
+  });
+
+  it("분모가 하나라도 있으면 그대로 계산한다", () => {
+    const withDays = computeRefund(
+      input({ calcType: "single", baseKrw: 300_000, listPriceKrw: 600_000, durationDays: 100, plannedSessions: null, usedDays: 20 }),
+    );
+    expect(withDays.verdict).toBe("partial");
+    const withSessions = computeRefund(
+      input({ calcType: "single", baseKrw: 300_000, listPriceKrw: 600_000, durationDays: null, plannedSessions: 30, usedSessions: 5 }),
+    );
+    expect(withSessions.verdict).toBe("partial");
+    expect(withSessions.sessionDeductionKrw).toBe(100_000);
+  });
+
   it("수강 시작 전이면 이용일수 0 → 공제 0", () => {
     const r = computeRefund(input({ usedDays: 0, listPriceKrw: 600_000 }));
     expect(r.dayDeductionKrw).toBe(0);

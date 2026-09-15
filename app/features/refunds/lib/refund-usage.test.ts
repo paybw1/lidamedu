@@ -73,6 +73,33 @@ describe("일시정지 제외 (요청서 11-5)", () => {
     ).toBe(3);
   });
 
+  it("★겹치는 정지는 합산이 아니라 합집합이다 — 패키지에서 수강권 수만큼 빠지면 안 된다", () => {
+    // 3강좌 패키지: 같은 30일을 수강권 3개에 각각 걸면 정지 행이 3건 들어온다.
+    const same = { starts_on: "2026-09-10", ends_on: "2026-10-09", resumed_at: null };
+    const r = usedDaysOf({
+      usageStartDate: "2026-09-01",
+      basisDate: "2026-10-30", // 60일
+      pauses: [same, same, same],
+    });
+    expect(r.pausedDays).toBe(30); // 90 이 아니다
+    expect(r.usedDays).toBe(30);
+    // 합산이었다면 usedDays 가 0 이 되어 「7일 이내 전액환불」로 판정됐다.
+    expect(r.usedDays).toBeGreaterThan(7);
+  });
+
+  it("부분만 겹치는 두 정지는 겹친 날을 한 번만 센다", () => {
+    expect(
+      pausedDaysWithin(
+        [
+          { starts_on: "2026-09-05", ends_on: "2026-09-10", resumed_at: null }, // 6일
+          { starts_on: "2026-09-08", ends_on: "2026-09-12", resumed_at: null }, // 5일, 3일 겹침
+        ],
+        "2026-09-01",
+        "2026-09-30",
+      ),
+    ).toBe(8); // 9/05~9/12 = 8일. 단순 합산이면 11.
+  });
+
   it("정지가 여러 건이면 합산한다", () => {
     const r = usedDaysOf({
       usageStartDate: "2026-09-01",

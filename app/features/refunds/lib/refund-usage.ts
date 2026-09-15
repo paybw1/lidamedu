@@ -33,22 +33,34 @@ export interface PauseSpan {
  *   `days` 도 `expires_at` 도 되돌리지 않으므로(`pause.server.ts`), 쓰지도 않은 정지일이
  *   이용일수에서 빠져 **공제가 줄고 환불이 부푼다.** 실제 구간은
  *   `starts_on ~ min(ends_on, 재개일)` 이다.
+ *
+ * ★★**겹치는 구간을 합산하면 안 된다 — 날짜 합집합으로 센다.**
+ *   일시정지는 `enrollment_pauses.enrollment_id` 로 **수강권 하나마다** 걸리는데,
+ *   패키지 상품은 구성 강의 수만큼 수강권이 생긴다(`orders.server.ts` 의 `plan_courses` 루프).
+ *   학생이 「내 강의실」에서 카드 3개를 각각 정지하면 같은 30일이 3건으로 들어오고,
+ *   단순 합산하면 **90일**이 빠진다. 그러면 60일 쓴 학생의 이용일수가 0 이 되어
+ *   공제가 사라지고 「7일 이내 전액환불」로까지 판정된다 — 학원이 통째로 손해를 본다.
+ *   요청서 11-5 는 「승인된 일시정지 기간은 이용일수에서 제외」이지 「수강권 수만큼 제외」가 아니다.
  */
 export function pausedDaysWithin(
   pauses: PauseSpan[],
   windowFrom: string,
   windowTo: string,
 ): number {
-  let total = 0;
+  const days = new Set();
   for (const p of pauses) {
     const resumedDate = p.resumed_at ? kstDate(p.resumed_at) : null;
     const end = resumedDate && resumedDate < p.ends_on ? resumedDate : p.ends_on;
     const from = p.starts_on > windowFrom ? p.starts_on : windowFrom;
     const to = end < windowTo ? end : windowTo;
-    const overlap = daysBetween(from, to) + 1;
-    if (overlap > 0) total += overlap;
+    const span = daysBetween(from, to);
+    if (span < 0) continue;
+    const base = Date.parse(`${from}T00:00:00Z`);
+    for (let i = 0; i <= span; i += 1) {
+      days.add(new Date(base + i * 86_400_000).toISOString().slice(0, 10));
+    }
   }
-  return total;
+  return days.size;
 }
 
 /**

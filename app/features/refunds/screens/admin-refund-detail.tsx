@@ -94,27 +94,45 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (intent === "calc_apply") {
     const calcs = await computeRefundForRefund(refundId);
     const byItem = new Map(calcs.map((c) => [c.refundItemId, c]));
-    const applied = calcs.filter((c) => c.result != null);
+    // ★verdict 'manual' 은 **계산 성공이 아니다** — 별도 환불규정·분모 부재처럼
+    //   「사람이 정하라」는 뜻이고 금액이 0 이다. 적용 대상에서 뺀다.
+    const applied = calcs.filter((c) => c.result != null && c.result.verdict !== "manual");
     if (applied.length === 0) {
       return data(
         { error: "자동계산할 수 있는 항목이 없습니다. 금액을 직접 입력해 주세요." },
         { status: 400 },
       );
     }
-    // ★계산 못 한 항목도 **함께 보내야** 한다. 빠뜨리면 합계가 그 항목만큼 모자란 채로
-    //   저장되고, 확정 RPC 가 「상품별 합계가 확정 환불금액과 다르다」로 막는다.
+    // ★★계산 못 한 항목을 **₩0 으로 승격시키면 안 된다.** 종전에는 `?? 0` 이라
+    //   교재 반품비·스냅샷 없는 옛 주문이 조용히 0원 환불로 저장됐고, 그러면 확정 RPC 의
+    //   유일한 방어선인 「`final_krw is null` = 미입력」 검사가 **이미 우회된 뒤**라
+    //   학생이 한 푼도 못 받고 종결된다. 미입력은 미입력인 채로 둔다 —
+    //   그래야 확정 단계에서 「금액이 입력되지 않은 항목이 있습니다」로 막힌다.
+    // ★금액은 **현금 평면**(`pgCancelPlanKrw`)으로 넣는다. `finalRefundKrw` 는 포인트 반환분을
+    //   포함한 값인데, 하류는 `final_krw` 합계를 `pg_cancel_krw`(실제 토스 취소액)와 맞춰 보고
+    //   포인트는 `refund_points_for_order_item` 이 **따로** 돌려준다. 섞으면 이중 지급이다.
+    //   (지금은 포인트 결제가 없어 두 값이 같지만, D15 가 열리면 갈라진다.)
+    const amounts = detail.items.flatMap((i) => {
+      const c = byItem.get(i.refundItemId);
+      if (c?.result && c.result.verdict !== "manual") {
+        return [{
+          refundItemId: i.refundItemId,
+          finalKrw: c.result.pgCancelPlanKrw,
+          deductionReason: i.deductionReason?.trim() || c.result.verdictReason,
+        }];
+      }
+      if (i.finalKrw != null) {
+        return [{
+          refundItemId: i.refundItemId,
+          finalKrw: i.finalKrw,
+          deductionReason: i.deductionReason,
+        }];
+      }
+      return []; // 미입력 — 건드리지 않는다
+    });
     const res = await saveRefundAmounts({
       refundId,
-      amounts: detail.items.map((i) => {
-        const c = byItem.get(i.refundItemId);
-        return {
-          refundItemId: i.refundItemId,
-          finalKrw: c?.result ? c.result.finalRefundKrw : (i.finalKrw ?? 0),
-          deductionReason: c?.result
-            ? (i.deductionReason?.trim() || c.result.verdictReason)
-            : i.deductionReason,
-        };
-      }),
+      amounts,
       shippingRefundKrw: detail.shippingRefundKrw,
       couponRestored: detail.couponRestored,
       refundMethod: detail.refundMethod ?? "original",
@@ -351,7 +369,7 @@ export default function AdminRefundDetail({ loaderData, actionData }: Route.Comp
           {/* 블록 3·4 — 대상상품 + 환불금액 */}
           <Card
             title="환불 대상상품 · 환불금액"
-            hint="상품별 실제 환불금액을 입력하면 합계가 이번 환불금액이 됩니다. 수강분 공제 자동계산은 다음 단계(P7)에서 붙습니다."
+            hint="상품별 실제 환불금액을 입력하면 합계가 이번 환불금액이 됩니다. 수강분 공제는 위 [환불규정 자동계산]에서 채울 수 있습니다."
           >
             <Form method="post" className="flex flex-col gap-3">
               <input type="hidden" name="intent" value="amounts" />

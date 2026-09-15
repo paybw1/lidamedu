@@ -253,6 +253,29 @@ export function computeRefund(input: RefundCalcInput): RefundCalcResult {
   if (dayDeduction != null) candidates.push({ basis: "day", krw: dayDeduction });
   if (sessionDeduction != null) candidates.push({ basis: "session", krw: sessionDeduction });
 
+  // ★★분모가 하나도 없으면 **계산한 척하면 안 된다.** 정가 수강기간(D)도 전체 예정 회차(T)도
+  //   없으면 공제가 0 이 되어 조용히 전액환불이 나오고, 사유에는 「기간제 계산식 적용」이 찍혀
+  //   관리자가 눈치챌 단서가 없다. 그 손해는 학원이 본다 — 사람이 정하도록 돌려보낸다.
+  if (candidates.length === 0) {
+    return {
+      ...shell,
+      verdict: "manual",
+      verdictReason:
+        "결제 당시 정가 수강기간·전체 예정 회차가 모두 없어 공제를 계산할 수 없습니다 — 금액을 직접 입력해 주세요.",
+      dayDeductionKrw: null,
+      sessionDeductionKrw: null,
+      appliedDeductionKrw: 0,
+      deductionBasis: "none",
+      refundableKrw: 0,
+      pointReturnKrw: 0,
+      pgCancelPlanKrw: 0,
+      finalRefundKrw: 0,
+      formula: [
+        "정가 수강기간(D)·전체 예정 회차(T) 스냅샷이 모두 비어 있어 공제 분모가 없습니다.",
+      ],
+    };
+  }
+
   const best = candidates.reduce<{ basis: "day" | "session"; krw: number } | null>(
     (acc, c) => (acc == null || c.krw > acc.krw ? c : acc),
     null,

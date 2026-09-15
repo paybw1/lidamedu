@@ -8,6 +8,7 @@
 //   기존 주문 61건은 전부 스냅샷이 없다(P1 이후 신규 주문이 없다 — 강의 게이트가 닫혀 있다).
 
 import adminClient from "~/core/lib/supa-admin-client.server";
+import { fetchAllIn } from "~/core/lib/supa-batch.server";
 
 import {
   computeRefund,
@@ -260,21 +261,31 @@ async function pausesFor(enrollmentIds: string[]) {
  *   과거 시청이 오분류된다. 수강권 링크는 그 시점의 스냅샷이다.
  */
 async function usageFor(enrollmentIds: string[], fromIso: string, toIso: string) {
-  const [{ data: watch }, { data: materials }] = await Promise.all([
-    adminClient
-      .from("watch_events")
-      .select("lesson_id")
-      .in("enrollment_id", enrollmentIds)
-      .gte("reported_at", fromIso)
-      .lte("reported_at", toIso)
-      .limit(20000),
-    adminClient
-      .from("material_access_logs")
-      .select("lesson_id")
-      .in("enrollment_id", enrollmentIds)
-      .gte("accessed_at", fromIso)
-      .lte("accessed_at", toIso)
-      .limit(20000),
+  // ★★`.limit(20000)` 으로는 못 읽는다 — PostgREST 는 **요청당 1000행**에서 자른다
+  //   (`core/lib/supa-batch.server.ts` 머리주석). 하트비트가 15초마다 한 행을 쌓으므로
+  //   유료 시청 4시간이면 이미 1000행을 넘고, 그 뒤로는 **조용히 잘린 채** 고유 회차가
+  //   과소 집계된다 → 회차 기준 공제가 줄어 **환불이 부푼다.** 정렬도 없어 어느 1000행이
+  //   올지 정해져 있지 않아 같은 건을 다시 열면 금액이 달라질 수도 있다.
+  //   그래서 페이지네이션 헬퍼로 전량을 읽는다(안정 정렬키 필수).
+  const [watch, materials] = await Promise.all([
+    fetchAllIn(enrollmentIds, (slice) =>
+      adminClient
+        .from("watch_events")
+        .select("event_id, lesson_id")
+        .in("enrollment_id", slice)
+        .gte("reported_at", fromIso)
+        .lte("reported_at", toIso)
+        .order("event_id"),
+    ),
+    fetchAllIn(enrollmentIds, (slice) =>
+      adminClient
+        .from("material_access_logs")
+        .select("log_id, lesson_id")
+        .in("enrollment_id", slice)
+        .gte("accessed_at", fromIso)
+        .lte("accessed_at", toIso)
+        .order("log_id"),
+    ),
   ]);
   const watched = new Set<string>((watch ?? []).map((w) => w.lesson_id));
   const material = new Set<string>();
