@@ -177,6 +177,19 @@ describe("전체/부분은 고르는 값이 아니라 금액에서 나온다", (
     expect(resolveDoneStatus({ originalPaidKrw: 45_000, priorRefundedKrw: 40_000, thisRefundKrw: 10_000 })).toBeNull();
     expect(resolveDoneStatus({ originalPaidKrw: null, priorRefundedKrw: 0, thisRefundKrw: 1 })).toBeNull();
   });
+
+  it("★배송비를 확정액에 포함해야 full_done 에 닿는다 (P7-핸드오프 ①)", () => {
+    // 주문 13,000 = 상품 10,000 + 배송비 3,000. original_paid_krw 는 배송비를 포함한다.
+    // 상품만 환불하면(종전) 배송비만큼 잔여가 남아 full_done 에 영영 닿지 못했다 —
+    // refund_items 는 order_items 만 가리켜 배송비를 담을 행이 없었기 때문이다.
+    expect(
+      resolveDoneStatus({ originalPaidKrw: 13_000, priorRefundedKrw: 0, thisRefundKrw: 10_000 }),
+    ).toBe("partial_done");
+    // refunds.shipping_refund_krw 를 더한 확정액이라야 전액이 된다.
+    expect(
+      resolveDoneStatus({ originalPaidKrw: 13_000, priorRefundedKrw: 0, thisRefundKrw: 13_000 }),
+    ).toBe("full_done");
+  });
 });
 
 describe("★PG 취소 후 반려·철회 차단", () => {

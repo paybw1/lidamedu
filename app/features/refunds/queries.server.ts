@@ -199,6 +199,10 @@ export type RefundDetail = {
   originalPaidKrw: number | null;
   priorRefundedKrw: number | null;
   thisRefundKrw: number | null;
+  /** 이번 환불로 돌려주는 배송비. 주문 헤더의 돈이라 항목으로 표현할 수 없다(P7-핸드오프 ①). */
+  shippingRefundKrw: number;
+  /** 아직 돌려줄 수 있는 배송비 — 주문 배송비에서 다른 종결 환불건이 이미 돌려준 몫을 뺀 값. */
+  shippingRefundableKrw: number;
   refundMethod: string | null;
   couponRestored: boolean;
   pgCancelKrw: number | null;
@@ -238,6 +242,9 @@ export async function getRefundDetail(refundId: string): Promise<RefundDetail | 
 
   const order = await getOrderForRefund(r.order_id);
   if (!order) return null;
+
+  // 이 건을 뺀 나머지 종결 환불건이 이미 돌려준 배송비를 제외한 잔여(P7-핸드오프 ①).
+  const shippingRefundable = await remainingShippingRefundableKrw(r.order_id, refundId);
 
   const [{ data: items }, { data: logs }] = await Promise.all([
     adminClient
@@ -279,6 +286,8 @@ export async function getRefundDetail(refundId: string): Promise<RefundDetail | 
     originalPaidKrw: r.original_paid_krw,
     priorRefundedKrw: r.prior_refunded_krw,
     thisRefundKrw: r.this_refund_krw,
+    shippingRefundKrw: r.shipping_refund_krw ?? 0,
+    shippingRefundableKrw: shippingRefundable,
     refundMethod: r.refund_method,
     couponRestored: r.coupon_restored,
     pgCancelKrw: r.pg_cancel_krw,
@@ -394,16 +403,48 @@ export async function createRefundIntake(input: {
 }
 
 /** 상품별 환불금액·공제사유 저장 + 헤더 확정액 동기화(합계가 곧 확정액이다). */
+/**
+ * 아직 돌려줄 수 있는 배송비 (P7-핸드오프 ①).
+ *
+ * 배송비는 `orders.shipping_fee_krw`(주문 헤더)에 있고 `refund_items` 는 `order_items` 만
+ * 가리킨다 — 항목으로는 표현할 수 없어 `refunds.shipping_refund_krw` 한 칸을 둔다.
+ * ★반품비와 다른 돈이다. 반품비(떼는 돈)는 `refund_items.shipping_deduction_krw` 소관.
+ */
+export async function remainingShippingRefundableKrw(
+  orderId: string,
+  excludeRefundId?: string,
+): Promise<number> {
+  const { data: order } = await adminClient
+    .from("orders")
+    .select("shipping_fee_krw")
+    .eq("order_id", orderId)
+    .maybeSingle();
+  const fee = order?.shipping_fee_krw ?? 0;
+  if (fee <= 0) return 0;
+
+  let q = adminClient
+    .from("refunds")
+    .select("shipping_refund_krw")
+    .eq("order_id", orderId)
+    .in("status", ["partial_done", "full_done"]);
+  if (excludeRefundId) q = q.neq("refund_id", excludeRefundId);
+  const { data: done } = await q;
+  const already = (done ?? []).reduce((s, x) => s + (x.shipping_refund_krw ?? 0), 0);
+  return Math.max(0, fee - already);
+}
+
 export async function saveRefundAmounts(input: {
   refundId: string;
   amounts: Array<{ refundItemId: string; finalKrw: number; deductionReason?: string | null }>;
+  /** 이번 환불로 돌려주는 배송비(원). 주문 헤더의 돈이라 항목으로 표현할 수 없다. */
+  shippingRefundKrw: number;
   couponRestored: boolean;
   refundMethod: string;
   adminMemo?: string | null;
 }): Promise<{ ok: true; total: number } | { ok: false; error: string }> {
   const { data: r } = await adminClient
     .from("refunds")
-    .select("status, original_paid_krw, prior_refunded_krw")
+    .select("status, order_id, original_paid_krw, prior_refunded_krw")
     .eq("refund_id", input.refundId)
     .maybeSingle();
   if (!r) return { ok: false, error: "환불건을 찾을 수 없습니다." };
@@ -449,6 +490,22 @@ export async function saveRefundAmounts(input: {
     }
     total += Math.round(a.finalKrw);
   }
+
+  // ★배송비 상한 (P7-핸드오프 ①) — 확정 RPC 가 같은 검사를 하지만, 저장 단계에서 막지 않으면
+  //   관리자가 토스에서 취소까지 한 뒤에야 「금액이 안 맞는다」는 말을 듣는다.
+  const shipping = Math.round(input.shippingRefundKrw);
+  if (!Number.isFinite(shipping) || shipping < 0) {
+    return { ok: false, error: "배송비 환불금액은 0원 이상이어야 합니다." };
+  }
+  const shippingCap = await remainingShippingRefundableKrw(r.order_id, input.refundId);
+  if (shipping > shippingCap) {
+    return {
+      ok: false,
+      error: `환불할 수 있는 배송비는 ${shippingCap.toLocaleString("ko-KR")}원입니다.`,
+    };
+  }
+  total += shipping;
+
   const remaining = (r.original_paid_krw ?? 0) - (r.prior_refunded_krw ?? 0);
   if (r.original_paid_krw != null && total > remaining) {
     return {
@@ -472,6 +529,7 @@ export async function saveRefundAmounts(input: {
     .from("refunds")
     .update({
       this_refund_krw: total,
+      shipping_refund_krw: shipping,
       coupon_restored: input.couponRestored,
       refund_method: input.refundMethod,
       admin_memo: input.adminMemo ?? null,

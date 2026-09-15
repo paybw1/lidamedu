@@ -67,6 +67,7 @@ export async function action({ request, params }: Route.ActionArgs) {
         finalKrw: Number(form.get(`final_${id}`) ?? 0),
         deductionReason: String(form.get(`reason_${id}`) ?? "").trim() || null,
       })),
+      shippingRefundKrw: Number(form.get("shippingRefundKrw") ?? 0),
       couponRestored: form.get("couponRestored") === "on",
       refundMethod: String(form.get("refundMethod") ?? "original"),
       adminMemo: String(form.get("adminMemo") ?? "").trim() || null,
@@ -122,7 +123,9 @@ export async function action({ request, params }: Route.ActionArgs) {
     //   그런데 RPC 가 거부하는 가장 흔한 경우 — 금액 불일치·취소정보 미입력 — 는 **첫 클릭**에
     //   일어난다. 그대로 두면 수강권만 회수되고 환불은 안 된 상태가 남고, 관리자가 그 건을
     //   철회하면 **학생은 수강권을 잃고 돈도 못 받는다.** RPC 는 경합을 위해 다시 검사한다.
-    const itemsSum = detail.items.reduce((s, i) => s + (i.finalKrw ?? 0), 0);
+    // ★확정 환불금액 = 상품별 합계 + 배송비 환불분(P7-핸드오프 ①). RPC 도 같은 식으로 센다.
+    const itemsSum =
+      detail.items.reduce((s, i) => s + (i.finalKrw ?? 0), 0) + detail.shippingRefundKrw;
     const pre =
       detail.status !== "pg_done"
         ? "PG 취소완료 상태에서만 환불을 확정할 수 있습니다."
@@ -138,7 +141,7 @@ export async function action({ request, params }: Route.ActionArgs) {
             : detail.items.some((i) => i.finalKrw == null)
               ? "상품별 환불금액이 입력되지 않은 항목이 있습니다."
               : itemsSum !== detail.thisRefundKrw
-                ? `상품별 환불금액 합계 ${itemsSum.toLocaleString("ko-KR")}원이 확정 환불금액 ${detail.thisRefundKrw.toLocaleString("ko-KR")}원과 다릅니다.`
+                ? `상품별 환불금액 합계 ${itemsSum.toLocaleString("ko-KR")}원(배송비 ${detail.shippingRefundKrw.toLocaleString("ko-KR")}원 포함)이 확정 환불금액 ${detail.thisRefundKrw.toLocaleString("ko-KR")}원과 다릅니다.`
                 : detail.pgCancelKrw !== detail.thisRefundKrw
                   ? `확정 환불금액 ${detail.thisRefundKrw.toLocaleString("ko-KR")}원과 실제 취소금액 ${(detail.pgCancelKrw ?? 0).toLocaleString("ko-KR")}원이 다릅니다.`
                   : null;
@@ -294,6 +297,38 @@ export default function AdminRefundDetail({ loaderData, actionData }: Route.Comp
                   </Field>
                 </div>
               ))}
+
+              {/* 배송비 — 주문 헤더의 돈이라 상품 행으로 표현할 수 없다(P7-핸드오프 ①).
+                  이 칸이 없으면 배송비가 붙은 주문은 전액을 돌려줘도 잔여가 남아
+                  「전체환불완료」에 닿지 못한다. */}
+              {o.shippingFeeKrw > 0 ? (
+                <div className="border-border/60 grid gap-3 rounded-lg border p-3 sm:grid-cols-[1fr_140px_1fr]">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="truncate text-[13px] font-medium">배송비</span>
+                    <span className="text-muted-foreground text-[11px] tabular-nums">
+                      주문 배송비 {won(o.shippingFeeKrw)} · 환불 가능{" "}
+                      {won(detail.shippingRefundableKrw)}
+                    </span>
+                  </div>
+                  <Field label="환불금액" htmlFor="shippingRefundKrw">
+                    <input
+                      id="shippingRefundKrw"
+                      name="shippingRefundKrw"
+                      type="number"
+                      min={0}
+                      max={detail.shippingRefundableKrw}
+                      step={1}
+                      disabled={closed}
+                      defaultValue={detail.shippingRefundKrw}
+                      className="border-input bg-background focus:border-primary h-9 rounded-md border px-3 text-right text-[13px] tabular-nums outline-none"
+                    />
+                  </Field>
+                  <p className="text-muted-foreground self-center text-[11px] leading-snug">
+                    출고 전 취소면 전액 돌려주고, 출고 후 반품이면 0원으로 둡니다. 반품비는
+                    여기가 아니라 상품별 공제로 뗍니다.
+                  </p>
+                </div>
+              ) : null}
 
               <div className="grid gap-3 sm:grid-cols-3">
                 <Field label="환불방법" htmlFor="refundMethod">

@@ -12816,6 +12816,7 @@ export type Database = {
           refund_id: string
           refund_method: string | null
           request_reason: string | null
+          shipping_refund_krw: number
           sms_sent_at: string | null
           status: string
           this_refund_krw: number | null
@@ -12846,6 +12847,7 @@ export type Database = {
           refund_id?: string
           refund_method?: string | null
           request_reason?: string | null
+          shipping_refund_krw?: number
           sms_sent_at?: string | null
           status?: string
           this_refund_krw?: number | null
@@ -12876,6 +12878,7 @@ export type Database = {
           refund_id?: string
           refund_method?: string | null
           request_reason?: string | null
+          shipping_refund_krw?: number
           sms_sent_at?: string | null
           status?: string
           this_refund_krw?: number | null
