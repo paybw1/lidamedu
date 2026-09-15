@@ -489,6 +489,16 @@ async function fulfillCourseEnrollments(input: {
     return new Date(base + addMs).toISOString();
   };
 
+  // ★이 주문항목이 산 이용권의 **이용 시작일**(요청서 11-12, feat-11-013 P7-b).
+  //   재구매는 기존 수강권을 연장하면서 `enrollments.order_item_id` 를 덮어쓰고
+  //   `starts_at` 은 그대로 두므로, 수강권에서 읽으면 2차 주문의 이용일수가 **1차 구매일부터**
+  //   세어진다(공제가 부풀고 환불이 줄어든다). 그래서 주문항목이 자기 시작일을 갖는다.
+  //   패키지처럼 강의가 여럿이면 **가장 이른 시작**을 쓴다 — 그 순간부터 무언가는 쓸 수 있다.
+  let usageStartsMs: number | null = null;
+  const noteUsageStart = (ms: number) => {
+    usageStartsMs = usageStartsMs == null ? ms : Math.min(usageStartsMs, ms);
+  };
+
   for (const link of links ?? []) {
     const baseDuration = await getCourseTotalDuration(link.course_id);
     // ① 이미 이 강의 수강권이 있으면 = 연장(만료일 연장 + 배수 모수 갱신). 없으면 신규 지급.
@@ -508,6 +518,8 @@ async function fulfillCourseEnrollments(input: {
 
     if (existing) {
       const nextExpires = computeExpiry(existing.expires_at);
+      // 연장분의 이용은 기존 만료일부터 시작한다 — computeExpiry 의 기산점과 같은 식이다.
+      noteUsageStart(Math.max(now, Date.parse(existing.expires_at)));
       const { error } = await adminClient
         .from("enrollments")
         .update({
@@ -535,6 +547,7 @@ async function fulfillCourseEnrollments(input: {
       continue;
     }
 
+    noteUsageStart(now); // 신규 지급은 지금부터 쓸 수 있다.
     const { error } = await adminClient.from("enrollments").insert({
       user_id: input.userId,
       course_id: link.course_id,
@@ -546,6 +559,14 @@ async function fulfillCourseEnrollments(input: {
       base_duration_snapshot_seconds: baseDuration,
     });
     if (error) console.error("[orders] enrollment grant failed:", error.message);
+  }
+
+  if (usageStartsMs != null) {
+    const { error } = await adminClient
+      .from("order_items")
+      .update({ usage_starts_at: new Date(usageStartsMs).toISOString() })
+      .eq("order_item_id", input.orderItemId);
+    if (error) console.error("[orders] usage_starts_at 기록 실패:", error.message);
   }
 }
 

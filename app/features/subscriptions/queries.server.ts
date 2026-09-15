@@ -43,7 +43,7 @@ export type {
 } from "./labels";
 
 const PLAN_COLUMNS =
-  "plan_id, code, name, description, price_krw, list_price_krw, duration_days, features, subject_codes, product_kind, available_from, display_order, is_active, sale_status, lecture_category, category_id, detail_image_url, detail_html, detail_sections";
+  "plan_id, code, name, description, price_krw, list_price_krw, planned_sessions, duration_days, features, subject_codes, product_kind, available_from, display_order, is_active, sale_status, lecture_category, category_id, detail_image_url, detail_html, detail_sections";
 
 function rowToPlan(r: {
   plan_id: string;
@@ -52,6 +52,7 @@ function rowToPlan(r: {
   description: string | null;
   price_krw: number;
   list_price_krw: number | null;
+  planned_sessions: number | null;
   duration_days: number;
   features: unknown;
   subject_codes: unknown;
@@ -73,6 +74,7 @@ function rowToPlan(r: {
     description: r.description,
     priceKrw: r.price_krw,
     listPriceKrw: r.list_price_krw,
+    plannedSessions: r.planned_sessions,
     durationDays: r.duration_days,
     features: Array.isArray(r.features) ? (r.features as string[]) : [],
     subjectCodes: Array.isArray(r.subject_codes)
@@ -137,6 +139,8 @@ export interface UpsertPlanInput {
   priceKrw: number;
   // 정상가(원). null=할인 표시 없음. 판매가보다 클 때만 취소선으로 병기된다.
   listPriceKrw: number | null;
+  // 전체 예정 회차(T) — 환불의 회차 기준 공제 분모(요청서 11-8).
+  plannedSessions: number | null;
   durationDays: number;
   productKind: ProductKind;
   subjectCodes: string[];
@@ -166,6 +170,7 @@ export async function upsertPlan(
     description: input.description,
     price_krw: input.priceKrw,
     list_price_krw: input.listPriceKrw,
+    planned_sessions: input.plannedSessions,
     duration_days: input.durationDays,
     product_kind: input.productKind,
     subject_codes: input.subjectCodes as never,

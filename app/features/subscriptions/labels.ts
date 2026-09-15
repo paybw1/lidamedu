@@ -79,6 +79,9 @@ export interface SubscriptionPlan {
   priceKrw: number;
   /** 정상가(원). null 이거나 판매가 이하이면 할인 표시를 하지 않는다(취소선·할인율 생략). */
   listPriceKrw: number | null;
+  /** 전체 예정 회차(T). 환불 공제의 **회차 기준 분모**(요청서 11-8) — 현재 등록 회차 수가 아니라
+   *  판매 시 사전 고지한 예정 회차다. null 이면 회차 기준 공제를 계산하지 않는다. */
+  plannedSessions: number | null;
   durationDays: number;
   features: string[];
   /** feat-8-028 — 부여 학습과목 slug 배열(개별/번들). 결제 시 열리는 과목. */

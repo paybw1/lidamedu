@@ -79,6 +79,11 @@ const schema = z.object({
     .union([z.literal(""), z.coerce.number().int().min(0).max(100_000_000)])
     .transform((v) => (v === "" ? null : v))
     .nullable(),
+  // 전체 예정 회차(T) — 환불의 회차 기준 공제 분모(요청서 11-8). 비우면 회차 기준을 쓰지 않는다.
+  plannedSessions: z
+    .union([z.literal(""), z.coerce.number().int().min(1).max(1000)])
+    .transform((v) => (v === "" ? null : v))
+    .nullable(),
   durationDays: z.coerce.number().int().min(0).max(3650),
   productKind: z.enum(["subject", "bundle", "membership", "course", "tpass"]),
   availableFrom: z.string().datetime().nullable(),
@@ -117,6 +122,7 @@ export async function action({ request }: Route.ActionArgs) {
     })(),
     priceKrw: fd.get("priceKrw"),
     listPriceKrw: fd.get("listPriceKrw") ?? "",
+    plannedSessions: fd.get("plannedSessions") ?? "",
     durationDays: fd.get("durationDays"),
     productKind: fd.get("productKind"),
     availableFrom: toIso(fd.get("availableFrom")),
@@ -204,6 +210,7 @@ export async function action({ request }: Route.ActionArgs) {
       description: parsed.data.description ?? null,
       priceKrw: parsed.data.priceKrw,
       listPriceKrw: parsed.data.listPriceKrw,
+      plannedSessions: parsed.data.plannedSessions,
       durationDays: parsed.data.durationDays,
       productKind: parsed.data.productKind,
       subjectCodes,

@@ -268,6 +268,19 @@ export async function applyEnrollmentExtension(input: {
     console.error("[extension] expires_at update failed:", updErr.message);
     return;
   }
+
+  // ★연장분의 **이용 시작일**을 주문항목에 박는다(요청서 11-12, feat-11-013 P7-b).
+  //   연장은 기존 만료일부터 쓰는 것이므로 그때가 시작이다(이미 만료됐으면 지금부터).
+  //   수강권의 `starts_at` 을 읽으면 최초 구매일이 나와 연장분의 이용일수가 부풀고,
+  //   환불 공제가 과다 계산된다 — 「원래 강의와 연장 결제를 섞어 계산하지 않는다」.
+  const usageStartsAt = new Date(
+    Math.max(Date.now(), Date.parse(ctx.expiresAt)),
+  ).toISOString();
+  const { error: usageErr } = await adminClient
+    .from("order_items")
+    .update({ usage_starts_at: usageStartsAt })
+    .eq("order_item_id", input.orderItemId);
+  if (usageErr) console.error("[extension] usage_starts_at 기록 실패:", usageErr.message);
   await logEnrollmentAdminAction({
     enrollmentId: input.enrollmentId,
     actorId: input.userId,

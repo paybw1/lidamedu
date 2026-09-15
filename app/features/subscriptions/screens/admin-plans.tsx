@@ -437,6 +437,24 @@ function PlanForm({
             판매가보다 크게 넣으면 카탈로그·상세에 취소선과 할인율이 함께 표시됩니다.
           </p>
         </FormField>
+        {showPolicy ? (
+          <FormField label="전체 예정 회차 (선택)">
+            <Input
+              name="plannedSessions"
+              type="number"
+              min={1}
+              placeholder="비우면 회차 기준 공제 없음"
+              defaultValue={plan?.plannedSessions ?? ""}
+              className="h-8 text-xs"
+            />
+            <p className="text-muted-foreground mt-1 text-[11px]">
+              환불 공제의 <strong>회차 기준 분모</strong>입니다(요청서 11-8). 현재 등록된 회차
+              수가 아니라 <strong>판매할 때 안내한 예정 회차</strong>를 넣어 주세요 — 미종강
+              강의는 이 값으로 계산해야 학생에게 불리해지지 않습니다. 비우면 이용일수 기준만
+              적용합니다.
+            </p>
+          </FormField>
+        ) : null}
         <FormField label="이용 기간 (일)">
           <Input
             name="durationDays"

@@ -9694,6 +9694,7 @@ export type Database = {
           subject_code: string | null
           title_snapshot: string | null
           unit_price_krw: number
+          usage_starts_at: string | null
         }
         Insert: {
           book_id?: string | null
@@ -9718,6 +9719,7 @@ export type Database = {
           subject_code?: string | null
           title_snapshot?: string | null
           unit_price_krw: number
+          usage_starts_at?: string | null
         }
         Update: {
           book_id?: string | null
@@ -9742,6 +9744,7 @@ export type Database = {
           subject_code?: string | null
           title_snapshot?: string | null
           unit_price_krw?: number
+          usage_starts_at?: string | null
         }
         Relationships: [
           {
