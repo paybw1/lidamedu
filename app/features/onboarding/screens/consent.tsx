@@ -3,11 +3,17 @@
 // 학습 데이터 처리는 본 서비스의 본질적 구성요소(PIPA 15①4 계약 이행)이므로
 // 동의는 서비스 이용의 전제 조건이다 — "건너뛰기" 없음. 거부는 로그아웃/계정해지로만.
 
-import { CheckCircle2Icon, EyeIcon, ShieldCheckIcon } from "lucide-react";
+import {
+  BookOpenCheckIcon,
+  CheckCircle2Icon,
+  EyeIcon,
+  ShieldCheckIcon,
+} from "lucide-react";
 import { Form, Link, data, redirect, useNavigation } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
+import { kstDateOf } from "~/core/lib/kst";
 import { isStaffRole } from "~/core/lib/roles";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { setServiceDataConsent } from "~/features/exam-results/queries.server";
@@ -27,7 +33,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   const { data: profile } = await client
     .from("profiles")
-    .select("name, role, service_data_consent_at")
+    .select("name, role, service_data_consent_at, trial_ends_at")
     .eq("profile_id", user.id)
     .maybeSingle();
 
@@ -36,7 +42,23 @@ export async function loader({ request }: Route.LoaderArgs) {
     throw redirect("/dashboard", { headers });
   }
 
-  return data({ name: profile.name?.trim() || "학습자" }, { headers });
+  // ★체험 잔여일을 함께 내려보낸다 — 이 화면은 **갓 가입한 사람의 첫 화면**이라,
+  //   무엇을 얻었는지 모르는 채 데이터 처리 설명부터 읽게 된다. 실측(2026-09-15):
+  //   8월 이후 가입 140명 중 86명만 이 화면을 통과했다(39% 이탈). 동의 범위·행위는
+  //   그대로 두고, 방금 열린 체험을 먼저 보여 준다.
+  const trialEndsAt = profile.trial_ends_at;
+  const trialEndKst = kstDateOf(trialEndsAt);
+  const trialDaysLeft = trialEndsAt
+    ? Math.max(
+        0,
+        Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / 86_400_000),
+      )
+    : null;
+
+  return data(
+    { name: profile.name?.trim() || "학습자", trialEndKst, trialDaysLeft },
+    { headers },
+  );
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -56,7 +78,11 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function Consent({ loaderData, actionData }: Route.ComponentProps) {
-  const { name } = loaderData;
+  const { name, trialEndKst, trialDaysLeft } = loaderData;
+  // "2026-09-29" → "9월 29일". 연도는 체험이 15일이라 늘 올해이므로 생략한다.
+  const trialEndLabel = trialEndKst
+    ? `${Number(trialEndKst.slice(5, 7))}월 ${Number(trialEndKst.slice(8, 10))}일`
+    : null;
   const nav = useNavigation();
   const submitting = nav.state !== "idle" && nav.formMethod === "POST";
   const error = actionData && "error" in actionData ? actionData.error : null;
@@ -65,17 +91,39 @@ export default function Consent({ loaderData, actionData }: Route.ComponentProps
     <div className="bg-muted/30 flex min-h-[calc(100vh-64px)] items-center justify-center px-4 py-10">
       <div className="w-full max-w-lg">
         <Card>
-          <CardHeader className="space-y-2 px-6 pt-6 pb-2">
-            <div className="flex items-center gap-2">
-              <ShieldCheckIcon className="text-link size-6" />
-              <h1 className="text-xl font-bold tracking-tight">
-                학습 데이터 활용 동의
+          <CardHeader className="space-y-3 px-6 pt-6 pb-2">
+            {/* ★얻은 것을 먼저, 동의할 것을 그다음에. 이 화면은 갓 가입한 사람의
+                첫 화면이라, 무엇을 받았는지 모르는 채 데이터 처리 설명부터 읽으면
+                그대로 떠난다(실측 39% 이탈). 동의 범위·행위는 바꾸지 않는다. */}
+            {trialDaysLeft !== null && trialDaysLeft > 0 ? (
+              <div className="border-link/30 bg-link/5 flex items-start gap-3 rounded-md border p-4">
+                <BookOpenCheckIcon className="text-link mt-0.5 size-5 shrink-0" />
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold">
+                    {name}님, 특허법 학습과목이 {trialDaysLeft}일간 열렸습니다
+                  </p>
+                  <p className="text-muted-foreground text-[13px] leading-relaxed">
+                    {/* ★체험이 실제로 여는 범위만 적는다 — 학습과목(특허법) + 학습보조.
+                        암기카드(/srs)는 체험과 무관하게 열려 있으므로 여기 쓰지 않는다. */}
+                    조문·판례·기출문제와 빈칸 학습, 오답노트·메모 같은 학습보조
+                    도구를{trialEndLabel ? ` ${trialEndLabel}까지` : ""} 무료로
+                    쓰실 수 있습니다. 결제수단은 등록하지 않으셔도 됩니다.
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="flex items-center gap-2 pt-1">
+              <ShieldCheckIcon className="text-link size-5 shrink-0" />
+              <h1 className="text-lg font-bold tracking-tight">
+                시작하기 전에 — 학습 데이터 활용 동의
               </h1>
             </div>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              {name}님, 본 플랫폼은 <strong>학습 데이터 기반 진단·합격자 비교
-              컨설팅</strong>을 핵심으로 제공합니다. 서비스 제공을 위해 아래
-              데이터 처리에 동의해 주셔야 이용하실 수 있습니다.
+              {trialDaysLeft !== null && trialDaysLeft > 0 ? "" : `${name}님, `}본
+              플랫폼은 <strong>학습 데이터 기반 진단·합격자 비교 컨설팅</strong>을
+              핵심으로 제공합니다. 무엇을 얼마나 풀었는지가 남아야 약점 진단이
+              가능하므로, 아래 데이터 처리에 동의해 주셔야 이용하실 수 있습니다.
             </p>
           </CardHeader>
           <CardContent className="space-y-4 px-6 pb-6">
@@ -136,7 +184,7 @@ export default function Consent({ loaderData, actionData }: Route.ComponentProps
                 className="w-full"
                 disabled={submitting}
               >
-                {submitting ? "처리 중..." : "동의하고 시작하기"}
+                {submitting ? "처리 중..." : "동의하고 학습 시작하기"}
               </Button>
             </Form>
 
