@@ -10,9 +10,11 @@ import {
   type BlankTier,
 } from "./tiers";
 
+// ★기본 answer 는 idx 마다 **다르게** 둔다 — 같은 답은 단계 경계를 넘어 함께 가려지므로,
+//   답을 공유시키면 "빈칸 N개짜리 세트"를 의도한 케이스가 조용히 중복 케이스로 바뀐다.
 const mk = (
   idx: number,
-  answer = "정답",
+  answer = `정답${idx}`,
   blockIndex?: number,
   cumOffset?: number,
 ) => ({ idx, answer, blockIndex, cumOffset });
@@ -119,6 +121,13 @@ describe("tiersCoveredBy", () => {
     expect(tiersCoveredBy(b, 1)).toEqual([1]);
     expect(tiersCoveredBy(b, 2)).toEqual([2]);
     expect(tiersCoveredBy(b, 3)).toEqual([3]);
+  });
+  it("★같은 답 확장으로 하·중이 같은 집합이 되면 하 통과가 중까지 커버", () => {
+    // 답이 두 가지뿐이면 하(앞 2개)가 네 칸 전부를 가려 중과 같은 문제가 된다 —
+    // 같은 걸 두 번 풀게 두지 않는다.
+    const dup = [mk(0, "가"), mk(1, "나"), mk(2, "가"), mk(3, "나")];
+    expect(tierBlankCounts(dup)).toMatchObject({ 1: 4, 2: 4 });
+    expect(tiersCoveredBy(dup, 1)).toEqual([1, 2]);
   });
   it("하=중(작은 조문)이면 하 통과가 중까지 커버 — 단 상은 별개", () => {
     const b = [mk(0)]; // total=1 → 하1/중1

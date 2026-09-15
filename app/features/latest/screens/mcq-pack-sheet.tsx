@@ -33,6 +33,10 @@ import {
   deriveDisplayChoiceOx,
   stripLeadingOxMark,
 } from "~/features/problems/lib/auto-ox";
+import {
+  hasRichBlock,
+  hasRichText,
+} from "~/features/problems/lib/rich-text";
 import { getProblemDetailsByIds } from "~/features/problems/queries.server";
 import {
   MCQ_PACK_KIND_LABELS,
@@ -56,10 +60,8 @@ import type { Route } from "./+types/mcq-pack-sheet";
 // 이미지 기반 문항(자연과학 기출 등)은 본문을 Markdown 이미지(![](url))로, 표 기반
 // 문항은 HTML <table> 또는 GFM 파이프표로 저장한다. 이미지/표 마크업이 있을 때만
 // MarkdownView 로 렌더하고, 그 외 텍스트 문항은 whitespace-pre-line 경로를 유지한다.
-// 파이프표 감지 = 구분선 `|---|` (\|[\s:]*-{3,}).
-const MD_IMAGE_RE = /!\[[^\]]*\]\([^)]*\)|<(img|table|div)\b|\|[\s:]*-{3,}/i;
-// 종합해설 마크다운 서식 감지 — **굵게**·헤더·별표 감싼 줄(민법 해설 "*관련 조문·판례*").
-const MD_FORMAT_RE = /\*\*[^*\n]+\*\*|(?:^|\n)#{1,6}\s+\S|(?:^|\n)\*[^*\n]+\*(?=\n|$)/;
+// ★판정은 `problems/lib/rich-text.ts` SSOT — 발문은 블록만(hasRichBlock), 종합 해설은
+//   마크다운 서식까지(hasRichText). 규칙을 여기 복제하면 한쪽만 고쳐져 또 샌다.
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
   if (!d || !d.pack) return [{ title: "응시 | 리담변리사학원" }];
@@ -618,7 +620,7 @@ function ProblemBlock({
         </div>
       </div>
       <div className="space-y-4 px-4 py-4">
-        {MD_IMAGE_RE.test(problem.bodyMd) ? (
+        {hasRichBlock(problem.bodyMd) ? (
           <MarkdownView text={problem.bodyMd} className="text-[15px]" />
         ) : (
           <p className="text-[15px] leading-relaxed font-medium whitespace-pre-line">
@@ -804,8 +806,7 @@ function ExplanationBlock({ problem }: { problem: ProblemDetail }) {
           <p className="text-muted-foreground mb-1 text-xs font-semibold tracking-[0.06em] uppercase">
             종합 해설
           </p>
-          {MD_IMAGE_RE.test(problem.explanationMd) ||
-          MD_FORMAT_RE.test(problem.explanationMd) ? (
+          {hasRichText(problem.explanationMd) ? (
             <MarkdownView text={problem.explanationMd} />
           ) : (
             <p className="whitespace-pre-line">{problem.explanationMd}</p>

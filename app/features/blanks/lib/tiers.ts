@@ -61,15 +61,17 @@ export function activeBlankIdxsForTier(
   );
 }
 
-// 세트의 tier 별 활성 빈칸 수(UI 표시·겹침 판정).
+// 세트의 tier 별 **실제로 가려지는** 빈칸 수(UI 표시·겹침 판정).
+//   ★명목 take 수(tierTakeCount)가 아니라 activeBlankIdxsForTier 의 크기다 — 같은 답 확장
+//   때문에 둘이 갈린다(제10조: 명목 7 vs 실제 11). 겹침 판정에 명목을 쓰면 하·중이 실제로
+//   같은 문제가 되는 조문에서도 자동 완료가 안 걸려 학생이 같은 걸 두 번 푼다.
 export function tierBlankCounts(
   blanks: OrderableBlank[],
 ): Record<BlankTier, number> {
-  const total = orderMappedBlanks(blanks).length;
   return {
-    1: tierTakeCount(total, 1),
-    2: tierTakeCount(total, 2),
-    3: tierTakeCount(total, 3),
+    1: activeBlankIdxsForTier(blanks, 1).size,
+    2: activeBlankIdxsForTier(blanks, 2).size,
+    3: activeBlankIdxsForTier(blanks, 3).size,
   };
 }
 

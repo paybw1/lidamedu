@@ -54,7 +54,7 @@ import {
 import { listLectureResources } from "~/features/lectures/queries.server";
 import { CrossUnitBadge } from "~/features/problems/components/cross-unit-badge";
 import { MarkdownView } from "~/features/problems/components/markdown-view";
-import { hasRichText } from "~/features/problems/lib/rich-text";
+import { hasRichBlock, hasRichText } from "~/features/problems/lib/rich-text";
 import { OxBookmarkToggle } from "~/features/problems/components/ox-bookmark-toggle";
 import { ProblemCodeChip } from "~/features/problems/components/problem-code-chip";
 import {
@@ -141,19 +141,10 @@ import {
   lawSubjectSlugSchema,
 } from "~/features/subjects/lib/subjects";
 
-// 발문·해설에 markdown 이미지(![](url))·<img>·표(HTML <table> 또는 GFM 파이프표)가
-// 있으면 MarkdownView 로 렌더(이미지·표·수식). 없으면 plain whitespace-pre-line.
-// 파이프표 감지 = 구분선 `|---|` (\|[\s:]*-{3,}). mcq-pack-sheet 와 동일 규칙.
-const MD_IMAGE_RE = /!\[[^\]]*\]\([^)]*\)|<(img|table|div)\b|\|[\s:]*-{3,}/i;
-// 종합해설 마크다운 서식 감지 — **굵게**·헤더·별표 감싼 줄(민법 해설 "*관련 조문·판례*").
-const MD_FORMAT_RE =
-  /\*\*[^*\n]+\*\*|(?:^|\n)#{1,6}\s+\S|(?:^|\n)\*[^*\n]+\*(?=\n|$)/;
-
-// ★서식 판정의 SSOT 는 `problems/lib/rich-text.ts` 다. 종전에는 같은 규칙이 이 파일과
-//   OX 패널에 **두 벌** 있어서 한쪽만 고치면 다른 쪽에서 또 샜다 — 오류신고 2026-09-10
-//   「해설에 코드가보임」(해설 속 HTML `<table>` 이 글자로 찍혔다)이 그 증상이다.
-//   위 두 정규식은 본문 렌더 분기에서만 남겨 두고, 해설 판정은 전부 이 한 함수를 탄다.
-const hasMarkdownFormat = hasRichText;
+// ★서식 판정의 SSOT 는 `problems/lib/rich-text.ts` 다. 종전에는 같은 규칙이 이 파일·OX
+//   패널·기출 시트에 **세 벌** 있어서 한쪽만 고치면 다른 쪽에서 또 샜다 — 오류신고
+//   2026-09-10 「해설에 코드가보임」(해설 속 HTML `<table>` 이 글자로 찍혔다)이 그 증상이다.
+//   발문은 블록(이미지·표)만, 해설은 블록+마크다운 서식까지 — 둘 다 SSOT 를 탄다.
 
 // 주관식 본문 — 사실관계와 설문((1)…) 사이에 구분선(hr)을 렌더 시점에 삽입.
 // 원문(body_md)은 무변경. 첫 "(1) " 문단 앞에만 삽입하며, 본문이 (1)로 시작하거나
@@ -1434,7 +1425,7 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                     객관식은 이미지·case-box 포함일 때만 — 그 외 plain 은 우발적 마크다운
                     오렌더 방지를 위해 기존 pre-line 유지. */}
                 {problem.format === "subjective" ||
-                MD_IMAGE_RE.test(problem.bodyMd) ||
+                hasRichBlock(problem.bodyMd) ||
                 problem.bodyMd.includes("case-box") ? (
                   <div className="mb-7 text-[length:calc(17px*var(--study-fs))] leading-[1.8] font-medium dark:[&_img]:brightness-[.8]">
                     <MarkdownView
@@ -1760,8 +1751,7 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                               종합 해설
                             </p>
                           </div>
-                          {MD_IMAGE_RE.test(problem.explanationMd) ||
-                          MD_FORMAT_RE.test(problem.explanationMd) ? (
+                          {hasRichText(problem.explanationMd) ? (
                             <div className="px-5 py-5 text-[length:calc(16px*var(--study-fs))] leading-[1.85] dark:[&_img]:brightness-[.8]">
                               <MarkdownView
                                 text={problem.explanationMd}
@@ -1833,7 +1823,7 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                                             {truth ?? "—"}
                                           </span>
                                           {bi.explanationMd &&
-                                          !hasMarkdownFormat(
+                                          !hasRichText(
                                             bi.explanationMd,
                                           ) ? (
                                             <span className="text-muted-foreground ml-2">
@@ -1846,7 +1836,7 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                                           ) : null}
                                         </p>
                                         {bi.explanationMd &&
-                                        hasMarkdownFormat(bi.explanationMd) ? (
+                                        hasRichText(bi.explanationMd) ? (
                                           <MarkdownView
                                             text={
                                               truth
@@ -1937,7 +1927,7 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                                         {label || "—"}
                                       </span>
                                       {c.explanationMd &&
-                                      !hasMarkdownFormat(c.explanationMd) ? (
+                                      !hasRichText(c.explanationMd) ? (
                                         <span className="text-muted-foreground ml-2">
                                           {label
                                             ? stripLeadingOxMark(
@@ -1948,7 +1938,7 @@ function ProblemViewerInner({ loaderData }: { loaderData: ProblemViewerData }) {
                                       ) : null}
                                     </p>
                                     {c.explanationMd &&
-                                    hasMarkdownFormat(c.explanationMd) ? (
+                                    hasRichText(c.explanationMd) ? (
                                       <MarkdownView
                                         text={
                                           label
