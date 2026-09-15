@@ -795,6 +795,9 @@ export async function refundOrderItem(input: {
       //   두 경로가 다른 평면을 쓰면 같은 칸이 주문마다 다른 뜻이 된다.
       //   포인트 반환분도 더하지 않는다(포인트는 학원 판촉비 — 강사 정산 매출에 들어간 적이 없다).
       //   실제 환급액은 payments.refund_amount_krw 와 point_transactions 원장이 갖는다.
+      //   ★이 경로는 **항목 전량 환불만** 한다(refundKrw = 그 항목 결제액 전체)라 정가 전액이
+      //     곧 환산값이다. 환불관리(P6)는 항목별 부분 금액을 받으므로 commit_refund 가
+      //     round(실환불액 × 정가 ÷ 결제귀속액) 로 환산해 넣는다(20260915_p7h3).
       refund_amount_krw: item.unit_price_krw * item.quantity,
       refund_reason: input.reason,
     })

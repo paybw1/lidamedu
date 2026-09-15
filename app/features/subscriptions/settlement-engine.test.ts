@@ -349,6 +349,33 @@ describe("주문 쿠폰할인 안분", () => {
     expect(scaleRefund(netB, netB, 45_000)).toBeLessThan(netB);
   });
 
+  // ★commit_refund 가 order_items.refund_amount_krw 에 쓰는 계산을 그대로 옮긴 것
+  //   (scripts/sql/20260915_p7h3_refund_gross_plane.sql): round(실환불액 × 정가 ÷ 결제귀속액).
+  //   분모(결제귀속액)와 정산의 netKrw 는 같은 값의 두 계산이며, 아래 왕복이 그것을 못 박는다.
+  function toGrossPlane(actualRefundKrw: number, grossKrw: number, paidKrw: number): number {
+    if (paidKrw <= 0) return 0;
+    return Math.round((actualRefundKrw * grossKrw) / paidKrw);
+  }
+
+  it("★부분 금액 환불은 정가 평면으로 환산해야 정산이 실환불액을 본다", () => {
+    const netB = allocateDiscount(rows, 10_000).get("b")!; // 40,500 (정가 45,000)
+    const actual = 20_000; // 공제 후 실제로 돌려준 돈
+
+    // 고친 뒤 — 환산해 기록하면 정산이 실환불액 그대로 본다.
+    expect(scaleRefund(toGrossPlane(actual, 45_000, netB), netB, 45_000)).toBe(actual);
+
+    // 고치기 전 — 정가 전액을 기록하면 정산은 **전액 환불**로 읽어 강사에게서 더 뗀다.
+    expect(scaleRefund(45_000, netB, 45_000)).toBe(netB);
+    expect(scaleRefund(45_000, netB, 45_000)).toBeGreaterThan(actual);
+  });
+
+  it("환산은 0원 환불·할인 없는 항목에서도 어긋나지 않는다", () => {
+    expect(toGrossPlane(0, 45_000, 40_500)).toBe(0);
+    // 할인 없음(정가 = 결제액) → 환산이 항등식이 된다. 스냅샷 없는 옛 주문의 폴백 경로.
+    expect(toGrossPlane(8_000, 10_000, 10_000)).toBe(8_000);
+    expect(scaleRefund(toGrossPlane(8_000, 10_000, 10_000), 10_000, 10_000)).toBe(8_000);
+  });
+
   it("할인된 항목의 전액 환불이 결제액을 정확히 상쇄한다", () => {
     const netB = allocateDiscount(rows, 10_000).get("b")!;
     const discounted = sale({
