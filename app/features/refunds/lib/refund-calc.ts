@@ -224,7 +224,14 @@ export function computeRefund(input: RefundCalcInput): RefundCalcResult {
   }
 
   // ── ③ 정가 수강기간의 1/2 이상 경과 → 환불 불가(11-6, 기간제) ───────────────
-  if (input.calcType === "period" && durationDays != null && usedDays * 2 >= durationDays) {
+  //
+  // ★적용 범위는 **일수 기준만 쓰는 상품**이다(D16, 원장 결정 2026-09-15 「단과에서는 걸지 마」).
+  //   단과는 MAX(일수, 회차) 공제가 많이 쓴 사람의 환불액을 이미 끌어내리므로 이중으로
+  //   막지 않는다. 그런데 `bundle` 은 예정 회차(T)가 없으면 **사실상 기간제와 같은 식**을
+  //   쓰면서도 이 게이트만 비껴갔다 — 패키지만 뚫리는 구멍이었다. 그래서 유형이 아니라
+  //   **회차 분모의 유무**로 건다: 회차 기준이 없으면 일수 기준 전용 = 기간제와 같은 취급.
+  const daysOnly = plannedSessions == null;
+  if (input.calcType !== "single" && daysOnly && durationDays != null && usedDays * 2 >= durationDays) {
     return {
       ...shell,
       verdict: "blocked",

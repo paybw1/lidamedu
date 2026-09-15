@@ -28,6 +28,7 @@ import {
   getRefundDetail,
   saveRefundAmounts,
   saveRefundCalcBasis,
+  saveRefundCalcBasisDate,
   savePgCancel,
 } from "~/features/refunds/queries.server";
 import {
@@ -64,7 +65,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   // ★확정·되돌리기는 원장 전용(요청서 §10). 나머지 진행은 담당자도 할 수 있다.
   const needsAdmin = intent === "commit" || intent === "reopen";
-  const { user } = needsAdmin
+  const { user, role } = needsAdmin
     ? await requireRefundAdmin(request)
     : await requireRefundStaff(request);
 
@@ -84,9 +85,16 @@ export async function action({ request, params }: Route.ActionArgs) {
       couponRestored: form.get("couponRestored") === "on",
       refundMethod: String(form.get("refundMethod") ?? "original"),
       adminMemo: String(form.get("adminMemo") ?? "").trim() || null,
+      actorId: user.id,
+      actorRole: role,
+      adjustReason: String(form.get("adjustReason") ?? "").trim() || null,
     });
     if (!res.ok) return data({ error: res.error }, { status: 400 });
-    return data({ ok: `환불금액 ${res.total.toLocaleString("ko-KR")}원으로 저장했습니다.` });
+    return data({
+      ok:
+        `환불금액 ${res.total.toLocaleString("ko-KR")}원으로 저장했습니다.` +
+        (res.adjusted > 0 ? ` (자동 계산과 다른 항목 ${res.adjusted}건을 조정 원장에 남겼습니다)` : ""),
+    });
   }
 
   // 자동계산 결과를 금액칸에 채운다 (요청서 11-13).
@@ -137,6 +145,8 @@ export async function action({ request, params }: Route.ActionArgs) {
       couponRestored: detail.couponRestored,
       refundMethod: detail.refundMethod ?? "original",
       adminMemo: detail.adminMemo,
+      actorId: user.id,
+      actorRole: role,
     });
     if (!res.ok) return data({ error: res.error }, { status: 400 });
 
@@ -159,6 +169,19 @@ export async function action({ request, params }: Route.ActionArgs) {
         `자동계산 ${applied.length}건을 금액에 채웠습니다 — 합계 ${res.total.toLocaleString("ko-KR")}원.` +
         (skipped > 0 ? ` (계산 불가 ${skipped}건은 직접 입력해 주세요)` : ""),
     });
+  }
+
+  // 계산 기준일 수정 (요청서 11-5) — 사유·담당자·변경 전후가 audit_logs 에 남는다.
+  if (intent === "basis_date") {
+    const res = await saveRefundCalcBasisDate({
+      refundId,
+      basisOn: String(form.get("calcBasisOn") ?? ""),
+      reason: String(form.get("basisReason") ?? ""),
+      actorId: user.id,
+      actorRole: role,
+    });
+    if (!res.ok) return data({ error: res.error }, { status: 400 });
+    return data({ ok: "계산 기준일을 바꿨습니다." });
   }
 
   if (intent === "pg") {
@@ -227,7 +250,12 @@ export async function action({ request, params }: Route.ActionArgs) {
               ? "상품별 환불금액이 입력되지 않은 항목이 있습니다."
               : itemsSum !== detail.thisRefundKrw
                 ? `상품별 환불금액 합계 ${itemsSum.toLocaleString("ko-KR")}원(배송비 ${detail.shippingRefundKrw.toLocaleString("ko-KR")}원 포함)이 확정 환불금액 ${detail.thisRefundKrw.toLocaleString("ko-KR")}원과 다릅니다.`
-                : detail.pgCancelKrw !== detail.thisRefundKrw
+                : detail.thisRefundKrw > remainingRefundableKrw({
+                      originalPaidKrw: detail.originalPaidKrw,
+                      priorRefundedKrw: detail.order.priorRefundedKrw,
+                    })
+                  ? `남은 환불 가능금액은 ${remainingRefundableKrw({ originalPaidKrw: detail.originalPaidKrw, priorRefundedKrw: detail.order.priorRefundedKrw }).toLocaleString("ko-KR")}원입니다. 확정하면 RPC 가 거부하는데 지급물 회수는 이미 끝난 뒤입니다.`
+                  : detail.pgCancelKrw !== detail.thisRefundKrw
                   ? `확정 환불금액 ${detail.thisRefundKrw.toLocaleString("ko-KR")}원과 실제 취소금액 ${(detail.pgCancelKrw ?? 0).toLocaleString("ko-KR")}원이 다릅니다.`
                   : null;
     if (pre) return data({ error: pre }, { status: 400 });
@@ -349,7 +377,11 @@ export default function AdminRefundDetail({ loaderData, actionData }: Route.Comp
             ) : (
               <div className="flex flex-col gap-3">
                 {calcs.map((c) => (
-                  <CalcBlock key={c.refundItemId} calc={c} />
+                  <CalcBlock
+                    key={c.refundItemId}
+                    calc={c}
+                    priorRefunded={detail.priorRefundedKrw}
+                  />
                 ))}
                 {calcs.some((c) => c.result != null) && !closed ? (
                   <Form method="post">
@@ -394,7 +426,15 @@ export default function AdminRefundDetail({ loaderData, actionData }: Route.Comp
                       min={0}
                       step={1}
                       disabled={closed}
-                      defaultValue={i.finalKrw ?? i.paidAmountKrw ?? ""}
+                      defaultValue={i.finalKrw ?? ""}
+                      placeholder={
+                        calcs.find((c) => c.refundItemId === i.refundItemId)?.result?.verdict ===
+                        "manual"
+                          ? "직접 입력"
+                          : (calcs
+                              .find((c) => c.refundItemId === i.refundItemId)
+                              ?.result?.pgCancelPlanKrw?.toLocaleString("ko-KR") ?? "직접 입력")
+                      }
                       className="border-input bg-background focus:border-primary h-9 rounded-md border px-3 text-right text-[13px] tabular-nums outline-none"
                     />
                   </Field>
@@ -482,6 +522,22 @@ export default function AdminRefundDetail({ loaderData, actionData }: Route.Comp
                   />
                 </Field>
               </div>
+
+              {/* §11-14 관리자 금액 조정 — 자동 계산과 다른 금액을 넣을 때만 필요하다. */}
+              <Field
+                label="조정사유"
+                hint="자동 계산금액과 다른 금액을 넣을 때 필수입니다. 감액은 원장만 확정할 수 있습니다."
+                htmlFor="adjustReason"
+              >
+                <input
+                  id="adjustReason"
+                  name="adjustReason"
+                  disabled={closed}
+                  placeholder="예) 학생 이의제기 수용 — 자료 열람 이력 오집계 확인"
+                  maxLength={300}
+                  className="border-input bg-background focus:border-primary h-9 rounded-md border px-3 text-[13px] outline-none"
+                />
+              </Field>
 
               <div className="flex items-center justify-between gap-3">
                 <p className="text-[13px]">
@@ -576,7 +632,37 @@ export default function AdminRefundDetail({ loaderData, actionData }: Route.Comp
               <Row label="접수담당자" value={detail.intakeByName ?? "—"} />
               <Row label="요청사유" value={detail.requestReason ?? "—"} />
               <Row label="상담내용" value={detail.consultNote ?? "—"} />
+              <Row label="계산 기준일" value={detail.calcBasisOn ?? "—"} mono />
             </dl>
+            {/* 요청서 11-5 — 기준일 하루가 곧 공제 하루다. 전화로 먼저 요청한 날을 소급하거나
+                잘못 잡힌 날을 고칠 수 있어야 하고, 고친 흔적이 남아야 한다. */}
+            {!closed ? (
+              <Form method="post" className="border-border/60 mt-3 flex flex-col gap-2 border-t pt-3">
+                <input type="hidden" name="intent" value="basis_date" />
+                <div className="grid gap-2 sm:grid-cols-[10rem_1fr_auto]">
+                  <input
+                    name="calcBasisOn"
+                    type="date"
+                    required
+                    defaultValue={detail.calcBasisOn ?? ""}
+                    className="border-input bg-background focus:border-primary h-8 rounded-md border px-2 text-[12px] outline-none"
+                  />
+                  <input
+                    name="basisReason"
+                    required
+                    maxLength={200}
+                    placeholder="바꾸는 사유 (예: 9/12 전화 접수분 소급)"
+                    className="border-input bg-background focus:border-primary h-8 rounded-md border px-2 text-[12px] outline-none"
+                  />
+                  <Button type="submit" size="sm" variant="outline">
+                    기준일 변경
+                  </Button>
+                </div>
+                <p className="text-muted-foreground text-[11px]">
+                  이용일수를 여기까지 셉니다. 변경 전후 값과 사유·담당자가 감사 기록에 남습니다.
+                </p>
+              </Form>
+            ) : null}
           </Card>
 
           <Card title="처리">
@@ -708,7 +794,7 @@ function Card({
 }
 
 /** 한 항목의 자동계산 결과 — 요청서 11-13 표시항목 전부 + 계산식. */
-function CalcBlock({ calc }: { calc: RefundItemCalc }) {
+function CalcBlock({ calc, priorRefunded }: { calc: RefundItemCalc; priorRefunded: number | null }) {
   const r = calc.result;
   const e = calc.evidence;
   const verdictTone =
@@ -761,6 +847,7 @@ function CalcBlock({ calc }: { calc: RefundItemCalc }) {
             <Row label="최종 적용 공제액" value={won(r.appliedDeductionKrw)} mono />
             <Row label="포인트 반환액" value={won(r.pointReturnKrw)} mono />
             <Row label="토스 취소 예정금액" value={won(r.pgCancelPlanKrw)} mono />
+            <Row label="기존 누적 환불액" value={won(priorRefunded)} mono />
             <Row label="최종 환불금액" value={won(r.finalRefundKrw)} mono />
           </dl>
 
@@ -779,9 +866,6 @@ function CalcBlock({ calc }: { calc: RefundItemCalc }) {
         이용 시작 {dt(e.usageStartsAt)} · 계산 기준일 {dt(e.basisAt)} · 영상 {e.watchedLessons}회차
         · 자료 {e.materialLessons}회차
         {e.commonMaterialUsed ? " · 공통자료 이용(최소 1회차)" : ""}
-        {e.usageStartFallback
-          ? " · ★이용 시작일을 수강권에서 빌려 왔습니다 — 재구매 건이면 실제보다 길게 잡혔을 수 있습니다"
-          : ""}
       </p>
     </div>
   );

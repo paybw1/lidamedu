@@ -12799,6 +12799,7 @@ export type Database = {
           admin_memo: string | null
           assignee_id: string | null
           attachments: Json
+          calc_basis_on: string | null
           closed_at: string | null
           consult_note: string | null
           coupon_restored: boolean
@@ -12830,6 +12831,7 @@ export type Database = {
           admin_memo?: string | null
           assignee_id?: string | null
           attachments?: Json
+          calc_basis_on?: string | null
           closed_at?: string | null
           consult_note?: string | null
           coupon_restored?: boolean
@@ -12861,6 +12863,7 @@ export type Database = {
           admin_memo?: string | null
           assignee_id?: string | null
           attachments?: Json
+          calc_basis_on?: string | null
           closed_at?: string | null
           consult_note?: string | null
           coupon_restored?: boolean

@@ -66,14 +66,21 @@ export function pausedDaysWithin(
 /**
  * 실제 이용일수 d (요청서 11-5).
  * 시작일 전이면 0. 승인된 일시정지는 제외한다. 음수는 0.
+ *
+ * ★`elapsedDays`(정지를 빼기 **전** 달력 일수)를 함께 돌려주는 이유 —
+ *   요청서 11-3 의 「수강 시작일부터 7일 이내」는 **달력**이지 이용일수가 아니다.
+ *   정지 제외분으로 판정하면 3개월 전에 산 학생이 중간에 일시정지를 걸어 두는 것만으로
+ *   「7일 이내」가 되어 **전액환불 창이 무한정 열린다.** 공제(d)만 정지를 뺀 값을 쓴다.
  */
 export function usedDaysOf(input: {
   usageStartDate: string;
   basisDate: string;
   pauses: PauseSpan[];
-}): { usedDays: number; pausedDays: number } {
-  if (input.usageStartDate > input.basisDate) return { usedDays: 0, pausedDays: 0 };
+}): { usedDays: number; pausedDays: number; elapsedDays: number } {
+  if (input.usageStartDate > input.basisDate) {
+    return { usedDays: 0, pausedDays: 0, elapsedDays: 0 };
+  }
   const raw = daysBetween(input.usageStartDate, input.basisDate) + 1;
   const pausedDays = pausedDaysWithin(input.pauses, input.usageStartDate, input.basisDate);
-  return { usedDays: Math.max(0, raw - pausedDays), pausedDays };
+  return { usedDays: Math.max(0, raw - pausedDays), pausedDays, elapsedDays: raw };
 }

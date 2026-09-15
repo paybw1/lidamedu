@@ -6,6 +6,9 @@
 //   그 마지막 방어선이 액션 게이트다.
 
 import adminClient from "~/core/lib/supa-admin-client.server";
+import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
+import type { UserRole } from "~/core/lib/roles";
+import { kstToday } from "~/core/lib/kst";
 
 import {
   type RefundStatus,
@@ -192,6 +195,8 @@ export type RefundDetail = {
   order: OrderForRefund;
   intakeChannel: string | null;
   intakeAt: string;
+  /** 계산 기준일(KST 달력일) — 이용일수의 끝점(요청서 11-5). */
+  calcBasisOn: string | null;
   intakeByName: string | null;
   requestReason: string | null;
   consultNote: string | null;
@@ -279,6 +284,7 @@ export async function getRefundDetail(refundId: string): Promise<RefundDetail | 
     order,
     intakeChannel: r.intake_channel,
     intakeAt: r.intake_at,
+    calcBasisOn: r.calc_basis_on,
     intakeByName: r.intake_by ? (nameById.get(r.intake_by) ?? null) : null,
     requestReason: r.request_reason,
     consultNote: r.consult_note,
@@ -337,6 +343,8 @@ export async function createRefundIntake(input: {
   consultNote?: string | null;
   adminMemo?: string | null;
   intakeBy: string;
+  /** 계산 기준일(KST, yyyy-mm-dd). 비우면 오늘. 소급 접수에 쓴다(요청서 11-5). */
+  calcBasisOn?: string | null;
 }): Promise<{ ok: true; refundId: string } | { ok: false; error: string }> {
   const order = await getOrderForRefund(input.orderId);
   if (!order) return { ok: false, error: "주문을 찾을 수 없습니다." };
@@ -374,6 +382,9 @@ export async function createRefundIntake(input: {
       request_reason: input.requestReason,
       consult_note: input.consultNote ?? null,
       admin_memo: input.adminMemo ?? null,
+      // 요청서 11-5 — 접수 시 계산 기준일을 자동 저장한다. 전화·카톡으로 먼저 요청한 건은
+      // 관리자가 실제 요청일로 고칠 수 있다(사유·담당자는 audit_logs 에 남는다).
+      calc_basis_on: input.calcBasisOn ?? kstToday(),
       original_paid_krw: order.totalKrw,
       prior_refunded_krw: order.priorRefundedKrw,
     })
@@ -403,6 +414,33 @@ export async function createRefundIntake(input: {
 }
 
 /** 상품별 환불금액·공제사유 저장 + 헤더 확정액 동기화(합계가 곧 확정액이다). */
+/**
+ * 종결된 환불건은 고칠 수 없다 — 쓰기 함수 셋이 **같은 검사**를 쓰게 한다.
+ *
+ * ★종전에는 `saveRefundAmounts` 에만 있었다. 그래서 `savePgCancel` 은 **이미 환불완료된 건의
+ *   PG 취소금액·거래번호를 사유도 권한도 없이 덮어쓸 수 있었다** — 이미 나간 돈의 증빙이
+ *   사후에 바뀌어도 아무도 모르는, 장부와 토스가 다른 말을 하게 되는 바로 그 경로다.
+ *   `saveRefundCalcBasis` 는 지금 `saveRefundAmounts` 뒤에서만 불려 **우연히** 막히고 있었다.
+ */
+async function assertRefundEditable(
+  refundId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { data: r, error } = await adminClient
+    .from("refunds")
+    .select("status")
+    .eq("refund_id", refundId)
+    .maybeSingle();
+  if (error) return { ok: false, error: error.message };
+  if (!r) return { ok: false, error: "환불건을 찾을 수 없습니다." };
+  if ((TERMINAL_REFUND_STATUSES as readonly string[]).includes(r.status)) {
+    return {
+      ok: false,
+      error: "종결된 환불건은 수정할 수 없습니다. 원장 권한으로 되돌린 뒤 수정해 주세요.",
+    };
+  }
+  return { ok: true };
+}
+
 /**
  * 아직 돌려줄 수 있는 배송비 (P7-핸드오프 ①).
  *
@@ -441,7 +479,12 @@ export async function saveRefundAmounts(input: {
   couponRestored: boolean;
   refundMethod: string;
   adminMemo?: string | null;
-}): Promise<{ ok: true; total: number } | { ok: false; error: string }> {
+  /** §11-14 — 조정 원장에 남길 담당자. */
+  actorId: string;
+  actorRole: UserRole | null;
+  /** 자동 계산금액과 다르게 넣을 때의 사유. 감액이면 필수. */
+  adjustReason?: string | null;
+}): Promise<{ ok: true; total: number; adjusted: number } | { ok: false; error: string }> {
   const { data: r } = await adminClient
     .from("refunds")
     .select("status, order_id, original_paid_krw, prior_refunded_krw")
@@ -514,6 +557,46 @@ export async function saveRefundAmounts(input: {
     };
   }
 
+  // ── §11-14 관리자 금액 조정 ────────────────────────────────────────────────
+  // ★자동 계산금액과 다른 값을 넣으면 **원장에 남긴다.** 요청서가 요구하는 여섯 값
+  //   (자동 계산금액 / 최종 조정금액 / 증감액 / 조정사유 / 처리담당자 / 조정일시)이 모두 들어간다.
+  // ★**감액·환불 불가로 바꾸는 것은 원장만** 할 수 있다(요청서 11-14 마지막 줄).
+  //   담당자가 조용히 깎으면 학생이 손해를 보고, 그 흔적이 남지 않는 것이 더 큰 문제다.
+  const { data: basisRows } = await adminClient
+    .from("refund_items")
+    .select("refund_item_id, calc_basis")
+    .eq("refund_id", input.refundId);
+  const autoById = new Map<string, number>();
+  for (const b of basisRows ?? []) {
+    const basis = b.calc_basis as { result?: { pgCancelPlanKrw?: number; verdict?: string } } | null;
+    const auto = basis?.result?.pgCancelPlanKrw;
+    if (typeof auto === "number" && basis?.result?.verdict !== "manual") {
+      autoById.set(b.refund_item_id, auto);
+    }
+  }
+  const adjustments = input.amounts
+    .map((a) => {
+      const auto = autoById.get(a.refundItemId);
+      if (auto == null) return null;
+      const diff = Math.round(a.finalKrw) - auto;
+      return diff === 0 ? null : { refundItemId: a.refundItemId, auto, final: Math.round(a.finalKrw), diff };
+    })
+    .filter((x): x is { refundItemId: string; auto: number; final: number; diff: number } => x !== null);
+
+  const isAdmin = input.actorRole === "admin";
+  const reduced = adjustments.filter((x) => x.diff < 0);
+  if (reduced.length > 0 && !isAdmin) {
+    const worst = reduced.reduce((m, x) => (x.diff < m.diff ? x : m));
+    return {
+      ok: false,
+      error: `자동 계산금액보다 감액하는 것은 원장만 확정할 수 있습니다 (자동 ${worst.auto.toLocaleString("ko-KR")}원 → 입력 ${worst.final.toLocaleString("ko-KR")}원).`,
+    };
+  }
+  const reason = input.adjustReason?.trim() ?? "";
+  if (adjustments.length > 0 && reason.length < 2) {
+    return { ok: false, error: "자동 계산금액과 다른 금액을 넣을 때는 조정사유를 입력해 주세요." };
+  }
+
   for (const a of input.amounts) {
     const { error } = await adminClient
       .from("refund_items")
@@ -524,6 +607,24 @@ export async function saveRefundAmounts(input: {
       .eq("refund_item_id", a.refundItemId)
       .eq("refund_id", input.refundId);
     if (error) return { ok: false, error: error.message };
+  }
+
+  for (const adj of adjustments) {
+    await logAuditEvent({
+      actorId: input.actorId,
+      actorRole: input.actorRole,
+      action: "refund.amount_adjust",
+      entityType: "refund_item",
+      entityId: adj.refundItemId,
+      metadata: {
+        refundId: input.refundId,
+        autoKrw: adj.auto,
+        finalKrw: adj.final,
+        diffKrw: adj.diff,
+        direction: adj.diff < 0 ? "감액" : "증액",
+        reason,
+      },
+    });
   }
   const { error } = await adminClient
     .from("refunds")
@@ -536,7 +637,7 @@ export async function saveRefundAmounts(input: {
     })
     .eq("refund_id", input.refundId);
   if (error) return { ok: false, error: error.message };
-  return { ok: true, total };
+  return { ok: true, total, adjusted: adjustments.length };
 }
 
 /**
@@ -559,6 +660,8 @@ export async function saveRefundCalcBasis(input: {
     basis: unknown;
   }>;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
+  const editable = await assertRefundEditable(input.refundId);
+  if (!editable.ok) return editable;
   for (const r of input.rows) {
     const { error } = await adminClient
       .from("refund_items")
@@ -572,6 +675,50 @@ export async function saveRefundCalcBasis(input: {
       .eq("refund_id", input.refundId);
     if (error) return { ok: false, error: error.message };
   }
+  return { ok: true };
+}
+
+/**
+ * 계산 기준일 수정 (요청서 11-5 — 「변경사유·처리담당자·변경 전후 값을 기록」).
+ *
+ * ★기준일은 이용일수 d 의 끝점이라 **하루가 곧 공제 하루**다. 전화로 먼저 요청한 날을
+ *   소급하거나 잘못 잡힌 날을 고칠 수 있어야 하고, 고친 흔적이 남아야 한다.
+ */
+export async function saveRefundCalcBasisDate(input: {
+  refundId: string;
+  basisOn: string;
+  reason: string;
+  actorId: string;
+  actorRole: UserRole | null;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!/^d{4}-d{2}-d{2}$/.test(input.basisOn)) {
+    return { ok: false, error: "계산 기준일을 날짜로 입력해 주세요." };
+  }
+  if (input.reason.trim().length < 2) {
+    return { ok: false, error: "기준일을 바꾸는 사유를 입력해 주세요." };
+  }
+  const editable = await assertRefundEditable(input.refundId);
+  if (!editable.ok) return editable;
+
+  const { data: before } = await adminClient
+    .from("refunds")
+    .select("calc_basis_on")
+    .eq("refund_id", input.refundId)
+    .maybeSingle();
+  const { error } = await adminClient
+    .from("refunds")
+    .update({ calc_basis_on: input.basisOn })
+    .eq("refund_id", input.refundId);
+  if (error) return { ok: false, error: error.message };
+
+  await logAuditEvent({
+    actorId: input.actorId,
+    actorRole: input.actorRole,
+    action: "refund.calc_basis_on",
+    entityType: "refund",
+    entityId: input.refundId,
+    metadata: { before: before?.calc_basis_on ?? null, after: input.basisOn, reason: input.reason.trim() },
+  });
   return { ok: true };
 }
 
@@ -596,6 +743,8 @@ export async function savePgCancel(input: {
   if (!input.transactionNo.trim()) {
     return { ok: false, error: "거래번호(또는 이체 참조번호)를 입력해 주세요." };
   }
+  const editable = await assertRefundEditable(input.refundId);
+  if (!editable.ok) return editable;
   const { error } = await adminClient
     .from("refunds")
     .update({

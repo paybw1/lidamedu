@@ -34,8 +34,6 @@ export interface RefundItemCalc {
   evidence: {
     /** 이 결제분의 이용 시작일. */
     usageStartsAt: string | null;
-    /** 이용 시작일을 수강권에서 빌려 왔는가(주문항목에 없을 때) — 재구매면 부정확할 수 있다. */
-    usageStartFallback: boolean;
     /** 계산 기준일(= 환불 접수일). */
     basisAt: string;
     /** 승인된 일시정지로 제외한 일수. */
@@ -60,24 +58,30 @@ function isCalcType(v: string | null): v is RefundCalcType {
  *   (요청서 §11 머리말: 「계산하거나 금액을 확정해도 토스 결제취소가 자동 실행되면 안 된다」).
  */
 export async function computeRefundForRefund(refundId: string): Promise<RefundItemCalc[]> {
-  const { data: refund } = await adminClient
+  // ★쿼리 에러를 삼키지 않는다. 종전에는 select 문자열 오타 하나가 화면에
+  //   「계산할 항목이 없습니다」로 둔갑해, 계산이 안 되는 건지 대상이 없는 건지 구분이 안 됐다.
+  const { data: refund, error: refundErr } = await adminClient
     .from("refunds")
-    .select("refund_id, order_id, user_id, intake_at")
+    .select("refund_id, order_id, user_id, intake_at, calc_basis_on")
     .eq("refund_id", refundId)
     .maybeSingle();
+  if (refundErr) throw new Error(`환불건 조회 실패: ${refundErr.message}`);
   if (!refund) return [];
 
-  const { data: items } = await adminClient
+  const { data: items, error: itemsErr } = await adminClient
     .from("refund_items")
     .select(
       "refund_item_id, order_item_id, order_items!inner(order_item_id, item_type, title_snapshot, plan_id, enrollment_id, unit_price_krw, quantity, paid_amount_krw, coupon_alloc_krw, point_alloc_krw, list_price_snapshot_krw, duration_days_snapshot, planned_sessions_snapshot, refund_calc_type, refund_policy_snapshot, usage_starts_at)",
     )
     .eq("refund_id", refundId)
     .order("created_at");
+  if (itemsErr) throw new Error(`환불 대상상품 조회 실패: ${itemsErr.message}`);
   if (!items?.length) return [];
 
-  const basisAt = refund.intake_at;
-  const basisDate = kstDate(basisAt);
+  // ★계산 기준일은 **저장된 값**이 권위다(요청서 11-5). 비어 있으면 접수 시각의 KST 날짜로
+  //   폴백한다 — 이 칸이 생기기 전(2026-09-15 이전) 접수분용이다.
+  const basisDate = refund.calc_basis_on ?? kstDate(refund.intake_at);
+  const basisAt = `${basisDate}T23:59:59.999+09:00`;
   const out: RefundItemCalc[] = [];
 
   for (const row of items) {
@@ -107,7 +111,6 @@ export async function computeRefundForRefund(refundId: string): Promise<RefundIt
       result: null,
       evidence: {
         usageStartsAt: oi.usage_starts_at,
-        usageStartFallback: false,
         basisAt,
         pausedDays: 0,
         watchedLessons: 0,
@@ -135,25 +138,16 @@ export async function computeRefundForRefund(refundId: string): Promise<RefundIt
     // 권위는 주문항목이다(요청서 11-12). 없으면 수강권에서 빌리되 그 사실을 남긴다 —
     // 재구매로 연장된 수강권이면 최초 구매일이 나와 이용일수가 부풀 수 있다.
     const enrollmentIds = await enrollmentIdsFor(oi, refund.user_id);
-    let usageStartsAt = oi.usage_starts_at;
-    let usageStartFallback = false;
-    if (!usageStartsAt && enrollmentIds.length) {
-      const { data: enr } = await adminClient
-        .from("enrollments")
-        .select("starts_at")
-        .in("enrollment_id", enrollmentIds)
-        .order("starts_at")
-        .limit(1)
-        .maybeSingle();
-      if (enr?.starts_at) {
-        usageStartsAt = enr.starts_at;
-        usageStartFallback = true;
-      }
-    }
+    // ★주문항목에 이용 시작일이 없으면 **계산하지 않는다.** 종전에는 수강권의 `starts_at` 을
+    //   빌려 쓰고 화면에 각주만 달았는데, 재구매로 연장된 수강권이면 그 값이 **최초 구매일**이라
+    //   이용일수가 실제보다 길게 잡히고 공제가 부풀어 **학생이 손해**를 본다.
+    //   경고를 읽고 넘기는 각주보다 수기 입력으로 돌려보내는 편이 안전하다.
+    const usageStartsAt = oi.usage_starts_at;
     if (!usageStartsAt) {
       out.push({
         ...blank,
-        blockedReason: "이용 시작일을 찾을 수 없습니다(수강권 미지급). 금액을 직접 입력해 주세요.",
+        blockedReason:
+          "이 결제분의 이용 시작일이 기록돼 있지 않습니다(2026-09-15 이전 지급). 수강 시작일을 확인하고 금액을 직접 입력해 주세요.",
       });
       continue;
     }
@@ -161,16 +155,20 @@ export async function computeRefundForRefund(refundId: string): Promise<RefundIt
     // ── 실제 이용일수 d (요청서 11-5) ──────────────────────────────────────
     // 접수일 − 시작일 + 1, 승인된 일시정지 제외. 시작 전이면 0.
     // 관리자가 늦게 처리해도 접수일 이후는 세지 않는다 — 기준일이 접수일이라 자동으로 그렇게 된다.
+    const startDate = kstDate(usageStartsAt);
     const pauses = enrollmentIds.length ? await pausesFor(enrollmentIds) : [];
-    const { usedDays, pausedDays } = usedDaysOf({
-      usageStartDate: kstDate(usageStartsAt),
+    const { usedDays, pausedDays, elapsedDays } = usedDaysOf({
+      usageStartDate: startDate,
       basisDate,
       pauses,
     });
 
     // ── 이용 회차 t (요청서 11-4) ──────────────────────────────────────────
+    // ★창을 **KST 달력일 경계**로 맞춘다. 이용일수(d)는 달력일로 세는데 이력만 정확한
+    //   타임스탬프로 자르면 「이용일수로 센 날의 시청이 회차에는 안 잡히는」 구간이 생기고,
+    //   화면의 두 근거 숫자가 서로 다른 기간을 말하게 된다.
     const usage = enrollmentIds.length
-      ? await usageFor(enrollmentIds, usageStartsAt, basisAt)
+      ? await usageFor(enrollmentIds, `${startDate}T00:00:00+09:00`, basisAt)
       : { watched: new Set<string>(), material: new Set<string>(), commonMaterial: false };
     const lessons = new Set<string>([...usage.watched, ...usage.material]);
     // 회차에 연결되지 않은 공통 유료자료는 **최소 1회차**로 센다(요청서 11-4).
@@ -193,7 +191,9 @@ export async function computeRefundForRefund(refundId: string): Promise<RefundIt
       usedDays,
       plannedSessions: oi.planned_sessions_snapshot,
       usedSessions,
-      withinFirstWeek: usedDays <= FREE_REFUND_DAYS,
+      // ★11-3 의 「수강 시작일부터 7일 이내」는 **달력**이다. 정지 제외분(usedDays)으로
+      //   판정하면 오래된 건도 일시정지만 걸면 7일 안으로 들어와 전액환불 창이 무한정 열린다.
+      withinFirstWeek: elapsedDays > 0 && elapsedDays <= FREE_REFUND_DAYS,
       noPaidUsage,
       hasOwnPolicy: oi.refund_policy_snapshot != null,
     };
@@ -206,7 +206,6 @@ export async function computeRefundForRefund(refundId: string): Promise<RefundIt
       result: computeRefund(input),
       evidence: {
         usageStartsAt,
-        usageStartFallback,
         basisAt,
         pausedDays,
         watchedLessons: usage.watched.size,
@@ -226,11 +225,28 @@ export async function computeRefundForRefund(refundId: string): Promise<RefundIt
  *   수강기간 연장 주문은 `order_items.enrollment_id` 가 직접 가리킨다.
  */
 async function enrollmentIdsFor(
-  oi: { item_type: string; plan_id: string | null; enrollment_id: string | null },
+  oi: {
+    order_item_id: string;
+    item_type: string;
+    plan_id: string | null;
+    enrollment_id: string | null;
+  },
   userId: string,
 ): Promise<string[]> {
   if (oi.enrollment_id) return [oi.enrollment_id];
   if (!oi.plan_id) return [];
+
+  // ① 이 주문항목이 직접 연 수강권 — 가장 정확하다.
+  const { data: own } = await adminClient
+    .from("enrollments")
+    .select("enrollment_id")
+    .eq("order_item_id", oi.order_item_id);
+  if (own?.length) return own.map((e) => e.enrollment_id);
+
+  // ② 폴백 — 재구매가 `order_item_id` 를 덮어써 ①이 빈 경우.
+  //    ★`plan_id` 로 좁힌다. 좁히지 않으면 같은 강의를 **다른 상품으로도** 산 학생의
+  //      수강권까지 끌려와, 남의 결제분 시청이 이번 환불의 공제로 잡히고(학생 손해)
+  //      남의 정지가 이용일수를 깎는다(학원 손해).
   const { data: links } = await adminClient
     .from("plan_courses")
     .select("course_id")
@@ -241,6 +257,7 @@ async function enrollmentIdsFor(
     .from("enrollments")
     .select("enrollment_id")
     .eq("user_id", userId)
+    .eq("plan_id", oi.plan_id)
     .in("course_id", courseIds);
   return (enrs ?? []).map((e) => e.enrollment_id);
 }
