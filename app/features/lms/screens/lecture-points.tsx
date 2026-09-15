@@ -218,7 +218,7 @@ export default function LecturePoints({ loaderData }: Route.ComponentProps) {
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-8 md:px-6 md:py-10">
       <header className="mb-5">
-        <p className="text-muted-foreground inline-flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase">
+        <p className="text-muted-foreground inline-flex items-center gap-1.5 text-xs font-semibold">
           <CoinsIcon className="size-3.5" /> 마이페이지
         </p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">포인트 관리</h1>
@@ -226,7 +226,7 @@ export default function LecturePoints({ loaderData }: Route.ComponentProps) {
 
       {/* 잔액 카드 */}
       <div className="from-primary/90 to-primary text-primary-foreground mb-6 rounded-2xl bg-gradient-to-br p-6 shadow-sm">
-        <p className="text-primary-foreground/80 text-xs font-semibold tracking-wide uppercase">
+        <p className="text-primary-foreground/80 text-xs font-semibold">
           보유 포인트
         </p>
         <p className="mt-1 text-3xl font-extrabold tabular-nums">

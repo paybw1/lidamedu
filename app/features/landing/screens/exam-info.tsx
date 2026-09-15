@@ -45,7 +45,6 @@ export default function ExamInfo({ loaderData }: Route.ComponentProps) {
         <div className="wrap" style={{ maxWidth: 1180 }}>
           <div className="shead">
             <div>
-              <p className="eyebrow">Exam Info</p>
               <h2>변리사 시험 정보</h2>
               {d.intro ? <p>{d.intro}</p> : null}
             </div>
@@ -78,7 +77,6 @@ export default function ExamInfo({ loaderData }: Route.ComponentProps) {
         <div className="wrap" style={{ maxWidth: 1180 }}>
           <div className="shead">
             <div>
-              <p className="eyebrow">Subjects</p>
               <h2>시험 과목 · 합격 기준</h2>
             </div>
           </div>
@@ -169,7 +167,6 @@ export default function ExamInfo({ loaderData }: Route.ComponentProps) {
         <div className="wrap" style={{ maxWidth: 1180 }}>
           <div className="shead">
             <div>
-              <p className="eyebrow">English</p>
               <h2>영어 대체시험 인정 점수</h2>
               <p>
                 1차 영어 과목은 공인 어학시험 성적으로 대체합니다. 아래 기준
@@ -215,7 +212,6 @@ export default function ExamInfo({ loaderData }: Route.ComponentProps) {
           <div className="wrap" style={{ maxWidth: 1180 }}>
             <div className="shead">
               <div>
-                <p className="eyebrow">Statistics</p>
                 <h2>연도별 통계</h2>
                 <p>최근 응시·합격·경쟁률 요약(1차 응시(대상) · 커트라인 · 합격).</p>
               </div>
@@ -274,7 +270,6 @@ export default function ExamInfo({ loaderData }: Route.ComponentProps) {
           <div className="wrap" style={{ maxWidth: 1180 }}>
             <div className="shead">
               <div>
-                <p className="eyebrow">Strategy</p>
                 <h2>1차 공부방법론</h2>
                 <p>법과목 중심 + 자연과학 전략 운영.</p>
               </div>
@@ -330,7 +325,6 @@ export default function ExamInfo({ loaderData }: Route.ComponentProps) {
           <div className="wrap" style={{ maxWidth: 860 }}>
             <div className="shead">
               <div>
-                <p className="eyebrow">Q&amp;A</p>
                 <h2>자주 묻는 질문</h2>
               </div>
             </div>
@@ -365,7 +359,6 @@ export default function ExamInfo({ loaderData }: Route.ComponentProps) {
           <div className="wrap" style={{ maxWidth: 1180 }}>
             <div className="shead">
               <div>
-                <p className="eyebrow">Notices</p>
                 <h2>시험 공고</h2>
                 <p>지식재산처·한국산업인력공단 공식 공고문입니다.</p>
               </div>

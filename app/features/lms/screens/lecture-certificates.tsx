@@ -61,7 +61,7 @@ export default function LectureCertificates({ loaderData }: Route.ComponentProps
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-8 md:px-6 md:py-10">
       <header className="mb-6">
-        <p className="text-muted-foreground inline-flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase">
+        <p className="text-muted-foreground inline-flex items-center gap-1.5 text-xs font-semibold">
           <FileBadgeIcon className="size-3.5" /> 마이페이지
         </p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">증명서 발급</h1>

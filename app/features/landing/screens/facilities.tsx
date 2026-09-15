@@ -114,7 +114,6 @@ export default function Facilities({ loaderData }: Route.ComponentProps) {
         <img src={heroSrc} alt="리담변리사학원 학습 공간" />
         <div className="fc-hero-in">
           <div className="wrap">
-            <p className="eyebrow">Space</p>
             <h1>집중을 위한 공간</h1>
             <p className="fc-hero-sub">
               리담변리사학원의 시설과 학습 환경을 소개합니다.
@@ -128,7 +127,6 @@ export default function Facilities({ loaderData }: Route.ComponentProps) {
         <div className="wrap" style={{ maxWidth: 1180 }}>
           <div className="shead">
             <div>
-              <p className="eyebrow">Study</p>
               <h2>리담의 학습 공간</h2>
               <p>강의부터 자습까지, 오래 앉아도 편안한 환경을 설계했습니다.</p>
             </div>
@@ -142,7 +140,6 @@ export default function Facilities({ loaderData }: Route.ComponentProps) {
         <div className="wrap" style={{ maxWidth: 1180 }}>
           <div className="shead">
             <div>
-              <p className="eyebrow">Amenities</p>
               <h2>리담의 편의 시설</h2>
               <p>집중과 휴식의 균형 — 학습에 필요한 것들을 가까이 두었습니다.</p>
             </div>
