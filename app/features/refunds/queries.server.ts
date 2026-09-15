@@ -9,6 +9,7 @@ import adminClient from "~/core/lib/supa-admin-client.server";
 import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
 import type { UserRole } from "~/core/lib/roles";
 import { kstToday } from "~/core/lib/kst";
+import { isCalendarDate } from "./lib/refund-date";
 
 import {
   type RefundStatus,
@@ -725,7 +726,11 @@ export async function saveRefundCalcBasisDate(input: {
   actorId: string;
   actorRole: UserRole | null;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (!/^d{4}-d{2}-d{2}$/.test(input.basisOn)) {
+  // ★`\d` 의 백슬래시가 빠지면 문자 그대로 "dddd-dd-dd" 를 찾아 **모든 날짜가 거부된다.**
+  //   2026-09-15 실제로 그 상태로 배포됐다(셸 히어독이 백슬래시를 한 겹 먹었다).
+  // ★형식만 보면 2026-02-31 이 통과한다 — JS 가 3월 3일로 굴려 버리기 때문이다.
+  //   기준일은 하루가 곧 공제 하루라, 굴러간 날짜를 조용히 저장하면 안 된다. 왕복 비교로 막는다.
+  if (!isCalendarDate(input.basisOn)) {
     return { ok: false, error: "계산 기준일을 날짜로 입력해 주세요." };
   }
   if (input.reason.trim().length < 2) {
