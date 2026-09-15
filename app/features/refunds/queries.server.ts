@@ -89,6 +89,8 @@ export type RefundableItem = {
   quantity: number;
   unitPriceKrw: number;
   paidAmountKrw: number | null;
+  /** 이 항목에 배분된 결제 포인트(P1 스냅샷). 환불 시 반환 상한의 뿌리다. */
+  pointAllocKrw: number;
   refundedAt: string | null;
   /** 이미 다른 환불건이 열려 있어 고를 수 없는 항목. */
   lockedByOpenRefund: boolean;
@@ -132,7 +134,7 @@ export async function getOrderForRefund(orderId: string): Promise<OrderForRefund
       adminClient
         .from("order_items")
         .select(
-          "order_item_id, item_type, title_snapshot, quantity, unit_price_krw, paid_amount_krw, refunded_at",
+          "order_item_id, item_type, title_snapshot, quantity, unit_price_krw, paid_amount_krw, point_alloc_krw, refunded_at",
         )
         .eq("order_id", orderId)
         .order("created_at"),
@@ -174,6 +176,7 @@ export async function getOrderForRefund(orderId: string): Promise<OrderForRefund
       quantity: i.quantity ?? 1,
       unitPriceKrw: i.unit_price_krw ?? 0,
       paidAmountKrw: i.paid_amount_krw,
+      pointAllocKrw: i.point_alloc_krw ?? 0,
       refundedAt: i.refunded_at,
       lockedByOpenRefund: lockedIds.has(i.order_item_id),
     })),
@@ -223,8 +226,12 @@ export type RefundDetail = {
     quantity: number;
     unitPriceKrw: number;
     paidAmountKrw: number | null;
+    /** 이 항목에 배분된 결제 포인트. 0 이면 포인트 칸을 띄우지 않는다. */
+    pointAllocKrw: number;
     finalKrw: number | null;
     deductionReason: string | null;
+    /** 이번 환불에서 돌려줄 포인트(요청서 11-11 MIN). 확정 전엔 null 일 수 있다. */
+    pointReturnKrw: number | null;
     returnTrackingNo: string | null;
   }>;
   logs: Array<{
@@ -255,7 +262,7 @@ export async function getRefundDetail(refundId: string): Promise<RefundDetail | 
     adminClient
       .from("refund_items")
       .select(
-        "refund_item_id, order_item_id, quantity, final_krw, deduction_reason, return_tracking_no",
+        "refund_item_id, order_item_id, quantity, final_krw, deduction_reason, point_return_krw, return_tracking_no",
       )
       .eq("refund_id", refundId)
       .order("created_at"),
@@ -311,8 +318,10 @@ export async function getRefundDetail(refundId: string): Promise<RefundDetail | 
         quantity: it.quantity ?? 1,
         unitPriceKrw: oi?.unitPriceKrw ?? 0,
         paidAmountKrw: oi?.paidAmountKrw ?? null,
+        pointAllocKrw: oi?.pointAllocKrw ?? 0,
         finalKrw: it.final_krw,
         deductionReason: it.deduction_reason,
+        pointReturnKrw: it.point_return_krw,
         returnTrackingNo: it.return_tracking_no,
       };
     }),
@@ -473,7 +482,14 @@ export async function remainingShippingRefundableKrw(
 
 export async function saveRefundAmounts(input: {
   refundId: string;
-  amounts: Array<{ refundItemId: string; finalKrw: number; deductionReason?: string | null }>;
+  amounts: Array<{
+    refundItemId: string;
+    finalKrw: number;
+    deductionReason?: string | null;
+    /** 이번 환불에서 돌려줄 포인트(요청서 11-11 MIN). undefined 면 기존 값을 건드리지 않는다
+     *  — [자동계산]이 채운 값을 금액만 손볼 때 지우지 않기 위해서다. */
+    pointReturnKrw?: number | null;
+  }>;
   /** 이번 환불로 돌려주는 배송비(원). 주문 헤더의 돈이라 항목으로 표현할 수 없다. */
   shippingRefundKrw: number;
   couponRestored: boolean;
@@ -501,21 +517,23 @@ export async function saveRefundAmounts(input: {
   const { data: caps } = await adminClient
     .from("refund_items")
     .select(
-      "refund_item_id, order_items!inner(paid_amount_krw, unit_price_krw, quantity, title_snapshot)",
+      "refund_item_id, order_items!inner(paid_amount_krw, unit_price_krw, quantity, title_snapshot, point_alloc_krw)",
     )
     .eq("refund_id", input.refundId);
-  const capById = new Map<string, { cap: number; label: string }>();
+  const capById = new Map<string, { cap: number; label: string; pointCap: number }>();
   for (const c of caps ?? []) {
     const oi = c.order_items as unknown as {
       paid_amount_krw: number | null;
       unit_price_krw: number | null;
       quantity: number | null;
       title_snapshot: string | null;
+      point_alloc_krw: number | null;
     } | null;
     if (!oi) continue;
     capById.set(c.refund_item_id, {
       cap: oi.paid_amount_krw ?? (oi.unit_price_krw ?? 0) * (oi.quantity ?? 1),
       label: oi.title_snapshot ?? "상품",
+      pointCap: oi.point_alloc_krw ?? 0,
     });
   }
 
@@ -530,6 +548,19 @@ export async function saveRefundAmounts(input: {
         ok: false,
         error: `「${cap.label}」의 환불금액이 실제 결제금액 ${cap.cap.toLocaleString("ko-KR")}원을 넘습니다.`,
       };
+    }
+    // 포인트 반환액도 배분액을 넘을 수 없다 — RPC 가 다시 막지만, 여기서 막아야 관리자가
+    // 토스 취소까지 한 뒤에 거절당하지 않는다.
+    if (a.pointReturnKrw != null) {
+      if (!Number.isFinite(a.pointReturnKrw) || a.pointReturnKrw < 0) {
+        return { ok: false, error: "포인트 반환액은 0원 이상이어야 합니다." };
+      }
+      if (cap && Math.round(a.pointReturnKrw) > cap.pointCap) {
+        return {
+          ok: false,
+          error: `「${cap.label}」의 포인트 반환액이 결제에 쓴 포인트 ${cap.pointCap.toLocaleString("ko-KR")}원을 넘습니다.`,
+        };
+      }
     }
     total += Math.round(a.finalKrw);
   }
@@ -603,6 +634,9 @@ export async function saveRefundAmounts(input: {
       .update({
         final_krw: Math.round(a.finalKrw),
         deduction_reason: a.deductionReason ?? null,
+        ...(a.pointReturnKrw === undefined
+          ? {}
+          : { point_return_krw: a.pointReturnKrw }),
       })
       .eq("refund_item_id", a.refundItemId)
       .eq("refund_id", input.refundId);

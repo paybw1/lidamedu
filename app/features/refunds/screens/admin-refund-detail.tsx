@@ -76,11 +76,19 @@ export async function action({ request, params }: Route.ActionArgs) {
     const ids = form.getAll("refundItemId").map(String);
     const res = await saveRefundAmounts({
       refundId,
-      amounts: ids.map((id) => ({
-        refundItemId: id,
-        finalKrw: Number(form.get(`final_${id}`) ?? 0),
-        deductionReason: String(form.get(`reason_${id}`) ?? "").trim() || null,
-      })),
+      amounts: ids.map((id) => {
+        // ★포인트 칸은 포인트를 쓴 항목에만 렌더된다 — 없는 칸을 0 으로 읽으면
+        //   [자동계산]이 채워 둔 반환액을 **조용히 0 으로 덮어쓴다.**
+        //   칸이 아예 없을 때(undefined)와 비웠을 때("")를 구분해 건드리지 않는다.
+        const raw = form.get(`point_${id}`);
+        return {
+          refundItemId: id,
+          finalKrw: Number(form.get(`final_${id}`) ?? 0),
+          deductionReason: String(form.get(`reason_${id}`) ?? "").trim() || null,
+          pointReturnKrw:
+            raw == null || String(raw).trim() === "" ? undefined : Number(raw),
+        };
+      }),
       shippingRefundKrw: Number(form.get("shippingRefundKrw") ?? 0),
       couponRestored: form.get("couponRestored") === "on",
       refundMethod: String(form.get("refundMethod") ?? "original"),
@@ -448,6 +456,33 @@ export default function AdminRefundDetail({ loaderData, actionData }: Route.Comp
                       className="border-input bg-background focus:border-primary h-9 rounded-md border px-3 text-[13px] outline-none"
                     />
                   </Field>
+                  {/* 포인트로 결제한 항목만 — 이 칸이 비어 있으면 **확정이 거절된다**(P8-a).
+                      요청서 11-11 의 반환액은 MIN(사용 포인트, 환불 대상금액)이라 「전액」이
+                      답이 아니고, 별도 환불규정 항목은 [자동계산]이 값을 못 채우기 때문이다. */}
+                  {i.pointAllocKrw > 0 ? (
+                    <div className="sm:col-span-3">
+                      <Field label="포인트 반환액" htmlFor={`point_${i.refundItemId}`}>
+                        <div className="flex items-center gap-2">
+                          <input
+                            id={`point_${i.refundItemId}`}
+                            name={`point_${i.refundItemId}`}
+                            type="number"
+                            min={0}
+                            max={i.pointAllocKrw}
+                            step={1}
+                            disabled={closed}
+                            defaultValue={i.pointReturnKrw ?? ""}
+                            placeholder="직접 입력"
+                            className="border-input bg-background focus:border-primary h-9 w-[140px] rounded-md border px-3 text-right text-[13px] tabular-nums outline-none"
+                          />
+                          <span className="text-muted-foreground text-[11px] tabular-nums">
+                            결제에 쓴 포인트 {won(i.pointAllocKrw)} 이내 · 위 환불금액과
+                            <strong className="px-1">별개로</strong>추가 지급됩니다
+                          </span>
+                        </div>
+                      </Field>
+                    </div>
+                  ) : null}
                 </div>
               ))}
 

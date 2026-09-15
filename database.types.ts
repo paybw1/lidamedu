@@ -10803,6 +10803,7 @@ export type Database = {
           kind: string
           note: string | null
           order_id: string | null
+          order_item_id: string | null
           policy_key: string | null
           reason: string | null
           ref_id: string | null
@@ -10818,6 +10819,7 @@ export type Database = {
           kind?: string
           note?: string | null
           order_id?: string | null
+          order_item_id?: string | null
           policy_key?: string | null
           reason?: string | null
           ref_id?: string | null
@@ -10833,6 +10835,7 @@ export type Database = {
           kind?: string
           note?: string | null
           order_id?: string | null
+          order_item_id?: string | null
           policy_key?: string | null
           reason?: string | null
           ref_id?: string | null
@@ -10861,6 +10864,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "point_transactions_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
+            referencedColumns: ["order_item_id"]
           },
           {
             foreignKeyName: "point_transactions_policy_key_fkey"
@@ -17062,7 +17072,12 @@ export type Database = {
       }
       promote_effective_revisions: { Args: never; Returns: string[] }
       refund_points_for_order_item: {
-        Args: { p_order_item_id: string; p_reason?: string }
+        Args: {
+          p_max_krw?: number
+          p_order_item_id: string
+          p_reason?: string
+          p_refund_item_id?: string
+        }
         Returns: Json
       }
       release_orphaned_point_reservations: {

@@ -228,6 +228,27 @@ describe("포인트·PG 분배 (요청서 11-11)", () => {
     expect(r.pgCancelPlanKrw).toBe(0);
   });
 
+  it("★2차 환불 — pointKrw 는 배분액이 아니라 **잔여**다(P8-a)", () => {
+    // 배분 30,000 중 1차 환불에서 20,000 을 이미 돌려줬다면 어댑터가 잔여 10,000 을 먹인다.
+    // 원값 30,000 을 먹이면 화면이 이미 돌려준 몫을 또 제안하고, RPC 는 잔여로 캡을 걸어
+    // **화면과 원장이 다시 갈린다** — 이 파일이 지킬 수 있는 절반이 이 계약이다.
+    const r = computeRefund(
+      input({
+        calcType: "single",
+        baseKrw: 100_000,
+        listPriceKrw: 100_000,
+        durationDays: 10,
+        usedDays: 9,
+        pointKrw: 10_000, // ← 잔여
+        pgPaidKrw: 50_000,
+      }),
+    );
+    expect(r.refundableKrw).toBe(10_000);
+    expect(r.pointReturnKrw).toBe(10_000);
+    expect(r.pgCancelPlanKrw).toBe(0);
+    expect(r.pointReturnKrw + r.pgCancelPlanKrw).toBe(r.finalRefundKrw);
+  });
+
   it("★토스 취소 예정금액은 실제 PG 결제금액을 넘지 못한다", () => {
     const r = computeRefund(
       input({ baseKrw: 100_000, listPriceKrw: 100_000, usedDays: 0, pgPaidKrw: 60_000 }),

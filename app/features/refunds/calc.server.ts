@@ -78,6 +78,14 @@ export async function computeRefundForRefund(refundId: string): Promise<RefundIt
   if (itemsErr) throw new Error(`환불 대상상품 조회 실패: ${itemsErr.message}`);
   if (!items?.length) return [];
 
+  // ★이미 돌려준 포인트는 **다시 제안하지 않는다**(P8-a). 같은 주문항목을 순차로 여러 번
+  //   환불할 수 있어서(refund_items_open_uidx 는 열린 건에만 유일), 배분액 원값을 그대로
+  //   먹이면 2차 환불에서 이미 반환한 몫을 또 제안한다. RPC 도 같은 합계로 캡을 걸기 때문에,
+  //   원값을 쓰면 화면(제안)과 원장(실제)이 또 갈린다 — 이번에 고치는 그 균열이다.
+  const pointReturned = await returnedPointsByOrderItem(
+    items.map((r) => r.order_item_id),
+  );
+
   // ★계산 기준일은 **저장된 값**이 권위다(요청서 11-5). 비어 있으면 접수 시각의 KST 날짜로
   //   폴백한다 — 이 칸이 생기기 전(2026-09-15 이전) 접수분용이다.
   const basisDate = refund.calc_basis_on ?? kstDate(refund.intake_at);
@@ -185,7 +193,11 @@ export async function computeRefundForRefund(refundId: string): Promise<RefundIt
       baseKrw: gross,
       listPriceKrw: oi.list_price_snapshot_krw,
       couponKrw: oi.coupon_alloc_krw ?? 0,
-      pointKrw: oi.point_alloc_krw ?? 0,
+      // ★배분액이 아니라 **잔여**다(위 pointReturned 주석 참조).
+      pointKrw: Math.max(
+        0,
+        (oi.point_alloc_krw ?? 0) - (pointReturned.get(oi.order_item_id) ?? 0),
+      ),
       pgPaidKrw: pgPaid,
       durationDays: oi.duration_days_snapshot,
       usedDays,
@@ -213,6 +225,33 @@ export async function computeRefundForRefund(refundId: string): Promise<RefundIt
         commonMaterialUsed: usage.commonMaterial,
       },
     });
+  }
+  return out;
+}
+
+/**
+ * 주문항목별로 **이미 반환한 포인트 합계**(P8-a).
+ *
+ * ★권위는 `point_transactions` 원장이다 — `refund_items.point_return_krw` 를 합치면
+ *   확정되지 않은 환불건의 제안값까지 세어 잔여를 실제보다 적게 본다. 원장은 RPC 가
+ *   실제로 돌려준 것만 갖는다(같은 합계로 RPC 도 캡을 건다).
+ */
+async function returnedPointsByOrderItem(
+  orderItemIds: string[],
+): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  if (orderItemIds.length === 0) return out;
+  const rows = await fetchAllIn(orderItemIds, (slice) =>
+    adminClient
+      .from("point_transactions")
+      .select("order_item_id, delta")
+      .eq("kind", "restore")
+      .in("order_item_id", slice)
+      .order("txn_id"),
+  );
+  for (const r of rows) {
+    if (!r.order_item_id) continue;
+    out.set(r.order_item_id, (out.get(r.order_item_id) ?? 0) + (r.delta ?? 0));
   }
   return out;
 }
