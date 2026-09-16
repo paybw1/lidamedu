@@ -33,6 +33,12 @@ import {
 } from "~/features/admin/components/admin-ui";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
+  COURSE_FORMATS,
+  COURSE_FORMAT_DESCRIPTION,
+  COURSE_FORMAT_LABEL,
+  type CourseFormat,
+} from "~/features/lms/lib/course-format";
+import {
   FEATURE_LABEL,
   PRODUCT_KIND_LABEL,
   SALE_STATUS_LABEL,
@@ -46,6 +52,7 @@ import {
   getPlanBookLinks,
   getPlanCourseLinks,
   getPlanPolicies,
+  getPlanSaleRecords,
   listAllPlans,
   type PlanBookLink,
   type PlanPolicy,
@@ -80,16 +87,22 @@ export async function loader({ request }: Route.LoaderArgs) {
   const coursePlanIds = plans
     .filter((p) => p.productKind === "course" || p.productKind === "tpass")
     .map((p) => p.planId);
-  const [policies, courseLinks, editions, bookLinks, books, categoryOptions] = await Promise.all([
-    getPlanPolicies(coursePlanIds),
-    getPlanCourseLinks(coursePlanIds),
-    listCourseEditionsForPicker(client),
-    getPlanBookLinks(coursePlanIds),
-    listBooksForPicker(),
-    // feat-11-008 P3 — 강의 카테고리 테이블 선택지(상위+하위).
-    import("~/features/lms/queries.server").then((m) => m.listLectureCategoryOptions(client)),
-  ]);
-  return { plans, policies, courseLinks, editions, bookLinks, books, categoryOptions, role };
+  const [policies, courseLinks, editions, bookLinks, books, categoryOptions, saleRecords] =
+    await Promise.all([
+      getPlanPolicies(coursePlanIds),
+      getPlanCourseLinks(coursePlanIds),
+      listCourseEditionsForPicker(client),
+      getPlanBookLinks(coursePlanIds),
+      listBooksForPicker(),
+      // feat-11-008 P3 — 강의 카테고리 테이블 선택지(상위+하위).
+      import("~/features/lms/queries.server").then((m) => m.listLectureCategoryOptions(client)),
+      // feat-11-013 P2 — 신청내역(주문·수강생) 있는 상품은 과정 유형 잠금(서버 action 과 같은 술어).
+      getPlanSaleRecords(coursePlanIds),
+    ]);
+  // 폼에는 잠금 여부만 싣는다(집계 수치는 강의개설 목록의 몫).
+  const formatLocked: Record<string, boolean> = {};
+  for (const id of coursePlanIds) formatLocked[id] = Boolean(saleRecords[id]?.hasRecords);
+  return { plans, policies, courseLinks, editions, bookLinks, books, categoryOptions, formatLocked, role };
 }
 
 const SALE_STATUS_TONE: Record<
@@ -116,8 +129,17 @@ function isoToLocalInput(iso: string | null): string {
 }
 
 export default function AdminPlans({ loaderData }: Route.ComponentProps) {
-  const { plans, policies, courseLinks, editions, bookLinks, books, categoryOptions, role } =
-    loaderData;
+  const {
+    plans,
+    policies,
+    courseLinks,
+    editions,
+    bookLinks,
+    books,
+    categoryOptions,
+    formatLocked,
+    role,
+  } = loaderData;
   const [adding, setAdding] = useState(false);
   // 강의개설 목록의 "강의수정" 에서 ?plan=<planId> 로 들어오면 그 행을 바로 펼친다
   // (원장 요청 2026-08-20 — 목록을 다시 훑지 않게).
@@ -177,6 +199,7 @@ export default function AdminPlans({ loaderData }: Route.ComponentProps) {
             books={books}
             linkedBooks={bookLinks[p.planId] ?? []}
             categoryOptions={categoryOptions}
+            formatLocked={formatLocked[p.planId] ?? false}
             autoOpen={focusPlanId === p.planId}
           />
         ))}
@@ -196,6 +219,7 @@ function PlanRow({
   books,
   linkedBooks,
   categoryOptions,
+  formatLocked = false,
   autoOpen = false,
 }: {
   plan: SubscriptionPlan;
@@ -206,6 +230,8 @@ function PlanRow({
   books: BookPickerItem[];
   linkedBooks: PlanBookLink[];
   categoryOptions: Array<{ categoryId: string; label: string }>;
+  /** feat-11-013 P2 — 신청내역이 있어 과정 유형을 바꿀 수 없는 상품. */
+  formatLocked?: boolean;
   /** ?plan= 딥링크 대상이면 펼친 상태로 시작하고 화면에 보이도록 스크롤한다. */
   autoOpen?: boolean;
 }) {
@@ -224,7 +250,14 @@ function PlanRow({
         <TD>
           <span className="font-medium">{plan.name}</span>
         </TD>
-        <TD soft>{PRODUCT_KIND_LABEL[plan.productKind] ?? plan.productKind}</TD>
+        <TD soft>
+          {PRODUCT_KIND_LABEL[plan.productKind] ?? plan.productKind}
+          {plan.courseFormat ? (
+            <span className="text-muted-foreground/80 block text-[11px]">
+              {COURSE_FORMAT_LABEL[plan.courseFormat]}
+            </span>
+          ) : null}
+        </TD>
         <TD align="right" mono>
           ₩{plan.priceKrw.toLocaleString("ko-KR")}
         </TD>
@@ -270,6 +303,7 @@ function PlanRow({
               books={books}
               linkedBooks={linkedBooks}
               categoryOptions={categoryOptions}
+              formatLocked={formatLocked}
               onClose={() => setEditing(false)}
             />
           </td>
@@ -308,6 +342,7 @@ function PlanForm({
   books,
   linkedBooks,
   categoryOptions,
+  formatLocked = false,
   onClose,
 }: {
   mode: "create" | "update";
@@ -319,6 +354,7 @@ function PlanForm({
   books: BookPickerItem[];
   linkedBooks: PlanBookLink[];
   categoryOptions: Array<{ categoryId: string; label: string }>;
+  formatLocked?: boolean;
   onClose: () => void;
 }) {
   const fetcher = useFetcher<{ ok?: true; error?: string }>();
@@ -330,6 +366,11 @@ function PlanForm({
     (plan?.productKind ?? "subject") as ProductKind,
   );
   const showPolicy = productKind === "course" || productKind === "tpass";
+  // feat-11-013 P2 — 과정 유형. 라디오는 표시용, 실제 전송은 hidden 한 칸(조건부 블록이 언마운트돼도
+  // 값이 실린다). 잠금(신청내역 있음)이면 라디오를 비활성화하고 저장값을 그대로 보낸다.
+  const [courseFormat, setCourseFormat] = useState<CourseFormat | null>(
+    plan?.courseFormat ?? null,
+  );
   const [detailKind, setDetailKind] = useState<
     "none" | "image" | "html" | "sections"
   >(
@@ -540,6 +581,51 @@ function PlanForm({
           </div>
         </div>
       </div>
+
+      <input type="hidden" name="courseFormat" value={courseFormat ?? ""} />
+      {showPolicy ? (
+        <fieldset className="border-border bg-muted/30 space-y-1.5 rounded-lg border border-dashed p-3">
+          <legend className="text-muted-foreground px-1 text-[11px] font-semibold tracking-[0.08em] uppercase">
+            과정 유형 *
+          </legend>
+          <p className="text-muted-foreground/70 text-[11px]">
+            상품의 운영 방식입니다. 수강권 생성·기간 계산·정원·환불 계산이 이 값을 기준으로
+            움직입니다. {formatLocked
+              ? "신청내역(주문·수강생)이 있어 바꿀 수 없습니다 — 판매중지 후 강의개설 목록의 [복사]로 새 유형 상품을 만드세요."
+              : "주문이나 수강생이 생긴 뒤에는 바꿀 수 없습니다."}
+          </p>
+          <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+            {COURSE_FORMATS.map((f) => (
+              <label
+                key={f}
+                className={
+                  "flex cursor-pointer items-start gap-2 rounded-md border px-2.5 py-2 text-xs transition-colors " +
+                  (courseFormat === f
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:bg-muted/50") +
+                  (formatLocked ? " cursor-not-allowed opacity-70" : "")
+                }
+              >
+                <input
+                  type="radio"
+                  name="courseFormatRadio"
+                  value={f}
+                  checked={courseFormat === f}
+                  disabled={formatLocked}
+                  onChange={() => setCourseFormat(f)}
+                  className="mt-0.5 size-3.5"
+                />
+                <span className="min-w-0">
+                  <span className="block font-semibold">{COURSE_FORMAT_LABEL[f]}</span>
+                  <span className="text-muted-foreground/80 block text-[10px] leading-snug">
+                    {COURSE_FORMAT_DESCRIPTION[f]}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
 
       {showPolicy ? (
         <div className="border-border bg-muted/30 space-y-1.5 rounded-lg border border-dashed p-3">

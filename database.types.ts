@@ -11246,6 +11246,30 @@ export type Database = {
           },
         ]
       }
+      problem_choices_expl_backup_20260916: {
+        Row: {
+          backed_up_at: string | null
+          choice_id: string | null
+          choice_index: number | null
+          explanation_md: string | null
+          problem_id: string | null
+        }
+        Insert: {
+          backed_up_at?: string | null
+          choice_id?: string | null
+          choice_index?: number | null
+          explanation_md?: string | null
+          problem_id?: string | null
+        }
+        Update: {
+          backed_up_at?: string | null
+          choice_id?: string | null
+          choice_index?: number | null
+          explanation_md?: string | null
+          problem_id?: string | null
+        }
+        Relationships: []
+      }
       problem_explanation_drafts: {
         Row: {
           ai_answer: string | null
@@ -14350,6 +14374,7 @@ export type Database = {
           available_from: string | null
           category_id: string | null
           code: string
+          course_format: string | null
           created_at: string
           description: string | null
           detail_html: string | null
@@ -14374,6 +14399,7 @@ export type Database = {
           available_from?: string | null
           category_id?: string | null
           code: string
+          course_format?: string | null
           created_at?: string
           description?: string | null
           detail_html?: string | null
@@ -14398,6 +14424,7 @@ export type Database = {
           available_from?: string | null
           category_id?: string | null
           code?: string
+          course_format?: string | null
           created_at?: string
           description?: string | null
           detail_html?: string | null

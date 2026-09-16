@@ -95,6 +95,8 @@ export interface SubscriptionPlan {
   saleStatus: SaleStatus;
   /** 강의 카탈로그 분류(course/tpass 상품). null=미분류. */
   lectureCategory: "round1" | "round2" | "package" | "onsite" | null;
+  /** 과정 유형(운영 방식, feat-11-013 D1). 강의상품(course/tpass)만 값을 갖고 학습 구독은 null. SSOT=lms/lib/course-format.ts */
+  courseFormat: CourseFormat | null;
   // feat-11-008 P3 — 강의 카테고리 테이블 연결(카탈로그 탭·검색 SSOT). 구 enum 은 통계 축 호환.
   categoryId: string | null;
   // feat-11-008 P5 — 상세페이지 섹션별 HTML(키=DETAIL_SECTIONS).
@@ -280,4 +282,5 @@ export const FEATURE_LABEL: Record<string, string> = {
   cohort_curriculum: "커리큘럼 / 과제",
   instructor_review: "강사 첨삭",
   one_on_one_consult: "1:1 상담",
-};
+};import type { CourseFormat } from "~/features/lms/lib/course-format";
+

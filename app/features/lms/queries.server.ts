@@ -2,6 +2,7 @@
 // 콘텐츠 읽기/쓰기 = 요청 클라이언트(RLS staff 게이트).
 // 수강권(enrollments) 쓰기 = adminClient 전용(RLS 에 쓰기 정책 없음 — 서버 권위).
 
+import { type CourseFormat, toCourseFormat } from "~/features/lms/lib/course-format";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
@@ -822,6 +823,8 @@ export interface LectureProduct {
   /** 정상가(원). 판매가보다 클 때만 취소선·할인율로 표시한다. null=할인 표시 없음. */
   listPriceKrw: number | null;
   productKind: "course" | "tpass";
+  /** 과정 유형(feat-11-013 P2) — 온라인 상시/정규·현장·혼합·패키지. 카드·상세 배지. */
+  courseFormat: CourseFormat | null;
   /**
    * 수강 기간(일). 권위는 plan_policies.duration_days — 실제 수강권을 만드는 값이다.
    * ★고정 종료일 상품은 0 — 「N일」이 의미가 없다. 그 상품은 durationDays 대신
@@ -908,7 +911,7 @@ export async function listSellableLectureProducts(
   const { data: plans, error } = await client
     .from("subscription_plans")
     .select(
-      "plan_id, code, name, description, price_krw, list_price_krw, duration_days, product_kind, lecture_category, category_id, detail_image_url, detail_html, detail_sections",
+      "plan_id, code, name, description, price_krw, list_price_krw, duration_days, product_kind, lecture_category, course_format, category_id, detail_image_url, detail_html, detail_sections",
     )
     .in("product_kind", ["course", "tpass"])
     .eq("is_active", true)
@@ -1148,6 +1151,7 @@ export async function listSellableLectureProducts(
     priceKrw: p.price_krw,
     listPriceKrw: p.list_price_krw,
     productKind: p.product_kind as "course" | "tpass",
+    courseFormat: toCourseFormat(p.course_format),
     // ★권위는 plan_policies — 정책 행이 없으면 이행 쪽 기본값(180)과 같은 값을 쓴다.
     //   고정 종료일 상품은 「N일」이 의미가 없으므로 0 으로 내려 화면이 숨기게 한다.
     durationDays: policyByPlan.get(p.plan_id)?.fixed_end_date

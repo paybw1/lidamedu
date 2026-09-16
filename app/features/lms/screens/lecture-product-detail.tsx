@@ -24,6 +24,7 @@ import {
   LECTURE_CATEGORY_LABEL,
 } from "~/features/lms/lib/lecture-category";
 import { ReviewsSection } from "~/features/lms/components/reviews-section";
+import { COURSE_FORMAT_LABEL } from "~/features/lms/lib/course-format";
 import { DETAIL_SECTIONS } from "~/features/lms/lib/detail-sections";
 import { listSellableLectureProducts } from "~/features/lms/queries.server";
 import {
@@ -119,6 +120,11 @@ export default function LectureProductDetail({
             )}
             {PRODUCT_KIND_LABEL[product.productKind]}
           </Badge>
+          {product.courseFormat ? (
+            <Badge variant="outline" className="text-[11px]">
+              {COURSE_FORMAT_LABEL[product.courseFormat]}
+            </Badge>
+          ) : null}
           {/* ★카드는 categoryName(course_categories), 상세만 낡은 lecture_category 를 봤다.
               feat-11-008 D2 에서 쓰기 중단된 축이라 값이 없는 상품은 카드엔 배지가 뜨고
               상세엔 안 떴다. 카드와 같은 소스로 맞춘다(feat-11-012 P4). */}

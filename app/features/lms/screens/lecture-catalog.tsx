@@ -12,6 +12,7 @@ import { Card, CardContent } from "~/core/components/ui/card";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
 import { useCart } from "~/features/lms/lib/cart";
+import { COURSE_FORMAT_LABEL } from "~/features/lms/lib/course-format";
 import { PRODUCT_KIND_LABEL } from "~/features/subscriptions/labels";
 import {
   cancelPendingCheckout,
@@ -252,7 +253,8 @@ function ProductCard({
           to={`/lecture/catalog/${product.code}`}
           className="group flex flex-1 flex-col gap-3"
         >
-        <div className="flex items-center gap-2">
+        {/* 배지 4개 + 기간이 한 줄에 놓이면 폰 폭에서 넘친다 — 줄바꿈 허용 */}
+        <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary" className="gap-1 text-[11px]">
             {isTpass ? (
               <TicketIcon className="size-3" />
@@ -261,6 +263,11 @@ function ProductCard({
             )}
             {PRODUCT_KIND_LABEL[product.productKind]}
           </Badge>
+          {product.courseFormat ? (
+            <Badge variant="outline" className="text-[11px]">
+              {COURSE_FORMAT_LABEL[product.courseFormat]}
+            </Badge>
+          ) : null}
           {product.categoryName ? (
             <Badge variant="outline" className="text-[11px]">
               {product.categoryName}

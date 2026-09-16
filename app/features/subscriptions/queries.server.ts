@@ -8,6 +8,7 @@ import type { Database } from "database.types";
 import { redirect } from "react-router";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
+import { type CourseFormat, toCourseFormat } from "~/features/lms/lib/course-format";
 import { createUserNotifications } from "~/features/notifications/queries.server";
 import {
   markOrderPaidAndFulfill,
@@ -43,7 +44,7 @@ export type {
 } from "./labels";
 
 const PLAN_COLUMNS =
-  "plan_id, code, name, description, price_krw, list_price_krw, planned_sessions, duration_days, features, subject_codes, product_kind, available_from, display_order, is_active, sale_status, lecture_category, category_id, detail_image_url, detail_html, detail_sections";
+  "plan_id, code, name, description, price_krw, list_price_krw, planned_sessions, duration_days, features, subject_codes, product_kind, available_from, display_order, is_active, sale_status, lecture_category, course_format, category_id, detail_image_url, detail_html, detail_sections";
 
 function rowToPlan(r: {
   plan_id: string;
@@ -62,6 +63,7 @@ function rowToPlan(r: {
   is_active: boolean;
   sale_status: string;
   lecture_category: string | null;
+  course_format?: string | null;
   category_id: string | null;
   detail_image_url: string | null;
   detail_html: string | null;
@@ -87,6 +89,7 @@ function rowToPlan(r: {
     saleStatus: (r.sale_status as SubscriptionPlan["saleStatus"]) ?? "hidden",
     lectureCategory:
       (r.lecture_category as SubscriptionPlan["lectureCategory"]) ?? null,
+    courseFormat: toCourseFormat(r.course_format ?? null),
     categoryId: r.category_id,
     detailImageUrl: r.detail_image_url,
     detailHtml: r.detail_html,
@@ -150,6 +153,8 @@ export interface UpsertPlanInput {
   saleStatus: SubscriptionPlan["saleStatus"];
   // 강의 카탈로그 분류(course/tpass 상품용). null=미분류.
   lectureCategory: "round1" | "round2" | "package" | "onsite" | null;
+  // feat-11-013 P2 — 과정 유형. 강의상품(course/tpass)은 필수, 그 밖은 null(DB 불변식 CHECK 예정).
+  courseFormat: CourseFormat | null;
   // feat-11-008 P3 — 강의 카테고리 테이블(course_categories) 연결. 카탈로그 탭 SSOT.
   categoryId: string | null;
   // 수강신청 상세 본문(이미지 URL / HTML). 미설정=null.
@@ -179,6 +184,7 @@ export async function upsertPlan(
     display_order: input.displayOrder,
     sale_status: input.saleStatus,
     lecture_category: input.lectureCategory,
+    course_format: input.courseFormat,
     category_id: input.categoryId,
     detail_image_url: input.detailImageUrl,
     detail_html: input.detailHtml,
@@ -1729,4 +1735,100 @@ export async function getPlanSaleRecords(
     };
   }
   return out;
+}
+
+// ─── 상품 복사 (feat-11-013 P2-D7) ───
+// 요청서 §5 「판매중지 → 복사 → 새 유형으로 신규 등록」. 기본정보·강의 구성(plan_courses·plan_book_links)은 복사,
+// 가격·수강정책은 선택, 주문·수강권·결제·연장이력·정산 배분규칙·맛보기 연결은 절대 복사하지 않는다(테이블을 건드리지 않음).
+// 복사본은 hidden·비활성으로 태어난다. lecture_category(동결 라벨)·available_from 은 비운다.
+// 뮤테이션 경로 동결: upsertPlan("create") → upsertPlanPolicy → syncPlanCourses → syncPlanBookLinks 를 그대로 잇는다.
+// 선례 4곳(페이지·강의그룹·에디션·모듈 복제)과 같이 RPC 없이 순차 — 뒤 단계가 실패하면 방금 만든 plan 을 지워 고아 행을 남기지 않는다.
+export interface CopyPlanInput {
+  sourcePlanId: string;
+  code: string;
+  name: string;
+  /** 새 유형. null 이면 원본 유형 유지(비강의 상품은 무시). */
+  courseFormat: CourseFormat | null;
+  copyPrice: boolean;
+  copyPolicy: boolean;
+}
+
+export async function copyPlan(
+  input: CopyPlanInput,
+): Promise<{ ok: true; planId: string } | { ok: false; error: string }> {
+  const admin = adminClient as SupabaseClient<Database>;
+  const { data: src, error: srcErr } = await admin
+    .from("subscription_plans")
+    .select(PLAN_COLUMNS)
+    .eq("plan_id", input.sourcePlanId)
+    .maybeSingle();
+  if (srcErr) return { ok: false, error: srcErr.message };
+  if (!src) return { ok: false, error: "원본 상품을 찾을 수 없습니다." };
+  const source = rowToPlan(src);
+  const isLecture = source.productKind === "course" || source.productKind === "tpass";
+  const courseFormat = isLecture ? (input.courseFormat ?? source.courseFormat) : null;
+  if (isLecture && !courseFormat) return { ok: false, error: "과정 유형을 선택하세요." };
+
+  const { data: dup } = await admin
+    .from("subscription_plans")
+    .select("plan_id")
+    .eq("code", input.code)
+    .maybeSingle();
+  if (dup) return { ok: false, error: `코드 "${input.code}" 는 이미 사용 중입니다.` };
+
+  const created = await upsertPlan(
+    {
+      code: input.code,
+      name: input.name,
+      description: source.description,
+      priceKrw: input.copyPrice ? source.priceKrw : 0,
+      listPriceKrw: input.copyPrice ? source.listPriceKrw : null,
+      plannedSessions: source.plannedSessions,
+      durationDays: source.durationDays,
+      productKind: source.productKind,
+      subjectCodes: source.subjectCodes,
+      features: source.features,
+      availableFrom: null,
+      displayOrder: source.displayOrder,
+      saleStatus: "hidden",
+      lectureCategory: null,
+      courseFormat,
+      categoryId: source.categoryId,
+      detailImageUrl: source.detailImageUrl,
+      detailHtml: source.detailHtml,
+      detailSections: source.detailSections,
+    },
+    "create",
+  );
+  if (!created.ok) return created;
+  const newId = created.planId;
+  const abort = async (message: string) => {
+    await admin.from("subscription_plans").delete().eq("plan_id", newId);
+    return { ok: false as const, error: message };
+  };
+
+  if (isLecture) {
+    if (input.copyPolicy) {
+      const policy = (await getPlanPolicies([source.planId]))[source.planId];
+      if (policy) {
+        const { planId: _source, ...fields } = policy;
+        const polRes = await upsertPlanPolicy(newId, {
+          ...fields,
+          // 연장 상품 목록이 원본 자신을 가리키면 복사본에서는 뺀다(자기참조 의도가 아니다).
+          extensionPlanIds: fields.extensionPlanIds.filter((id) => id !== source.planId),
+        });
+        if (!polRes.ok) return abort(polRes.error);
+      }
+    }
+    const courseIds = (await getPlanCourseLinks([source.planId]))[source.planId] ?? [];
+    const linkRes = await syncPlanCourses(newId, courseIds);
+    if (!linkRes.ok) return abort(linkRes.error);
+    const books = (await getPlanBookLinks([source.planId]))[source.planId] ?? [];
+    const bookRes = await syncPlanBookLinks(
+      newId,
+      books.map((b) => ({ bookId: b.bookId, role: b.role, requirement: b.requirement })),
+    );
+    if (!bookRes.ok) return abort(bookRes.error);
+  }
+  return { ok: true, planId: newId };
 }

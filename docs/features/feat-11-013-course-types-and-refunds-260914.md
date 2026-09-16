@@ -988,6 +988,19 @@ RPC 에 상한(`p_max_krw`)·환불건(`p_refund_item_id`) 인자 추가 — **�
 
 **범위 밖(명시)**: 이행 분기(P5 — `fulfillCourseEnrollments` offline 스킵·`cart-resolve` plan_courses≥1 게이트 면제·좌석), 연장정책(`extension-policy.ts:52/161` 이 `product_kind==='course'` 만 봄)·환불 계산의 유형 소비(P4/P5/P7 후속), 유형별 조건부 입력(P3), 위저드(D14 미채택).
 
+#### P2 구현 기록 (2026-09-16, 원장 "A B C D 다 진행 OK")
+
+- **DDL 적용 완료**(`20260916_p2_course_format.sql`, 운영): 컬럼·6값 CHECK·partial index, 백필 course 3 → online_always. `db:typegen` 재생성. **불변식 CHECK(2차, `p2b`)는 코드 배포 뒤 적용.**
+- **SSOT** `app/features/lms/lib/course-format.ts`(+ 단위테스트 4). 파생 3축·이행 술어(`hasOnlineDelivery`·`needsSeat`)는 P5 가 소비.
+- **타입·쿼리**: `SubscriptionPlan.courseFormat`·`PLAN_COLUMNS`·`rowToPlan`·`UpsertPlanInput`·`upsertPlan`(`subscriptions/queries.server.ts`), 카탈로그 `LectureProduct.courseFormat`(`lms/queries.server.ts`).
+- **폼** `/admin/pricing`(admin-plans.tsx): course/tpass 일 때 유형 라디오 카드 6종(라벨+설명), 값은 hidden 한 칸으로 항상 전송. 로더가 `getPlanSaleRecords` 로 잠금 여부를 실어 신청내역 있는 상품은 라디오 비활성 + 「판매중지 후 [복사]」 안내.
+- **액션** `/api/admin/plan`(admin-plan.tsx): `courseFormat` zod(강의상품 필수, 그 밖 null 강제) · update 시 현재값과 다르면 `getPlanSaleRecords` 로 400 차단 · **`intent=copy`**(copySchema → `copyPlan` → 감사로그 `plan.copy`).
+- **복사** `copyPlan`(queries.server): 기본정보+plan_courses+plan_book_links 복사, 가격·정책 선택, 주문·수강권·결제·연장이력·정산규칙·맛보기 연결 미복사, hidden·비활성, lecture_category/available_from 비움, 뒤 단계 실패 시 새 plan 삭제(고아 행 방지). UI = `subscriptions/components/plan-copy-dialog.tsx`(강의개설 행 [복사], manager+) → 성공 시 `/admin/pricing?plan=`.
+- **목록** `/admin/lectures`: 유형 배지 + 3축 표기, 필터 fmt/deliv/pack/cad(축은 유형 집합으로 환산해 `.in()`), 수강기간 열(`plan_policies` 권위), 수강생/주문 열(P2-D5 술어), `SALE_LABEL` 로컬 상수 제거, 삭제 가드 교정.
+- **학생 카탈로그·상세**: 유형 배지(라벨 동일), 카드 배지 행 `flex-wrap`.
+- **`sale_status` 드리프트 교정**(P2-D8): labels·zod·톤맵 `ended`→`closed`.
+- 검증: typecheck · build · vitest 562. 운영 리허설 3건은 배포 후 관리자 화면에서 실행(아래 기록).
+
 **게이트**: ① **DDL 적용 = 하드스톱(원장 승인)** → `run-prod-sql.mjs` → `npm run db:typegen` ② typecheck·build·vitest ③ 운영 리허설 3건 — 유료주문 있는 `patent_basic_2026` 유형 변경 → 400 / 주문 없는 `pt_f` → 변경 성공 / 복사 → 주문·수강권 0 확인 ④ 문서·SPEC 갱신.
 
 

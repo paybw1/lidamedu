@@ -12,9 +12,28 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import { roleAtLeast } from "~/core/lib/roles";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { getStaffRole } from "~/features/laws/queries.server";
+import {
+  CADENCE_AXES,
+  CADENCE_LABEL,
+  COURSE_FORMATS,
+  COURSE_FORMAT_LABEL,
+  DELIVERY_AXES,
+  DELIVERY_LABEL,
+  PACKAGING_AXES,
+  PACKAGING_LABEL,
+  cadenceOf,
+  deliveryOf,
+  packagingOf,
+  toCourseFormat,
+  type CourseFormat,
+} from "~/features/lms/lib/course-format";
 import { listLectureCategoryOptions } from "~/features/lms/queries.server";
+import { PlanCopyDialog } from "~/features/subscriptions/components/plan-copy-dialog";
 import { SALE_STATUS_LABEL, SALE_STATUS_ORDER } from "~/features/subscriptions/labels";
-import { getPlanSaleRecords } from "~/features/subscriptions/queries.server";
+import {
+  getPlanPolicies,
+  getPlanSaleRecords,
+} from "~/features/subscriptions/queries.server";
 
 import type { Route } from "./+types/admin-lectures";
 
@@ -31,6 +50,8 @@ interface LectureRow {
   priceKrw: number;
   listPriceKrw: number | null; // 정상가 — 판매가보다 크면 취소선+할인율 표시
   productKind: string;
+  courseFormat: CourseFormat | null; // feat-11-013 P2 — 과정 유형 배지·검색 축
+  periodLabel: string; // 수강기간 — plan_policies 권위(D2): 「N일」 또는 「YYYY-MM-DD 까지」
   saleStatus: string;
   isActive: boolean;
   availableFrom: string | null;
@@ -60,6 +81,20 @@ export async function loader({ request }: Route.LoaderArgs) {
   const cat = url.searchParams.get("cat") ?? "";
   const kind = url.searchParams.get("kind") ?? "";
   const sale = url.searchParams.get("sale") ?? "";
+  // feat-11-013 P2 — 과정 유형(6) + 파생 3축(온라인/현장/혼합 · 단과/패키지 · 상시/정규). 축은 저장값이 아니라
+  // 유형에서 계산하므로, 조건에 맞는 유형 집합을 만들어 .in() 으로 거른다.
+  const fmt = toCourseFormat(url.searchParams.get("fmt"));
+  const deliv = url.searchParams.get("deliv") ?? "";
+  const pack = url.searchParams.get("pack") ?? "";
+  const cad = url.searchParams.get("cad") ?? "";
+  const formatFilterOn = Boolean(fmt || deliv || pack || cad);
+  const allowedFormats = COURSE_FORMATS.filter(
+    (f) =>
+      (!fmt || f === fmt) &&
+      (!deliv || deliveryOf(f) === deliv) &&
+      (!pack || packagingOf(f) === pack) &&
+      (!cad || cadenceOf(f) === cad),
+  );
   const sort = url.searchParams.get("sort") ?? "created";
   const size = PAGE_SIZES.includes(Number(url.searchParams.get("size")) as 20)
     ? Number(url.searchParams.get("size"))
@@ -69,7 +104,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   let query = adminClient
     .from("subscription_plans")
     .select(
-      "plan_id, code, name, price_krw, list_price_krw, product_kind, sale_status, is_active, available_from, created_at, updated_at, category_id",
+      "plan_id, code, name, price_krw, list_price_krw, product_kind, course_format, sale_status, is_active, available_from, created_at, updated_at, category_id",
       { count: "exact" },
     )
     .in("product_kind", ["course", "tpass"]);
@@ -77,6 +112,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (cat) query = query.eq("category_id", cat);
   if (kind) query = query.eq("product_kind", kind);
   if (sale) query = query.eq("sale_status", sale);
+  if (formatFilterOn) query = query.in("course_format", allowedFormats);
   if (sort === "updated") query = query.order("updated_at", { ascending: false });
   else if (sort === "name") query = query.order("name", { ascending: true });
   else if (sort === "code") query = query.order("code", { ascending: true });
@@ -96,7 +132,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   //   ★수강생·주문은 getPlanSaleRecords 단일 술어(feat-11-013 P2-D5) — 결제창을 닫은 시도(attempted/expired)나
   //   패키지의 강의별 N행을 세지 않는다.
   const catIds = [...new Set(rows.map((p) => p.category_id).filter(Boolean))] as string[];
-  const [cats, links, saleRecords, categoryOptions] = await Promise.all([
+  const [cats, links, saleRecords, categoryOptions, policies] = await Promise.all([
     catIds.length
       ? adminClient
           .from("course_categories")
@@ -113,6 +149,8 @@ export async function loader({ request }: Route.LoaderArgs) {
       : Promise.resolve([]),
     getPlanSaleRecords(planIds),
     listLectureCategoryOptions(client),
+    // 수강기간 열 — 권위는 plan_policies(feat-11-013 D2). subscription_plans.duration_days 를 쓰면 안 된다.
+    getPlanPolicies(planIds),
   ]);
   const catName = new Map(cats.map((c) => [c.category_id, c.name]));
   const courseIds = [...new Set(links.map((l) => l.course_id))];
@@ -157,6 +195,13 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
   const lectures: LectureRow[] = rows.map((p) => {
     const records = saleRecords[p.plan_id];
+    const policy = policies[p.plan_id];
+    // 학생 카탈로그와 같은 표기 규칙: 고정 종료일 → 「YYYY-MM-DD 까지」, 기간제 → 「N일」.
+    const periodLabel = policy?.fixedEndDate
+      ? `${policy.fixedEndDate} 까지`
+      : policy?.durationDays
+        ? `${policy.durationDays}일`
+        : "-";
     const linked = links.filter((l) => l.plan_id === p.plan_id);
     const titles = linked
       .map((l) => courseMeta.get(l.course_id)?.title)
@@ -170,6 +215,8 @@ export async function loader({ request }: Route.LoaderArgs) {
       priceKrw: p.price_krw,
       listPriceKrw: p.list_price_krw,
       productKind: p.product_kind,
+      courseFormat: toCourseFormat(p.course_format),
+      periodLabel,
       saleStatus: p.sale_status,
       isActive: p.is_active,
       availableFrom: p.available_from,
@@ -198,6 +245,10 @@ export async function loader({ request }: Route.LoaderArgs) {
     cat,
     kind,
     sale,
+    fmt: fmt ?? "",
+    deliv,
+    pack,
+    cad,
     sort,
     categoryOptions,
   };
@@ -251,6 +302,10 @@ export default function AdminLectures({ loaderData, actionData }: Route.Componen
     cat,
     kind,
     sale,
+    fmt,
+    deliv,
+    pack,
+    cad,
     sort,
     categoryOptions,
   } = loaderData;
@@ -295,8 +350,56 @@ export default function AdminLectures({ loaderData, actionData }: Route.Componen
               className="border-border bg-background h-9 rounded-md border px-2 text-sm"
             >
               <option value="">구분 전체</option>
-              <option value="course">온라인 강의</option>
+              <option value="course">단과(강의)</option>
               <option value="tpass">T-PASS(기간권)</option>
+            </select>
+            <select
+              name="fmt"
+              defaultValue={fmt}
+              className="border-border bg-background h-9 rounded-md border px-2 text-sm"
+            >
+              <option value="">과정 유형 전체</option>
+              {COURSE_FORMATS.map((f) => (
+                <option key={f} value={f}>
+                  {COURSE_FORMAT_LABEL[f]}
+                </option>
+              ))}
+            </select>
+            <select
+              name="deliv"
+              defaultValue={deliv}
+              className="border-border bg-background h-9 rounded-md border px-2 text-sm"
+            >
+              <option value="">온라인·현장 전체</option>
+              {DELIVERY_AXES.map((a) => (
+                <option key={a} value={a}>
+                  {DELIVERY_LABEL[a]}
+                </option>
+              ))}
+            </select>
+            <select
+              name="pack"
+              defaultValue={pack}
+              className="border-border bg-background h-9 rounded-md border px-2 text-sm"
+            >
+              <option value="">단과·패키지 전체</option>
+              {PACKAGING_AXES.map((a) => (
+                <option key={a} value={a}>
+                  {PACKAGING_LABEL[a]}
+                </option>
+              ))}
+            </select>
+            <select
+              name="cad"
+              defaultValue={cad}
+              className="border-border bg-background h-9 rounded-md border px-2 text-sm"
+            >
+              <option value="">상시·정규 전체</option>
+              {CADENCE_AXES.map((a) => (
+                <option key={a} value={a}>
+                  {CADENCE_LABEL[a]}
+                </option>
+              ))}
             </select>
             <select
               name="sale"
@@ -363,11 +466,12 @@ export default function AdminLectures({ loaderData, actionData }: Route.Componen
                 <th className="px-3 py-2 font-semibold">강의</th>
                 <th className="px-3 py-2 font-semibold">강사</th>
                 <th className="px-3 py-2 font-semibold">카테고리</th>
-                <th className="px-3 py-2 font-semibold">구분</th>
+                <th className="px-3 py-2 font-semibold">과정 유형</th>
                 <th className="px-3 py-2 font-semibold">신청 시작</th>
+                <th className="px-3 py-2 font-semibold">수강기간</th>
                 <th className="px-3 py-2 font-semibold">판매가</th>
                 <th className="px-3 py-2 font-semibold">판매 상태</th>
-                <th className="px-3 py-2 font-semibold">수강생</th>
+                <th className="px-3 py-2 font-semibold">수강생 / 주문</th>
                 <th className="px-3 py-2 font-semibold">등록/수정</th>
                 <th className="px-3 py-2 font-semibold">관리</th>
               </tr>
@@ -375,7 +479,7 @@ export default function AdminLectures({ loaderData, actionData }: Route.Componen
             <tbody className="divide-y">
               {lectures.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="text-muted-foreground px-3 py-8 text-center">
+                  <td colSpan={11} className="text-muted-foreground px-3 py-8 text-center">
                     조건에 맞는 강의가 없습니다.
                   </td>
                 </tr>
@@ -416,11 +520,26 @@ export default function AdminLectures({ loaderData, actionData }: Route.Componen
                     </td>
                     <td className="px-3 py-2 text-xs">{l.categoryName ?? "-"}</td>
                     <td className="px-3 py-2 text-xs">
-                      {l.productKind === "tpass" ? "T-PASS" : "온라인"}
+                      {/* 과정 유형 배지 + 파생 3축(온라인·현장·혼합 / 단과·패키지 / 상시·정규) — 요청서 §6 */}
+                      {l.courseFormat ? (
+                        <>
+                          <span className="bg-primary/10 text-primary inline-block rounded px-1.5 py-0.5 text-[11px] font-semibold">
+                            {COURSE_FORMAT_LABEL[l.courseFormat]}
+                          </span>
+                          <span className="text-muted-foreground mt-0.5 block text-[10px]">
+                            {DELIVERY_LABEL[deliveryOf(l.courseFormat)]} ·{" "}
+                            {PACKAGING_LABEL[packagingOf(l.courseFormat)]} ·{" "}
+                            {CADENCE_LABEL[cadenceOf(l.courseFormat)]}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-destructive text-[11px]">유형 미지정</span>
+                      )}
                     </td>
                     <td className="text-muted-foreground px-3 py-2 text-xs tabular-nums">
                       {l.availableFrom ? l.availableFrom.slice(0, 10) : "-"}
                     </td>
+                    <td className="px-3 py-2 text-xs tabular-nums">{l.periodLabel}</td>
                     <td className="px-3 py-2 text-xs tabular-nums">
                       {/* 정상가가 판매가보다 크면 취소선으로 병기(할인 표시) */}
                       {l.listPriceKrw != null && l.listPriceKrw > l.priceKrw ? (
@@ -442,7 +561,10 @@ export default function AdminLectures({ loaderData, actionData }: Route.Componen
                           l.saleStatus}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-xs tabular-nums">{l.enrollCount}</td>
+                    <td className="px-3 py-2 text-xs tabular-nums">
+                      {l.enrollCount}
+                      <span className="text-muted-foreground"> / {l.orderCount}</span>
+                    </td>
                     <td className="text-muted-foreground px-3 py-2 text-[11px] tabular-nums">
                       {l.createdAt.slice(0, 10)}
                       <br />
@@ -480,6 +602,15 @@ export default function AdminLectures({ loaderData, actionData }: Route.Componen
                         >
                           수강생관리
                         </Link>
+                        {/* 신청내역이 있는 상품은 유형을 못 바꾼다 — 판매중지 → 복사 → 새 유형(요청서 §5). manager+ */}
+                        {roleAtLeast(role, "manager") ? (
+                          <PlanCopyDialog
+                            planId={l.planId}
+                            code={l.code}
+                            name={l.name}
+                            courseFormat={l.courseFormat}
+                          />
+                        ) : null}
                         {role === "admin" && !l.hasSaleRecords ? (
                           <Form
                             method="post"

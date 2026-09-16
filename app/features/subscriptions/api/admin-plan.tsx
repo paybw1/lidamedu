@@ -9,9 +9,12 @@ import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { COURSE_FORMATS, toCourseFormat } from "~/features/lms/lib/course-format";
 import { DETAIL_SECTIONS } from "~/features/lms/lib/detail-sections";
 import { FEATURE_LABEL } from "~/features/subscriptions/labels";
 import {
+  copyPlan,
+  getPlanSaleRecords,
   syncPlanBookLinks,
   syncPlanCourses,
   upsertPlan,
@@ -93,9 +96,28 @@ const schema = z.object({
   lectureCategory: z
     .enum(["round1", "round2", "package", "onsite"])
     .nullable(),
+  // feat-11-013 P2 — 과정 유형. 강의상품(course/tpass)은 필수(아래에서 검사), 그 밖은 null 로 강제.
+  courseFormat: z.enum(COURSE_FORMATS).nullable(),
   // feat-11-008 P3 — 강의 카테고리 테이블(course_categories) 연결. 미선택=null.
   categoryId: z.string().uuid().nullable(),
 });
+
+// feat-11-013 P2-D7 — 상품 복사. 기본정보·강의 구성은 복사, 가격·정책은 선택, 주문·수강생은 절대 아님.
+const copySchema = z.object({
+  sourcePlanId: z.string().uuid(),
+  code: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9_]+$/, "영소문자·숫자·_ 만 사용")
+    .min(2)
+    .max(40),
+  name: z.string().trim().min(1).max(100),
+  courseFormat: z.enum(COURSE_FORMATS).nullable(),
+  copyPrice: z.boolean(),
+  copyPolicy: z.boolean(),
+});
+
+const LECTURE_KINDS = new Set(["course", "tpass"]);
 
 export async function action({ request }: Route.ActionArgs) {
   if (request.method !== "POST") {
@@ -112,6 +134,41 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   const fd = await request.formData();
+
+  // ── 복사(intent=copy) — 판매중지 → 복사 → 새 유형 등록 흐름(요청서 §5) ──
+  if (String(fd.get("intent") ?? "") === "copy") {
+    const cp = copySchema.safeParse({
+      sourcePlanId: fd.get("sourcePlanId"),
+      code: fd.get("code"),
+      name: fd.get("name"),
+      courseFormat: toCourseFormat(fd.get("courseFormat")),
+      copyPrice: fd.get("copyPrice") === "1",
+      copyPolicy: fd.get("copyPolicy") === "1",
+    });
+    if (!cp.success) {
+      return data(
+        { error: cp.error.issues[0]?.message ?? "입력 오류" },
+        { status: 400 },
+      );
+    }
+    const copied = await copyPlan(cp.data);
+    if (!copied.ok) return data({ error: copied.error }, { status: 400 });
+    await logAuditEvent({
+      actorId: user.id,
+      actorRole: role,
+      action: "plan.copy",
+      entityType: "subscription_plan",
+      entityId: cp.data.code,
+      metadata: {
+        sourcePlanId: cp.data.sourcePlanId,
+        courseFormat: cp.data.courseFormat,
+        copyPrice: cp.data.copyPrice,
+        copyPolicy: cp.data.copyPolicy,
+      },
+    });
+    return data({ ok: true, planId: copied.planId });
+  }
+
   const parsed = schema.safeParse({
     intent: fd.get("intent"),
     code: fd.get("code"),
@@ -132,6 +189,7 @@ export async function action({ request }: Route.ActionArgs) {
       const s = String(fd.get("lectureCategory") ?? "").trim();
       return s === "" ? null : s;
     })(),
+    courseFormat: toCourseFormat(fd.get("courseFormat")),
     categoryId: (() => {
       const s = String(fd.get("categoryId") ?? "").trim();
       return s === "" ? null : s;
@@ -142,6 +200,37 @@ export async function action({ request }: Route.ActionArgs) {
       { error: parsed.error.issues[0]?.message ?? "입력 오류" },
       { status: 400 },
     );
+  }
+
+  // ── 과정 유형(feat-11-013 P2) — 강의상품은 필수, 그 밖은 null. 신청내역이 있으면 변경 불가(§5). ──
+  const isLecture = LECTURE_KINDS.has(parsed.data.productKind);
+  const courseFormat = isLecture ? parsed.data.courseFormat : null;
+  if (isLecture && !courseFormat) {
+    return data({ error: "과정 유형을 선택하세요." }, { status: 400 });
+  }
+  if (parsed.data.intent === "update") {
+    const { data: current } = await adminClient
+      .from("subscription_plans")
+      .select("plan_id, course_format, product_kind")
+      .eq("code", parsed.data.code)
+      .maybeSingle();
+    if (
+      current &&
+      LECTURE_KINDS.has(current.product_kind) &&
+      current.course_format &&
+      current.course_format !== courseFormat
+    ) {
+      const records = (await getPlanSaleRecords([current.plan_id]))[current.plan_id];
+      if (records?.hasRecords) {
+        return data(
+          {
+            error:
+              "신청내역이 있는 상품은 과정 유형을 변경할 수 없습니다. 판매중지 후 복사해 새 유형으로 등록해 주세요.",
+          },
+          { status: 400 },
+        );
+      }
+    }
   }
 
   // 부여 과목·기능은 다중 체크박스 → 알려진 값만 허용.
@@ -219,6 +308,7 @@ export async function action({ request }: Route.ActionArgs) {
       displayOrder: parsed.data.displayOrder,
       saleStatus: parsed.data.saleStatus,
       lectureCategory: parsed.data.lectureCategory,
+      courseFormat,
       categoryId: parsed.data.categoryId,
       detailImageUrl,
       detailHtml,
@@ -366,6 +456,7 @@ export async function action({ request }: Route.ActionArgs) {
     metadata: {
       priceKrw: parsed.data.priceKrw,
       productKind: parsed.data.productKind,
+      courseFormat,
       subjectCodes,
       saleStatus: parsed.data.saleStatus,
     },

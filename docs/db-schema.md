@@ -1398,6 +1398,7 @@ create table public.popup_notices (
 - **lesson_materials**: 회차 자료 PDF(storage_path, 열람은 서버 판정 후 signed URL).
 - **lesson_node_links**: 회차↔체계도 노드 다대다(약점 단원→재수강 루프. M2엔 테이블만).
 - **subscription_plans 확장**: product_kind CHECK += 'course'|'tpass'('book'은 예약), **sale_status**('scheduled'|'on_sale'|'paused'|'closed'|'hidden') — 백필: is_active=true→on_sale(6), false→hidden(3).
+- **subscription_plans.course_format**(2026-09-16, feat-11-013 P2-D1): text CHECK `online_always|online_term|offline|blended|package_term|package_always`, NULL 허용(학습 구독). 강의상품(course/tpass)만 값을 가짐 — 불변식 CHECK `(product_kind in (course,tpass)) = (course_format is not null)` 는 P2 코드 배포 뒤 2차 적용(`20260916_p2b_…`). 백필 course→online_always·tpass→package_always. partial index. ★코드의 `sale_status` 'ended' 는 드리프트였고 DB 값 `closed` 로 통일함.
 - **plan_courses**: 상품↔강의(단과 1행/패키지 N행/T-PASS 명시 연결 — 에디션 발행 시 연결 제안 필수).
 - **plan_books**: 상품↔사용 교재(도서) 연결(relation_kind required|recommended, sort_order). 공개 읽기·staff 쓰기. 수강신청 카탈로그 교재 크로스셀에 사용(판매중 listed 도서만 노출).
 - **plan_policies**: 상품 정책 1:1 명시 컬럼 — duration_days XOR fixed_end_date(CHECK 둘 중 하나), multiplier(null=무제한), pause_*(허용·총일수·횟수·1회 min/max), allow_pc/mobile/download, max_devices_pc/mobile, extension_allowed/extension_plan_ids.
