@@ -115,3 +115,78 @@ export function describeCourseFormatAxes(format: CourseFormat): string {
     CADENCE_LABEL[cadenceOf(format)],
   ].join(" · ");
 }
+
+// ── 등록 폼 규칙 (feat-11-013 P3-a, 요청서 §3 「선택 유형에 따른 입력항목 자동 변경」) ──
+// 폼(admin-plans)과 서버(api/admin-plan)가 **같은 함수**로 노출·검증을 판정한다. 유형 리스트를
+// 다시 적지 않고 위 술어(cadenceOf·hasOnlineDelivery·needsSeat·isPackageFormat)에서 파생한다.
+
+/** 수강기간 방식 — 'days'|'fixed' 는 고정(라디오 없음, 서버가 덮어씀), 'any' 는 운영자 선택. */
+export type DurationModeRule = "days" | "fixed" | "any";
+/** 전체 예정 회차 칸 — required(온라인 상시) / optional / hidden(서버가 null 강제). */
+export type PlannedSessionsRule = "required" | "optional" | "hidden";
+
+export interface CourseFormatFormRules {
+  durationMode: DurationModeRule;
+  /** 수강 정책(plan_policies) 블록 노출. 현장(offline)만 false — 정책 행을 만들지 않는다. */
+  showOnlinePolicy: boolean;
+  /** 연결 강의(plan_courses) 블록 노출. false 면 서버가 빈 배열로 동기화한다. */
+  showCourses: boolean;
+  plannedSessions: PlannedSessionsRule;
+  /** 현장 일정(lecture_schedules) 블록 노출 — 현장·혼합. */
+  showSchedules: boolean;
+  coursesLabel: string;
+  hint: string;
+}
+
+/** 유형별 한 줄 안내(요청서 §1 용어). 폼의 유형 fieldset 아래에 표시한다. */
+const FORM_HINT: Record<CourseFormat, string> = {
+  online_always:
+    "결제일부터 수강일수로 셉니다. 전체 예정 회차는 환불 회차 공제의 분모라 반드시 입력합니다.",
+  online_term: "모든 수강생이 같은 종료일까지 수강합니다. 종료일을 고정 종료일로 지정합니다.",
+  offline:
+    "수강권 없이 좌석으로 운영합니다. 강의실·모집 정원·접수기간·출결은 현장강의 단계에서 추가됩니다.",
+  blended:
+    "현장 좌석 + 온라인 수강권을 하나의 신청으로 관리합니다(이행 분기는 현장강의 단계).",
+  package_term:
+    "정해진 기간에 운영되는 여러 강의를 하나로 묶습니다. 구성 강의를 다중 선택하고 종료일을 고정합니다.",
+  package_always:
+    "여러 온라인 강의를 묶어 수강신청일부터 수강일수로 셉니다(예: T-PASS).",
+};
+
+/**
+ * 유형 → 등록 폼 규칙.
+ * ★plannedSessions 를 정규(term)·현장에서 숨기고 서버가 null 로 강제하는 이유:
+ *   `refundCalcTypeOf` 는 plannedSessions>0 이고 강의 1개면 'single'(회차 계산)로 판정한다.
+ *   기간제 유형에 회차를 노출하면 다음 주문부터 기간제 계산이 단과 계산으로 조용히 바뀐다.
+ */
+export function courseFormatFormRules(format: CourseFormat): CourseFormatFormRules {
+  const online = hasOnlineDelivery(format);
+  const seat = needsSeat(format);
+  const cadence = cadenceOf(format);
+  // 수강기간 방식: 상시=일수 고정 · 정규=종료일 고정 · 혼합=선택 · 현장=정책 없음(무관)
+  const durationMode: DurationModeRule = !online
+    ? "any"
+    : format === "blended"
+      ? "any"
+      : cadence === "always"
+        ? "days"
+        : "fixed";
+  // 회차: 온라인 상시만 필수(요청서 11-8) · 패키지 상시·혼합은 선택 · 정규·현장은 숨김
+  const plannedSessions: PlannedSessionsRule =
+    format === "online_always"
+      ? "required"
+      : format === "package_always" || format === "blended"
+        ? "optional"
+        : "hidden";
+  return {
+    durationMode,
+    showOnlinePolicy: online,
+    showCourses: online,
+    plannedSessions,
+    showSchedules: seat,
+    coursesLabel: isPackageFormat(format)
+      ? "패키지 구성 강의(다중 선택)"
+      : "연결 강의(에디션)",
+    hint: FORM_HINT[format],
+  };
+}

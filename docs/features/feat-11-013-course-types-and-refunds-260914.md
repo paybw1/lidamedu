@@ -365,8 +365,8 @@ refund_status_logs 이력 — 변경일시·담당자·전/후 상태·메모 (�
 |---|---|---|---|---|
 | **P0** | ★**지금 틀린 것 4건** — ①환불액을 실결제액 기준으로(`paid_amount_krw`) ②웹훅 `PARTIAL_CANCELED` 가 항목·수강권까지 처리 ③수강기간 두 컬럼 정리(D2) ④재구매 수강권 중복 버그 | M | — | ✅ |
 | **P1** | **스냅샷 기반** — `order_items` 7칸(D5) + 주문 생성 경로가 채우기 + `planned_sessions`(D6) + 쿠폰 항목 배분 **저장**(현재는 매번 재계산) | M | P0 | ✅ |
-| **P2** | **과정 유형 축** — `course_format`(D1) + 백필 + 목록 배지·검색(요청서 §6) + 유형 변경 제한·상품 복사(§5) | M | — | 🟡 |
-| **P3** | **유형별 조건부 등록** — 기존 폼에 유형 선택 + 필요한 항목만 노출(§3). 위저드는 D14 결정에 따름 | M | P2 | 🔲 |
+| **P2** | **과정 유형 축** — `course_format`(D1) + 백필 + 목록 배지·검색(요청서 §6) + 유형 변경 제한·상품 복사(§5) | M | — | ✅ 구현·리허설·불변식 완료 |
+| **P3** | **유형별 조건부 등록** — 기존 폼에 유형 선택 + 필요한 항목만 노출(§3). 위저드는 D14 결정에 따름 | M | P2 | 🟡 P3-a ✅ · P3-b 설계 완료·DDL 승인 대기 |
 | **P4** | **패키지 강의별 정책** — `plan_courses` 확장(D3) + `fulfillCourseEnrollments` 강의 단위 루프 재작성 | L | P2 | 🔲 |
 | **P5** | **현장강의** — `lecture_schedules` 정식화 + **정원 서버 권위화**(D4) + 출결 + 혼합(④) 단일 신청 | L | P2 | 🔲 |
 | **P6** | **환불 모델** — `refunds`/`refund_items`/`refund_status_logs`(D7) + 관리자 접수 화면 + 상태머신 12종 + **학생 셀프 2경로 제거 + 정책문서 개정**(D10) + 토스 자동취소 제거(D9) | L | P0·P1 | ✅ |
@@ -1005,6 +1005,80 @@ RPC 에 상한(`p_max_krw`)·환불건(`p_refund_item_id`) 인자 추가 — **�
 - (참고) `/api/admin/plan` 은 리소스 라우트라 `data({error},{status:400})` 가 fetch 로는 200 본문으로 온다 — 기존 검증 오류와 같은 방식이며 폼은 `error` 본문으로 표시한다.
 
 **게이트**: ① **DDL 적용 = 하드스톱(원장 승인)** → `run-prod-sql.mjs` → `npm run db:typegen` ② typecheck·build·vitest ③ 운영 리허설 3건 — 유료주문 있는 `patent_basic_2026` 유형 변경 → 400 / 주문 없는 `pt_f` → 변경 성공 / 복사 → 주문·수강권 0 확인 ④ 문서·SPEC 갱신.
+
+---
+
+### 3.4 P3 실행 설계·구현 기록 — 유형별 조건부 등록 **[2026-09-16 · P3-a 구현 완료 · P3-b DDL 승인 대기]**
+
+> D14 미채택(위저드 없음). 기존 `/admin/pricing` 인라인 폼에 「유형 먼저 → 필요한 항목만」을 넣었다(요청서 §2 1단계·§3).
+> 폼과 서버가 **같은 함수**(`courseFormatFormRules`, `lms/lib/course-format.ts`)로 노출·검증을 판정한다 — 유형 리스트를 두 번 적지 않는다.
+
+#### 실측 (운영 `mcgdoplo`, 2026-09-16, 읽기 전용)
+
+| 항목 | 값 |
+|---|---|
+| 강의상품 3건 | 전부 `course`·`online_always`·정책 「고정 일수」·**`planned_sessions` NULL** |
+| `patent_basic_2026` | on_sale · 강의 1 · `lecture_schedules` 1건이 `plan_code` 로 연결(format offline) |
+| `pt_f` | on_sale · **강의 0** · `subscription_plans.duration_days` 40 vs `plan_policies.duration_days` 180 **드리프트** |
+| `co_patent` | paused · 강의 0 |
+| `subscription_plans.duration_days` | `CHECK (>= 0)` — 0 저장 가능(동기화 값으로 쓴다) |
+| `plan_policies` | `starts_on`·`mid_entry_*` 없음 · `subscription_plans.available_until` 없음 → P3-b |
+
+#### P3-a — 6유형 × 항목 노출 매트릭스 (`courseFormatFormRules`, 테스트로 고정)
+
+| 항목 | ①온라인 상시 | ②온라인 정규 | ③현장 | ④혼합 | ⑤정규 패키지 | ⑥상시 패키지 | 파생 근거 |
+|---|---|---|---|---|---|---|---|
+| 수강기간 방식 | **일수 고정** | **종료일 고정** | (정책 없음) | 선택 | **종료일 고정** | **일수 고정** | `cadenceOf` — 상시=days · 정규=fixed · blended=any |
+| 수강 정책(plan_policies) | ○ | ○ | **✗ 생략** | ○ | ○ | ○ | `hasOnlineDelivery` |
+| 연결 강의(plan_courses) | ○ 「연결 강의(에디션)」 | ○ | **✗ 빈 배열 동기화** | ○ | ○ 「패키지 구성 강의(다중 선택)」 | ○ 「패키지 구성…」 | `hasOnlineDelivery` · `isPackageFormat` |
+| 전체 예정 회차 | **필수** | 숨김(null 강제) | 숨김(null 강제) | 선택 | 숨김(null 강제) | 선택 | 요청서 11-8 + 아래 트랩 1 |
+| 현장 일정(lecture_schedules) | – | – | ○ 읽기 전용 | ○ 읽기 전용 | – | – | `needsSeat` |
+| 교재·카테고리·상세 페이지 | 유형 선택 후 항상 | | | | | | |
+
+기본 정보(코드·이름·가격·정상가·정렬·오픈일·설명·과목·기능·판매 상태)는 유형과 무관하게 항상 보인다. 신규 등록에서 유형이 비어 있으면 유형 fieldset 아래 「과정 유형을 먼저 선택하면 필요한 항목만 나타납니다」만 두고 **유형 의존 블록을 렌더하지 않는다**. 유형 fieldset 아래에 유형별 한 줄 안내(`rules.hint`).
+
+#### 트랩 3건과 결정
+
+| | 트랩 | 결정 |
+|---|---|---|
+| 1 | **회차 → 계산유형 전환.** `refundCalcTypeOf` 는 `plannedSessions > 0` 이고 강의 1개면 `single`(회차 계산)로 판정한다. 정규 유형에 회차 칸을 노출하면 **다음 주문부터 기간제 계산이 단과 계산으로 조용히 바뀐다** | 정규(online_term·package_term)·현장은 칸을 숨기고 **서버가 null 로 강제**(폼이 안 보냈다고 믿지 않는다 — 낡은 탭·직접 POST). 온라인 상시는 **필수**(비우면 400 「온라인 상시 강의는 전체 예정 회차를 입력하세요(환불 회차 공제의 분모입니다)」). ★이로써 P7 절의 보류 「`planned_sessions` 필수화(기존 상품 영향)」은 **온라인 상시에 한해 해소**된다 — 운영 영향: 기존 3건 모두 NULL 이라 **다음 저장 때 회차 입력이 요구**되고, 입력하는 순간 그 상품의 이후 주문은 `period` → `single` 로 계산유형이 바뀐다(요청서의 의도. 기존 주문은 스냅샷 값 유지) |
+| 2 | **offline 정책 생략.** 현장은 온라인 수강권이 없으므로 `plan_policies` 를 만들지 않는다. 그런데 `orders.server computeExpiry` 는 policy null 이면 **180일 폴백**이고, `fulfillCourseEnrollments` 는 `plan_courses` 를 돈다 | 현장 저장 시 `plan_courses` 를 **빈 배열로 동기화**(온라인→현장으로 바뀐 상품에 링크가 남으면 결제 시 온라인 수강권이 나간다). 링크가 0이면 fulfill 루프는 no-op 이라 180일 폴백에 **닿지 않는다.** 대신 `cart-resolve` 가 `plan_courses` 0건을 409 로 거절하므로 **현장 상품은 P5(이행 분기·좌석) 전까지 구매 불가** — 의도된 반쪽 열림 방지. 기존 정책 행이 있으면 지우지 않고 그대로 둔다(유형을 되돌리면 살아난다). `/admin/lectures` 수강기간 열은 「-」, `copyPlan(copyPolicy)` 는 정책 0건이면 건너뛴다 |
+| 3 | **`duration_days` 드리프트.** `subscription_plans.duration_days`(폼 「이용 기간」)와 `plan_policies.duration_days`(폼 「수강기간」)가 따로 저장돼 `pt_f` 가 40 vs 180 으로 어긋나 있었다 | 강의상품에서 「이용 기간(일)」 칸을 **숨기고 서버가 동기화**: 고정 일수 → 정책 일수, 고정 종료일·현장 → 0. 근거 = `course/tpass` 에서 `subscription_plans.duration_days` 를 읽는 소비처가 없다 — `bank-transfer`·`webhook` 은 course/tpass 를 건너뛰고, 카탈로그·상세·강의개설 목록은 `plan_policies` 를 읽는다(P0-③·P2-D6). 유일한 간접 소비처는 학습 구독 **수동 부여 화면**(`admin-subscriptions.tsx`)의 기간 기본값인데 강의상품을 구독으로 부여하는 것 자체가 무의미하고 값은 관리자가 고칠 수 있다. `pt_f` 는 다음 저장에서 정책 일수로 맞춰진다 |
+
+#### on_sale 0강의 가드
+
+`showCourses` 유형을 **판매중**으로 저장하는데 연결 강의가 0개면 400 「판매중으로 저장하려면 연결 강의가 1개 이상 필요합니다. 구성이 빈 상품은 결제 단계에서 거절됩니다」. `cart-resolve` 의 409 와 같은 이유를 **저장 시점**에 미리 보여 준다 — `pt_f` 결함(판매중·강의 0)이 다음 저장에서 여기 걸린다. DB 값은 저장 전까지 그대로이므로 `pt_f` 는 여전히 on_sale 로 남아 있다(결제는 409 로 막힌다).
+
+#### 서버 순서 — 전부 검증한 뒤 쓴다
+
+종전에는 `upsertPlan` 뒤에 정책을 파싱했다. 규칙(회차 필수·0강의 가드·기간 동기화)이 늘면서 400 이 `upsertPlan` 뒤에서 나면 생성 모드는 **정책 없는 상품 행**이, 수정 모드는 **절반만 바뀐 상태**가 남는다. 그래서 유형 규칙 → 회차 → 정책 파싱 → 연결 강의 → 이용 기간을 **모두 판정한 뒤** `upsertPlan` → (정책 upsert: `keptPolicy` 기기 수 보존 그대로) → `syncPlanCourses` → `syncPlanBookLinks`. `durationMode` 는 규칙이 고정하면(상시 days · 정규 fixed) 폼 값을 **덮어쓴다**(서버 권위). `PlanPolicyFields` 는 고정 방식이면 라디오 대신 고정 문구 + 해당 입력만 보이고 `policy_durationMode` 를 hidden 으로 보낸다.
+
+#### 현장 일정 블록 (읽기 전용)
+
+수정 모드: loader 가 **요청 클라이언트**로 `lecture_schedules`(`plan_code = 상품 코드 AND deleted_at IS NULL`)를 실어 표(일정·형태·개강일·요일·시간·정원 표시값·상태)로 보이고 `/admin/lecture-schedules` 및 행별 `/:scheduleId/edit` 링크를 단다. 읽기 RLS(`deleted_at is null and (published or is_staff)`)가 staff 에게 미공개 행까지 열어 adminClient 가 필요 없다. 0건이면 「연결된 현장 일정이 없습니다 — 강의 일정에서 이 상품 코드를 연결하세요」, 신규 모드면 「저장 후 강의 일정에서 상품 코드로 연결합니다」. **정원·접수기간·출결 입력칸은 만들지 않았다**(저장되지 않는 칸 = 반쪽 열림, P5 범위). 정원은 「표시값」이라고 명시한다(판매 제한 아님).
+
+#### copyPlan 과 유형 불일치 (허용)
+
+`copyPlan(copyPolicy=true)` 로 cadence 가 다른 유형에 복사하면(예: 상시 → 정규) **첫 저장 전까지** 정책 방식(일수)과 유형(종료일 고정)이 어긋난 **숨김** 상품이 생긴다. 허용한다 — 복사본은 `hidden`·비활성으로 태어나고, 수정 폼을 열면 규칙이 방식을 고정해 첫 저장에서 바로 잡힌다. 현장으로 복사하면 정책 행은 복사돼도 무시된다(정책 생략).
+
+#### P3-b — 정규 유형의 「칸 없는 요청 항목」 3종 (설계·DDL 파일만, **적용 금지**)
+
+파일: `scripts/sql/20260916_p3b_term_fields.sql`(+ `_rollback`). **DDL 적용 = 하드스톱(원장 승인)** → `run-prod-sql.mjs` → `db:typegen` → 그 뒤에야 소비 코드 작성(먼저 배포되면 없는 컬럼을 select 해 런타임에서 깨진다).
+
+| 칸 | 정의 | 소비 설계(코드는 미작성) |
+|---|---|---|
+| `plan_policies.starts_on date` | 수강 시작일. NULL = 지급 즉시(현행) | `computeExpiry`: `starts_on` 이 미래면 `starts_at = starts_on`(종료일은 그대로 `fixed_end_date`) |
+| `plan_policies.mid_entry_mode text` CHECK `until_end|fixed_days|closed` + `mid_entry_days int` CHECK `> 0` | 중간 신청 정책. NULL = `until_end`(현행) | `starts_on` 경과 후 구매: `until_end` = 현행 · `fixed_days` = 구매일 + N일(**상한 없음** — `fixed_end_date` 를 넘어도 그대로, 의도) · `closed` = `cart-resolve` 거절. ★`fixed_days` 인데 일수가 비면 계산 불가 → CHECK `mid_entry_mode IS DISTINCT FROM 'fixed_days' OR mid_entry_days IS NOT NULL` 을 걸었다(원장이 「일수 없이 fixed_days 저장」을 허용하려면 이 제약만 빼면 된다) |
+| `subscription_plans.available_until timestamptz` | 판매 종료일. `available_from` 의 짝. NULL = 종료 없음 | 카탈로그·요금표는 경과 시 숨김, `cart-resolve` 거절. CHECK `available_until > available_from` |
+
+전부 NULL 허용·기본 NULL 이라 기존 행·기존 동작 무변경. 폼 칸은 DDL 적용 후 P3-b 코드 단계에서 정규 유형(②⑤)에만 노출한다.
+
+#### 검증
+
+- `courseFormatFormRules` 단위테스트(6유형 표 + 필수/숨김 집합 + 술어 대응) 포함 `course-format.test.ts` 12건 · 전체 vitest 570 · typecheck 통과.
+- 운영 리허설(권장, 배포 후): ① `patent_basic_2026` 저장 → 회차 비우면 400, 입력하면 저장 ② `pt_f` 저장 → 0강의 가드 400, 강의 연결 후 저장 시 `duration_days` 40 → 180 동기화 확인 ③ 신규 현장 상품 등록 → 정책 행 0·plan_courses 0·현장 일정 블록 안내 ④ 복사(상시 → 정규) → 수정 폼에서 종료일 고정 문구.
+
+**범위 밖(명시)**: 현장·혼합의 이행 분기·좌석 권위화·출결(P5), 패키지 강의별 정책(P4), P3-b 소비 코드(DDL 승인 후), 배속·기기(D12).
 
 
 ## 4. 게이트 (Phase 마다)

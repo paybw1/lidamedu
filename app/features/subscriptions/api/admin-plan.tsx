@@ -9,7 +9,11 @@ import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
 import { getStaffRole } from "~/features/laws/queries.server";
-import { COURSE_FORMATS, toCourseFormat } from "~/features/lms/lib/course-format";
+import {
+  COURSE_FORMATS,
+  courseFormatFormRules,
+  toCourseFormat,
+} from "~/features/lms/lib/course-format";
 import { DETAIL_SECTIONS } from "~/features/lms/lib/detail-sections";
 import { FEATURE_LABEL } from "~/features/subscriptions/labels";
 import {
@@ -87,7 +91,12 @@ const schema = z.object({
     .union([z.literal(""), z.coerce.number().int().min(1).max(1000)])
     .transform((v) => (v === "" ? null : v))
     .nullable(),
-  durationDays: z.coerce.number().int().min(0).max(3650),
+  // 이용 기간(학습 구독 지급 일수). ★강의상품은 폼이 보내지 않는다 — 권위가 plan_policies 라(D2)
+  //   서버가 정책 일수로 동기화한다(아래). 빈 값을 0 으로 코어스하면 깨진 폼이 조용히 통과하므로 명시.
+  durationDays: z
+    .union([z.literal(""), z.coerce.number().int().min(0).max(3650)])
+    .transform((v) => (v === "" ? null : v))
+    .nullable(),
   productKind: z.enum(["subject", "bundle", "membership", "course", "tpass"]),
   availableFrom: z.string().datetime().nullable(),
   displayOrder: z.coerce.number().int().min(0).max(9999),
@@ -180,7 +189,7 @@ export async function action({ request }: Route.ActionArgs) {
     priceKrw: fd.get("priceKrw"),
     listPriceKrw: fd.get("listPriceKrw") ?? "",
     plannedSessions: fd.get("plannedSessions") ?? "",
-    durationDays: fd.get("durationDays"),
+    durationDays: fd.get("durationDays") ?? "",
     productKind: fd.get("productKind"),
     availableFrom: toIso(fd.get("availableFrom")),
     displayOrder: fd.get("displayOrder"),
@@ -292,38 +301,35 @@ export async function action({ request }: Route.ActionArgs) {
     );
   }
 
-  const res = await upsertPlan(
-    {
-      code: parsed.data.code,
-      name: parsed.data.name,
-      description: parsed.data.description ?? null,
-      priceKrw: parsed.data.priceKrw,
-      listPriceKrw: parsed.data.listPriceKrw,
-      plannedSessions: parsed.data.plannedSessions,
-      durationDays: parsed.data.durationDays,
-      productKind: parsed.data.productKind,
-      subjectCodes,
-      features,
-      availableFrom: parsed.data.availableFrom,
-      displayOrder: parsed.data.displayOrder,
-      saleStatus: parsed.data.saleStatus,
-      lectureCategory: parsed.data.lectureCategory,
-      courseFormat,
-      categoryId: parsed.data.categoryId,
-      detailImageUrl,
-      detailHtml,
-      detailSections,
-    },
-    parsed.data.intent,
-  );
-  if (!res.ok) return data({ error: res.error }, { status: 400 });
+  // ── feat-11-013 P3-a — 유형별 규칙은 폼과 같은 SSOT 로 판정한다(유형 리스트 재하드코딩 금지).
+  //   ★검증을 전부 끝낸 뒤에 쓴다 — upsertPlan 뒤에서 400 이 나면 생성 모드는 정책 없는 상품 행이,
+  //   수정 모드는 절반만 바뀐 상태가 남는다.
+  const rules = courseFormat ? courseFormatFormRules(courseFormat) : null;
 
-  // 강의 상품(course/tpass)이면 수강 정책 upsert.
-  if (
-    parsed.data.productKind === "course" ||
-    parsed.data.productKind === "tpass"
-  ) {
-    const durationMode = String(fd.get("policy_durationMode") ?? "days");
+  // 전체 예정 회차 — hidden 유형은 서버가 null 로 강제(폼이 안 보냈다고 믿지 않는다: 낡은 탭·직접 POST).
+  //   required(온라인 상시)는 환불 회차 공제의 분모라 비우면 저장을 거절한다(요청서 11-8).
+  let plannedSessions: number | null = parsed.data.plannedSessions;
+  if (rules) {
+    if (rules.plannedSessions === "hidden") plannedSessions = null;
+    else if (rules.plannedSessions === "required" && plannedSessions == null) {
+      return data(
+        {
+          error:
+            "온라인 상시 강의는 전체 예정 회차를 입력하세요(환불 회차 공제의 분모입니다).",
+        },
+        { status: 400 },
+      );
+    }
+  }
+
+  // 수강 정책(course/tpass 중 온라인 수강권이 나가는 유형만) — 파싱만 먼저, 쓰기는 upsertPlan 뒤.
+  //   durationMode 는 rules 가 고정하면(상시=days · 정규=fixed) 폼 값을 **덮어쓴다**(서버 권위).
+  let policy: z.infer<typeof policySchema> | null = null;
+  if (rules?.showOnlinePolicy) {
+    const durationMode =
+      rules.durationMode === "any"
+        ? String(fd.get("policy_durationMode") ?? "days")
+        : rules.durationMode;
     // 배수 — 프리셋 라디오(무제한/1/1.5/2/3/직접입력)에서 값을 정한다.
     const mulChoice = String(fd.get("policy_multiplierChoice") ?? "unlimited");
     const multiplier =
@@ -367,10 +373,10 @@ export async function action({ request }: Route.ActionArgs) {
         { status: 400 },
       );
     }
-    const p = policyParsed.data;
+    policy = policyParsed.data;
     // 수강기간은 일수·종료일 중 하나가 반드시 있어야 한다(DB 제약).
     // 여기서 막지 않으면 DB 제약 문구가 그대로 관리자에게 노출된다.
-    if (p.durationDays == null && p.fixedEndDate == null) {
+    if (policy.durationDays == null && policy.fixedEndDate == null) {
       return data(
         {
           error:
@@ -381,45 +387,106 @@ export async function action({ request }: Route.ActionArgs) {
         { status: 400 },
       );
     }
-    // ★upsert 는 안 보낸 칸을 기본값으로 되돌린다. 폼에서 뺀 기기 수는 **저장된 값을
-    //   그대로 다시 넣어** 보존한다(요청서 §4.1 — 화면에서만 없앤다, 값은 건드리지 않는다).
-    const { data: keptPolicy } = await adminClient
-      .from("plan_policies")
-      .select("max_devices_pc, max_devices_mobile")
-      .eq("plan_id", res.planId)
-      .maybeSingle();
+  }
 
-    const polRes = await upsertPlanPolicy(res.planId, {
-      multiplier: p.multiplier,
-      durationDays: p.durationDays,
-      fixedEndDate: p.fixedEndDate,
-      allowDownload: p.allowDownload,
-      allowPc: p.allowPc,
-      allowMobile: p.allowMobile,
-      maxDevicesPc: p.maxDevicesPc ?? keptPolicy?.max_devices_pc ?? 1,
-      maxDevicesMobile: p.maxDevicesMobile ?? keptPolicy?.max_devices_mobile ?? 1,
-      pauseAllowed: p.pauseAllowed,
-      pauseMaxCount: p.pauseMaxCount,
-      pauseMinDays: p.pauseMinDays,
-      pauseMaxDays: p.pauseMaxDays,
-      pauseTotalDays: p.pauseTotalDays,
-      extensionAllowed: p.extensionAllowed,
-      extensionPlanIds: p.extensionPlanIds,
-      extensionPriceKrw: p.extensionPriceKrw,
-      extensionMaxCount: p.extensionMaxCount,
-      extensionDays: p.extensionDays,
-    });
-    if (!polRes.ok) return data({ error: polRes.error }, { status: 400 });
+  // 연결 강의(에디션) — showCourses=false(현장)면 폼 값과 무관하게 **빈 배열**로 동기화한다.
+  //   온라인→현장으로 바뀐 상품에 plan_courses 가 남으면 결제 시 온라인 수강권이 나간다.
+  const courseIds = rules?.showCourses
+    ? fd
+        .getAll("courseIds")
+        .map(String)
+        .filter((s) => /^[0-9a-f-]{36}$/i.test(s))
+    : [];
+  // 판매중 저장인데 구성이 비면 거절 — cart-resolve 가 같은 이유로 409 를 내므로 저장 시점에 미리 보여 준다.
+  if (rules?.showCourses && parsed.data.saleStatus === "on_sale" && courseIds.length === 0) {
+    return data(
+      {
+        error:
+          "판매중으로 저장하려면 연결 강의가 1개 이상 필요합니다. 구성이 빈 상품은 결제 단계에서 거절됩니다.",
+      },
+      { status: 400 },
+    );
+  }
 
-    // 연결 강의(에디션) 동기화 — plan_courses.
-    const courseIds = fd
-      .getAll("courseIds")
-      .map(String)
-      .filter((s) => /^[0-9a-f-]{36}$/i.test(s));
+  // 이용 기간(subscription_plans.duration_days) — 학습 구독은 폼 값(필수), 강의상품은 정책과 동기화(D2).
+  //   고정 일수 → 정책 일수 / 고정 종료일·현장 → 0. course/tpass 를 읽는 소비처가 없어 표시·지급 무영향
+  //   (bank-transfer·webhook 은 course/tpass 를 건너뛰고, 카탈로그·강의개설 목록은 plan_policies 를 읽는다).
+  let durationDays: number;
+  if (isLecture) {
+    durationDays = policy?.durationDays ?? 0;
+  } else {
+    if (parsed.data.durationDays == null) {
+      return data({ error: "이용 기간(일)을 입력하세요." }, { status: 400 });
+    }
+    durationDays = parsed.data.durationDays;
+  }
+
+  const res = await upsertPlan(
+    {
+      code: parsed.data.code,
+      name: parsed.data.name,
+      description: parsed.data.description ?? null,
+      priceKrw: parsed.data.priceKrw,
+      listPriceKrw: parsed.data.listPriceKrw,
+      plannedSessions,
+      durationDays,
+      productKind: parsed.data.productKind,
+      subjectCodes,
+      features,
+      availableFrom: parsed.data.availableFrom,
+      displayOrder: parsed.data.displayOrder,
+      saleStatus: parsed.data.saleStatus,
+      lectureCategory: parsed.data.lectureCategory,
+      courseFormat,
+      categoryId: parsed.data.categoryId,
+      detailImageUrl,
+      detailHtml,
+      detailSections,
+    },
+    parsed.data.intent,
+  );
+  if (!res.ok) return data({ error: res.error }, { status: 400 });
+
+  // 강의 상품(course/tpass) — 정책 upsert(현장은 건너뜀: 기존 행이 있어도 그대로 둔다) + 강의·교재 동기화.
+  if (isLecture && rules) {
+    if (policy) {
+      const p = policy;
+      // ★upsert 는 안 보낸 칸을 기본값으로 되돌린다. 폼에서 뺀 기기 수는 **저장된 값을
+      //   그대로 다시 넣어** 보존한다(요청서 §4.1 — 화면에서만 없앤다, 값은 건드리지 않는다).
+      const { data: keptPolicy } = await adminClient
+        .from("plan_policies")
+        .select("max_devices_pc, max_devices_mobile")
+        .eq("plan_id", res.planId)
+        .maybeSingle();
+
+      const polRes = await upsertPlanPolicy(res.planId, {
+        multiplier: p.multiplier,
+        durationDays: p.durationDays,
+        fixedEndDate: p.fixedEndDate,
+        allowDownload: p.allowDownload,
+        allowPc: p.allowPc,
+        allowMobile: p.allowMobile,
+        maxDevicesPc: p.maxDevicesPc ?? keptPolicy?.max_devices_pc ?? 1,
+        maxDevicesMobile: p.maxDevicesMobile ?? keptPolicy?.max_devices_mobile ?? 1,
+        pauseAllowed: p.pauseAllowed,
+        pauseMaxCount: p.pauseMaxCount,
+        pauseMinDays: p.pauseMinDays,
+        pauseMaxDays: p.pauseMaxDays,
+        pauseTotalDays: p.pauseTotalDays,
+        extensionAllowed: p.extensionAllowed,
+        extensionPlanIds: p.extensionPlanIds,
+        extensionPriceKrw: p.extensionPriceKrw,
+        extensionMaxCount: p.extensionMaxCount,
+        extensionDays: p.extensionDays,
+      });
+      if (!polRes.ok) return data({ error: polRes.error }, { status: 400 });
+    }
+
+    // 연결 강의(에디션) 동기화 — plan_courses(현장은 빈 배열).
     const linkRes = await syncPlanCourses(res.planId, courseIds);
     if (!linkRes.ok) return data({ error: linkRes.error }, { status: 400 });
 
-    // 연결 교재(주/부·필수/선택·순서) 동기화 — plan_book_links(JSON).
+    // 연결 교재(주/부·필수/선택·순서) 동기화 — plan_book_links(JSON). 유형과 무관하게 계속 동기화.
     let bookLinks: Array<{
       bookId: string;
       role: "main" | "sub";

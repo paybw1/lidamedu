@@ -4,6 +4,7 @@
 import { type ReactNode, useState } from "react";
 
 import { Input } from "~/core/components/ui/input";
+import type { DurationModeRule } from "~/features/lms/lib/course-format";
 import type { PlanPolicy } from "~/features/subscriptions/queries.server";
 
 type CoursePlanRef = { planId: string; name: string };
@@ -13,6 +14,12 @@ type CoursePlanRef = { planId: string; name: string };
 //   종전에는 배수가 수강기간 방식의 세 번째 선택지라, 배수를 고르면 일수·종료일이 둘 다
 //   비어 plan_policies_check 에 걸려 저장 자체가 실패했다(요청 ①의 원인).
 type DurationMode = "days" | "fixed";
+
+// feat-11-013 P3-a — 과정 유형이 방식을 고정하면 라디오 대신 고정 문구를 보인다(서버도 같은 값으로 덮어쓴다).
+const FIXED_MODE_NOTE: Record<DurationMode, string> = {
+  days: "수강기간 방식: 고정 일수 — 상시 유형은 결제(지급)일부터 일수로 셉니다.",
+  fixed: "수강기간 방식: 고정 종료일 — 정규 유형은 모든 수강생이 같은 종료일까지 수강합니다.",
+};
 
 // 배수 프리셋 — 무제한은 값 없음(null)으로 저장한다.
 const MULTIPLIER_PRESETS = ["1", "1.5", "2", "3"] as const;
@@ -69,13 +76,19 @@ export function PlanPolicyFields({
   policy,
   coursePlans,
   currentPlanId,
+  durationMode: durationModeRule = "any",
 }: {
   policy?: PlanPolicy;
   coursePlans: CoursePlanRef[];
   currentPlanId?: string;
+  /** 과정 유형이 정한 수강기간 방식(SSOT courseFormatFormRules). 'any' 면 라디오로 고른다. */
+  durationMode?: DurationModeRule;
 }) {
   const initialMode: DurationMode = policy?.fixedEndDate ? "fixed" : "days";
-  const [mode, setMode] = useState<DurationMode>(initialMode);
+  const [chosenMode, setMode] = useState<DurationMode>(initialMode);
+  // 규칙이 고정한 방식이 우선 — 저장된 정책이 다른 방식이어도(복사본 등) 유형이 이긴다.
+  const mode: DurationMode =
+    durationModeRule === "any" ? chosenMode : durationModeRule;
   // 배수 — 프리셋에 없는 기존 값(예: 2.5)은 "직접 입력"으로 살린다.
   const savedMul = policy?.multiplier ?? null;
   const initialMul =
@@ -97,29 +110,40 @@ export function PlanPolicyFields({
 
       {/* 수강기간 */}
       <div>
-        <p className="text-muted-foreground mb-1.5 text-[11px] font-semibold">
-          수강기간 방식
-        </p>
-        <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-          {(
-            [
-              ["days", "고정 일수"],
-              ["fixed", "고정 종료일"],
-            ] as [DurationMode, string][]
-          ).map(([val, label]) => (
-            <label key={val} className="inline-flex items-center gap-1 text-xs">
-              <input
-                type="radio"
-                name="policy_durationMode"
-                value={val}
-                checked={mode === val}
-                onChange={() => setMode(val)}
-                className="size-3.5"
-              />
-              {label}
-            </label>
-          ))}
-        </div>
+        {durationModeRule === "any" ? (
+          <>
+            <p className="text-muted-foreground mb-1.5 text-[11px] font-semibold">
+              수강기간 방식
+            </p>
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+              {(
+                [
+                  ["days", "고정 일수"],
+                  ["fixed", "고정 종료일"],
+                ] as [DurationMode, string][]
+              ).map(([val, label]) => (
+                <label key={val} className="inline-flex items-center gap-1 text-xs">
+                  <input
+                    type="radio"
+                    name="policy_durationMode"
+                    value={val}
+                    checked={mode === val}
+                    onChange={() => setMode(val)}
+                    className="size-3.5"
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <input type="hidden" name="policy_durationMode" value={mode} />
+            <p className="text-muted-foreground text-[11px] font-semibold">
+              {FIXED_MODE_NOTE[mode]}
+            </p>
+          </>
+        )}
         <div className="mt-2 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
           {mode === "days" ? (
             <Field label="수강기간 (일)" hint="지급일로부터">

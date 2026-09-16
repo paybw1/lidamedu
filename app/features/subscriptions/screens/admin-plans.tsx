@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { PackageIcon, PencilIcon, PlusIcon, XIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
+  Link,
   data,
   useFetcher,
   useLocation,
@@ -33,10 +34,17 @@ import {
 } from "~/features/admin/components/admin-ui";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
+  FORMAT_LABEL as SCHEDULE_FORMAT_LABEL,
+  STATUS_LABEL as SCHEDULE_STATUS_LABEL,
+  type LectureFormat,
+  type ScheduleStatus,
+} from "~/features/landing/labels";
+import {
   COURSE_FORMATS,
   COURSE_FORMAT_DESCRIPTION,
   COURSE_FORMAT_LABEL,
   type CourseFormat,
+  courseFormatFormRules,
 } from "~/features/lms/lib/course-format";
 import {
   FEATURE_LABEL,
@@ -102,8 +110,64 @@ export async function loader({ request }: Route.LoaderArgs) {
   // 폼에는 잠금 여부만 싣는다(집계 수치는 강의개설 목록의 몫).
   const formatLocked: Record<string, boolean> = {};
   for (const id of coursePlanIds) formatLocked[id] = Boolean(saleRecords[id]?.hasRecords);
-  return { plans, policies, courseLinks, editions, bookLinks, books, categoryOptions, formatLocked, role };
+  // feat-11-013 P3-a — 현장·혼합 유형의 읽기 전용 「현장 일정」 표. lecture_schedules 는 plan_code(text)로
+  //   상품을 가리킨다(정식화는 P5). 요청 클라이언트로 충분하다 — 읽기 RLS 가 staff 에게 미공개 행까지 연다.
+  const courseCodes = plans
+    .filter((p) => p.productKind === "course" || p.productKind === "tpass")
+    .map((p) => p.code);
+  const schedulesByPlanCode: Record<string, PlanScheduleSummary[]> = {};
+  if (courseCodes.length > 0) {
+    const { data: scheduleRows } = await client
+      .from("lecture_schedules")
+      .select(
+        "schedule_id, plan_code, title, format, start_date, day_label, time_label, capacity, enrolled, status, published",
+      )
+      .in("plan_code", courseCodes)
+      .is("deleted_at", null)
+      .order("start_date", { ascending: true, nullsFirst: false });
+    for (const s of scheduleRows ?? []) {
+      if (!s.plan_code) continue;
+      (schedulesByPlanCode[s.plan_code] ??= []).push({
+        scheduleId: s.schedule_id,
+        title: s.title,
+        format: s.format,
+        startDate: s.start_date,
+        dayLabel: s.day_label,
+        timeLabel: s.time_label,
+        capacity: s.capacity,
+        enrolled: s.enrolled,
+        status: s.status,
+        published: s.published,
+      });
+    }
+  }
+  return {
+    plans,
+    policies,
+    courseLinks,
+    editions,
+    bookLinks,
+    books,
+    categoryOptions,
+    formatLocked,
+    schedulesByPlanCode,
+    role,
+  };
 }
+
+/** 현장 일정 요약(읽기 전용 표). 편집은 /admin/lecture-schedules 에서. */
+type PlanScheduleSummary = {
+  scheduleId: string;
+  title: string;
+  format: string;
+  startDate: string | null;
+  dayLabel: string | null;
+  timeLabel: string | null;
+  capacity: number;
+  enrolled: number;
+  status: string;
+  published: boolean;
+};
 
 const SALE_STATUS_TONE: Record<
   SaleStatus,
@@ -138,6 +202,7 @@ export default function AdminPlans({ loaderData }: Route.ComponentProps) {
     books,
     categoryOptions,
     formatLocked,
+    schedulesByPlanCode,
     role,
   } = loaderData;
   const [adding, setAdding] = useState(false);
@@ -200,6 +265,7 @@ export default function AdminPlans({ loaderData }: Route.ComponentProps) {
             linkedBooks={bookLinks[p.planId] ?? []}
             categoryOptions={categoryOptions}
             formatLocked={formatLocked[p.planId] ?? false}
+            schedules={schedulesByPlanCode[p.code] ?? []}
             autoOpen={focusPlanId === p.planId}
           />
         ))}
@@ -220,6 +286,7 @@ function PlanRow({
   linkedBooks,
   categoryOptions,
   formatLocked = false,
+  schedules = [],
   autoOpen = false,
 }: {
   plan: SubscriptionPlan;
@@ -232,6 +299,8 @@ function PlanRow({
   categoryOptions: Array<{ categoryId: string; label: string }>;
   /** feat-11-013 P2 — 신청내역이 있어 과정 유형을 바꿀 수 없는 상품. */
   formatLocked?: boolean;
+  /** feat-11-013 P3-a — 이 상품 코드로 연결된 현장 일정(읽기 전용). */
+  schedules?: PlanScheduleSummary[];
   /** ?plan= 딥링크 대상이면 펼친 상태로 시작하고 화면에 보이도록 스크롤한다. */
   autoOpen?: boolean;
 }) {
@@ -304,6 +373,7 @@ function PlanRow({
               linkedBooks={linkedBooks}
               categoryOptions={categoryOptions}
               formatLocked={formatLocked}
+              schedules={schedules}
               onClose={() => setEditing(false)}
             />
           </td>
@@ -343,6 +413,7 @@ function PlanForm({
   linkedBooks,
   categoryOptions,
   formatLocked = false,
+  schedules = [],
   onClose,
 }: {
   mode: "create" | "update";
@@ -355,6 +426,7 @@ function PlanForm({
   linkedBooks: PlanBookLink[];
   categoryOptions: Array<{ categoryId: string; label: string }>;
   formatLocked?: boolean;
+  schedules?: PlanScheduleSummary[];
   onClose: () => void;
 }) {
   const fetcher = useFetcher<{ ok?: true; error?: string }>();
@@ -371,6 +443,8 @@ function PlanForm({
   const [courseFormat, setCourseFormat] = useState<CourseFormat | null>(
     plan?.courseFormat ?? null,
   );
+  // feat-11-013 P3-a — 유형별 조건부 노출 규칙(서버 action 과 같은 SSOT). 유형 미선택이면 null.
+  const rules = showPolicy && courseFormat ? courseFormatFormRules(courseFormat) : null;
   const [detailKind, setDetailKind] = useState<
     "none" | "image" | "html" | "sections"
   >(
@@ -455,6 +529,57 @@ function PlanForm({
             <option value="tpass">T-PASS (강의 플랫폼)</option>
           </select>
         </FormField>
+        {/* 과정 유형 — 요청서 §2 1단계: 유형을 먼저 고르면 필요한 항목만 아래에 나타난다. */}
+        {showPolicy ? (
+          <fieldset className="border-border bg-muted/30 space-y-1.5 rounded-lg border border-dashed p-3 sm:col-span-2">
+            <legend className="text-muted-foreground px-1 text-[11px] font-semibold tracking-[0.08em] uppercase">
+              과정 유형 *
+            </legend>
+            <p className="text-muted-foreground/70 text-[11px]">
+              상품의 운영 방식입니다. 수강권 생성·기간 계산·정원·환불 계산이 이 값을 기준으로
+              움직입니다. {formatLocked
+                ? "신청내역(주문·수강생)이 있어 바꿀 수 없습니다 — 판매중지 후 강의개설 목록의 [복사]로 새 유형 상품을 만드세요."
+                : "주문이나 수강생이 생긴 뒤에는 바꿀 수 없습니다."}
+            </p>
+            <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+              {COURSE_FORMATS.map((f) => (
+                <label
+                  key={f}
+                  className={
+                    "flex cursor-pointer items-start gap-2 rounded-md border px-2.5 py-2 text-xs transition-colors " +
+                    (courseFormat === f
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:bg-muted/50") +
+                    (formatLocked ? " cursor-not-allowed opacity-70" : "")
+                  }
+                >
+                  <input
+                    type="radio"
+                    name="courseFormatRadio"
+                    value={f}
+                    checked={courseFormat === f}
+                    disabled={formatLocked}
+                    onChange={() => setCourseFormat(f)}
+                    className="mt-0.5 size-3.5"
+                  />
+                  <span className="min-w-0">
+                    <span className="block font-semibold">{COURSE_FORMAT_LABEL[f]}</span>
+                    <span className="text-muted-foreground/80 block text-[10px] leading-snug">
+                      {COURSE_FORMAT_DESCRIPTION[f]}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            {rules ? (
+              <p className="text-foreground/80 text-[11px]">{rules.hint}</p>
+            ) : (
+              <p className="text-amber-700 dark:text-amber-300 text-[11px]">
+                과정 유형을 먼저 선택하면 필요한 항목만 나타납니다.
+              </p>
+            )}
+          </fieldset>
+        ) : null}
         <FormField label="판매가 (원)">
           <Input
             name="priceKrw"
@@ -478,34 +603,53 @@ function PlanForm({
             판매가보다 크게 넣으면 카탈로그·상세에 취소선과 할인율이 함께 표시됩니다.
           </p>
         </FormField>
-        {showPolicy ? (
-          <FormField label="전체 예정 회차 (선택)">
+        {/* 전체 예정 회차 — 유형 규칙: 온라인 상시 필수 · 상시 패키지/혼합 선택 · 정규/현장 숨김(서버가 null 강제).
+            정규 유형에 회차를 노출하면 refundCalcTypeOf 가 기간제 계산을 단과(회차) 계산으로 바꾼다. */}
+        {rules && rules.plannedSessions !== "hidden" ? (
+          <FormField
+            label={
+              rules.plannedSessions === "required"
+                ? "전체 예정 회차 *"
+                : "전체 예정 회차 (선택)"
+            }
+          >
             <Input
               name="plannedSessions"
               type="number"
               min={1}
-              placeholder="비우면 회차 기준 공제 없음"
+              required={rules.plannedSessions === "required"}
+              placeholder={
+                rules.plannedSessions === "required"
+                  ? "환불 회차 공제의 분모"
+                  : "비우면 회차 기준 공제 없음"
+              }
               defaultValue={plan?.plannedSessions ?? ""}
               className="h-8 text-xs"
             />
             <p className="text-muted-foreground mt-1 text-[11px]">
               환불 공제의 <strong>회차 기준 분모</strong>입니다(요청서 11-8). 현재 등록된 회차
               수가 아니라 <strong>판매할 때 안내한 예정 회차</strong>를 넣어 주세요 — 미종강
-              강의는 이 값으로 계산해야 학생에게 불리해지지 않습니다. 비우면 이용일수 기준만
-              적용합니다.
+              강의는 이 값으로 계산해야 학생에게 불리해지지 않습니다.
+              {rules.plannedSessions === "optional"
+                ? " 비우면 이용일수 기준만 적용합니다."
+                : ""}
             </p>
           </FormField>
         ) : null}
-        <FormField label="이용 기간 (일)">
-          <Input
-            name="durationDays"
-            type="number"
-            min={0}
-            required
-            defaultValue={plan?.durationDays ?? 30}
-            className="h-8 text-xs"
-          />
-        </FormField>
+        {/* 이용 기간 — 학습 구독 지급 일수. 강의상품은 숨긴다(D2: 권위는 수강 정책의 수강기간,
+            서버가 정책 일수로 동기화해 두 컬럼 드리프트를 없앤다). */}
+        {!showPolicy ? (
+          <FormField label="이용 기간 (일)">
+            <Input
+              name="durationDays"
+              type="number"
+              min={0}
+              required
+              defaultValue={plan?.durationDays ?? 30}
+              className="h-8 text-xs"
+            />
+          </FormField>
+        ) : null}
         <FormField label="정렬 순서">
           <Input
             name="displayOrder"
@@ -582,61 +726,20 @@ function PlanForm({
         </div>
       </div>
 
+      {/* 과정 유형 값은 hidden 한 칸으로 항상 전송(조건부 블록이 언마운트돼도 실린다). 라디오는 위 fieldset. */}
       <input type="hidden" name="courseFormat" value={courseFormat ?? ""} />
-      {showPolicy ? (
-        <fieldset className="border-border bg-muted/30 space-y-1.5 rounded-lg border border-dashed p-3">
-          <legend className="text-muted-foreground px-1 text-[11px] font-semibold tracking-[0.08em] uppercase">
-            과정 유형 *
-          </legend>
-          <p className="text-muted-foreground/70 text-[11px]">
-            상품의 운영 방식입니다. 수강권 생성·기간 계산·정원·환불 계산이 이 값을 기준으로
-            움직입니다. {formatLocked
-              ? "신청내역(주문·수강생)이 있어 바꿀 수 없습니다 — 판매중지 후 강의개설 목록의 [복사]로 새 유형 상품을 만드세요."
-              : "주문이나 수강생이 생긴 뒤에는 바꿀 수 없습니다."}
-          </p>
-          <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
-            {COURSE_FORMATS.map((f) => (
-              <label
-                key={f}
-                className={
-                  "flex cursor-pointer items-start gap-2 rounded-md border px-2.5 py-2 text-xs transition-colors " +
-                  (courseFormat === f
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:bg-muted/50") +
-                  (formatLocked ? " cursor-not-allowed opacity-70" : "")
-                }
-              >
-                <input
-                  type="radio"
-                  name="courseFormatRadio"
-                  value={f}
-                  checked={courseFormat === f}
-                  disabled={formatLocked}
-                  onChange={() => setCourseFormat(f)}
-                  className="mt-0.5 size-3.5"
-                />
-                <span className="min-w-0">
-                  <span className="block font-semibold">{COURSE_FORMAT_LABEL[f]}</span>
-                  <span className="text-muted-foreground/80 block text-[10px] leading-snug">
-                    {COURSE_FORMAT_DESCRIPTION[f]}
-                  </span>
-                </span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
-      ) : null}
 
-      {showPolicy ? (
+      {rules?.showCourses ? (
         <div className="border-border bg-muted/30 space-y-1.5 rounded-lg border border-dashed p-3">
           <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.08em] uppercase">
-            연결 강의 (에디션)
+            {rules.coursesLabel}
           </p>
           <p className="text-muted-foreground/70 text-[11px]">
             {productKind === "tpass"
               ? "T-PASS 는 보통 여러 에디션을 포함합니다."
               : "단과 상품은 보통 1개 에디션을 연결합니다."}{" "}
-            결제 시 연결된 강의의 수강권이 지급됩니다.
+            결제 시 연결된 강의의 수강권이 지급됩니다. 판매중으로 저장하려면 1개 이상 연결해야
+            합니다.
           </p>
           {editions.length === 0 ? (
             <p className="text-muted-foreground/60 text-[11px]">
@@ -669,11 +772,15 @@ function PlanForm({
         </div>
       ) : null}
 
-      {showPolicy ? (
+      {rules?.showSchedules ? (
+        <PlanSchedulesBlock mode={mode} planCode={plan?.code ?? null} schedules={schedules} />
+      ) : null}
+
+      {rules ? (
         <BookLinksEditor books={books} value={linkedBooks} />
       ) : null}
 
-      {showPolicy ? (
+      {rules ? (
         <FormField label="강의 카테고리">
           {/* feat-11-008 P3 — 관리자 등록 카테고리(course_categories) 선택. 구 enum 값은
               매출 통계 축 호환을 위해 hidden 으로 보존(쓰기 중단·덮어쓰기 방지). */}
@@ -701,7 +808,7 @@ function PlanForm({
         </FormField>
       ) : null}
 
-      {showPolicy ? (
+      {rules ? (
         <div className="border-border bg-muted/30 space-y-2 rounded-lg border border-dashed p-3">
           <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.08em] uppercase">
             수강신청 상세 페이지
@@ -819,11 +926,13 @@ function PlanForm({
         </div>
       ) : null}
 
-      {showPolicy ? (
+      {/* 수강 정책 — 온라인 수강권이 나가는 유형만(현장은 정책 행을 만들지 않는다). */}
+      {rules?.showOnlinePolicy ? (
         <PlanPolicyFields
           policy={policy}
           coursePlans={coursePlans}
           currentPlanId={plan?.planId}
+          durationMode={rules.durationMode}
         />
       ) : null}
 
@@ -872,5 +981,94 @@ function PlanForm({
         </Button>
       </div>
     </fetcher.Form>
+  );
+}
+
+// feat-11-013 P3-a — 현장·혼합 유형의 「현장 일정」. ★읽기 전용이다: 정원·접수기간·출결 입력칸은
+//   두지 않는다(저장되지 않는 칸 = 반쪽 열림). 일정의 편집·연결(plan_code)은 강의 일정 화면에서 한다.
+const SCHEDULES_PATH = "/admin/lecture-schedules";
+
+function PlanSchedulesBlock({
+  mode,
+  planCode,
+  schedules,
+}: {
+  mode: "create" | "update";
+  planCode: string | null;
+  schedules: PlanScheduleSummary[];
+}) {
+  return (
+    <div className="border-border bg-muted/30 space-y-1.5 rounded-lg border border-dashed p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.08em] uppercase">
+          현장 일정
+        </p>
+        <Link
+          to={SCHEDULES_PATH}
+          className="text-link text-[11px] underline-offset-2 hover:underline"
+        >
+          강의 일정 관리 →
+        </Link>
+      </div>
+      {mode === "create" ? (
+        <p className="text-muted-foreground/70 text-[11px]">
+          저장 후 강의 일정에서 상품 코드로 연결합니다. 강의실·모집 정원·접수기간·출결은
+          현장강의 단계에서 추가됩니다.
+        </p>
+      ) : schedules.length === 0 ? (
+        <p className="text-muted-foreground/70 text-[11px]">
+          연결된 현장 일정이 없습니다 — 강의 일정에서 이 상품 코드
+          {planCode ? ` (${planCode})` : ""}를 연결하세요.
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-[11px]">
+            <thead>
+              <tr className="text-muted-foreground border-border border-b text-left">
+                <th className="py-1 pr-2 font-semibold">일정</th>
+                <th className="py-1 pr-2 font-semibold">형태</th>
+                <th className="py-1 pr-2 font-semibold">개강일</th>
+                <th className="py-1 pr-2 font-semibold">요일·시간</th>
+                <th className="py-1 pr-2 text-right font-semibold">정원(표시값)</th>
+                <th className="py-1 pr-2 font-semibold">상태</th>
+              </tr>
+            </thead>
+            <tbody>
+              {schedules.map((s) => (
+                <tr key={s.scheduleId} className="border-border/60 border-b last:border-0">
+                  <td className="py-1 pr-2">
+                    <Link
+                      to={`${SCHEDULES_PATH}/${s.scheduleId}/edit`}
+                      className="text-link underline-offset-2 hover:underline"
+                    >
+                      {s.title}
+                    </Link>
+                    {!s.published ? (
+                      <span className="text-muted-foreground/60 ml-1">(비공개)</span>
+                    ) : null}
+                  </td>
+                  <td className="py-1 pr-2">
+                    {SCHEDULE_FORMAT_LABEL[s.format as LectureFormat] ?? s.format}
+                  </td>
+                  <td className="py-1 pr-2">{s.startDate ?? "-"}</td>
+                  <td className="py-1 pr-2">
+                    {[s.dayLabel, s.timeLabel].filter(Boolean).join(" ") || "-"}
+                  </td>
+                  <td className="py-1 pr-2 text-right tabular-nums">
+                    {s.enrolled}/{s.capacity}
+                  </td>
+                  <td className="py-1 pr-2">
+                    {SCHEDULE_STATUS_LABEL[s.status as ScheduleStatus] ?? s.status}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="text-muted-foreground/70 mt-1 text-[10px]">
+            정원·신청 인원은 현재 표시값입니다(판매 제한 아님 — 좌석 권위화는 현장강의 단계).
+          </p>
+        </div>
+      )}
+    </div>
   );
 }
