@@ -37,11 +37,17 @@ export function LandingStyle() {
 .llx .tnum{font-variant-numeric:tabular-nums}
 /* 짙은 면(슬랩) 유틸 — 히어로 슬라이드·2/3단 카드·최종 CTA 가 전부 이 한 규칙으로 수렴. */
 .llx .slab,.llx .slide,.llx .bt-card,.llx .final{background:linear-gradient(158deg,var(--navy),var(--navy2));color:var(--hero-ink)}
+/* 슬랩 위 .eyebrow(hero-carousel 텍스트형 배너·hero-intro 폴백) — --blue-ink 는 청 슬랩 위에서 1.24 라 안 보인다.
+   .bt-eye·.hcard .lab 과 같은 --hero-soft(4.75 L/5.24 D). 밝은 면의 .eyebrow 는 --blue-ink 그대로. */
+.llx .slab .eyebrow,.llx .slide .eyebrow,.llx .bt-card .eyebrow,.llx .final .eyebrow{color:var(--hero-soft)}
 .llx .btn{display:inline-flex;align-items:center;gap:7px;border-radius:9px;font-weight:700;font-size:14px;padding:10px 18px;cursor:pointer;border:1px solid transparent;transition:transform .14s,box-shadow .14s,background .14s}
 .llx .btn:hover{transform:translateY(-2px)}
 .llx .btn.primary{background:var(--blue);color:var(--blue-fg);box-shadow:0 10px 22px -12px var(--blue)}
-/* .gilt = 슬랩 위 주 버튼(클래스명은 DB accent 값과 같아 유지). 금박 → 흰 바탕 + 청 잉크 반전형. */
-.llx .btn.gilt{background:var(--lsurface);color:var(--blue-ink)}
+/* .gilt = 슬랩 위 주 버튼(클래스명은 DB accent 값과 같아 유지). 금박 → 밝은 바탕 + 청 잉크 반전형.
+   바탕은 --lsurface 가 아니라 --hero-ink — 다크에서 --lsurface(#151b25)는 슬랩과 2.33 이라 버튼 면이 사라진다.
+   facilities .fc-no 와 같은 조합(면 vs navy 5.39 L/6.89 D · 글자 8.10/9.98). 밝은 카드 위 소비처는 아래
+   .eventcard/.tier 스코프에서 청 채움으로 뒤집는다(hero-ink on lsurface 는 면이 묻힌다). */
+.llx .btn.gilt{background:var(--hero-ink);color:var(--navy2)}
 .llx .btn.ghost{background:transparent;color:var(--ink);border-color:var(--line2)}
 .llx .btn.ghost.on-navy{color:var(--hero-ink);border-color:color-mix(in srgb,var(--hero-ink) 55%,transparent)}
 .llx .btn.sm{padding:7px 13px;font-size:13px}
@@ -51,9 +57,12 @@ export function LandingStyle() {
 .llx .hero-carousel{position:relative;overflow:hidden;padding-top:var(--tier-gap-top,0);background:var(--tier-gap-top-bg,transparent)}
 .llx .track{display:flex}
 .llx .track.anim{transition:transform .7s cubic-bezier(.4,0,.2,1)}
-/* accent 변형(blue/gilt/green = DB 값, rename 금지): 기본·gilt 는 슬랩 그대로, blue 는 청 하이라이트, green 은 녹 하이라이트. */
+/* accent 변형(blue/gilt/green = DB 값, rename 금지): 기본·gilt 는 슬랩 그대로, blue 는 청 하이라이트, green 은 녹 하이라이트.
+   ★blue 하이라이트는 텍스트 칼럼(좌상단) 위에 두지 않는다 — 거기를 밝히면 --hero-soft 12px 이 4.5 아래로 떨어진다
+   (구 좌상단 .35 는 피크 3.97 L). 우하단(텍스트 없음, 슬랩이 navy2 라 가장 어두운 곳)에 navy-soft 60% 를 두면
+   기본과의 차이(피크 vs navy2 1.76 L/1.66 D)가 슬랩 고유 편차(1.50)를 넘고, 뷰 안 텍스트는 hero-soft ≥4.52. */
 .llx .slide{min-width:100%;position:relative;overflow:hidden}
-.llx .slide.blue{background:radial-gradient(120% 130% at 14% -22%,rgba(58,143,216,.35),transparent 55%),linear-gradient(158deg,var(--navy),var(--navy2))}
+.llx .slide.blue{background:radial-gradient(90% 90% at 92% 110%,color-mix(in srgb,var(--navy-soft) 60%,transparent),transparent 55%),linear-gradient(158deg,var(--navy),var(--navy2))}
 .llx .slide.green{background:radial-gradient(120% 130% at 50% -32%,rgba(74,222,128,.16),transparent 55%),linear-gradient(158deg,var(--navy),var(--navy2))}
 .llx .slide::after{content:"";position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(var(--hero-soft) 1px,transparent 1px);background-size:100% 38px;opacity:.045}
 .llx .hero-in{position:relative;z-index:1;display:grid;grid-template-columns:1.15fr .85fr;gap:48px;align-items:center;padding:72px 0 92px}
@@ -117,7 +126,9 @@ export function LandingStyle() {
 .llx .promo .pbig span{font-size:.34em;color:var(--hero-soft);margin-left:4px;font-weight:700}
 .llx .promo p{color:var(--hero-soft);font-size:14px;margin-bottom:20px;line-height:1.6}
 .llx .pbadges{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:16px 0 20px}
-.llx .pbadges span{font-size:12px;font-weight:700;color:var(--hero-ink);background:rgba(74,222,128,.16);border:1px solid rgba(74,222,128,.32);padding:6px 11px;border-radius:99px}
+/* 합격속보 배지 — 종전 초록(#4ade80 = .hcard .dot 「접수중」 신호색)은 합격을 정답색으로 읽히게 했다. 슬랩 위라
+   --prize*(라이트 크림 바탕)도 --prize 글자 16% 워시(3.06)도 못 쓰므로 .loc 과 같은 navy2 알약으로 중립화(6.83 L/8.57 D). */
+.llx .pbadges span{font-size:12px;font-weight:700;color:var(--hero-ink);background:color-mix(in srgb,var(--navy2) 45%,transparent);border:1px solid color-mix(in srgb,var(--hero-ink) 24%,transparent);padding:6px 11px;border-radius:99px}
 
 /* 히어로 아래 추가 단(2·3단) 배너 */
 /* 단(tier) 사이 간격·색 = 운영자 설정(landing.tsx 주입). 각 단 상단 여백이 이전 단(또는
@@ -135,7 +146,7 @@ export function LandingStyle() {
 /* 스크립트 포함 HTML(2·3단) — iframe 격리 실행. 로드 후 JS가 내용 높이로 교체, 스크롤바 없음. */
 .llx .bt-htmlframe{width:100%;height:clamp(240px,26vw,360px);border:0;display:block;overflow:hidden;background:transparent}
 .llx .bt-card{padding:26px 24px;display:flex;flex-direction:column;gap:10px;align-items:flex-start;position:relative;overflow:hidden}
-.llx .bt-card.blue{background:radial-gradient(90% 90% at 92% 0,rgba(58,143,216,.35),transparent 55%),linear-gradient(158deg,var(--navy),var(--navy2))}
+.llx .bt-card.blue{background:radial-gradient(90% 90% at 92% 110%,color-mix(in srgb,var(--navy-soft) 60%,transparent),transparent 55%),linear-gradient(158deg,var(--navy),var(--navy2))}
 .llx .bt-card>*{position:relative;z-index:1}
 .llx .bt-card .bt-eye{font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--hero-soft)}
 .llx .bt-card h3{font-size:20px;font-weight:700;line-height:1.3}
@@ -213,6 +224,8 @@ export function LandingStyle() {
 .llx .tier li{font-size:13.5px;color:var(--ink);display:flex;gap:9px;align-items:flex-start}
 .llx .tier li .ck{color:var(--blue);font-weight:700;flex-shrink:0}
 .llx .tier .btn{margin-top:auto;justify-content:center}
+/* 밝은 카드 위 주 CTA(builtin-sections 「종합반 신청」 btn gilt) — 반전형 그대로면 흰 카드 위 흰 버튼. .eventcard 와 같은 청 채움. */
+.llx .tier .btn.gilt{background:var(--blue);color:var(--blue-fg);box-shadow:0 10px 22px -12px var(--blue)}
 
 /* reviews */
 .llx .revs{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}

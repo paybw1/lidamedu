@@ -14,7 +14,7 @@
 | 항목 | 값 | 함의 |
 |---|---|---|
 | `var(--gilt*)` 참조 | **27곳**(`--gilt` 10 · `--gilt-2` 4 · `--gilt-soft` 13) — **성취 용도 0곳**(eyebrow·과목 라벨·D-day·프로모·탭·CTA) | 토큰만 바꾸면 성취색이 27곳으로 번진다. **금 회수 27곳 + 성취 배지 신설**은 별개 작업 |
-| 실제 성취 표시 | `.chip.passer`(236) · `.rev .badge`(221, JSX `builtin-sections:380` 합격 배지)가 **`--ok`(정답색)** 사용 | 브리프 「금=성취」 위반 상태. 합격을 정답색에서 떼어낸다 |
+| 실제 성취 표시 | `.chip.passer`(236) · `.rev .badge`(221, JSX `builtin-sections:380` 합격 배지)가 **`--ok`(정답색)** 사용 · `.pbadges span`(히어로 합격속보 배지, `hero-carousel:81`)이 `rgba(74,222,128)`(= `.hcard .dot` 「접수중」 신호색) 하드코딩 — 2026-09-16 결함 수정에서 추가 발견 | 브리프 「금=성취」 위반 상태. 합격을 정답색에서 떼어낸다 |
 | 158deg 네이비 그라디언트 복붙 | 8곳(`.slide` 4변형 46-49 · `.bt-card` 128 · `.eventcard` 239 · `.faxtab.on` 276 · `.final` 281) + `facilities .fc-card` 167 단색 | 유틸 1개로 수렴, 짙은 면은 4→2 |
 | 하드코딩 | `#fff` 9 · `rgba(238,242,251)` 8 · 금 워시 `rgba(154,117,38)` 5 · `rgba(14,29,56)` 1 · `#c0392b` 리터럴(schedule 307·315) · Tailwind 폴백 `#b48a2f` 2(lecture-video-section 49·59) · admin-banners 197 기본 간격색 `#0e1d38` | 토큰으로 회수 |
 | `.dark .llx` 누락 | `--navy`·`--navy2`·`--navy-soft`·`--gilt`·`--gilt-2`(prestige 경유로만 바뀜) · **`--ok`·`--warn`·`--hot`(진짜 고정 = 결함)** | `.llx` 가 자체 hex 를 갖는 순간 앞 5개는 직접 써야 하고, 의미색 다크값은 이번에 신설 |
@@ -52,7 +52,7 @@
 **C1 토큰 재정의** — `landing-style.tsx:6-27`. 라이트 블록에서 `var(--prestige-*)` 참조를 끊고 §2 값 직접 기입. `.dark .llx` 에 `--navy`·`--navy2`·`--navy-soft`·`--hero-ink`·`--ok`·`--warn`·`--hot`·`--prize*`·`--blue-fg`·`--warn-ink` 추가. `app.css:125-126` 주석의 「.llx 공유」 문구 정정.
 
 **C2 금 회수 27곳** (성취 아님 → 용도별 대체)
-- eyebrow·라벨·부제 → `var(--blue-ink)`: `.eyebrow` 31 · `.vidsub` 146 · `.sc .subj` 158 · `.tier .tn` 203 · `details.qa summary .q` 264 · `.loc .li .k` 289 · exam-info 416·440·466 · schedule-detail 182 · `.bt-eye` 132 · `.hcard .lab` 92 · `.promo .pk` 106
+- eyebrow·라벨·부제 → `var(--blue-ink)` (★`.eyebrow` 는 **밝은 면 한정** — 슬랩(`.slab/.slide/.bt-card/.final`) 안의 `.eyebrow` 는 §7 표대로 `--hero-soft` 스코프 재정의): `.eyebrow` 31 · `.vidsub` 146 · `.sc .subj` 158 · `.tier .tn` 203 · `details.qa summary .q` 264 · `.loc .li .k` 289 · exam-info 416·440·466 · schedule-detail 182 · `.bt-eye` 132 · `.hcard .lab` 92 · `.promo .pk` 106
 - 짙은 면 위 강조(hero) → `var(--hero-ink)` 또는 청 하이라이트: `.slide h1 .hl` 67 · `.trust .n .u` 73 · `.dots button.on` 80 · `.hrow .dday b` 99 · `.promo .pbig span` 108
 - 프로모·추천 → `var(--blue)`/`--blue-wash`: `.tier.feat` 201 테두리 · `.tier.feat::before` 202 배지(그라디언트 제거, 단색) · `.chip.event` 235 · `.faxtab:hover` 274
 - CTA `.btn.gilt` 36 → **흰 배경 + `--blue-ink` 잉크 반전형**(슬랩 위 주 버튼, JSX 9곳 무변경 — 클래스명 유지). `.btn.primary` 35 의 `color:#fff` → `var(--blue-fg)`
@@ -79,6 +79,7 @@
 2. 대비 재계산(node, WCAG 2) — §2 표의 값 전부 + 9곳 hero-soft·9곳 blue-fg 실측
 3. `npm run typecheck` · `npm run build` · vitest
 4. 라이트·다크 스크린샷 4화면(강의 홈·일정·시험정보·학원시설) — **다크에서 마감임박 태그·합격 배지가 읽히는지**가 합격선
+   ★**실측 정정(2026-09-17)**: 강의 표면은 **라이트 단일**이다 — `app/root.tsx` 가 `isLightOnlySurface(pathname)`(platforms.ts) 인 경로에 `<html class="light">` 를 강제한다(원장 2026-08-19 「커머스 화면이라 상품 이미지·가격표가 어두운 배경에서 깨진다」). `/lecture/*`·`/about/instructors` 는 테마 쿠키와 무관하게 라이트로만 렌더되므로 **다크 스크린샷은 찍을 수 없고 `.dark .llx`/`.dark .instr` 토큰은 휴면 상태**다(라이트 강제를 푸는 날을 위해 유지, 지금 화면에는 영향 0). 게이트 4 는 라이트 스크린샷으로 판정한다. 관리자 폼(`/admin/*`)은 테마를 따르므로 라이트·다크 둘 다 찍었다.
 5. 배너 accent 3종(gilt/blue/green) 렌더 확인 — DB 값 변경 없음
 6. 푸시 = 하드스톱(원장 확인 후)
 
@@ -112,6 +113,11 @@ C1+C2+C5(토큰·금 회수·성취) 한 커밋 → C3+C4(짙은 면·하드코�
 | 일정 「영상」 형태 색(6곳) | §2 에 없음 | **`--warn`(채움)/`--warn-ink`(글자)** | off=`--ok`·live=`--blue` 와 구별되는 §2 내 색이 이것뿐. 잔여석 `.seat.mid`(warn-ink)와 한 카드에 놓여 의미 충돌 — §8 질문 |
 | facilities `.fc-no` 번호 배지 | `--prize*` | **`--hero-ink` 바탕 + `--navy2` 글자** | 카드마다 붙는 순번이라 성취가 아니고, 1화면 1금(C5)과 충돌 |
 | `.eventcard .btn.gilt` | (없음) | **청 채움 + `--blue-fg`** | 카드가 밝게 반전되면 반전형 `.btn.gilt`(흰 바탕)가 흰 카드에 묻힘. JSX 무변경 |
+| `.tier .btn.gilt` (2026-09-16 결함 수정) | (없음) | **청 채움 + `--blue-fg`** | `.eventcard` 와 같은 회귀 — 「수강신청」 추천 카드(`.tier.feat`, `builtin-sections:190` 「종합반 신청」)가 `--lsurface` 위 `--lsurface` 로 버튼 면이 사라짐(라이트 1.00·다크 1.00). 밝은 면 위 `btn gilt` 소비처 전수 = eventcard 2 + tier 1, 이제 셋 다 청 채움 |
+| `.btn.gilt` 바탕 (2026-09-16 결함 수정) | `--lsurface` + `--blue-ink` | **`--hero-ink` + `--navy2`** | 다크 `--lsurface`(#151b25) vs 슬랩 2.33/1.61 로 비텍스트 3:1 미달 — 반전형이 다크에서 성립하지 않음. `.fc-no` 와 같은 조합: 면 vs `--navy` 5.39 L/6.89 D · vs `--navy2` 8.10/9.98 · 글자 8.10/9.98 |
+| `.eyebrow` 슬랩 위 (2026-09-16 결함 수정) | `--blue-ink` | **`--hero-soft`** (`.slab/.slide/.bt-card/.final .eyebrow` 스코프) | `hero-carousel:235` 텍스트형 배너·`hero-intro:67` 폴백이 슬랩 안 — `#0a5a9e` on `#0868b8` 1.24(다크 3.50). §7 첫 행(`.hcard .lab` 등 4곳)과 같은 오분류 누락. herosoft/navy 4.75 L·5.24 D |
+| `.pbadges span` 합격속보 배지 (2026-09-16 결함 수정) | (언급 없음) | **`--hero-ink` 글자 + `--navy2` 45% 알약 + hero-ink 24% 테두리** (`.loc` 패턴) | 초록 rgba 하드코딩(= 「접수중」 신호색)으로 합격이 정답색에 남아 있던 C5 누락. 슬랩 위라 `--prize*` 크림 바탕은 불투명 알약으로 뜨고, `--prize` 글자 16% 워시는 라이트 `--navy` 구간 3.06 으로 미달 → 중립화(`.hrow .seat` 선례). 실측 hero-ink on 알약 6.83 L/8.57 D |
+| `.slide.blue`·`.bt-card.blue` (2026-09-16 결함 수정) | 좌상단 navy-soft `.35` radial | **우하단(`at 92% 110%`) `color-mix(var(--navy-soft) 60%)`** | 「기본(청)」 과 「블루」 가 구별되지 않았음(좌상단 피크 vs 슬랩 1.20/1.33 < 슬랩 고유 편차 1.50). 좌상단을 더 밝히면 텍스트 칼럼의 hero-soft 가 4.5 아래(피크 3.97)라 불가 → 텍스트 없는 우하단(슬랩이 navy2 라 가장 어두운 곳)으로 옮기고 알파를 올림. 피크 vs navy2 1.76 L/1.66 D, 뷰 안(y=100%) hero-soft 4.52 L/5.04 D · hcard 유리 위 5.06/5.58. 렌더 확인은 §4-5 대로 원장 |
 | `.rev .badge` 별점 | `--ok` | **`--soft` on faint 12%** | `--faint` 글자는 4.14 로 미달 → 6.49 |
 | `.btn.ghost.on-navy` 테두리 | hero-ink 28% | **55%** | 비텍스트 3:1 기준 라이트 2.72(다크 3.22) — 글자(5.39)가 버튼을 식별하므로 1.4.11 은 범위 밖으로 두고 기록만 |
 | `.bk .cov` 시작점 | `--blue`→`--navy2` | **`--navy`→`--navy2`** (3n+2 는 역순) | 표지 제목 `.bt`(hero-ink)가 다크 `--blue` `#4d9fe6` 위 2.63 → `--navy` 6.89. 라이트는 두 값이 같아 무변화. 구 네이비 hex(`#3a6098`) 변형도 함께 회수 |
@@ -122,8 +128,48 @@ C1+C2+C5(토큰·금 회수·성취) 한 커밋 → C3+C4(짙은 면·하드코�
 
 **남긴 것**: C8 `.instr` 강사소개 3화면(prestige 참조 + 금 워시 하드코딩) — 별도 커밋. 스크린샷 게이트(§4-4)·배너 accent 3종 렌더(§4-5)는 원장 확인. 저장된 운영자 간격색(`#0e1d38`)은 재설정 안내.
 
+**결함 수정(2026-09-16, 리뷰 확정 결함 6건 → `landing-style.tsx` 편집 6곳)**: 위 표의 「2026-09-16 결함 수정」 6행. 텍스트 대비 쌍 추가 실측(스크래치패드 `contrast-c9.mjs`): herosoft/navy·navy2(슬랩 eyebrow) 4.75·7.14 L / 5.24·7.58 D, navy2/heroink(`.btn.gilt`) 8.10 L / 9.98 D, heroink/navy2-45%-알약(`.pbadges`) 6.83 L / 8.57 D, herosoft/blue-워시 뷰내 4.52 L / 5.04 D. 비텍스트: `.btn.gilt` 면 vs 슬랩 5.39~8.10 L / 6.89~9.98 D. 잔여 하드코딩: `.slide.green` `rgba(74,222,128,.16)`·`.hcard .dot` `#4ade80`(접수중 신호색, §8 Q4 의 신호 토큰과 함께 결정) — 이번 범위 밖.
+
 ## 8. 원장 추가 질문(적용 후)
 
 | | 질문 | 권고 |
 |---|---|---|
 | Q4 | 일정 화면 「영상」 형태 색을 `--warn`(주황) 으로 두는가 — 잔여석 경고(`--warn-ink`)와 같은 카드에서 겹친다 | 형태 전용 토큰(`--kind-vid`) 1개를 §2 에 추가하고 값은 스크린샷 보고 결정 |
+
+## 9. C8 적용 기록(2026-09-16) — 강사소개 `.instr` 3화면 로고 청 전환
+
+> 원장 결정(§5 Q1 「동반 전환」 채택). 절 번호는 지시서의 「§8」 대신 9 — §8 「원장 추가 질문」이 이미 있어 번호 충돌을 피했다. 수료증 인쇄(`--prestige-*` 유틸)는 손대지 않았다.
+
+**바뀐 파일(코드 3)**: `app/features/instructors/components/instructor-theme.tsx`(토큰 2블록 + 규칙 16) · `screens/instructor-detail.tsx`(인라인 2) · `screens/instructor-recruit.tsx`(인라인 1 + `RecruitStyle` 규칙 6 + 주석). JSX `className` 변경 0, 화면 구조 변경 0.
+
+**토큰**: `.instr` 라이트/다크 13종을 `.llx`(landing-style.tsx)와 **같은 hex** 로 직접 기입 — `--i-navy/--i-navy2`(`#0868b8/#0a4d8c` · 다크 `#0a5798/#073f70`), `--i-blue`, `--i-blueink`, `--i-heroink/--i-herosoft`, 중립 7종(`--i-ink/soft/faint/line/line2/ground/surface`). `--prestige-*` 참조 0. `--i-gilt/--i-gilts` **정의 삭제**. 다크 블록에 빠져 있던 `--i-navy/--i-navy2` 를 채워 라이트=다크 토큰 패리티(라이트에만 있는 토큰 = `--i-serif` 뿐). **추가 토큰 1**: `--i-bluefg`(`#ffffff` / 다크 `#0b1a2b`, = `.llx --blue-fg`) — `.i-btn.primary` 의 `#fff` 가 다크 `--i-blue #4d9fe6` 위 2.83 으로 미달하는 §2 와 같은 사례.
+
+**금 회수(용도별 대체, 정의 삭제 후 참조 0)**
+| 위치 | 전 | 후 |
+|---|---|---|
+| `.i-eyebrow`(슬랩 위) | `--i-gilts` | `--i-herosoft` |
+| `.i-num` 지표 숫자 | `--i-gilt` | `--i-blueink` — 경력 지표이지 성취가 아님 |
+| `.i-h3` 절 소제목 | `--i-gilt` | `--i-blueink` |
+| `.i-mono .fr`·`.i-phf::before` 액자 | `rgba(201,164,78,.45/.42)` | `color-mix(in srgb,var(--i-herosoft) 45%,transparent)` |
+| `.i-hero` 금 radial `rgba(151,114,36)` | 있음 | 삭제(선형 navy→navy2 만) |
+| detail 헤드라인 왼쪽 선(슬랩 위) | `--i-gilts` | `--i-herosoft` |
+| detail 합격 후기 카드 왼쪽 선(밝은 면) | `--i-gilt` | `--i-blue` (성취 배지 `--prize*` 도입 여부는 아래 Q5) |
+| recruit 히어로 `<b>전문 강사진</b>` | `--i-gilts` | `--i-heroink`(문단이 herosoft 라 강조는 한 단계 밝게) |
+| recruit `.rc-no` 번호 배지 글자 | `--i-gilts` on navy | `--i-heroink` |
+| recruit `.rc-head` 그라디언트·`.rc-pill`·`.rc-note` 워시/테두리 | `--i-gilt` 9/8/30/7/22% | `--i-blue` 같은 비율 |
+| recruit `.rc-note-h` | `--i-gilt` | `--i-blueink` |
+
+**하드코딩 회수**: `#fff`(`.i-book .bt`) → `--i-heroink` · `.i-btn.primary` → `--i-bluefg` / `#2c4a7a·#1c3358·#1a3054`(`.i-mono`·`.i-photo` 사진 자리) → `--i-navy`→`--i-navy2` / `rgba(238,242,251,.18/.92)` → `color-mix(--i-heroink 18%/92%)` / 그림자 `rgba(34,64,110,.5/.45/.34)` 3곳 → `rgba(8,104,184,…)`.
+
+**지시와 달라진 값·판단**
+| 항목 | 지시 | 적용 | 이유 |
+|---|---|---|---|
+| `.i-book .cov` 기본·3n+2 | `--i-blue→--i-navy`, 변형 `--i-blue/--i-navy2` | **`--i-navy→--i-navy2`**, 3n+2 는 역순 | §7 `.bk .cov` 와 같은 사례 — 라이트는 `--i-blue`=`--i-navy` 라 무변화, 다크는 heroink on `#4d9fe6` 2.6 미달 |
+| `.i-book` 3n+3 회색 시작점 | `#6b7b93` 그대로 둬도 됨 | **`#5a6a82`** | heroink 4.07/4.00 미달(전환 전 `#fff` 도 4.34) → 5.20/5.11. 끝점 `#3c4a63` 유지 |
+| `--i-bluefg` | (목록에 없음) | 신설 | 위 토큰 항목 |
+
+**게이트 실측**: `grep "prestige\|gilt\|#977224\|#c9a44e\|rgba(201,164,78)" app/features/instructors` **0건**(수료증 관련 파일은 instructors 아래 없음) · typecheck·build 통과 · WCAG 2 대비 46개 조합(라이트 23·다크 23, 스크래치패드 `contrast-c8.mjs`): 텍스트 40쌍 전부 ≥ 4.5 — heroink/navy 5.39·D 6.89, heroink/navy2 8.10·9.98, herosoft/navy(eyebrow) 4.75·5.24, herosoft/navy2 7.14·7.58, blueink/surface(`.i-num`) 7.07·8.16, blueink/ground(`.i-h3`) 6.58·8.72, blueink/`.i-subj` 워시 5.94·6.79, blueink/`.rc-pill` 6.31·7.25, blueink/`.rc-note-h` 6.38·7.39, `.i-book .bt` heroink/표지 양끝 5.39~8.10·6.89~9.98, 회색 변형 5.20~8.45·5.11~8.29, bluefg/blue(`.i-btn.primary`) 5.70·6.20, ink 15.2~16.3·14.4~15.4, soft 7.06~7.59·8.17~8.74, faint 4.85~5.22·4.95~5.30 · 대형 텍스트 2(`.i-mono span`·`.i-phf span` heroink 92%, ≥3.0) 4.81~7.11·6.09~8.68 · 비텍스트 장식 1(액자 테두리 herosoft 45% on navy) **2.12 L / 2.25 D** — 사진 자리표시자 안의 순수 장식이라 1.4.11 범위 밖, 지시값 그대로 두고 기록만.
+
+**남긴 것(범위 밖·다른 파일)**: `landing-style.tsx:3` 주석 「강사소개 .instr·수료증 전용」 → 수료증만 / `app.css:125-127` prestige 주석의 `.instr` 언급 / §7 머리말 「C8 대기」·「남긴 것」 첫 항은 이 절로 대체됨(원문 보존) / 스크린샷 게이트(라이트·다크 3화면)는 원장 확인.
+
+**원장 질문(Q5)**: 강사 상세 「합격 후기」 카드의 왼쪽 선을 `--i-blue` 로 뒀다 — 강의 표면처럼 성취 배지(`--prize*`) 1곳을 `.instr` 에도 두는가. 권고: 후기 카드는 인용문이지 배지가 아니므로 청 유지. 성취 표시가 필요해지면 `.llx .badge.passer` 토큰 3종을 `.instr` 로 복제.
