@@ -15,7 +15,10 @@ import {
   toCourseFormat,
 } from "~/features/lms/lib/course-format";
 import { DETAIL_SECTIONS } from "~/features/lms/lib/detail-sections";
-import { FEATURE_LABEL } from "~/features/subscriptions/labels";
+import {
+  FEATURE_LABEL,
+  isLectureProductKind,
+} from "~/features/subscriptions/labels";
 import {
   copyPlan,
   getPlanSaleRecords,
@@ -46,7 +49,17 @@ const policySchema = z.object({
   multiplier: z.coerce.number().min(1).max(100).nullable(),
   // DB check 가 duration_days > 0 이라 하한은 1.
   durationDays: z.coerce.number().int().min(1).max(3650).nullable(),
-  fixedEndDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+  // ★달력 왕복 검증 — `new Date(v)` 의 NaN 검사만으로는 2026-02-31 이 03-03 으로 롤오버돼 통과하고,
+  //   DB(date 컬럼)가 22008 로 거절해 upsertPlan 뒤에서 실패한다(생성 모드 고아 행).
+  fixedEndDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .refine((v) => {
+      // ★2026-13-01 처럼 월·일 범위 밖은 롤오버가 아니라 Invalid Date 라 toISOString 이 throw → NaN 먼저 거른다.
+      const d = new Date(v + "T00:00:00Z");
+      return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
+    }, "존재하지 않는 날짜입니다.")
+    .nullable(),
   allowDownload: z.boolean(),
   allowPc: z.boolean(),
   allowMobile: z.boolean(),
@@ -125,8 +138,6 @@ const copySchema = z.object({
   copyPrice: z.boolean(),
   copyPolicy: z.boolean(),
 });
-
-const LECTURE_KINDS = new Set(["course", "tpass"]);
 
 export async function action({ request }: Route.ActionArgs) {
   if (request.method !== "POST") {
@@ -212,7 +223,7 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   // ── 과정 유형(feat-11-013 P2) — 강의상품은 필수, 그 밖은 null. 신청내역이 있으면 변경 불가(§5). ──
-  const isLecture = LECTURE_KINDS.has(parsed.data.productKind);
+  const isLecture = isLectureProductKind(parsed.data.productKind);
   const courseFormat = isLecture ? parsed.data.courseFormat : null;
   if (isLecture && !courseFormat) {
     return data({ error: "과정 유형을 선택하세요." }, { status: 400 });
@@ -225,7 +236,7 @@ export async function action({ request }: Route.ActionArgs) {
       .maybeSingle();
     if (
       current &&
-      LECTURE_KINDS.has(current.product_kind) &&
+      isLectureProductKind(current.product_kind) &&
       current.course_format &&
       current.course_format !== courseFormat
     ) {
@@ -407,6 +418,23 @@ export async function action({ request }: Route.ActionArgs) {
       { status: 400 },
     );
   }
+  // 존재·미삭제 강의만 허용 — 형식만 맞는 UUID 는 plan_courses FK(23503)로 upsertPlan **뒤**에서 터져
+  //   생성 모드에 「판매중·강의 0개」 고아 행을 남긴다. 저장 전에 거절한다.
+  if (courseIds.length > 0) {
+    const uniqueIds = [...new Set(courseIds)];
+    const { data: existing, error: existErr } = await adminClient
+      .from("courses")
+      .select("course_id")
+      .in("course_id", uniqueIds)
+      .is("deleted_at", null);
+    if (existErr) return data({ error: existErr.message }, { status: 400 });
+    if ((existing ?? []).length !== uniqueIds.length) {
+      return data(
+        { error: "존재하지 않거나 삭제된 강의가 포함돼 있습니다." },
+        { status: 400 },
+      );
+    }
+  }
 
   // 이용 기간(subscription_plans.duration_days) — 학습 구독은 폼 값(필수), 강의상품은 정책과 동기화(D2).
   //   고정 일수 → 정책 일수 / 고정 종료일·현장 → 0. course/tpass 를 읽는 소비처가 없어 표시·지급 무영향
@@ -447,6 +475,16 @@ export async function action({ request }: Route.ActionArgs) {
   );
   if (!res.ok) return data({ error: res.error }, { status: 400 });
 
+  // 뒤 단계(정책·강의·교재)가 DB 제약으로 실패하면 **생성 모드에 한해** 방금 만든 plan 행을 지운다(copyPlan 과
+  //   같은 abort). plan_policies·plan_courses·plan_book_links 는 on delete cascade 라 plan 한 행이면 된다.
+  //   ★update 모드는 res.planId 가 기존 상품이므로 절대 지우지 않는다(절반 반영은 별도 항목).
+  const failAfterUpsert = async (message: string) => {
+    if (parsed.data.intent === "create") {
+      await adminClient.from("subscription_plans").delete().eq("plan_id", res.planId);
+    }
+    return data({ error: message }, { status: 400 });
+  };
+
   // 강의 상품(course/tpass) — 정책 upsert(현장은 건너뜀: 기존 행이 있어도 그대로 둔다) + 강의·교재 동기화.
   if (isLecture && rules) {
     if (policy) {
@@ -479,12 +517,12 @@ export async function action({ request }: Route.ActionArgs) {
         extensionMaxCount: p.extensionMaxCount,
         extensionDays: p.extensionDays,
       });
-      if (!polRes.ok) return data({ error: polRes.error }, { status: 400 });
+      if (!polRes.ok) return failAfterUpsert(polRes.error);
     }
 
     // 연결 강의(에디션) 동기화 — plan_courses(현장은 빈 배열).
     const linkRes = await syncPlanCourses(res.planId, courseIds);
-    if (!linkRes.ok) return data({ error: linkRes.error }, { status: 400 });
+    if (!linkRes.ok) return failAfterUpsert(linkRes.error);
 
     // 연결 교재(주/부·필수/선택·순서) 동기화 — plan_book_links(JSON). 유형과 무관하게 계속 동기화.
     let bookLinks: Array<{
@@ -511,7 +549,7 @@ export async function action({ request }: Route.ActionArgs) {
       bookLinks = [];
     }
     const bookRes = await syncPlanBookLinks(res.planId, bookLinks);
-    if (!bookRes.ok) return data({ error: bookRes.error }, { status: 400 });
+    if (!bookRes.ok) return failAfterUpsert(bookRes.error);
   }
 
   await logAuditEvent({

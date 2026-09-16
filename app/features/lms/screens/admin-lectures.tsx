@@ -23,6 +23,7 @@ import {
   PACKAGING_LABEL,
   cadenceOf,
   deliveryOf,
+  hasOnlineDelivery,
   packagingOf,
   toCourseFormat,
   type CourseFormat,
@@ -51,7 +52,7 @@ interface LectureRow {
   listPriceKrw: number | null; // 정상가 — 판매가보다 크면 취소선+할인율 표시
   productKind: string;
   courseFormat: CourseFormat | null; // feat-11-013 P2 — 과정 유형 배지·검색 축
-  periodLabel: string; // 수강기간 — plan_policies 권위(D2): 「N일」 또는 「YYYY-MM-DD 까지」
+  periodLabel: string; // 수강기간 — plan_policies 권위(D2): 「N일」 또는 「YYYY-MM-DD 까지」. 현장(offline)은 정책 행이 남아 있어도 「-」
   saleStatus: string;
   isActive: boolean;
   availableFrom: string | null;
@@ -195,8 +196,12 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
   const lectures: LectureRow[] = rows.map((p) => {
     const records = saleRecords[p.plan_id];
-    const policy = policies[p.plan_id];
-    // 학생 카탈로그와 같은 표기 규칙: 고정 종료일 → 「YYYY-MM-DD 까지」, 기간제 → 「N일」.
+    const courseFormat = toCourseFormat(p.course_format);
+    // 현장(offline)은 온라인 수강권이 없다 — 온라인→현장 전환 뒤 남은 정책 행(되돌리면 살아나도록 보존)은
+    //   기간 표시에서 무시한다(학생 카탈로그 listSellableLectureProducts 와 같은 술어).
+    const policy =
+      courseFormat && !hasOnlineDelivery(courseFormat) ? undefined : policies[p.plan_id];
+    // 학생 카탈로그와 같은 표기 규칙: 고정 종료일 → 「YYYY-MM-DD 까지」, 기간제 → 「N일」, 현장 → 「-」.
     const periodLabel = policy?.fixedEndDate
       ? `${policy.fixedEndDate} 까지`
       : policy?.durationDays
@@ -215,7 +220,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       priceKrw: p.price_krw,
       listPriceKrw: p.list_price_krw,
       productKind: p.product_kind,
-      courseFormat: toCourseFormat(p.course_format),
+      courseFormat,
       periodLabel,
       saleStatus: p.sale_status,
       isActive: p.is_active,

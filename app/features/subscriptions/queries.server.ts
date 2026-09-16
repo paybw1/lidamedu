@@ -8,7 +8,11 @@ import type { Database } from "database.types";
 import { redirect } from "react-router";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
-import { type CourseFormat, toCourseFormat } from "~/features/lms/lib/course-format";
+import {
+  type CourseFormat,
+  courseFormatFormRules,
+  toCourseFormat,
+} from "~/features/lms/lib/course-format";
 import { createUserNotifications } from "~/features/notifications/queries.server";
 import {
   markOrderPaidAndFulfill,
@@ -23,7 +27,11 @@ import {
   type DetailSections,
   toDetailSections,
 } from "~/features/lms/lib/detail-sections";
-import { discountAppliesAtRenewal, effectivePriceKrw } from "./labels";
+import {
+  discountAppliesAtRenewal,
+  effectivePriceKrw,
+  isLectureProductKind,
+} from "./labels";
 
 import type {
   PaymentRow,
@@ -844,7 +852,7 @@ export async function getPaymentSurface(
   if (!data) return "subscription";
   if (!data.plan_id) return "lecture";
   const kind = data.subscription_plans?.product_kind;
-  return kind === "course" || kind === "tpass" ? "lecture" : "subscription";
+  return kind && isLectureProductKind(kind) ? "lecture" : "subscription";
 }
 
 // 토스 confirm API 호출 후 payment + subscription row 갱신.
@@ -985,7 +993,7 @@ export async function confirmPayment(
     .select("product_kind")
     .eq("plan_id", payRow.plan_id)
     .maybeSingle();
-  if (planKindRow?.product_kind === "course" || planKindRow?.product_kind === "tpass") {
+  if (planKindRow && isLectureProductKind(planKindRow.product_kind)) {
     return { ok: true, fulfilledOrder: true };
   }
   const durationDays = payRow.subscription_plans?.duration_days ?? 30;
@@ -1765,9 +1773,14 @@ export async function copyPlan(
   if (srcErr) return { ok: false, error: srcErr.message };
   if (!src) return { ok: false, error: "원본 상품을 찾을 수 없습니다." };
   const source = rowToPlan(src);
-  const isLecture = source.productKind === "course" || source.productKind === "tpass";
+  const isLecture = isLectureProductKind(source.productKind);
   const courseFormat = isLecture ? (input.courseFormat ?? source.courseFormat) : null;
   if (isLecture && !courseFormat) return { ok: false, error: "과정 유형을 선택하세요." };
+  // 유형 규칙(feat-11-013 P3-a)은 action(admin-plan.tsx)과 같은 SSOT 로 강제한다 — 복사 대상 유형이
+  //   회차를 숨기면(정규·현장) planned_sessions 는 null, 연결 강의를 숨기면(현장) plan_courses 는 빈 배열.
+  //   ★남기면 첫 저장 전까지 규칙 위반 상품이 존재한다: online_term 에 회차가 남으면 refundCalcTypeOf 가
+  //   'single' 로, offline 에 plan_courses 가 남으면 결제 시 온라인 수강권이 나간다.
+  const rules = courseFormat ? courseFormatFormRules(courseFormat) : null;
 
   const { data: dup } = await admin
     .from("subscription_plans")
@@ -1783,7 +1796,8 @@ export async function copyPlan(
       description: source.description,
       priceKrw: input.copyPrice ? source.priceKrw : 0,
       listPriceKrw: input.copyPrice ? source.listPriceKrw : null,
-      plannedSessions: source.plannedSessions,
+      plannedSessions:
+        rules?.plannedSessions === "hidden" ? null : source.plannedSessions,
       durationDays: source.durationDays,
       productKind: source.productKind,
       subjectCodes: source.subjectCodes,
@@ -1820,7 +1834,9 @@ export async function copyPlan(
         if (!polRes.ok) return abort(polRes.error);
       }
     }
-    const courseIds = (await getPlanCourseLinks([source.planId]))[source.planId] ?? [];
+    const courseIds = rules?.showCourses
+      ? ((await getPlanCourseLinks([source.planId]))[source.planId] ?? [])
+      : [];
     const linkRes = await syncPlanCourses(newId, courseIds);
     if (!linkRes.ok) return abort(linkRes.error);
     const books = (await getPlanBookLinks([source.planId]))[source.planId] ?? [];

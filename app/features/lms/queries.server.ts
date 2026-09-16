@@ -2,7 +2,11 @@
 // 콘텐츠 읽기/쓰기 = 요청 클라이언트(RLS staff 게이트).
 // 수강권(enrollments) 쓰기 = adminClient 전용(RLS 에 쓰기 정책 없음 — 서버 권위).
 
-import { type CourseFormat, toCourseFormat } from "~/features/lms/lib/course-format";
+import {
+  type CourseFormat,
+  hasOnlineDelivery,
+  toCourseFormat,
+} from "~/features/lms/lib/course-format";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
@@ -1143,31 +1147,39 @@ export async function listSellableLectureProducts(
     }
   }
 
-  return planRows.map((p) => ({
-    planId: p.plan_id,
-    code: p.code,
-    name: p.name,
-    description: p.description,
-    priceKrw: p.price_krw,
-    listPriceKrw: p.list_price_krw,
-    productKind: p.product_kind as "course" | "tpass",
-    courseFormat: toCourseFormat(p.course_format),
-    // ★권위는 plan_policies — 정책 행이 없으면 이행 쪽 기본값(180)과 같은 값을 쓴다.
-    //   고정 종료일 상품은 「N일」이 의미가 없으므로 0 으로 내려 화면이 숨기게 한다.
-    durationDays: policyByPlan.get(p.plan_id)?.fixed_end_date
-      ? 0
-      : (policyByPlan.get(p.plan_id)?.duration_days ?? p.duration_days ?? 180),
-    fixedEndDate: policyByPlan.get(p.plan_id)?.fixed_end_date ?? null,
-    category: toLectureCategory(p.lecture_category),
-    categoryId: p.category_id,
-    categoryName: p.category_id ? (catNameById.get(p.category_id) ?? null) : null,
-    courses: coursesByPlan.get(p.plan_id) ?? [],
-    books: booksByPlan.get(p.plan_id) ?? [],
-    instructors: instructorsByPlan.get(p.plan_id) ?? [],
-    lessonCount: lessonCountByPlan.get(p.plan_id) ?? 0,
-    owned: ownedPlanIds.has(p.plan_id),
-    detailImageUrl: p.detail_image_url,
-    detailHtml: p.detail_html,
-    detailSections: toDetailSections(p.detail_sections),
-  }));
+  return planRows.map((p) => {
+    const courseFormat = toCourseFormat(p.course_format);
+    // ★현장(offline)은 온라인 수강권이 없다 — 온라인→현장으로 전환한 상품에 남은 plan_policies 행
+    //   (feat-11-013 트랩 2: 되돌리면 살아나도록 지우지 않는다)이 「N일 수강」으로 새지 않게 표시에서 무시한다.
+    const offline = courseFormat != null && !hasOnlineDelivery(courseFormat);
+    const policy = offline ? undefined : policyByPlan.get(p.plan_id);
+    return {
+      planId: p.plan_id,
+      code: p.code,
+      name: p.name,
+      description: p.description,
+      priceKrw: p.price_krw,
+      listPriceKrw: p.list_price_krw,
+      productKind: p.product_kind as "course" | "tpass",
+      courseFormat,
+      // ★권위는 plan_policies — 정책 행이 없으면 이행 쪽 기본값(180)과 같은 값을 쓴다.
+      //   고정 종료일 상품은 「N일」이 의미가 없으므로 0 으로 내려 화면이 숨기게 한다. 현장은 0.
+      durationDays:
+        offline || policy?.fixed_end_date
+          ? 0
+          : (policy?.duration_days ?? p.duration_days ?? 180),
+      fixedEndDate: policy?.fixed_end_date ?? null,
+      category: toLectureCategory(p.lecture_category),
+      categoryId: p.category_id,
+      categoryName: p.category_id ? (catNameById.get(p.category_id) ?? null) : null,
+      courses: coursesByPlan.get(p.plan_id) ?? [],
+      books: booksByPlan.get(p.plan_id) ?? [],
+      instructors: instructorsByPlan.get(p.plan_id) ?? [],
+      lessonCount: lessonCountByPlan.get(p.plan_id) ?? 0,
+      owned: ownedPlanIds.has(p.plan_id),
+      detailImageUrl: p.detail_image_url,
+      detailHtml: p.detail_html,
+      detailSections: toDetailSections(p.detail_sections),
+    };
+  });
 }

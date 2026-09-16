@@ -18,6 +18,7 @@ import {
 } from "~/features/orders/orders.server";
 import { releasePointsForOrders } from "~/features/points/points-order.server";
 import { incrementDiscountUse } from "~/features/subscriptions/discounts.server";
+import { isLectureProductKind } from "~/features/subscriptions/labels";
 import { upsertPaidSubscription } from "~/features/subscriptions/queries.server";
 
 export interface WebhookSyncResult {
@@ -228,7 +229,7 @@ export async function syncPaymentFromToss(
         break;
       }
       const kind = payRow.subscription_plans?.product_kind;
-      if (kind === "course" || kind === "tpass") {
+      if (kind && isLectureProductKind(kind)) {
         result = { outcome: "processed", detail: "입금/결제 완료 → 수강권(enrollments) 지급" };
         break;
       }

@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
+import { isLectureProductKind } from "~/features/subscriptions/labels";
 
 type Client = SupabaseClient<Database>;
 
@@ -315,7 +316,7 @@ export async function getBookDetail(
       .in("plan_id", planIds)
       .eq("is_active", true);
     for (const p of plans ?? []) {
-      if (p.product_kind === "course" || p.product_kind === "tpass") {
+      if (isLectureProductKind(p.product_kind)) {
         relatedCourses.push({
           planId: p.plan_id,
           code: p.code,

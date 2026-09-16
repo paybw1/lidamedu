@@ -51,6 +51,7 @@ import {
   PRODUCT_KIND_LABEL,
   SALE_STATUS_LABEL,
   SALE_STATUS_ORDER,
+  isLectureProductKind,
   type ProductKind,
   type SaleStatus,
   type SubscriptionPlan,
@@ -92,9 +93,9 @@ export async function loader({ request }: Route.LoaderArgs) {
     throw data("Forbidden — manager only", { status: 403 });
   }
   const plans = await listAllPlans();
-  const coursePlanIds = plans
-    .filter((p) => p.productKind === "course" || p.productKind === "tpass")
-    .map((p) => p.planId);
+  // 강의상품(course/tpass) 판정은 labels.ts SSOT 한 번 — planId·code 는 여기서 파생한다.
+  const lecturePlans = plans.filter((p) => isLectureProductKind(p.productKind));
+  const coursePlanIds = lecturePlans.map((p) => p.planId);
   const [policies, courseLinks, editions, bookLinks, books, categoryOptions, saleRecords] =
     await Promise.all([
       getPlanPolicies(coursePlanIds),
@@ -112,9 +113,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   for (const id of coursePlanIds) formatLocked[id] = Boolean(saleRecords[id]?.hasRecords);
   // feat-11-013 P3-a — 현장·혼합 유형의 읽기 전용 「현장 일정」 표. lecture_schedules 는 plan_code(text)로
   //   상품을 가리킨다(정식화는 P5). 요청 클라이언트로 충분하다 — 읽기 RLS 가 staff 에게 미공개 행까지 연다.
-  const courseCodes = plans
-    .filter((p) => p.productKind === "course" || p.productKind === "tpass")
-    .map((p) => p.code);
+  const courseCodes = lecturePlans.map((p) => p.code);
   const schedulesByPlanCode: Record<string, PlanScheduleSummary[]> = {};
   if (courseCodes.length > 0) {
     const { data: scheduleRows } = await client
@@ -211,7 +210,7 @@ export default function AdminPlans({ loaderData }: Route.ComponentProps) {
   const [params] = useSearchParams();
   const focusPlanId = params.get("plan");
   const coursePlans = plans
-    .filter((p) => p.productKind === "course" || p.productKind === "tpass")
+    .filter((p) => isLectureProductKind(p.productKind))
     .map((p) => ({ planId: p.planId, name: p.name }));
 
   return (
@@ -437,7 +436,7 @@ function PlanForm({
   const [productKind, setProductKind] = useState<ProductKind>(
     (plan?.productKind ?? "subject") as ProductKind,
   );
-  const showPolicy = productKind === "course" || productKind === "tpass";
+  const showPolicy = isLectureProductKind(productKind);
   // feat-11-013 P2 — 과정 유형. 라디오는 표시용, 실제 전송은 hidden 한 칸(조건부 블록이 언마운트돼도
   // 값이 실린다). 잠금(신청내역 있음)이면 라디오를 비활성화하고 저장값을 그대로 보낸다.
   const [courseFormat, setCourseFormat] = useState<CourseFormat | null>(

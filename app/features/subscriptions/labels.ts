@@ -46,6 +46,12 @@ export const LECTURE_PRODUCT_KINDS: ReadonlyArray<ProductKind> = [
   "tpass",
 ];
 
+/** 강의 플랫폼 상품(course/tpass)인가 — 판정 SSOT. 인자를 string 으로 두는 이유는 DB `product_kind`
+ *  소비처(서버 쿼리·웹훅)가 전부 string 이기 때문. `=== "course" || === "tpass"` 재하드코딩 금지. */
+export function isLectureProductKind(kind: string): boolean {
+  return (LECTURE_PRODUCT_KINDS as readonly string[]).includes(kind);
+}
+
 // feat-8-028 / A-3 — 판매 단계(5단계). sale_status 가 단일 소유자.
 //   is_active 는 저장 시 (sale_status==='on_sale') 로 자동 미러 → 기존 소비처 무변경.
 export type SaleStatus =
