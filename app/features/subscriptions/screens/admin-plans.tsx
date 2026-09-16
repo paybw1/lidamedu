@@ -99,7 +99,7 @@ const SALE_STATUS_TONE: Record<
   on_sale: "emerald",
   scheduled: "blue",
   paused: "amber",
-  ended: "coral",
+  closed: "coral",
   hidden: "outline",
 };
 

@@ -1656,3 +1656,77 @@ export async function listMyPayments(
     createdAt: r.created_at,
   }));
 }
+
+// ─── 상품 신청내역 (feat-11-013 P2-D5) ───
+// 「주문 또는 수강생 발생」 판정과 목록 집계의 단일 술어 — /admin/lectures 집계·삭제 가드·과정 유형 변경 차단이 공유한다.
+//   주문 축: order_items.plan_id ∧ orders.status ∈ SALE_RECORD_ORDER_STATUSES. 단건·장바구니 결제 모두 PG 호출 전에
+//            attempted 주문과 order_items 를 먼저 만들므로, 행 존재만 세면 결제창을 닫은 시도(attempted/expired/cancelled/failed)까지 잡힌다.
+//   수강생 축: enrollments.plan_id 행 존재 — 상태 무관(수강권이 한 번 나갔으면 유형은 굳는다). 관리자 수동 지급(source=manual)은
+//            주문 없이도 들어오므로 주문 축만으로는 놓친다. 표시용 수강생 수는 active/paused 의 distinct user(패키지는 강의마다 1행).
+export const SALE_RECORD_ORDER_STATUSES = [
+  "paid",
+  "partially_refunded",
+  "refunded",
+  "pending_deposit", // 무통장 입금대기 — 학생이 신청을 마치고 관리자 확인만 남은 상태
+] as const; // 앞 3값 = 매출·정산이 쓰는 PAID_STATUSES(sales-stats·settlement-sources·book-settlements)와 동일
+
+export interface PlanSaleRecords {
+  orderCount: number; // 결제 인식 주문 수(distinct order, item_type='plan')
+  studentCount: number; // 현재 수강생 수(distinct user, active/paused)
+  hasRecords: boolean; // 신청내역 존재 — 과정 유형 변경·삭제 차단 사유
+}
+
+export async function getPlanSaleRecords(
+  planIds: string[],
+): Promise<Record<string, PlanSaleRecords>> {
+  const out: Record<string, PlanSaleRecords> = {};
+  if (planIds.length === 0) return out;
+  const admin = adminClient as SupabaseClient<Database>;
+  const [items, enrolls] = await Promise.all([
+    admin
+      .from("order_items")
+      .select("plan_id, order_id, item_type, orders!inner(status)")
+      .in("plan_id", planIds)
+      .in("orders.status", [...SALE_RECORD_ORDER_STATUSES]),
+    admin
+      .from("enrollments")
+      .select("plan_id, user_id, status")
+      .in("plan_id", planIds),
+  ]);
+  if (items.error) throw items.error;
+  if (enrolls.error) throw enrolls.error;
+  const orderIds = new Map<string, Set<string>>();
+  const anyOrder = new Set<string>();
+  for (const it of items.data ?? []) {
+    if (!it.plan_id) continue;
+    anyOrder.add(it.plan_id);
+    if (it.item_type !== "plan") continue;
+    let set = orderIds.get(it.plan_id);
+    if (!set) {
+      set = new Set();
+      orderIds.set(it.plan_id, set);
+    }
+    set.add(it.order_id);
+  }
+  const students = new Map<string, Set<string>>();
+  const anyEnroll = new Set<string>();
+  for (const e of enrolls.data ?? []) {
+    if (!e.plan_id) continue;
+    anyEnroll.add(e.plan_id);
+    if (e.status !== "active" && e.status !== "paused") continue;
+    let set = students.get(e.plan_id);
+    if (!set) {
+      set = new Set();
+      students.set(e.plan_id, set);
+    }
+    set.add(e.user_id);
+  }
+  for (const id of planIds) {
+    out[id] = {
+      orderCount: orderIds.get(id)?.size ?? 0,
+      studentCount: students.get(id)?.size ?? 0,
+      hasRecords: anyOrder.has(id) || anyEnroll.has(id),
+    };
+  }
+  return out;
+}

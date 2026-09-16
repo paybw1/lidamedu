@@ -13,6 +13,8 @@ import { roleAtLeast } from "~/core/lib/roles";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { listLectureCategoryOptions } from "~/features/lms/queries.server";
+import { SALE_STATUS_LABEL, SALE_STATUS_ORDER } from "~/features/subscriptions/labels";
+import { getPlanSaleRecords } from "~/features/subscriptions/queries.server";
 
 import type { Route } from "./+types/admin-lectures";
 
@@ -20,13 +22,6 @@ export function meta() {
   return [{ title: "강의개설 | 운영관리" }];
 }
 
-const SALE_LABEL: Record<string, string> = {
-  scheduled: "판매 예정",
-  on_sale: "판매중",
-  paused: "판매중지",
-  ended: "판매 종료",
-  hidden: "비노출",
-};
 const PAGE_SIZES = [20, 50, 100] as const;
 
 interface LectureRow {
@@ -46,8 +41,9 @@ interface LectureRow {
   instructorNames: string[];
   firstCourseId: string | null;
   thumbnailUrl: string | null;
-  enrollCount: number;
-  orderCount: number;
+  enrollCount: number; // 현재 수강생(distinct user, active/paused)
+  orderCount: number; // 결제 인식 주문(distinct order)
+  hasSaleRecords: boolean; // 신청내역 — 삭제·과정 유형 변경 차단 사유
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -96,9 +92,11 @@ export async function loader({ request }: Route.LoaderArgs) {
   const rows = plans ?? [];
   const planIds = rows.map((p) => p.plan_id);
 
-  // 병합 데이터 — 카테고리명·연결 강의(제목·썸네일)·수강생·주문 수(삭제 가드 표시용).
+  // 병합 데이터 — 카테고리명·연결 강의(제목·썸네일)·신청내역(수강생·주문 수, 삭제 가드).
+  //   ★수강생·주문은 getPlanSaleRecords 단일 술어(feat-11-013 P2-D5) — 결제창을 닫은 시도(attempted/expired)나
+  //   패키지의 강의별 N행을 세지 않는다.
   const catIds = [...new Set(rows.map((p) => p.category_id).filter(Boolean))] as string[];
-  const [cats, links, enrolls, orderItems, categoryOptions] = await Promise.all([
+  const [cats, links, saleRecords, categoryOptions] = await Promise.all([
     catIds.length
       ? adminClient
           .from("course_categories")
@@ -113,20 +111,7 @@ export async function loader({ request }: Route.LoaderArgs) {
           .in("plan_id", planIds)
           .then((r) => r.data ?? [])
       : Promise.resolve([]),
-    planIds.length
-      ? adminClient
-          .from("enrollments")
-          .select("plan_id")
-          .in("plan_id", planIds)
-          .then((r) => r.data ?? [])
-      : Promise.resolve([]),
-    planIds.length
-      ? adminClient
-          .from("order_items")
-          .select("plan_id")
-          .in("plan_id", planIds)
-          .then((r) => r.data ?? [])
-      : Promise.resolve([]),
+    getPlanSaleRecords(planIds),
     listLectureCategoryOptions(client),
   ]);
   const catName = new Map(cats.map((c) => [c.category_id, c.name]));
@@ -170,14 +155,8 @@ export async function loader({ request }: Route.LoaderArgs) {
       });
     }
   }
-  const enrollCount = new Map<string, number>();
-  for (const e of enrolls)
-    if (e.plan_id) enrollCount.set(e.plan_id, (enrollCount.get(e.plan_id) ?? 0) + 1);
-  const orderCount = new Map<string, number>();
-  for (const o of orderItems)
-    if (o.plan_id) orderCount.set(o.plan_id, (orderCount.get(o.plan_id) ?? 0) + 1);
-
   const lectures: LectureRow[] = rows.map((p) => {
+    const records = saleRecords[p.plan_id];
     const linked = links.filter((l) => l.plan_id === p.plan_id);
     const titles = linked
       .map((l) => courseMeta.get(l.course_id)?.title)
@@ -203,8 +182,9 @@ export async function loader({ request }: Route.LoaderArgs) {
       ],
       firstCourseId: linked[0]?.course_id ?? null,
       thumbnailUrl: thumb,
-      enrollCount: enrollCount.get(p.plan_id) ?? 0,
-      orderCount: orderCount.get(p.plan_id) ?? 0,
+      enrollCount: records?.studentCount ?? 0,
+      orderCount: records?.orderCount ?? 0,
+      hasSaleRecords: records?.hasRecords ?? false,
     };
   });
 
@@ -244,15 +224,11 @@ export async function action({ request }: Route.ActionArgs) {
       { error: "삭제는 최고관리자(원장)만 할 수 있습니다. 비노출·판매중지로 전환해 주세요." },
       { status: 403 },
     );
-  const [{ data: enrolls }, { data: items }] = await Promise.all([
-    adminClient.from("enrollments").select("enrollment_id").eq("plan_id", planId).limit(1),
-    adminClient.from("order_items").select("order_item_id").eq("plan_id", planId).limit(1),
-  ]);
-  if ((enrolls ?? []).length > 0)
-    return data({ error: "수강생이 있는 강의는 삭제할 수 없습니다." }, { status: 400 });
-  if ((items ?? []).length > 0)
+  // 신청내역 술어는 목록 집계와 같은 getPlanSaleRecords — 결제창만 닫은 시도로 삭제가 막히지 않는다.
+  const records = (await getPlanSaleRecords([planId]))[planId];
+  if (records?.hasRecords)
     return data(
-      { error: "주문·결제 이력이 있는 강의는 삭제할 수 없습니다." },
+      { error: "수강생 또는 주문·결제 이력이 있는 강의는 삭제할 수 없습니다. 판매중지·비노출로 전환해 주세요." },
       { status: 400 },
     );
   // subscription_plans 는 soft-delete 컬럼이 없어 판매 이력 없는 상품만 하드 삭제.
@@ -328,9 +304,9 @@ export default function AdminLectures({ loaderData, actionData }: Route.Componen
               className="border-border bg-background h-9 rounded-md border px-2 text-sm"
             >
               <option value="">판매 상태 전체</option>
-              {Object.entries(SALE_LABEL).map(([v, l]) => (
+              {SALE_STATUS_ORDER.map((v) => (
                 <option key={v} value={v}>
-                  {l}
+                  {SALE_STATUS_LABEL[v]}
                 </option>
               ))}
             </select>
@@ -462,7 +438,8 @@ export default function AdminLectures({ loaderData, actionData }: Route.Componen
                             : "text-muted-foreground"
                         }
                       >
-                        {SALE_LABEL[l.saleStatus] ?? l.saleStatus}
+                        {SALE_STATUS_LABEL[l.saleStatus as keyof typeof SALE_STATUS_LABEL] ??
+                          l.saleStatus}
                       </span>
                     </td>
                     <td className="px-3 py-2 text-xs tabular-nums">{l.enrollCount}</td>
@@ -503,7 +480,7 @@ export default function AdminLectures({ loaderData, actionData }: Route.Componen
                         >
                           수강생관리
                         </Link>
-                        {role === "admin" && l.enrollCount === 0 && l.orderCount === 0 ? (
+                        {role === "admin" && !l.hasSaleRecords ? (
                           <Form
                             method="post"
                             onSubmit={(e) => {

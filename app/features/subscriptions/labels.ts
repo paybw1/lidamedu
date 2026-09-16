@@ -52,14 +52,14 @@ export type SaleStatus =
   | "scheduled" // 판매예정 — 준비됐으나 아직 미노출(오픈일 전)
   | "on_sale" // 판매중 — 노출·구매 가능
   | "paused" // 일시중지 — 일시적으로 판매 보류
-  | "ended" // 판매종료 — 더 이상 판매 안 함(기존 수강권 유지)
+  | "closed" // 판매종료 — 더 이상 판매 안 함(기존 수강권 유지). ★DB CHECK 값은 closed — 코드의 ended 는 드리프트였다(2026-09-16 실측)
   | "hidden"; // 숨김 — 카탈로그·요금표에서 감춤
 
 export const SALE_STATUS_LABEL: Record<SaleStatus, string> = {
   scheduled: "판매예정",
   on_sale: "판매중",
   paused: "일시중지",
-  ended: "판매종료",
+  closed: "판매종료",
   hidden: "숨김",
 };
 
@@ -67,7 +67,7 @@ export const SALE_STATUS_ORDER: ReadonlyArray<SaleStatus> = [
   "on_sale",
   "scheduled",
   "paused",
-  "ended",
+  "closed",
   "hidden",
 ];
 

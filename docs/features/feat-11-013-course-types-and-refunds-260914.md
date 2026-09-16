@@ -365,13 +365,13 @@ refund_status_logs 이력 — 변경일시·담당자·전/후 상태·메모 (�
 |---|---|---|---|---|
 | **P0** | ★**지금 틀린 것 4건** — ①환불액을 실결제액 기준으로(`paid_amount_krw`) ②웹훅 `PARTIAL_CANCELED` 가 항목·수강권까지 처리 ③수강기간 두 컬럼 정리(D2) ④재구매 수강권 중복 버그 | M | — | ✅ |
 | **P1** | **스냅샷 기반** — `order_items` 7칸(D5) + 주문 생성 경로가 채우기 + `planned_sessions`(D6) + 쿠폰 항목 배분 **저장**(현재는 매번 재계산) | M | P0 | ✅ |
-| **P2** | **과정 유형 축** — `course_format`(D1) + 백필 + 목록 배지·검색(요청서 §6) + 유형 변경 제한·상품 복사(§5) | M | — | 🔲 |
+| **P2** | **과정 유형 축** — `course_format`(D1) + 백필 + 목록 배지·검색(요청서 §6) + 유형 변경 제한·상품 복사(§5) | M | — | 🟡 |
 | **P3** | **유형별 조건부 등록** — 기존 폼에 유형 선택 + 필요한 항목만 노출(§3). 위저드는 D14 결정에 따름 | M | P2 | 🔲 |
 | **P4** | **패키지 강의별 정책** — `plan_courses` 확장(D3) + `fulfillCourseEnrollments` 강의 단위 루프 재작성 | L | P2 | 🔲 |
 | **P5** | **현장강의** — `lecture_schedules` 정식화 + **정원 서버 권위화**(D4) + 출결 + 혼합(④) 단일 신청 | L | P2 | 🔲 |
-| **P6** | **환불 모델** — `refunds`/`refund_items`/`refund_status_logs`(D7) + 관리자 접수 화면 + 상태머신 12종 + **학생 셀프 2경로 제거 + 정책문서 개정**(D10) + 토스 자동취소 제거(D9) | L | P0·P1 | 🟡 |
-| **P7** | **환불규정 자동계산** — 순수 함수 + §12 예시 A·B 테스트(D11) + 산출근거 표시 + 관리자 금액 조정(§11-14) | M | P1·P6 | 🔲 |
-| **P8** | **후속처리** — 확정 커밋 RPC(D8) + 포인트 회수·쿠폰 복원 + ★**정산 3파일 동반 수정**(1.6) + 환불 알림 kind | M | P6·P7 | 🔲 |
+| **P6** | **환불 모델** — `refunds`/`refund_items`/`refund_status_logs`(D7) + 관리자 접수 화면 + 상태머신 12종 + **학생 셀프 2경로 제거 + 정책문서 개정**(D10) + 토스 자동취소 제거(D9) | L | P0·P1 | ✅ |
+| **P7** | **환불규정 자동계산** — 순수 함수 + §12 예시 A·B 테스트(D11) + 산출근거 표시 + 관리자 금액 조정(§11-14) | M | P1·P6 | ✅ |
+| **P8** | **후속처리** — 확정 커밋 RPC(D8) + 포인트 회수·쿠폰 복원 + ★**정산 3파일 동반 수정**(1.6) + 환불 알림 kind | M | P6·P7 | 🟡 |
 | **P9** | **강의자료 이용이력 로깅** — `material_access_logs` 신설(1.5). ★지금 넣어도 과거는 소급 불가 | S | — | ✅ |
 
 ### 3.1 2026-09-14 실행 기록 — P0 · P1 · P9 완료
@@ -954,6 +954,42 @@ RPC 에 상한(`p_max_krw`)·환불건(`p_refund_item_id`) 인자 추가 — **�
 없는 규칙으로 환불을 계산하게 된다. 2027 오픈 전 별도 과제로 처리해야 한다.
 
 ---
+
+### 3.3 P2 실행 설계 — 과정 유형 축 **[2026-09-16 · 원장 "진행 OK" · DDL 적용은 하드스톱]**
+
+> 조사: 읽기 전용 리더 8갈래(폼·목록·주문관계·하드코딩·카탈로그·현장일정·복사 선례·디자인) + 운영 DB 실측. D14 는 원장 미이의로 **미채택 확정**(위저드 없음, 기존 폼에 유형 선택 + 조건부 노출은 P3).
+
+#### 실측 (운영 `mcgdoplo`, 2026-09-16, 읽기 전용)
+
+| 항목 | 값 |
+|---|---|
+| 강의상품 | **3건**(전부 `course`): `patent_basic_2026`(판매중·강의 1·유료주문 2·수강생 3·현장일정 1·round1) / `co_patent`(판매중지·강의 0·유료주문 1·수강생 0) / `pt_f`(판매중·**강의 0**·주문 0) |
+| `tpass` · `lecture_category='onsite'` | 0건 · 0건 → D1 백필은 3행 전부 `online_always`, onsite 매핑 문제 없음 |
+| `sale_status` CHECK | `scheduled|on_sale|paused|closed|hidden` — **코드(`labels.ts`·`admin-plan` zod·`admin-lectures`)는 `ended`** → 「판매종료」 저장이 CHECK 위반으로 실패하는 드리프트. closed/ended 행 0건 |
+| `code` | UNIQUE 제약 있음(`subscription_plans_code_key`) |
+| 주문 상태 분포 | cancelled 21 · expired 32 · paid 5 · refunded 2 (attempted/expired 는 결제창을 닫은 시도) |
+| 수강권 | active 5 |
+
+★`pt_f` 는 강의 구성이 0인데 판매중 — `cart-resolve.server.ts` 가 plan_courses 0건 강의상품을 409 로 거절하므로 사실상 구매 불가. P2 범위 밖이나 원장께 알린다.
+
+#### 결정
+
+| | 결정 | 근거 |
+|---|---|---|
+| **P2-D1** | `subscription_plans.course_format text` + CHECK 6값 + **불변식 CHECK `(product_kind in ('course','tpass')) = (course_format is not null)`** + partial index. DDL `scripts/sql/20260916_p2_course_format.sql`(+rollback) | 서버 권위 — action 이 빠뜨려도 DB 가 막는다. 백필 3행이라 불변식을 처음부터 건다 |
+| **P2-D2** | SSOT `app/features/lms/lib/course-format.ts` — 6값·라벨(요청서 용어)·설명·`toCourseFormat`·파생 3축(`deliveryOf` 온라인/현장/혼합 · `packagingOf` 단과/패키지 · `cadenceOf` 상시/정규)·술어(`hasOnlineDelivery`·`needsSeat`·`isPackageFormat`) | `app/core/lib/constants.ts` 는 존재하지 않고 관례는 feature lib(`lecture-category.ts` 꼴). ★`["course","tpass"]` 리터럴이 20곳에 산재한 전철을 안 밟는다 — 배지·필터·zod·복사·차단이 이 파일만 소비 |
+| **P2-D3** | `lecture_category` 와 **독립 축**. 학생 카탈로그 탭은 `course_categories` 데이터 행이 결정하고 `lecture_category` 는 매출통계 필터만 남은 동결 라벨 — 파생하지 않는다. 복사본은 `lecture_category = null` | 양방향 파생 불가(round1/2 는 시험 차수), feat-11-008 D2 이관을 되돌리지 않는다 |
+| **P2-D4** | 폼 = `/admin/pricing` PlanForm. `product_kind ∈ {course,tpass}` 일 때 유형 라디오 카드 6종(필수). **변경 차단은 서버**(`/api/admin/plan` action, P2-D5 술어) → 400 + 「신청내역이 있는 상품은 과정 유형을 변경할 수 없습니다. 판매중지 후 복사해 새 유형으로 등록해 주세요」. 폼은 로더가 실어 준 같은 판정으로 select 잠금 + [복사] 안내 | 뮤테이션 단일 경로. ★조건부 블록은 언마운트되면 폼에 안 실리므로 `course_format` 은 hidden 으로 항상 전송(`keptPolicy` 선례 `admin-plan.tsx:294-310`) |
+| **P2-D5** | **신청내역 술어** `hasSaleRecords(planId)` = `order_items.plan_id` ∧ `orders.status ∈ PAID_STATUSES ∪ {pending_deposit}` **또는** `enrollments.plan_id` 존재(상태 무관 — 수강권이 한 번 나갔으면 유형은 굳는다). 「수강생 수」= `enrollments` **distinct user_id**, status ∈ {active, paused}. 「주문 수」= distinct order_id, 같은 상태 집합, `item_type='plan'` | 현행 `/admin/lectures:116-129` 는 상태 무관 행 수라 attempted/expired 까지 세고 패키지는 N행 — 같은 술어로 **삭제 가드(247-257)도 교정**(과잉 차단 해소). PAID_STATUSES 는 매출·정산 3곳 공용 SSOT |
+| **P2-D6** | 목록 = `/admin/lectures`(feat-11-008 D1 「판매상품 기준 통합 목록」). 유형 배지 + 3축 표기, 필터 = 유형(6)·온라인/현장/혼합·단과/패키지·상시/정규·판매상태. 구분 열의 `'온라인'` 하드코딩(443) 제거. **기간 열 = `plan_policies` 권위(D2)** — `fixed_end_date` → 「YYYY-MM-DD 까지」, `duration_days` → 「N일」(학생 카탈로그 표기와 동일). 판매금액 = 판매가(요청서 §6 「현재 판매가」). `SALE_LABEL` 로컬 상수 제거 → `labels.ts` | `/admin/pricing` 은 전 상품 무필터 폼 화면, `/admin/lms/courses` 는 콘텐츠(에디션) 목록 |
+| **P2-D7** | **복사** = `/api/admin/plan` `intent=copy`: 입력 `sourcePlanId`·새 `code`(unique)·`name`(기본 「{원본} (복사)」)·`courseFormat`(새 유형 선택)·`copyPrice`·`copyPolicy`. 복사 = 기본정보(name·description·detail_kind/detail_*·category_id·subject_codes·features·display_order·planned_sessions·duration_days·product_kind) + 강의 구성(`plan_courses`·`plan_book_links`). **미복사** = 주문·수강권·결제·연장이력·정산 배분규칙(`instructor_share_rules`)·맛보기 영상 연결·`lecture_category`(null)·`available_from`(null). 복사본 상태 `sale_status='hidden'`·`is_active=false`; 가격 미복사 시 `price_krw=0`. 감사 로그 `plan.copy`. UI = `/admin/lectures` 행 [복사] Dialog → 성공 시 `/admin/pricing?plan={new}` | 요청서 §5 「기본정보·강의 구성 복사, 가격·정책 선택, 주문·수강생·결제 절대 미복사」. 판매중지 = `is_active=false + sale_status paused/closed` 두 칸(2026-09-14 선례) |
+| **P2-D8** | `sale_status` 드리프트 교정: 코드 `ended` → **`closed`**(`labels.ts`·`admin-plan.tsx` zod·`admin-lectures.tsx`) | DB CHECK 와 `docs/db-schema.md` 가 `closed`. 행 0건이라 데이터 이관 없음 |
+| **P2-D9** | 학생 카탈로그: `LectureProduct.courseFormat` 추가 + 카드·상세 배지(라벨 동일, 배지 행 `flex-wrap`). **판매·이행은 무변경** | 이행 분기는 P5 |
+
+**범위 밖(명시)**: 이행 분기(P5 — `fulfillCourseEnrollments` offline 스킵·`cart-resolve` plan_courses≥1 게이트 면제·좌석), 연장정책(`extension-policy.ts:52/161` 이 `product_kind==='course'` 만 봄)·환불 계산의 유형 소비(P4/P5/P7 후속), 유형별 조건부 입력(P3), 위저드(D14 미채택).
+
+**게이트**: ① **DDL 적용 = 하드스톱(원장 승인)** → `run-prod-sql.mjs` → `npm run db:typegen` ② typecheck·build·vitest ③ 운영 리허설 3건 — 유료주문 있는 `patent_basic_2026` 유형 변경 → 400 / 주문 없는 `pt_f` → 변경 성공 / 복사 → 주문·수강권 0 확인 ④ 문서·SPEC 갱신.
+
 
 ## 4. 게이트 (Phase 마다)
 

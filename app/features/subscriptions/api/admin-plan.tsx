@@ -88,7 +88,7 @@ const schema = z.object({
   productKind: z.enum(["subject", "bundle", "membership", "course", "tpass"]),
   availableFrom: z.string().datetime().nullable(),
   displayOrder: z.coerce.number().int().min(0).max(9999),
-  saleStatus: z.enum(["scheduled", "on_sale", "paused", "ended", "hidden"]),
+  saleStatus: z.enum(["scheduled", "on_sale", "paused", "closed", "hidden"]),
   // 강의 카탈로그 분류(강의 플랫폼 course/tpass 상품에만 의미). 미분류=null.
   lectureCategory: z
     .enum(["round1", "round2", "package", "onsite"])
