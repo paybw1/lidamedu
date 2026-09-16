@@ -999,7 +999,10 @@ RPC 에 상한(`p_max_krw`)·환불건(`p_refund_item_id`) 인자 추가 — **�
 - **목록** `/admin/lectures`: 유형 배지 + 3축 표기, 필터 fmt/deliv/pack/cad(축은 유형 집합으로 환산해 `.in()`), 수강기간 열(`plan_policies` 권위), 수강생/주문 열(P2-D5 술어), `SALE_LABEL` 로컬 상수 제거, 삭제 가드 교정.
 - **학생 카탈로그·상세**: 유형 배지(라벨 동일), 카드 배지 행 `flex-wrap`.
 - **`sale_status` 드리프트 교정**(P2-D8): labels·zod·톤맵 `ended`→`closed`.
-- 검증: typecheck · build · vitest 562. 운영 리허설 3건은 배포 후 관리자 화면에서 실행(아래 기록).
+- 검증: typecheck · build · vitest 562.
+- **운영 리허설 3/3 통과(2026-09-16, 배포 7810d073 뒤 관리자 화면)**: ① `patent_basic_2026`(유료주문 2·수강생 3) 폼 라디오 6개 잠금 + 잠금 우회 제출 → 「신청내역이 있는 상품은 과정 유형을 변경할 수 없습니다…」 거절 ② `pt_f`(기록 0) 온라인 상시→정규 저장 성공 → 되돌림(감사로그 plan.update 2건) ③ `patent_basic_2026` [복사] → 새 상품 hidden·비활성, 강의 1·정책 1(원본과 동일)·교재 6 복사, 주문·수강권 0, 원본 불변, 감사로그 plan.copy → 리허설 복사본은 삭제(cascade 정상).
+- **2차 불변식 CHECK 적용 완료**(`20260916_p2b_course_format_kind_check.sql`, 위반 0건) — 이제 강의상품은 DB 가 유형 필수를 보장한다.
+- (참고) `/api/admin/plan` 은 리소스 라우트라 `data({error},{status:400})` 가 fetch 로는 200 본문으로 온다 — 기존 검증 오류와 같은 방식이며 폼은 `error` 본문으로 표시한다.
 
 **게이트**: ① **DDL 적용 = 하드스톱(원장 승인)** → `run-prod-sql.mjs` → `npm run db:typegen` ② typecheck·build·vitest ③ 운영 리허설 3건 — 유료주문 있는 `patent_basic_2026` 유형 변경 → 400 / 주문 없는 `pt_f` → 변경 성공 / 복사 → 주문·수강권 0 확인 ④ 문서·SPEC 갱신.
 
