@@ -116,7 +116,7 @@ export default function InstructorDetailScreen({ loaderData }: Route.ComponentPr
                   color: "var(--i-heroink)",
                   maxWidth: "32ch",
                   margin: 0,
-                  borderLeft: "2px solid var(--i-gilts)",
+                  borderLeft: "2px solid var(--i-herosoft)",
                   paddingLeft: 18,
                 }}
               >
@@ -303,7 +303,7 @@ export default function InstructorDetailScreen({ loaderData }: Route.ComponentPr
                   style={{
                     background: "var(--i-surface)",
                     border: "1px solid var(--i-line)",
-                    borderLeft: "3px solid var(--i-gilt)",
+                    borderLeft: "3px solid var(--i-blue)",
                     borderRadius: 8,
                     padding: "18px 22px",
                   }}

@@ -1,5 +1,5 @@
 // 강사 모집 안내 — /about/instructors/recruit. 공개. 강사소개 하단 "신규강사 채용" 대상.
-//   콘텐츠 출처: source/강사모집.html. 강사소개와 동일한 .instr 테마(네이비·금박) 재사용.
+//   콘텐츠 출처: source/강사모집.html. 강사소개와 동일한 .instr 테마(로고 청, C8) 재사용.
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 
@@ -91,7 +91,7 @@ export default function InstructorRecruit() {
             }}
           >
             변리사 시험의 기준을 함께 만들어갈{" "}
-            <b style={{ color: "var(--i-gilts)" }}>전문 강사진</b>을 모집합니다.
+            <b style={{ color: "var(--i-heroink)" }}>전문 강사진</b>을 모집합니다.
           </p>
         </div>
       </header>
@@ -176,14 +176,14 @@ export default function InstructorRecruit() {
 function RecruitStyle() {
   return (
     <style>{`
-.instr .rc-card{background:var(--i-surface);border:1px solid var(--i-line);border-radius:16px;overflow:hidden;margin-top:20px;box-shadow:0 12px 34px -22px rgba(34,64,110,.34)}
-.instr .rc-head{display:flex;align-items:center;gap:12px;padding:16px 22px;border-bottom:1px solid var(--i-line);background:linear-gradient(90deg,color-mix(in srgb,var(--i-gilt) 9%,transparent),transparent)}
-.instr .rc-no{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:9px;background:var(--i-navy);color:var(--i-gilts);font-weight:800;font-size:13px;font-variant-numeric:tabular-nums}
+.instr .rc-card{background:var(--i-surface);border:1px solid var(--i-line);border-radius:16px;overflow:hidden;margin-top:20px;box-shadow:0 12px 34px -22px rgba(8,104,184,.34)}
+.instr .rc-head{display:flex;align-items:center;gap:12px;padding:16px 22px;border-bottom:1px solid var(--i-line);background:linear-gradient(90deg,color-mix(in srgb,var(--i-blue) 9%,transparent),transparent)}
+.instr .rc-no{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:9px;background:var(--i-navy);color:var(--i-heroink);font-weight:800;font-size:13px;font-variant-numeric:tabular-nums}
 .instr .rc-head h2{font-size:19px;font-weight:700;margin:0}
 .instr .rc-body{padding:22px}
-.instr .rc-pill{padding:10px 16px;border-radius:999px;background:color-mix(in srgb,var(--i-gilt) 8%,var(--i-surface));border:1px solid color-mix(in srgb,var(--i-gilt) 30%,transparent);font-size:14px;font-weight:700;color:var(--i-blueink)}
-.instr .rc-note{border-radius:14px;padding:18px;background:color-mix(in srgb,var(--i-gilt) 7%,var(--i-surface));border:1px solid color-mix(in srgb,var(--i-gilt) 22%,transparent);font-size:15px;color:var(--i-soft);line-height:1.7}
-.instr .rc-note-h{font-size:14px;font-weight:800;color:var(--i-gilt);margin-bottom:8px}
+.instr .rc-pill{padding:10px 16px;border-radius:999px;background:color-mix(in srgb,var(--i-blue) 8%,var(--i-surface));border:1px solid color-mix(in srgb,var(--i-blue) 30%,transparent);font-size:14px;font-weight:700;color:var(--i-blueink)}
+.instr .rc-note{border-radius:14px;padding:18px;background:color-mix(in srgb,var(--i-blue) 7%,var(--i-surface));border:1px solid color-mix(in srgb,var(--i-blue) 22%,transparent);font-size:15px;color:var(--i-soft);line-height:1.7}
+.instr .rc-note-h{font-size:14px;font-weight:800;color:var(--i-blueink);margin-bottom:8px}
 .instr .rc-table{border:1px solid var(--i-line);border-radius:14px;overflow:hidden}
 .instr .rc-tr{display:flex;border-top:1px solid var(--i-line)}
 .instr .rc-tr:first-child{border-top:0}
