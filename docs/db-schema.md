@@ -1399,9 +1399,13 @@ create table public.popup_notices (
 - **lesson_node_links**: 회차↔체계도 노드 다대다(약점 단원→재수강 루프. M2엔 테이블만).
 - **subscription_plans 확장**: product_kind CHECK += 'course'|'tpass'('book'은 예약), **sale_status**('scheduled'|'on_sale'|'paused'|'closed'|'hidden') — 백필: is_active=true→on_sale(6), false→hidden(3).
 - **subscription_plans.course_format**(2026-09-16, feat-11-013 P2-D1): text CHECK `online_always|online_term|offline|blended|package_term|package_always`, NULL 허용(학습 구독). 강의상품(course/tpass)만 값을 가짐 — 불변식 CHECK `(product_kind in (course,tpass)) = (course_format is not null)` 는 P2 코드 배포 뒤 2차 적용(`20260916_p2b_…`). 백필 course→online_always·tpass→package_always. partial index. ★코드의 `sale_status` 'ended' 는 드리프트였고 DB 값 `closed` 로 통일함.
+- **subscription_plans.available_until**(2026-09-17, feat-11-013 P3-b): timestamptz NULL 허용 — 판매 종료일(`available_from` 의 짝). CHECK `available_until > available_from`(둘 다 있을 때). 경과 시 카탈로그 숨김·`cart-resolve`/`create-order`/`billing-confirm` 거절. 정규 유형(online_term·package_term)만 값을 갖고 그 밖은 action 이 null 로 강제.
 - **plan_courses**: 상품↔강의(단과 1행/패키지 N행/T-PASS 명시 연결 — 에디션 발행 시 연결 제안 필수).
 - **plan_books**: 상품↔사용 교재(도서) 연결(relation_kind required|recommended, sort_order). 공개 읽기·staff 쓰기. 수강신청 카탈로그 교재 크로스셀에 사용(판매중 listed 도서만 노출).
 - **plan_policies**: 상품 정책 1:1 명시 컬럼 — duration_days XOR fixed_end_date(CHECK 둘 중 하나), multiplier(null=무제한), pause_*(허용·총일수·횟수·1회 min/max), allow_pc/mobile/download, max_devices_pc/mobile, extension_allowed/extension_plan_ids.
+  - **starts_on date**(2026-09-17, feat-11-013 P3-b): 수강 시작일(개강). NULL=지급 즉시. 미래면 수강권 `starts_at`/`usage_starts_at` 을 이 날짜 00:00 KST 로.
+  - **mid_entry_mode text**(P3-b): CHECK `until_end|fixed_days|closed`, NULL=until_end. 시작일 경과 후 결제 처리 — until_end=종료일까지 · fixed_days=신청일+N일(상한 없음) · closed=`cart-resolve` 409 거절.
+  - **mid_entry_days int**(P3-b): CHECK `> 0`, CHECK `mid_entry_mode <> 'fixed_days' OR mid_entry_days IS NOT NULL`. fixed_days 일 때 N. 이 경우 `order_items.duration_days_snapshot` = N.
 - **enrollments**: 영상 수강권(user_subscriptions 와 별개 축 — course 단위). course_id(에디션 고정), plan_id(정책 참조), source('order'|'manual'|'migration'|'event'), order_item_id(M4 FK 승격 예정), granted_by/admin_note, starts_at/expires_at(저장 — 연장·정지로 변동), **multiplier_snapshot + base_duration_snapshot_seconds(지급 시점 고정 — ★자동 재계산 금지, 조정은 adjust 이벤트로)**, status('active'|'paused'|'expired'|'revoked'), blocked_lesson_ids uuid[](회차 재생 차단).
 - **enrollment_pauses**: 일시정지 이력(신청자·기간·is_admin_exception). 잔여 일수/횟수=정책−이력 합(파생).
 - **enrollment_admin_logs**: 지급·연장·회수·차단·모수조정 감사(before/after jsonb, reason 필수).

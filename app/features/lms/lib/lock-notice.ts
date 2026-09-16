@@ -12,6 +12,7 @@
 export type PlaybackDenyReason =
   | "login_required"
   | "no_enrollment"
+  | "not_started" // 수강 시작일(개강) 전 — feat-11-013 P3-b 정규 유형의 개강 전 결제
   | "expired"
   | "paused"
   | "lesson_blocked"
@@ -48,6 +49,11 @@ const NOTICE: Record<PlaybackDenyReason, LockNotice> = {
     message: "수강권이 없습니다. 수강 신청 후 이용해 주세요.",
     short: "수강권 없음",
     action: { label: "수강신청", to: "/lecture/catalog" },
+  },
+  not_started: {
+    message: "개강 전입니다. 수강 시작일부터 시청할 수 있습니다.",
+    short: "개강 전",
+    action: { label: "내 강의실", to: MY_ROOM },
   },
   expired: {
     message: "수강 기간이 만료되었습니다. 연장은 내 강의실에서 신청할 수 있습니다.",

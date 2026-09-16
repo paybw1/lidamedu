@@ -10465,6 +10465,8 @@ export type Database = {
           fixed_end_date: string | null
           max_devices_mobile: number
           max_devices_pc: number
+          mid_entry_days: number | null
+          mid_entry_mode: string | null
           multiplier: number | null
           pause_allowed: boolean
           pause_max_count: number
@@ -10472,6 +10474,7 @@ export type Database = {
           pause_min_days: number
           pause_total_days: number
           plan_id: string
+          starts_on: string | null
           updated_at: string
         }
         Insert: {
@@ -10488,6 +10491,8 @@ export type Database = {
           fixed_end_date?: string | null
           max_devices_mobile?: number
           max_devices_pc?: number
+          mid_entry_days?: number | null
+          mid_entry_mode?: string | null
           multiplier?: number | null
           pause_allowed?: boolean
           pause_max_count?: number
@@ -10495,6 +10500,7 @@ export type Database = {
           pause_min_days?: number
           pause_total_days?: number
           plan_id: string
+          starts_on?: string | null
           updated_at?: string
         }
         Update: {
@@ -10511,6 +10517,8 @@ export type Database = {
           fixed_end_date?: string | null
           max_devices_mobile?: number
           max_devices_pc?: number
+          mid_entry_days?: number | null
+          mid_entry_mode?: string | null
           multiplier?: number | null
           pause_allowed?: boolean
           pause_max_count?: number
@@ -10518,6 +10526,7 @@ export type Database = {
           pause_min_days?: number
           pause_total_days?: number
           plan_id?: string
+          starts_on?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -14372,6 +14381,7 @@ export type Database = {
       subscription_plans: {
         Row: {
           available_from: string | null
+          available_until: string | null
           category_id: string | null
           code: string
           course_format: string | null
@@ -14397,6 +14407,7 @@ export type Database = {
         }
         Insert: {
           available_from?: string | null
+          available_until?: string | null
           category_id?: string | null
           code: string
           course_format?: string | null
@@ -14422,6 +14433,7 @@ export type Database = {
         }
         Update: {
           available_from?: string | null
+          available_until?: string | null
           category_id?: string | null
           code?: string
           course_format?: string | null

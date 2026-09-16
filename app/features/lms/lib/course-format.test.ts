@@ -64,6 +64,7 @@ describe("courseFormatFormRules (feat-11-013 P3-a — 유형별 조건부 노출
       showCourses: true,
       plannedSessions: "required",
       showSchedules: false,
+      termFields: false,
       coursesLabel: "연결 강의(에디션)",
     },
     online_term: {
@@ -72,6 +73,7 @@ describe("courseFormatFormRules (feat-11-013 P3-a — 유형별 조건부 노출
       showCourses: true,
       plannedSessions: "hidden",
       showSchedules: false,
+      termFields: true,
       coursesLabel: "연결 강의(에디션)",
     },
     offline: {
@@ -80,6 +82,7 @@ describe("courseFormatFormRules (feat-11-013 P3-a — 유형별 조건부 노출
       showCourses: false,
       plannedSessions: "hidden",
       showSchedules: true,
+      termFields: false,
       coursesLabel: "연결 강의(에디션)",
     },
     blended: {
@@ -88,6 +91,7 @@ describe("courseFormatFormRules (feat-11-013 P3-a — 유형별 조건부 노출
       showCourses: true,
       plannedSessions: "optional",
       showSchedules: true,
+      termFields: false,
       coursesLabel: "연결 강의(에디션)",
     },
     package_term: {
@@ -96,6 +100,7 @@ describe("courseFormatFormRules (feat-11-013 P3-a — 유형별 조건부 노출
       showCourses: true,
       plannedSessions: "hidden",
       showSchedules: false,
+      termFields: true,
       coursesLabel: "패키지 구성 강의(다중 선택)",
     },
     package_always: {
@@ -104,6 +109,7 @@ describe("courseFormatFormRules (feat-11-013 P3-a — 유형별 조건부 노출
       showCourses: true,
       plannedSessions: "optional",
       showSchedules: false,
+      termFields: false,
       coursesLabel: "패키지 구성 강의(다중 선택)",
     },
   };
@@ -123,6 +129,17 @@ describe("courseFormatFormRules (feat-11-013 P3-a — 유형별 조건부 노출
       "offline",
       "package_term",
     ]);
+  });
+
+  it("정규 기간 칸(P3-b)은 종료일 고정 유형(온라인 정규·정규 패키지)에서만 — 현장·혼합은 cadence 가 term 이어도 닫힌다", () => {
+    expect(COURSE_FORMATS.filter((f) => courseFormatFormRules(f).termFields)).toEqual([
+      "online_term",
+      "package_term",
+    ]);
+    for (const f of COURSE_FORMATS) {
+      const r = courseFormatFormRules(f);
+      expect(r.termFields).toBe(r.durationMode === "fixed");
+    }
   });
 
   it("정책·연결 강의 블록은 온라인 수강권이 나가는 유형에서만, 현장 일정은 좌석이 필요한 유형에서만", () => {

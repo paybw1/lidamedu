@@ -4,12 +4,15 @@
 
 import {
   type CourseFormat,
+  type MidEntryMode,
   hasOnlineDelivery,
   toCourseFormat,
+  toMidEntryMode,
 } from "~/features/lms/lib/course-format";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
+import { isExpiredInstant } from "~/core/lib/kst";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import {
   type DetailSections,
@@ -19,6 +22,10 @@ import {
   type LectureCategory,
   toLectureCategory,
 } from "~/features/lms/lib/lecture-category";
+import {
+  computeTermWindow,
+  isMidEntryClosed,
+} from "~/features/orders/lib/term-window";
 
 type Client = SupabaseClient<Database>;
 
@@ -818,6 +825,11 @@ export interface LectureProductBook {
   coverUrl: string | null;
   soldOut: boolean;
 }
+/** 수강 기간 표시 근거 — LectureProduct.term. */
+export type LectureTerm =
+  | { kind: "days"; days: number }
+  | { kind: "fixed_end"; date: string };
+
 export interface LectureProduct {
   planId: string;
   code: string;
@@ -837,6 +849,31 @@ export interface LectureProduct {
   durationDays: number;
   /** 고정 종료일(YYYY-MM-DD). null=기간제(durationDays 를 쓴다). */
   fixedEndDate: string | null;
+  /**
+   * ★수강 기간 표시의 **단일 근거**(feat-11-013 P3-b). 화면은 이 필드만 보고 그린다 —
+   *   `days` → 「신청일부터 N일 수강」, `fixed_end` → 「YYYY-MM-DD 까지 수강」, null → 표시 없음(현장).
+   *   고정 종료일 상품은 이행(orders.server → computeTermWindow)과 **같은 함수**로 지금 결제하면
+   *   어느 규칙이 적용되는지(endsBasis)를 정한다: 개강 후·fixed_days 면 「신청일부터 N일」로 바뀐다.
+   *   종전에는 화면이 fixedEndDate 만 보고 「~까지」를 찍어, 신청일+N일로 지급되는 학생이
+   *   두 달 짧은(또는 긴) 수강권을 안내와 다르게 받았다.
+   */
+  term: LectureTerm | null;
+  // ── feat-11-013 P3-b — 정규 유형 기간 정보(값이 있을 때만 화면에 한 줄). ──
+  /** 수강 시작일(개강, YYYY-MM-DD). null=지급 즉시. */
+  startsOn: string | null;
+  /** 중간 신청 정책. null=until_end(현행). closed 면 「개강 후 중간 신청 불가」 안내. */
+  midEntryMode: MidEntryMode | null;
+  /** fixed_days 의 N. 개강 전 표시에서 「개강 후 신청 시 신청일부터 N일」 보조 문구용. */
+  midEntryDays: number | null;
+  /**
+   * 중간 신청 불허(closed) 상품이 개강을 지났는가 — 구매 버튼 비활성(FE 안내는 보조,
+   * 권위는 결제 경로의 assertPlanSellable 409).
+   */
+  midEntryClosed: boolean;
+  /** 판매 종료일(ISO). null=종료 없음. */
+  availableUntil: string | null;
+  /** 판매 종료일 경과 — 카탈로그 목록은 제외되고, 상세는 구매 버튼을 「판매 종료」로 비활성. */
+  saleEnded: boolean;
   category: LectureCategory | null;
   // feat-11-008 P3 — 카탈로그 탭 SSOT 는 course_categories 테이블(categoryId 기준).
   // 구 enum(category)은 매출 통계 등 레거시 축 호환용으로 병존.
@@ -911,17 +948,28 @@ export async function listActiveLectureCategories(
 export async function listSellableLectureProducts(
   client: Client,
   userId: string | null,
+  options: {
+    /**
+     * 판매 종료일(available_until)이 지난 상품도 포함한다(feat-11-013 P3-b).
+     * 카탈로그·사이트맵은 기본(false)으로 숨기고, 상세 페이지는 true 로 남겨 「판매 종료」를 보여 준다
+     * (상세가 같은 목록에서 code 로 찾으므로 여기서 빼면 404 가 난다).
+     */
+    includeSaleEnded?: boolean;
+  } = {},
 ): Promise<LectureProduct[]> {
   const { data: plans, error } = await client
     .from("subscription_plans")
     .select(
-      "plan_id, code, name, description, price_krw, list_price_krw, duration_days, product_kind, lecture_category, course_format, category_id, detail_image_url, detail_html, detail_sections",
+      "plan_id, code, name, description, price_krw, list_price_krw, duration_days, product_kind, lecture_category, course_format, category_id, detail_image_url, detail_html, detail_sections, available_until",
     )
     .in("product_kind", ["course", "tpass"])
     .eq("is_active", true)
     .order("display_order", { ascending: true });
   if (error) throw error;
-  const planRows = plans ?? [];
+  const nowMs = Date.now();
+  const planRows = (plans ?? []).filter(
+    (p) => options.includeSaleEnded || !isExpiredInstant(p.available_until, nowMs),
+  );
   if (planRows.length === 0) return [];
 
   // 카테고리명 해석(feat-11-008 P3) — 하위 카테고리 연결 상품도 이름 표시.
@@ -944,7 +992,7 @@ export async function listSellableLectureProducts(
   //   수강권이 나갈 수 있었다.** 권위는 plan_policies 다 — 그것이 실제로 쓰이는 값이다.
   const { data: policyRows } = await client
     .from("plan_policies")
-    .select("plan_id, duration_days, fixed_end_date")
+    .select("plan_id, duration_days, fixed_end_date, starts_on, mid_entry_mode, mid_entry_days")
     .in("plan_id", planIds);
   const policyByPlan = new Map(
     (policyRows ?? []).map((r) => [r.plan_id, r] as const),
@@ -1153,6 +1201,30 @@ export async function listSellableLectureProducts(
     //   (feat-11-013 트랩 2: 되돌리면 살아나도록 지우지 않는다)이 「N일 수강」으로 새지 않게 표시에서 무시한다.
     const offline = courseFormat != null && !hasOnlineDelivery(courseFormat);
     const policy = offline ? undefined : policyByPlan.get(p.plan_id);
+    const durationDays =
+      offline || policy?.fixed_end_date
+        ? 0
+        : (policy?.duration_days ?? p.duration_days ?? 180);
+    const midEntryMode = policy?.fixed_end_date ? toMidEntryMode(policy.mid_entry_mode) : null;
+    const startsOn = policy?.fixed_end_date ? (policy.starts_on ?? null) : null;
+    const midEntryDays = policy?.fixed_end_date ? (policy.mid_entry_days ?? null) : null;
+    // 표시 근거 — 이행과 같은 함수(computeTermWindow)로 「지금 결제하면」의 종료 규칙을 정한다.
+    let term: LectureTerm | null = null;
+    if (policy?.fixed_end_date) {
+      const w = computeTermWindow({
+        nowMs,
+        startsOn,
+        fixedEndDate: policy.fixed_end_date,
+        midEntryMode,
+        midEntryDays,
+      });
+      term =
+        w.endsBasis === "mid_entry_days" && midEntryDays != null
+          ? { kind: "days", days: midEntryDays }
+          : { kind: "fixed_end", date: policy.fixed_end_date };
+    } else if (durationDays > 0) {
+      term = { kind: "days", days: durationDays };
+    }
     return {
       planId: p.plan_id,
       code: p.code,
@@ -1164,11 +1236,16 @@ export async function listSellableLectureProducts(
       courseFormat,
       // ★권위는 plan_policies — 정책 행이 없으면 이행 쪽 기본값(180)과 같은 값을 쓴다.
       //   고정 종료일 상품은 「N일」이 의미가 없으므로 0 으로 내려 화면이 숨기게 한다. 현장은 0.
-      durationDays:
-        offline || policy?.fixed_end_date
-          ? 0
-          : (policy?.duration_days ?? p.duration_days ?? 180),
+      durationDays,
       fixedEndDate: policy?.fixed_end_date ?? null,
+      term,
+      // P3-b — 정규 기간 정보는 고정 종료일 상품에서만 의미가 있다(서버 저장 규칙과 같은 층위).
+      startsOn,
+      midEntryMode,
+      midEntryDays,
+      midEntryClosed: isMidEntryClosed({ nowMs, startsOn, midEntryMode }),
+      availableUntil: p.available_until,
+      saleEnded: isExpiredInstant(p.available_until, nowMs),
       category: toLectureCategory(p.lecture_category),
       categoryId: p.category_id,
       categoryName: p.category_id ? (catNameById.get(p.category_id) ?? null) : null,

@@ -16,6 +16,7 @@ function input(over: Partial<RefundCalcInput> = {}): RefundCalcInput {
     plannedSessions: null,
     usedSessions: 0,
     withinFirstWeek: false,
+    notStarted: false,
     noPaidUsage: false,
     hasOwnPolicy: false,
     ...over,
@@ -98,6 +99,25 @@ describe("판정 우선순위 (요청서 11-2)", () => {
     expect(r.verdict).toBe("full");
     expect(r.appliedDeductionKrw).toBe(0);
     expect(r.refundableKrw).toBe(270_000); // 300,000 − 30,000
+  });
+
+  it("★이용 시작 전 접수 + 이용이력 없음 → 전액환불, 사유는 「이용 시작 전」(feat-11-013 P3-b)", () => {
+    // 개강 전 결제(usage_starts_at = 개강일 미래)·연장 재구매(이용 시작 = 기존 만료일)는
+    // elapsedDays 0 이라 종전에는 D·T 없는 정규 상품이 manual 로 떨어졌다.
+    const r = computeRefund(
+      input({ withinFirstWeek: true, notStarted: true, noPaidUsage: true, durationDays: null }),
+    );
+    expect(r.verdict).toBe("full");
+    expect(r.verdictReason).toContain("이용 시작 전");
+    expect(r.refundableKrw).toBe(100_000);
+  });
+
+  it("이용 시작 전이라도 유료 이용이력이 있으면 전액환불이 아니다(D·T 없으면 manual, 사유에 시작 전 표기)", () => {
+    const r = computeRefund(
+      input({ withinFirstWeek: true, notStarted: true, noPaidUsage: false, durationDays: null }),
+    );
+    expect(r.verdict).toBe("manual");
+    expect(r.verdictReason).toContain("이용 시작 전 접수");
   });
 
   it("7일 이내라도 유료 이용이력이 있으면 계산식으로 간다", () => {

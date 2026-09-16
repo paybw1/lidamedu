@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
 import { createSinglePlanOrder } from "~/features/orders/orders.server";
+import { assertPlanSellable } from "~/features/orders/plan-sellability.server";
 import { resolveCheckoutDiscount } from "~/features/subscriptions/discounts.server";
 import {
   cancelPendingCheckout,
@@ -50,11 +51,10 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ error: "상품을 찾을 수 없습니다" }, { status: 404 });
   if (plan.priceKrw <= 0)
     return data({ error: "유료 상품만 결제할 수 있습니다" }, { status: 400 });
-  if (plan.availableFrom && new Date(plan.availableFrom).getTime() > Date.now())
-    return data(
-      { error: "아직 오픈 전 상품입니다" },
-      { status: 400 },
-    );
+  // 판매 가능 판정(오픈 전·판매 종료·강의 상품의 중간 신청 불허·구성 0강의) — 장바구니와 같은 함수.
+  //   ★이 경로는 강의 카탈로그 「바로 구매」의 정규 경로다(구독 요금표와 공용).
+  const sellable = await assertPlanSellable(plan);
+  if (!sellable.ok) return data({ error: sellable.error }, { status: sellable.status });
 
   // 재시도 정리 — 같은 상품(+과목)의 이전 미완료(pending) 결제를 취소 처리한 뒤 새로 만든다.
   // 토스 결제창을 열었다 닫으면 pending 이 남는데, 예전에는 이를 "이미 진행 중인 결제"로 차단해

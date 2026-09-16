@@ -165,7 +165,7 @@ export async function computeRefundForRefund(refundId: string): Promise<RefundIt
     // 관리자가 늦게 처리해도 접수일 이후는 세지 않는다 — 기준일이 접수일이라 자동으로 그렇게 된다.
     const startDate = kstDate(usageStartsAt);
     const pauses = enrollmentIds.length ? await pausesFor(enrollmentIds) : [];
-    const { usedDays, pausedDays, elapsedDays } = usedDaysOf({
+    const { usedDays, pausedDays, elapsedDays, notStarted } = usedDaysOf({
       usageStartDate: startDate,
       basisDate,
       pauses,
@@ -205,7 +205,13 @@ export async function computeRefundForRefund(refundId: string): Promise<RefundIt
       usedSessions,
       // ★11-3 의 「수강 시작일부터 7일 이내」는 **달력**이다. 정지 제외분(usedDays)으로
       //   판정하면 오래된 건도 일시정지만 걸면 7일 안으로 들어와 전액환불 창이 무한정 열린다.
-      withinFirstWeek: elapsedDays > 0 && elapsedDays <= FREE_REFUND_DAYS,
+      // ★「이용 시작 전」(notStarted)도 창 안이다(feat-11-013 P3-b). 정규 유형의 개강 전 결제·
+      //   연장 재구매는 접수 시점에 elapsedDays 가 0 이라 `elapsedDays > 0` 만 보면 창 밖으로
+      //   떨어져 until_end 상품(D·T 모두 null)이 manual 로, fixed_days 상품이 공제 0 의
+      //   partial 로 찍혔다. 시작 전 = 달력상 0일 ≤ 7일이므로 전액환불 창에 넣는다.
+      //   (noPaidUsage 는 그대로 AND — 개강 전 시청은 재생·자료 게이트가 starts_at 으로 막는다.)
+      withinFirstWeek: notStarted || (elapsedDays > 0 && elapsedDays <= FREE_REFUND_DAYS),
+      notStarted,
       noPaidUsage,
       hasOwnPolicy: oi.refund_policy_snapshot != null,
     };

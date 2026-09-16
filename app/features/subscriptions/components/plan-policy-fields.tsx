@@ -4,7 +4,12 @@
 import { type ReactNode, useState } from "react";
 
 import { Input } from "~/core/components/ui/input";
-import type { DurationModeRule } from "~/features/lms/lib/course-format";
+import {
+  type DurationModeRule,
+  MID_ENTRY_MODE_LABEL,
+  MID_ENTRY_MODES,
+  type MidEntryMode,
+} from "~/features/lms/lib/course-format";
 import type { PlanPolicy } from "~/features/subscriptions/queries.server";
 
 type CoursePlanRef = { planId: string; name: string };
@@ -77,15 +82,22 @@ export function PlanPolicyFields({
   coursePlans,
   currentPlanId,
   durationMode: durationModeRule = "any",
+  termFields = false,
 }: {
   policy?: PlanPolicy;
   coursePlans: CoursePlanRef[];
   currentPlanId?: string;
   /** 과정 유형이 정한 수강기간 방식(SSOT courseFormatFormRules). 'any' 면 라디오로 고른다. */
   durationMode?: DurationModeRule;
+  /** feat-11-013 P3-b — 정규 기간 칸(수강 시작일·중간 신청 정책) 노출. false 면 렌더하지 않는다(hidden 도 안 보냄). */
+  termFields?: boolean;
 }) {
   const initialMode: DurationMode = policy?.fixedEndDate ? "fixed" : "days";
   const [chosenMode, setMode] = useState<DurationMode>(initialMode);
+  // 중간 신청 정책 — fixed_days 일 때만 일수 칸을 연다. 저장값 없음 = until_end(현행 동작).
+  const [midEntryMode, setMidEntryMode] = useState<MidEntryMode>(
+    policy?.midEntryMode ?? "until_end",
+  );
   // 규칙이 고정한 방식이 우선 — 저장된 정책이 다른 방식이어도(복사본 등) 유형이 이긴다.
   const mode: DurationMode =
     durationModeRule === "any" ? chosenMode : durationModeRule;
@@ -168,6 +180,64 @@ export function PlanPolicyFields({
             </Field>
           ) : null}
         </div>
+        {/* feat-11-013 P3-b — 정규 유형(종료일 고정)만: 수강 시작일 + 중간 신청 정책. 서버도 같은 규칙으로
+            termFields 가 아니면 null 로 강제한다. */}
+        {termFields ? (
+          <div className="mt-2 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+            {/* ★중간 신청 정책(fixed_days·closed)은 시작일이 있어야 뜻이 선다 — 서버(admin-plan)가 같은 조건으로 400. */}
+            <Field
+              label={midEntryMode === "until_end" ? "수강 시작일 (선택)" : "수강 시작일 (필수)"}
+              hint={
+                midEntryMode === "until_end"
+                  ? "비우면 지급 즉시 시작"
+                  : "중간 신청 정책을 쓰려면 시작일이 필요합니다"
+              }
+            >
+              <Input
+                name="policy_startsOn"
+                type="date"
+                defaultValue={policy?.startsOn ?? ""}
+                className={numInput}
+              />
+            </Field>
+            <Field
+              label="중간 신청(시작일 뒤 결제)"
+              hint={
+                midEntryMode === "fixed_days"
+                  ? "신청일부터 N일 — 종료일을 넘어도 그대로(상한 없음)"
+                  : midEntryMode === "closed"
+                    ? "시작일 이후 결제를 거절합니다"
+                    : "시작일 이후 결제해도 같은 종료일까지"
+              }
+            >
+              <select
+                name="policy_midEntryMode"
+                value={midEntryMode}
+                onChange={(e) => setMidEntryMode(e.target.value as MidEntryMode)}
+                className="border-input bg-background h-8 rounded-md border px-2 text-xs"
+              >
+                {MID_ENTRY_MODES.map((m) => (
+                  <option key={m} value={m}>
+                    {MID_ENTRY_MODE_LABEL[m]}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            {midEntryMode === "fixed_days" ? (
+              <Field label="중간 신청 일수 (N)" hint="신청일부터 N일">
+                <Input
+                  name="policy_midEntryDays"
+                  type="number"
+                  min={1}
+                  max={3650}
+                  required
+                  defaultValue={policy?.midEntryDays ?? ""}
+                  className={numInput}
+                />
+              </Field>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       {/* 배수 — 수강기간과 독립된 축(원장 요청 2026-08-20). 어떤 수강기간 방식이든 함께 지정한다. */}

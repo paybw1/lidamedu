@@ -95,6 +95,8 @@ export interface SubscriptionPlan {
   productKind: ProductKind;
   /** 오픈일 — 이 시각 전이면 "오픈 예정"(구매 불가). null = 즉시 판매. */
   availableFrom: string | null;
+  /** 판매 종료일(ISO, feat-11-013 P3-b) — 경과하면 카탈로그 숨김·결제 거절. null = 종료 없음. 정규 유형만 값을 갖는다. */
+  availableUntil: string | null;
   displayOrder: number;
   isActive: boolean;
   /** 판매 단계(5). is_active 는 이 값의 파생(on_sale ↔ true). */

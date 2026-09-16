@@ -273,16 +273,21 @@ function ProductCard({
               {product.categoryName}
             </Badge>
           ) : null}
-          {/* ★수강 기간 — 기간제는 「N일」, 고정 종료일 상품은 「YYYY-MM-DD 까지」.
-              durationDays 0(=고정 종료일)만 보고 줄을 빼면 학생이 언제까지 듣는지
-              알 수 없게 된다(feat-11-013 P0-3). */}
-          {product.durationDays > 0 ? (
+          {/* ★수강 기간 — 근거는 서버가 정한 product.term 하나(feat-11-013 P0-3·P3-b).
+              기간제·개강 후 fixed_days 는 「신청일부터 N일」, 고정 종료일은 「YYYY-MM-DD 까지」. */}
+          {product.term?.kind === "days" ? (
             <span className="text-muted-foreground text-[11px]">
-              {product.durationDays}일 수강
+              신청일부터 {product.term.days}일 수강
             </span>
-          ) : product.fixedEndDate ? (
+          ) : product.term?.kind === "fixed_end" ? (
             <span className="text-muted-foreground text-[11px]">
-              {product.fixedEndDate} 까지 수강
+              {product.term.date} 까지 수강
+            </span>
+          ) : null}
+          {/* feat-11-013 P3-b — 정규 유형 개강일(M/D)만 카드에. */}
+          {product.startsOn ? (
+            <span className="text-muted-foreground text-[11px]">
+              개강 {Number(product.startsOn.slice(5, 7))}/{Number(product.startsOn.slice(8, 10))}
             </span>
           ) : null}
         </div>
@@ -322,6 +327,12 @@ function ProductCard({
           {product.owned ? (
             <Button asChild size="sm" variant="outline">
               <Link to="/lecture">수강 중</Link>
+            </Button>
+          ) : product.midEntryClosed ? (
+            // feat-11-013 P3-b — 중간 신청 불허 상품의 개강 후. 결제 경로(assertPlanSellable)가 409 로
+            //   거절하므로 버튼은 안내일 뿐이다(권위는 서버).
+            <Button size="sm" disabled>
+              중간 신청 마감
             </Button>
           ) : !isAuthed ? (
             <Button asChild size="sm">

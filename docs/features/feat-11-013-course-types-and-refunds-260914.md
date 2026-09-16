@@ -366,7 +366,7 @@ refund_status_logs 이력 — 변경일시·담당자·전/후 상태·메모 (�
 | **P0** | ★**지금 틀린 것 4건** — ①환불액을 실결제액 기준으로(`paid_amount_krw`) ②웹훅 `PARTIAL_CANCELED` 가 항목·수강권까지 처리 ③수강기간 두 컬럼 정리(D2) ④재구매 수강권 중복 버그 | M | — | ✅ |
 | **P1** | **스냅샷 기반** — `order_items` 7칸(D5) + 주문 생성 경로가 채우기 + `planned_sessions`(D6) + 쿠폰 항목 배분 **저장**(현재는 매번 재계산) | M | P0 | ✅ |
 | **P2** | **과정 유형 축** — `course_format`(D1) + 백필 + 목록 배지·검색(요청서 §6) + 유형 변경 제한·상품 복사(§5) | M | — | ✅ 구현·리허설·불변식 완료 |
-| **P3** | **유형별 조건부 등록** — 기존 폼에 유형 선택 + 필요한 항목만 노출(§3). 위저드는 D14 결정에 따름 | M | P2 | 🟡 P3-a ✅ · P3-b 설계 완료·DDL 승인 대기 |
+| **P3** | **유형별 조건부 등록** — 기존 폼에 유형 선택 + 필요한 항목만 노출(§3). 위저드는 D14 결정에 따름 | M | P2 | ✅ P3-a(2026-09-16) · P3-b 구현(DDL 적용 2026-09-17, §3.4) |
 | **P4** | **패키지 강의별 정책** — `plan_courses` 확장(D3) + `fulfillCourseEnrollments` 강의 단위 루프 재작성 | L | P2 | 🔲 |
 | **P5** | **현장강의** — `lecture_schedules` 정식화 + **정원 서버 권위화**(D4) + 출결 + 혼합(④) 단일 신청 | L | P2 | 🔲 |
 | **P6** | **환불 모델** — `refunds`/`refund_items`/`refund_status_logs`(D7) + 관리자 접수 화면 + 상태머신 12종 + **학생 셀프 2경로 제거 + 정책문서 개정**(D10) + 토스 자동취소 제거(D9) | L | P0·P1 | ✅ |
@@ -1008,7 +1008,7 @@ RPC 에 상한(`p_max_krw`)·환불건(`p_refund_item_id`) 인자 추가 — **�
 
 ---
 
-### 3.4 P3 실행 설계·구현 기록 — 유형별 조건부 등록 **[2026-09-16 · P3-a 구현 완료 · P3-b DDL 승인 대기]**
+### 3.4 P3 실행 설계·구현 기록 — 유형별 조건부 등록 **[2026-09-16 P3-a 구현 완료 · 2026-09-17 P3-b DDL 적용·구현 완료]**
 
 > D14 미채택(위저드 없음). 기존 `/admin/pricing` 인라인 폼에 「유형 먼저 → 필요한 항목만」을 넣었다(요청서 §2 1단계·§3).
 > 폼과 서버가 **같은 함수**(`courseFormatFormRules`, `lms/lib/course-format.ts`)로 노출·검증을 판정한다 — 유형 리스트를 두 번 적지 않는다.
@@ -1080,7 +1080,31 @@ RPC 에 상한(`p_max_krw`)·환불건(`p_refund_item_id`) 인자 추가 — **�
 - `courseFormatFormRules` 단위테스트(6유형 표 + 필수/숨김 집합 + 술어 대응) 포함 `course-format.test.ts` 12건 · 전체 vitest 570 · typecheck 통과.
 - 운영 리허설(권장, 배포 후): ① `patent_basic_2026` 저장 → 회차 비우면 400, 입력하면 저장 ② `pt_f` 저장 → 0강의 가드 400, 강의 연결 후 저장 시 `duration_days` 40 → 180 동기화 확인 ③ 신규 현장 상품 등록 → 정책 행 0·plan_courses 0·현장 일정 블록 안내 ③-b 정책 180일인 온라인 상품(신청내역 0) → 수정 폼에서 「현장 강의」로 전환 저장 → 정책 행은 남되 카탈로그 카드·상품 상세·`/admin/lectures` 기간 표시 없음(「-」), 되돌리면 180일 복귀 ④ 복사(상시 → 정규) → 수정 폼에서 종료일 고정 문구 + `planned_sessions` null ④-b 복사(온라인 → 현장) → `plan_courses` 0건.
 
-**범위 밖(명시)**: 현장·혼합의 이행 분기·좌석 권위화·출결(P5), 패키지 강의별 정책(P4), P3-b 소비 코드(DDL 승인 후), 배속·기기(D12).
+#### P3-b 구현 기록(2026-09-17)
+
+**DDL 적용 사실**: `scripts/sql/20260916_p3b_term_fields.sql` 을 원장 승인 후 `run-prod-sql.mjs` 로 운영(`mcgdoplo`)에 적용, `npm run db:typegen` 완료(2026-09-17). 컬럼 4개 — `plan_policies.starts_on date` · `mid_entry_mode text` CHECK `until_end|fixed_days|closed` · `mid_entry_days int` CHECK `>0` + `fixed_days ⇒ NOT NULL` · `subscription_plans.available_until timestamptz` CHECK `> available_from`. 전부 NULL 허용 = 현행 동작.
+
+**규칙 SSOT** — `courseFormatFormRules.termFields`(`lms/lib/course-format.ts`). ★설계 초안의 「`cadenceOf(f)==='term'`」로 파생하면 **현장·혼합도 term** 이라 네 유형에 열린다. 이 칸들은 `fixed_end_date` 가 있어야 의미가 있으므로 **`durationMode === 'fixed'`** 로 파생해 ②온라인 정규·⑤정규 패키지에만 열린다(테스트로 고정). 중간 신청 모드 리터럴은 같은 파일의 `MID_ENTRY_MODES`·`MID_ENTRY_MODE_LABEL`·`toMidEntryMode` 가 SSOT(폼 select·zod enum·DB 행 매핑·이행이 전부 여기만 소비).
+
+| 층 | 파일 | 무엇 |
+|---|---|---|
+| 타입·쿼리 | `subscriptions/queries.server.ts` · `labels.ts` | `PlanPolicy.startsOn/midEntryMode/midEntryDays`, `SubscriptionPlan.availableUntil`(PLAN_COLUMNS·rowToPlan·UpsertPlanInput·upsertPlan·POLICY_COLUMNS·rowToPolicy·upsertPlanPolicy). `copyPlan`: `availableUntil` 은 오픈일처럼 **null**, 정책 복사 시 `starts_on`·`mid_entry_*` 는 그대로(정규→정규 복사가 흔하다; 상시로 복사되면 P3-a 규칙이 첫 저장에서 정리) |
+| 폼 | `components/plan-policy-fields.tsx` · `screens/admin-plans.tsx` | `termFields` 일 때만 렌더(hidden 도 안 보냄): 「고정 종료일」 아래 「수강 시작일」 date + 「중간 신청(시작일 뒤 결제)」 select(기본 until_end, fixed_days 면 일수 칸) / 기본정보 「오픈일」 옆 「판매 종료일」 datetime-local |
+| 서버 | `api/admin-plan.tsx` | `!rules.termFields` 면 네 값 **null 강제**(폼이 안 보냈다고 믿지 않는다). 검증은 전부 `upsertPlan` 앞: `startsOn` 달력 왕복(`calendarDate` 공용 zod, fixedEndDate 와 공유) · `midEntryMode` enum · fixed_days 인데 일수 없음/≤0 → 400 「중간 신청 일수를 1일 이상 입력하세요」(fixed_days 가 아니면 일수를 null 로 정리) · `startsOn < fixedEndDate` 아니면 400 「수강 시작일은 종료일보다 앞서야 합니다」 · **starts_on 필수(중간 신청 모드 fixed_days·closed 지정 시)** — 없으면 400 「중간 신청 정책(신청일부터 N일·불허)은 수강 시작일이 있어야 합니다」(시작일 없는 fixed_days 는 전원 결제+N일 = 이미 있는 일수 상품 유형이고, closed 는 `isMidEntryClosed` 가 항상 false 라 배지만 뜨는 빈 설정. 폼 라벨도 모드에 따라 「(선택)/(필수)」) · `availableUntil > availableFrom` 아니면 400 「판매 종료일은 오픈일보다 뒤여야 합니다」. 감사로그 metadata 에 `availableUntil`·`startsOn`·`midEntryMode` |
+| 순수 함수 | `orders/lib/term-window.ts`(+ `.test.ts` 11건) | `computeTermWindow({nowMs, startsOn, fixedEndDate, midEntryMode, midEntryDays})` → `{startsAtMs, endsAtMs, isMidEntry, endsBasis}`. KST: starts_on 00:00+09 · fixed_end 23:59:59+09(현행 computeExpiry 와 동일). 시작 전 → 시작=starts_on·종료=fixed_end. 그 밖 → 시작=지금, fixed_days(일수>0) 면 종료=지금+N일(**상한 없음**), 아니면 fixed_end. `endsBasis` 를 돌려줘 스냅샷이 분기 조건을 다시 적지 않는다. `isMidEntryClosed` = closed 이고 starts_on 00:00 KST 이후 |
+| 이행 | `orders/orders.server.ts` | `TERM_POLICY_COLUMNS` 한 상수로 스냅샷 2곳·이행 1곳이 같은 칸을 읽는다. `fulfillCourseEnrollments`: fixed_end 상품이면 `termWindowOf` 로 시작/종료 — 신규 `enrollments.starts_at`(★기본값 now() 대신 명시)·`usage_starts_at` = startsAt, `expires_at` = endsAt. 재구매 연장(max(current, endsAt))은 유지, 연장분 이용 시작 = `max(startsAt, 기존 만료)`. 일수 상품·정책 없음(현장)은 현행 그대로 |
+| 스냅샷 | 같은 파일 `durationDaysSnapshotOf` | `duration_days_snapshot`: `endsBasis === 'mid_entry_days'` 면 **`mid_entry_days`**(정가 수강기간 D 가 N일), 그 밖은 현행(정책 `duration_days`). ★고정 종료일 상품의 D 는 종전부터 null 이라 환불 계산이 「분모 없음」→ 수동 판정이었고, until_end 도 그대로 둔다(개강→종료 일수를 D 로 쓰는 것은 별도 결정). **★D 의 권위는 이행 시점**(요청서 §11-1 「결제 당시」= 입금 확인·승인) — 주문 생성 스냅샷은 초기값이고, `fulfillCourseEnrollments` 가 `mid_entry_days` 로 이행했을 때 `usage_starts_at` 과 같은 update 로 `duration_days_snapshot` 을 N 으로 확정한다(무통장 72h 사이에 개강 경계를 넘어도 `expires_at` 과 같은 근거) |
+| 결제 게이트 | **`orders/plan-sellability.server.ts` `assertPlanSellable(plan, {nowMs})`** ← `orders/cart-resolve.server.ts` · `subscriptions/api/create-order.tsx`(★강의 카탈로그 「바로 구매」의 정규 경로) · `billing-confirm.tsx` · `orders/api/bank-transfer.tsx` **4경로 공용** | 가격 검사 뒤 ① `availableFrom` 미도래 → 400 「아직 오픈 전 상품입니다」(장바구니 경로에는 종전에 없던 게이트) ② `availableUntil` 경과 → 400 「《이름》 은 판매가 종료되었습니다」(문구 통일) ③ 강의 상품: `plan_policies(starts_on, mid_entry_mode)` closed 이고 개강 후 → 409 「《이름》 은 개강 후 중간 신청을 받지 않습니다」 ④ 강의 상품: `plan_courses` 0건 → 409. 학습 구독 상품은 ①②만. 종전에는 ③④가 cart-resolve 한 곳에만 있어 create-order·무통장 API 에 planCode 를 직접 보내면 우회됐다(무통장은 ①②도 없었다) |
+| 카탈로그 | `lms/queries.server.ts` · `lecture-catalog.tsx` · `lecture-product-detail.tsx` | `listSellableLectureProducts(client, userId, {includeSaleEnded})` — 기본은 `available_until` 경과 제외(카탈로그·장바구니·사이트맵), **상세 loader 만 true**(같은 목록에서 code 로 찾으므로 빼면 404). `LectureProduct.startsOn/midEntryMode/midEntryDays/midEntryClosed/availableUntil/saleEnded`(정규 정보는 fixed_end 상품에서만). **수강 기간 표시 근거 = `LectureProduct.term`** 하나 — 서버가 이행과 같은 `computeTermWindow(nowMs, …)` 로 정한다: `{kind:'days'}` → 「신청일부터 N일 수강」(기간제 + **개강 후 fixed_days**), `{kind:'fixed_end'}` → 「YYYY-MM-DD 까지 수강」(개강 전·until_end·closed). 개강 전 fixed_days 상세는 「~까지 (개강 후 신청 시 신청일부터 N일)」. 화면은 분기를 다시 적지 않는다(종전엔 `fixedEndDate` 만 보고 「~까지」를 찍어 신청일+N일 지급과 어긋났다). 상세: 「개강 YYYY-MM-DD」·「판매 종료 YYYY-MM-DD 까지」·배지 「개강 후 중간 신청 불가」, 경과면 구매 버튼 「판매 종료」, closed+개강 후면 카드·상세 버튼 「중간 신청 마감」 비활성(권위는 서버 409). 카드: 「개강 M/D」만. 장바구니는 기존 `unavailable` 처리로 자연히 「판매 종료」 항목이 된다 |
+| 관리자 목록 | `lms/screens/admin-lectures.tsx` | 수강기간 열 `starts_on` 있으면 「YYYY-MM-DD 개강 · YYYY-MM-DD 까지」 + fixed_days 면 「· 개강 후 신청 시 N일」, closed 면 「· 개강 후 신청 불허」(정책 표기, 시각 무관) |
+| 재생·자료 게이트 | `lms/playback.server.ts` · `lms/api/material-download.tsx` · `lms/screens/lecture-room.tsx` · `lms/lib/lock-notice.ts` | `enrollments.starts_at > now` 면 재생 거절 `not_started`(「개강 전입니다. 수강 시작일부터 시청할 수 있습니다」), 자료 다운로드는 `starts_at <= now < expires_at` 조건으로 403, 강의실은 같은 사유로 안내. **환불 영향**: 개강 전 시청·자료 이용은 `usageFor` 창(`usage_starts_at` = 개강일부터) 밖이라 7일 내 접수 시 「유료 이용이력 없음」 전액환불로 새어 나갔다 — 게이트로 개강 전 이용 자체를 막아 해소 |
+| 환불 시작 전 | `refunds/lib/refund-usage.ts` · `calc.server.ts` · `lib/refund-calc.ts` | `usedDaysOf` 가 `notStarted`(이용 시작일 > 기준일) 를 돌려주고 `withinFirstWeek = notStarted \|\| (1 ≤ elapsedDays ≤ 7)`. 개강 전 결제·연장 재구매(이용 시작 = 기존 만료일)의 시작 전 접수는 종전에 elapsedDays 0 이라 창 밖 → D·T 없는 정규 상품이 manual, fixed_days 가 공제 0 partial 로 찍혔다. 이제 이용이력 없으면 `full`(사유 「전액환불 가능 — 이용 시작 전·유료 이용이력 없음」), 이용이력 있으면 종전 분기(④ manual 사유에 「이용 시작 전 접수 —」 접두). ★요청서 11-3 문면(「수강 시작일부터 7일」) 밖의 확장이라 **원장 확정 대기**(아래 D 목록) |
+
+**남은 반쪽(명시)** — ① ~~`playback.server` 가 `starts_at` 을 보지 않는다~~ → **해소**(위 「재생·자료 게이트」 행). 단 게이트 배포 전에 개강 전 시청이 기록된 수강권이 있다면 그 이력은 여전히 `usageFor` 창 밖이다 — P3-b DDL 이 2026-09-17 적용이고 그 뒤 정규 상품 주문이 0건이라 해당 없음. ② ~~스냅샷과 이행의 `now` 차이~~ → **이행 시점 권위로 해소**(주문 생성 스냅샷은 초기값, fulfill 이 `mid_entry_days` 로 확정 — 토스 30분·무통장 72h 모두). closed 상품을 개강 전 무통장 주문 → 개강 후 입금 확인하면 게이트는 이미 지났고 `fixed_end` 폴백으로 지급되는 것이 의도(주문 시점에 판매 가능했다). ③ ~~구독 경로 게이트는 방어용~~ → 정정: `create-order` 는 강의 카탈로그 「바로 구매」의 정규 경로이고 무통장 단건 API 도 강의 상품을 받는다. 판매 가능 판정은 `assertPlanSellable` 4경로 공용으로 단일화. ④ **원장 확정 대기** — 「이용 시작 전 접수 = 전액환불 창」(위 「환불 시작 전」 행). 연장 재구매(이용 시작 = 기존 만료일 미래)도 같은 분기를 타 시작 전·이용 없음이면 `full` 이 된다 — 의도로 보고 테스트로 고정했으나 요청서 11-3 문면 밖이므로 원장이 뒤집으면 `calc.server` 의 `notStarted ||` 한 줄을 빼고 사유만 남긴다.
+
+**운영 리허설 계획(배포 후)**: ① 온라인 정규 상품 저장 — 시작일 > 종료일 400, fixed_days 일수 비움 400, **fixed_days·closed 인데 시작일 비움 400**, 판매 종료일 < 오픈일 400 ② 개강 미래 + until_end 로 테스트 결제 → `enrollments.starts_at`=개강 00:00 KST·`usage_starts_at` 동일·`expires_at`=종료일 23:59:59 KST · **재생 `not_started`·자료 다운로드 403·강의실 「개강 전」 안내** · 환불 접수 → `full`「이용 시작 전」 ③ 개강 과거 + fixed_days 30 → `expires_at`=결제+30일(종료일 초과 확인)·`duration_days_snapshot`=30 · **상세·카드 표기 = 「신청일부터 30일 수강」** ③-b **개강 전 무통장 주문 → 개강 후 입금 확인 → `duration_days_snapshot` = mid_entry_days · `expires_at` = 확인시각+N일** ④ closed + 개강 과거 → 장바구니 결제 409 문구 · **`POST /api/payments/create-order` planCode 직접 호출 409 · 무통장 API 409** · 카드·상세 버튼 「중간 신청 마감」 ⑤ 판매 종료일 과거 → 카탈로그 미노출·상세 「판매 종료」·직접 POST 400 · **무통장 API 400** ⑥ 상시 유형으로 복사 → 수정 폼에 세 칸 없음, 저장 시 DB 네 값 null.
+
+**범위 밖(명시)**: 현장·혼합의 이행 분기·좌석 권위화·출결(P5), 패키지 강의별 정책(P4), 배속·기기(D12).
 
 
 ## 4. 게이트 (Phase 마다)

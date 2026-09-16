@@ -53,8 +53,13 @@ export interface RefundCalcInput {
   plannedSessions: number | null;
   /** t — 유료 영상·자료를 이용한 **고유** 회차 수(11-4). */
   usedSessions: number;
-  /** 수강 시작일부터 7일 이내인가(11-3). */
+  /** 수강 시작일부터 7일 이내인가(11-3). 이용 시작 전(notStarted)도 포함한다. */
   withinFirstWeek: boolean;
+  /**
+   * 이용 시작일이 계산 기준일보다 뒤인가(feat-11-013 P3-b) — 정규 유형의 개강 전 결제·
+   * 연장 재구매. 판정 문구를 「시작 후 7일 이내」와 구분해 띄우기 위한 표시용 플래그다.
+   */
+  notStarted: boolean;
   /** 유료 이용이력이 하나도 없는가(11-3). 하나라도 있으면 false. */
   noPaidUsage: boolean;
   /** 결제 당시 상품안내에 **별도 고지된** 환불규정이 있는가(11-2 최우선). */
@@ -214,7 +219,9 @@ export function computeRefund(input: RefundCalcInput): RefundCalcResult {
     return {
       ...shell,
       verdict: "full",
-      verdictReason: "전액환불 가능 — 수강 시작 후 7일 이내·유료 이용이력 없음",
+      verdictReason: input.notStarted
+        ? "전액환불 가능 — 이용 시작 전·유료 이용이력 없음"
+        : "전액환불 가능 — 수강 시작 후 7일 이내·유료 이용이력 없음",
       dayDeductionKrw: null,
       sessionDeductionKrw: null,
       appliedDeductionKrw: 0,
@@ -268,6 +275,7 @@ export function computeRefund(input: RefundCalcInput): RefundCalcResult {
       ...shell,
       verdict: "manual",
       verdictReason:
+        (input.notStarted ? "이용 시작 전 접수 — " : "") +
         "결제 당시 정가 수강기간·전체 예정 회차가 모두 없어 공제를 계산할 수 없습니다 — 금액을 직접 입력해 주세요.",
       dayDeductionKrw: null,
       sessionDeductionKrw: null,

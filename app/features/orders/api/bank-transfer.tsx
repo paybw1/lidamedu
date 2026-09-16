@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
 import { createBankTransferOrder } from "~/features/orders/bank-transfer.server";
+import { assertPlanSellable } from "~/features/orders/plan-sellability.server";
 import { resolveCheckoutDiscount } from "~/features/subscriptions/discounts.server";
 import { getPlanByCode } from "~/features/subscriptions/queries.server";
 import { lawSubjectSlugSchema } from "~/features/subjects/lib/subjects";
@@ -37,6 +38,10 @@ export async function action({ request }: Route.ActionArgs) {
   const plan = await getPlanByCode(client, parsed.data.planCode);
   if (!plan) return data({ error: "상품을 찾을 수 없습니다" }, { status: 404 });
   if (plan.priceKrw <= 0) return data({ error: "유료 상품만 신청할 수 있습니다" }, { status: 400 });
+  // 판매 가능 판정(오픈 전·판매 종료·중간 신청 불허·구성 0강의) — 결제 진입 4경로 공용(feat-11-013 P3-b).
+  //   ★종전에는 이 경로에 게이트가 하나도 없어 판매 종료·개강 후 불허 상품도 무통장으로 신청됐다.
+  const sellable = await assertPlanSellable(plan);
+  if (!sellable.ok) return data({ error: sellable.error }, { status: sellable.status });
 
   const disc = await resolveCheckoutDiscount({
     plan: { code: plan.code, productKind: plan.productKind, priceKrw: plan.priceKrw },

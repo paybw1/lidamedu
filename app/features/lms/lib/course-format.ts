@@ -107,6 +107,24 @@ export function isPackageFormat(format: CourseFormat): boolean {
   return packagingOf(format) === "package";
 }
 
+// ── 중간 신청 정책 (feat-11-013 P3-b) — plan_policies.mid_entry_mode 의 값 SSOT ──
+// starts_on(수강 시작일) 경과 후 결제한 수강생의 종료일 처리. NULL = until_end(현행 동작).
+export const MID_ENTRY_MODES = ["until_end", "fixed_days", "closed"] as const;
+export type MidEntryMode = (typeof MID_ENTRY_MODES)[number];
+
+export const MID_ENTRY_MODE_LABEL: Record<MidEntryMode, string> = {
+  until_end: "기존 종료일까지",
+  fixed_days: "신청일부터 N일",
+  closed: "불허(개강 후 신청 거절)",
+};
+
+export function toMidEntryMode(value: unknown): MidEntryMode | null {
+  return typeof value === "string" &&
+    (MID_ENTRY_MODES as readonly string[]).includes(value)
+    ? (value as MidEntryMode)
+    : null;
+}
+
 /** 목록·필터에서 세 축 라벨을 한 줄로: "온라인 · 단과 · 상시". */
 export function describeCourseFormatAxes(format: CourseFormat): string {
   return [
@@ -134,6 +152,13 @@ export interface CourseFormatFormRules {
   plannedSessions: PlannedSessionsRule;
   /** 현장 일정(lecture_schedules) 블록 노출 — 현장·혼합. */
   showSchedules: boolean;
+  /**
+   * 정규 기간 칸 3종(수강 시작일·중간 신청 정책·판매 종료일, feat-11-013 P3-b) 노출.
+   * = 종료일 고정 유형(온라인 정규·정규 패키지). ★cadenceOf 만으로 파생하면 현장·혼합도 term 이라
+   *   네 유형에 열린다 — 이 칸들은 fixed_end_date 가 있어야 의미가 있으므로 durationMode 에서 파생한다.
+   *   false 면 서버가 네 값을 null 로 강제한다.
+   */
+  termFields: boolean;
   coursesLabel: string;
   hint: string;
 }
@@ -184,6 +209,7 @@ export function courseFormatFormRules(format: CourseFormat): CourseFormatFormRul
     showCourses: online,
     plannedSessions,
     showSchedules: seat,
+    termFields: durationMode === "fixed",
     coursesLabel: isPackageFormat(format)
       ? "패키지 구성 강의(다중 선택)"
       : "연결 강의(에디션)",

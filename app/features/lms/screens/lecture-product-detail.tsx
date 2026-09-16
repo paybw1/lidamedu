@@ -15,6 +15,7 @@ import { Link, data } from "react-router";
 import { Badge } from "~/core/components/ui/badge";
 import { AsyncActionButton } from "~/core/components/async-action-button";
 import { Button } from "~/core/components/ui/button";
+import { kstDateOf } from "~/core/lib/kst";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { useState } from "react";
 
@@ -55,7 +56,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const {
     data: { user },
   } = await client.auth.getUser();
-  const products = await listSellableLectureProducts(client, user?.id ?? null);
+  // ★판매 종료 상품도 상세는 남긴다(feat-11-013 P3-b) — 목록에서 빠져도 링크로 오면 「판매 종료」를 보여 준다.
+  const products = await listSellableLectureProducts(client, user?.id ?? null, {
+    includeSaleEnded: true,
+  });
   const product = products.find((p) => p.code === params.productCode);
   if (!product) throw data("강의를 찾을 수 없습니다", { status: 404 });
   const [{ reviews, summary }, myReview, canWrite] = await Promise.all([
@@ -133,17 +137,36 @@ export default function LectureProductDetail({
               {product.categoryName}
             </Badge>
           ) : null}
-          {/* ★수강 기간 — 기간제는 「N일」, 고정 종료일 상품은 「YYYY-MM-DD 까지」.
-              durationDays 0(=고정 종료일)만 보고 줄을 빼면 학생이 언제까지 듣는지
-              알 수 없게 된다(feat-11-013 P0-3). */}
-          {product.durationDays > 0 ? (
+          {/* ★수강 기간 — 근거는 서버가 정한 product.term 하나(feat-11-013 P0-3·P3-b).
+              기간제·개강 후 fixed_days 는 「신청일부터 N일」, 고정 종료일은 「YYYY-MM-DD 까지」.
+              화면이 분기를 다시 적으면 이행(신청일+N일)과 표시가 어긋난다. */}
+          {product.term?.kind === "days" ? (
             <span className="text-muted-foreground text-[11px]">
-              {product.durationDays}일 수강
+              신청일부터 {product.term.days}일 수강
             </span>
-          ) : product.fixedEndDate ? (
+          ) : product.term?.kind === "fixed_end" ? (
             <span className="text-muted-foreground text-[11px]">
-              {product.fixedEndDate} 까지 수강
+              {product.term.date} 까지 수강
+              {product.midEntryMode === "fixed_days" && product.midEntryDays
+                ? ` (개강 후 신청 시 신청일부터 ${product.midEntryDays}일)`
+                : ""}
             </span>
+          ) : null}
+          {/* feat-11-013 P3-b — 정규 유형의 개강·판매 종료·중간 신청 안내(값이 있을 때만). */}
+          {product.startsOn ? (
+            <span className="text-muted-foreground text-[11px]">개강 {product.startsOn}</span>
+          ) : null}
+          {product.availableUntil ? (
+            <span className="text-muted-foreground text-[11px]">
+              {product.saleEnded
+                ? "판매 종료"
+                : `판매 종료 ${kstDateOf(product.availableUntil)} 까지`}
+            </span>
+          ) : null}
+          {product.midEntryMode === "closed" ? (
+            <Badge variant="outline" className="text-[11px]">
+              개강 후 중간 신청 불가
+            </Badge>
           ) : null}
         </div>
         <h1 className="mt-3 text-2xl leading-snug font-bold tracking-tight text-balance">
@@ -377,6 +400,16 @@ export default function LectureProductDetail({
             {product.owned ? (
               <Button asChild size="lg" variant="outline">
                 <Link to="/lecture">수강 중 · 내 강의실</Link>
+              </Button>
+            ) : product.saleEnded ? (
+              // feat-11-013 P3-b — 판매 종료일 경과. 결제 경로(assertPlanSellable)도 같은 이유로 거절한다.
+              <Button size="lg" disabled>
+                판매 종료
+              </Button>
+            ) : product.midEntryClosed ? (
+              // 중간 신청 불허 상품의 개강 후 — 결제 경로는 409. 버튼은 안내일 뿐 권위는 서버.
+              <Button size="lg" disabled>
+                중간 신청 마감
               </Button>
             ) : !isAuthed ? (
               <Button asChild size="lg">

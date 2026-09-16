@@ -43,12 +43,18 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     // 학생 — 자료 공개 + 해당 강의 유효 수강권 보유 확인.
     if (!mat.is_published) throw data("Forbidden", { status: 403 });
     const courseId = (mat.lesson as { course_id: string }).course_id;
+    // ★기간도 본다(feat-11-013 P3-b) — 재생 판정(playback.server)과 같은 축. 종전에는 status 만 봐서
+    //   개강 전(starts_at 미래)·만료 후에도 자료를 받을 수 있었고, 개강 전 이용은 환불 계산의
+    //   이용이력 창 밖이라 「유료 이용이력 없음」으로 새어 나갔다.
+    const nowIso = new Date().toISOString();
     const { data: enr } = await adminClient
       .from("enrollments")
       .select("enrollment_id")
       .eq("user_id", user.id)
       .eq("course_id", courseId)
       .in("status", ["active", "paused"])
+      .lte("starts_at", nowIso)
+      .gt("expires_at", nowIso)
       .order("expires_at", { ascending: false })
       .limit(1)
       .maybeSingle();

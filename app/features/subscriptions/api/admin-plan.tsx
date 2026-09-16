@@ -11,6 +11,7 @@ import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   COURSE_FORMATS,
+  MID_ENTRY_MODES,
   courseFormatFormRules,
   toCourseFormat,
 } from "~/features/lms/lib/course-format";
@@ -41,6 +42,18 @@ const toIso = (v: FormDataEntryValue | null): string | null => {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 };
 
+// ★달력 왕복 검증 — `new Date(v)` 의 NaN 검사만으로는 2026-02-31 이 03-03 으로 롤오버돼 통과하고,
+//   DB(date 컬럼)가 22008 로 거절해 upsertPlan 뒤에서 실패한다(생성 모드 고아 행).
+//   fixedEndDate(종료일)·startsOn(수강 시작일, P3-b) 이 함께 쓴다.
+const calendarDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine((v) => {
+    // ★2026-13-01 처럼 월·일 범위 밖은 롤오버가 아니라 Invalid Date 라 toISOString 이 throw → NaN 먼저 거른다.
+    const d = new Date(v + "T00:00:00Z");
+    return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
+  }, "존재하지 않는 날짜입니다.");
+
 // 강의 수강 정책(course/tpass 전용) — plan_policies. durationMode 로 수강기간 방식 분기.
 // ★배수(multiplier)는 수강기간 방식이 아니라 독립 축이다 — 어느 방식이든 함께 지정한다.
 //   무제한은 null. DB check 가 multiplier >= 1 이라 하한을 1 로 둔다(0 이면 저장 실패).
@@ -49,16 +62,14 @@ const policySchema = z.object({
   multiplier: z.coerce.number().min(1).max(100).nullable(),
   // DB check 가 duration_days > 0 이라 하한은 1.
   durationDays: z.coerce.number().int().min(1).max(3650).nullable(),
-  // ★달력 왕복 검증 — `new Date(v)` 의 NaN 검사만으로는 2026-02-31 이 03-03 으로 롤오버돼 통과하고,
-  //   DB(date 컬럼)가 22008 로 거절해 upsertPlan 뒤에서 실패한다(생성 모드 고아 행).
-  fixedEndDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .refine((v) => {
-      // ★2026-13-01 처럼 월·일 범위 밖은 롤오버가 아니라 Invalid Date 라 toISOString 이 throw → NaN 먼저 거른다.
-      const d = new Date(v + "T00:00:00Z");
-      return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
-    }, "존재하지 않는 날짜입니다.")
+  fixedEndDate: calendarDate.nullable(),
+  // feat-11-013 P3-b — 정규 기간 칸(rules.termFields 일 때만 값, 그 밖은 action 이 null 로 강제).
+  startsOn: calendarDate.nullable(),
+  midEntryMode: z.enum(MID_ENTRY_MODES).nullable(),
+  // 일수 검증(≥1)은 mode 가 fixed_days 일 때 아래에서 별도 문구로 한다 — 여기서는 형식만.
+  midEntryDays: z
+    .union([z.literal(""), z.coerce.number().int().max(3650)])
+    .transform((v) => (v === "" ? null : v))
     .nullable(),
   allowDownload: z.boolean(),
   allowPc: z.boolean(),
@@ -112,6 +123,8 @@ const schema = z.object({
     .nullable(),
   productKind: z.enum(["subject", "bundle", "membership", "course", "tpass"]),
   availableFrom: z.string().datetime().nullable(),
+  // feat-11-013 P3-b — 판매 종료일. 정규 유형(rules.termFields)만, 그 밖은 아래에서 null 로 강제.
+  availableUntil: z.string().datetime().nullable(),
   displayOrder: z.coerce.number().int().min(0).max(9999),
   saleStatus: z.enum(["scheduled", "on_sale", "paused", "closed", "hidden"]),
   // 강의 카탈로그 분류(강의 플랫폼 course/tpass 상품에만 의미). 미분류=null.
@@ -203,6 +216,7 @@ export async function action({ request }: Route.ActionArgs) {
     durationDays: fd.get("durationDays") ?? "",
     productKind: fd.get("productKind"),
     availableFrom: toIso(fd.get("availableFrom")),
+    availableUntil: toIso(fd.get("availableUntil")),
     displayOrder: fd.get("displayOrder"),
     saleStatus: fd.get("saleStatus"),
     lectureCategory: (() => {
@@ -358,6 +372,16 @@ export async function action({ request }: Route.ActionArgs) {
         durationMode === "fixed"
           ? String(fd.get("policy_fixedEndDate") ?? "").trim() || null
           : null,
+      // P3-b 정규 기간 칸 — termFields 가 아니면 폼이 보냈어도 null(낡은 탭·직접 POST 를 믿지 않는다).
+      startsOn: rules.termFields
+        ? String(fd.get("policy_startsOn") ?? "").trim() || null
+        : null,
+      midEntryMode: rules.termFields
+        ? String(fd.get("policy_midEntryMode") ?? "").trim() || null
+        : null,
+      midEntryDays: rules.termFields
+        ? String(fd.get("policy_midEntryDays") ?? "").trim()
+        : "",
       allowDownload: fd.get("policy_allowDownload") === "1",
       allowPc: fd.get("policy_allowPc") === "1",
       allowMobile: fd.get("policy_allowMobile") === "1",
@@ -398,6 +422,57 @@ export async function action({ request }: Route.ActionArgs) {
         { status: 400 },
       );
     }
+    // ── feat-11-013 P3-b — 정규 기간 칸 검증(DB CHECK 문구가 관리자에게 새지 않게 여기서 먼저).
+    if (policy.midEntryMode === "fixed_days") {
+      if (policy.midEntryDays == null || policy.midEntryDays <= 0) {
+        return data(
+          { error: "중간 신청 일수를 1일 이상 입력하세요" },
+          { status: 400 },
+        );
+      }
+    } else {
+      // 방식을 바꾼 뒤 남은 일수가 저장되지 않게 — fixed_days 가 아니면 일수는 의미가 없다.
+      policy.midEntryDays = null;
+    }
+    // ★중간 신청 정책은 「시작일 뒤 결제」의 처리다 — 시작일이 없으면 fixed_days 는 **전원**에게
+    //   결제+N일이 되고(카탈로그는 「종료일까지」로 안내), closed 는 isMidEntryClosed 가 항상
+    //   false 라 배지만 뜨는 빈 설정이 된다. 둘 다 시작일을 요구한다.
+    if (
+      policy.midEntryMode != null &&
+      policy.midEntryMode !== "until_end" &&
+      policy.startsOn == null
+    ) {
+      return data(
+        {
+          error:
+            "중간 신청 정책(신청일부터 N일·불허)은 수강 시작일이 있어야 합니다. 수강 시작일을 입력하세요.",
+        },
+        { status: 400 },
+      );
+    }
+    if (
+      policy.startsOn != null &&
+      policy.fixedEndDate != null &&
+      !(policy.startsOn < policy.fixedEndDate) // 둘 다 YYYY-MM-DD 라 사전순 = 날짜순
+    ) {
+      return data(
+        { error: "수강 시작일은 종료일보다 앞서야 합니다" },
+        { status: 400 },
+      );
+    }
+  }
+
+  // 판매 종료일 — 정규 유형만. 그 밖(학습 구독·상시·현장·혼합)은 폼 값과 무관하게 null 로 강제한다.
+  const availableUntil = rules?.termFields ? parsed.data.availableUntil : null;
+  if (
+    availableUntil != null &&
+    parsed.data.availableFrom != null &&
+    !(Date.parse(availableUntil) > Date.parse(parsed.data.availableFrom))
+  ) {
+    return data(
+      { error: "판매 종료일은 오픈일보다 뒤여야 합니다" },
+      { status: 400 },
+    );
   }
 
   // 연결 강의(에디션) — showCourses=false(현장)면 폼 값과 무관하게 **빈 배열**로 동기화한다.
@@ -462,6 +537,7 @@ export async function action({ request }: Route.ActionArgs) {
       subjectCodes,
       features,
       availableFrom: parsed.data.availableFrom,
+      availableUntil,
       displayOrder: parsed.data.displayOrder,
       saleStatus: parsed.data.saleStatus,
       lectureCategory: parsed.data.lectureCategory,
@@ -501,6 +577,9 @@ export async function action({ request }: Route.ActionArgs) {
         multiplier: p.multiplier,
         durationDays: p.durationDays,
         fixedEndDate: p.fixedEndDate,
+        startsOn: p.startsOn,
+        midEntryMode: p.midEntryMode,
+        midEntryDays: p.midEntryDays,
         allowDownload: p.allowDownload,
         allowPc: p.allowPc,
         allowMobile: p.allowMobile,
@@ -564,6 +643,9 @@ export async function action({ request }: Route.ActionArgs) {
       courseFormat,
       subjectCodes,
       saleStatus: parsed.data.saleStatus,
+      availableUntil,
+      startsOn: policy?.startsOn ?? null,
+      midEntryMode: policy?.midEntryMode ?? null,
     },
   });
 

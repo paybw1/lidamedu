@@ -71,16 +71,26 @@ export function pausedDaysWithin(
  *   요청서 11-3 의 「수강 시작일부터 7일 이내」는 **달력**이지 이용일수가 아니다.
  *   정지 제외분으로 판정하면 3개월 전에 산 학생이 중간에 일시정지를 걸어 두는 것만으로
  *   「7일 이내」가 되어 **전액환불 창이 무한정 열린다.** 공제(d)만 정지를 뺀 값을 쓴다.
+ *
+ * ★`notStarted`(이용 시작일이 기준일보다 뒤) — feat-11-013 P3-b 정규 유형의 개강 전 결제·
+ *   연장 재구매(이용 시작 = 기존 만료일)는 접수 시점에 아직 시작 전이라 elapsedDays 가 0 이다.
+ *   `elapsedDays > 0` 만으로 7일 창을 판정하면 「시작 전 접수」가 창 밖으로 떨어져 자동판정이
+ *   사라지므로, 호출부가 이 플래그로 「이용 시작 전」을 따로 판정한다.
  */
 export function usedDaysOf(input: {
   usageStartDate: string;
   basisDate: string;
   pauses: PauseSpan[];
-}): { usedDays: number; pausedDays: number; elapsedDays: number } {
+}): { usedDays: number; pausedDays: number; elapsedDays: number; notStarted: boolean } {
   if (input.usageStartDate > input.basisDate) {
-    return { usedDays: 0, pausedDays: 0, elapsedDays: 0 };
+    return { usedDays: 0, pausedDays: 0, elapsedDays: 0, notStarted: true };
   }
   const raw = daysBetween(input.usageStartDate, input.basisDate) + 1;
   const pausedDays = pausedDaysWithin(input.pauses, input.usageStartDate, input.basisDate);
-  return { usedDays: Math.max(0, raw - pausedDays), pausedDays, elapsedDays: raw };
+  return {
+    usedDays: Math.max(0, raw - pausedDays),
+    pausedDays,
+    elapsedDays: raw,
+    notStarted: false,
+  };
 }

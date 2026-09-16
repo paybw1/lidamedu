@@ -667,6 +667,20 @@ function PlanForm({
             className="h-8 text-xs"
           />
         </FormField>
+        {/* feat-11-013 P3-b — 판매 종료일. 정규 유형(종료일 고정)만 렌더(서버도 termFields 가 아니면 null 강제). */}
+        {rules?.termFields ? (
+          <FormField label="판매 종료일 (선택)">
+            <Input
+              name="availableUntil"
+              type="datetime-local"
+              defaultValue={isoToLocalInput(plan?.availableUntil ?? null)}
+              className="h-8 text-xs"
+            />
+            <p className="text-muted-foreground mt-1 text-[11px]">
+              지나면 카탈로그에서 숨기고 결제를 거절합니다.
+            </p>
+          </FormField>
+        ) : null}
         <FormField label="설명" full>
           <textarea
             name="description"
@@ -932,6 +946,7 @@ function PlanForm({
           coursePlans={coursePlans}
           currentPlanId={plan?.planId}
           durationMode={rules.durationMode}
+          termFields={rules.termFields}
         />
       ) : null}
 

@@ -27,6 +27,17 @@ describe("실제 이용일수 d (요청서 11-5)", () => {
     const r = usedDaysOf({ usageStartDate: "2026-10-01", basisDate: "2026-09-15", pauses: [] });
     expect(r.usedDays).toBe(0);
     expect(r.pausedDays).toBe(0);
+    expect(r.elapsedDays).toBe(0);
+    expect(r.notStarted).toBe(true);
+  });
+
+  it("★시작 전 플래그 — 시작일 당일부터는 false (feat-11-013 P3-b 개강 전 결제·연장 재구매)", () => {
+    expect(
+      usedDaysOf({ usageStartDate: "2026-10-01", basisDate: "2026-10-01", pauses: [] }).notStarted,
+    ).toBe(false);
+    expect(
+      usedDaysOf({ usageStartDate: "2026-10-01", basisDate: "2026-09-30", pauses: [] }).notStarted,
+    ).toBe(true);
   });
 });
 

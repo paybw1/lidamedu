@@ -40,7 +40,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const { data: enr } = await adminClient
     .from("enrollments")
     .select(
-      "enrollment_id, user_id, course_id, status, expires_at, course:courses!enrollments_course_id_fkey(edition_label, series:course_series!courses_series_id_fkey(title))",
+      "enrollment_id, user_id, course_id, status, starts_at, expires_at, course:courses!enrollments_course_id_fkey(edition_label, series:course_series!courses_series_id_fkey(title))",
     )
     .eq("enrollment_id", enrollmentId)
     .maybeSingle();
@@ -81,7 +81,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   //   status 가 expired 인데 「수강권이 없습니다. 수강 신청 후 이용해 주세요」라고 하면
   //   산 적 없는 사람 취급이 된다. revoked(회수)는 대응하는 재생 거부 사유가 없어
   //   no_enrollment 로 보낸다 — 없는 사유를 지어내지 않는다.
-  const pastDue = Date.parse(enr.expires_at) <= Date.now();
+  // ★개강 전(starts_at 미래)도 재생 판정과 같은 사유(not_started)로 알린다(feat-11-013 P3-b).
+  const nowMs = Date.now();
+  const pastDue = Date.parse(enr.expires_at) <= nowMs;
+  const notStarted = Date.parse(enr.starts_at) > nowMs;
   const blockedReason: PlaybackDenyReason | null =
     enr.status === "paused"
       ? "paused"
@@ -90,7 +93,9 @@ export async function loader({ request, params }: Route.LoaderArgs) {
         : enr.status === "active"
           ? pastDue
             ? "expired"
-            : null
+            : notStarted
+              ? "not_started"
+              : null
           : "no_enrollment";
 
   return {

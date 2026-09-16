@@ -1,5 +1,5 @@
 // feat-11-002 — 재생 판정 (서버 권위). 설계 §3.5.
-// 판정 순서: 로그인(맛보기 예외) → 수강권 → 기간 → [M3] 배수 → [M3] 기기.
+// 판정 순서: 로그인(맛보기 예외) → 수강권 → 기간(시작일·만료일) → [M3] 배수 → [M3] 기기.
 //
 // ★M1 승인 단서 1 — M4 결제 오픈 전 반드시 전부 ON (M4 오픈 체크리스트 1번 항목):
 //   ENFORCE_MULTIPLIER: M3 에서 구현·활성화 완료(watch_ledger 잔여 판정).
@@ -97,10 +97,13 @@ export async function requestPlaybackGrant(
   } else {
     // 2) 로그인
     if (!input.userId) return { ok: false, reason: "login_required" };
-    // 3) 수강권 — active + 기간 내 + 회차 차단 아님
+    // 3) 수강권 — active + 기간 내(시작일 경과·만료 전) + 회차 차단 아님
+    // ★starts_at 도 본다(feat-11-013 P3-b) — 정규 유형의 개강 전 결제는 starts_at 이 미래다.
+    //   expires_at 만 보면 개강 전에 전 회차를 볼 수 있고, 그 시청은 환불 계산의 이용이력 창
+    //   (usage_starts_at = 개강일부터) 밖이라 「유료 이용이력 없음」으로 전액환불된다.
     const { data: enrollments } = await adminClient
       .from("enrollments")
-      .select("enrollment_id, status, expires_at, blocked_lesson_ids")
+      .select("enrollment_id, status, starts_at, expires_at, blocked_lesson_ids")
       .eq("user_id", input.userId)
       .eq("course_id", lesson.course_id)
       .in("status", ["active", "paused"]);
@@ -113,6 +116,7 @@ export async function requestPlaybackGrant(
     const usable = candidates.find(
       (e) =>
         e.status === "active" &&
+        Date.parse(e.starts_at) <= now &&
         Date.parse(e.expires_at) > now &&
         !(e.blocked_lesson_ids ?? []).includes(input.lessonId),
     );
@@ -120,6 +124,9 @@ export async function requestPlaybackGrant(
       const active = candidates.filter((e) => e.status === "active");
       if (active.length > 0 && active.every((e) => Date.parse(e.expires_at) <= now)) {
         return { ok: false, reason: "expired" };
+      }
+      if (active.length > 0 && active.every((e) => Date.parse(e.starts_at) > now)) {
+        return { ok: false, reason: "not_started" };
       }
       if (
         active.length > 0 &&

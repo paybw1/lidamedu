@@ -202,8 +202,18 @@ export async function loader({ request }: Route.LoaderArgs) {
     const policy =
       courseFormat && !hasOnlineDelivery(courseFormat) ? undefined : policies[p.plan_id];
     // 학생 카탈로그와 같은 표기 규칙: 고정 종료일 → 「YYYY-MM-DD 까지」, 기간제 → 「N일」, 현장 → 「-」.
+    //   P3-b: 수강 시작일이 있으면 「YYYY-MM-DD 개강 · YYYY-MM-DD 까지」, 중간 신청 fixed_days 면
+    //   「· 개강 후 신청 시 N일」을 덧붙인다(정책 표기라 시각 무관 — 실제 지급은 신청일+N일).
+    const midEntrySuffix =
+      policy?.midEntryMode === "fixed_days" && policy.midEntryDays
+        ? ` · 개강 후 신청 시 ${policy.midEntryDays}일`
+        : policy?.midEntryMode === "closed"
+          ? " · 개강 후 신청 불허"
+          : "";
     const periodLabel = policy?.fixedEndDate
-      ? `${policy.fixedEndDate} 까지`
+      ? policy.startsOn
+        ? `${policy.startsOn} 개강 · ${policy.fixedEndDate} 까지${midEntrySuffix}`
+        : `${policy.fixedEndDate} 까지`
       : policy?.durationDays
         ? `${policy.durationDays}일`
         : "-";

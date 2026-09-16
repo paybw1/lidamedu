@@ -10,8 +10,10 @@ import { redirect } from "react-router";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import {
   type CourseFormat,
+  type MidEntryMode,
   courseFormatFormRules,
   toCourseFormat,
+  toMidEntryMode,
 } from "~/features/lms/lib/course-format";
 import { createUserNotifications } from "~/features/notifications/queries.server";
 import {
@@ -52,7 +54,7 @@ export type {
 } from "./labels";
 
 const PLAN_COLUMNS =
-  "plan_id, code, name, description, price_krw, list_price_krw, planned_sessions, duration_days, features, subject_codes, product_kind, available_from, display_order, is_active, sale_status, lecture_category, course_format, category_id, detail_image_url, detail_html, detail_sections";
+  "plan_id, code, name, description, price_krw, list_price_krw, planned_sessions, duration_days, features, subject_codes, product_kind, available_from, available_until, display_order, is_active, sale_status, lecture_category, course_format, category_id, detail_image_url, detail_html, detail_sections";
 
 function rowToPlan(r: {
   plan_id: string;
@@ -67,6 +69,7 @@ function rowToPlan(r: {
   subject_codes: unknown;
   product_kind: string;
   available_from: string | null;
+  available_until?: string | null;
   display_order: number;
   is_active: boolean;
   sale_status: string;
@@ -92,6 +95,7 @@ function rowToPlan(r: {
       : [],
     productKind: r.product_kind as SubscriptionPlan["productKind"],
     availableFrom: r.available_from,
+    availableUntil: r.available_until ?? null,
     displayOrder: r.display_order,
     isActive: r.is_active,
     saleStatus: (r.sale_status as SubscriptionPlan["saleStatus"]) ?? "hidden",
@@ -157,6 +161,8 @@ export interface UpsertPlanInput {
   subjectCodes: string[];
   features: string[];
   availableFrom: string | null;
+  // feat-11-013 P3-b — 판매 종료일(ISO). 정규 유형만, 그 밖은 action 이 null 로 강제.
+  availableUntil: string | null;
   displayOrder: number;
   saleStatus: SubscriptionPlan["saleStatus"];
   // 강의 카탈로그 분류(course/tpass 상품용). null=미분류.
@@ -189,6 +195,7 @@ export async function upsertPlan(
     subject_codes: input.subjectCodes as never,
     features: input.features as never,
     available_from: input.availableFrom,
+    available_until: input.availableUntil,
     display_order: input.displayOrder,
     sale_status: input.saleStatus,
     lecture_category: input.lectureCategory,
@@ -228,6 +235,12 @@ export interface PlanPolicy {
   multiplier: number | null;
   durationDays: number | null;
   fixedEndDate: string | null;
+  /** feat-11-013 P3-b — 수강 시작일(YYYY-MM-DD). null = 지급 즉시 시작. 정규 유형만. */
+  startsOn: string | null;
+  /** feat-11-013 P3-b — 시작일 경과 후 결제 처리. null = until_end(현행). SSOT=lms/lib/course-format MID_ENTRY_MODES */
+  midEntryMode: MidEntryMode | null;
+  /** feat-11-013 P3-b — mid_entry_mode=fixed_days 일 때 신청일부터 수강 일수(상한 없음). */
+  midEntryDays: number | null;
   allowDownload: boolean;
   allowPc: boolean;
   allowMobile: boolean;
@@ -250,13 +263,16 @@ export interface PlanPolicy {
 }
 
 const POLICY_COLUMNS =
-  "plan_id, multiplier, duration_days, fixed_end_date, allow_download, allow_pc, allow_mobile, max_devices_pc, max_devices_mobile, pause_allowed, pause_max_count, pause_min_days, pause_max_days, pause_total_days, extension_allowed, extension_plan_ids, extension_price_krw, extension_max_count, extension_days";
+  "plan_id, multiplier, duration_days, fixed_end_date, starts_on, mid_entry_mode, mid_entry_days, allow_download, allow_pc, allow_mobile, max_devices_pc, max_devices_mobile, pause_allowed, pause_max_count, pause_min_days, pause_max_days, pause_total_days, extension_allowed, extension_plan_ids, extension_price_krw, extension_max_count, extension_days";
 
 function rowToPolicy(r: {
   plan_id: string;
   multiplier: number | null;
   duration_days: number | null;
   fixed_end_date: string | null;
+  starts_on: string | null;
+  mid_entry_mode: string | null;
+  mid_entry_days: number | null;
   allow_download: boolean;
   allow_pc: boolean;
   allow_mobile: boolean;
@@ -278,6 +294,9 @@ function rowToPolicy(r: {
     multiplier: r.multiplier,
     durationDays: r.duration_days,
     fixedEndDate: r.fixed_end_date,
+    startsOn: r.starts_on,
+    midEntryMode: toMidEntryMode(r.mid_entry_mode),
+    midEntryDays: r.mid_entry_days,
     allowDownload: r.allow_download,
     allowPc: r.allow_pc,
     allowMobile: r.allow_mobile,
@@ -443,6 +462,9 @@ export async function upsertPlanPolicy(
       multiplier: input.multiplier,
       duration_days: input.durationDays,
       fixed_end_date: input.fixedEndDate,
+      starts_on: input.startsOn,
+      mid_entry_mode: input.midEntryMode,
+      mid_entry_days: input.midEntryDays,
       allow_download: input.allowDownload,
       allow_pc: input.allowPc,
       allow_mobile: input.allowMobile,
@@ -1803,6 +1825,9 @@ export async function copyPlan(
       subjectCodes: source.subjectCodes,
       features: source.features,
       availableFrom: null,
+      // 판매 종료일도 오픈일처럼 비운다(복사본은 새 판매 창을 갖는다). 정책의 starts_on·mid_entry_* 는
+      //   copyPolicy 때 그대로 복사한다 — 정규→정규 복사가 흔하고, 상시로 복사되면 P3-a 규칙이 첫 저장에서 null 로 정리한다.
+      availableUntil: null,
       displayOrder: source.displayOrder,
       saleStatus: "hidden",
       lectureCategory: null,

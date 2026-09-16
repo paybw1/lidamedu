@@ -5,6 +5,7 @@
 import { redirect } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { assertPlanSellable } from "~/features/orders/plan-sellability.server";
 import { resolveCheckoutDiscount } from "~/features/subscriptions/discounts.server";
 import {
   chargeAndActivateBilling,
@@ -42,8 +43,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   const plan = await getPlanByCode(client, planCode!);
   if (!plan) fail("상품을 찾을 수 없습니다");
   if (plan!.priceKrw <= 0) fail("유료 상품만 자동결제할 수 있습니다");
-  if (plan!.availableFrom && new Date(plan!.availableFrom).getTime() > Date.now())
-    fail("아직 오픈 전 상품입니다");
+  // 판매 가능 판정(오픈 전·판매 종료·강의 상품 게이트) — 결제 진입 4경로 공용(feat-11-013 P3-b).
+  const sellable = await assertPlanSellable(plan!);
+  if (!sellable.ok) fail(sellable.error);
 
   // 서버 권위 금액(쿠폰/자동 프로모션).
   const disc = await resolveCheckoutDiscount({

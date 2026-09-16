@@ -21,6 +21,46 @@ import {
   type ShippingAddress,
   toShippingAddress,
 } from "~/features/orders/lib/shipping-address";
+import { computeTermWindow } from "~/features/orders/lib/term-window";
+import { toMidEntryMode } from "~/features/lms/lib/course-format";
+
+// ── 정규 유형 수강 창 (feat-11-013 P3-b) ────────────────────────────────────
+// plan_policies 에서 수강기간 계산에 필요한 칸. 스냅샷 2곳·이행 1곳이 같은 컬럼 집합을 읽는다.
+const TERM_POLICY_COLUMNS = "duration_days, fixed_end_date, starts_on, mid_entry_mode, mid_entry_days";
+type TermPolicyRow = {
+  duration_days: number | null;
+  fixed_end_date: string | null;
+  starts_on: string | null;
+  mid_entry_mode: string | null;
+  mid_entry_days: number | null;
+};
+
+/** 고정 종료일 상품이면 수강 창, 아니면(일수 상품·정책 없음) null — 현행 computeExpiry 경로. */
+function termWindowOf(policy: TermPolicyRow | null | undefined, nowMs: number) {
+  if (!policy?.fixed_end_date) return null;
+  return computeTermWindow({
+    nowMs,
+    startsOn: policy.starts_on,
+    fixedEndDate: policy.fixed_end_date,
+    midEntryMode: toMidEntryMode(policy.mid_entry_mode),
+    midEntryDays: policy.mid_entry_days,
+  });
+}
+
+/**
+ * order_items.duration_days_snapshot — 환불 계산의 정가 수강기간 D.
+ * 현행: 정책 duration_days(고정 종료일 상품은 null → 환불 계산이 「분모 없음」으로 수동 판정).
+ * P3-b: fixed_days 중간 신청이면 D 가 N일로 바뀌므로 mid_entry_days 를 굳힌다. 그 밖은 현행 그대로.
+ */
+function durationDaysSnapshotOf(
+  policy: TermPolicyRow | null | undefined,
+  nowMs: number,
+): number | null {
+  if (!policy) return null;
+  const term = termWindowOf(policy, nowMs);
+  if (term?.endsBasis === "mid_entry_days") return policy.mid_entry_days;
+  return policy.duration_days;
+}
 
 // ── 결제시도 만료 ───────────────────────────────────────────────────────────
 
@@ -111,7 +151,7 @@ export async function createSinglePlanOrder(input: {
       .maybeSingle(),
     adminClient
       .from("plan_policies")
-      .select("duration_days")
+      .select(TERM_POLICY_COLUMNS)
       .eq("plan_id", input.planId)
       .maybeSingle(),
     adminClient.from("plan_courses").select("course_id").eq("plan_id", input.planId),
@@ -131,7 +171,7 @@ export async function createSinglePlanOrder(input: {
       coupon_alloc_krw: 0,
       point_alloc_krw: 0,
       list_price_snapshot_krw: plan?.list_price_krw ?? input.amountKrw,
-      duration_days_snapshot: policy?.duration_days ?? null,
+      duration_days_snapshot: durationDaysSnapshotOf(policy, Date.now()),
       planned_sessions_snapshot: plan?.planned_sessions ?? null,
       refund_calc_type: refundCalcTypeOf({
         hasCustomPolicy: false,
@@ -220,7 +260,7 @@ export async function createCartOrder(input: {
         .in("plan_id", planIds),
       adminClient
         .from("plan_policies")
-        .select("plan_id, duration_days")
+        .select(`plan_id, ${TERM_POLICY_COLUMNS}`)
         .in("plan_id", planIds),
       adminClient.from("plan_courses").select("plan_id, course_id").in("plan_id", planIds),
     ]);
@@ -229,7 +269,9 @@ export async function createCartOrder(input: {
       listPriceOf.set(p.plan_id, p.list_price_krw);
       plannedSessionsOf.set(p.plan_id, p.planned_sessions);
     }
-    for (const p of policies ?? []) durationDaysOf.set(p.plan_id, p.duration_days);
+    const snapshotNow = Date.now();
+    for (const p of policies ?? [])
+      durationDaysOf.set(p.plan_id, durationDaysSnapshotOf(p, snapshotNow));
     for (const l of links ?? [])
       courseCountOf.set(l.plan_id, (courseCountOf.get(l.plan_id) ?? 0) + 1);
   }
@@ -469,7 +511,7 @@ async function fulfillCourseEnrollments(input: {
   const [{ data: policy }, { data: links }] = await Promise.all([
     adminClient
       .from("plan_policies")
-      .select("duration_days, fixed_end_date, multiplier")
+      .select(`${TERM_POLICY_COLUMNS}, multiplier`)
       .eq("plan_id", input.planId)
       .maybeSingle(),
     adminClient.from("plan_courses").select("course_id").eq("plan_id", input.planId),
@@ -478,11 +520,15 @@ async function fulfillCourseEnrollments(input: {
   // 수강기간 계산 — current(기존 만료일) 있으면 그로부터 연장(중복 지급 대신 만료일 연장).
   const now = Date.now();
   const addMs = (policy?.duration_days ?? 180) * 86400_000;
+  // ★고정 종료일 상품(정규 유형)은 수강 창을 term-window 가 정한다(feat-11-013 P3-b) —
+  //   starts_on 이 미래면 시작 = starts_on, 시작일 경과 후 fixed_days 면 종료 = 지금 + N일(상한 없음).
+  //   일수 상품·정책 없음(현장)은 null → 현행 그대로.
+  const term = termWindowOf(policy, now);
+  const startsAtMs = term ? term.startsAtMs : now;
   const computeExpiry = (currentIso: string | null): string => {
-    if (policy?.fixed_end_date) {
-      const fixed = new Date(`${policy.fixed_end_date}T23:59:59+09:00`).getTime();
+    if (term) {
       return new Date(
-        currentIso ? Math.max(Date.parse(currentIso), fixed) : fixed,
+        currentIso ? Math.max(Date.parse(currentIso), term.endsAtMs) : term.endsAtMs,
       ).toISOString();
     }
     const base = currentIso ? Math.max(now, Date.parse(currentIso)) : now;
@@ -519,7 +565,8 @@ async function fulfillCourseEnrollments(input: {
     if (existing) {
       const nextExpires = computeExpiry(existing.expires_at);
       // 연장분의 이용은 기존 만료일부터 시작한다 — computeExpiry 의 기산점과 같은 식이다.
-      noteUsageStart(Math.max(now, Date.parse(existing.expires_at)));
+      //   (정규 유형의 개강 전 결제는 startsAtMs 가 미래 — 그보다 앞서 쓸 수 없다.)
+      noteUsageStart(Math.max(startsAtMs, Date.parse(existing.expires_at)));
       const { error } = await adminClient
         .from("enrollments")
         .update({
@@ -547,13 +594,15 @@ async function fulfillCourseEnrollments(input: {
       continue;
     }
 
-    noteUsageStart(now); // 신규 지급은 지금부터 쓸 수 있다.
+    noteUsageStart(startsAtMs); // 신규 지급은 시작 시각부터 쓸 수 있다(개강 전 결제는 개강일).
     const { error } = await adminClient.from("enrollments").insert({
       user_id: input.userId,
       course_id: link.course_id,
       plan_id: input.planId,
       source: "order",
       order_item_id: input.orderItemId,
+      // ★기본값 now() 대신 명시 — 정규 유형의 개강 전 결제는 starts_on 이 시작이다.
+      starts_at: new Date(startsAtMs).toISOString(),
       expires_at: computeExpiry(null),
       multiplier_snapshot: policy?.multiplier ?? null,
       base_duration_snapshot_seconds: baseDuration,
@@ -562,9 +611,20 @@ async function fulfillCourseEnrollments(input: {
   }
 
   if (usageStartsMs != null) {
+    // ★정가 수강기간 D(duration_days_snapshot)는 **이행 시점**이 권위다(요청서 §11-1 「결제 당시」
+    //   = 입금 확인·승인 시점). 주문 생성 스냅샷(durationDaysSnapshotOf)은 초기값일 뿐 —
+    //   무통장은 주문~입금 확인 사이가 최대 72h 라 그 사이에 개강 경계를 넘으면 스냅샷은
+    //   「선구매(D=null)」인데 이행은 「중간 신청(지금+N일)」로 갈려 환불 계산이 manual 로 떨어진다.
+    //   fixed_days 중간 신청으로 이행했을 때만 같은 update 에 실어 N 일로 굳힌다(이행이 읽는 policy 가
+    //   현재값이라 expires_at 과 같은 값). 위 early-return(멱등)이 덮어쓰기를 1회로 보장한다.
     const { error } = await adminClient
       .from("order_items")
-      .update({ usage_starts_at: new Date(usageStartsMs).toISOString() })
+      .update({
+        usage_starts_at: new Date(usageStartsMs).toISOString(),
+        ...(term?.endsBasis === "mid_entry_days"
+          ? { duration_days_snapshot: durationDaysSnapshotOf(policy, now) }
+          : {}),
+      })
       .eq("order_item_id", input.orderItemId);
     if (error) console.error("[orders] usage_starts_at 기록 실패:", error.message);
   }
