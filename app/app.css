@@ -122,8 +122,9 @@ body {
   --lp-shadow-hover: 0 12px 32px rgba(0, 0, 0, 0.1);
   --lp-wash: rgba(45, 91, 168, 0.05); /* hero 상단 방사형 wash (primary 5%) */
 
-  /* 프리미엄 표면 공유 정체성(네이비+금박) — 강의 랜딩(.llx)·강사소개(.instr)·수료증이
-     각자 하드코딩하던 값을 단일화(정본=랜딩 팔레트). @theme inline 에서 유틸(bg-prestige-navy·text-gilt)로도 노출. */
+  /* 프리미엄 표면 정체성(네이비+금박) — 강사소개(.instr)·수료증이 공유. @theme inline 에서
+     유틸(bg-prestige-navy·text-gilt)로도 노출. ★강의 랜딩(.llx)은 2026-09-16 로고 청(#0868B8)으로
+     전환해 더 이상 이 토큰을 참조하지 않는다(SSOT=docs/lecture-palette-brief.md §2). */
   --prestige-navy: #16294a;
   --prestige-navy-deep: #0e1d38;
   --prestige-navy-soft: #25406b;

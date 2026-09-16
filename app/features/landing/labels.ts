@@ -116,7 +116,7 @@ export function fitBannerFrame(frame: HTMLIFrameElement): void {
 
 export type BannerAccent = "gilt" | "blue" | "green";
 export const BANNER_ACCENT_LABEL: Record<BannerAccent, string> = {
-  gilt: "금박",
+  gilt: "기본(청)",
   blue: "블루",
   green: "그린",
 };

@@ -413,7 +413,7 @@ function ExamStyle() {
 .llx .ei-card.ei-tip{background:linear-gradient(160deg,var(--blue-wash),var(--lsurface))}
 .llx .ei-ch{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--line)}
 .llx .ei-ch h3{font-size:18px;font-weight:700;letter-spacing:-.02em}
-.llx .ei-kind{font-size:12px;font-weight:700;color:var(--gilt);white-space:nowrap}
+.llx .ei-kind{font-size:12px;font-weight:700;color:var(--blue-ink);white-space:nowrap}
 .llx .ei-cardp{font-size:13.5px;color:var(--soft);line-height:1.8}
 .llx .ei-rows{display:flex;flex-direction:column;gap:2px}
 .llx .ei-row{display:flex;gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:13.5px}
@@ -437,7 +437,7 @@ function ExamStyle() {
 .llx .ei-eng{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 .llx .ei-engc{background:var(--lsurface);border:1px solid var(--line);border-radius:12px;padding:16px 14px;display:flex;flex-direction:column;gap:6px;box-shadow:var(--lshadow)}
 .llx .ei-engn{font-size:12.5px;font-weight:700;color:var(--soft)}
-.llx .ei-engs{font-size:24px;font-weight:700;color:var(--gilt);letter-spacing:-.02em}
+.llx .ei-engs{font-size:24px;font-weight:700;color:var(--blue-ink);letter-spacing:-.02em}
 .llx .ei-note{font-size:12px;color:var(--faint);line-height:1.7;margin-top:14px}
 .llx .ei-bullets{margin:16px 0 0;padding-left:0;list-style:none;display:flex;flex-direction:column;gap:7px}
 .llx .ei-bullets li{font-size:13px;color:var(--soft);line-height:1.7;display:flex;gap:8px}
@@ -463,7 +463,7 @@ function ExamStyle() {
 .llx .ei-files{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .llx .ei-file{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:var(--blue-ink);background:var(--blue-wash);border:1px solid var(--line);border-radius:8px;padding:7px 12px;transition:transform .14s,border-color .14s}
 .llx .ei-file:hover{transform:translateY(-1px);border-color:var(--blue)}
-.llx .ei-file span{font-size:12px;color:var(--gilt)}
+.llx .ei-file span{font-size:12px;color:var(--blue-ink)}
 @media (max-width:820px){
   .llx .ei-two{grid-template-columns:1fr}
   .llx .ei-eng{grid-template-columns:repeat(2,1fr)}

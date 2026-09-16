@@ -377,7 +377,7 @@ export function BuiltinPassers({ passers }: { passers: LandingPasser[] }) {
           <div className="revs">
             {passers.slice(0, 3).map((p) => (
               <Reveal as="article" className="rev" key={p.resultId}>
-                <span className="badge">
+                <span className="badge passer">
                   ✓ {p.examYear} {EXAM_ROUND_LABEL[p.examRound]} 합격
                 </span>
                 <p className="q" style={{ whiteSpace: "pre-line" }}>

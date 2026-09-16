@@ -93,3 +93,37 @@
 ## 6. 실행 순서
 
 C1+C2+C5(토큰·금 회수·성취) 한 커밋 → C3+C4(짙은 면·하드코딩) → C6(결함) → 스크린샷 검토 → C7 문서 → **푸시 하드스톱** → (승인 시) C8 `.instr`.
+
+## 7. 적용 기록(2026-09-16) — C1~C7 완료, C8 대기
+
+**바뀐 파일(코드 13 + 문서 2)**: `app/features/landing/components/landing-style.tsx`(토큰 2블록 + 규칙 약 60개) · `screens/schedule.tsx`(10) · `screens/schedule-detail.tsx`(6) · `screens/exam-info.tsx`(3) · `screens/facilities.tsx`(7 + 주석) · `components/lecture-video-section.tsx`(Tailwind 폴백 2) · `components/builtin-sections.tsx`(합격 배지 `passer` 수정자 1) · `screens/admin-banner-edit.tsx`(select 라벨·hint) · `labels.ts`(`BANNER_ACCENT_LABEL.gilt` 「기본(청)」) · `screens/admin-banners.tsx`(기본 간격색 `#0a4d8c`) · `app/app.css`(prestige 주석 정정) · 주석만 `hero-carousel.tsx`·`hero-parts.tsx` · 문서 이 파일 + `docs/survey/디자인-보이스-통일-브리프.md`. JSX `className` 변경은 `badge passer` 추가 1건과 lecture-video-section 의 Tailwind 임의값 2건뿐(클래스명·DB accent 값 rename 0).
+
+**게이트 실측**: `var(--gilt` 0건 · `#fff`·`#c0392b` 리터럴 0건(`--hot` 토큰 정의 `#c0392b` 만 잔존 — `#ffffff` 정의와 같은 범주) · 라이트/다크 토큰 패리티(라이트에만 있는 토큰 = `--lfont` 뿐) · typecheck·build·vitest(50파일 570) 통과 · WCAG 2 대비 64개 조합 실측: 텍스트 62쌍 전부 ≥ 4.5(최저 라이트 `--faint`/lground 4.85·`--ok`/lsurface 4.82) · 대형 텍스트 1(`.ic .por b` 46px, 3.26/4.34 ≥ 3.0) · 비텍스트 테두리 1(`.btn.ghost.on-navy` 2.72 L / 3.22 D — 기록만).
+
+**§2 와 달라진 값·판단**
+| 항목 | §2/§3 | 적용 | 이유 |
+|---|---|---|---|
+| `--faint` 라이트 | `#65738a` | **`#5f6d87`** | §2 는 흰 위(4.80)만 측정. `.ei-note` 등 lground 위 12px 이 4.47 로 미달 → 4.85/5.22 |
+| `.hcard .lab`·`.promo .pk`·`.bt-eye`·`.loc .li .k` | `--blue-ink` | **`--hero-soft`** | 넷 다 슬랩(짙은 면) 위 — `#0a5a9e` on `#0868b8` 은 읽히지 않음. 라벨 역할로 묶인 §3 오분류 |
+| `.hcard`·`.promo` 유리 | 흰 틴트 10% | **navy2 55%→25% 틴트** | 흰 틴트가 면을 밝혀 hero-soft 12px 이 3.93 → 5.94/5.26 |
+| `.rev .av` 끝점 | `--navy-soft` | **`--blue-ink`** | 흰 글자 on navy-soft 3.44 → 7.07(다크 8.28) |
+| `.tag.waitlist`·`.sd-tag.waitlist` 채움 | `--warn` 그대로 | **`--warn-ink`** | `--warn` 위 흰 글자 3.34(선재 결함) → 4.97. `--warn` 채움은 영상 형태 막대·점(비텍스트)에만 남음 |
+| `.scard-thumb.off/.vid` 끝점 | 고정 hex | **`color-mix(색 72%, var(--ink))`** | 다크에서 `--blue-fg`(잉크) on `#14663a` 가 2.50. `--ink` 와 섞으면 라이트는 짙어지고 다크는 밝아져 양쪽 다 6.8+ |
+| 일정 「영상」 형태 색(6곳) | §2 에 없음 | **`--warn`(채움)/`--warn-ink`(글자)** | off=`--ok`·live=`--blue` 와 구별되는 §2 내 색이 이것뿐. 잔여석 `.seat.mid`(warn-ink)와 한 카드에 놓여 의미 충돌 — §8 질문 |
+| facilities `.fc-no` 번호 배지 | `--prize*` | **`--hero-ink` 바탕 + `--navy2` 글자** | 카드마다 붙는 순번이라 성취가 아니고, 1화면 1금(C5)과 충돌 |
+| `.eventcard .btn.gilt` | (없음) | **청 채움 + `--blue-fg`** | 카드가 밝게 반전되면 반전형 `.btn.gilt`(흰 바탕)가 흰 카드에 묻힘. JSX 무변경 |
+| `.rev .badge` 별점 | `--ok` | **`--soft` on faint 12%** | `--faint` 글자는 4.14 로 미달 → 6.49 |
+| `.btn.ghost.on-navy` 테두리 | hero-ink 28% | **55%** | 비텍스트 3:1 기준 라이트 2.72(다크 3.22) — 글자(5.39)가 버튼을 식별하므로 1.4.11 은 범위 밖으로 두고 기록만 |
+| `.bk .cov` 시작점 | `--blue`→`--navy2` | **`--navy`→`--navy2`** (3n+2 는 역순) | 표지 제목 `.bt`(hero-ink)가 다크 `--blue` `#4d9fe6` 위 2.63 → `--navy` 6.89. 라이트는 두 값이 같아 무변화. 구 네이비 hex(`#3a6098`) 변형도 함께 회수 |
+| `.hrow .seat` (히어로 카드 잔여석) | (언급 없음) | `#ffd9a8`(복숭아) → **`--hero-soft`** | 슬랩 위 경고색 토큰이 §2 에 없어 중립으로. 신호색이 필요하면 Q4 의 형태·경고 토큰과 함께 결정 |
+| facilities `.fc-card::after` | `rgba(10,20,40,.9)` | `color-mix(var(--navy2) 90%)` | 토큰 경유(다크에서도 navy2 를 따라감) |
+| `.slide h1 .hl` | hero-ink 또는 청 하이라이트 | hero-ink 글자 + hero-ink 22% 밑줄 워시 | 슬랩이 청이라 청 하이라이트는 보이지 않음 |
+| `--hot` 라이트 | 현행 | `#c0392b` 유지 | 토큰 정의에만 남음(리터럴 소비 0) |
+
+**남긴 것**: C8 `.instr` 강사소개 3화면(prestige 참조 + 금 워시 하드코딩) — 별도 커밋. 스크린샷 게이트(§4-4)·배너 accent 3종 렌더(§4-5)는 원장 확인. 저장된 운영자 간격색(`#0e1d38`)은 재설정 안내.
+
+## 8. 원장 추가 질문(적용 후)
+
+| | 질문 | 권고 |
+|---|---|---|
+| Q4 | 일정 화면 「영상」 형태 색을 `--warn`(주황) 으로 두는가 — 잔여석 경고(`--warn-ink`)와 같은 카드에서 겹친다 | 형태 전용 토큰(`--kind-vid`) 1개를 §2 에 추가하고 값은 스크린샷 보고 결정 |

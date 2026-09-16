@@ -46,7 +46,7 @@ function VideoCard({
           </span>
         )}
         <span className="absolute inset-0 flex items-center justify-center">
-          <span className="flex size-12 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm transition-colors group-hover:bg-[var(--gilt,#b48a2f)]">
+          <span className="flex size-12 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm transition-colors group-hover:bg-[var(--blue)]">
             <PlayIcon className="size-5 translate-x-[1px]" fill="currentColor" />
           </span>
         </span>
@@ -56,7 +56,7 @@ function VideoCard({
           </span>
         ) : null}
       </span>
-      <span className="mt-2 block text-[15px] font-semibold text-[var(--ink)] group-hover:text-[var(--gilt,#b48a2f)]">
+      <span className="mt-2 block text-[15px] font-semibold text-[var(--ink)] group-hover:text-[var(--blue-ink)]">
         {v.title}
       </span>
       {v.description ? (

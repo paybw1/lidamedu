@@ -1,6 +1,6 @@
 // 학원시설 — /lecture/facilities. 공개 페이지. 강의 nav "리담안내" 하위.
 //   콘텐츠 출처: source/학원소개/space.html. 사진은 facility-photos(public) 버킷.
-//   디자인은 랜딩·시험정보와 동일한 .llx 스코프(네이비·금박·Pretendard).
+//   디자인은 랜딩·시험정보와 동일한 .llx 스코프(로고 청·Pretendard).
 import makeServerClient from "~/core/lib/supa-client.server";
 
 import { LandingStyle } from "../components/landing-style";
@@ -157,8 +157,8 @@ function FacilityStyle() {
     <style>{`
 .llx .fc-hero{position:relative;min-height:clamp(340px,52vh,560px);display:flex;align-items:flex-end;overflow:hidden}
 .llx .fc-hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.llx .fc-hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,29,56,.15) 20%,rgba(14,29,56,.82) 100%)}
-.llx .fc-hero-in{position:relative;z-index:1;width:100%;padding:0 0 44px;color:#fff}
+.llx .fc-hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,77,140,.15) 20%,rgba(10,77,140,.82) 100%)}
+.llx .fc-hero-in{position:relative;z-index:1;width:100%;padding:0 0 44px;color:var(--hero-ink)}
 .llx .fc-hero-in .wrap{max-width:1180px}
 .llx .fc-hero-in h1{font-size:clamp(32px,5vw,56px);font-weight:800;letter-spacing:-.04em;margin:12px 0 10px;text-wrap:balance}
 .llx .fc-hero-sub{font-size:clamp(15px,1.6vw,18px);color:var(--hero-soft);line-height:1.6;max-width:44ch}
@@ -172,11 +172,12 @@ function FacilityStyle() {
 .llx .fc-card{min-height:460px}
 .llx .fc-card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .7s cubic-bezier(.2,.7,.2,1)}
 .llx .fc-card:hover img{transform:scale(1.04)}
-.llx .fc-card::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(10,20,40,.9) 100%)}
-.llx .fc-copy{position:absolute;z-index:2;left:22px;right:22px;bottom:22px;color:#fff}
-.llx .fc-no{display:inline-grid;place-items:center;width:38px;height:38px;border-radius:12px;background:rgba(201,164,78,.9);color:#1a1305;font-size:12px;font-weight:700;margin-bottom:12px}
+.llx .fc-card::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,color-mix(in srgb,var(--navy2) 90%,transparent) 100%)}
+.llx .fc-copy{position:absolute;z-index:2;left:22px;right:22px;bottom:22px;color:var(--hero-ink)}
+/* 번호 배지 = 중립(밝은 바탕 + 청 잉크). 성취가 아니므로 금(--prize*) 을 쓰지 않는다(1화면 1금). */
+.llx .fc-no{display:inline-grid;place-items:center;width:38px;height:38px;border-radius:12px;background:var(--hero-ink);color:var(--navy2);font-size:12px;font-weight:700;margin-bottom:12px}
 .llx .fc-copy h3{font-size:22px;font-weight:700;letter-spacing:-.03em;margin:0 0 8px;text-wrap:balance}
-.llx .fc-copy p{font-size:13.5px;line-height:1.65;color:rgba(255,255,255,.9);word-break:keep-all;margin:0}
+.llx .fc-copy p{font-size:13.5px;line-height:1.65;color:color-mix(in srgb,var(--hero-ink) 90%,transparent);word-break:keep-all;margin:0}
 @media (max-width:640px){
   /* 모바일: 1열로 펼치되 높이만 살짝 교차해 리듬 유지. */
   .llx .fc-card:nth-child(n){grid-column:span 12;min-height:300px}

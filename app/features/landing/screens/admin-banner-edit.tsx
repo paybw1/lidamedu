@@ -115,7 +115,7 @@ export default function AdminBannerEdit({ loaderData }: Route.ComponentProps) {
           <div className="grid gap-4 sm:grid-cols-2">
             <Row label="강조색" hint="구조형(일정·프로모션 등) 배경색">
               <select name="accent" defaultValue={b?.accent ?? "gilt"} className={SEL}>
-                <option value="gilt">금박</option>
+                <option value="gilt">기본(청)</option>
                 <option value="blue">블루</option>
                 <option value="green">그린</option>
               </select>
@@ -128,7 +128,7 @@ export default function AdminBannerEdit({ loaderData }: Route.ComponentProps) {
           <Row label="제목(headline)" hint="이미지/HTML 배너는 비워도 됩니다">
             <textarea name="headline" rows={2} defaultValue={b?.headline ?? ""} className={TA} />
           </Row>
-          <Row label="강조 문구(highlight)" hint="제목 안에서 금박 강조할 부분(제목에 포함된 문자열)">
+          <Row label="강조 문구(highlight)" hint="제목 안에서 강조할 부분(제목에 포함된 문자열)">
             <Input name="highlight" defaultValue={b?.highlight ?? ""} className={IN} />
           </Row>
           <Row label="설명(sub)">

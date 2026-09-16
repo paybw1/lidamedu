@@ -18,7 +18,7 @@ import {
   type ScheduleRow,
 } from "../labels";
 
-// headline 안에서 highlight 부분만 금박 강조.
+// headline 안에서 highlight 부분만 강조(슬랩 위 밝은 하이라이트 — .slide h1 .hl).
 // 이미지 배너 — 슬라이드 전체를 이미지로. cta_href 있으면 클릭 이동.
 //   maxWidth 지정 시: 가운데 정렬 + 원본 비율(꽉 채우지 않음). 미지정: 전체 폭 cover.
 function BannerImage({

@@ -5,7 +5,7 @@
 //   ★*.server 값 import 금지.
 import { ddayFrom, remainingSeats, type ScheduleRow } from "../labels";
 
-/** 제목 안의 한 조각만 금박으로 강조. 강조어가 제목에 없으면 그대로 출력. */
+/** 제목 안의 한 조각만 강조(.hl — 슬랩 위 밝은 하이라이트). 강조어가 제목에 없으면 그대로 출력. */
 export function Headline({ text, hl }: { text: string; hl: string | null }) {
   if (!hl || !text.includes(hl)) return <>{text}</>;
   const i = text.indexOf(hl);

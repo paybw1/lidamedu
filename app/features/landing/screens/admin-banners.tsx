@@ -194,7 +194,7 @@ function GapRow({
         <input
           type="color"
           name={`color${suffix}`}
-          defaultValue={gap.color ?? "#0e1d38"}
+          defaultValue={gap.color ?? "#0a4d8c"}
           className="border-input h-8 w-12 cursor-pointer rounded-md border bg-transparent p-0.5"
         />
       </label>
