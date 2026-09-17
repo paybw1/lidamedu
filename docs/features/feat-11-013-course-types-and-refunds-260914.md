@@ -246,7 +246,7 @@ refund_status_logs 이력 — 변경일시·담당자·전/후 상태·메모 (�
 
 ### D13. 수강배수의 권위 — `plan_policies.multiplier` vs `courses.max_plays` **[원장 결정 필요]**
 
-> **2026-09-17 재검토**: 260917 요청서(패키지 정책 항목 제거)가 「배수는 단과강의 설정」을 전제 → `feat-11-015` D17 에서 **강의 축(`courses.max_plays`) 권위** 로 재결정 권고(원장 결정 B1). 채택 시 이 절의 「상품 축 권위 + ENFORCE_MULTIPLIER ON」 권고는 폐기.
+> **2026-09-17 재검토**: 260917 요청서(패키지 정책 항목 제거)가 「배수는 단과강의 설정」을 전제 → `feat-11-015` D17 에서 **강의 축(`courses.max_plays`) 권위** 로 재결정 권고(원장 결정 B1). **원장 결정(2026-09-17 12:13): 「단과 강의의 수강배수를 기준」 — 패키지는 구성 강의의 단과 상품 배수를 따르고 단과 폼은 유지(feat-11-015 D17 resolver). 집행(ENFORCE_MULTIPLIER)은 별건이며 켤 때 이행 스냅샷도 같은 resolver 로 옮긴다.**
 
 지금 **두 축이 병존**하는데 실제로 작동하는 것은 후자뿐이다 — `ENFORCE_MULTIPLIER = false` 가 하드코딩돼 있고(`playback.server.ts:14`), 재생 제한은 `courses.max_plays × 회차길이` vs `watch_ledger` 로 판정된다.
 
