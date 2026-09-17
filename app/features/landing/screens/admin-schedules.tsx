@@ -10,6 +10,7 @@ import { getStaffRole } from "~/features/laws/queries.server";
 
 import { AdminRowControls } from "../components/admin-row-controls";
 import { FORMAT_LABEL, STATUS_LABEL, type LectureFormat, type ScheduleStatus } from "../labels";
+import { examRoundLabel } from "../lib/schedule-taxonomy";
 import { listSchedules } from "../queries.server";
 
 import type { Route } from "./+types/admin-schedules";
@@ -69,6 +70,13 @@ export default function AdminSchedules({ loaderData }: Route.ComponentProps) {
                     {s.start_date ?? "미정"}
                   </span>
                   <span className="min-w-0 flex-1">
+                    {/* 구분(1차/2차/구분 없음) — 캘린더 필터 축. NULL 은 「구분 없음」으로 표시(2026-09-17). */}
+                    <Badge
+                      variant={s.exam_round ? "outline" : "secondary"}
+                      className="mr-2 shrink-0 align-middle text-[11px]"
+                    >
+                      {examRoundLabel(s.exam_round)}
+                    </Badge>
                     <span className="text-sm font-semibold">
                       {s.subject_label} · {s.title}
                     </span>

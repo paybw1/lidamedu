@@ -95,14 +95,16 @@ export function monthMatrixFull(year: number, month0: number): MatrixCell[][] {
 }
 
 // day(1..31) → 그날 열리는 강의들. 반복 요일(개강일 이후) + 개강일 당일.
-export function monthEvents(
-  schedules: CalendarSchedule[],
+//   제네릭 — 입력 행 타입을 그대로 돌려줘 호출부가 subject_code·exam_round 등 부가 필드를 잃지 않는다
+//   (달력 막대 title 도 카드와 같은 「1차 · 특허법」 규칙을 쓰기 위함, 2026-09-17).
+export function monthEvents<T extends CalendarSchedule>(
+  schedules: T[],
   year: number,
   month0: number,
-): Map<number, CalendarSchedule[]> {
+): Map<number, T[]> {
   const days = new Date(Date.UTC(year, month0 + 1, 0)).getUTCDate();
-  const map = new Map<number, CalendarSchedule[]>();
-  const add = (d: number, s: CalendarSchedule) => {
+  const map = new Map<number, T[]>();
+  const add = (d: number, s: T) => {
     const arr = map.get(d) ?? [];
     arr.push(s);
     map.set(d, arr);

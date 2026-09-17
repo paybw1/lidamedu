@@ -8,6 +8,14 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { getStaffRole } from "~/features/laws/queries.server";
 
+import {
+  EXAM_ROUNDS,
+  EXAM_ROUND_LABEL,
+  EXAM_ROUND_NONE_LABEL,
+  SCHEDULE_SUBJECT_OPTIONS,
+  isScheduleSubjectCode,
+  toExamRound,
+} from "../lib/schedule-taxonomy";
 import { getSchedule } from "../queries.server";
 
 import type { Route } from "./+types/admin-schedule-edit";
@@ -52,6 +60,10 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
 
 export default function AdminScheduleEdit({ loaderData }: Route.ComponentProps) {
   const { role, row: s, plans } = loaderData;
+  // 과목은 7값(schedule-taxonomy SSOT)만 — 기존 행의 코드가 그 밖이면 빈 선택으로 두어 다시 고르게 한다.
+  const subjectKnown = isScheduleSubjectCode(s?.subject_code);
+  const unknownSubject =
+    s?.subject_code && !subjectKnown ? s.subject_code : null;
   return (
     <AdminShell cluster="landing" role={role} title={s ? "일정 편집" : "일정 등록"} desc="공개를 켜야 랜딩·시간표에 노출됩니다.">
       <div className="mx-auto max-w-2xl p-5 md:p-8">
@@ -64,11 +76,42 @@ export default function AdminScheduleEdit({ loaderData }: Route.ComponentProps) 
           {s ? <input type="hidden" name="id" value={s.schedule_id} /> : null}
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <Row label="과목(표시)" hint='"특허법"'>
-              <Input name="subject_label" required defaultValue={s?.subject_label} className={IN} />
+            {/* 2026-09-17 원장: 캘린더 찾기 축 — 과목(7종)·구분(1차/2차). 표시 라벨은 서버가 코드에서 만든다. */}
+            <Row
+              label="과목"
+              hint={
+                unknownSubject
+                  ? `(알 수 없음: ${unknownSubject}) — 다시 선택하세요`
+                  : undefined
+              }
+            >
+              <select
+                name="subject_code"
+                required
+                defaultValue={subjectKnown ? (s?.subject_code ?? "") : ""}
+                className={SEL}
+              >
+                <option value="">과목 선택</option>
+                {SCHEDULE_SUBJECT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
             </Row>
-            <Row label="과목 코드" hint="patent/trademark/design/civil/civil-procedure/science">
-              <Input name="subject_code" defaultValue={s?.subject_code ?? ""} className={IN} />
+            <Row label="구분" hint="캘린더 1차/2차 필터. 비우면 전체에서만 보임">
+              <select
+                name="exam_round"
+                defaultValue={toExamRound(s?.exam_round) ?? ""}
+                className={SEL}
+              >
+                <option value="">{EXAM_ROUND_NONE_LABEL}</option>
+                {EXAM_ROUNDS.map((r) => (
+                  <option key={r} value={r}>
+                    {EXAM_ROUND_LABEL[r]}
+                  </option>
+                ))}
+              </select>
             </Row>
             <Row label="강좌명" hint='"기본이론 정규반"'>
               <Input name="title" required defaultValue={s?.title} className={IN} />

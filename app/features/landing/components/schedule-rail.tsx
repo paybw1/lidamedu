@@ -2,8 +2,8 @@
 //   카드 클릭 → 현장강의 상세(/lecture/schedule/:id). *.server 값 import 금지.
 import { Link } from "react-router";
 
-import { ddayFrom, scheduleState, type ScheduleRow } from "../labels";
-
+import { type ScheduleRow, ddayFrom, scheduleState } from "../labels";
+import { scheduleMetaLabel } from "../lib/schedule-filter";
 import { Rail } from "./rail";
 
 export function ScheduleRail({
@@ -32,7 +32,8 @@ export function ScheduleRail({
             key={s.schedule_id}
           >
             <span className={`tag ${st.code}`}>{st.label}</span>
-            <span className="subj">◆ {s.subject_label}</span>
+            {/* 「1차 · 특허법」 — 구분은 있을 때만, 과목은 코드 라벨 → subject_label 폴백(lib/schedule-filter). 레일은 필터 없음. */}
+            <span className="subj">◆ {scheduleMetaLabel(s)}</span>
             <h3>{s.title}</h3>
             <div className="tutor">{s.instructor_name}</div>
             <div className="meta">

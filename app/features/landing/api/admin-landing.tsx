@@ -9,6 +9,11 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 
+import {
+  isScheduleSubjectCode,
+  scheduleSubjectLabel,
+  toExamRound,
+} from "../lib/schedule-taxonomy";
 import { reorderRow, softDeleteRow, upsertExamInfo } from "../queries.server";
 
 import type { Route } from "./+types/admin-landing";
@@ -88,9 +93,17 @@ export async function action({ request }: Route.ActionArgs) {
 
   // ── 저장(insert/update) — entity 별 concrete 테이블로 타입 정확 ──
   if (entity === "schedule") {
+    // 과목은 7값(schedule-taxonomy SSOT·DB CHECK 동기)만 — 표시 라벨은 코드에서 만든다(폼에 라벨 칸 없음).
+    //   subject_label 컬럼은 유지: 홈 레일·달력 카드·상세가 읽는다.
+    const subjectCode = str(fd, "subject_code");
+    const subjectLabel = scheduleSubjectLabel(subjectCode);
+    if (!isScheduleSubjectCode(subjectCode) || !subjectLabel)
+      return data({ error: "과목을 선택하세요" }, { status: 400 });
     const row = {
-      subject_label: str(fd, "subject_label") ?? "",
-      subject_code: str(fd, "subject_code"),
+      subject_label: subjectLabel,
+      subject_code: subjectCode,
+      // 구분(1차/2차) — 빈값·모르는 값은 NULL(구분 없음). update 에서도 그대로 덮어쓴다(빈값 선택 = 구분 해제).
+      exam_round: toExamRound(str(fd, "exam_round")),
       title: str(fd, "title") ?? "",
       instructor_name: str(fd, "instructor_name") ?? "",
       start_date: str(fd, "start_date"),

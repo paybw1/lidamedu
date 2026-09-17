@@ -1,11 +1,22 @@
 // feat-12 현장강의 일정 — /lecture/schedule. 공개. 월간 달력 + 개강일 순 카드 목록.
 // 2026-09-17 원장: 이 달력은 현장강의 일정이다 — 형태 축(현장/실시간/영상 칩·색·라벨)을 없앴고
 //   공개 목록은 listSchedules 가 현장(offline)만 돌려준다(실시간 강의는 운영하지 않는다).
-import { Link, useSearchParams } from "react-router";
+//   찾기 축은 구분(1차/2차)·과목(7종) 칩 두 줄 — 상태는 URL(?round=&subject=)이 SSOT, 달력 막대와
+//   오른쪽 목록에 같은 필터(matchesScheduleFilter)를 건다.
+import type { Route } from "./+types/schedule";
 
+import {
+  Link,
+  type ShouldRevalidateFunctionArgs,
+  useSearchParams,
+} from "react-router";
+
+import { pageMeta } from "~/core/lib/seo";
 import makeServerClient from "~/core/lib/supa-client.server";
 
 import { LandingStyle } from "../components/landing-style";
+import { ScheduleFilterChips } from "../components/schedule-filter-chips";
+import { scheduleState } from "../labels";
 import {
   addMonth,
   monthEvents,
@@ -13,18 +24,26 @@ import {
   parseYm,
   ymString,
 } from "../lib/lecture-calendar";
-import { ddayFrom, remainingSeats, scheduleState } from "../labels";
+import {
+  FILTER_ALL,
+  FILTER_PARAM_ROUND,
+  FILTER_PARAM_SUBJECT,
+  SCHEDULE_META_SEP,
+  parseScheduleFilter,
+  scheduleFilterLabel,
+  scheduleMetaLabel,
+  scheduleMetaParts,
+  scheduleMonogramText,
+} from "../lib/schedule-filter";
+import { matchesScheduleFilter } from "../lib/schedule-taxonomy";
 import { listSchedules } from "../queries.server";
-
-import type { Route } from "./+types/schedule";
-import { pageMeta } from "~/core/lib/seo";
 
 export const meta: Route.MetaFunction = (a) =>
   pageMeta(
     {
       title: "현장강의 일정",
       description:
-        "리담변리사학원 현장강의 개강 일정 — 과목·요일·시간과 남은 자리를 달력으로 확인하고 신청합니다.",
+        "리담변리사학원 현장강의 개강 일정 — 구분·과목·요일·시간과 남은 자리를 달력으로 확인하고 신청합니다.",
     },
     a,
   );
@@ -37,10 +56,26 @@ export async function loader({ request }: Route.LoaderArgs) {
   return { all, todayISO };
 }
 
+// loader 는 search param(ym/round/subject)을 전혀 읽지 않는다 — 달·구분·과목은 전부 클라 계산.
+//   같은 경로의 search 만 바뀌는 내비(칩 클릭·달 화살표)에서 loader(listSchedules) 재실행 = 서버
+//   왕복 뒤에야 화면이 바뀌므로 재검증을 막는다(stats.tsx 선례). 폼 제출이면 재검증, 경로가 바뀌면 기본값.
+//   부작용: todayISO 가 첫 로드 시각에 고정된다 — 공개 일정 페이지라 허용.
+export function shouldRevalidate({
+  currentUrl,
+  nextUrl,
+  formMethod,
+  defaultShouldRevalidate,
+}: ShouldRevalidateFunctionArgs): boolean {
+  if (formMethod && formMethod.toUpperCase() !== "GET") return true;
+  if (currentUrl.pathname !== nextUrl.pathname) return defaultShouldRevalidate;
+  return false;
+}
+
 const SEAT_CLASS = (rem: number) =>
   rem === 0 ? "low" : rem <= 8 ? "low" : rem <= 16 ? "mid" : "ok";
 
 const WD_HEAD = ["일", "월", "화", "수", "목", "금", "토"];
+const YM_PARAM = "ym";
 
 // "YYYY-MM-DD" → "M월 D일 (요일)". 날짜 그룹 헤더용.
 const DOW_LABEL = ["일", "월", "화", "수", "목", "금", "토"];
@@ -55,30 +90,45 @@ function monogram(label: string): string {
   return label.replace(/\s+/g, "").slice(0, 2) || "강의";
 }
 
+// 달 이동 링크 — ym 만 바꾸고 구분·과목 필터는 그대로 가져간다(URL SSOT).
+function hrefWithYm(params: URLSearchParams, ym: string): string {
+  const next = new URLSearchParams(params);
+  next.set(YM_PARAM, ym);
+  return `?${next.toString()}`;
+}
+
 export default function Schedule({ loaderData }: Route.ComponentProps) {
   const { all, todayISO } = loaderData;
-  const [params] = useSearchParams();
-  const { year, month0 } = parseYm(params.get("ym"), todayISO);
+  const [params, setSearchParams] = useSearchParams();
+  const { year, month0 } = parseYm(params.get(YM_PARAM), todayISO);
   const weeks = monthMatrixFull(year, month0);
-  const events = monthEvents(all, year, month0);
   const prev = addMonth(year, month0, -1);
   const next = addMonth(year, month0, 1);
   const todayYmd = todayISO.slice(0, 10);
   const cur = ymString(year, month0);
+  // 구분·과목 필터 — 달력 막대·오른쪽 목록·「가장 이른 개강」 안내 모두 같은 집합에서 계산.
+  const filter = parseScheduleFilter((k) => params.get(k));
+  const filtered = all.filter((s) => matchesScheduleFilter(s, filter));
+  const filterLabel = scheduleFilterLabel(filter);
+  const setFilter = (key: string, value: string) => {
+    const nextParams = new URLSearchParams(params);
+    if (value === FILTER_ALL) nextParams.delete(key);
+    else nextParams.set(key, value);
+    setSearchParams(nextParams, { preventScrollReset: true });
+  };
+  const events = monthEvents(filtered, year, month0);
   // 오른쪽 목록: '그 달에 개강'하는 강의 = start_date 가 표시 중인 달에 속함.
-  const monthList = all.filter((s) => s.start_date?.slice(0, 7) === cur);
+  const monthList = filtered.filter((s) => s.start_date?.slice(0, 7) === cur);
   // ★이 달에 개강이 없을 때 "가장 이른 다음 개강"을 찾아 안내한다 — 목록이 달로 걸리므로
   //   개강이 있어도 "없습니다"만 보이고 방문자가 그냥 나간다(feat-11-012 P3).
-  const nextOpening = all
+  const nextOpening = filtered
     .filter((s) => s.start_date && s.start_date >= todayYmd)
     .map((s) => s.start_date as string)
     .sort()[0];
-  // 형태 필터는 없다(현장강의 일정 — 2026-09-17). 그 달 개강분 전부.
-  const shown = monthList;
   // 개강일별 그룹(listSchedules 가 start_date 오름차순 → 그룹 순서도 오름차순 유지).
-  const dateGroups: Array<{ date: string; items: typeof shown }> = [];
+  const dateGroups: Array<{ date: string; items: typeof monthList }> = [];
   const groupIdx = new Map<string, number>();
-  for (const s of shown) {
+  for (const s of monthList) {
     const key = s.start_date ?? "미정";
     let idx = groupIdx.get(key);
     if (idx === undefined) {
@@ -111,13 +161,21 @@ export default function Schedule({ loaderData }: Route.ComponentProps) {
           <div className="sched-split">
             <div className="cal">
               <div className="cal-nav">
-                <Link className="cal-arrow" to={`?ym=${ymString(prev.year, prev.month0)}`} aria-label="이전 달">
+                <Link
+                  className="cal-arrow"
+                  to={hrefWithYm(params, ymString(prev.year, prev.month0))}
+                  aria-label="이전 달"
+                >
                   ‹
                 </Link>
                 <span className="cal-title tnum">
                   {year}. {month0 + 1}
                 </span>
-                <Link className="cal-arrow" to={`?ym=${ymString(next.year, next.month0)}`} aria-label="다음 달">
+                <Link
+                  className="cal-arrow"
+                  to={hrefWithYm(params, ymString(next.year, next.month0))}
+                  aria-label="다음 달"
+                >
                   ›
                 </Link>
               </div>
@@ -158,8 +216,8 @@ export default function Schedule({ loaderData }: Route.ComponentProps) {
                                     to={`/lecture/schedule/${s.schedule_id}`}
                                     className="cal-bar"
                                     key={s.schedule_id}
-                                    title={`${s.subject_label} ${s.title}${s.time_label ? ` · ${s.time_label}` : ""}`}
-                                    aria-label={`${s.subject_label} ${s.title}`}
+                                    title={`${scheduleMetaLabel(s)} ${s.title}${s.time_label ? `${SCHEDULE_META_SEP}${s.time_label}` : ""}`}
+                                    aria-label={`${scheduleMetaLabel(s)} ${s.title}`}
                                   />
                                 ))}
                                 {evs.length > 3 ? (
@@ -177,14 +235,21 @@ export default function Schedule({ loaderData }: Route.ComponentProps) {
             </div>
 
             <aside className="sched-list">
+              <ScheduleFilterChips
+                filter={filter}
+                onRoundChange={(v) => setFilter(FILTER_PARAM_ROUND, v)}
+                onSubjectChange={(v) => setFilter(FILTER_PARAM_SUBJECT, v)}
+              />
               <div className="sched-scroll">
                 {dateGroups.length === 0 ? (
                   <p className="sched-empty">
-                    {month0 + 1}월에 개강하는 현장강의가 없습니다.
+                    {month0 + 1}월에 개강하는{" "}
+                    {filterLabel ? `${filterLabel} ` : ""}
+                    현장강의가 없습니다.
                     {nextOpening && nextOpening.slice(0, 7) !== cur ? (
                       <>
                         {" "}
-                        <Link to={`?ym=${nextOpening.slice(0, 7)}`}>
+                        <Link to={hrefWithYm(params, nextOpening.slice(0, 7))}>
                           가장 이른 개강은 {Number(nextOpening.slice(0, 4))}년{" "}
                           {Number(nextOpening.slice(5, 7))}월입니다 →
                         </Link>
@@ -203,6 +268,14 @@ export default function Schedule({ loaderData }: Route.ComponentProps) {
                         const rem = st.seatsLeft;
                         const d = st.dday;
                         const closed = st.closed;
+                        // 「◆ 1차 · 특허법 · 월·목 · 19:00–22:00」 — 구분은 있을 때만 앞에.
+                        const metaText = [
+                          ...scheduleMetaParts(s),
+                          s.day_label,
+                          s.time_label,
+                        ]
+                          .filter((p): p is string => !!p)
+                          .join(SCHEDULE_META_SEP);
                         return (
                           <Link
                             to={`/lecture/schedule/${s.schedule_id}`}
@@ -210,18 +283,14 @@ export default function Schedule({ loaderData }: Route.ComponentProps) {
                             key={s.schedule_id}
                           >
                             <span className="scard-thumb">
-                              {monogram(s.subject_label)}
+                              {monogram(scheduleMonogramText(s))}
                             </span>
                             <span className="scard-main">
                               <span className="scard-top">
                                 <span className="scard-dot" />
                                 <span className="scard-title">{s.title}</span>
                               </span>
-                              <span className="scard-meta">
-                                ◆ {s.subject_label}
-                                {s.day_label ? ` · ${s.day_label}` : ""}
-                                {s.time_label ? ` · ${s.time_label}` : ""}
-                              </span>
+                              <span className="scard-meta">◆ {metaText}</span>
                               <span className="scard-meta2">
                                 강사 : {s.instructor_name}
                                 {d !== null ? (
@@ -247,7 +316,7 @@ export default function Schedule({ loaderData }: Route.ComponentProps) {
   );
 }
 
-// 달력 전용 보조 스타일 — .llx 스코프.
+// 달력 전용 보조 스타일 — .llx 스코프. (필터 칩 스타일은 schedule-filter-chips.tsx 에.)
 function CalendarStyle() {
   return (
     <style>{`
@@ -274,13 +343,12 @@ function CalendarStyle() {
 .llx .cal-d.sun{color:var(--hot)}.llx .cal-d.sat{color:var(--blue-ink)}
 .llx .cal-cell.out .cal-d{color:var(--faint);font-weight:700}
 .llx .cal-cell.today .cal-d{display:inline-grid;place-items:center;width:22px;height:22px;margin:-2px 0 0 -3px;border-radius:50%;background:var(--blue);color:var(--blue-fg)}
-/* 강의 표시 = 칸 하단 색 막대(형태별 색). */
+/* 강의 표시 = 칸 하단 색 막대(현장 한 가지 색 — 필터를 통과한 일정만 그린다). */
 .llx .cal-bars{position:absolute;left:9px;right:9px;bottom:8px;display:flex;flex-direction:column;gap:3px}
-.llx .cal-bar{display:block;height:4px;border-radius:999px;background:var(--blue);transition:filter .12s,transform .12s}
+.llx .cal-bar{display:block;height:4px;border-radius:999px;background:var(--ok);transition:filter .12s,transform .12s}
 .llx a.cal-bar:hover{filter:brightness(.92);transform:scaleY(1.5)}
-.llx .cal-bar{background:var(--ok)}
 .llx .cal-more{font-size:9.5px;color:var(--faint);font-weight:700;line-height:1;margin-top:1px}
-/* 우측 패널 = 형태 필터 칩 + 날짜별 카드 */
+/* 우측 패널 = 구분·과목 필터 칩(schedule-filter-chips) + 날짜별 카드 */
 /* 우측 패널 시작점을 달력의 요일 헤더 라인과 맞춤(월 네비 높이 36 + 아래 여백 16 = 52). */
 .llx .sched-list{margin-top:52px;background:var(--lsurface);border:1px solid var(--line2);border-radius:16px;box-shadow:var(--lshadow);overflow:hidden;align-self:stretch}
 .llx .sched-scroll{max-height:640px;overflow-y:auto;padding:6px}
