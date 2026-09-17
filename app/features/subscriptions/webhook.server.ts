@@ -302,6 +302,24 @@ export async function syncPaymentFromToss(
         });
         taken = r.taken;
         // feat-11-004 4a — 환불관리가 맡지 않은 취소만 여기서 주문·지급물까지 정리한다.
+        //
+        // ★이미 **종결된** 주문(관리자가 환불관리 또는 상태 셀렉트의 환불완료 단축으로
+        //   `commit_refund` 를 끝내 refunds.closed_at 이 서고 orders.status='refunded')에
+        //   뒤늦게 CANCELED 가 와도 여기로 떨어진다(열린 건이 없어 taken=false). 그래도 별도
+        //   가드를 두지 않는다 — `markOrderRefundedAndRevoke` 가 그 상태에서 **멱등**임을
+        //   코드로 확인했다(feat-11-014 Q3, 2026-09-17):
+        //   · `commit_refund` 는 refund_items 의 항목마다 `order_items.refunded_at` 을 찍고
+        //     **미환불 항목이 하나도 없을 때만** orders 를 'refunded' 로 둔다 → refunded 면
+        //     모든 항목이 이미 refunded_at 을 가진다.
+        //   · orders UPDATE 는 `.in(['paid','partially_refunded','pending_deposit','pending_payment'])`
+        //     필터라 no-op. 항목 루프는 `if (!item.refunded_at)` 로 항목 기록·포인트 반환
+        //     (`refundPointsForOrderItem`)을 전부 건너뛴다.
+        //   · `revokeItemFulfillment` 는 수강권(status active/paused 필터)·연장(ext.status !==
+        //     'applied' 조기 반환)·배송(neq returned)·재고(sale 있고 refund 없을 때만)로 멱등이고
+        //     cs_actions·audit_logs 를 쓰지 않는다 → 이력·CS 중복 없음.
+        //   ★위쪽의 payments 동기화·구독 종료는 **건너뛰면 안 된다** — `commit_refund` 는
+        //     payments 를 만지지 않으므로 계좌환불(bank/etc)로 종결한 토스 주문의 결제행은
+        //     completed 로 남아 있고, 이 웹훅이 그것을 PG 권위 상태(refunded)로 맞춘다.
         if (!taken) {
           await markOrderRefundedAndRevoke(payRow.order_id, reason ?? "토스 취소 웹훅");
         }
@@ -337,6 +355,7 @@ export async function syncPaymentFromToss(
         .eq("payment_id", payRow.payment_id);
 
       let takenPartial = false;
+      let ord: { status: string; user_id: string } | null = null;
       if (payRow.order_id) {
         const { takeOverPgCancelIfOpenRefund } = await import(
           "~/features/refunds/refunds.server"
@@ -349,6 +368,31 @@ export async function syncPaymentFromToss(
           kind: "partial",
         });
         takenPartial = r.taken;
+        const { data } = await admin
+          .from("orders")
+          .select("status, user_id")
+          .eq("order_id", payRow.order_id)
+          .maybeSingle();
+        ord = data;
+      }
+
+      // ★이미 **종결된** 주문(관리자가 `commit_refund` 를 끝내 orders.status='refunded', 열린
+      //   환불건 없음)에 뒤늦게 부분취소가 오면 **대조를 하지 않고 비켜선다**(feat-11-014 Q3).
+      //   아래 대조는 이 경우 멱등이 **아니다** — itemRefunded 는 `order_items.paid_amount_krw`
+      //   (항목 귀속액, `allocateOrderDiscounts` 가 배송비를 배분하지 않아 Σ귀속액 + 배송비 =
+      //   주문 총액)만 더하는데, 토스 취소 누계에는 `refunds.shipping_refund_krw`(배송비 환급)가
+      //   들어간다(`commit_refund` 의 v_claim = 항목합 + 배송비 환급). 도서 주문의 배송비 환급이
+      //   섞이면 unmatched = 배송비 환급분 > 0 이 되어 **재전송마다 cs_actions(refund_assist) 가
+      //   중복 적재**된다. refunded 면 회수할 항목이 남아 있지 않으므로 대조 자체가 무의미하다.
+      // ★위쪽의 payments 동기화는 건너뛰지 않는다 — `commit_refund` 는 payments 를 만지지
+      //   않으므로 결제행의 취소정보(refund_amount_krw 등)는 이 웹훅만이 PG 권위로 맞춘다.
+      //   같은 페이로드라 재전송에도 값이 같다(멱등).
+      if (!takenPartial && ord?.status === "refunded") {
+        result = {
+          outcome: "ignored",
+          detail: `이미 환불 종결 — 부분취소 취소정보만 갱신 (${amount ?? "?"}원)`,
+        };
+        break;
       }
 
       let unmatched = 0;
@@ -378,11 +422,6 @@ export async function syncPaymentFromToss(
             `[webhook] 부분취소 ${amount}원 중 ${unmatched}원이 주문항목에 반영되지 않았습니다 (order ${payRow.order_id}). 환불관리에서 대상 항목을 지정해야 합니다.`,
           );
           try {
-            const { data: ord } = await admin
-              .from("orders")
-              .select("user_id")
-              .eq("order_id", payRow.order_id)
-              .maybeSingle();
             if (ord) {
               await admin.from("cs_actions").insert({
                 user_id: ord.user_id,

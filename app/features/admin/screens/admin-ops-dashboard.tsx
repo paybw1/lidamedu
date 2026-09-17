@@ -64,7 +64,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     adminClient.from("orders").select("order_id", head).eq("status", "paid").gte("created_at", todayIso),
     adminClient.from("enrollments").select("enrollment_id", head).gte("created_at", todayIso),
     adminClient.from("enrollment_extensions").select("extension_id", head).gte("created_at", todayIso),
-    adminClient.from("refund_requests").select("refund_request_id", head).eq("status", "pending"),
+    // ★feat-11-014 Q3 — 레거시 학생 환불요청(refund_requests) 대신 환불관리의 미종결 건.
+    adminClient.from("refunds").select("refund_id", head).is("closed_at", null),
     adminClient.from("playback_issues").select("issue_id", head).gte("created_at", todayIso),
     adminClient.from("shipments").select("shipment_id", head).eq("status", "preparing"),
     adminClient.from("cs_inquiries").select("inquiry_id", head).neq("status", "answered").is("deleted_at", null),
@@ -206,10 +207,10 @@ export default function AdminOpsDashboard({ loaderData }: Route.ComponentProps) 
         </h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <AlertCard
-            label="환불 요청"
+            label="환불 처리중"
             count={alerts.refundPending}
-            to="/admin/orders"
-            hint="수강생이 신청한 환불"
+            to="/admin/refunds"
+            hint="환불관리 미종결 건"
           />
           <AlertCard
             label="입금 대기"

@@ -11,7 +11,6 @@ import {
   HIDDEN_FROM_STUDENT_FILTER,
   orderStatusLabel,
 } from "~/features/orders/lib/order-status";
-import { getMyRefundRequestMap } from "~/features/orders/refund-requests.server";
 
 import type { Route } from "./+types/my-orders";
 import { orderItemLabel } from "~/features/orders/lib/order-item-label";
@@ -92,9 +91,9 @@ export async function loader({ request }: Route.LoaderArgs) {
     }
   }
 
-  // P3 — 내 항목별 환불요청 상태(pending/approved/rejected)
-  const allItemIds = [...itemsByOrder.values()].flat().map((it) => it.orderItemId);
-  const refundMap = await getMyRefundRequestMap(client, user.id, allItemIds);
+  // ★feat-11-014 Q3 — 레거시 학생 환불요청(refund_requests) 조회는 제거했다. 환불은 관리자가
+  //   환불관리(refunds)에 접수·처리하고, 그 표는 RLS 가 staff 전용 select 라 학생 화면에서
+  //   읽을 수 없다. 학생에게는 항목의 `refunded_at`(환불됨)과 아래 고객센터 안내만 보인다.
 
   // 4d — 내 쿠폰 (발급/사용 내역)
   const { data: coupons } = await client
@@ -125,10 +124,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       totalKrw: o.total_krw,
       paymentMethod: o.payment_method,
       createdAt: o.created_at,
-      items: (itemsByOrder.get(o.order_id) ?? []).map((it) => ({
-        ...it,
-        refundStatus: refundMap.get(it.orderItemId) ?? null,
-      })),
+      items: itemsByOrder.get(o.order_id) ?? [],
     })),
   };
 }
@@ -230,12 +226,6 @@ export default function MyOrders({ loaderData }: Route.ComponentProps) {
   );
 }
 
-const REFUND_STATUS_LABEL: Record<string, string> = {
-  pending: "환불 요청됨 (검토중)",
-  approved: "환불 승인됨",
-  rejected: "환불 요청 반려",
-};
-
 type OrderItem = {
   orderItemId: string;
   label: string;
@@ -244,16 +234,14 @@ type OrderItem = {
   unitPriceKrw: number;
   refundedAt: string | null;
   shipment: { status: string; courier: string | null; trackingNo: string | null } | null;
-  refundStatus: "pending" | "approved" | "rejected" | null;
 };
 
 function OrderItemRow({ item: it, orderStatus }: { item: OrderItem; orderStatus: string }) {
   // ★feat-11-013 D10 — **학생이 직접 환불을 신청하는 버튼은 제공하지 않는다**(요청서 PART B §1).
   //   환불 문의는 전화·카카오톡·게시판·방문 등 고객센터로 접수하고, 상담 내용을 확인한
   //   관리자가 관리자페이지에서 환불신청을 등록한다. 여기에는 **결과만** 보인다 —
-  //   환불 상태·환불금액·처리일·환불된 상품.
-  //   ★이전에 신청해 둔 건(`refundStatus`)의 상태 표시는 남긴다. 신청은 못 하게 하면서
-  //   이미 넣은 요청이 어떻게 됐는지도 안 보이면, 학생은 자기 건이 사라진 줄 안다.
+  //   환불된 상품(`refundedAt`). 레거시 환불요청 배지는 feat-11-014 Q3 에서 경로째 제거했다
+  //   (운영 0건이라 사라진 건이 없다).
   return (
     <div className="border-border/60 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-[13px]">
       <span className={it.refundedAt ? "text-muted-foreground line-through" : "font-medium"}>
@@ -261,11 +249,6 @@ function OrderItemRow({ item: it, orderStatus }: { item: OrderItem; orderStatus:
         {it.quantity > 1 ? ` ×${it.quantity}` : ""}
       </span>
       {it.refundedAt ? <Badge variant="outline">환불됨</Badge> : null}
-      {!it.refundedAt && it.refundStatus ? (
-        <Badge variant={it.refundStatus === "rejected" ? "outline" : "secondary"} className="text-[11px]">
-          {REFUND_STATUS_LABEL[it.refundStatus]}
-        </Badge>
-      ) : null}
       {it.shipment ? (
         <span className="text-muted-foreground ml-auto text-[12px]">
           {SHIP_STATUS_LABEL[it.shipment.status] ?? it.shipment.status}

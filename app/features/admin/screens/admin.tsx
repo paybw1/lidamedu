@@ -307,10 +307,11 @@ function WorkQueueRow({
         hint: `응답 기한 ${QNA_SLA_BREACH_HOURS}시간 초과 미응답`,
       },
       {
-        label: "환불 대기",
+        // feat-11-014 Q3 — 레거시 학생 환불요청 경로 제거. 값은 환불관리(refunds) 미종결 건 수.
+        label: "환불 처리중",
         value: manager.refundsPending,
-        to: "/admin/orders",
-        hint: "학생 환불 요청 승인 대기",
+        to: "/admin/refunds",
+        hint: "환불관리 미종결 건",
       },
       {
         label: "배송 대기",

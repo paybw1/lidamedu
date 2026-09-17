@@ -9798,8 +9798,61 @@ export type Database = {
           },
         ]
       }
+      order_status_logs: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          from_status: string | null
+          log_id: string
+          order_id: string
+          reason: string
+          to_status: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          from_status?: string | null
+          log_id?: string
+          order_id: string
+          reason: string
+          to_status: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          from_status?: string | null
+          log_id?: string
+          order_id?: string
+          reason?: string
+          to_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_status_logs_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "order_status_logs_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "order_status_logs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["order_id"]
+          },
+        ]
+      }
       orders: {
         Row: {
+          archived_at: string | null
           coupon_discount_krw: number
           coupon_id: string | null
           created_at: string
@@ -9816,6 +9869,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          archived_at?: string | null
           coupon_discount_krw?: number
           coupon_id?: string | null
           created_at?: string
@@ -9832,6 +9886,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          archived_at?: string | null
           coupon_discount_krw?: number
           coupon_id?: string | null
           created_at?: string

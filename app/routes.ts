@@ -331,8 +331,6 @@ export default [
       "/lecture/orders/:orderId/deposit",
       "features/orders/screens/deposit-guide.tsx",
     ),
-    // feat-8-029 P3 — 학생 환불요청 접수.
-    route("/api/refund-request", "features/orders/api/refund-request.tsx"),
     // feat-12 마이페이지 하위 — 증명서·결제내역·쿠폰·포인트(오픈 예정).
     route(
       "/lecture/certificates",

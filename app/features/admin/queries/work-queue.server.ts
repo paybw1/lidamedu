@@ -7,7 +7,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
-import { getPendingRefundCount } from "~/features/orders/refund-requests.server";
 import { getQnaSlaBreachCount } from "~/features/qna/sla.server";
 
 export interface AdminWorkQueueCounts {
@@ -99,16 +98,23 @@ export async function getAdminWorkQueue(
 // 집계)라 허브 loader 에서 역할 확인 후에만 호출한다. 전부 경량 head-count.
 export interface ManagerWorkQueueCounts {
   qnaSlaBreaches: number;
+  /** 환불관리(refunds)에서 아직 종결되지 않은 건 수(closed_at null). */
   refundsPending: number;
   shipmentsPending: number;
   bankTransfersPending: number;
 }
 
 export async function getManagerWorkQueue(): Promise<ManagerWorkQueueCounts> {
-  const [qnaSlaBreaches, refundsPending, shipmentsRes, bankRes] =
+  const [qnaSlaBreaches, refundsRes, shipmentsRes, bankRes] =
     await Promise.all([
       getQnaSlaBreachCount(),
-      getPendingRefundCount(),
+      // ★feat-11-014 Q3 — 종전엔 레거시 학생 환불요청(refund_requests.pending)을 셌다.
+      //   그 경로는 제거됐고(운영 0건) 환불은 관리자가 환불관리에 접수하므로,
+      //   「환불 대기」= refunds 의 열린 건(종결 상태가 아니라 closed_at 이 비어 있음).
+      adminClient
+        .from("refunds")
+        .select("refund_id", { count: "exact", head: true })
+        .is("closed_at", null),
       // 배송 대기 = 아직 발송 전(preparing).
       adminClient
         .from("shipments")
@@ -122,7 +128,7 @@ export async function getManagerWorkQueue(): Promise<ManagerWorkQueueCounts> {
     ]);
   return {
     qnaSlaBreaches,
-    refundsPending,
+    refundsPending: refundsRes.count ?? 0,
     shipmentsPending: shipmentsRes.count ?? 0,
     bankTransfersPending: bankRes.count ?? 0,
   };

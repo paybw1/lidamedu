@@ -10,7 +10,6 @@ import {
   orderItemLabel,
   orderItemTypeLabel,
 } from "~/features/orders/lib/order-item-label";
-import { getMyRefundRequestMap } from "~/features/orders/refund-requests.server";
 import { getLessonProgressForUser } from "~/features/lms/watch.server";
 
 // ── 회원정보 (프로필 기재사항 + 로그인 계정) ──────────────────────────────
@@ -189,6 +188,11 @@ export interface MemberOrderItem {
     courier: string | null;
     trackingNo: string | null;
   } | null;
+  /**
+   * ★항상 null — 레거시 학생 환불요청(refund_requests) 경로를 feat-11-014 Q3 에서 제거했다.
+   *   환불 진행은 환불관리(/admin/refunds)가 주문 단위로 보여 준다. 필드는 소비처
+   *   (admin-student-detail 주문 탭)의 형태를 깨지 않으려 남긴다.
+   */
   refundStatus: string | null;
 }
 export interface MemberOrder {
@@ -259,15 +263,6 @@ export async function listMemberOrders(
     itemsByOrder.set(it.order_id, arr);
   }
 
-  const allItemIds = [...itemsByOrder.values()]
-    .flat()
-    .map((it) => it.orderItemId);
-  const refundMap = await getMyRefundRequestMap(
-    adminClient,
-    profileId,
-    allItemIds,
-  );
-
   return (orders ?? []).map((o) => ({
     orderId: o.order_id,
     orderNo: o.order_id.slice(0, 8).toUpperCase(),
@@ -275,10 +270,7 @@ export async function listMemberOrders(
     totalKrw: o.total_krw,
     paymentMethod: o.payment_method,
     createdAt: o.created_at,
-    items: (itemsByOrder.get(o.order_id) ?? []).map((it) => ({
-      ...it,
-      refundStatus: refundMap.get(it.orderItemId) ?? null,
-    })),
+    items: itemsByOrder.get(o.order_id) ?? [],
   }));
 }
 

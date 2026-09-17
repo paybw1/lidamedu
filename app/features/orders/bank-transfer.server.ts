@@ -120,6 +120,23 @@ export async function confirmBankTransfer(input: {
     .maybeSingle();
   if (!transfer) return { ok: false, error: "무통장 신청을 찾을 수 없습니다." };
   if (transfer.deposited_at) return { ok: false, error: "이미 입금 확인된 건입니다." };
+  // ★deposited_at 을 찍기 **전에** 주문이 아직 입금 대기인지 본다 — 그 사이 취소·만료된 주문에
+  //   입금 확인을 찍으면 markOrderPaidAndFulfill 의 paid 전이는 0행인데 지급은 계속 진행돼
+  //   「돈 받은 표시 + 주문은 취소 + 수강권 지급」이 된다. paid 전이를 여기서 먼저 하지 않는
+  //   이유: markOrderPaidAndFulfill 이 「첫 전이」를 status !== paid 로 판정해 결제완료 포인트를
+  //   주므로, 미리 paid 로 옮기면 무통장 주문 전부가 포인트를 못 받는다.
+  const { data: order } = await adminClient
+    .from("orders")
+    .select("status")
+    .eq("order_id", transfer.order_id)
+    .maybeSingle();
+  if (order?.status !== "pending_deposit") {
+    return {
+      ok: false,
+      error:
+        "주문이 입금 대기 상태가 아니어서 입금 확인을 할 수 없습니다. 취소·만료된 주문이면 먼저 입금 대기로 되돌려 주세요.",
+    };
+  }
   const { error } = await adminClient
     .from("bank_transfers")
     .update({
