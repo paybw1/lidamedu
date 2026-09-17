@@ -49,3 +49,4 @@ CLAUDE.md 「2차 모범답안·채점기준 작성 시」 + 메모리 `essay-ru
 - 2026-09-17: 현황 실측(68문항, A 40·B 28), 2차도서 텍스트 추출, 문서 작성.
 - 2026-09-17: 파일럿 2015-1 작성(5,282자·176자/점, essay-file-check FAIL 0, 인용 판례 11건 상표 행 확인) → 검토판 아티팩트 게시.
 - 2026-09-17: 원장 지시 「일단 상표법 주관식 초안 전부 만들어줘」 = **하드스톱 #1 통과(초안 범위)** — A군 40 + B군 28 전부 파일 초안(`tmp/essay/`), DB 미반영. AI 배지(스탬프) 정책은 미결. DB 반영은 하드스톱 #2 유지. 실행 방식 = Agent 도구 문항별 에이전트(작성 → 적대 검증 → 수정), 지시서 `scripts/jagwa/tm-essay-brief.md`, 입력 패킷 `tm-essay-input-dump.mjs`(발문·채점평·강사해설 경로·견본 이미지 → `tm-image-fetch.mjs` PNG), 조문 대조 `tm-article-read.mjs`, 상태 원장 `tmp/essay/STATUS.json`. 시범 3문항(2010-2 단일 설문·2017-3 이미지 13·2024-1 B군) 후 10문항 웨이브.
+- 2026-09-17: 원장 요청 「아티팩트에 문항별 수정방안 입력란」 → 68문항 검토판 아티팩트 게시(https://claude.ai/artifact/NJRh4fx8nitwac6J4L3oFc, capabilities db). 문항별 판정(승인/수정 요청/보류)+수정방안 텍스트를 아티팩트 db `feedback/<연도-번호>` 에 저장하고, Claude 가 `read_db` 로 읽어 반영한다. 빌더 = 세션 scratchpad `build-tm-review.mjs`(초안 추가 시 재빌드·재게시).
