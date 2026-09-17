@@ -19,28 +19,29 @@ import { Label } from "~/core/components/ui/label";
 import { cn } from "~/core/lib/utils";
 import {
   PAYMENT_STATUS_LABEL,
-  SUBSCRIPTION_STATUS_LABEL,
   type PaymentRow,
+  SUBSCRIPTION_DURATION_MAX_DAYS,
+  SUBSCRIPTION_NOTE_MAX_LENGTH,
+  SUBSCRIPTION_NOTE_MIN_LENGTH,
+  SUBSCRIPTION_STATUS_LABEL,
   type SubscriptionPlan,
   type UserSubscription,
 } from "~/features/subscriptions/labels";
 
-// 사유(note) 길이 — 서버 noteSchema(api/admin-subscription.tsx, min 2 / max 500) 와 동일 값.
-// 라우트 모듈은 .server 의존이라 클라이언트에서 import 하지 않고 여기서 숫자를 맞춘다.
-const NOTE_MIN_LENGTH = 2;
-const NOTE_MAX_LENGTH = 500;
-// 기간(일) 상한 — 서버 grantSchema.durationDays / extendSchema.addDays 의 max(3650) 와 동일 값.
-// 이 패널은 fetcher.submit(FormData) 프로그램 제출이라 Input max 는 힌트일 뿐 브라우저가
-// 막지 않으므로 버튼 가드에서 직접 검사한다.
-const DURATION_MAX_DAYS = 3650;
-
+// 사유 길이·기간 상한은 labels.ts 상수(서버 zod 스키마와 같은 SSOT)를 쓴다.
+// 이 패널은 fetcher.submit(FormData) 프로그램 제출이라 Input max/maxLength 는 힌트일 뿐
+// 브라우저가 막지 않으므로 버튼 가드에서 직접 검사한다.
 function isNoteValid(note: string): boolean {
-  return note.trim().length >= NOTE_MIN_LENGTH;
+  return note.trim().length >= SUBSCRIPTION_NOTE_MIN_LENGTH;
 }
 
 // 빈 입력(Number("") → 0)·소수(1.5)도 걸러야 하므로 정수·범위를 함께 판정.
 function isDaysValid(days: number): boolean {
-  return Number.isInteger(days) && days >= 1 && days <= DURATION_MAX_DAYS;
+  return (
+    Number.isInteger(days) &&
+    days >= 1 &&
+    days <= SUBSCRIPTION_DURATION_MAX_DAYS
+  );
 }
 
 export interface AdminSubscriptionPanelProps {
@@ -262,7 +263,7 @@ function ActiveCard({
             id="extendDays"
             type="number"
             min={1}
-            max={DURATION_MAX_DAYS}
+            max={SUBSCRIPTION_DURATION_MAX_DAYS}
             value={extendDays}
             onChange={(e) => setExtendDays(Number(e.target.value))}
             className="h-8 w-20 text-xs"
@@ -275,7 +276,7 @@ function ActiveCard({
           <Input
             id="extendNote"
             value={extendNote}
-            maxLength={NOTE_MAX_LENGTH}
+            maxLength={SUBSCRIPTION_NOTE_MAX_LENGTH}
             onChange={(e) => setExtendNote(e.target.value)}
             placeholder="예: 보상 연장, 오프라인 결제 확인"
             className="h-8 text-xs"
@@ -307,7 +308,7 @@ function ActiveCard({
           <Input
             id="cancelNote"
             value={cancelNote}
-            maxLength={NOTE_MAX_LENGTH}
+            maxLength={SUBSCRIPTION_NOTE_MAX_LENGTH}
             onChange={(e) => setCancelNote(e.target.value)}
             placeholder="예: 환불 처리, 중복 부여 정리"
             className="h-8 text-xs"
@@ -412,7 +413,7 @@ function GrantForm({
             id="grantDays"
             type="number"
             min={1}
-            max={DURATION_MAX_DAYS}
+            max={SUBSCRIPTION_DURATION_MAX_DAYS}
             value={days}
             onChange={(e) => setDays(Number(e.target.value))}
             className="h-8 w-24 text-xs"
@@ -425,7 +426,7 @@ function GrantForm({
           <Input
             id="grantNote"
             value={note}
-            maxLength={NOTE_MAX_LENGTH}
+            maxLength={SUBSCRIPTION_NOTE_MAX_LENGTH}
             onChange={(e) => setNote(e.target.value)}
             placeholder="예: 오프라인 결제 확인, 이벤트 제공"
             className="h-8 text-xs"

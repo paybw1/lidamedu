@@ -12,23 +12,35 @@ import {
   grantManualSubscription,
   searchStudentsForGrant,
 } from "~/features/subscriptions/admin-queries.server";
+import {
+  SUBSCRIPTION_DURATION_MAX_DAYS,
+  SUBSCRIPTION_NOTE_MAX_LENGTH,
+  SUBSCRIPTION_NOTE_MIN_LENGTH,
+} from "~/features/subscriptions/labels";
 
 import type { Route } from "./+types/admin-subscription";
 
 const noteSchema = z
   .string()
   .trim()
-  .min(2, "조정 사유를 입력하세요 (2자 이상)")
-  .max(500);
+  .min(
+    SUBSCRIPTION_NOTE_MIN_LENGTH,
+    `조정 사유를 입력하세요 (${SUBSCRIPTION_NOTE_MIN_LENGTH}자 이상)`,
+  )
+  .max(SUBSCRIPTION_NOTE_MAX_LENGTH);
 const grantSchema = z.object({
   userId: z.string().uuid(),
   planCode: z.string().min(1).max(64),
-  durationDays: z.coerce.number().int().min(1).max(3650),
+  durationDays: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(SUBSCRIPTION_DURATION_MAX_DAYS),
   note: noteSchema,
 });
 const extendSchema = z.object({
   subscriptionId: z.string().uuid(),
-  addDays: z.coerce.number().int().min(1).max(3650),
+  addDays: z.coerce.number().int().min(1).max(SUBSCRIPTION_DURATION_MAX_DAYS),
   note: noteSchema,
 });
 const cancelSchema = z.object({

@@ -5,11 +5,13 @@ import {
   type CourseFormat,
   type CourseFormatFormRules,
   type PolicyGroupRules,
+  allowedFormatsForKind,
   cadenceOf,
   courseFormatFormRules,
   deliveryOf,
   describeCourseFormatAxes,
   hasOnlineDelivery,
+  isFormatAllowedForKind,
   isPackageFormat,
   needsSeat,
   packagingOf,
@@ -192,5 +194,74 @@ describe("courseFormatFormRules (feat-11-013 P3-a — 유형별 조건부 노출
         expect(Object.values(g).some(Boolean)).toBe(false);
       }
     }
+  });
+});
+
+describe("isFormatAllowedForKind / allowedFormatsForKind (feat-11-015 L2 — 종류↔유형 결합)", () => {
+  // 2 종류 × 6 유형 표. 패키지 유형 ⇔ tpass, 그 밖 ⇔ course. 폼 라디오 제한과 서버 400 이 이 표 하나로 판정한다.
+  const table: Record<"course" | "tpass", Record<CourseFormat, boolean>> = {
+    course: {
+      online_always: true,
+      online_term: true,
+      offline: true,
+      blended: true,
+      package_term: false,
+      package_always: false,
+    },
+    tpass: {
+      online_always: false,
+      online_term: false,
+      offline: false,
+      blended: false,
+      package_term: true,
+      package_always: true,
+    },
+  };
+
+  it.each(["course", "tpass"] as const)(
+    "%s 의 허용 유형이 표와 같다",
+    (kind) => {
+      for (const f of COURSE_FORMATS) {
+        expect(isFormatAllowedForKind(kind, f)).toBe(table[kind][f]);
+      }
+      expect(allowedFormatsForKind(kind)).toEqual(
+        COURSE_FORMATS.filter((f) => table[kind][f]),
+      );
+    },
+  );
+
+  it("허용 목록은 COURSE_FORMATS 순서를 유지한다(폼 격자 순서)", () => {
+    expect(allowedFormatsForKind("course")).toEqual([
+      "online_always",
+      "online_term",
+      "offline",
+      "blended",
+    ]);
+    expect(allowedFormatsForKind("tpass")).toEqual([
+      "package_term",
+      "package_always",
+    ]);
+  });
+
+  it("한 유형은 course·tpass 중 정확히 한 종류에만 허용되고, tpass 허용 = 패키지 유형이다", () => {
+    for (const f of COURSE_FORMATS) {
+      expect(isFormatAllowedForKind("course", f)).not.toBe(
+        isFormatAllowedForKind("tpass", f),
+      );
+      expect(isFormatAllowedForKind("tpass", f)).toBe(isPackageFormat(f));
+    }
+  });
+
+  it("강의상품이 아닌 종류(학습 구독·미상)는 어느 유형도 허용하지 않는다", () => {
+    for (const kind of ["subject", "bundle", "membership", "", "unknown"]) {
+      expect(allowedFormatsForKind(kind)).toEqual([]);
+      for (const f of COURSE_FORMATS)
+        expect(isFormatAllowedForKind(kind, f)).toBe(false);
+    }
+  });
+
+  it("운영 실측 조합(2026-09-17: course→online_always ×3 · tpass→package_always ×1)은 규칙을 통과한다", () => {
+    expect(isFormatAllowedForKind("course", "online_always")).toBe(true);
+    expect(isFormatAllowedForKind("tpass", "package_always")).toBe(true);
   });
 });

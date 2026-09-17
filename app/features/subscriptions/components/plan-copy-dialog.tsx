@@ -15,8 +15,8 @@ import {
 } from "~/core/components/ui/dialog";
 import { Input } from "~/core/components/ui/input";
 import {
-  COURSE_FORMATS,
   COURSE_FORMAT_LABEL,
+  allowedFormatsForKind,
   type CourseFormat,
 } from "~/features/lms/lib/course-format";
 
@@ -24,13 +24,17 @@ export function PlanCopyDialog({
   planId,
   code,
   name,
+  productKind,
   courseFormat,
 }: {
   planId: string;
   code: string;
   name: string;
+  /** 원본 종류(course/tpass) — 복사본이 물려받으므로 그 종류에 허용되는 유형만 고르게 한다(서버도 같은 규칙으로 400). */
+  productKind: string;
   courseFormat: CourseFormat | null;
 }) {
+  const formatOptions = allowedFormatsForKind(productKind);
   const [open, setOpen] = useState(false);
   const fetcher = useFetcher<{ ok?: true; planId?: string; error?: string }>();
   const navigate = useNavigate();
@@ -97,7 +101,7 @@ export function PlanCopyDialog({
                   defaultValue={courseFormat ?? ""}
                   className="border-input bg-background h-8 w-full rounded-md border px-2 text-xs"
                 >
-                  {COURSE_FORMATS.map((f) => (
+                  {formatOptions.map((f) => (
                     <option key={f} value={f}>
                       {COURSE_FORMAT_LABEL[f]}
                       {f === courseFormat ? " (원본과 동일)" : ""}

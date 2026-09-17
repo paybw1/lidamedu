@@ -40,11 +40,12 @@ import {
   type ScheduleStatus,
 } from "~/features/landing/labels";
 import {
-  COURSE_FORMATS,
   COURSE_FORMAT_DESCRIPTION,
   COURSE_FORMAT_LABEL,
   type CourseFormat,
+  allowedFormatsForKind,
   courseFormatFormRules,
+  isFormatAllowedForKind,
 } from "~/features/lms/lib/course-format";
 import {
   FEATURE_LABEL,
@@ -444,6 +445,24 @@ function PlanForm({
   );
   // feat-11-013 P3-a — 유형별 조건부 노출 규칙(서버 action 과 같은 SSOT). 유형 미선택이면 null.
   const rules = showPolicy && courseFormat ? courseFormatFormRules(courseFormat) : null;
+  // feat-11-015 L2 — 종류 ↔ 유형 결합(패키지 유형 ⇔ T-PASS, 그 밖 ⇔ 강의). 라디오는 허용 유형만 그리고,
+  //   종류를 바꿔 현재 유형이 허용 밖으로 나가면 선택을 비운다. ★잠금(신청내역 있음)이면 비우지 않는다 — 라디오가
+  //   비활성이라 다시 고를 수 없고, 저장값을 그대로 보내면 서버가 결합 위반 문구로 거절해 원인을 알려 준다.
+  const allowedFormats = allowedFormatsForKind(productKind);
+  const formatMismatch =
+    showPolicy &&
+    courseFormat !== null &&
+    !isFormatAllowedForKind(productKind, courseFormat);
+  const onProductKindChange = (next: ProductKind) => {
+    setProductKind(next);
+    if (
+      !formatLocked &&
+      courseFormat !== null &&
+      !isFormatAllowedForKind(next, courseFormat)
+    ) {
+      setCourseFormat(null);
+    }
+  };
   const [detailKind, setDetailKind] = useState<
     "none" | "image" | "html" | "sections"
   >(
@@ -518,7 +537,7 @@ function PlanForm({
           <select
             name="productKind"
             value={productKind}
-            onChange={(e) => setProductKind(e.target.value as ProductKind)}
+            onChange={(e) => onProductKindChange(e.target.value as ProductKind)}
             className="border-input bg-background h-8 w-full rounded-md border px-2 text-xs"
           >
             <option value="subject">개별 과목</option>
@@ -541,7 +560,7 @@ function PlanForm({
                 : "주문이나 수강생이 생긴 뒤에는 바꿀 수 없습니다."}
             </p>
             <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
-              {COURSE_FORMATS.map((f) => (
+              {allowedFormats.map((f) => (
                 <label
                   key={f}
                   className={
@@ -570,7 +589,13 @@ function PlanForm({
                 </label>
               ))}
             </div>
-            {rules ? (
+            {formatMismatch && courseFormat ? (
+              // 잠긴 상품의 종류를 바꿔 저장된 유형이 허용 밖으로 나간 경우 — 카드가 안 그려지므로 원인을 알린다.
+              //   ★라벨 바로 뒤에 조사(은/는)를 붙이지 않는다 — 6개 라벨 중 5개가 받침 없이 끝나 「은」이 틀린다.
+              <p className="text-destructive text-[11px]">
+                {`저장된 과정 유형은 「${COURSE_FORMAT_LABEL[courseFormat]}」입니다 — 선택한 종류에서는 쓸 수 없습니다. 패키지 유형은 T-PASS, 그 밖의 유형은 강의 종류에서만 쓸 수 있으니 종류를 되돌려 주세요.`}
+              </p>
+            ) : rules ? (
               <p className="text-foreground/80 text-[11px]">{rules.hint}</p>
             ) : (
               <p className="text-amber-700 dark:text-amber-300 text-[11px]">

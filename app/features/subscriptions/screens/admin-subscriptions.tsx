@@ -35,7 +35,12 @@ import {
   type SubscriptionAdminLogRow,
   type SubscriptionWithUser,
 } from "~/features/subscriptions/admin-queries.server";
-import { SUBSCRIPTION_STATUS_LABEL } from "~/features/subscriptions/labels";
+import {
+  SUBSCRIPTION_DURATION_MAX_DAYS,
+  SUBSCRIPTION_NOTE_MAX_LENGTH,
+  SUBSCRIPTION_NOTE_MIN_LENGTH,
+  SUBSCRIPTION_STATUS_LABEL,
+} from "~/features/subscriptions/labels";
 import {
   listAllPlans,
   listSubscriptionPlans,
@@ -389,7 +394,7 @@ function GrantDialog({ plans }: { plans: PlanOption[] }) {
                   name="durationDays"
                   type="number"
                   min={1}
-                  max={3650}
+                  max={SUBSCRIPTION_DURATION_MAX_DAYS}
                   key={planCode}
                   defaultValue={selectedPlan?.durationDays ?? 365}
                   className="h-8 text-xs"
@@ -403,8 +408,8 @@ function GrantDialog({ plans }: { plans: PlanOption[] }) {
               <Textarea
                 name="note"
                 required
-                minLength={2}
-                maxLength={500}
+                minLength={SUBSCRIPTION_NOTE_MIN_LENGTH}
+                maxLength={SUBSCRIPTION_NOTE_MAX_LENGTH}
                 rows={2}
                 placeholder="예: 오프라인 결제 확인, 이벤트 제공, 보상 연장 등"
                 className="text-xs"
@@ -574,13 +579,27 @@ function ExtendDialog({
           <input type="hidden" name="subscriptionId" value={subscriptionId} />
           <label className="block space-y-1">
             <span className="text-muted-foreground text-xs font-semibold">추가 기간(일)</span>
-            <Input name="addDays" type="number" min={1} max={3650} defaultValue={30} className="h-8 text-xs" />
+            <Input
+              name="addDays"
+              type="number"
+              min={1}
+              max={SUBSCRIPTION_DURATION_MAX_DAYS}
+              defaultValue={30}
+              className="h-8 text-xs"
+            />
           </label>
           <label className="block space-y-1">
             <span className="text-muted-foreground text-xs font-semibold">
               사유 (필수 — 이력에 기록)
             </span>
-            <Textarea name="note" required minLength={2} maxLength={500} rows={2} className="text-xs" />
+            <Textarea
+              name="note"
+              required
+              minLength={SUBSCRIPTION_NOTE_MIN_LENGTH}
+              maxLength={SUBSCRIPTION_NOTE_MAX_LENGTH}
+              rows={2}
+              className="text-xs"
+            />
           </label>
           <p className="text-muted-foreground text-[11px]">
             만료·취소 상태면 다시 활성으로 전환됩니다.
@@ -640,7 +659,14 @@ function CancelDialog({
             <span className="text-muted-foreground text-xs font-semibold">
               사유 (필수 — 이력에 기록)
             </span>
-            <Textarea name="note" required minLength={2} maxLength={500} rows={2} className="text-xs" />
+            <Textarea
+              name="note"
+              required
+              minLength={SUBSCRIPTION_NOTE_MIN_LENGTH}
+              maxLength={SUBSCRIPTION_NOTE_MAX_LENGTH}
+              rows={2}
+              className="text-xs"
+            />
           </label>
           <Button type="submit" size="sm" variant="destructive" disabled={busy} className="w-full">
             {busy ? "처리 중…" : "취소 확정"}

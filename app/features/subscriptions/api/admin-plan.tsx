@@ -11,13 +11,18 @@ import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   COURSE_FORMATS,
+  COURSE_FORMAT_LABEL,
+  type CourseFormat,
   MID_ENTRY_MODES,
   courseFormatFormRules,
+  isFormatAllowedForKind,
   toCourseFormat,
 } from "~/features/lms/lib/course-format";
 import { DETAIL_SECTIONS } from "~/features/lms/lib/detail-sections";
 import {
   FEATURE_LABEL,
+  PRODUCT_KIND_LABEL,
+  type ProductKind,
   isLectureProductKind,
 } from "~/features/subscriptions/labels";
 import { applyHiddenPolicyGroups } from "~/features/subscriptions/lib/plan-policy-groups";
@@ -142,6 +147,29 @@ const schema = z.object({
   categoryId: z.string().uuid().nullable(),
 });
 
+// feat-11-015 L2 — 종류(product_kind) ↔ 과정 유형 결합 규칙 위반 문구. 규칙 문장(KIND_FORMAT_RULE)은 한 벌이고
+//   앞머리만 경로별로 다르다 — 생성·수정은 폼에 종류 select 가 있어 「선택한 종류」로, 복사는 대화상자에 종류 칸이
+//   없고 원본 종류를 그대로 물려받으므로 원본 종류·고른 유형을 이름으로 밝힌다.
+//   라벨은 화면(admin-plans 종류 select · COURSE_FORMAT_LABEL)과 맞춘다: 강의 / T-PASS · 정규 패키지 / 상시 패키지.
+const KIND_FORMAT_RULE =
+  "패키지 유형(정규 패키지·상시 패키지)은 T-PASS 종류에서만, 그 밖의 유형은 강의 종류에서만 저장할 수 있습니다.";
+const KIND_FORMAT_MISMATCH_ERROR = `선택한 종류에는 이 과정 유형을 쓸 수 없습니다. ${KIND_FORMAT_RULE}`;
+
+/** DB `product_kind`(string)를 화면 라벨로. 라벨 사전은 ProductKind 키라 string 은 guard 후 조회, 미등록 값은 원문. */
+function productKindLabel(kind: string): string {
+  return kind in PRODUCT_KIND_LABEL
+    ? PRODUCT_KIND_LABEL[kind as ProductKind]
+    : kind;
+}
+
+/** 복사 경로 전용 — 조사는 「종류」「유형」에 붙여 라벨의 받침(은/는·을/를)에 흔들리지 않게 한다. */
+function copyKindFormatMismatchError(
+  sourceKind: string,
+  format: CourseFormat,
+): string {
+  return `복사본은 원본 상품의 종류(${productKindLabel(sourceKind)})를 그대로 물려받아, 이 종류에서는 「${COURSE_FORMAT_LABEL[format]}」 유형을 쓸 수 없습니다. ${KIND_FORMAT_RULE}`;
+}
+
 // feat-11-013 P2-D7 — 상품 복사. 기본정보·강의 구성은 복사, 가격·정책은 선택, 주문·수강생은 절대 아님.
 const copySchema = z.object({
   sourcePlanId: z.string().uuid(),
@@ -188,6 +216,35 @@ export async function action({ request }: Route.ActionArgs) {
         { error: cp.error.issues[0]?.message ?? "입력 오류" },
         { status: 400 },
       );
+    }
+    // feat-11-015 L2 — 복사본은 원본의 종류(product_kind)를 그대로 물려받는데 복사 대화상자는 6유형을 전부
+    //   고르게 하므로, 새 유형이 원본 종류와 결합 규칙에 어긋나면 여기서 거절한다(copyPlan 앞 — 행이 생기기 전).
+    //   courseFormat=null 은 원본 유형 유지라 검사하지 않는다(원본이 규칙 안이면 복사본도 안). 강의상품이 아닌
+    //   원본은 copyPlan 이 유형을 null 로 버리므로 역시 검사하지 않는다.
+    //   ★대화상자(plan-copy-dialog)는 productKind prop 이 없어 allowedFormatsForKind 로 선택지를 줄이지 못한다 —
+    //     그래서 문구가 원본 종류를 이름으로 밝힌다. 선택지 제한은 해당 컴포넌트 소유 갈래의 후속 작업.
+    if (cp.data.courseFormat) {
+      const { data: src, error: srcErr } = await adminClient
+        .from("subscription_plans")
+        .select("product_kind")
+        .eq("plan_id", cp.data.sourcePlanId)
+        .maybeSingle();
+      if (srcErr) return data({ error: srcErr.message }, { status: 400 });
+      if (
+        src &&
+        isLectureProductKind(src.product_kind) &&
+        !isFormatAllowedForKind(src.product_kind, cp.data.courseFormat)
+      ) {
+        return data(
+          {
+            error: copyKindFormatMismatchError(
+              src.product_kind,
+              cp.data.courseFormat,
+            ),
+          },
+          { status: 400 },
+        );
+      }
     }
     const copied = await copyPlan(cp.data);
     if (!copied.ok) return data({ error: copied.error }, { status: 400 });
@@ -246,6 +303,18 @@ export async function action({ request }: Route.ActionArgs) {
   const courseFormat = isLecture ? parsed.data.courseFormat : null;
   if (isLecture && !courseFormat) {
     return data({ error: "과정 유형을 선택하세요." }, { status: 400 });
+  }
+  // ── feat-11-015 L2 — 종류 ↔ 유형 결합(패키지 유형 ⇔ tpass, 그 밖 ⇔ course). 폼이 라디오를 같은 규칙으로
+  //   제한하지만 낡은 탭·직접 POST 를 믿지 않는다. 어긋난 채 저장되면 일시정지 resolver(course_format 축)와
+  //   유료 연장 게이트(product_kind 축)가 서로 다른 답을 낸다.
+  //   ★update 도 같은 검사를 받으므로 기존 저장값이 규칙에 어긋나는 상품은 수정 자체가 거절된다 — 운영 실측
+  //     (2026-09-17) 조합 분포는 course→online_always 3건 · tpass→package_always 1건뿐이라 거절되는 기존 행은 없다.
+  if (
+    isLecture &&
+    courseFormat &&
+    !isFormatAllowedForKind(parsed.data.productKind, courseFormat)
+  ) {
+    return data({ error: KIND_FORMAT_MISMATCH_ERROR }, { status: 400 });
   }
   if (parsed.data.intent === "update") {
     const { data: current } = await adminClient

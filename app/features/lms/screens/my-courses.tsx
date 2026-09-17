@@ -32,6 +32,7 @@ import { useConfirm, usePromptValue } from "~/core/hooks/use-confirm";
 import { EmptyState } from "~/features/lms/components/empty-state";
 import { enrollmentStatusLabel } from "~/features/lms/lib/enrollment-status";
 import { resolveExtensionContexts } from "~/features/lms/extension.server";
+import { canOfferExtensionEntry } from "~/features/lms/lib/extension-entry";
 import { EXTENSION_DEFAULTS_FALLBACK } from "~/features/lms/lib/extension-policy";
 import { PAUSE_NO_SINGLE_COURSE_PLAN_NOTICE } from "~/features/lms/lib/single-course-plan";
 import {
@@ -113,6 +114,11 @@ export async function loader({ request }: Route.LoaderArgs) {
   ).catch(() => new Map<string, ResolvedPausePolicy>());
 
   // ① 연장 정책 — 상품(plan) 단위. 일시정지 칸은 위 수강권 단위 맵으로 옮겨 여기서 읽지 않는다.
+  //   ★진입점 게이트(feat-11-015 D17 「패키지 연장 원천 거절」): 상품 종류·유형(subscription_plans)을 같은
+  //   왕복에서 함께 읽어, course 가 아니거나 패키지 유형인 상품의 정책 행은 아예 맵에 넣지 않는다 —
+  //   패키지 상품 행에 연장 값이 남아 있어도 학생에게 연장 상품이 새지 않는다(canOfferExtensionEntry).
+  //   상품 행이 없거나 조회가 실패하면 그 상품은 닫힌다(fail-closed, 일시정지 resolver 와 같은 자세).
+  //   resolvePausePolicies 는 유형을 돌려주지 않아 재사용할 수 없어 여기서 1회 배치 조회한다.
   const planIds = [...new Set(list.map((e) => e.plan_id).filter(Boolean))] as string[];
   const policyByPlan = new Map<
     string,
@@ -122,11 +128,29 @@ export async function loader({ request }: Route.LoaderArgs) {
     }
   >();
   if (planIds.length > 0) {
-    const { data: policies } = await adminClient
-      .from("plan_policies")
-      .select("plan_id, extension_allowed, extension_plan_ids")
-      .in("plan_id", planIds);
+    const [{ data: policies }, { data: ownPlans }] = await Promise.all([
+      adminClient
+        .from("plan_policies")
+        .select("plan_id, extension_allowed, extension_plan_ids")
+        .in("plan_id", planIds),
+      adminClient
+        .from("subscription_plans")
+        .select("plan_id, product_kind, course_format")
+        .in("plan_id", planIds),
+    ]);
+    const entryAllowedByPlan = new Map<string, boolean>();
+    for (const p of ownPlans ?? []) {
+      entryAllowedByPlan.set(
+        p.plan_id,
+        canOfferExtensionEntry({
+          productKind: p.product_kind,
+          courseFormat: p.course_format,
+        }),
+      );
+    }
     for (const p of policies ?? []) {
+      // 미확인(행 없음·조회 실패)은 === true 가 아니므로 닫힌다.
+      if (entryAllowedByPlan.get(p.plan_id) !== true) continue;
       policyByPlan.set(p.plan_id, {
         // feat-11-010 로 NULL 허용이 됐다 — 기존 "연장 상품" 게이트는 명시 true 일 때만.
         //   기본값 해석이 필요한 새 유료 연장은 별도 경로가 담당한다.
@@ -262,6 +286,7 @@ export async function loader({ request }: Route.LoaderArgs) {
           };
         })(),
         // ① 연장 상품 진입점 — 정책 허용 + 판매중 연장 상품이 있을 때만.
+        //   패키지·비-course 상품은 위 policyByPlan 에 들어오지 않으므로 여기서 빈 배열이 된다(D17 게이트).
         extensionProducts:
           policy?.extensionAllowed && e.status !== "revoked"
             ? policy.extensionPlanIds

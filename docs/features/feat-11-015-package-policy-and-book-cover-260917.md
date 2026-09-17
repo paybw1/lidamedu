@@ -124,6 +124,14 @@
 
 게이트: DDL 없음(P3-c·B-fix). typecheck·build·vitest(`course-format.test.ts` 6유형·resolver fixture) → 운영 리허설: 패키지 상품 수정 저장 전후 `plan_policies` 22칸 diff = 0(숨긴 칸 보존 증명), 단과 저장도 동일.
 
+**리허설 결과(2026-09-17, 로컬 서버 + 운영 DB, 하네스 `rehearse-p1.mjs`, 임시 관리자는 지난 무력화 계정을 되살려 재사용 후 재무력화) — 17건 중 16건 통과**
+- ① pt_tpass(패키지): 폼에 5그룹 칸 없음(정책 칸 = 수강기간 2개뿐) · 변경 없는 저장 200 · 정책 22칸 diff 0.
+- ② patent_basic_2026(단과): 기기/다운로드 칸 없음 · 배수·일시정지·연장 칸 있음 · 변경 없는 저장은 **P3-a 의 회차 필수 검증에 거절**(「온라인 상시 강의는 전체 예정 회차를 입력하세요」 — P3-a 기록대로 기존 3건은 다음 저장 때 회차 입력 필요, 이 검증은 DB 를 건드리지 않아 diff 0).
+- ②' 임시 단과 상품(회차 10, 생성 → 삭제): 생성 시 숨긴 기기 칸 = DDL 기본값(true/true/false) · 변경 없는 저장 diff 0 · 일시정지 칸만 바꾸면 `pause_allowed`·`pause_max_count` 만 diff, 기기 칸 불변 · 삭제 후 잔존 0.
+- ③ 교재 표지: patent_basic_2026 5장·pt_tpass 4장 전부 이중 프리픽스 0, HTTP 200.
+- ④ 회원 CRM 수강권 패널: 사유 칸(grantNote) 렌더 확인(제출은 하지 않음 — 실구독 생성 회피).
+- 미실행: 패키지 수강권 일시정지 상속(운영 패키지 수강권 0건) — 단위 테스트(resolver fixture 5건)로 대체.
+
 ## 6. 추가 요청 — 수동 수강권 부여 「Required」 **[확정 버그]**
 
 - 경로: 회원 CRM 수강생 상세 → 「수강권·결제」 패널(`subscriptions/components/admin-subscription-panel.tsx`) → 수동 수강권 부여 / 만료 연장 / 취소.

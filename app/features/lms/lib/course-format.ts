@@ -107,6 +107,31 @@ export function isPackageFormat(format: CourseFormat): boolean {
   return packagingOf(format) === "package";
 }
 
+// ── 종류(product_kind) ↔ 과정 유형 결합 규칙 (feat-11-015 L2) ──
+// 두 축은 저장은 따로 하지만 소비처가 갈린다 — 일시정지 resolver 는 course_format(패키지 유형)로,
+// 유료 연장 게이트는 product_kind(tpass)로 판정한다. 결합이 어긋난 행(course+package_* · tpass+online_always)이
+// 있으면 두 게이트가 서로 다른 답을 내므로 저장 시점에 막는다.
+// 규칙: 패키지 유형(package_term·package_always) ⇔ tpass, 그 밖의 유형 ⇔ course.
+// ★인자를 string 으로 두는 이유는 DB `product_kind` 소비처가 string 이기 때문. 강의상품이 아닌 종류(subject·
+//   bundle·membership)는 유형 자체가 null 이라 어느 유형도 허용하지 않는다(false). 이 파일은
+//   `subscriptions/labels.ts` 가 import 하므로 역방향으로 isLectureProductKind 를 끌어오지 않는다 —
+//   강의상품 종류가 늘면 여기에 명시적으로 결합을 추가한다.
+export function isFormatAllowedForKind(
+  productKind: string,
+  format: CourseFormat,
+): boolean {
+  return isPackageFormat(format)
+    ? productKind === "tpass"
+    : productKind === "course";
+}
+
+/** 종류가 고를 수 있는 유형 목록 — COURSE_FORMATS 순서 유지(폼 라디오 격자가 이 순서를 쓴다). 강의상품이 아니면 []. */
+export function allowedFormatsForKind(
+  productKind: string,
+): readonly CourseFormat[] {
+  return COURSE_FORMATS.filter((f) => isFormatAllowedForKind(productKind, f));
+}
+
 // ── 중간 신청 정책 (feat-11-013 P3-b) — plan_policies.mid_entry_mode 의 값 SSOT ──
 // starts_on(수강 시작일) 경과 후 결제한 수강생의 종료일 처리. NULL = until_end(현행 동작).
 export const MID_ENTRY_MODES = ["until_end", "fixed_days", "closed"] as const;

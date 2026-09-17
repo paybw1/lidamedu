@@ -22,6 +22,16 @@ export const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
   refunded: "환불",
 };
 
+// feat-7-014 — 운영자 수강권 조정(수동 부여/연장/취소) 입력 한계. SSOT — 숫자 재하드코딩 금지.
+//   소비처: api/admin-subscription.tsx(zod 스키마) · components/admin-subscription-panel.tsx(버튼 가드·Input 힌트)
+//          · screens/admin-subscriptions.tsx(다이얼로그 폼 제약) · admin-queries.server.ts(서버 범위 검사)
+/** 조정 사유(note) 최소 글자 수. */
+export const SUBSCRIPTION_NOTE_MIN_LENGTH = 2;
+/** 조정 사유(note) 최대 글자 수. */
+export const SUBSCRIPTION_NOTE_MAX_LENGTH = 500;
+/** 수동 부여 기간(durationDays)·연장 기간(addDays) 상한(일). 약 10년. */
+export const SUBSCRIPTION_DURATION_MAX_DAYS = 3650;
+
 // feat-8-028 — 상품 종류. subject=개별 과목, bundle=번들, membership=회원제(free/cohort).
 // feat-11 — course=영상 강의, tpass=기간권(T-PASS). 학습 플랫폼 상품(위 3종)과 별개로
 //   강의 플랫폼(/lecture)에서 판매·수강권(enrollments)으로 지급된다.

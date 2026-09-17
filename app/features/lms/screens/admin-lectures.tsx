@@ -623,6 +623,7 @@ export default function AdminLectures({ loaderData, actionData }: Route.Componen
                             planId={l.planId}
                             code={l.code}
                             name={l.name}
+                            productKind={l.productKind}
                             courseFormat={l.courseFormat}
                           />
                         ) : null}

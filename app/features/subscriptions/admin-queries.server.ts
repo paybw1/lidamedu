@@ -5,11 +5,12 @@ import type { Json } from "database.types";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
 
-import type {
-  PaymentRow,
-  PaymentStatus,
-  SubscriptionStatus,
-  UserSubscription,
+import {
+  type PaymentRow,
+  type PaymentStatus,
+  SUBSCRIPTION_DURATION_MAX_DAYS,
+  type SubscriptionStatus,
+  type UserSubscription,
 } from "./labels";
 
 // ── 단일 사용자 ──────────────────────────────────────────────────────────
@@ -209,7 +210,7 @@ async function writeAdminLog(entry: {
 export interface GrantManualSubscriptionInput {
   userId: string;
   planCode: string;
-  /** 추가 기간(일). 1~3650. */
+  /** 추가 기간(일). 1~SUBSCRIPTION_DURATION_MAX_DAYS. */
   durationDays: number;
   /** 부여 사유 (감사 로그·admin_note). */
   note: string;
@@ -223,8 +224,14 @@ export async function grantManualSubscription(
   | { ok: true; subscriptionId: string; expiresAt: string }
   | { ok: false; error: string }
 > {
-  if (input.durationDays <= 0 || input.durationDays > 3650) {
-    return { ok: false, error: "durationDays 범위 1~3650" };
+  if (
+    input.durationDays <= 0 ||
+    input.durationDays > SUBSCRIPTION_DURATION_MAX_DAYS
+  ) {
+    return {
+      ok: false,
+      error: `durationDays 범위 1~${SUBSCRIPTION_DURATION_MAX_DAYS}`,
+    };
   }
   // 1) plan 조회 (planId, code 검증).
   const { data: plan, error: planErr } = await adminClient
@@ -334,8 +341,11 @@ export async function extendSubscription(
   note: string,
   actorId: string,
 ): Promise<{ ok: true; expiresAt: string } | { ok: false; error: string }> {
-  if (addDays <= 0 || addDays > 3650) {
-    return { ok: false, error: "addDays 범위 1~3650" };
+  if (addDays <= 0 || addDays > SUBSCRIPTION_DURATION_MAX_DAYS) {
+    return {
+      ok: false,
+      error: `addDays 범위 1~${SUBSCRIPTION_DURATION_MAX_DAYS}`,
+    };
   }
   const { data: sub, error: gErr } = await adminClient
     .from("user_subscriptions")
