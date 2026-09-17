@@ -38,7 +38,7 @@ const items =
 const CHARS_PER_POINT = 200;
 const TARGET_PER_POINT = 165;
 const CASE_RE =
-  /\b(\d{2,4}(?:후|다|허|마|카|누|두|므|재|그|나|하|가합|가단)\d{1,6})\b/g;
+  /\b(\d{2,4}(?:후|다|허|마|카|누|두|도|므|재|그|나|하|가합|가단)\d{1,6})\b/g;
 const DROPPED_TERMS = [
   "논점의 정리",
   "소설문",
