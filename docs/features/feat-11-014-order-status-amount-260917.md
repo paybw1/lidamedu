@@ -33,14 +33,16 @@
 
 | 셀렉트 값 | 허용 출발 상태 | 실제로 실행되는 것 | 권한 |
 |---|---|---|---|
-| **결제완료** | `pending_deposit`(무통장) | 기존 `confirmBankTransfer` → `markOrderPaidAndFulfill`(paid_at·포인트·수강권·배송·쿠폰). **토스 주문은 불가**(토스 confirm/웹훅이 확정) | manager + 직무 |
-| **취소** | `pending_deposit / pending_payment / attempted` | 기존 취소 경로(포인트 반환, 무통장은 `bank_transfers` 만료 처리). **`paid` → 취소 불허** — 돈 받은 주문은 환불 경로로만 | manager + 직무 |
-| **환불완료** | `paid / partially_refunded` | **환불관리 수동 종결 단축**: 접수(`createRefundIntake`) + 전액 + `pg_cancel_kind = 외부 처리(manual)` + `commit_refund`(수강권 회수·재고·쿠폰·포인트·정산 반영). **PG 호출 0** — 요청서 조건 그대로. 「이미 밖에서 돌려준 돈」의 장부 정리이므로 실환급액 입력(기본 = 결제귀속액)·사유 필수 | **admin(원장)** — 환불 확정 게이트와 동일 |
-| **주문접수** | 무통장 `cancelled / expired` → `pending_deposit` | 새 intent 1개 `reopen_deposit`: 상태 복귀 + `bank_transfers` 입금 기한 재설정 + 이력. 토스 주문·`paid` 계열은 불가 | manager + 직무 |
+| **결제완료** (무통장) | `pending_deposit` | 기존 `confirmBankTransfer`(`bank-transfer.server.ts`) → `markOrderPaidAndFulfill`(paid_at·포인트·수강권·배송·쿠폰) | manager + 직무 |
+| **결제완료** (토스) | `attempted / pending_payment` 에 멈춘 토스 주문(승인은 됐는데 confirm·웹훅이 유실) | **[신설 트리거 · A5]** 「토스 승인 재조회」: 토스 결제 조회 API(orderId) 결과를 기존 `syncPaymentFromToss(orderId, 'DONE', body)`(`webhook.server.ts`) 에 투입 — 웹훅과 **같은 뮤테이션 경로**, 이미 paid 면 `ignored`(멱등). 손으로 paid 를 찍는 경로는 없다. 대안 = 토스 개발자센터에서 웹훅 재전송(코드 변경 0) | manager + 직무 |
+| **취소** | `pending_deposit / pending_payment / attempted` | **[단건 intent 신설, 처리는 기존 함수와 동일]** 관리자용 단건 취소가 아직 없다(학생용 `cancelPendingCheckout` 은 본인 소유·구독 payments 전용). 크론 만료 함수 `expireStaleCheckoutOrders`(→ `expired` + `releasePointsForOrders`) · `expireOverdueBankTransfers`(→ `cancelled`) 의 처리를 단건·사유 버전으로 추출해 `cancelled` + 포인트 반환 + 무통장 기한 종료. **`paid` → 취소 불허** — 돈 받은 주문은 환불 경로로만 | manager + 직무 |
+| **환불완료** | `paid / partially_refunded` | **환불관리 수동 종결 단축**: 접수(`createRefundIntake`) + 전액 + `refund_method = bank/etc`(계좌 송금·기타) + `pg_cancel_kind = null`(PG 취소 없음 — CHECK 는 null/full/partial) + `commitRefund`(수강권 회수·재고·쿠폰·포인트·정산 반영, 멱등). **PG 호출 0** — 요청서 조건 그대로. 「이미 밖에서 돌려준 돈」의 장부 정리이므로 실환급액 입력(기본 = 결제귀속액)·사유 필수 | **admin(원장)** — 환불 확정 게이트와 동일 |
+| **주문접수** | 무통장 `cancelled / expired` → `pending_deposit` | **[신설]** intent `reopen_deposit`: 상태 복귀 + `bank_transfers` 입금 기한 재설정 + 이력. 토스 주문·`paid` 계열은 불가 | manager + 직무 |
 | **삭제** | `draft / attempted / pending_payment / expired / cancelled / failed` (비결제 상태만) | **status 가 아니다** — `orders.archived_at` 보관 플래그로 목록에서 숨김(필터 「보관함」으로 열람). `paid/partially_refunded/refunded` 불가. 행 삭제는 FK 6종(order_items·payments·bank_transfers·refunds·point_transactions·coupon_redemptions)으로 불가 | manager + 직무 |
 
 - 5값 밖의 현재 상태(`partially_refunded / failed / draft / attempted`)는 셀렉트를 **읽기 전용**으로 보인다(현재값 표시, 변경 불가).
-- 셀렉트의 각 option 은 **현재 상태에서 허용되는 것만 활성**(전이 표는 `orders/lib/order-status.ts` 에 `ADMIN_TRANSITIONS` 로 SSOT, 서버가 같은 표로 재검증).
+- 셀렉트의 각 option 은 **현재 상태에서 허용되는 것만 활성**(전이 표는 `orders/lib/order-status.ts` 에 `ADMIN_TRANSITIONS` **[신설]** 로 SSOT, 서버가 같은 표로 재검증).
+- 표의 함수명 중 실재하는 것: `confirmBankTransfer` · `syncPaymentFromToss` · `expireStaleCheckoutOrders` · `expireOverdueBankTransfers` · `releasePointsForOrders` · `createRefundIntake` · `commitRefund` · `takeOverPgCancelIfOpenRefund`(2026-09-17 grep 확인). **[신설]** 표시만 새로 만든다.
 - `admin-orders.tsx` 의 untyped 라벨표는 제거하고 `order-status.ts` 의 typed SSOT 에 **운영자 라벨**을 병기한다(값 추가 시 컴파일 오류로 누락 차단).
 
 ### D2. 확인 절차 · 이력 **[설계]**
@@ -89,7 +91,7 @@
 |---|---|---|---|
 | **Q0** | 원장 결정 §5 + `refunds d9222fb9` 실건 여부 확인 | — | — |
 | **Q1** | 상태 이력 원장 `order_status_logs` + `orders.archived_at` + 라벨 SSOT 통합(`order-status.ts` 운영자 라벨) + `db-schema.md` 정정 | S | Q0 |
-| **Q2** | 셀렉트 + 사유 다이얼로그 + 5 경로 배선(결제완료·취소·주문접수·삭제) + 전이 표 서버 재검증 | M | Q1 |
+| **Q2** | 셀렉트 + 사유 다이얼로그 + 경로 배선(결제완료 무통장·토스 승인 재조회(A5)·취소 단건·주문접수·삭제) + 전이 표 서버 재검증 | M | Q1 |
 | **Q3** | 환불완료 단축(환불관리 수동 종결) + 웹훅 재전송 멱등 + 레거시 환불요청 경로 제거 | M | Q2 |
 | **Q4** | 결제금액 정정: DDL(`original_total_krw` 백필 · `order_amount_adjustments`) + 액션 + 목록/상세/학생 표기 | M | Q0 |
 
@@ -103,6 +105,7 @@
 | **A2** | 「삭제」의 뜻 | **보관(archive)** — 비결제 상태만 목록에서 숨김. 결제·환불 주문은 삭제 불가 |
 | **A3** | 결제금액 정정을 정산·매출통계에도 반영하는가 | **아니오** — 이번엔 주문 장부(표시액) 정정에 한정. 정산 반영은 별건 |
 | A4 | 사용 사례(D6) — 무통장 실입금액 차이인가 | 그렇다면 입금확인 시 실입금액 입력으로 대체 |
+| **A5** | 토스 주문의 「결제완료」 — 승인 재조회 트리거를 만드는가 | **만든다**(S) — 토스 조회 API → 기존 `syncPaymentFromToss` 투입. 뮤테이션 경로는 웹훅과 동일. 대안 = 토스 개발자센터 웹훅 재전송으로 운영(코드 0, 원장이 직접) |
 
 ## 6. 부록 — 이번 조사에서 드러난 별건 결함
 
