@@ -143,6 +143,22 @@ export type DurationModeRule = "days" | "fixed" | "any";
 /** 전체 예정 회차 칸 — required(온라인 상시) / optional / hidden(서버가 null 강제). */
 export type PlannedSessionsRule = "required" | "optional" | "hidden";
 
+/**
+ * 수강 정책(plan_policies) 블록 안의 그룹별 노출 — feat-11-015 P3-c(원장 결정 2026-09-17).
+ * false 인 그룹의 칸은 폼이 렌더하지 않고(hidden 도 안 보냄) 서버는 저장값 유지(update) / DDL 기본값(create)으로
+ * 채운다(`subscriptions/lib/plan-policy-groups.ts`). 폼·서버가 이 한 객체로 판정한다.
+ */
+export interface PolicyGroupRules {
+  /** 수강배수(multiplier). 패키지는 구성 강의의 단과 상품 배수를 따른다(B1) → 단과·혼합만. */
+  multiplier: boolean;
+  /** PC/모바일 허용·다운로드(allow_pc/mobile/download). 전역 DRM 정책(D18)으로 옮겨 어느 유형에도 두지 않는다(B3). */
+  device: boolean;
+  /** 일시정지(pause_*). 패키지는 구성 강의의 단과 상품 정책을 따른다(B2 · D17 resolver) → 단과·혼합만. */
+  pause: boolean;
+  /** 유료 연장(extension_*). 패키지는 원천 거절이라 폼에서 뺀다 → 단과·혼합만. */
+  extension: boolean;
+}
+
 export interface CourseFormatFormRules {
   durationMode: DurationModeRule;
   /** 수강 정책(plan_policies) 블록 노출. 현장(offline)만 false — 정책 행을 만들지 않는다. */
@@ -159,6 +175,11 @@ export interface CourseFormatFormRules {
    *   false 면 서버가 네 값을 null 로 강제한다.
    */
   termFields: boolean;
+  /**
+   * 정책 블록 안 그룹별 노출(feat-11-015 P3-c). showOnlinePolicy=false(현장)면 블록 자체가 없으므로 전부 false.
+   * 패키지 = 넷 다 false, 온라인 단과·혼합 = device 만 false.
+   */
+  policyGroups: PolicyGroupRules;
   coursesLabel: string;
   hint: string;
 }
@@ -203,6 +224,16 @@ export function courseFormatFormRules(format: CourseFormat): CourseFormatFormRul
       : format === "package_always" || format === "blended"
         ? "optional"
         : "hidden";
+  // 정책 그룹(feat-11-015 P3-c): 배수·일시정지·연장은 「온라인 수강권이 나가는 단과(혼합 포함)」에만 —
+  //   패키지는 구성 강의의 단과 상품 정책을 따르므로(D17) 자기 폼에서 뺀다. 기기/다운로드는 전역 DRM 정책(D18)이라
+  //   어느 유형에도 두지 않는다(B3) — 되살릴 일이 생기면 이 한 줄만 바꾼다.
+  const singleOnline = online && !isPackageFormat(format);
+  const policyGroups: PolicyGroupRules = {
+    multiplier: singleOnline,
+    device: false,
+    pause: singleOnline,
+    extension: singleOnline,
+  };
   return {
     durationMode,
     showOnlinePolicy: online,
@@ -210,6 +241,7 @@ export function courseFormatFormRules(format: CourseFormat): CourseFormatFormRul
     plannedSessions,
     showSchedules: seat,
     termFields: durationMode === "fixed",
+    policyGroups,
     coursesLabel: isPackageFormat(format)
       ? "패키지 구성 강의(다중 선택)"
       : "연결 강의(에디션)",

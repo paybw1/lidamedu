@@ -4,6 +4,7 @@ import {
   COURSE_FORMATS,
   type CourseFormat,
   type CourseFormatFormRules,
+  type PolicyGroupRules,
   cadenceOf,
   courseFormatFormRules,
   deliveryOf,
@@ -57,6 +58,19 @@ describe("course-format (feat-11-013 P2)", () => {
 
 describe("courseFormatFormRules (feat-11-013 P3-a — 유형별 조건부 노출·검증)", () => {
   // 6유형 × 항목 매트릭스(hint 제외). 폼과 서버가 이 표 하나로 판정한다.
+  // 정책 그룹(feat-11-015 P3-c, 원장 결정 2026-09-17): 단과·혼합 = device 만 false / 패키지·현장 = 넷 다 false.
+  const SINGLE_GROUPS: PolicyGroupRules = {
+    multiplier: true,
+    device: false,
+    pause: true,
+    extension: true,
+  };
+  const NO_GROUPS: PolicyGroupRules = {
+    multiplier: false,
+    device: false,
+    pause: false,
+    extension: false,
+  };
   const table: Record<CourseFormat, Omit<CourseFormatFormRules, "hint">> = {
     online_always: {
       durationMode: "days",
@@ -65,6 +79,7 @@ describe("courseFormatFormRules (feat-11-013 P3-a — 유형별 조건부 노출
       plannedSessions: "required",
       showSchedules: false,
       termFields: false,
+      policyGroups: SINGLE_GROUPS,
       coursesLabel: "연결 강의(에디션)",
     },
     online_term: {
@@ -74,6 +89,7 @@ describe("courseFormatFormRules (feat-11-013 P3-a — 유형별 조건부 노출
       plannedSessions: "hidden",
       showSchedules: false,
       termFields: true,
+      policyGroups: SINGLE_GROUPS,
       coursesLabel: "연결 강의(에디션)",
     },
     offline: {
@@ -83,6 +99,7 @@ describe("courseFormatFormRules (feat-11-013 P3-a — 유형별 조건부 노출
       plannedSessions: "hidden",
       showSchedules: true,
       termFields: false,
+      policyGroups: NO_GROUPS,
       coursesLabel: "연결 강의(에디션)",
     },
     blended: {
@@ -92,6 +109,7 @@ describe("courseFormatFormRules (feat-11-013 P3-a — 유형별 조건부 노출
       plannedSessions: "optional",
       showSchedules: true,
       termFields: false,
+      policyGroups: SINGLE_GROUPS,
       coursesLabel: "연결 강의(에디션)",
     },
     package_term: {
@@ -101,6 +119,7 @@ describe("courseFormatFormRules (feat-11-013 P3-a — 유형별 조건부 노출
       plannedSessions: "hidden",
       showSchedules: false,
       termFields: true,
+      policyGroups: NO_GROUPS,
       coursesLabel: "패키지 구성 강의(다중 선택)",
     },
     package_always: {
@@ -110,6 +129,7 @@ describe("courseFormatFormRules (feat-11-013 P3-a — 유형별 조건부 노출
       plannedSessions: "optional",
       showSchedules: false,
       termFields: false,
+      policyGroups: NO_GROUPS,
       coursesLabel: "패키지 구성 강의(다중 선택)",
     },
   };
@@ -148,6 +168,29 @@ describe("courseFormatFormRules (feat-11-013 P3-a — 유형별 조건부 노출
       expect(r.showOnlinePolicy).toBe(hasOnlineDelivery(f));
       expect(r.showCourses).toBe(hasOnlineDelivery(f));
       expect(r.showSchedules).toBe(needsSeat(f));
+    }
+  });
+
+  it("정책 그룹(P3-c) — 패키지는 넷 다 닫히고, 기기/다운로드는 어느 유형에도 없고, 배수·일시정지·연장은 온라인 단과·혼합에만", () => {
+    const groups = (f: CourseFormat) => courseFormatFormRules(f).policyGroups;
+    for (const f of COURSE_FORMATS.filter(isPackageFormat)) {
+      expect(groups(f)).toEqual({ multiplier: false, device: false, pause: false, extension: false });
+    }
+    expect(COURSE_FORMATS.filter((f) => groups(f).device)).toEqual([]);
+    expect(COURSE_FORMATS.filter((f) => groups(f).multiplier)).toEqual([
+      "online_always",
+      "online_term",
+      "blended",
+    ]);
+    for (const f of COURSE_FORMATS) {
+      const g = groups(f);
+      // 세 그룹은 같은 축(단과·혼합)으로 열리고 닫힌다 — 하나만 달라지면 규칙이 갈라진 것.
+      expect(g.pause).toBe(g.multiplier);
+      expect(g.extension).toBe(g.multiplier);
+      // 블록 자체가 없는 유형(현장)에서 그룹이 열려 있으면 안 된다.
+      if (!courseFormatFormRules(f).showOnlinePolicy) {
+        expect(Object.values(g).some(Boolean)).toBe(false);
+      }
     }
   });
 });

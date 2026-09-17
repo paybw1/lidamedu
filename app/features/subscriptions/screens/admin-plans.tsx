@@ -939,7 +939,9 @@ function PlanForm({
         </div>
       ) : null}
 
-      {/* 수강 정책 — 온라인 수강권이 나가는 유형만(현장은 정책 행을 만들지 않는다). */}
+      {/* 수강 정책 — 온라인 수강권이 나가는 유형만(현장은 정책 행을 만들지 않는다).
+          feat-11-015 P3-c: 그룹별 노출(배수·기기·일시정지·연장)도 같은 규칙 객체로 — 서버 action 이 같은 규칙으로
+          숨긴 그룹의 저장값을 지킨다. */}
       {rules?.showOnlinePolicy ? (
         <PlanPolicyFields
           policy={policy}
@@ -947,6 +949,7 @@ function PlanForm({
           currentPlanId={plan?.planId}
           durationMode={rules.durationMode}
           termFields={rules.termFields}
+          policyGroups={rules.policyGroups}
         />
       ) : null}
 

@@ -33,6 +33,11 @@ import { EmptyState } from "~/features/lms/components/empty-state";
 import { enrollmentStatusLabel } from "~/features/lms/lib/enrollment-status";
 import { resolveExtensionContexts } from "~/features/lms/extension.server";
 import { EXTENSION_DEFAULTS_FALLBACK } from "~/features/lms/lib/extension-policy";
+import { PAUSE_NO_SINGLE_COURSE_PLAN_NOTICE } from "~/features/lms/lib/single-course-plan";
+import {
+  resolvePausePolicies,
+  type ResolvedPausePolicy,
+} from "~/features/lms/pause-policy.server";
 import { resumeOverduePauses } from "~/features/lms/pause.server";
 import { getMyPlanReviews } from "~/features/lms/reviews.server";
 import {
@@ -96,16 +101,22 @@ export async function loader({ request }: Route.LoaderArgs) {
   const allLessonIds = [...lessonsByCourse.values()].flat();
   const progress = await getLessonProgressForUser(user.id, allLessonIds);
 
-  // 일시정지 정책·사용 이력 + ① 연장 정책
+  // 일시정지 정책 — **수강권 단위**(feat-11-015 D17). 패키지 수강권은 구성 강의의 단과 상품 정책을
+  //   따르고 자기 상품의 pause_* 는 읽지 않는다. ★pause_request 액션도 같은 함수로 재검증한다.
+  //   해석 실패(상품 유형 조회 오류)는 빈 맵 = 전부 "불가"(버튼·안내 없음) 로 닫고 화면은 그린다.
+  const pausePolicyByEnrollment = await resolvePausePolicies(
+    list.map((e) => ({
+      enrollmentId: e.enrollment_id,
+      planId: e.plan_id ?? null,
+      courseId: e.course_id ?? null,
+    })),
+  ).catch(() => new Map<string, ResolvedPausePolicy>());
+
+  // ① 연장 정책 — 상품(plan) 단위. 일시정지 칸은 위 수강권 단위 맵으로 옮겨 여기서 읽지 않는다.
   const planIds = [...new Set(list.map((e) => e.plan_id).filter(Boolean))] as string[];
   const policyByPlan = new Map<
     string,
     {
-      pauseAllowed: boolean;
-      totalDays: number;
-      maxCount: number;
-      minDays: number;
-      maxDays: number;
       extensionAllowed: boolean;
       extensionPlanIds: string[];
     }
@@ -113,17 +124,10 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (planIds.length > 0) {
     const { data: policies } = await adminClient
       .from("plan_policies")
-      .select(
-        "plan_id, pause_allowed, pause_total_days, pause_max_count, pause_min_days, pause_max_days, extension_allowed, extension_plan_ids",
-      )
+      .select("plan_id, extension_allowed, extension_plan_ids")
       .in("plan_id", planIds);
     for (const p of policies ?? []) {
       policyByPlan.set(p.plan_id, {
-        pauseAllowed: p.pause_allowed,
-        totalDays: p.pause_total_days,
-        maxCount: p.pause_max_count,
-        minDays: p.pause_min_days,
-        maxDays: p.pause_max_days,
         // feat-11-010 로 NULL 허용이 됐다 — 기존 "연장 상품" 게이트는 명시 true 일 때만.
         //   기본값 해석이 필요한 새 유료 연장은 별도 경로가 담당한다.
         extensionAllowed: p.extension_allowed === true,
@@ -215,6 +219,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       }
       const bal = balances.get(e.enrollment_id) ?? null;
       const policy = e.plan_id ? (policyByPlan.get(e.plan_id) ?? null) : null;
+      const pausePolicy = pausePolicyByEnrollment.get(e.enrollment_id) ?? null;
       const usedPause = pauseAgg.get(e.enrollment_id) ?? { usedDays: 0, count: 0 };
       const myReview = e.plan_id ? (myReviews.get(e.plan_id) ?? null) : null;
       return {
@@ -232,14 +237,17 @@ export async function loader({ request }: Route.LoaderArgs) {
         allowedSeconds: bal?.allowedSeconds ?? null,
         usedSeconds: bal?.usedSeconds ?? 0,
         remainingSeconds: bal?.remainingSeconds ?? null,
-        pause: policy?.pauseAllowed
+        pause: pausePolicy?.pauseAllowed
           ? {
-              remainingDays: Math.max(0, policy.totalDays - usedPause.usedDays),
-              remainingCount: Math.max(0, policy.maxCount - usedPause.count),
-              minDays: policy.minDays,
-              maxDays: policy.maxDays,
+              remainingDays: Math.max(0, pausePolicy.totalDays - usedPause.usedDays),
+              remainingCount: Math.max(0, pausePolicy.maxCount - usedPause.count),
+              minDays: pausePolicy.minDays,
+              maxDays: pausePolicy.maxDays,
             }
           : null,
+        // 패키지인데 구성 강의의 단과 상품이 없으면 버튼 대신 사유를 보여준다(D17).
+        pauseNotice:
+          pausePolicy?.source === "none" ? PAUSE_NO_SINGLE_COURSE_PLAN_NOTICE : null,
         // feat-11-010 — 유료 연장(정책 기반). 가능할 때만 버튼을 준다.
         paidExtension: (() => {
           const ctx = extensionCtx.get(e.enrollment_id);
@@ -289,22 +297,40 @@ export async function action({ request }: Route.ActionArgs) {
     // 소유·상태 검증
     const { data: enr } = await adminClient
       .from("enrollments")
-      .select("enrollment_id, user_id, status, expires_at, plan_id")
+      .select("enrollment_id, user_id, status, expires_at, plan_id, course_id")
       .eq("enrollment_id", enrollmentId)
       .maybeSingle();
     if (!enr || enr.user_id !== user.id) return data({ error: "수강권을 찾을 수 없습니다." }, { status: 404 });
     if (enr.status !== "active") return data({ error: "수강중 상태에서만 신청할 수 있습니다." }, { status: 400 });
     if (!enr.plan_id) return data({ error: "이 수강권은 일시정지 대상이 아닙니다." }, { status: 400 });
-    // 정책 검증 (서버 권위)
-    const { data: policy } = await adminClient
-      .from("plan_policies")
-      .select("pause_allowed, pause_total_days, pause_max_count, pause_min_days, pause_max_days")
-      .eq("plan_id", enr.plan_id)
-      .maybeSingle();
-    if (!policy?.pause_allowed) return data({ error: "이 상품은 일시정지를 지원하지 않습니다." }, { status: 400 });
-    if (days < policy.pause_min_days || days > policy.pause_max_days) {
+    // 정책 검증 (서버 권위) — 로더와 **같은 resolver**(feat-11-015 D17). 패키지 수강권은 구성 강의의
+    //   단과 상품 정책으로 판정하고, 패키지 자기 행은 읽지 않는다. 해석 실패는 승인하지 않는다(닫힘).
+    let policy: ResolvedPausePolicy | null = null;
+    try {
+      const policyMap = await resolvePausePolicies([
+        { enrollmentId, planId: enr.plan_id, courseId: enr.course_id ?? null },
+      ]);
+      policy = policyMap.get(enrollmentId) ?? null;
+    } catch {
       return data(
-        { error: `정지 기간은 ${policy.pause_min_days}~${policy.pause_max_days}일 사이여야 합니다.` },
+        { error: "일시정지 정책을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요." },
+        { status: 500 },
+      );
+    }
+    if (!policy?.pauseAllowed) {
+      return data(
+        {
+          error:
+            policy?.source === "none"
+              ? PAUSE_NO_SINGLE_COURSE_PLAN_NOTICE
+              : "이 상품은 일시정지를 지원하지 않습니다.",
+        },
+        { status: 400 },
+      );
+    }
+    if (days < policy.minDays || days > policy.maxDays) {
+      return data(
+        { error: `정지 기간은 ${policy.minDays}~${policy.maxDays}일 사이여야 합니다.` },
         { status: 400 },
       );
     }
@@ -314,12 +340,12 @@ export async function action({ request }: Route.ActionArgs) {
       .eq("enrollment_id", enrollmentId);
     const usedDays = (pauses ?? []).reduce((s, p) => s + p.days, 0);
     const usedCount = (pauses ?? []).length;
-    if (usedCount >= policy.pause_max_count) {
-      return data({ error: `일시정지 가능 횟수(${policy.pause_max_count}회)를 모두 사용했습니다.` }, { status: 400 });
+    if (usedCount >= policy.maxCount) {
+      return data({ error: `일시정지 가능 횟수(${policy.maxCount}회)를 모두 사용했습니다.` }, { status: 400 });
     }
-    if (usedDays + days > policy.pause_total_days) {
+    if (usedDays + days > policy.totalDays) {
       return data(
-        { error: `남은 정지 가능 일수는 ${Math.max(0, policy.pause_total_days - usedDays)}일입니다.` },
+        { error: `남은 정지 가능 일수는 ${Math.max(0, policy.totalDays - usedDays)}일입니다.` },
         { status: 400 },
       );
     }
@@ -449,6 +475,8 @@ function CourseCard({
       minDays: number;
       maxDays: number;
     } | null;
+    /** 일시정지 불가 사유(패키지인데 단과 상품 정책 없음). 버튼 대신 표시. */
+    pauseNotice: string | null;
     extensionProducts: Array<{ code: string; name: string; priceKrw: number }>;
     paidExtension: {
       priceKrw: number;
@@ -601,6 +629,10 @@ function CourseCard({
             >
               <PauseCircleIcon className="size-3.5" /> 일시정지 신청
             </button>
+          ) : course.pauseNotice && course.status === "active" ? (
+            <span className="ml-auto inline-flex items-center gap-1 text-[12px]">
+              <PauseCircleIcon className="size-3.5" /> {course.pauseNotice}
+            </span>
           ) : null}
         </div>
         {course.paidExtension ? (

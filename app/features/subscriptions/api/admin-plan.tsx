@@ -20,8 +20,11 @@ import {
   FEATURE_LABEL,
   isLectureProductKind,
 } from "~/features/subscriptions/labels";
+import { applyHiddenPolicyGroups } from "~/features/subscriptions/lib/plan-policy-groups";
 import {
+  type PlanPolicy,
   copyPlan,
+  getPlanPolicies,
   getPlanSaleRecords,
   syncPlanBookLinks,
   syncPlanCourses,
@@ -57,6 +60,8 @@ const calendarDate = z
 // 강의 수강 정책(course/tpass 전용) — plan_policies. durationMode 로 수강기간 방식 분기.
 // ★배수(multiplier)는 수강기간 방식이 아니라 독립 축이다 — 어느 방식이든 함께 지정한다.
 //   무제한은 null. DB check 가 multiplier >= 1 이라 하한을 1 로 둔다(0 이면 저장 실패).
+// ★미전송 칸은 false·0·null(무제한/기본값)로 파싱된다. 유형 규칙(policyGroups)이 숨긴 그룹의 칸은 이 값을 쓰지 않고
+//   쓰기 직전에 applyHiddenPolicyGroups 가 기존 행/DDL 기본값으로 되돌린다(feat-11-015 P3-c).
 const policySchema = z.object({
   durationMode: z.enum(["days", "fixed"]),
   multiplier: z.coerce.number().min(1).max(100).nullable(),
@@ -564,14 +569,24 @@ export async function action({ request }: Route.ActionArgs) {
   // 강의 상품(course/tpass) — 정책 upsert(현장은 건너뜀: 기존 행이 있어도 그대로 둔다) + 강의·교재 동기화.
   if (isLecture && rules) {
     if (policy) {
-      const p = policy;
-      // ★upsert 는 안 보낸 칸을 기본값으로 되돌린다. 폼에서 뺀 기기 수는 **저장된 값을
-      //   그대로 다시 넣어** 보존한다(요청서 §4.1 — 화면에서만 없앤다, 값은 건드리지 않는다).
-      const { data: keptPolicy } = await adminClient
-        .from("plan_policies")
-        .select("max_devices_pc, max_devices_mobile")
-        .eq("plan_id", res.planId)
-        .maybeSingle();
+      // ★upsert 는 안 보낸 칸을 기본값으로 되돌린다(22칸 전부 upsert, 부분 갱신 없음). 폼이 렌더하지 않는 칸은
+      //   **저장된 값을 그대로 다시 넣어** 보존한다(화면에서만 없앤다, 값은 건드리지 않는다):
+      //   · 기기 수(max_devices_*) — 요청서 §4.1(feat-11-011 P7). 폼이 없으면 kept, 그것도 없으면 1.
+      //   · 그룹 단위 숨김(배수·기기/다운로드·일시정지·연장) — feat-11-015 P3-c. 폼과 같은 규칙
+      //     (rules.policyGroups)으로 숨긴 그룹의 칸을 기존 행(update) / DDL 기본값(create·행 없음)으로 되돌린다.
+      //     policySchema 가 미전송 칸을 false·0·null 로 파싱한 값은 노출 그룹에만 남는다.
+      //   기존 행은 getPlanPolicies 로 22칸 전부 읽는다(create 모드는 행이 없어 undefined → 기본값).
+      //   ★조회 실패는 throw 라 잡아서 failAfterUpsert 로 보낸다 — 안 잡으면 create 모드에 고아 plan 행이 남고,
+      //     기본값으로 진행하면 update 모드의 저장값이 덮인다(닫힌 쪽으로 실패: 아무것도 쓰지 않는다).
+      let keptPolicy: PlanPolicy | undefined;
+      try {
+        keptPolicy = (await getPlanPolicies([res.planId]))[res.planId];
+      } catch (e) {
+        return failAfterUpsert(
+          `수강 정책 조회 실패: ${e instanceof Error ? e.message : String(e)}`,
+        );
+      }
+      const p = applyHiddenPolicyGroups(policy, rules.policyGroups, keptPolicy);
 
       const polRes = await upsertPlanPolicy(res.planId, {
         multiplier: p.multiplier,
@@ -583,8 +598,8 @@ export async function action({ request }: Route.ActionArgs) {
         allowDownload: p.allowDownload,
         allowPc: p.allowPc,
         allowMobile: p.allowMobile,
-        maxDevicesPc: p.maxDevicesPc ?? keptPolicy?.max_devices_pc ?? 1,
-        maxDevicesMobile: p.maxDevicesMobile ?? keptPolicy?.max_devices_mobile ?? 1,
+        maxDevicesPc: p.maxDevicesPc ?? keptPolicy?.maxDevicesPc ?? 1,
+        maxDevicesMobile: p.maxDevicesMobile ?? keptPolicy?.maxDevicesMobile ?? 1,
         pauseAllowed: p.pauseAllowed,
         pauseMaxCount: p.pauseMaxCount,
         pauseMinDays: p.pauseMinDays,

@@ -9,6 +9,7 @@ import {
   MID_ENTRY_MODE_LABEL,
   MID_ENTRY_MODES,
   type MidEntryMode,
+  type PolicyGroupRules,
 } from "~/features/lms/lib/course-format";
 import type { PlanPolicy } from "~/features/subscriptions/queries.server";
 
@@ -83,6 +84,7 @@ export function PlanPolicyFields({
   currentPlanId,
   durationMode: durationModeRule = "any",
   termFields = false,
+  policyGroups,
 }: {
   policy?: PlanPolicy;
   coursePlans: CoursePlanRef[];
@@ -91,6 +93,12 @@ export function PlanPolicyFields({
   durationMode?: DurationModeRule;
   /** feat-11-013 P3-b — 정규 기간 칸(수강 시작일·중간 신청 정책) 노출. false 면 렌더하지 않는다(hidden 도 안 보냄). */
   termFields?: boolean;
+  /**
+   * feat-11-015 P3-c — 그룹별 노출(SSOT courseFormatFormRules(format).policyGroups). false 인 그룹은 렌더하지
+   * 않고 hidden input 도 보내지 않는다 — 서버가 「폼이 모르는 칸」으로 알고 저장값 유지/기본값을 넣는다
+   * (subscriptions/lib/plan-policy-groups). 필수 prop: 기본값을 두면 그룹이 조용히 다시 열린다.
+   */
+  policyGroups: PolicyGroupRules;
 }) {
   const initialMode: DurationMode = policy?.fixedEndDate ? "fixed" : "days";
   const [chosenMode, setMode] = useState<DurationMode>(initialMode);
@@ -113,6 +121,12 @@ export function PlanPolicyFields({
   const extSet = new Set(policy?.extensionPlanIds ?? []);
   // 연장 대상 후보 — 자기 자신 제외.
   const extCandidates = coursePlans.filter((c) => c.planId !== currentPlanId);
+  // 패키지 유형: 배수·일시정지·연장 그룹이 폼에서 모두 닫힌다(D17). 안내 한 줄만 둔다.
+  // ★안내는 "폼 사실"까지만 — 연장 게이트(extension-policy.ts)는 product_kind 기준이고
+  //   my-courses 의 연장 상품 진입점은 패키지 자기 행의 extension_* 을 그대로 읽으므로,
+  //   "패키지는 연장 없음"은 코드가 보장하는 사실이 아니다. 숨긴 칸의 저장값은 update 모드에서 유지된다.
+  const inheritsFromSingle =
+    !policyGroups.multiplier && !policyGroups.pause && !policyGroups.extension;
 
   return (
     <div className="border-border bg-muted/30 space-y-3 rounded-lg border border-dashed p-3">
@@ -240,7 +254,17 @@ export function PlanPolicyFields({
         ) : null}
       </div>
 
-      {/* 배수 — 수강기간과 독립된 축(원장 요청 2026-08-20). 어떤 수강기간 방식이든 함께 지정한다. */}
+      {inheritsFromSingle ? (
+        <p className="text-muted-foreground text-[11px]">
+          수강배수·일시정지는 이 상품이 아니라 구성 강의의 단과 상품 정책을 따릅니다
+          (바꾸려면 해당 강의의 단과 상품에서 설정). 유료 연장 설정은 패키지 폼에서
+          제공하지 않으며, 이 상품에 이미 저장된 연장 값은 그대로 유지됩니다.
+        </p>
+      ) : null}
+
+      {/* 배수 — 수강기간과 독립된 축(원장 요청 2026-08-20). 어떤 수강기간 방식이든 함께 지정한다.
+          feat-11-015 P3-c: policyGroups.multiplier 가 아니면 블록째 뺀다(hidden 도 안 보냄). */}
+      {policyGroups.multiplier ? (
       <div>
         <p className="text-muted-foreground mb-1.5 text-[11px] font-semibold">
           배수 (강의시간 대비 누적 시청 허용량)
@@ -286,33 +310,40 @@ export function PlanPolicyFields({
           않고 새 지급분부터 반영됩니다.
         </p>
       </div>
+      ) : null}
 
-      {/* 기기 · 다운로드 */}
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-        {/* ★기기 수 입력란은 두지 않는다(요청서 §4.1) — 기기 허용은 콜러스 정책이
-            단독으로 정한다. 두 곳에서 정하면 어느 쪽이 막았는지 알 수 없다. */}
-        <div className="space-y-1.5">
+      {/* 기기 · 다운로드 — feat-11-015 P3-c(B3): 전역 DRM 정책(D18)으로 옮겨 현재 어느 유형에서도 열리지 않는다.
+          규칙(policyGroups.device)이 다시 열면 그대로 살아난다. */}
+      {policyGroups.device ? (
+        <>
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            {/* ★기기 수 입력란은 두지 않는다(요청서 §4.1) — 기기 허용은 콜러스 정책이
+                단독으로 정한다. 두 곳에서 정하면 어느 쪽이 막았는지 알 수 없다. */}
+            <div className="space-y-1.5">
+              <Check
+                name="policy_allowPc"
+                label="PC 수강 허용"
+                defaultChecked={policy?.allowPc ?? true}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Check
+                name="policy_allowMobile"
+                label="모바일 수강 허용"
+                defaultChecked={policy?.allowMobile ?? true}
+              />
+            </div>
+          </div>
           <Check
-            name="policy_allowPc"
-            label="PC 수강 허용"
-            defaultChecked={policy?.allowPc ?? true}
+            name="policy_allowDownload"
+            label="다운로드 허용"
+            defaultChecked={policy?.allowDownload ?? false}
           />
-        </div>
-        <div className="space-y-1.5">
-          <Check
-            name="policy_allowMobile"
-            label="모바일 수강 허용"
-            defaultChecked={policy?.allowMobile ?? true}
-          />
-        </div>
-      </div>
-      <Check
-        name="policy_allowDownload"
-        label="다운로드 허용"
-        defaultChecked={policy?.allowDownload ?? false}
-      />
+        </>
+      ) : null}
 
-      {/* 일시정지 */}
+      {/* 일시정지 — feat-11-015 P3-c: 패키지는 구성 강의의 단과 상품 정책을 따르므로(D17) 블록째 뺀다. */}
+      {policyGroups.pause ? (
       <div>
         <Check
           name="policy_pauseAllowed"
@@ -362,8 +393,11 @@ export function PlanPolicyFields({
           </Field>
         </div>
       </div>
+      ) : null}
 
-      {/* 연장 — feat-11-010. 빈 값 = 운영 기본값(운영관리 › 수강연장 기본값)을 따른다. */}
+      {/* 연장 — feat-11-010. 빈 값 = 운영 기본값(운영관리 › 수강연장 기본값)을 따른다.
+          feat-11-015 P3-c: 패키지는 연장 원천 거절이라 블록째 뺀다(재지급 상품 체크박스 포함). */}
+      {policyGroups.extension ? (
       <div>
         <Field label="유료 수강기간 연장">
           <select
@@ -444,6 +478,7 @@ export function PlanPolicyFields({
           </div>
         ) : null}
       </div>
+      ) : null}
     </div>
   );
 }
