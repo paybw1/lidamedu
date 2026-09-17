@@ -48,8 +48,10 @@
 | 구성강의별 정상가격(환불용) | P4 로 분리 | = D3 `plan_courses.list_price_krw / refund_weight` |
 
 **resolver 「구성 강의의 단과 상품 정책」** (`app/features/lms/lib/single-course-plan.ts` 순수 선택 규칙 + 서버 래퍼):
-- 입력: 수강권의 `course_id` + 그 강의에 `plan_courses` 로 연결된 상품들(`product_kind='course'`, `course_format` 이 패키지가 아닌 온라인 유형, `deleted_at null`).
-- 선택: `sale_status='on_sale'` 우선 → 그다음 `created_at` 최신. 없으면 **null**(일시정지 불가, 안내 「구성 강의의 단과 상품 정책이 없어 일시정지할 수 없습니다」).
+- 입력: 수강권의 `course_id` + 그 강의에 `plan_courses` 로 연결된 상품들(`product_kind='course'`, `course_format` 이 패키지가 아닌 온라인 유형). ★`subscription_plans` 에는 `deleted_at` 이 없다(hard delete + `plan_courses` cascade) — 삭제된 상품은 후보에 오르지 못한다.
+- 선택: `sale_status='on_sale'` 우선 → 그다음 `created_at` 최신(`Date.parse` 수치 비교, 동률이면 plan_id 사전순) . 없으면 **null**(일시정지 불가, 안내 「구성 강의의 단과 상품 정책이 없어 일시정지할 수 없습니다」).
+- 조회 실패는 **닫힘**(fail-closed): 로더는 버튼·안내 없이 그리고, 액션은 500 「일시정지 정책을 확인하지 못했습니다」. 패키지 plan_id 는 어느 분기에서도 `plan_policies` 조회 집합에 들어가지 않는다(구조적 폴백 차단).
+- 운영 실측(2026-09-17 구현 후, 읽기 전용): 패키지 상품 pt_tpass 1건 — `extension_allowed null`·`extension_plan_ids []`(폼에서 사라진 연장 값이 학생에게 새지 않음), `pause_allowed true`(저장값 그대로, resolver 가 읽지 않음), 패키지 수강권 0건. 종류↔유형 조합 = course→online_always 3 · tpass→package_always 1.
 - 패키지가 아닌 수강권은 자기 상품 정책 그대로(변경 없음).
 - ★운영 결과: pt_tpass 구성 4강의 중 단과 상품이 있는 것은 1개(특허법 기본강의 2026판, `pause_allowed=false`) → 4강의 전부 일시정지 불가로 뜬다. 열려면 **단과 상품을 만들어야** 한다(원장 보고).
 
