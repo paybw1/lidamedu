@@ -39,6 +39,35 @@ const findUserSchema = z.object({
   q: z.string().trim().min(1).max(60),
 });
 
+// zod 기본 메시지("Required", "Expected number, received nan",
+// "Number must be less than or equal to 3650")가 화면에 새지 않도록 첫 issue 를 한국어로 매핑.
+// 학생 상세 패널은 fetcher.submit(FormData) 프로그램 제출이라 브라우저 제약검증(max)이
+// 돌지 않아 too_big 이 서버까지 도달한다. 스키마 메시지가 이미 한국어인 경우(note.min 의
+// string too_small)는 그대로 통과 — 그래서 string too_small 은 매핑하지 않는다.
+const FIELD_LABEL: Record<string, string> = {
+  durationDays: "기간은",
+  addDays: "연장 기간은",
+  note: "사유는",
+};
+
+function issueMessage(error: z.ZodError): string {
+  const issue = error.issues[0];
+  if (!issue) return "입력 오류";
+  const field = String(issue.path[0] ?? "");
+  const label = FIELD_LABEL[field] ?? "입력값은";
+  if (issue.code === "invalid_type")
+    return field === "note"
+      ? "사유를 입력하세요."
+      : "입력값이 올바르지 않습니다.";
+  if (issue.code === "too_big")
+    return issue.type === "string"
+      ? `${label} ${issue.maximum}자 이내로 입력하세요.`
+      : `${label} ${issue.maximum} 이하로 입력하세요.`;
+  if (issue.code === "too_small" && issue.type === "number")
+    return `${label} ${issue.minimum} 이상으로 입력하세요.`;
+  return issue.message;
+}
+
 export async function action({ request }: Route.ActionArgs) {
   if (request.method !== "POST")
     return data({ error: "Method not allowed" }, { status: 405 });
@@ -69,10 +98,7 @@ export async function action({ request }: Route.ActionArgs) {
   if (intent === "grant") {
     const parsed = grantSchema.safeParse(Object.fromEntries(fd));
     if (!parsed.success)
-      return data(
-        { error: parsed.error.issues[0]?.message ?? "입력 오류" },
-        { status: 400 },
-      );
+      return data({ error: issueMessage(parsed.error) }, { status: 400 });
     const res = await grantManualSubscription({
       ...parsed.data,
       actorId: user.id,
@@ -83,10 +109,7 @@ export async function action({ request }: Route.ActionArgs) {
   if (intent === "extend") {
     const parsed = extendSchema.safeParse(Object.fromEntries(fd));
     if (!parsed.success)
-      return data(
-        { error: parsed.error.issues[0]?.message ?? "입력 오류" },
-        { status: 400 },
-      );
+      return data({ error: issueMessage(parsed.error) }, { status: 400 });
     const res = await extendSubscription(
       parsed.data.subscriptionId,
       parsed.data.addDays,
@@ -99,10 +122,7 @@ export async function action({ request }: Route.ActionArgs) {
   if (intent === "cancel") {
     const parsed = cancelSchema.safeParse(Object.fromEntries(fd));
     if (!parsed.success)
-      return data(
-        { error: parsed.error.issues[0]?.message ?? "입력 오류" },
-        { status: 400 },
-      );
+      return data({ error: issueMessage(parsed.error) }, { status: 400 });
     const res = await cancelSubscriptionAdmin(
       parsed.data.subscriptionId,
       parsed.data.note,

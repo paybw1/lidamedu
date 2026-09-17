@@ -10,7 +10,7 @@ import {
   XCircleIcon,
 } from "lucide-react";
 import { useState } from "react";
-import { useFetcher, useRevalidator } from "react-router";
+import { Link, useFetcher, useRevalidator } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
@@ -24,6 +24,24 @@ import {
   type SubscriptionPlan,
   type UserSubscription,
 } from "~/features/subscriptions/labels";
+
+// 사유(note) 길이 — 서버 noteSchema(api/admin-subscription.tsx, min 2 / max 500) 와 동일 값.
+// 라우트 모듈은 .server 의존이라 클라이언트에서 import 하지 않고 여기서 숫자를 맞춘다.
+const NOTE_MIN_LENGTH = 2;
+const NOTE_MAX_LENGTH = 500;
+// 기간(일) 상한 — 서버 grantSchema.durationDays / extendSchema.addDays 의 max(3650) 와 동일 값.
+// 이 패널은 fetcher.submit(FormData) 프로그램 제출이라 Input max 는 힌트일 뿐 브라우저가
+// 막지 않으므로 버튼 가드에서 직접 검사한다.
+const DURATION_MAX_DAYS = 3650;
+
+function isNoteValid(note: string): boolean {
+  return note.trim().length >= NOTE_MIN_LENGTH;
+}
+
+// 빈 입력(Number("") → 0)·소수(1.5)도 걸러야 하므로 정수·범위를 함께 판정.
+function isDaysValid(days: number): boolean {
+  return Number.isInteger(days) && days >= 1 && days <= DURATION_MAX_DAYS;
+}
 
 export interface AdminSubscriptionPanelProps {
   userId: string;
@@ -180,20 +198,25 @@ function ActiveCard({
   const daysLeft = daysFromNow(sub.expiresAt);
   const warn = daysLeft <= 7 && daysLeft >= 0;
   const [extendDays, setExtendDays] = useState<number>(30);
+  const [extendNote, setExtendNote] = useState<string>("");
+  const [cancelNote, setCancelNote] = useState<string>("");
 
   function doExtend() {
+    if (!isDaysValid(extendDays) || !isNoteValid(extendNote)) return;
     const fd = new FormData();
     fd.set("intent", "extend");
     fd.set("subscriptionId", sub.subscriptionId);
     fd.set("addDays", String(extendDays));
+    fd.set("note", extendNote.trim());
     fetcher.submit(fd, { method: "post", action: "/api/admin/subscription" });
     setTimeout(onMutated, 200);
   }
   function doCancel() {
-    if (!confirm(`이 구독을 취소합니다(만료일은 유지). 진행하시겠습니까?`)) return;
+    if (!isNoteValid(cancelNote)) return;
     const fd = new FormData();
     fd.set("intent", "cancel");
     fd.set("subscriptionId", sub.subscriptionId);
+    fd.set("note", cancelNote.trim());
     fetcher.submit(fd, { method: "post", action: "/api/admin/subscription" });
     setTimeout(onMutated, 200);
   }
@@ -239,17 +262,32 @@ function ActiveCard({
             id="extendDays"
             type="number"
             min={1}
-            max={3650}
+            max={DURATION_MAX_DAYS}
             value={extendDays}
             onChange={(e) => setExtendDays(Number(e.target.value))}
             className="h-8 w-20 text-xs"
+          />
+        </div>
+        <div className="min-w-48 flex-1 space-y-1">
+          <Label htmlFor="extendNote" className="text-[11px]">
+            연장 사유 (필수 — 이력에 기록)
+          </Label>
+          <Input
+            id="extendNote"
+            value={extendNote}
+            maxLength={NOTE_MAX_LENGTH}
+            onChange={(e) => setExtendNote(e.target.value)}
+            placeholder="예: 보상 연장, 오프라인 결제 확인"
+            className="h-8 text-xs"
           />
         </div>
         <Button
           type="button"
           size="sm"
           onClick={doExtend}
-          disabled={submitting || extendDays <= 0}
+          disabled={
+            submitting || !isDaysValid(extendDays) || !isNoteValid(extendNote)
+          }
           className="h-8 rounded-full px-3 text-xs"
         >
           {submitting ? (
@@ -259,17 +297,47 @@ function ActiveCard({
           )}
           만료 연장
         </Button>
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-end gap-2 text-xs">
+        <div className="min-w-48 flex-1 space-y-1">
+          <Label htmlFor="cancelNote" className="text-[11px]">
+            취소 사유 (필수 — 이력에 기록)
+          </Label>
+          <Input
+            id="cancelNote"
+            value={cancelNote}
+            maxLength={NOTE_MAX_LENGTH}
+            onChange={(e) => setCancelNote(e.target.value)}
+            placeholder="예: 환불 처리, 중복 부여 정리"
+            className="h-8 text-xs"
+          />
+        </div>
         <Button
           type="button"
           size="sm"
           variant="outline"
           onClick={doCancel}
-          disabled={submitting}
+          disabled={submitting || !isNoteValid(cancelNote)}
           className="h-8 rounded-full px-3 text-xs text-rose-600 hover:text-rose-700"
         >
           <XCircleIcon className="size-3" /> 취소
         </Button>
       </div>
+      {/* 취소 즉시 getActiveSubscription(status='active' 필터)에서 빠져 접근이 잠긴다.
+          만료일(expires_at)은 그대로 남는다. 이 패널은 취소 후 연장 컨트롤이 사라지므로
+          재활성 경로(/admin/subscriptions 의 연장 — 만료·취소 건도 노출)를 명시한다. */}
+      <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">
+        취소하면 학생의 해당 과목 접근이 즉시 잠깁니다(만료일 자체는 보존).
+        되돌리기는{" "}
+        <Link
+          to="/admin/subscriptions"
+          className="text-link underline underline-offset-2"
+        >
+          수강권 관리
+        </Link>
+        의 연장에서 할 수 있습니다.
+      </p>
     </div>
   );
 }
@@ -289,6 +357,7 @@ function GrantForm({
 }) {
   const [planCode, setPlanCode] = useState<string>(plans[0]?.code ?? "");
   const [days, setDays] = useState<number>(plans[0]?.durationDays ?? 30);
+  const [note, setNote] = useState<string>("");
 
   function onPlanChange(code: string) {
     setPlanCode(code);
@@ -297,12 +366,13 @@ function GrantForm({
   }
 
   function doGrant() {
-    if (!planCode) return;
+    if (!planCode || !isDaysValid(days) || !isNoteValid(note)) return;
     const fd = new FormData();
     fd.set("intent", "grant");
     fd.set("userId", userId);
     fd.set("planCode", planCode);
     fd.set("durationDays", String(days));
+    fd.set("note", note.trim());
     fetcher.submit(fd, { method: "post", action: "/api/admin/subscription" });
     setTimeout(onSuccess, 200);
   }
@@ -342,17 +412,32 @@ function GrantForm({
             id="grantDays"
             type="number"
             min={1}
-            max={3650}
+            max={DURATION_MAX_DAYS}
             value={days}
             onChange={(e) => setDays(Number(e.target.value))}
             className="h-8 w-24 text-xs"
+          />
+        </div>
+        <div className="min-w-48 flex-1 space-y-1">
+          <Label htmlFor="grantNote" className="text-[11px]">
+            사유 (필수 — 이력에 기록)
+          </Label>
+          <Input
+            id="grantNote"
+            value={note}
+            maxLength={NOTE_MAX_LENGTH}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="예: 오프라인 결제 확인, 이벤트 제공"
+            className="h-8 text-xs"
           />
         </div>
         <Button
           type="button"
           size="sm"
           onClick={doGrant}
-          disabled={submitting || !planCode || days <= 0}
+          disabled={
+            submitting || !planCode || !isDaysValid(days) || !isNoteValid(note)
+          }
           className="h-8 rounded-full px-3 text-xs"
         >
           {submitting ? (
