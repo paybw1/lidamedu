@@ -14,6 +14,7 @@ import type { Database } from "database.types";
 
 import { isExpiredInstant } from "~/core/lib/kst";
 import adminClient from "~/core/lib/supa-admin-client.server";
+import { pickCover } from "~/features/bookstore/queries.server";
 import {
   type DetailSections,
   toDetailSections,
@@ -1125,12 +1126,8 @@ export async function listSellableLectureProducts(
       bookMeta.set(b.book_id, {
         title: b.title,
         priceKrw: b.price_krw ?? 0,
-        coverUrl:
-          b.cover_path ||
-          (b.cover_file_path
-            ? client.storage.from("book-covers").getPublicUrl(b.cover_file_path)
-                .data.publicUrl
-            : null),
+        // cover_file_path 는 이미 완성 공개 URL — 도서몰과 같은 pickCover 로 읽는다(이중 프리픽스 400 재발 방지).
+        coverUrl: pickCover(b.cover_path, b.cover_file_path),
         trackStock: b.track_stock ?? false,
       });
   }

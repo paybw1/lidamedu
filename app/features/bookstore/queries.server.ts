@@ -46,7 +46,12 @@ export interface BookCard {
 }
 
 // 표지 우선순위: 외부 URL(cover_path) → 업로드 파일(cover_file_path).
-function pickCover(coverPath: string | null, coverFilePath: string | null) {
+// ★cover_file_path 값은 업로드 시 완성된 공개 URL(book-fields.server.ts) — getPublicUrl 을 다시 붙이지 않는다.
+//   모든 소비처(도서몰·강의 상세 교재 등)는 이 함수 하나로 읽는다(feat-11-015 §3).
+export function pickCover(
+  coverPath: string | null,
+  coverFilePath: string | null,
+) {
   return coverPath || coverFilePath || null;
 }
 

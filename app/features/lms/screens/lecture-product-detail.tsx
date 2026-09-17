@@ -301,15 +301,24 @@ export default function LectureProductDetail({
                   key={b.bookId}
                   className="flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm"
                 >
-                  <span className="bg-muted h-14 w-10 shrink-0 overflow-hidden rounded border">
+                  {/* 표지 40×56px — 가로형 크롭 표지가 잘리지 않도록 contain(도서몰 BookCover 와 같은 정책).
+                      표지가 없으면 빈 회색 박스 대신 제목 앞 두 글자를 자리표시로 둔다(제목은 옆에 있으므로 aria-hidden). */}
+                  <span className="bg-muted flex h-14 w-10 shrink-0 items-center justify-center overflow-hidden rounded border">
                     {b.coverUrl ? (
                       <img
                         src={b.coverUrl}
-                        alt=""
+                        alt={b.title}
                         loading="lazy"
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-contain"
                       />
-                    ) : null}
+                    ) : (
+                      <span
+                        aria-hidden="true"
+                        className="text-muted-foreground text-[11px] leading-none font-semibold"
+                      >
+                        {b.title.trim().slice(0, 2)}
+                      </span>
+                    )}
                   </span>
                   <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <span className="flex flex-wrap items-center gap-1">
