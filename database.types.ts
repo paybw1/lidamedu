@@ -8383,6 +8383,7 @@ export type Database = {
           deleted_at: string | null
           display_order: number
           enrolled: number
+          exam_round: string | null
           format: string
           instructor_name: string
           intro_md: string | null
@@ -8406,6 +8407,7 @@ export type Database = {
           deleted_at?: string | null
           display_order?: number
           enrolled?: number
+          exam_round?: string | null
           format?: string
           instructor_name: string
           intro_md?: string | null
@@ -8429,6 +8431,7 @@ export type Database = {
           deleted_at?: string | null
           display_order?: number
           enrolled?: number
+          exam_round?: string | null
           format?: string
           instructor_name?: string
           intro_md?: string | null
