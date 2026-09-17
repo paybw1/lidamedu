@@ -25,7 +25,7 @@
 | 이력 인프라 | `audit_logs`(`logAuditEvent`, 주문 행 0건) · `refund_status_logs`(트리거 + GUC `app.refund_actor` — service_role 쓰기에서 actor 가 비는 함정) · `cs_actions`. 주문용 상태 이력 테이블 없음 |
 | 권한 | 주문관리 = manager 이상 + 직무 `lms_orders_admin`. 환불 **확정·되돌리기만 admin(원장)** — `refund-gate.server.ts` |
 | 소유 판정 | PDF 다운로드·수강평 자격·도서 상세 3곳이 `status === 'paid'` **정확 일치** — 값이 바뀌면 자격이 즉시 사라짐 |
-| 운영 분포 | 63건 — toss cancelled 24 · expired 32 · paid 3 · refunded 2, bank_transfer paid 2. `paid` 인데 `paid_at` null 0건. `refunds` 1건(`d9222fb9`, `amount_fixed`, this_refund null, pg_cancel 100,000 — **테스트인지 실건인지 확인 필요**, 실건이면 환불 미종결) |
+| 운영 분포 | 63건 — toss cancelled 24 · expired 32 · paid 3 · refunded 2, bank_transfer paid 2. `paid` 인데 `paid_at` null 0건. `refunds` 1건(`d9222fb9`, `amount_fixed`, this_refund null, pg_cancel 100,000 — **원장 확인 2026-09-17: 가상(테스트) 건**, 실환불 아님) |
 
 ## 2. 설계 — PART 1 상태 셀렉트
 
