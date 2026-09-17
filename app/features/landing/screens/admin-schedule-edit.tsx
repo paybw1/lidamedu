@@ -85,13 +85,17 @@ export default function AdminScheduleEdit({ loaderData }: Route.ComponentProps) 
             <Row label="시간" hint='"19:00–22:00"'>
               <Input name="time_label" defaultValue={s?.time_label ?? ""} className={IN} />
             </Row>
-            <Row label="형태">
-              <select name="format" defaultValue={s?.format ?? "offline"} className={SEL}>
-                <option value="offline">현장</option>
-                <option value="live">실시간</option>
-                <option value="video">영상</option>
-              </select>
-            </Row>
+            {/* 2026-09-17 원장: 일정은 현장강의만 — 형태 칸을 없앴다(실시간 강의 없음, 영상은 카탈로그).
+                저장하면 format 은 항상 offline. 남아 있던 실시간·영상 행은 저장 시 현장으로 바뀐다(공개 달력은 현장만 표시). */}
+            <input type="hidden" name="format" value="offline" />
+            {s && s.format !== "offline" ? (
+              <Row label="형태">
+                <p className="text-muted-foreground text-xs">
+                  이 일정은 「{s.format === "live" ? "실시간" : "영상"}」으로 저장돼 있어 공개 달력에 보이지
+                  않습니다. 저장하면 현장강의로 바뀝니다.
+                </p>
+              </Row>
+            ) : null}
             <Row label="정원">
               <Input type="number" name="capacity" defaultValue={s?.capacity ?? 40} className={IN} />
             </Row>

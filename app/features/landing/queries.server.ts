@@ -151,6 +151,10 @@ export async function listSchedules(
   if (!opts.includeUnpublished) q = q.eq("published", true);
   const { data } = await q;
   let rows = data ?? [];
+  // 2026-09-17 원장: 이 일정은 **현장강의 일정**이다 — 공개 화면(달력·홈 레일·사이트맵)은 현장(offline)만.
+  //   실시간 강의는 운영하지 않고 영상은 강의 카탈로그의 몫. 운영자 목록(includeUnpublished)은 전부 본다
+  //   — 남아 있는 실시간·영상 행을 찾아 현장으로 바꾸거나 지울 수 있게.
+  if (!opts.includeUnpublished) rows = rows.filter((r) => r.format === "offline");
   // 지난 개강 제외(공개 화면). 운영자 목록은 전부 표시.
   if (!opts.includeUnpublished && opts.todayISO) {
     const today = opts.todayISO.slice(0, 10);

@@ -7,12 +7,7 @@ import { MarkdownView } from "~/features/problems/components/markdown-view";
 
 import { LandingStyle } from "../components/landing-style";
 import { ScheduleBuyBar } from "../components/schedule-buy-bar";
-import {
-  FORMAT_LABEL,
-  ddayFrom,
-  scheduleState,
-  type LectureFormat,
-} from "../labels";
+import { ddayFrom, scheduleState } from "../labels";
 import { getSchedule } from "../queries.server";
 
 import type { Route } from "./+types/schedule-detail";
@@ -143,10 +138,6 @@ export default function ScheduleDetail({ loaderData }: Route.ComponentProps) {
                 {s.day_label ?? "-"}
                 {s.time_label ? ` · ${s.time_label}` : ""}
               </dd>
-            </div>
-            <div>
-              <dt>수업 형태</dt>
-              <dd>{FORMAT_LABEL[s.format as LectureFormat]}</dd>
             </div>
             <div>
               <dt>강사</dt>

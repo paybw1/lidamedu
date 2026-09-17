@@ -10,14 +10,15 @@
 
 import { PLAN_LAW_CODES } from "~/features/study-plans/labels";
 
-import { FORMAT_LABEL } from "../labels";
+/** 강의 제공 형태 — 현장·영상(2026-09-17 원장: 실시간 강의는 운영하지 않는다). 소개 수치 전용. */
+const LECTURE_DELIVERY_KINDS = ["현장", "영상"] as const;
 
 export const SITE_INTRO = {
   /** 검색 결과 제목 — 브랜드를 앞에 둔다. */
   metaTitle: "리담변리사학원 — 변리사 시험, 합격까지 함께",
   /** 검색 결과 설명 겸 첫 화면 소개 문장. 둘이 갈리지 않게 한 곳에서 쓴다. */
   description:
-    "전임 강사진의 현장·실시간·영상 강의와 조문·판례·문제 통합 학습으로 1차부터 2차까지 이어서 준비합니다. 현장강의 일정·수강신청·합격 수기.",
+    "전임 강사진의 현장·영상 강의와 조문·판례·문제 통합 학습으로 1차부터 2차까지 이어서 준비합니다. 현장강의 일정·수강신청·합격 수기.",
   eyebrow: "리담변리사학원",
   /** 화면 h1 — 배너가 없을 때 첫 화면의 제목이 된다. */
   headline: "변리사 시험, 합격까지 함께합니다",
@@ -60,9 +61,9 @@ export function buildSiteFacts(input: { instructorCount: number }): SiteFact[] {
     l: "1·2차 통합 커리큘럼",
   });
   facts.push({
-    n: String(Object.keys(FORMAT_LABEL).length),
+    n: String(LECTURE_DELIVERY_KINDS.length),
     u: "종",
-    l: "현장·실시간·영상",
+    l: LECTURE_DELIVERY_KINDS.join("·") + " 강의",
   });
   return facts;
 }

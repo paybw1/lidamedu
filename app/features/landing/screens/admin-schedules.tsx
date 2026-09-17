@@ -73,7 +73,8 @@ export default function AdminSchedules({ loaderData }: Route.ComponentProps) {
                       {s.subject_label} · {s.title}
                     </span>
                     <span className="text-muted-foreground ml-2 text-xs">
-                      {s.instructor_name} · {FORMAT_LABEL[s.format as LectureFormat]} ·{" "}
+                      {s.instructor_name}
+                      {s.format !== "offline" ? ` · ${FORMAT_LABEL[s.format as LectureFormat]}(공개 달력 제외)` : ""} ·{" "}
                       {s.enrolled}/{s.capacity}석
                     </span>
                   </span>

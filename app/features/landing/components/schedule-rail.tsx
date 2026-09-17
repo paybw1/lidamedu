@@ -2,13 +2,7 @@
 //   카드 클릭 → 현장강의 상세(/lecture/schedule/:id). *.server 값 import 금지.
 import { Link } from "react-router";
 
-import {
-  FORMAT_LABEL,
-  ddayFrom,
-  scheduleState,
-  type LectureFormat,
-  type ScheduleRow,
-} from "../labels";
+import { ddayFrom, scheduleState, type ScheduleRow } from "../labels";
 
 import { Rail } from "./rail";
 
@@ -54,10 +48,6 @@ export function ScheduleRail({
                   {s.day_label ?? "-"}
                   {s.time_label ? ` ${s.time_label}` : ""}
                 </span>
-              </div>
-              <div>
-                <span className="k">형태</span>
-                <span className="v">{FORMAT_LABEL[s.format as LectureFormat]}</span>
               </div>
             </div>
             {d !== null ? (

@@ -175,7 +175,7 @@ export function BuiltinCurriculum() {
             </div>
             <ul>
               <li>
-                <span className="ck">✓</span>전 과목 현장강의 + 실시간
+                <span className="ck">✓</span>전 과목 현장강의 + 영상강의
               </li>
               <li>
                 <span className="ck">✓</span>반별 게시판·과제·1:1 상담
