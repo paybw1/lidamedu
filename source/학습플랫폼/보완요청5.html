@@ -1,0 +1,44 @@
+<div style="max-width: 980px; margin: 0 auto; padding: 34px 16px 64px; font-family: Pretendard,'Noto Sans KR',Arial,sans-serif; color: #172033; line-height: 1.72; word-break: keep-all; background: #f5f7fb;">
+<div style="padding: 42px 34px; border-radius: 26px; background: linear-gradient(135deg,#17233f 0%,#284dcc 58%,#6d8cff 100%); color: #fff; margin-bottom: 24px;">
+<div style="font-size: 36px; font-weight: 900; line-height: 1.2; letter-spacing: -1.3px; margin: 14px 0 8px;">&nbsp;수정 요청 2건</div>
+<div style="font-size: 15px; color: #e9edff;">수동 수강권 부여 실패 및 수강생 강의 상세페이지 목차 미노출 문제를 우선 확인해 주세요.</div>
+</div>
+<div style="background: #fff; border: 1px solid #ffd8d8; border-left: 6px solid #d64545; border-radius: 20px; padding: 24px; margin-bottom: 20px; box-shadow: 0 10px 26px rgba(30,45,80,.04);">
+<div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+<div style="font-size: 22px; font-weight: 900; color: #23304a;">1. 영상수강권 &gt; 수동 수강권 부여 오류</div>
+<span style="display: inline-block; padding: 6px 10px; border-radius: 999px; background: #fff0f0; border: 1px solid #ffd8d8; color: #d64545; font-size: 12px; font-weight: 900;">우선 수정</span></div>
+<p style="margin: 0 0 14px; color: #3f4b61;"><strong>영상수강권 &gt; 수동 수강권 부여</strong>에서 강의를 선택하여 부여하면 화면에는 <strong>&ldquo;처리되었습니다&rdquo;</strong>라고 표시되지만, 실제 수강권은 생성되지 않는 문제가 있습니다.</p>
+<div style="padding: 16px; background: #fff8e8; border: 1px solid #f2dfaa; border-radius: 14px; color: #6f5410; margin-bottom: 16px;">
+<div style="font-weight: 900; margin-bottom: 7px;">현재 확인되는 내역</div>
+<div style="font-size: 14px;">2026-09-18<br /><strong>임병웅 특허법 조문강의 / 리담특허법 조문정리5판</strong><br />결제 실패 &middot; ₩180,000<br />결제 취소(결제창 종료 또는 재시도)</div>
+</div>
+<div style="font-size: 17px; font-weight: 900; color: #344057; margin-bottom: 8px;">요청사항</div>
+<ul style="margin: 0; padding-left: 22px; color: #3f4b61;">
+<li style="margin: 7px 0;">수동 수강권 부여 기능은 <strong>결제 주문 생성 여부와 관계없이</strong> 관리자 지급으로 정상 수강권이 생성되어야 합니다.</li>
+<li style="margin: 7px 0;">수동 부여인데도 결제 실패&middot;결제 취소 내역과 연결되는 현재 처리경로가 맞는지 확인해 주세요.</li>
+<li style="margin: 7px 0;">&ldquo;처리되었습니다&rdquo; 메시지는 실제 DB에 수강권 생성이 성공한 경우에만 표시되도록 해 주세요.</li>
+<li style="margin: 7px 0;">실패 시에는 성공 메시지 대신 <strong>실패 원인</strong>을 관리자에게 표시해 주세요.</li>
+<li style="margin: 7px 0;">부여 후 해당 회원의 <strong>내 강의실에 즉시 노출</strong>되고, 시작일&middot;종료일&middot;강의정보가 정상 저장되는지 확인해 주세요.</li>
+<li style="margin: 7px 0;">같은 버튼을 여러 번 눌러도 동일 수강권이 중복 생성되지 않도록 확인해 주세요.</li>
+</ul>
+<div style="margin-top: 16px; padding: 14px 16px; border-left: 4px solid #315efb; background: #eef3ff; border-radius: 10px; color: #263653;">관리자 수동 수강권 부여는 &ldquo;결제 처리&rdquo;가 아니라 <strong>관리자가 회원에게 강의 이용권을 직접 지급하는 기능</strong>이어야 합니다. 결제 실패 주문이 만들어지는 현재 흐름과 분리해 주세요.</div>
+<div style="margin-top: 14px; padding: 14px 16px; border-left: 4px solid #138a5b; background: #ebf8f2; border-radius: 10px; color: #116541;">테스트 회원에게 수동 수강권을 1건 부여했을 때 관리자 수강권 내역과 수강생 내 강의실에 즉시 표시되고, 결제 실패 주문이 생성되지 않으며 실제 재생까지 가능하면 완료입니다.</div>
+</div>
+<div style="background: #fff; border: 1px solid #ffd8d8; border-left: 6px solid #d64545; border-radius: 20px; padding: 24px; margin-bottom: 20px; box-shadow: 0 10px 26px rgba(30,45,80,.04);">
+<div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+<div style="font-size: 22px; font-weight: 900; color: #23304a;">2. /lecture/catalog 강의 상세페이지 목차 미노출</div>
+<span style="display: inline-block; padding: 6px 10px; border-radius: 999px; background: #fff0f0; border: 1px solid #ffd8d8; color: #d64545; font-size: 12px; font-weight: 900;">우선 수정</span></div>
+<p style="margin: 0 0 14px; color: #3f4b61;">수강생이 보는 <strong>/lecture/catalog 강의 상세페이지</strong>에서 관리자에 등록된 <strong>강의 목차가 표시되지 않는 문제</strong>가 있습니다.</p>
+<div style="font-size: 17px; font-weight: 900; color: #344057; margin-bottom: 8px;">요청사항</div>
+<ul style="margin: 0; padding-left: 22px; color: #3f4b61;">
+<li style="margin: 7px 0;">판매상품에 연결된 <strong>강의 콘텐츠/목차 원본</strong>을 상세페이지에서 정상 조회하도록 수정해 주세요.</li>
+<li style="margin: 7px 0;">관리자 강의목차의 회차번호&middot;회차명&middot;영상시간&middot;공개상태&middot;맛보기 여부가 수강생 상세페이지에 정상 표시되어야 합니다.</li>
+<li style="margin: 7px 0;">판매상품에 강의가 정상 연결되어 있는데도 목차가 비어 보이는 경우, 상품-강의-목차 연결 조회 로직을 확인해 주세요.</li>
+<li style="margin: 7px 0;">강의 상세 HTML에 목차를 따로 입력하는 방식이 아니라 <strong>관리자 강의목차 원본을 자동으로 불러오는 구조</strong>로 해 주세요.</li>
+<li style="margin: 7px 0;">비공개 회차는 정책에 맞게 숨기고, 공개예정 회차는 공개예정 상태로 구분해 주세요.</li>
+<li style="margin: 7px 0;">PC&middot;모바일 모두에서 목차가 정상 표시되는지 확인해 주세요.</li>
+</ul>
+<div style="margin-top: 16px; padding: 14px 16px; border-left: 4px solid #315efb; background: #eef3ff; border-radius: 10px; color: #263653;">관리자에서 이미 만들어 놓은 강의 목차를 수강생 상세페이지가 그대로 읽어서 보여주면 됩니다. 상세페이지마다 목차를 다시 입력하게 만들지 말아 주세요.</div>
+<div style="margin-top: 14px; padding: 14px 16px; border-left: 4px solid #138a5b; background: #ebf8f2; border-radius: 10px; color: #116541;">관리자에 등록된 목차와 /lecture/catalog 상세페이지의 목차가 동일하게 보이고, 회차명&middot;순서&middot;공개상태가 일치하며 PC&middot;모바일에서 정상 노출되면 완료입니다.</div>
+</div>
+</div>
