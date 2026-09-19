@@ -156,6 +156,7 @@ import {
   listUserSubscriptionHistory,
 } from "~/features/subscriptions/admin-queries.server";
 import { AdminSubscriptionPanel } from "~/features/subscriptions/components/admin-subscription-panel";
+import { isManualGrantableProductKind } from "~/features/subscriptions/labels";
 import { listSubscriptionPlans } from "~/features/subscriptions/queries.server";
 import { listStudentAssignments } from "~/features/assignments/queries.server";
 import {
@@ -225,8 +226,12 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     roleAtLeast(role, "manager")
       ? listPaymentsForUser(params.profileId)
       : Promise.resolve([]),
+    // 수동 부여 대상 상품만 패널에 넘긴다 — 강의(course/tpass)는 영상 수강권으로 지급하므로
+    // 여기 드롭다운에 뜨면 안 된다(labels.ts SSOT). 2026-09-18 운영 사고 재발 방지.
     roleAtLeast(role, "manager")
-      ? listSubscriptionPlans(client)
+      ? listSubscriptionPlans(client).then((rows) =>
+          rows.filter((p) => isManualGrantableProductKind(p.productKind)),
+        )
       : Promise.resolve([]),
     getStudentSrsSummary(params.profileId),
     // feat-2-022 — 이 학생의 OX 약점 진단(adminClient = RLS 우회, 타 사용자 데이터).

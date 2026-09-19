@@ -40,6 +40,7 @@ import {
   SUBSCRIPTION_NOTE_MAX_LENGTH,
   SUBSCRIPTION_NOTE_MIN_LENGTH,
   SUBSCRIPTION_STATUS_LABEL,
+  isManualGrantableProductKind,
 } from "~/features/subscriptions/labels";
 import {
   listAllPlans,
@@ -137,8 +138,8 @@ export default function AdminSubscriptions({ loaderData }: Route.ComponentProps)
   const { items, plans, allPlans, logsBySub, filter } = loaderData;
   // 수동 부여 대상 상품 = 자기학습 계열(개별 과목/번들)만 — 종합반은 반 배정이 수강권.
   // 판매 전(비활성) 상품도 재량 부여 가능하므로 전체 플랜에서 파생.
-  const grantPlans = allPlans.filter(
-    (p) => p.productKind === "subject" || p.productKind === "bundle",
+  const grantPlans = allPlans.filter((p) =>
+    isManualGrantableProductKind(p.productKind),
   );
 
   // 요약 카운트.

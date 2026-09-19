@@ -62,6 +62,23 @@ export function isLectureProductKind(kind: string): boolean {
   return (LECTURE_PRODUCT_KINDS as readonly string[]).includes(kind);
 }
 
+/** 구독(`user_subscriptions`) 수동 부여가 허용되는 상품 종류 — 자기학습 계열만.
+ *  - `membership`(종합반) 제외: 반 배정이 수강권이다.
+ *  - `course`/`tpass` 제외: 이들은 **영상 수강권(`enrollments`)** 으로 지급해야 한다
+ *    (/admin/lms/enrollments). 2026-09-18 운영 사고 — 회원 상세 패널 드롭다운에 강의 상품이
+ *    걸러지지 않아 조문강의를 구독으로 부여했고, "처리되었습니다"가 떴으나 내 강의실에는
+ *    뜨지 않았다(내 강의실은 enrollments 만 읽는다). 게다가 구독 축은 「한 사람 한 구독」이라
+ *    뒤이은 부여가 직전 건을 auto_cancel 했다. */
+export const MANUAL_GRANT_PRODUCT_KINDS: ReadonlyArray<ProductKind> = [
+  "subject",
+  "bundle",
+];
+
+/** 구독 수동 부여 대상 상품인가 — 화면 필터와 서버 거부가 같은 규칙을 쓰도록 하는 SSOT. */
+export function isManualGrantableProductKind(kind: string): boolean {
+  return (MANUAL_GRANT_PRODUCT_KINDS as readonly string[]).includes(kind);
+}
+
 // feat-8-028 / A-3 — 판매 단계(5단계). sale_status 가 단일 소유자.
 //   is_active 는 저장 시 (sale_status==='on_sale') 로 자동 미러 → 기존 소비처 무변경.
 export type SaleStatus =

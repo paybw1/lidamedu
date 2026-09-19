@@ -11,6 +11,8 @@ import {
   SUBSCRIPTION_DURATION_MAX_DAYS,
   type SubscriptionStatus,
   type UserSubscription,
+  isLectureProductKind,
+  isManualGrantableProductKind,
 } from "./labels";
 
 // ── 단일 사용자 ──────────────────────────────────────────────────────────
@@ -236,11 +238,26 @@ export async function grantManualSubscription(
   // 1) plan 조회 (planId, code 검증).
   const { data: plan, error: planErr } = await adminClient
     .from("subscription_plans")
-    .select("plan_id, code, is_active")
+    .select("plan_id, code, is_active, product_kind")
     .eq("code", input.planCode)
     .maybeSingle();
   if (planErr) return { ok: false, error: planErr.message };
   if (!plan) return { ok: false, error: `plan not found: ${input.planCode}` };
+  // 강의 상품은 구독이 아니라 영상 수강권(enrollments)으로 지급한다 — 화면 필터가 뚫려도
+  // 여기서 막는다(2026-09-18 운영 사고: 조문강의를 구독으로 부여 → 내 강의실 미노출).
+  if (isLectureProductKind(plan.product_kind ?? "")) {
+    return {
+      ok: false,
+      error:
+        "강의 상품은 구독으로 부여할 수 없습니다. 영상 수강권 화면(/admin/lms/enrollments)에서 지급하세요.",
+    };
+  }
+  if (!isManualGrantableProductKind(plan.product_kind ?? "")) {
+    return {
+      ok: false,
+      error: `수동 부여 대상이 아닌 상품입니다(${plan.product_kind}).`,
+    };
+  }
   // 비활성(판매 전) 상품도 재량 부여는 허용 — 판매 게이트(pricing)와 별개. 이력에 planCode 기록.
 
   // 2) 기존 active 구독 확인 → 있으면 연장(같은 plan 이면), 없으면 신규.
